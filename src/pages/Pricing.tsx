@@ -2,44 +2,29 @@
 import { CheckIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import Layout from "@/components/layout/Layout";
+import PublicLayout from "@/components/layout/PublicLayout";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 
 const plans = [
   {
-    name: "Basic",
-    price: "$99",
-    description: "Essential incident reporting for small schools",
+    name: "Standard",
+    price: "$20",
+    description: "Essential incident reporting for schools of all sizes",
     features: [
-      "Report up to 20 incidents per month",
+      "Unlimited incident reporting",
       "Basic analytics dashboard",
       "Email notifications",
-      "5 user accounts",
-      "30-day data retention"
+      "10 user accounts",
+      "1-year data retention",
+      "Email support"
     ],
     cta: "Get Started",
     popular: false
   },
   {
-    name: "Professional",
-    price: "$199",
-    description: "Complete safety management for medium-sized schools",
-    features: [
-      "Unlimited incident reporting",
-      "Advanced analytics and insights",
-      "Email and SMS notifications",
-      "20 user accounts",
-      "1-year data retention",
-      "Custom fields and forms",
-      "Priority support"
-    ],
-    cta: "Start Free Trial",
-    popular: true
-  },
-  {
     name: "Enterprise",
-    price: "$399",
+    price: "Custom",
     description: "Comprehensive district-wide safety solution",
     features: [
       "Unlimited incident reporting",
@@ -53,7 +38,7 @@ const plans = [
       "24/7 premium support"
     ],
     cta: "Contact Sales",
-    popular: false
+    popular: true
   }
 ];
 
@@ -71,7 +56,7 @@ const Pricing = () => {
   };
 
   return (
-    <Layout>
+    <PublicLayout>
       <div className="container mx-auto px-4 py-8">
         <div className="text-center mb-12">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">Simple, Transparent Pricing</h1>
@@ -80,7 +65,7 @@ const Pricing = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
           {plans.map((plan) => (
             <Card 
               key={plan.name} 
@@ -98,7 +83,8 @@ const Pricing = () => {
               <CardContent className="flex-grow">
                 <div className="mb-4">
                   <span className="text-3xl font-bold">{plan.price}</span>
-                  <span className="text-gray-500"> /month</span>
+                  {plan.name !== "Enterprise" && <span className="text-gray-500"> /month</span>}
+                  {plan.name === "Enterprise" && <span className="text-gray-500"> (Negotiable)</span>}
                 </div>
                 <ul className="space-y-2">
                   {plan.features.map((feature, index) => (
@@ -130,7 +116,7 @@ const Pricing = () => {
           <Button variant="outline" size="lg">Contact Our Sales Team</Button>
         </div>
       </div>
-    </Layout>
+    </PublicLayout>
   );
 };
 

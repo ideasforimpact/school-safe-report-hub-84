@@ -1,5 +1,5 @@
 
-import Layout from "@/components/layout/Layout";
+import PublicLayout from "@/components/layout/PublicLayout";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,7 +32,7 @@ const faqs = [
 
 const Support = () => {
   return (
-    <Layout>
+    <PublicLayout>
       <div className="container mx-auto px-4 py-8">
         <div className="mb-12 text-center">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">How Can We Help You?</h1>
@@ -143,7 +143,7 @@ const Support = () => {
           </div>
         </div>
       </div>
-    </Layout>
+    </PublicLayout>
   );
 };
 

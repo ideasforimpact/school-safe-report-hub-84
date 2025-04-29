@@ -2,7 +2,7 @@
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FileText, Shield, School, AlertTriangle } from "lucide-react";
-import Layout from "@/components/layout/Layout";
+import PublicLayout from "@/components/layout/PublicLayout";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 
@@ -55,7 +55,7 @@ const Blog = () => {
   };
 
   return (
-    <Layout>
+    <PublicLayout>
       <div className="container mx-auto px-4 py-8">
         <div className="mb-10">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">School Safety Blog</h1>
@@ -102,7 +102,7 @@ const Blog = () => {
           </div>
         )}
       </div>
-    </Layout>
+    </PublicLayout>
   );
 };
 
