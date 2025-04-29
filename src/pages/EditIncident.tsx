@@ -6,6 +6,7 @@ import {
   IncidentType, 
   IncidentCategory, 
   IncidentLocation, 
+  IncidentStatus,
   Person,
   subcategories,
   nearMissSubcategories,
