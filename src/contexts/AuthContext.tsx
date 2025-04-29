@@ -4,11 +4,19 @@ import { toast } from "@/components/ui/sonner";
 
 export type UserRole = 'reporter' | 'admin';
 
+// Define module access permissions
+export interface ModulePermissions {
+  incidentReporting: boolean;
+  allIncidents: boolean;
+  insights: boolean;
+}
+
 export interface User {
   id: string;
   name: string;
   email: string;
   role: UserRole;
+  modulePermissions: ModulePermissions;
 }
 
 interface AuthContextType {
@@ -17,12 +25,25 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   isAdmin: boolean;
-  addUser: (userData: { name: string; email: string; password: string; role: UserRole }) => void;
+  addUser: (userData: { name: string; email: string; password: string; role: UserRole, modulePermissions: ModulePermissions }) => void;
   updateUser: (id: string, updates: Partial<User & { password?: string }>) => void;
   deleteUser: (id: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Default module permissions
+const DEFAULT_ADMIN_PERMISSIONS: ModulePermissions = {
+  incidentReporting: true,
+  allIncidents: true,
+  insights: true
+};
+
+const DEFAULT_REPORTER_PERMISSIONS: ModulePermissions = {
+  incidentReporting: true,
+  allIncidents: true,
+  insights: true
+};
 
 // Mock users for demo purposes
 const INITIAL_MOCK_USERS = [
@@ -31,14 +52,16 @@ const INITIAL_MOCK_USERS = [
     name: 'Admin User',
     email: 'admin@school.edu',
     password: 'admin123',
-    role: 'admin' as UserRole
+    role: 'admin' as UserRole,
+    modulePermissions: DEFAULT_ADMIN_PERMISSIONS
   },
   {
     id: '2',
     name: 'Teacher Reporter',
     email: 'reporter@school.edu',
     password: 'reporter123',
-    role: 'reporter' as UserRole
+    role: 'reporter' as UserRole,
+    modulePermissions: DEFAULT_REPORTER_PERMISSIONS
   }
 ];
 
@@ -84,7 +107,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     toast.info("You've been logged out");
   };
 
-  const addUser = (userData: { name: string; email: string; password: string; role: UserRole }) => {
+  const addUser = (userData: { name: string; email: string; password: string; role: UserRole; modulePermissions: ModulePermissions }) => {
     // Check if email already exists
     const emailExists = users.some(u => u.email === userData.email);
     if (emailExists) {
@@ -98,6 +121,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       email: userData.email,
       password: userData.password,
       role: userData.role,
+      modulePermissions: userData.modulePermissions
     };
 
     setUsers([...users, newUser]);

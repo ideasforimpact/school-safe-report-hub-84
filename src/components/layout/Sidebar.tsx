@@ -47,7 +47,7 @@ const Sidebar = () => {
       icon: PieChart,
       label: 'Insights',
       path: '/insights',
-      allowed: isAdmin, // Only admin can access insights
+      allowed: true, // Changed from isAdmin to true so all users can access
     },
     {
       icon: Users,

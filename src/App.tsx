@@ -83,7 +83,7 @@ const App = () => (
               <Route
                 path="/insights"
                 element={
-                  <RouteGuard requireAdmin={true}>
+                  <RouteGuard>
                     <Insights />
                   </RouteGuard>
                 }

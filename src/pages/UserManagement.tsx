@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import Layout from '@/components/layout/Layout';
-import { useAuth, User, UserRole } from '@/contexts/AuthContext';
+import { useAuth, User, UserRole, ModulePermissions } from '@/contexts/AuthContext';
 import {
   Card,
   CardContent,
@@ -36,6 +36,7 @@ import {
 } from '@/components/ui/select';
 import { toast } from '@/components/ui/sonner';
 import { Edit, Trash2, UserPlus } from 'lucide-react';
+import { Checkbox } from "@/components/ui/checkbox";
 
 const UserManagement = () => {
   const { users, addUser, updateUser, deleteUser, isAdmin } = useAuth();
@@ -47,6 +48,11 @@ const UserManagement = () => {
     email: '',
     password: '',
     role: 'reporter' as UserRole,
+    modulePermissions: {
+      incidentReporting: true,
+      allIncidents: true,
+      insights: true
+    }
   });
 
   const resetForm = () => {
@@ -55,6 +61,11 @@ const UserManagement = () => {
       email: '',
       password: '',
       role: 'reporter',
+      modulePermissions: {
+        incidentReporting: true,
+        allIncidents: true,
+        insights: true
+      }
     });
     setCurrentUser(null);
   };
@@ -72,6 +83,11 @@ const UserManagement = () => {
       email: user.email,
       password: '',
       role: user.role,
+      modulePermissions: user.modulePermissions || {
+        incidentReporting: true,
+        allIncidents: true,
+        insights: true
+      }
     });
     setIsEditDialogOpen(true);
   };
@@ -82,6 +98,7 @@ const UserManagement = () => {
         name: formData.name,
         email: formData.email,
         role: formData.role,
+        modulePermissions: formData.modulePermissions,
         ...(formData.password ? { password: formData.password } : {})
       });
       setIsEditDialogOpen(false);
@@ -93,6 +110,16 @@ const UserManagement = () => {
     if (confirm('Are you sure you want to delete this user?')) {
       deleteUser(id);
     }
+  };
+
+  const handleModulePermissionChange = (module: keyof ModulePermissions, value: boolean) => {
+    setFormData({
+      ...formData,
+      modulePermissions: {
+        ...formData.modulePermissions,
+        [module]: value
+      }
+    });
   };
 
   if (!isAdmin) {
@@ -134,6 +161,7 @@ const UserManagement = () => {
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Role</TableHead>
+                  <TableHead>Module Permissions</TableHead>
                   <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -148,6 +176,19 @@ const UserManagement = () => {
                       }`}>
                         {user.role === 'admin' ? 'Admin' : 'Reporter'}
                       </span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {user.modulePermissions?.incidentReporting && (
+                          <span className="px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded text-xs">Reporting</span>
+                        )}
+                        {user.modulePermissions?.allIncidents && (
+                          <span className="px-1.5 py-0.5 bg-green-100 text-green-800 rounded text-xs">All Incidents</span>
+                        )}
+                        {user.modulePermissions?.insights && (
+                          <span className="px-1.5 py-0.5 bg-purple-100 text-purple-800 rounded text-xs">Insights</span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex space-x-2">
@@ -229,6 +270,59 @@ const UserManagement = () => {
                 </SelectContent>
               </Select>
             </div>
+            
+            <div className="space-y-2">
+              <label className="font-medium">Module Permissions</label>
+              <div className="grid grid-cols-1 gap-2 pt-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="incident-reporting"
+                    checked={formData.modulePermissions.incidentReporting}
+                    onCheckedChange={(checked) => 
+                      handleModulePermissionChange('incidentReporting', checked === true)
+                    }
+                  />
+                  <label 
+                    htmlFor="incident-reporting"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Incident Reporting
+                  </label>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="all-incidents"
+                    checked={formData.modulePermissions.allIncidents}
+                    onCheckedChange={(checked) => 
+                      handleModulePermissionChange('allIncidents', checked === true)
+                    }
+                  />
+                  <label 
+                    htmlFor="all-incidents"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    All Incidents
+                  </label>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="insights"
+                    checked={formData.modulePermissions.insights}
+                    onCheckedChange={(checked) => 
+                      handleModulePermissionChange('insights', checked === true)
+                    }
+                  />
+                  <label 
+                    htmlFor="insights"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Insights
+                  </label>
+                </div>
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => {
@@ -295,6 +389,59 @@ const UserManagement = () => {
                   <SelectItem value="reporter">Reporter</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="font-medium">Module Permissions</label>
+              <div className="grid grid-cols-1 gap-2 pt-2">
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="edit-incident-reporting"
+                    checked={formData.modulePermissions.incidentReporting}
+                    onCheckedChange={(checked) => 
+                      handleModulePermissionChange('incidentReporting', checked === true)
+                    }
+                  />
+                  <label 
+                    htmlFor="edit-incident-reporting"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Incident Reporting
+                  </label>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="edit-all-incidents"
+                    checked={formData.modulePermissions.allIncidents}
+                    onCheckedChange={(checked) => 
+                      handleModulePermissionChange('allIncidents', checked === true)
+                    }
+                  />
+                  <label 
+                    htmlFor="edit-all-incidents"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    All Incidents
+                  </label>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="edit-insights"
+                    checked={formData.modulePermissions.insights}
+                    onCheckedChange={(checked) => 
+                      handleModulePermissionChange('insights', checked === true)
+                    }
+                  />
+                  <label 
+                    htmlFor="edit-insights"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Insights
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
           <DialogFooter>
