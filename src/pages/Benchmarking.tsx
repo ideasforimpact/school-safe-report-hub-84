@@ -13,6 +13,9 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { DatePickerWithRange } from "@/components/ui/date-picker";
+import { DateRange } from "react-day-picker";
+import { addDays } from "date-fns";
 import {
   BarChart,
   Bar,
@@ -23,7 +26,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts';
-import { Columns3, Filter, ChevronRight, BarChart2 } from 'lucide-react';
+import { Columns3, Filter, ChevronRight, BarChart2, CalendarRange } from 'lucide-react';
 
 // Mock city-level benchmarking data
 const cityData = {
@@ -124,6 +127,11 @@ const Benchmarking = () => {
   const [selectedCategory, setSelectedCategory] = useState<IncidentCategory | ''>('Physical Injury');
   const [selectedCities, setSelectedCities] = useState<string[]>(['Central City']);
   const [showSubcategories, setShowSubcategories] = useState(false);
+  // Add date range state with default of last 30 days
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: addDays(new Date(), -30),
+    to: new Date(),
+  });
   
   // Available categories and city names
   const categories = Object.keys(cityData['Central City']);
@@ -142,6 +150,17 @@ const Benchmarking = () => {
   const getChartData = () => {
     if (!selectedCategory) return [];
     
+    // Filter incidents by date range if it exists
+    const filteredIncidents = incidents.filter(incident => {
+      if (!dateRange?.from) return true;
+      
+      const incidentDate = new Date(incident.date);
+      if (dateRange.to) {
+        return incidentDate >= dateRange.from && incidentDate <= dateRange.to;
+      }
+      return incidentDate >= dateRange.from;
+    });
+
     if (showSubcategories) {
       // Show detailed subcategory breakdown
       const subcategories = selectedCategory ? Object.keys(cityData['Central City'][selectedCategory as keyof typeof cityData['Central City']]) : [];
@@ -149,8 +168,8 @@ const Benchmarking = () => {
       return subcategories.map(subcategory => {
         const dataItem: Record<string, any> = { name: subcategory };
         
-        // Add school data
-        const schoolCount = incidents
+        // Add school data - filtered by date range
+        const schoolCount = filteredIncidents
           .filter(incident => incident.category === selectedCategory && incident.subcategory === subcategory)
           .length;
         dataItem['Your School'] = schoolCount;
@@ -169,8 +188,8 @@ const Benchmarking = () => {
         const citySubcategoryData = cityData[city as keyof typeof cityData][selectedCategory as keyof typeof cityData['Central City']];
         const totalCityIncidents = citySubcategoryData ? Object.values(citySubcategoryData).reduce((a: number, b: number) => a + b, 0) : 0;
         
-        // Count school incidents for this category
-        const schoolCategoryCount = incidents
+        // Count school incidents for this category - filtered by date range
+        const schoolCategoryCount = filteredIncidents
           .filter(incident => incident.category === selectedCategory)
           .length;
         
@@ -227,6 +246,17 @@ const Benchmarking = () => {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
               <div className="space-y-4 md:col-span-1">
                 <div>
+                  <label className="block text-sm font-medium mb-2">
+                    <CalendarRange className="h-4 w-4 inline mr-1" />
+                    Date Range
+                  </label>
+                  <DatePickerWithRange
+                    date={dateRange}
+                    onChange={setDateRange}
+                  />
+                </div>
+                
+                <div>
                   <label className="block text-sm font-medium mb-2">Incident Category</label>
                   <Select 
                     value={selectedCategory} 
@@ -269,6 +299,7 @@ const Benchmarking = () => {
                   <ul className="text-xs text-gray-600 space-y-1">
                     <li>• Compare your data across multiple cities</li>
                     <li>• Toggle between summary and detailed views</li>
+                    <li>• Use date range for time-based analysis</li>
                     <li>• Look for trends and outliers in specific categories</li>
                   </ul>
                 </div>
