@@ -9,17 +9,6 @@ interface FacilityContextType {
 
 // Initial facilities from the IncidentContext SchoolFacility type
 const INITIAL_FACILITIES = [
-  // School Buildings
-  'Main Building', 
-  'Science Block', 
-  'Sports Complex', 
-  'Cafeteria', 
-  'Library', 
-  'Administrative Block', 
-  'Playground', 
-  'Auditorium', 
-  'Computer Lab',
-  
   // School Branches
   'North Campus',
   'South Campus',
