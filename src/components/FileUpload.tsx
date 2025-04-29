@@ -31,8 +31,13 @@ const FileUpload = ({
     setFileName(file.name);
     
     // Validate file type
-    if ((fileType === 'video' && !file.type.startsWith('video/')) &&
-        (fileType === 'document' && !file.type.match(/pdf|msword|openxmlformats/))) {
+    if (fileType === 'video' && !file.type.startsWith('video/')) {
+      setIsUploading(false);
+      alert(`Please upload a ${fileType} file`);
+      return;
+    }
+    
+    if (fileType === 'document' && !file.type.match(/pdf|msword|openxmlformats/)) {
       setIsUploading(false);
       alert(`Please upload a ${fileType} file`);
       return;
