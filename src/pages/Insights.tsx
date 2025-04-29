@@ -1,6 +1,7 @@
 
 import { useState, useMemo } from 'react';
 import { useIncidents } from '@/contexts/IncidentContext';
+import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -14,6 +15,7 @@ const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'Jul
 
 const Insights = () => {
   const { incidents } = useIncidents();
+  const { users } = useAuth();
   const [dateFilter, setDateFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
@@ -68,6 +70,24 @@ const Insights = () => {
       name,
       value,
     }));
+  }, [filteredIncidents]);
+
+  // Subcategory data
+  const subcategoryData = useMemo(() => {
+    const subcategoryCounts = filteredIncidents.reduce((acc, incident) => {
+      const { subcategory } = incident;
+      acc[subcategory] = (acc[subcategory] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    // Sort by count and limit to top 10 for readability
+    return Object.entries(subcategoryCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 10)
+      .map(([name, value]) => ({
+        name,
+        value,
+      }));
   }, [filteredIncidents]);
 
   const typeData = useMemo(() => {
@@ -136,6 +156,20 @@ const Insights = () => {
     }));
   }, [filteredIncidents]);
 
+  // User assignment data - show who incidents are assigned to
+  const assigneeData = useMemo(() => {
+    const ownerCounts = filteredIncidents.reduce((acc, incident) => {
+      const ownerName = incident.owner?.name || 'Unassigned';
+      acc[ownerName] = (acc[ownerName] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    return Object.entries(ownerCounts).map(([name, value]) => ({
+      name,
+      value,
+    }));
+  }, [filteredIncidents]);
+
   // Export data as CSV
   const exportToCSV = () => {
     // Prepare the CSV header
@@ -143,12 +177,14 @@ const Insights = () => {
       'ID',
       'Type',
       'Category',
+      'Subcategory',
       'Description',
       'Date',
       'Location',
       'Status',
       'People Involved',
       'Reported By',
+      'Owner',
       'Actions Taken'
     ].join(',');
     
@@ -168,12 +204,14 @@ const Insights = () => {
         incident.id,
         incident.type,
         incident.category,
+        incident.subcategory,
         `"${incident.description.replace(/"/g, '""')}"`, // Escape quotes
         new Date(incident.date).toLocaleDateString(),
         incident.location,
         incident.status,
         `"${peopleInvolved}"`,
         incident.reportedBy.name,
+        incident.owner?.name || 'Unassigned',
         `"${actions}"`
       ].join(',');
     }).join('\n');
@@ -365,6 +403,71 @@ const Insights = () => {
                     <Tooltip />
                     <Bar dataKey="value" fill="#0ea5e9" />
                   </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full text-gray-500">
+                  No data available for the selected filters
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Top 10 Subcategories</CardTitle>
+              <CardDescription>
+                Most common specific types of incidents reported
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="h-64">
+              {subcategoryData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={subcategoryData} layout="vertical">
+                    <XAxis type="number" />
+                    <YAxis dataKey="name" type="category" width={150} />
+                    <Tooltip />
+                    <Bar dataKey="value" fill="#8884d8" />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full text-gray-500">
+                  No data available for the selected filters
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle>Incident Ownership</CardTitle>
+              <CardDescription>
+                Distribution of incidents by assigned owner
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="h-64">
+              {assigneeData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={assigneeData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {assigneeData.map((entry, index) => (
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={COLORS[index % COLORS.length]} 
+                        />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
                 </ResponsiveContainer>
               ) : (
                 <div className="flex items-center justify-center h-full text-gray-500">

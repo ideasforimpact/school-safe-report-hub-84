@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { toast } from "@/components/ui/sonner";
 
@@ -185,7 +184,10 @@ export interface ActionItem {
   id: string;
   description: string;
   dueDate: Date;
-  assignedTo: string;
+  assignedTo: {
+    id: string;
+    name: string;
+  };
   status: 'Pending' | 'In Progress' | 'Completed';
   createdBy: {
     id: string;
@@ -286,7 +288,7 @@ const generateSampleIncidents = (): Incident[] => {
           id: '1',
           description: 'Update playground safety guidelines',
           dueDate: pastDays(-5), // 5 days in the future
-          assignedTo: 'Safety Officer',
+          assignedTo: { id: '3', name: 'Safety Officer' },
           status: 'In Progress',
           createdBy: { id: '1', name: 'Admin User' },
           createdAt: pastDays(2),

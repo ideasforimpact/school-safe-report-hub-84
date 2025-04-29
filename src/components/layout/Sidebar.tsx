@@ -14,9 +14,16 @@ import {
 } from 'lucide-react';
 
 const Sidebar = () => {
-  const { isAdmin } = useAuth();
+  const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // Get user permissions
+  const permissions = user?.modulePermissions || {
+    incidentReporting: true,
+    allIncidents: true,
+    insights: true
+  };
 
   const menuItems = [
     {
@@ -29,13 +36,13 @@ const Sidebar = () => {
       icon: AlertTriangle,
       label: 'Report Incident',
       path: '/report',
-      allowed: true,
+      allowed: permissions.incidentReporting,
     },
     {
       icon: List,
       label: 'All Incidents',
       path: '/incidents',
-      allowed: true,
+      allowed: permissions.allIncidents,
     },
     {
       icon: CheckSquare,
@@ -47,13 +54,13 @@ const Sidebar = () => {
       icon: PieChart,
       label: 'Insights',
       path: '/insights',
-      allowed: true, // Changed from isAdmin to true so all users can access
+      allowed: permissions.insights,
     },
     {
       icon: Users,
       label: 'User Management',
       path: '/users',
-      allowed: isAdmin, // Only admin can access user management
+      allowed: isAdmin,
     }
   ];
 
