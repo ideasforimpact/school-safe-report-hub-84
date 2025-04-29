@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { toast } from "@/components/ui/sonner";
 import { SchoolFacility } from '@/contexts/IncidentContext';
@@ -10,6 +9,7 @@ interface FacilityContextType {
 
 // Initial facilities from the IncidentContext SchoolFacility type
 const INITIAL_FACILITIES = [
+  // School Buildings
   'Main Building', 
   'Science Block', 
   'Sports Complex', 
@@ -18,7 +18,19 @@ const INITIAL_FACILITIES = [
   'Administrative Block', 
   'Playground', 
   'Auditorium', 
-  'Computer Lab', 
+  'Computer Lab',
+  
+  // School Branches
+  'North Campus',
+  'South Campus',
+  'East Wing',
+  'West Wing',
+  'Downtown Branch',
+  'Suburban Campus',
+  'International Branch',
+  'Primary School Wing',
+  'Secondary School Wing',
+  'Higher Secondary Wing',
   'Other'
 ];
 
