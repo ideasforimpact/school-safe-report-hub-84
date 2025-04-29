@@ -5,10 +5,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertTriangle, ChartPie, List } from 'lucide-react';
+import { AlertTriangle, ChartPie, List, Clock } from 'lucide-react';
+import { formatDistance } from 'date-fns';
 
 const Dashboard = () => {
-  const { incidents } = useIncidents();
+  const { incidents, getRecentActivities } = useIncidents();
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -31,10 +32,8 @@ const Dashboard = () => {
   
   const mostCommonCategory = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'None';
   
-  // Recent incidents (5 most recent)
-  const recentIncidents = [...incidents]
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, 5);
+  // Get recent activities
+  const recentActivities = getRecentActivities();
 
   return (
     <Layout>
@@ -108,35 +107,55 @@ const Dashboard = () => {
               </Button>
             </div>
             
-            <h2 className="text-xl font-semibold pt-4">Recent Incidents</h2>
+            <h2 className="text-xl font-semibold pt-4">Recent Activities</h2>
             <div className="bg-white rounded-lg shadow overflow-hidden">
-              {recentIncidents.length > 0 ? (
+              {recentActivities.length > 0 ? (
                 <div className="divide-y">
-                  {recentIncidents.map(incident => (
+                  {recentActivities.map((activity, index) => (
                     <div 
-                      key={incident.id} 
+                      key={index} 
                       className="p-4 hover:bg-gray-50 cursor-pointer flex items-center justify-between"
-                      onClick={() => navigate(`/incidents/${incident.id}`)}
+                      onClick={() => {
+                        if (activity.type === 'incident') {
+                          navigate(`/incidents/${activity.entityId}`);
+                        } else if (activity.type === 'action') {
+                          // Find the incident that contains this action item
+                          const incident = incidents.find(inc => 
+                            inc.actionItems?.some(item => item.id === activity.entityId)
+                          );
+                          if (incident) {
+                            navigate(`/incidents/${incident.id}`);
+                          }
+                        }
+                      }}
                     >
-                      <div>
-                        <p className="font-medium">{incident.type}: {incident.category}</p>
-                        <p className="text-sm text-gray-600 truncate max-w-md">{incident.description}</p>
-                      </div>
-                      <div className={`px-2 py-1 rounded-full text-xs ${
-                        incident.status === 'Open' 
-                          ? 'bg-red-100 text-red-800' 
-                          : incident.status === 'In Progress' 
-                          ? 'bg-yellow-100 text-yellow-800' 
-                          : 'bg-green-100 text-green-800'
-                      }`}>
-                        {incident.status}
+                      <div className="flex items-start gap-3">
+                        <div className={`p-2 rounded-full ${
+                          activity.type === 'incident' 
+                            ? 'bg-blue-100 text-blue-800' 
+                            : 'bg-purple-100 text-purple-800'
+                        }`}>
+                          <Clock className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <p className="font-medium">
+                            {activity.activity === 'create' ? 'Created' : 'Updated'} {' '}
+                            {activity.type === 'incident' ? 'incident' : 'action item'}
+                          </p>
+                          <p className="text-sm text-gray-600 truncate max-w-md mt-1">
+                            {activity.entityTitle}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            by {activity.user} • {formatDistance(new Date(activity.date), new Date(), { addSuffix: true })}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
                 <div className="p-6 text-center text-gray-500">
-                  No incidents reported yet
+                  No recent activity
                 </div>
               )}
             </div>

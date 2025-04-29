@@ -1,10 +1,12 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   useIncidents, 
   IncidentType, 
   IncidentCategory, 
-  IncidentLocation, 
+  IncidentLocation,
+  SchoolFacility, 
   Person,
   subcategories,
   nearMissSubcategories,
@@ -12,7 +14,7 @@ import {
 } from '@/contexts/IncidentContext';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/layout/Layout';
-import ImageUpload from '@/components/ImageUpload'; // Import the ImageUpload component
+import ImageUpload from '@/components/ImageUpload';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -28,7 +30,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { X, Plus } from 'lucide-react';
 
 const ReportIncident = () => {
-  const { addIncident } = useIncidents();
+  const { addIncident, users } = useIncidents();
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -40,7 +42,9 @@ const ReportIncident = () => {
     date: new Date().toISOString().split('T')[0],
     time: new Date().toTimeString().split(' ')[0].slice(0, 5),
     location: '' as IncidentLocation,
-    image: undefined as string | undefined, // Add image field
+    owner: '',
+    facility: '' as SchoolFacility,
+    image: undefined as string | undefined,
   });
 
   // State to store available subcategories based on type and category
@@ -127,7 +131,7 @@ const ReportIncident = () => {
     e.preventDefault();
     
     // Basic validation
-    if (!formData.type || !formData.category || !formData.subcategory || !formData.description || !formData.location) {
+    if (!formData.type || !formData.category || !formData.subcategory || !formData.description || !formData.location || !formData.facility) {
       toast.error("Please fill in all required fields");
       return;
     }
@@ -141,6 +145,9 @@ const ReportIncident = () => {
       // Combine date and time
       const dateTime = new Date(`${formData.date}T${formData.time}`);
       
+      // Find selected owner
+      const selectedOwner = formData.owner ? users.find(u => u.id === formData.owner) : undefined;
+      
       addIncident({
         type: formData.type as IncidentType,
         category: formData.category as IncidentCategory,
@@ -149,7 +156,9 @@ const ReportIncident = () => {
         date: dateTime,
         location: formData.location as IncidentLocation,
         peopleInvolved: validPeople,
-        image: formData.image, // Add image to the incident
+        image: formData.image,
+        owner: selectedOwner ? { id: selectedOwner.id, name: selectedOwner.name } : undefined,
+        facility: formData.facility as SchoolFacility,
         reportedBy: {
           id: user?.id || '',
           name: user?.name || ''
@@ -258,6 +267,50 @@ const ReportIncident = () => {
                       <SelectItem value="Off Campus">Off Campus</SelectItem>
                       <SelectItem value="In Transit">In Transit</SelectItem>
                       <SelectItem value="During Function">During Function</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="facility" className="text-sm font-medium">
+                    School Facility <span className="text-red-500">*</span>
+                  </label>
+                  <Select 
+                    onValueChange={(value) => handleSelectChange('facility', value)}
+                    required
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select facility" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Main Building">Main Building</SelectItem>
+                      <SelectItem value="Science Block">Science Block</SelectItem>
+                      <SelectItem value="Sports Complex">Sports Complex</SelectItem>
+                      <SelectItem value="Cafeteria">Cafeteria</SelectItem>
+                      <SelectItem value="Library">Library</SelectItem>
+                      <SelectItem value="Administrative Block">Administrative Block</SelectItem>
+                      <SelectItem value="Playground">Playground</SelectItem>
+                      <SelectItem value="Auditorium">Auditorium</SelectItem>
+                      <SelectItem value="Computer Lab">Computer Lab</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="owner" className="text-sm font-medium">
+                    Assign Owner
+                  </label>
+                  <Select 
+                    onValueChange={(value) => handleSelectChange('owner', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Assign to staff member" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {users.map(user => (
+                        <SelectItem key={user.id} value={user.id}>{user.name} ({user.role})</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>

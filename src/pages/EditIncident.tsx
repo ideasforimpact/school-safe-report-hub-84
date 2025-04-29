@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
@@ -6,6 +7,7 @@ import {
   IncidentCategory, 
   IncidentLocation, 
   IncidentStatus,
+  SchoolFacility,
   Person,
   subcategories,
   nearMissSubcategories,
@@ -13,7 +15,7 @@ import {
 } from '@/contexts/IncidentContext';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/layout/Layout';
-import ImageUpload from '@/components/ImageUpload'; // Import the ImageUpload component
+import ImageUpload from '@/components/ImageUpload';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -29,7 +31,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { X, Plus } from 'lucide-react';
 
 const EditIncident = () => {
-  const { getIncident, updateIncident } = useIncidents();
+  const { getIncident, updateIncident, users } = useIncidents();
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
@@ -43,7 +45,9 @@ const EditIncident = () => {
     time: '',
     location: '' as IncidentLocation,
     status: '',
-    image: undefined as string | undefined // Add image field
+    owner: '',
+    facility: '' as SchoolFacility,
+    image: undefined as string | undefined
   });
 
   const [peopleInvolved, setPeopleInvolved] = useState<Person[]>([]);
@@ -79,7 +83,9 @@ const EditIncident = () => {
       time: date.toTimeString().split(' ')[0].slice(0, 5),
       location: incident.location,
       status: incident.status,
-      image: incident.image // Load existing image
+      owner: incident.owner?.id || '',
+      facility: incident.facility || 'Other',
+      image: incident.image
     });
 
     setPeopleInvolved([...incident.peopleInvolved]);
@@ -152,7 +158,7 @@ const EditIncident = () => {
     if (!id) return;
     
     // Basic validation
-    if (!formData.type || !formData.category || !formData.subcategory || !formData.description || !formData.location || !formData.status) {
+    if (!formData.type || !formData.category || !formData.subcategory || !formData.description || !formData.location || !formData.status || !formData.facility) {
       toast.error("Please fill in all required fields");
       return;
     }
@@ -166,6 +172,9 @@ const EditIncident = () => {
       // Combine date and time
       const dateTime = new Date(`${formData.date}T${formData.time}`);
       
+      // Find selected owner
+      const selectedOwner = formData.owner ? users.find(u => u.id === formData.owner) : undefined;
+      
       updateIncident(id, {
         type: formData.type,
         category: formData.category,
@@ -175,7 +184,9 @@ const EditIncident = () => {
         location: formData.location,
         status: formData.status as IncidentStatus,
         peopleInvolved: validPeople,
-        image: formData.image // Update image
+        owner: selectedOwner ? { id: selectedOwner.id, name: selectedOwner.name } : undefined,
+        facility: formData.facility,
+        image: formData.image
       });
       
       toast.success("Incident updated successfully");
@@ -284,6 +295,52 @@ const EditIncident = () => {
                       <SelectItem value="Open">Open</SelectItem>
                       <SelectItem value="In Progress">In Progress</SelectItem>
                       <SelectItem value="Closed">Closed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="facility" className="text-sm font-medium">
+                    School Facility <span className="text-red-500">*</span>
+                  </label>
+                  <Select 
+                    value={formData.facility}
+                    onValueChange={(value) => handleSelectChange('facility', value)}
+                    required
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select facility" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Main Building">Main Building</SelectItem>
+                      <SelectItem value="Science Block">Science Block</SelectItem>
+                      <SelectItem value="Sports Complex">Sports Complex</SelectItem>
+                      <SelectItem value="Cafeteria">Cafeteria</SelectItem>
+                      <SelectItem value="Library">Library</SelectItem>
+                      <SelectItem value="Administrative Block">Administrative Block</SelectItem>
+                      <SelectItem value="Playground">Playground</SelectItem>
+                      <SelectItem value="Auditorium">Auditorium</SelectItem>
+                      <SelectItem value="Computer Lab">Computer Lab</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="owner" className="text-sm font-medium">
+                    Assign Owner
+                  </label>
+                  <Select 
+                    value={formData.owner}
+                    onValueChange={(value) => handleSelectChange('owner', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Assign to staff member" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {users.map(user => (
+                        <SelectItem key={user.id} value={user.id}>{user.name} ({user.role})</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>

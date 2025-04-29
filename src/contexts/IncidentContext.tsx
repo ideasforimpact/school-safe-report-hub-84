@@ -165,6 +165,9 @@ export const unsafeConditionSubcategories: Record<string, string[]> = {
 export type IncidentLocation = 'On Campus' | 'Off Campus' | 'In Transit' | 'During Function';
 export type IncidentStatus = 'Open' | 'In Progress' | 'Closed';
 
+// School Facilities
+export type SchoolFacility = 'Main Building' | 'Science Block' | 'Sports Complex' | 'Cafeteria' | 'Library' | 'Administrative Block' | 'Playground' | 'Auditorium' | 'Computer Lab' | 'Other';
+
 export interface Person {
   name: string;
   role: 'Student' | 'Staff' | 'Other';
@@ -207,6 +210,11 @@ export interface Incident {
     id: string;
     name: string;
   };
+  owner?: {
+    id: string;
+    name: string;
+  };
+  facility?: SchoolFacility;
   image?: string; // Adding optional image URL for incidents
   actions?: Action[];
   actionItems?: ActionItem[];
@@ -214,15 +222,39 @@ export interface Incident {
   updatedAt: Date;
 }
 
+// Create a user type for dropdown selection
+export interface User {
+  id: string;
+  name: string;
+  role: 'Admin' | 'Teacher' | 'Staff' | 'Safety Officer';
+}
+
 interface IncidentContextType {
   incidents: Incident[];
+  users: User[];
   addIncident: (incident: Omit<Incident, 'id' | 'status' | 'createdAt' | 'updatedAt'>) => void;
   updateIncident: (id: string, updates: Partial<Incident>) => void;
   getIncident: (id: string) => Incident | undefined;
   addActionItem: (incidentId: string, actionItem: Omit<ActionItem, 'id' | 'createdAt' | 'updatedAt'>) => void;
   updateActionItem: (incidentId: string, actionItemId: string, updates: Partial<ActionItem>) => void;
   deleteActionItem: (incidentId: string, actionItemId: string) => void;
+  getRecentActivities: () => {
+    type: 'incident' | 'action';
+    activity: 'create' | 'update';
+    entityId: string;
+    entityTitle: string;
+    user: string;
+    date: Date;
+  }[];
 }
+
+// Sample users for the demo
+const sampleUsers: User[] = [
+  { id: '1', name: 'Admin User', role: 'Admin' },
+  { id: '2', name: 'Teacher Reporter', role: 'Teacher' },
+  { id: '3', name: 'Safety Officer', role: 'Safety Officer' },
+  { id: '4', name: 'Maintenance Staff', role: 'Staff' },
+];
 
 const IncidentContext = createContext<IncidentContextType | undefined>(undefined);
 
@@ -244,6 +276,8 @@ const generateSampleIncidents = (): Incident[] => {
       ],
       status: 'Closed',
       reportedBy: { id: '2', name: 'Teacher Reporter' },
+      owner: { id: '3', name: 'Safety Officer' },
+      facility: 'Playground',
       actions: [
         { description: 'First aid administered, parent notified', responsiblePerson: 'Nurse Smith', date: pastDays(2) }
       ],
@@ -252,7 +286,7 @@ const generateSampleIncidents = (): Incident[] => {
           id: '1',
           description: 'Update playground safety guidelines',
           dueDate: pastDays(-5), // 5 days in the future
-          assignedTo: 'Safety Coordinator',
+          assignedTo: 'Safety Officer',
           status: 'In Progress',
           createdBy: { id: '1', name: 'Admin User' },
           createdAt: pastDays(2),
@@ -273,6 +307,8 @@ const generateSampleIncidents = (): Incident[] => {
       peopleInvolved: [],
       status: 'In Progress',
       reportedBy: { id: '2', name: 'Teacher Reporter' },
+      owner: { id: '4', name: 'Maintenance Staff' },
+      facility: 'Main Building',
       actions: [
         { description: 'Maintenance notified, area cordoned off', responsiblePerson: 'Janitor Brown', date: pastDays(5) }
       ],
@@ -332,16 +368,41 @@ const generateSampleIncidents = (): Incident[] => {
   ];
 };
 
+// Activity history
+interface Activity {
+  type: 'incident' | 'action';
+  activity: 'create' | 'update';
+  entityId: string;
+  entityTitle: string;
+  user: string;
+  date: Date;
+}
+
 export const IncidentProvider = ({ children }: { children: ReactNode }) => {
   const [incidents, setIncidents] = useState<Incident[]>(() => {
     const savedIncidents = localStorage.getItem('incidents');
     return savedIncidents ? JSON.parse(savedIncidents) : generateSampleIncidents();
   });
 
-  // Save incidents to localStorage whenever they change
+  // Activity tracking
+  const [activities, setActivities] = useState<Activity[]>(() => {
+    const savedActivities = localStorage.getItem('activities');
+    return savedActivities ? JSON.parse(savedActivities) : [];
+  });
+
+  // Save data to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem('incidents', JSON.stringify(incidents));
   }, [incidents]);
+
+  useEffect(() => {
+    localStorage.setItem('activities', JSON.stringify(activities));
+  }, [activities]);
+
+  // Add a new activity to the log
+  const addActivity = (activity: Activity) => {
+    setActivities(prev => [activity, ...prev.slice(0, 19)]); // Keep only the 20 most recent activities
+  };
 
   const addIncident = (incidentData: Omit<Incident, 'id' | 'status' | 'createdAt' | 'updatedAt'>) => {
     const now = new Date();
@@ -354,17 +415,39 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
     };
     
     setIncidents(prev => [newIncident, ...prev]);
+    addActivity({
+      type: 'incident',
+      activity: 'create',
+      entityId: newIncident.id,
+      entityTitle: `${newIncident.type}: ${newIncident.category} - ${newIncident.subcategory}`,
+      user: newIncident.reportedBy.name,
+      date: now
+    });
     toast.success("Incident reported successfully");
   };
 
   const updateIncident = (id: string, updates: Partial<Incident>) => {
+    const now = new Date();
     setIncidents(prev => 
       prev.map(incident => 
         incident.id === id 
-          ? { ...incident, ...updates, updatedAt: new Date() } 
+          ? { ...incident, ...updates, updatedAt: now } 
           : incident
       )
     );
+    
+    const updatedIncident = incidents.find(inc => inc.id === id);
+    if (updatedIncident) {
+      addActivity({
+        type: 'incident',
+        activity: 'update',
+        entityId: id,
+        entityTitle: `${updatedIncident.type}: ${updatedIncident.category} - ${updatedIncident.subcategory}`,
+        user: updates.reportedBy?.name || updatedIncident.reportedBy.name,
+        date: now
+      });
+    }
+    
     toast.success("Incident updated");
   };
 
@@ -392,27 +475,57 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
           : incident
       )
     );
+    
+    // Add to activity log
+    const incident = incidents.find(inc => inc.id === incidentId);
+    if (incident) {
+      addActivity({
+        type: 'action',
+        activity: 'create',
+        entityId: newActionItem.id,
+        entityTitle: `Action: ${newActionItem.description.substring(0, 30)}${newActionItem.description.length > 30 ? '...' : ''}`,
+        user: newActionItem.createdBy.name,
+        date: now
+      });
+    }
+    
     toast.success("Action item added");
   };
 
   const updateActionItem = (incidentId: string, actionItemId: string, updates: Partial<ActionItem>) => {
+    const now = new Date();
     setIncidents(prev => 
       prev.map(incident => {
         if (incident.id !== incidentId) return incident;
         
         const updatedActionItems = incident.actionItems?.map(item => 
           item.id === actionItemId 
-            ? { ...item, ...updates, updatedAt: new Date() } 
+            ? { ...item, ...updates, updatedAt: now } 
             : item
         ) || [];
         
         return { 
           ...incident, 
           actionItems: updatedActionItems,
-          updatedAt: new Date()
+          updatedAt: now
         };
       })
     );
+    
+    // Add to activity log
+    const incident = incidents.find(inc => inc.id === incidentId);
+    const actionItem = incident?.actionItems?.find(item => item.id === actionItemId);
+    if (incident && actionItem) {
+      addActivity({
+        type: 'action',
+        activity: 'update',
+        entityId: actionItemId,
+        entityTitle: `Action: ${actionItem.description.substring(0, 30)}${actionItem.description.length > 30 ? '...' : ''}`,
+        user: updates.createdBy?.name || actionItem.createdBy.name,
+        date: now
+      });
+    }
+    
     toast.success("Action item updated");
   };
 
@@ -435,15 +548,22 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
     toast.success("Action item deleted");
   };
 
+  // Get recent activities
+  const getRecentActivities = () => {
+    return activities;
+  };
+
   return (
     <IncidentContext.Provider value={{ 
       incidents, 
+      users: sampleUsers,
       addIncident, 
       updateIncident, 
       getIncident,
       addActionItem,
       updateActionItem,
-      deleteActionItem
+      deleteActionItem,
+      getRecentActivities
     }}>
       {children}
     </IncidentContext.Provider>
