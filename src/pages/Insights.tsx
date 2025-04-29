@@ -1,7 +1,7 @@
-
 import { useState, useMemo } from 'react';
 import { useIncidents } from '@/contexts/IncidentContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFacilities } from '@/contexts/FacilityContext';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -15,10 +15,12 @@ const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'Jul
 
 const Insights = () => {
   const { incidents } = useIncidents();
-  const { users } = useAuth();
+  const { users, isAdmin } = useAuth();
+  const { facilities } = useFacilities();
   const [dateFilter, setDateFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [facilityFilter, setFacilityFilter] = useState('all');
 
   // Calculate current year and month for filtering
   const currentDate = new Date();
@@ -54,9 +56,14 @@ const Insights = () => {
         return false;
       }
       
+      // Apply facility filter (only for admin users)
+      if (isAdmin && facilityFilter !== 'all' && incident.facility !== facilityFilter) {
+        return false;
+      }
+      
       return true;
     });
-  }, [incidents, dateFilter, typeFilter, categoryFilter, currentMonth, currentYear]);
+  }, [incidents, dateFilter, typeFilter, categoryFilter, facilityFilter, currentMonth, currentYear, isAdmin]);
 
   // Prepare data for charts
   const categoryData = useMemo(() => {
@@ -156,6 +163,22 @@ const Insights = () => {
     }));
   }, [filteredIncidents]);
 
+  // Facility data for admin view
+  const facilityData = useMemo(() => {
+    if (!isAdmin) return [];
+    
+    const facilityCounts = filteredIncidents.reduce((acc, incident) => {
+      const facilityName = incident.facility || 'Unspecified';
+      acc[facilityName] = (acc[facilityName] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    return Object.entries(facilityCounts).map(([name, value]) => ({
+      name,
+      value,
+    }));
+  }, [filteredIncidents, isAdmin]);
+
   // User assignment data - show who incidents are assigned to
   const assigneeData = useMemo(() => {
     const ownerCounts = filteredIncidents.reduce((acc, incident) => {
@@ -248,7 +271,7 @@ const Insights = () => {
 
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-lg font-semibold mb-4">Filter Data</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">Date Range</label>
               <Select value={dateFilter} onValueChange={setDateFilter}>
@@ -296,6 +319,25 @@ const Insights = () => {
                 </SelectContent>
               </Select>
             </div>
+            
+            {isAdmin && (
+              <div>
+                <label className="block text-sm font-medium mb-1">Facility</label>
+                <Select value={facilityFilter} onValueChange={setFacilityFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select facility" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Facilities</SelectItem>
+                    {facilities.map((facility) => (
+                      <SelectItem key={facility} value={facility}>
+                        {facility}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
         </div>
 
@@ -411,6 +453,39 @@ const Insights = () => {
               )}
             </CardContent>
           </Card>
+
+          {isAdmin && facilityData.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Incidents by Facility</CardTitle>
+                <CardDescription>
+                  Distribution of incidents across different facilities
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={facilityData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {facilityData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardHeader>
