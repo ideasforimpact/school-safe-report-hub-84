@@ -1,17 +1,21 @@
 
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { LogOut, User, Lock, HelpCircle, Home, FileText, CreditCard } from 'lucide-react';
+import { LogOut, User, Lock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ChangePasswordDialog } from '@/components/ChangePasswordDialog';
 
 const Header = () => {
   const { user, logout, isAdmin } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  
+  // Check if we're on the home page
+  const isHomePage = location.pathname === "/" || location.pathname === "/home";
 
   const handleLogout = () => {
     logout();
@@ -21,38 +25,36 @@ const Header = () => {
   return (
     <header className="bg-white py-4 px-6 border-b border-gray-200">
       <div className="container mx-auto flex flex-col md:flex-row md:items-center md:justify-between w-full">
-        <nav className="mb-4 md:mb-0">
-          <ul className="flex space-x-6 items-center">
-            <li>
-              <Link to="/home" className="flex items-center text-gray-700 hover:text-primary-600 font-medium">
-                <Home className="h-4 w-4 mr-1" />
-                Home
-              </Link>
-            </li>
-            <li>
-              <Link to="/blog" className="flex items-center text-gray-700 hover:text-primary-600 font-medium">
-                <FileText className="h-4 w-4 mr-1" />
-                Blog
-              </Link>
-            </li>
-            <li>
-              <Link to="/pricing" className="flex items-center text-gray-700 hover:text-primary-600 font-medium">
-                <CreditCard className="h-4 w-4 mr-1" />
-                Pricing
-              </Link>
-            </li>
-            <li>
-              <Link to="/support" className="flex items-center text-gray-700 hover:text-primary-600 font-medium">
-                <HelpCircle className="h-4 w-4 mr-1" />
-                Support
-              </Link>
-            </li>
-          </ul>
-        </nav>
+        {isHomePage && (
+          <nav className="mb-4 md:mb-0">
+            <ul className="flex space-x-6 items-center">
+              <li>
+                <Link to="/" className="flex items-center text-gray-700 hover:text-primary-600 font-medium">
+                  Home
+                </Link>
+              </li>
+              <li>
+                <Link to="/blog" className="flex items-center text-gray-700 hover:text-primary-600 font-medium">
+                  Blog
+                </Link>
+              </li>
+              <li>
+                <Link to="/pricing" className="flex items-center text-gray-700 hover:text-primary-600 font-medium">
+                  Pricing
+                </Link>
+              </li>
+              <li>
+                <Link to="/support" className="flex items-center text-gray-700 hover:text-primary-600 font-medium">
+                  Support
+                </Link>
+              </li>
+            </ul>
+          </nav>
+        )}
         
         {/* User Menu */}
         {user ? (
-          <div className="flex items-center">
+          <div className="flex items-center ml-auto">
             {user && (
               <span className="bg-primary-100 text-primary-800 text-xs px-2 py-1 rounded-full mr-3">
                 {isAdmin ? 'Admin' : 'Reporter'}

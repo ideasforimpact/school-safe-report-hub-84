@@ -24,7 +24,8 @@ const Sidebar = () => {
   const permissions = user?.modulePermissions || {
     incidentReporting: true,
     allIncidents: true,
-    insights: true
+    insights: true,
+    benchmarking: false
   };
 
   const menuItems = [
@@ -62,7 +63,7 @@ const Sidebar = () => {
       icon: BarChart,
       label: 'Benchmarking',
       path: '/benchmarking',
-      allowed: isAdmin,
+      allowed: permissions.benchmarking,
     },
     {
       icon: Users,

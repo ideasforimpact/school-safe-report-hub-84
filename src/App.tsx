@@ -22,6 +22,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { IncidentProvider } from '@/contexts/IncidentContext';
 import { FacilityProvider } from '@/contexts/FacilityContext';
 import RouteGuard from '@/components/RouteGuard';
+import ModuleGuard from '@/components/ModuleGuard';
 
 function App() {
   return (
@@ -38,15 +39,31 @@ function App() {
               
               <Route element={<RouteGuard />}>
                 <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/report" element={<ReportIncident />} />
-                <Route path="/incidents" element={<IncidentsList />} />
-                <Route path="/incidents/:id" element={<IncidentDetail />} />
-                <Route path="/incidents/:id/edit" element={<EditIncident />} />
+                
+                <Route element={<ModuleGuard moduleType="incidentReporting" />}>
+                  <Route path="/report" element={<ReportIncident />} />
+                </Route>
+                
+                <Route element={<ModuleGuard moduleType="allIncidents" />}>
+                  <Route path="/incidents" element={<IncidentsList />} />
+                  <Route path="/incidents/:id" element={<IncidentDetail />} />
+                  <Route path="/incidents/:id/edit" element={<EditIncident />} />
+                </Route>
+                
                 <Route path="/my-actions" element={<MyActionItems />} />
-                <Route path="/insights" element={<Insights />} />
-                <Route path="/benchmarking" element={<Benchmarking />} />
-                <Route path="/users" element={<UserManagement />} />
-                <Route path="/facilities" element={<FacilityManagement />} />
+                
+                <Route element={<ModuleGuard moduleType="insights" />}>
+                  <Route path="/insights" element={<Insights />} />
+                </Route>
+                
+                <Route element={<ModuleGuard moduleType="benchmarking" />}>
+                  <Route path="/benchmarking" element={<Benchmarking />} />
+                </Route>
+                
+                <Route element={<RouteGuard requireAdmin={true} />}>
+                  <Route path="/users" element={<UserManagement />} />
+                  <Route path="/facilities" element={<FacilityManagement />} />
+                </Route>
               </Route>
               
               <Route path="*" element={<NotFound />} />

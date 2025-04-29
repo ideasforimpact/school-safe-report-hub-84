@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, ReactNode } from 'react';
 import { toast } from "@/components/ui/sonner";
 
@@ -8,6 +9,7 @@ export interface ModulePermissions {
   incidentReporting: boolean;
   allIncidents: boolean;
   insights: boolean;
+  benchmarking: boolean; // Added benchmarking permission
 }
 
 export interface User {
@@ -36,13 +38,15 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const DEFAULT_ADMIN_PERMISSIONS: ModulePermissions = {
   incidentReporting: true,
   allIncidents: true,
-  insights: true
+  insights: true,
+  benchmarking: true // Added benchmarking permission for admins
 };
 
 const DEFAULT_REPORTER_PERMISSIONS: ModulePermissions = {
   incidentReporting: true,
   allIncidents: true,
-  insights: true
+  insights: true,
+  benchmarking: false // Reporters don't have benchmarking by default
 };
 
 // Mock users for demo purposes

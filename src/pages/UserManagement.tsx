@@ -51,7 +51,8 @@ const UserManagement = () => {
     modulePermissions: {
       incidentReporting: true,
       allIncidents: true,
-      insights: true
+      insights: true,
+      benchmarking: false // Added benchmarking permission (default off)
     }
   });
 
@@ -64,7 +65,8 @@ const UserManagement = () => {
       modulePermissions: {
         incidentReporting: true,
         allIncidents: true,
-        insights: true
+        insights: true,
+        benchmarking: false
       }
     });
     setCurrentUser(null);
@@ -187,6 +189,9 @@ const UserManagement = () => {
                         )}
                         {user.modulePermissions?.insights && (
                           <span className="px-1.5 py-0.5 bg-purple-100 text-purple-800 rounded text-xs">Insights</span>
+                        )}
+                        {user.modulePermissions?.benchmarking && (
+                          <span className="px-1.5 py-0.5 bg-orange-100 text-orange-800 rounded text-xs">Benchmarking</span>
                         )}
                       </div>
                     </TableCell>
@@ -321,6 +326,22 @@ const UserManagement = () => {
                     Insights
                   </label>
                 </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="benchmarking"
+                    checked={formData.modulePermissions.benchmarking}
+                    onCheckedChange={(checked) => 
+                      handleModulePermissionChange('benchmarking', checked === true)
+                    }
+                  />
+                  <label 
+                    htmlFor="benchmarking"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Benchmarking
+                  </label>
+                </div>
               </div>
             </div>
           </div>
@@ -439,6 +460,22 @@ const UserManagement = () => {
                     className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                   >
                     Insights
+                  </label>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="edit-benchmarking"
+                    checked={formData.modulePermissions.benchmarking}
+                    onCheckedChange={(checked) => 
+                      handleModulePermissionChange('benchmarking', checked === true)
+                    }
+                  />
+                  <label 
+                    htmlFor="edit-benchmarking"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    Benchmarking
                   </label>
                 </div>
               </div>
