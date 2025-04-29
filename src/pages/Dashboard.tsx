@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle, ChartPie, List, Clock } from 'lucide-react';
 import { formatDistance } from 'date-fns';
+import IncidentStatusChart from '@/components/charts/IncidentStatusChart';
 
 const Dashboard = () => {
   const { incidents, getRecentActivities } = useIncidents();
@@ -76,6 +77,10 @@ const Dashboard = () => {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="md:col-span-1">
+            <IncidentStatusChart />
+          </div>
+          
           <div className="col-span-full md:col-span-2 space-y-6">
             <h2 className="text-xl font-semibold">Quick Actions</h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -160,8 +165,8 @@ const Dashboard = () => {
               )}
             </div>
           </div>
-          
-          <div className="col-span-full md:col-span-1">
+
+          <div className="col-span-full md:col-span-3">
             <Card>
               <CardHeader>
                 <CardTitle>Safety Resources</CardTitle>
