@@ -7,7 +7,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, LineChart, Line, CartesianGrid, ResponsiveContainer } from 'recharts';
-import { Download } from 'lucide-react';
+import { Download, Calendar } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { DateRange } from 'react-day-picker';
+import { DatePickerWithRange } from '@/components/ui/date-picker';
+import { format, startOfYear, startOfMonth, subMonths, isBefore, isAfter } from 'date-fns';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658'];
 
@@ -17,15 +21,37 @@ const Insights = () => {
   const { incidents } = useIncidents();
   const { users, isAdmin } = useAuth();
   const { facilities } = useFacilities();
-  const [dateFilter, setDateFilter] = useState('all');
-  const [typeFilter, setTypeFilter] = useState('all');
-  const [categoryFilter, setCategoryFilter] = useState('all');
-  const [facilityFilter, setFacilityFilter] = useState('all');
-
-  // Calculate current year and month for filtering
+  
+  // Current date info
   const currentDate = new Date();
   const currentYear = currentDate.getFullYear();
   const currentMonth = currentDate.getMonth();
+  
+  // Calculate default date range
+  const defaultFrom = startOfMonth(currentDate);
+  const defaultTo = currentDate;
+  
+  // Filters
+  const [dateFilter, setDateFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [subcategoryFilter, setSubcategoryFilter] = useState('all');
+  const [facilityFilter, setFacilityFilter] = useState('all');
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: undefined,
+    to: undefined
+  });
+
+  // Get all unique subcategories from incidents
+  const availableSubcategories = useMemo(() => {
+    const subcategories = new Set<string>();
+    incidents.forEach(incident => {
+      if (incident.subcategory) {
+        subcategories.add(incident.subcategory);
+      }
+    });
+    return Array.from(subcategories).sort();
+  }, [incidents]);
 
   // Apply filters
   const filteredIncidents = useMemo(() => {
@@ -44,6 +70,14 @@ const Insights = () => {
         if (incidentDate.getFullYear() !== currentYear) {
           return false;
         }
+      } else if (dateFilter === 'custom' && dateRange) {
+        // Apply custom date range if selected
+        if (dateRange.from && isBefore(incidentDate, dateRange.from)) {
+          return false;
+        }
+        if (dateRange.to && isAfter(incidentDate, dateRange.to)) {
+          return false;
+        }
       }
       
       // Apply type filter
@@ -56,6 +90,11 @@ const Insights = () => {
         return false;
       }
       
+      // Apply subcategory filter
+      if (subcategoryFilter !== 'all' && incident.subcategory !== subcategoryFilter) {
+        return false;
+      }
+      
       // Apply facility filter (only for admin users)
       if (isAdmin && facilityFilter !== 'all' && incident.facility !== facilityFilter) {
         return false;
@@ -63,7 +102,7 @@ const Insights = () => {
       
       return true;
     });
-  }, [incidents, dateFilter, typeFilter, categoryFilter, facilityFilter, currentMonth, currentYear, isAdmin]);
+  }, [incidents, dateFilter, typeFilter, categoryFilter, subcategoryFilter, facilityFilter, currentMonth, currentYear, dateRange, isAdmin]);
 
   // Prepare data for charts
   const categoryData = useMemo(() => {
@@ -97,6 +136,7 @@ const Insights = () => {
       }));
   }, [filteredIncidents]);
 
+  // Other chart data preparations
   const typeData = useMemo(() => {
     const typeCounts = filteredIncidents.reduce((acc, incident) => {
       const { type } = incident;
@@ -254,6 +294,14 @@ const Insights = () => {
     document.body.removeChild(link);
   };
 
+  // Handle date range change
+  const handleDateRangeChange = (range: DateRange | undefined) => {
+    setDateRange(range);
+    if (range?.from) {
+      setDateFilter('custom');
+    }
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -271,7 +319,7 @@ const Insights = () => {
 
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-lg font-semibold mb-4">Filter Data</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
             <div>
               <label className="block text-sm font-medium mb-1">Date Range</label>
               <Select value={dateFilter} onValueChange={setDateFilter}>
@@ -282,8 +330,17 @@ const Insights = () => {
                   <SelectItem value="all">All Time</SelectItem>
                   <SelectItem value="month">This Month</SelectItem>
                   <SelectItem value="year">This Year</SelectItem>
+                  <SelectItem value="custom">Custom Range</SelectItem>
                 </SelectContent>
               </Select>
+              {dateFilter === 'custom' && (
+                <div className="mt-2">
+                  <DatePickerWithRange 
+                    date={dateRange} 
+                    onChange={handleDateRangeChange} 
+                  />
+                </div>
+              )}
             </div>
             
             <div>
@@ -316,6 +373,23 @@ const Insights = () => {
                   <SelectItem value="Health Concern">Health Concern</SelectItem>
                   <SelectItem value="Security Breach">Security Breach</SelectItem>
                   <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-1">Subcategory</label>
+              <Select value={subcategoryFilter} onValueChange={setSubcategoryFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select subcategory" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Subcategories</SelectItem>
+                  {availableSubcategories.map((subcategory) => (
+                    <SelectItem key={subcategory} value={subcategory}>
+                      {subcategory}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

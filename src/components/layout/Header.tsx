@@ -1,16 +1,19 @@
 
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { LogOut, User } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { LogOut, User, Lock } from 'lucide-react';
 import { NavigationMenu, NavigationMenuContent, NavigationMenuItem, NavigationMenuLink, NavigationMenuList, NavigationMenuTrigger, navigationMenuTriggerStyle } from '@/components/ui/navigation-menu';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
+import { ChangePasswordDialog } from '@/components/ChangePasswordDialog';
 
 const Header = () => {
   const { user, logout, isAdmin } = useAuth();
   const navigate = useNavigate();
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -55,22 +58,30 @@ const Header = () => {
         </NavigationMenu>
 
         {user ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="flex items-center space-x-2">
-                <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center">
-                  <User size={14} className="text-primary-700" />
-                </div>
-                <span>{user.name}</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleLogout} className="text-destructive">
-                <LogOut size={16} className="mr-2" />
-                <span>Logout</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="flex items-center space-x-2">
+                  <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center">
+                    <User size={14} className="text-primary-700" />
+                  </div>
+                  <span>{user.name}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setPasswordDialogOpen(true)}>
+                  <Lock size={16} className="mr-2" />
+                  <span>Change Password</span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+                  <LogOut size={16} className="mr-2" />
+                  <span>Logout</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <ChangePasswordDialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen} />
+          </>
         ) : (
           <Button onClick={() => navigate('/login')}>
             Sign In
