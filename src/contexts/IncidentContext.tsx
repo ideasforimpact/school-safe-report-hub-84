@@ -1,5 +1,7 @@
+
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { toast } from "@/components/ui/sonner";
+import { useFacilities } from './FacilityContext';
 
 export type IncidentType = 'Incident' | 'Near Miss' | 'Unsafe Condition';
 export type IncidentCategory = 
@@ -164,8 +166,8 @@ export const unsafeConditionSubcategories: Record<string, string[]> = {
 export type IncidentLocation = 'On Campus' | 'Off Campus' | 'In Transit' | 'During Function';
 export type IncidentStatus = 'Open' | 'In Progress' | 'Closed';
 
-// School Facilities
-export type SchoolFacility = 'Main Building' | 'Science Block' | 'Sports Complex' | 'Cafeteria' | 'Library' | 'Administrative Block' | 'Playground' | 'Auditorium' | 'Computer Lab' | 'Other';
+// School Facilities - Now dynamically loaded from FacilityContext
+export type SchoolFacility = string;
 
 export interface Person {
   name: string;
@@ -182,7 +184,9 @@ export interface Action {
   description: string;
   responsiblePerson: string;
   date: Date;
-  image?: string; // Adding optional image URL for actions
+  image?: string;
+  video?: string;
+  document?: string;
 }
 
 export interface ActionItem {
@@ -192,7 +196,9 @@ export interface ActionItem {
   assignedTo: UserRef;
   status: 'Pending' | 'In Progress' | 'Completed';
   createdBy: UserRef;
-  image?: string; // Adding optional image URL for action items
+  image?: string;
+  video?: string;
+  document?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -210,7 +216,9 @@ export interface Incident {
   reportedBy: UserRef;
   owner?: UserRef;
   facility?: SchoolFacility;
-  image?: string; // Adding optional image URL for incidents
+  image?: string;
+  video?: string;
+  document?: string;
   actions?: Action[];
   actionItems?: ActionItem[];
   createdAt: Date;

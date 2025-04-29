@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { IncidentProvider } from "./contexts/IncidentContext";
+import { FacilityProvider } from "./contexts/FacilityContext";
 import RouteGuard from "./components/RouteGuard";
 
 // Pages
@@ -18,8 +19,9 @@ import EditIncident from "./pages/EditIncident";
 import Insights from "./pages/Insights";
 import NotFound from "./pages/NotFound";
 import UserManagement from "./pages/UserManagement";
+import FacilityManagement from "./pages/FacilityManagement";
 import MyActionItems from "./pages/MyActionItems";
-import Home from "./pages/Home"; // Import the new Home page
+import Home from "./pages/Home";
 
 const queryClient = new QueryClient();
 
@@ -27,89 +29,99 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <AuthProvider>
-        <IncidentProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route path="/home" element={<Home />} />
-              <Route
-                path="/"
-                element={
-                  <RouteGuard>
-                    <Dashboard />
-                  </RouteGuard>
-                }
-              />
-              <Route
-                path="/dashboard"
-                element={
-                  <RouteGuard>
-                    <Dashboard />
-                  </RouteGuard>
-                }
-              />
-              <Route
-                path="/report"
-                element={
-                  <RouteGuard>
-                    <ReportIncident />
-                  </RouteGuard>
-                }
-              />
-              <Route
-                path="/incidents"
-                element={
-                  <RouteGuard>
-                    <IncidentsList />
-                  </RouteGuard>
-                }
-              />
-              <Route
-                path="/incidents/:id"
-                element={
-                  <RouteGuard>
-                    <IncidentDetail />
-                  </RouteGuard>
-                }
-              />
-              <Route
-                path="/incidents/edit/:id"
-                element={
-                  <RouteGuard>
-                    <EditIncident />
-                  </RouteGuard>
-                }
-              />
-              <Route
-                path="/insights"
-                element={
-                  <RouteGuard>
-                    <Insights />
-                  </RouteGuard>
-                }
-              />
-              <Route
-                path="/users"
-                element={
-                  <RouteGuard requireAdmin={true}>
-                    <UserManagement />
-                  </RouteGuard>
-                }
-              />
-              <Route
-                path="/my-actions"
-                element={
-                  <RouteGuard>
-                    <MyActionItems />
-                  </RouteGuard>
-                }
-              />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
-        </IncidentProvider>
+        <FacilityProvider>
+          <IncidentProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route path="/home" element={<Home />} />
+                <Route
+                  path="/"
+                  element={
+                    <RouteGuard>
+                      <Dashboard />
+                    </RouteGuard>
+                  }
+                />
+                <Route
+                  path="/dashboard"
+                  element={
+                    <RouteGuard>
+                      <Dashboard />
+                    </RouteGuard>
+                  }
+                />
+                <Route
+                  path="/report"
+                  element={
+                    <RouteGuard>
+                      <ReportIncident />
+                    </RouteGuard>
+                  }
+                />
+                <Route
+                  path="/incidents"
+                  element={
+                    <RouteGuard>
+                      <IncidentsList />
+                    </RouteGuard>
+                  }
+                />
+                <Route
+                  path="/incidents/:id"
+                  element={
+                    <RouteGuard>
+                      <IncidentDetail />
+                    </RouteGuard>
+                  }
+                />
+                <Route
+                  path="/incidents/edit/:id"
+                  element={
+                    <RouteGuard>
+                      <EditIncident />
+                    </RouteGuard>
+                  }
+                />
+                <Route
+                  path="/insights"
+                  element={
+                    <RouteGuard>
+                      <Insights />
+                    </RouteGuard>
+                  }
+                />
+                <Route
+                  path="/users"
+                  element={
+                    <RouteGuard requireAdmin={true}>
+                      <UserManagement />
+                    </RouteGuard>
+                  }
+                />
+                <Route
+                  path="/facilities"
+                  element={
+                    <RouteGuard requireAdmin={true}>
+                      <FacilityManagement />
+                    </RouteGuard>
+                  }
+                />
+                <Route
+                  path="/my-actions"
+                  element={
+                    <RouteGuard>
+                      <MyActionItems />
+                    </RouteGuard>
+                  }
+                />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </IncidentProvider>
+        </FacilityProvider>
       </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>

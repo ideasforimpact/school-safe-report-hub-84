@@ -10,7 +10,8 @@ import {
   List,
   CheckSquare,
   Users,
-  Edit 
+  Edit,
+  Building
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -60,6 +61,12 @@ const Sidebar = () => {
       icon: Users,
       label: 'User Management',
       path: '/users',
+      allowed: isAdmin,
+    },
+    {
+      icon: Building,
+      label: 'Facility Management',
+      path: '/facilities',
       allowed: isAdmin,
     }
   ];
