@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
@@ -40,6 +41,7 @@ const EditIncident = () => {
     category: '' as IncidentCategory,
     subcategory: '',
     description: '',
+    rootCause: '',
     date: '',
     time: '',
     location: '' as IncidentLocation,
@@ -78,6 +80,7 @@ const EditIncident = () => {
       category: incident.category,
       subcategory: incident.subcategory || '',
       description: incident.description,
+      rootCause: incident.rootCause || '',
       date: date.toISOString().split('T')[0],
       time: date.toTimeString().split(' ')[0].slice(0, 5),
       location: incident.location,
@@ -179,6 +182,7 @@ const EditIncident = () => {
         category: formData.category,
         subcategory: formData.subcategory,
         description: formData.description,
+        rootCause: formData.rootCause,
         date: dateTime,
         location: formData.location,
         status: formData.status as IncidentStatus,
@@ -327,7 +331,7 @@ const EditIncident = () => {
 
                 <div className="space-y-2">
                   <label htmlFor="owner" className="text-sm font-medium">
-                    Assign Owner
+                    Assigned to
                   </label>
                   <Select 
                     value={formData.owner}
@@ -494,6 +498,20 @@ const EditIncident = () => {
                     </div>
                   </div>
                 ))}
+              </div>
+              
+              <div className="space-y-2 md:col-span-2 pt-4">
+                <label htmlFor="rootCause" className="text-sm font-medium">
+                  Root Cause Analysis (Optional)
+                </label>
+                <Textarea
+                  id="rootCause"
+                  name="rootCause"
+                  placeholder="Describe the underlying factors that contributed to this incident"
+                  value={formData.rootCause}
+                  onChange={handleChange}
+                  rows={3}
+                />
               </div>
             </CardContent>
             <CardFooter className="flex justify-between">

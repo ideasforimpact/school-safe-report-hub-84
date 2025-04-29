@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { toast } from "@/components/ui/sonner";
 import { useFacilities } from './FacilityContext';
@@ -209,6 +210,7 @@ export interface Incident {
   category: IncidentCategory;
   subcategory: string;
   description: string;
+  rootCause?: string;
   date: Date;
   location: IncidentLocation;
   peopleInvolved: Person[];
@@ -266,6 +268,7 @@ const generateSampleIncidents = (): Incident[] => {
       category: 'Physical Injury',
       subcategory: 'Playground or sports injury',
       description: 'Student fell during recess and scraped knee',
+      rootCause: 'Uneven playground surface and lack of proper supervision',
       date: pastDays(2),
       location: 'On Campus',
       peopleInvolved: [
@@ -299,6 +302,7 @@ const generateSampleIncidents = (): Incident[] => {
       category: 'Property Damage',
       subcategory: 'Damage to lab/sports/classroom equipment',
       description: 'Ceiling tile nearly fell in hallway',
+      rootCause: 'Water damage from previous roof leak weakened the ceiling structure',
       date: pastDays(5),
       location: 'On Campus',
       peopleInvolved: [],

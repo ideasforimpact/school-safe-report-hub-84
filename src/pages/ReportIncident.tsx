@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -7,6 +8,7 @@ import {
   IncidentLocation,
   SchoolFacility, 
   Person,
+  IncidentStatus,
   subcategories,
   nearMissSubcategories,
   unsafeConditionSubcategories
@@ -38,12 +40,14 @@ const ReportIncident = () => {
     category: '' as IncidentCategory,
     subcategory: '',
     description: '',
+    rootCause: '',
     date: new Date().toISOString().split('T')[0],
     time: new Date().toTimeString().split(' ')[0].slice(0, 5),
     location: '' as IncidentLocation,
     owner: '',
     facility: '' as SchoolFacility,
     image: undefined as string | undefined,
+    status: 'Open' as IncidentStatus
   });
 
   // State to store available subcategories based on type and category
@@ -152,12 +156,14 @@ const ReportIncident = () => {
         category: formData.category as IncidentCategory,
         subcategory: formData.subcategory,
         description: formData.description,
+        rootCause: formData.rootCause,
         date: dateTime,
         location: formData.location as IncidentLocation,
         peopleInvolved: validPeople,
         image: formData.image,
         owner: selectedOwner ? { id: selectedOwner.id, name: selectedOwner.name } : undefined,
         facility: formData.facility as SchoolFacility,
+        status: formData.status,
         reportedBy: {
           id: user?.id || '',
           name: user?.name || ''
@@ -206,6 +212,26 @@ const ReportIncident = () => {
                       <SelectItem value="Incident">Incident</SelectItem>
                       <SelectItem value="Near Miss">Near Miss</SelectItem>
                       <SelectItem value="Unsafe Condition">Unsafe Condition</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="status" className="text-sm font-medium">
+                    Status <span className="text-red-500">*</span>
+                  </label>
+                  <Select 
+                    value={formData.status}
+                    onValueChange={(value) => handleSelectChange('status', value)}
+                    required
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Open">Open</SelectItem>
+                      <SelectItem value="In Progress">In Progress</SelectItem>
+                      <SelectItem value="Closed">Closed</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -298,7 +324,7 @@ const ReportIncident = () => {
 
                 <div className="space-y-2">
                   <label htmlFor="owner" className="text-sm font-medium">
-                    Assign Owner
+                    Assigned to
                   </label>
                   <Select 
                     onValueChange={(value) => handleSelectChange('owner', value)}
@@ -446,6 +472,20 @@ const ReportIncident = () => {
                     </div>
                   </div>
                 ))}
+              </div>
+              
+              <div className="space-y-2 md:col-span-2 pt-4">
+                <label htmlFor="rootCause" className="text-sm font-medium">
+                  Root Cause Analysis (Optional)
+                </label>
+                <Textarea
+                  id="rootCause"
+                  name="rootCause"
+                  placeholder="Describe the underlying factors that contributed to this incident"
+                  value={formData.rootCause}
+                  onChange={handleChange}
+                  rows={3}
+                />
               </div>
             </CardContent>
             <CardFooter className="flex justify-between">
