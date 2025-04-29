@@ -1,3 +1,4 @@
+
 import { useState, useMemo } from 'react';
 import { useIncidents } from '@/contexts/IncidentContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -281,7 +282,7 @@ const Insights = () => {
         if (!peopleMap.has(key)) {
           peopleMap.set(key, {
             name: person.name,
-            id: person.id || 'Unknown',
+            id: person.id || 'Unknown', // Now safely accessing the optional id property
             role: person.role,
             incidents: [],
             count: 0

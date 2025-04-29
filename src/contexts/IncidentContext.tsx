@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { toast } from "@/components/ui/sonner";
 import { useFacilities } from './FacilityContext';
@@ -173,6 +172,7 @@ export interface Person {
   name: string;
   role: 'Student' | 'Staff' | 'Other';
   notes?: string;
+  id?: string; // Added optional id property to Person interface
 }
 
 export interface UserRef {
