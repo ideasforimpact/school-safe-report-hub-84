@@ -233,14 +233,8 @@ interface IncidentContextType {
   addActionItem: (incidentId: string, actionItem: Omit<ActionItem, 'id' | 'createdAt' | 'updatedAt'>) => void;
   updateActionItem: (incidentId: string, actionItemId: string, updates: Partial<ActionItem>) => void;
   deleteActionItem: (incidentId: string, actionItemId: string) => void;
-  getRecentActivities: () => {
-    type: 'incident' | 'action';
-    activity: 'create' | 'update';
-    entityId: string;
-    entityTitle: string;
-    user: string;
-    date: Date;
-  }[];
+  getRecentActivities: () => Activity[];
+  getIncidentActivities: (incidentId: string) => Activity[];
 }
 
 // Sample users for the demo
@@ -363,14 +357,16 @@ const generateSampleIncidents = (): Incident[] => {
   ];
 };
 
-// Activity history
-interface Activity {
-  type: 'incident' | 'action';
-  activity: 'create' | 'update';
+// Activity history with enhanced audit information
+export interface Activity {
+  type: 'incident' | 'action' | 'status' | 'actionItem';
+  activity: 'create' | 'update' | 'delete' | 'close' | 'reopen';
   entityId: string;
   entityTitle: string;
   user: string;
+  userId: string;
   date: Date;
+  details?: string;
 }
 
 export const IncidentProvider = ({ children }: { children: ReactNode }) => {
@@ -379,7 +375,7 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
     return savedIncidents ? JSON.parse(savedIncidents) : generateSampleIncidents();
   });
 
-  // Activity tracking
+  // Activity tracking with enhanced audit information
   const [activities, setActivities] = useState<Activity[]>(() => {
     const savedActivities = localStorage.getItem('activities');
     return savedActivities ? JSON.parse(savedActivities) : [];
@@ -394,9 +390,9 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem('activities', JSON.stringify(activities));
   }, [activities]);
 
-  // Add a new activity to the log
+  // Add a new activity to the log with enhanced audit information
   const addActivity = (activity: Activity) => {
-    setActivities(prev => [activity, ...prev.slice(0, 19)]); // Keep only the 20 most recent activities
+    setActivities(prev => [activity, ...prev]);
   };
 
   const addIncident = (incidentData: Omit<Incident, 'id' | 'status' | 'createdAt' | 'updatedAt'>) => {
@@ -416,13 +412,20 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
       entityId: newIncident.id,
       entityTitle: `${newIncident.type}: ${newIncident.category} - ${newIncident.subcategory}`,
       user: newIncident.reportedBy.name,
-      date: now
+      userId: newIncident.reportedBy.id,
+      date: now,
+      details: `Incident reported by ${newIncident.reportedBy.name}`
     });
     toast.success("Incident reported successfully");
   };
 
   const updateIncident = (id: string, updates: Partial<Incident>) => {
     const now = new Date();
+    const currentIncident = incidents.find(inc => inc.id === id);
+    
+    // Skip if no changes or incident not found
+    if (!currentIncident) return;
+    
     setIncidents(prev => 
       prev.map(incident => 
         incident.id === id 
@@ -431,15 +434,52 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
       )
     );
     
-    const updatedIncident = incidents.find(inc => inc.id === id);
-    if (updatedIncident) {
+    // Log status change specifically
+    if (updates.status && updates.status !== currentIncident.status) {
+      const user = updates.reportedBy?.name || currentIncident.reportedBy.name;
+      const userId = updates.reportedBy?.id || currentIncident.reportedBy.id;
+      
+      addActivity({
+        type: 'status',
+        activity: updates.status === 'Closed' ? 'close' : 'update',
+        entityId: id,
+        entityTitle: `${currentIncident.type}: ${currentIncident.category} - ${currentIncident.subcategory}`,
+        user,
+        userId,
+        date: now,
+        details: `Status changed from ${currentIncident.status} to ${updates.status} by ${user}`
+      });
+    } 
+    // Log owner assignment
+    else if (updates.owner && (!currentIncident.owner || updates.owner.id !== currentIncident.owner.id)) {
+      const user = updates.reportedBy?.name || currentIncident.reportedBy.name;
+      const userId = updates.reportedBy?.id || currentIncident.reportedBy.id;
+      
       addActivity({
         type: 'incident',
         activity: 'update',
         entityId: id,
-        entityTitle: `${updatedIncident.type}: ${updatedIncident.category} - ${updatedIncident.subcategory}`,
-        user: updates.reportedBy?.name || updatedIncident.reportedBy.name,
-        date: now
+        entityTitle: `${currentIncident.type}: ${currentIncident.category} - ${currentIncident.subcategory}`,
+        user,
+        userId,
+        date: now,
+        details: `Incident assigned to ${updates.owner.name} by ${user}`
+      });
+    }
+    // Log other updates
+    else if (Object.keys(updates).length > 0) {
+      const user = updates.reportedBy?.name || currentIncident.reportedBy.name;
+      const userId = updates.reportedBy?.id || currentIncident.reportedBy.id;
+      
+      addActivity({
+        type: 'incident',
+        activity: 'update',
+        entityId: id,
+        entityTitle: `${currentIncident.type}: ${currentIncident.category} - ${currentIncident.subcategory}`,
+        user,
+        userId,
+        date: now,
+        details: `Incident details updated by ${user}`
       });
     }
     
@@ -471,16 +511,18 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
       )
     );
     
-    // Add to activity log
+    // Add to activity log with enhanced audit information
     const incident = incidents.find(inc => inc.id === incidentId);
     if (incident) {
       addActivity({
-        type: 'action',
+        type: 'actionItem',
         activity: 'create',
         entityId: newActionItem.id,
         entityTitle: `Action: ${newActionItem.description.substring(0, 30)}${newActionItem.description.length > 30 ? '...' : ''}`,
         user: newActionItem.createdBy.name,
-        date: now
+        userId: newActionItem.createdBy.id,
+        date: now,
+        details: `Action item created by ${newActionItem.createdBy.name} and assigned to ${newActionItem.assignedTo.name}`
       });
     }
     
@@ -489,6 +531,11 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
 
   const updateActionItem = (incidentId: string, actionItemId: string, updates: Partial<ActionItem>) => {
     const now = new Date();
+    const incident = incidents.find(inc => inc.id === incidentId);
+    const currentActionItem = incident?.actionItems?.find(item => item.id === actionItemId);
+    
+    if (!incident || !currentActionItem) return;
+    
     setIncidents(prev => 
       prev.map(incident => {
         if (incident.id !== incidentId) return incident;
@@ -507,17 +554,52 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
       })
     );
     
-    // Add to activity log
-    const incident = incidents.find(inc => inc.id === incidentId);
-    const actionItem = incident?.actionItems?.find(item => item.id === actionItemId);
-    if (incident && actionItem) {
+    // Log status change specifically
+    if (updates.status && updates.status !== currentActionItem.status) {
+      const user = updates.createdBy?.name || currentActionItem.createdBy.name;
+      const userId = updates.createdBy?.id || currentActionItem.createdBy.id;
+      
       addActivity({
-        type: 'action',
+        type: 'actionItem',
         activity: 'update',
         entityId: actionItemId,
-        entityTitle: `Action: ${actionItem.description.substring(0, 30)}${actionItem.description.length > 30 ? '...' : ''}`,
-        user: updates.createdBy?.name || actionItem.createdBy.name,
-        date: now
+        entityTitle: `Action: ${currentActionItem.description.substring(0, 30)}${currentActionItem.description.length > 30 ? '...' : ''}`,
+        user,
+        userId,
+        date: now,
+        details: `Action item status changed from ${currentActionItem.status} to ${updates.status} by ${user}`
+      });
+    } 
+    // Log assignee change
+    else if (updates.assignedTo && updates.assignedTo.id !== currentActionItem.assignedTo.id) {
+      const user = updates.createdBy?.name || currentActionItem.createdBy.name;
+      const userId = updates.createdBy?.id || currentActionItem.createdBy.id;
+      
+      addActivity({
+        type: 'actionItem',
+        activity: 'update',
+        entityId: actionItemId,
+        entityTitle: `Action: ${currentActionItem.description.substring(0, 30)}${currentActionItem.description.length > 30 ? '...' : ''}`,
+        user,
+        userId,
+        date: now,
+        details: `Action item reassigned from ${currentActionItem.assignedTo.name} to ${updates.assignedTo.name} by ${user}`
+      });
+    }
+    // Log other updates
+    else if (Object.keys(updates).length > 0) {
+      const user = updates.createdBy?.name || currentActionItem.createdBy.name;
+      const userId = updates.createdBy?.id || currentActionItem.createdBy.id;
+      
+      addActivity({
+        type: 'actionItem',
+        activity: 'update',
+        entityId: actionItemId,
+        entityTitle: `Action: ${currentActionItem.description.substring(0, 30)}${currentActionItem.description.length > 30 ? '...' : ''}`,
+        user,
+        userId,
+        date: now,
+        details: `Action item updated by ${user}`
       });
     }
     
@@ -525,6 +607,11 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const deleteActionItem = (incidentId: string, actionItemId: string) => {
+    const incident = incidents.find(inc => inc.id === incidentId);
+    const actionItem = incident?.actionItems?.find(item => item.id === actionItemId);
+    
+    if (!incident || !actionItem) return;
+    
     setIncidents(prev => 
       prev.map(incident => {
         if (incident.id !== incidentId) return incident;
@@ -540,12 +627,36 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
         };
       })
     );
+    
+    addActivity({
+      type: 'actionItem',
+      activity: 'delete',
+      entityId: actionItemId,
+      entityTitle: `Action: ${actionItem.description.substring(0, 30)}${actionItem.description.length > 30 ? '...' : ''}`,
+      user: actionItem.createdBy.name,
+      userId: actionItem.createdBy.id,
+      date: new Date(),
+      details: `Action item deleted by ${actionItem.createdBy.name}`
+    });
+    
     toast.success("Action item deleted");
   };
 
   // Get recent activities
   const getRecentActivities = () => {
     return activities;
+  };
+  
+  // Get activities for a specific incident
+  const getIncidentActivities = (incidentId: string) => {
+    return activities.filter(activity => 
+      activity.entityId === incidentId || 
+      // Also include related action items
+      incidents.find(inc => 
+        inc.id === incidentId && 
+        inc.actionItems?.some(item => item.id === activity.entityId)
+      )
+    ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   };
 
   return (
@@ -558,7 +669,8 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
       addActionItem,
       updateActionItem,
       deleteActionItem,
-      getRecentActivities
+      getRecentActivities,
+      getIncidentActivities
     }}>
       {children}
     </IncidentContext.Provider>

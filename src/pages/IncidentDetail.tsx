@@ -4,6 +4,7 @@ import { useIncidents, IncidentStatus, Action, ActionItem, UserRef } from '@/con
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/layout/Layout';
 import ImageUpload from '@/components/ImageUpload';
+import AuditTrail from '@/components/AuditTrail';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -32,21 +33,28 @@ import {
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { Separator } from '@/components/ui/separator';
 import { 
   ArrowLeft, AlertOctagon, Clock, MapPin, 
   Users, Plus, Edit, Trash2, CheckCircle, 
   LayoutList, CalendarClock, UserCircle,
-  Image
+  Image, ClipboardList
 } from 'lucide-react';
 
 const IncidentDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const { incidents, users, getIncident, updateIncident, addActionItem, updateActionItem, deleteActionItem } = useIncidents();
+  const { incidents, users, getIncident, updateIncident, addActionItem, updateActionItem, deleteActionItem, getIncidentActivities } = useIncidents();
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
 
   const incident = getIncident(id || '');
+  const incidentActivities = incident ? getIncidentActivities(incident.id) : [];
 
   const [formAction, setFormAction] = useState<Action>({
     description: '',
@@ -224,7 +232,6 @@ const IncidentDetail = () => {
       }));
     }
   };
-
   
   return (
     <Layout>
@@ -257,7 +264,6 @@ const IncidentDetail = () => {
               <Select 
                 value={statusUpdate} 
                 onValueChange={(value: string) => {
-                  // Cast incoming value to IncidentStatus type
                   setStatusUpdate(value as IncidentStatus);
                 }}
               >
@@ -280,86 +286,117 @@ const IncidentDetail = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="md:col-span-2 space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Incident Details</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <h3 className="font-medium">Description</h3>
-                  <p className="mt-1">{incident.description}</p>
+            {/* Tabs for Incident Details and Audit Trail */}
+            <Tabs defaultValue="details">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="details">
+                  <LayoutList className="h-4 w-4 mr-2" />
+                  Incident Details
+                </TabsTrigger>
+                <TabsTrigger value="audit">
+                  <ClipboardList className="h-4 w-4 mr-2" />
+                  Audit Trail
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="details" className="mt-4">
+                {/* Main incident details */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Incident Details</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <h3 className="font-medium">Description</h3>
+                      <p className="mt-1">{incident.description}</p>
 
-                  {/* Display incident image if available */}
-                  {incident.image && (
-                    <div className="mt-4">
-                      <h3 className="font-medium mb-2">Image Documentation</h3>
-                      <img 
-                        src={incident.image} 
-                        alt="Incident documentation" 
-                        className="max-w-full h-auto rounded-md border" 
-                      />
-                    </div>
-                  )}
-                </div>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex items-start space-x-2">
-                    <AlertOctagon className="h-5 w-5 text-primary-600 mt-0.5" />
-                    <div>
-                      <p className="font-medium">Type & Category</p>
-                      <p className="text-gray-600">{incident.type} / {incident.category}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-start space-x-2">
-                    <Clock className="h-5 w-5 text-primary-600 mt-0.5" />
-                    <div>
-                      <p className="font-medium">Date & Time of Occurrence</p>
-                      <p className="text-gray-600">{formatDateTime(incident.date)}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-start space-x-2">
-                    <MapPin className="h-5 w-5 text-primary-600 mt-0.5" />
-                    <div>
-                      <p className="font-medium">Location</p>
-                      <p className="text-gray-600">{incident.location}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <Separator />
-                
-                <div>
-                  <div className="flex items-start space-x-2 mb-3">
-                    <Users className="h-5 w-5 text-primary-600 mt-0.5" />
-                    <h3 className="font-medium">People Involved</h3>
-                  </div>
-                  
-                  {incident.peopleInvolved && incident.peopleInvolved.length > 0 ? (
-                    <div className="space-y-3">
-                      {incident.peopleInvolved.map((person, index) => (
-                        <div key={index} className="border rounded p-3 bg-gray-50">
-                          <div className="flex justify-between">
-                            <p className="font-medium">{person.name}</p>
-                            <span className="text-xs px-2 py-1 bg-gray-200 rounded-full">
-                              {person.role}
-                            </span>
-                          </div>
-                          {person.notes && (
-                            <p className="text-sm text-gray-600 mt-1">{person.notes}</p>
-                          )}
+                      {/* Display incident image if available */}
+                      {incident.image && (
+                        <div className="mt-4">
+                          <h3 className="font-medium mb-2">Image Documentation</h3>
+                          <img 
+                            src={incident.image} 
+                            alt="Incident documentation" 
+                            className="max-w-full h-auto rounded-md border" 
+                          />
                         </div>
-                      ))}
+                      )}
                     </div>
-                  ) : (
-                    <p className="text-gray-500">No people recorded for this incident</p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="flex items-start space-x-2">
+                        <AlertOctagon className="h-5 w-5 text-primary-600 mt-0.5" />
+                        <div>
+                          <p className="font-medium">Type & Category</p>
+                          <p className="text-gray-600">{incident.type} / {incident.category}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-start space-x-2">
+                        <Clock className="h-5 w-5 text-primary-600 mt-0.5" />
+                        <div>
+                          <p className="font-medium">Date & Time of Occurrence</p>
+                          <p className="text-gray-600">{formatDateTime(incident.date)}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-start space-x-2">
+                        <MapPin className="h-5 w-5 text-primary-600 mt-0.5" />
+                        <div>
+                          <p className="font-medium">Location</p>
+                          <p className="text-gray-600">{incident.location}</p>
+                        </div>
+                      </div>
+                    </div>
 
-            {/* Action Items */}
+                    <Separator />
+                    
+                    <div>
+                      <div className="flex items-start space-x-2 mb-3">
+                        <Users className="h-5 w-5 text-primary-600 mt-0.5" />
+                        <h3 className="font-medium">People Involved</h3>
+                      </div>
+                      
+                      {incident.peopleInvolved && incident.peopleInvolved.length > 0 ? (
+                        <div className="space-y-3">
+                          {incident.peopleInvolved.map((person, index) => (
+                            <div key={index} className="border rounded p-3 bg-gray-50">
+                              <div className="flex justify-between">
+                                <p className="font-medium">{person.name}</p>
+                                <span className="text-xs px-2 py-1 bg-gray-200 rounded-full">
+                                  {person.role}
+                                </span>
+                              </div>
+                              {person.notes && (
+                                <p className="text-sm text-gray-600 mt-1">{person.notes}</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-gray-500">No people recorded for this incident</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              
+              <TabsContent value="audit" className="mt-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Activity Log</CardTitle>
+                    <CardDescription>
+                      Track all changes and updates to this incident
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <AuditTrail activities={incidentActivities} maxHeight="500px" />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+            
+            {/* Action Items Card - keep outside of tabs */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
