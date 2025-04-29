@@ -22,6 +22,8 @@ import UserManagement from "./pages/UserManagement";
 import FacilityManagement from "./pages/FacilityManagement";
 import MyActionItems from "./pages/MyActionItems";
 import Home from "./pages/Home";
+import Blog from "./pages/Blog";
+import Pricing from "./pages/Pricing";
 
 const queryClient = new QueryClient();
 
@@ -36,15 +38,10 @@ const App = () => (
             <BrowserRouter>
               <Routes>
                 <Route path="/login" element={<Login />} />
+                <Route path="/" element={<Home />} />
                 <Route path="/home" element={<Home />} />
-                <Route
-                  path="/"
-                  element={
-                    <RouteGuard>
-                      <Dashboard />
-                    </RouteGuard>
-                  }
-                />
+                <Route path="/blog" element={<Blog />} />
+                <Route path="/pricing" element={<Pricing />} />
                 <Route
                   path="/dashboard"
                   element={
