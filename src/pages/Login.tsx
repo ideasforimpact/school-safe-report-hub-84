@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, ShieldCheck } from "lucide-react";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -37,14 +37,17 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-indigo-50 p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-primary-600">School CQI</h1>
+          <div className="flex justify-center">
+            <ShieldCheck className="h-12 w-12 text-primary mb-2" />
+          </div>
+          <h1 className="text-3xl font-bold text-primary">Safe School</h1>
           <p className="text-gray-600 mt-1">Incident Management System</p>
         </div>
 
-        <Card>
+        <Card className="border-t-4 border-t-primary">
           <CardHeader>
             <CardTitle>Log In</CardTitle>
             <CardDescription>
@@ -90,15 +93,23 @@ const Login = () => {
                 />
               </div>
             </CardContent>
-            <CardFooter>
+            <CardFooter className="flex-col gap-3">
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading ? "Logging in..." : "Log in"}
+              </Button>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => navigate('/home')} 
+                className="w-full"
+              >
+                Back to Home
               </Button>
             </CardFooter>
           </form>
         </Card>
 
-        <div className="text-center mt-6 text-sm text-gray-500">
+        <div className="text-center mt-6 text-sm text-gray-600 p-4 bg-white/80 rounded-md shadow-sm">
           <p>Demo Credentials:</p>
           <p className="mt-1">Admin: admin@school.edu / admin123</p>
           <p>Reporter: reporter@school.edu / reporter123</p>

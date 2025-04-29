@@ -19,6 +19,7 @@ import Insights from "./pages/Insights";
 import NotFound from "./pages/NotFound";
 import UserManagement from "./pages/UserManagement";
 import MyActionItems from "./pages/MyActionItems";
+import Home from "./pages/Home"; // Import the new Home page
 
 const queryClient = new QueryClient();
 
@@ -32,6 +33,7 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               <Route path="/login" element={<Login />} />
+              <Route path="/home" element={<Home />} />
               <Route
                 path="/"
                 element={
