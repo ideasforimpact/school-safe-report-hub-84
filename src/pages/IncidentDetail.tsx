@@ -47,6 +47,7 @@ const IncidentDetail = () => {
     date: new Date(),
   });
 
+  // Note: Fixed typing issue here to properly cast type for statusUpdate
   const [statusUpdate, setStatusUpdate] = useState<IncidentStatus>(incident?.status || 'Open');
 
   if (!incident) {
@@ -151,7 +152,10 @@ const IncidentDetail = () => {
             <div className="flex gap-2">
               <Select 
                 value={statusUpdate} 
-                onValueChange={setStatusUpdate}
+                onValueChange={(value: string) => {
+                  // Cast incoming value to IncidentStatus type
+                  setStatusUpdate(value as IncidentStatus);
+                }}
               >
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Update Status" />

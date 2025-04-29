@@ -170,7 +170,7 @@ const IncidentsList = () => {
                   <SelectValue placeholder="Type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Types</SelectItem>
+                  <SelectItem value="all">All Types</SelectItem>
                   <SelectItem value="Incident">Incident</SelectItem>
                   <SelectItem value="Near Miss">Near Miss</SelectItem>
                   <SelectItem value="Unsafe Condition">Unsafe Condition</SelectItem>
@@ -185,7 +185,7 @@ const IncidentsList = () => {
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Categories</SelectItem>
+                  <SelectItem value="all">All Categories</SelectItem>
                   <SelectItem value="Physical Injury">Physical Injury</SelectItem>
                   <SelectItem value="Bullying">Bullying</SelectItem>
                   <SelectItem value="Tech Misuse">Tech Misuse</SelectItem>
@@ -204,7 +204,7 @@ const IncidentsList = () => {
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Statuses</SelectItem>
+                  <SelectItem value="all">All Statuses</SelectItem>
                   <SelectItem value="Open">Open</SelectItem>
                   <SelectItem value="In Progress">In Progress</SelectItem>
                   <SelectItem value="Closed">Closed</SelectItem>
