@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, ReactNode } from 'react';
 import { toast } from "@/components/ui/sonner";
 
@@ -28,6 +27,7 @@ interface AuthContextType {
   addUser: (userData: { name: string; email: string; password: string; role: UserRole, modulePermissions: ModulePermissions }) => void;
   updateUser: (id: string, updates: Partial<User & { password?: string }>) => void;
   deleteUser: (id: string) => void;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -176,6 +176,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     toast.success("User deleted successfully");
   };
 
+  const changePassword = async (currentPassword: string, newPassword: string): Promise<boolean> => {
+    // First, verify the current password
+    if (!user) {
+      toast.error("You must be logged in to change your password");
+      return false;
+    }
+
+    const userRecord = users.find(u => u.id === user.id);
+    
+    if (!userRecord || userRecord.password !== currentPassword) {
+      toast.error("Current password is incorrect");
+      return false;
+    }
+
+    // Update the password
+    setUsers(users.map(u => {
+      if (u.id === user.id) {
+        return { ...u, password: newPassword };
+      }
+      return u;
+    }));
+
+    toast.success("Password changed successfully");
+    return true;
+  };
+
   const isAdmin = user?.role === 'admin';
 
   // Expose only user objects without passwords
@@ -190,7 +216,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       isAdmin,
       addUser,
       updateUser,
-      deleteUser
+      deleteUser,
+      changePassword
     }}>
       {children}
     </AuthContext.Provider>

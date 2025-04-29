@@ -1,5 +1,6 @@
 
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { 
@@ -10,14 +11,16 @@ import {
   List,
   CheckSquare,
   Users,
-  Edit,
-  Building
+  Building,
+  Key
 } from 'lucide-react';
+import { ChangePasswordDialog } from '@/components/ChangePasswordDialog';
 
 const Sidebar = () => {
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
   
   // Get user permissions
   const permissions = user?.modulePermissions || {
@@ -74,30 +77,48 @@ const Sidebar = () => {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <aside className="bg-gray-50 w-64 min-h-screen py-6 hidden md:block">
-      <nav>
-        <ul className="space-y-2 px-4">
-          {menuItems
-            .filter(item => item.allowed)
-            .map((item) => (
-            <li key={item.path}>
+    <>
+      <aside className="bg-gray-50 w-64 min-h-screen py-6 hidden md:block">
+        <nav>
+          <ul className="space-y-2 px-4">
+            {menuItems
+              .filter(item => item.allowed)
+              .map((item) => (
+              <li key={item.path}>
+                <button
+                  onClick={() => navigate(item.path)}
+                  className={cn(
+                    "w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors",
+                    isActive(item.path)
+                      ? "bg-primary-50 text-primary-700"
+                      : "text-gray-600 hover:bg-gray-100"
+                  )}
+                >
+                  <item.icon size={18} />
+                  <span>{item.label}</span>
+                </button>
+              </li>
+            ))}
+
+            {/* User settings section */}
+            <li className="mt-8 pt-4 border-t border-gray-200">
               <button
-                onClick={() => navigate(item.path)}
-                className={cn(
-                  "w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors",
-                  isActive(item.path)
-                    ? "bg-primary-50 text-primary-700"
-                    : "text-gray-600 hover:bg-gray-100"
-                )}
+                onClick={() => setPasswordDialogOpen(true)}
+                className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors text-gray-600 hover:bg-gray-100"
               >
-                <item.icon size={18} />
-                <span>{item.label}</span>
+                <Key size={18} />
+                <span>Change Password</span>
               </button>
             </li>
-          ))}
-        </ul>
-      </nav>
-    </aside>
+          </ul>
+        </nav>
+      </aside>
+      
+      <ChangePasswordDialog 
+        open={passwordDialogOpen} 
+        onOpenChange={setPasswordDialogOpen} 
+      />
+    </>
   );
 };
 
