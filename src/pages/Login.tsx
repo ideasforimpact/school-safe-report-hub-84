@@ -37,7 +37,7 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-indigo-50 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-indigo-100 p-4 animate-fade-in">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="flex justify-center">
@@ -45,9 +45,10 @@ const Login = () => {
           </div>
           <h1 className="text-3xl font-bold text-primary">Safe School</h1>
           <p className="text-gray-600 mt-1">Incident Management System</p>
+          <p className="text-sm text-gray-500 mt-2">Sign in to start protecting your school community</p>
         </div>
 
-        <Card className="border-t-4 border-t-primary">
+        <Card className="border-t-4 border-t-primary animate-scale-in">
           <CardHeader>
             <CardTitle>Log In</CardTitle>
             <CardDescription>
@@ -74,6 +75,7 @@ const Login = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@school.edu"
                   required
+                  className="transition-all focus:ring-2 focus:ring-primary"
                 />
               </div>
 
@@ -90,18 +92,23 @@ const Login = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
+                  className="transition-all focus:ring-2 focus:ring-primary"
                 />
               </div>
             </CardContent>
             <CardFooter className="flex-col gap-3">
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button 
+                type="submit" 
+                className="w-full bg-primary hover:bg-primary/80 transition-all" 
+                disabled={isLoading}
+              >
                 {isLoading ? "Logging in..." : "Log in"}
               </Button>
               <Button 
                 type="button" 
                 variant="outline" 
                 onClick={() => navigate('/home')} 
-                className="w-full"
+                className="w-full transition-all hover:bg-primary/10"
               >
                 Back to Home
               </Button>
