@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useIncidents, IncidentStatus, Action } from '@/contexts/IncidentContext';
+import { useIncidents, IncidentStatus, Action, ActionItem } from '@/contexts/IncidentContext';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -29,14 +29,20 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
+  DialogClose,
 } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import { ArrowLeft, AlertOctagon, Clock, MapPin, Users } from 'lucide-react';
+import { 
+  ArrowLeft, AlertOctagon, Clock, MapPin, 
+  Users, Plus, Edit, Trash2, CheckCircle, 
+  LayoutList, CalendarClock, UserCircle 
+} from 'lucide-react';
 
 const IncidentDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const { incidents, getIncident, updateIncident } = useIncidents();
-  const { isAdmin } = useAuth();
+  const { incidents, getIncident, updateIncident, addActionItem, updateActionItem, deleteActionItem } = useIncidents();
+  const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
 
   const incident = getIncident(id || '');
@@ -47,8 +53,19 @@ const IncidentDetail = () => {
     date: new Date(),
   });
 
-  // Note: Fixed typing issue here to properly cast type for statusUpdate
   const [statusUpdate, setStatusUpdate] = useState<IncidentStatus>(incident?.status || 'Open');
+  
+  // Action Item States
+  const [showAddActionItem, setShowAddActionItem] = useState(false);
+  const [showEditActionItem, setShowEditActionItem] = useState(false);
+  const [currentActionItem, setCurrentActionItem] = useState<ActionItem | null>(null);
+  const [actionItemForm, setActionItemForm] = useState<Omit<ActionItem, 'id' | 'createdAt' | 'updatedAt'>>({
+    description: '',
+    dueDate: new Date(),
+    assignedTo: '',
+    status: 'Pending',
+    createdBy: { id: user?.id || '', name: user?.name || '' }
+  });
 
   if (!incident) {
     return (
@@ -99,6 +116,19 @@ const IncidentDetail = () => {
     }
   };
 
+  const getActionItemStatusColor = (status: ActionItem['status']) => {
+    switch(status) {
+      case 'Pending':
+        return 'bg-orange-100 text-orange-800';
+      case 'In Progress':
+        return 'bg-blue-100 text-blue-800';
+      case 'Completed':
+        return 'bg-green-100 text-green-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   const handleStatusChange = () => {
     updateIncident(incident.id, { status: statusUpdate });
   };
@@ -120,6 +150,55 @@ const IncidentDetail = () => {
       responsiblePerson: '',
       date: new Date(),
     });
+  };
+
+  const handleAddActionItem = (e: React.FormEvent) => {
+    e.preventDefault();
+    addActionItem(incident.id, actionItemForm);
+    setShowAddActionItem(false);
+    resetActionItemForm();
+  };
+
+  const handleEditActionItem = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (currentActionItem) {
+      updateActionItem(incident.id, currentActionItem.id, actionItemForm);
+      setShowEditActionItem(false);
+      setCurrentActionItem(null);
+      resetActionItemForm();
+    }
+  };
+
+  const handleDeleteActionItem = (actionItemId: string) => {
+    if (confirm('Are you sure you want to delete this action item?')) {
+      deleteActionItem(incident.id, actionItemId);
+    }
+  };
+
+  const resetActionItemForm = () => {
+    setActionItemForm({
+      description: '',
+      dueDate: new Date(),
+      assignedTo: '',
+      status: 'Pending',
+      createdBy: { id: user?.id || '', name: user?.name || '' }
+    });
+  };
+
+  const openEditActionItem = (item: ActionItem) => {
+    setCurrentActionItem(item);
+    setActionItemForm({
+      description: item.description,
+      dueDate: new Date(item.dueDate),
+      assignedTo: item.assignedTo,
+      status: item.status,
+      createdBy: item.createdBy
+    });
+    setShowEditActionItem(true);
+  };
+
+  const canEditActionItem = (item: ActionItem) => {
+    return isAdmin || item.createdBy.id === user?.id;
   };
 
   return (
@@ -175,7 +254,7 @@ const IncidentDetail = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-2">
+          <div className="md:col-span-2 space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle>Incident Details</CardTitle>
@@ -243,8 +322,241 @@ const IncidentDetail = () => {
               </CardContent>
             </Card>
 
+            {/* Action Items */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Action Items</CardTitle>
+                  <CardDescription>
+                    Tasks to address this incident
+                  </CardDescription>
+                </div>
+                <Dialog open={showAddActionItem} onOpenChange={setShowAddActionItem}>
+                  <DialogTrigger asChild>
+                    <Button size="sm">
+                      <Plus className="h-4 w-4 mr-1" /> Add Action Item
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Add Action Item</DialogTitle>
+                      <DialogDescription>
+                        Create a new action item for this incident
+                      </DialogDescription>
+                    </DialogHeader>
+                    <form onSubmit={handleAddActionItem} className="space-y-4">
+                      <div className="space-y-2">
+                        <label htmlFor="description" className="text-sm font-medium">
+                          Description
+                        </label>
+                        <Textarea
+                          id="description"
+                          value={actionItemForm.description}
+                          onChange={(e) => setActionItemForm(prev => ({ ...prev, description: e.target.value }))}
+                          placeholder="What needs to be done?"
+                          required
+                        />
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label htmlFor="assignedTo" className="text-sm font-medium">
+                            Assigned To
+                          </label>
+                          <Input
+                            id="assignedTo"
+                            value={actionItemForm.assignedTo}
+                            onChange={(e) => setActionItemForm(prev => ({ ...prev, assignedTo: e.target.value }))}
+                            placeholder="Who will do this?"
+                            required
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <label htmlFor="dueDate" className="text-sm font-medium">
+                            Due Date
+                          </label>
+                          <Input
+                            type="date"
+                            id="dueDate"
+                            value={actionItemForm.dueDate ? new Date(actionItemForm.dueDate).toISOString().split('T')[0] : ''}
+                            onChange={(e) => setActionItemForm(prev => ({ ...prev, dueDate: new Date(e.target.value) }))}
+                            required
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <label htmlFor="status" className="text-sm font-medium">
+                          Status
+                        </label>
+                        <Select 
+                          value={actionItemForm.status} 
+                          onValueChange={(value) => {
+                            setActionItemForm(prev => ({ 
+                              ...prev, 
+                              status: value as ActionItem['status'] 
+                            }));
+                          }}
+                        >
+                          <SelectTrigger id="status">
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Pending">Pending</SelectItem>
+                            <SelectItem value="In Progress">In Progress</SelectItem>
+                            <SelectItem value="Completed">Completed</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <DialogFooter>
+                        <DialogClose asChild>
+                          <Button type="button" variant="outline">Cancel</Button>
+                        </DialogClose>
+                        <Button type="submit">Add Action Item</Button>
+                      </DialogFooter>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </CardHeader>
+              <CardContent>
+                {incident.actionItems && incident.actionItems.length > 0 ? (
+                  <div className="space-y-4">
+                    {incident.actionItems.map((item) => (
+                      <div key={item.id} className="border rounded-lg p-4">
+                        <div className="flex justify-between items-start">
+                          <div className="space-y-1">
+                            <h4 className="font-medium">{item.description}</h4>
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                              <div className="flex items-center gap-1">
+                                <UserCircle className="h-3.5 w-3.5" />
+                                <span>{item.assignedTo}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <CalendarClock className="h-3.5 w-3.5" />
+                                <span>Due: {formatDate(new Date(item.dueDate))}</span>
+                              </div>
+                            </div>
+                          </div>
+                          <span className={`text-xs px-2 py-1 rounded-full ${getActionItemStatusColor(item.status)}`}>
+                            {item.status}
+                          </span>
+                        </div>
+                        
+                        {canEditActionItem(item) && (
+                          <div className="mt-3 flex justify-end gap-2">
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              onClick={() => openEditActionItem(item)}
+                              className="h-7 px-2"
+                            >
+                              <Edit className="h-3.5 w-3.5 mr-1" /> Edit
+                            </Button>
+                            <Button 
+                              size="sm" 
+                              variant="destructive" 
+                              onClick={() => handleDeleteActionItem(item.id)}
+                              className="h-7 px-2"
+                            >
+                              <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-center py-6">No action items added yet</p>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Edit Action Item Dialog */}
+            <Dialog open={showEditActionItem} onOpenChange={setShowEditActionItem}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Edit Action Item</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleEditActionItem} className="space-y-4">
+                  <div className="space-y-2">
+                    <label htmlFor="edit-description" className="text-sm font-medium">
+                      Description
+                    </label>
+                    <Textarea
+                      id="edit-description"
+                      value={actionItemForm.description}
+                      onChange={(e) => setActionItemForm(prev => ({ ...prev, description: e.target.value }))}
+                      placeholder="What needs to be done?"
+                      required
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label htmlFor="edit-assignedTo" className="text-sm font-medium">
+                        Assigned To
+                      </label>
+                      <Input
+                        id="edit-assignedTo"
+                        value={actionItemForm.assignedTo}
+                        onChange={(e) => setActionItemForm(prev => ({ ...prev, assignedTo: e.target.value }))}
+                        placeholder="Who will do this?"
+                        required
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label htmlFor="edit-dueDate" className="text-sm font-medium">
+                        Due Date
+                      </label>
+                      <Input
+                        type="date"
+                        id="edit-dueDate"
+                        value={actionItemForm.dueDate ? new Date(actionItemForm.dueDate).toISOString().split('T')[0] : ''}
+                        onChange={(e) => setActionItemForm(prev => ({ ...prev, dueDate: new Date(e.target.value) }))}
+                        required
+                      />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label htmlFor="edit-status" className="text-sm font-medium">
+                      Status
+                    </label>
+                    <Select 
+                      value={actionItemForm.status} 
+                      onValueChange={(value) => {
+                        setActionItemForm(prev => ({ 
+                          ...prev, 
+                          status: value as ActionItem['status']
+                        }));
+                      }}
+                    >
+                      <SelectTrigger id="edit-status">
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Pending">Pending</SelectItem>
+                        <SelectItem value="In Progress">In Progress</SelectItem>
+                        <SelectItem value="Completed">Completed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <DialogFooter>
+                    <DialogClose asChild>
+                      <Button type="button" variant="outline">Cancel</Button>
+                    </DialogClose>
+                    <Button type="submit">Update Action Item</Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+
             {isAdmin && (
-              <Card className="mt-6">
+              <Card>
                 <CardHeader>
                   <CardTitle>Add Action Taken</CardTitle>
                   <CardDescription>

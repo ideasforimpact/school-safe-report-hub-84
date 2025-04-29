@@ -26,6 +26,20 @@ export interface Action {
   date: Date;
 }
 
+export interface ActionItem {
+  id: string;
+  description: string;
+  dueDate: Date;
+  assignedTo: string;
+  status: 'Pending' | 'In Progress' | 'Completed';
+  createdBy: {
+    id: string;
+    name: string;
+  };
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface Incident {
   id: string;
   type: IncidentType;
@@ -40,6 +54,7 @@ export interface Incident {
     name: string;
   };
   actions?: Action[];
+  actionItems?: ActionItem[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -49,6 +64,9 @@ interface IncidentContextType {
   addIncident: (incident: Omit<Incident, 'id' | 'status' | 'createdAt' | 'updatedAt'>) => void;
   updateIncident: (id: string, updates: Partial<Incident>) => void;
   getIncident: (id: string) => Incident | undefined;
+  addActionItem: (incidentId: string, actionItem: Omit<ActionItem, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateActionItem: (incidentId: string, actionItemId: string, updates: Partial<ActionItem>) => void;
+  deleteActionItem: (incidentId: string, actionItemId: string) => void;
 }
 
 const IncidentContext = createContext<IncidentContextType | undefined>(undefined);
@@ -72,6 +90,18 @@ const generateSampleIncidents = (): Incident[] => {
       reportedBy: { id: '2', name: 'Teacher Reporter' },
       actions: [
         { description: 'First aid administered, parent notified', responsiblePerson: 'Nurse Smith', date: pastDays(2) }
+      ],
+      actionItems: [
+        {
+          id: '1',
+          description: 'Update playground safety guidelines',
+          dueDate: pastDays(-5), // 5 days in the future
+          assignedTo: 'Safety Coordinator',
+          status: 'In Progress',
+          createdBy: { id: '1', name: 'Admin User' },
+          createdAt: pastDays(2),
+          updatedAt: pastDays(2)
+        }
       ],
       createdAt: pastDays(2),
       updatedAt: pastDays(1)
@@ -182,8 +212,79 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
     return incidents.find(incident => incident.id === id);
   };
 
+  const addActionItem = (incidentId: string, actionItemData: Omit<ActionItem, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date();
+    const newActionItem: ActionItem = {
+      ...actionItemData,
+      id: Date.now().toString(),
+      createdAt: now,
+      updatedAt: now
+    };
+    
+    setIncidents(prev => 
+      prev.map(incident => 
+        incident.id === incidentId 
+          ? { 
+              ...incident, 
+              actionItems: [...(incident.actionItems || []), newActionItem],
+              updatedAt: now 
+            } 
+          : incident
+      )
+    );
+    toast.success("Action item added");
+  };
+
+  const updateActionItem = (incidentId: string, actionItemId: string, updates: Partial<ActionItem>) => {
+    setIncidents(prev => 
+      prev.map(incident => {
+        if (incident.id !== incidentId) return incident;
+        
+        const updatedActionItems = incident.actionItems?.map(item => 
+          item.id === actionItemId 
+            ? { ...item, ...updates, updatedAt: new Date() } 
+            : item
+        ) || [];
+        
+        return { 
+          ...incident, 
+          actionItems: updatedActionItems,
+          updatedAt: new Date()
+        };
+      })
+    );
+    toast.success("Action item updated");
+  };
+
+  const deleteActionItem = (incidentId: string, actionItemId: string) => {
+    setIncidents(prev => 
+      prev.map(incident => {
+        if (incident.id !== incidentId) return incident;
+        
+        const filteredActionItems = incident.actionItems?.filter(item => 
+          item.id !== actionItemId
+        ) || [];
+        
+        return { 
+          ...incident, 
+          actionItems: filteredActionItems,
+          updatedAt: new Date()
+        };
+      })
+    );
+    toast.success("Action item deleted");
+  };
+
   return (
-    <IncidentContext.Provider value={{ incidents, addIncident, updateIncident, getIncident }}>
+    <IncidentContext.Provider value={{ 
+      incidents, 
+      addIncident, 
+      updateIncident, 
+      getIncident,
+      addActionItem,
+      updateActionItem,
+      deleteActionItem
+    }}>
       {children}
     </IncidentContext.Provider>
   );
