@@ -412,7 +412,7 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
     const newIncident: Incident = {
       ...incidentData,
       id: Date.now().toString(),
-      status: 'Open',
+      status: 'Open', // The status is set here internally
       createdAt: now,
       updatedAt: now
     };

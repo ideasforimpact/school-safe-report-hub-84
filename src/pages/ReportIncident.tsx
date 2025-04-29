@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -163,7 +162,6 @@ const ReportIncident = () => {
         image: formData.image,
         owner: selectedOwner ? { id: selectedOwner.id, name: selectedOwner.name } : undefined,
         facility: formData.facility as SchoolFacility,
-        status: formData.status,
         reportedBy: {
           id: user?.id || '',
           name: user?.name || ''
