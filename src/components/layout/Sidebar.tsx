@@ -7,7 +7,9 @@ import {
   FileText, 
   PieChart,
   AlertTriangle,
-  List 
+  List,
+  CheckSquare,
+  Users 
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -35,10 +37,22 @@ const Sidebar = () => {
       allowed: true,
     },
     {
+      icon: CheckSquare,
+      label: 'My Action Items',
+      path: '/my-actions',
+      allowed: true,
+    },
+    {
       icon: PieChart,
       label: 'Insights',
       path: '/insights',
       allowed: isAdmin, // Only admin can access insights
+    },
+    {
+      icon: Users,
+      label: 'User Management',
+      path: '/users',
+      allowed: isAdmin, // Only admin can access user management
     }
   ];
 

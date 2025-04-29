@@ -16,6 +16,8 @@ import IncidentsList from "./pages/IncidentsList";
 import IncidentDetail from "./pages/IncidentDetail";
 import Insights from "./pages/Insights";
 import NotFound from "./pages/NotFound";
+import UserManagement from "./pages/UserManagement";
+import MyActionItems from "./pages/MyActionItems";
 
 const queryClient = new QueryClient();
 
@@ -74,6 +76,22 @@ const App = () => (
                 element={
                   <RouteGuard requireAdmin={true}>
                     <Insights />
+                  </RouteGuard>
+                }
+              />
+              <Route
+                path="/users"
+                element={
+                  <RouteGuard requireAdmin={true}>
+                    <UserManagement />
+                  </RouteGuard>
+                }
+              />
+              <Route
+                path="/my-actions"
+                element={
+                  <RouteGuard>
+                    <MyActionItems />
                   </RouteGuard>
                 }
               />

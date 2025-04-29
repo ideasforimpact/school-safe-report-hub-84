@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Menu, X, Home, FileText, PieChart, AlertTriangle, List } from 'lucide-react';
+import { Menu, X, Home, PieChart, AlertTriangle, List, CheckSquare, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetTrigger, SheetContent, SheetClose } from '@/components/ui/sheet';
@@ -33,9 +33,21 @@ const MobileNav = () => {
       allowed: true,
     },
     {
+      icon: CheckSquare,
+      label: 'My Action Items',
+      path: '/my-actions',
+      allowed: true,
+    },
+    {
       icon: PieChart,
       label: 'Insights',
       path: '/insights',
+      allowed: isAdmin,
+    },
+    {
+      icon: Users,
+      label: 'User Management',
+      path: '/users',
       allowed: isAdmin,
     }
   ];
