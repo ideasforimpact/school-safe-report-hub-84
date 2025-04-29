@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useIncidents, IncidentStatus, Action, ActionItem } from '@/contexts/IncidentContext';
+import { useIncidents, IncidentStatus, Action, ActionItem, UserRef } from '@/contexts/IncidentContext';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/layout/Layout';
-import ImageUpload from '@/components/ImageUpload'; // Import the ImageUpload component
+import ImageUpload from '@/components/ImageUpload';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -42,7 +42,7 @@ import {
 
 const IncidentDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const { incidents, getIncident, updateIncident, addActionItem, updateActionItem, deleteActionItem } = useIncidents();
+  const { incidents, users, getIncident, updateIncident, addActionItem, updateActionItem, deleteActionItem } = useIncidents();
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
 
@@ -52,7 +52,7 @@ const IncidentDetail = () => {
     description: '',
     responsiblePerson: '',
     date: new Date(),
-    image: undefined // Add image field
+    image: undefined
   });
 
   const [statusUpdate, setStatusUpdate] = useState<IncidentStatus>(incident?.status || 'Open');
@@ -64,10 +64,10 @@ const IncidentDetail = () => {
   const [actionItemForm, setActionItemForm] = useState<Omit<ActionItem, 'id' | 'createdAt' | 'updatedAt'>>({
     description: '',
     dueDate: new Date(),
-    assignedTo: '',
+    assignedTo: { id: '', name: '' },
     status: 'Pending',
     createdBy: { id: user?.id || '', name: user?.name || '' },
-    image: undefined // Add image field
+    image: undefined
   });
 
   if (!incident) {
@@ -191,10 +191,10 @@ const IncidentDetail = () => {
     setActionItemForm({
       description: '',
       dueDate: new Date(),
-      assignedTo: '',
+      assignedTo: { id: '', name: '' },
       status: 'Pending',
       createdBy: { id: user?.id || '', name: user?.name || '' },
-      image: undefined // Reset image
+      image: undefined
     });
   };
 
@@ -206,7 +206,7 @@ const IncidentDetail = () => {
       assignedTo: item.assignedTo,
       status: item.status,
       createdBy: item.createdBy,
-      image: item.image // Load existing image
+      image: item.image
     });
     setShowEditActionItem(true);
   };
@@ -215,6 +215,17 @@ const IncidentDetail = () => {
     return isAdmin || item.createdBy.id === user?.id;
   };
 
+  const handleAssignedUserChange = (userId: string) => {
+    const selectedUser = users.find(u => u.id === userId);
+    if (selectedUser) {
+      setActionItemForm(prev => ({
+        ...prev,
+        assignedTo: { id: selectedUser.id, name: selectedUser.name }
+      }));
+    }
+  };
+
+  
   return (
     <Layout>
       <div className="space-y-6">
@@ -399,13 +410,21 @@ const IncidentDetail = () => {
                           <label htmlFor="assignedTo" className="text-sm font-medium">
                             Assigned To
                           </label>
-                          <Input
-                            id="assignedTo"
-                            value={actionItemForm.assignedTo}
-                            onChange={(e) => setActionItemForm(prev => ({ ...prev, assignedTo: e.target.value }))}
-                            placeholder="Who will do this?"
-                            required
-                          />
+                          <Select 
+                            value={actionItemForm.assignedTo.id} 
+                            onValueChange={handleAssignedUserChange}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a user" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {users.map(user => (
+                                <SelectItem key={user.id} value={user.id}>
+                                  {user.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                         
                         <div className="space-y-2">
@@ -467,7 +486,7 @@ const IncidentDetail = () => {
                             <div className="flex items-center gap-2 text-sm text-gray-600">
                               <div className="flex items-center gap-1">
                                 <UserCircle className="h-3.5 w-3.5" />
-                                <span>{item.assignedTo}</span>
+                                <span>{item.assignedTo.name}</span>
                               </div>
                               <div className="flex items-center gap-1">
                                 <CalendarClock className="h-3.5 w-3.5" />
@@ -555,13 +574,21 @@ const IncidentDetail = () => {
                       <label htmlFor="edit-assignedTo" className="text-sm font-medium">
                         Assigned To
                       </label>
-                      <Input
-                        id="edit-assignedTo"
-                        value={actionItemForm.assignedTo}
-                        onChange={(e) => setActionItemForm(prev => ({ ...prev, assignedTo: e.target.value }))}
-                        placeholder="Who will do this?"
-                        required
-                      />
+                      <Select 
+                        value={actionItemForm.assignedTo.id} 
+                        onValueChange={handleAssignedUserChange}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a user" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {users.map(user => (
+                            <SelectItem key={user.id} value={user.id}>
+                              {user.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
                     
                     <div className="space-y-2">

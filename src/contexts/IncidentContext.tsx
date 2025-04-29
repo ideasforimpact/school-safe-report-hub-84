@@ -173,6 +173,11 @@ export interface Person {
   notes?: string;
 }
 
+export interface UserRef {
+  id: string;
+  name: string;
+}
+
 export interface Action {
   description: string;
   responsiblePerson: string;
@@ -184,15 +189,9 @@ export interface ActionItem {
   id: string;
   description: string;
   dueDate: Date;
-  assignedTo: {
-    id: string;
-    name: string;
-  };
+  assignedTo: UserRef;
   status: 'Pending' | 'In Progress' | 'Completed';
-  createdBy: {
-    id: string;
-    name: string;
-  };
+  createdBy: UserRef;
   image?: string; // Adding optional image URL for action items
   createdAt: Date;
   updatedAt: Date;
@@ -208,14 +207,8 @@ export interface Incident {
   location: IncidentLocation;
   peopleInvolved: Person[];
   status: IncidentStatus;
-  reportedBy: {
-    id: string;
-    name: string;
-  };
-  owner?: {
-    id: string;
-    name: string;
-  };
+  reportedBy: UserRef;
+  owner?: UserRef;
   facility?: SchoolFacility;
   image?: string; // Adding optional image URL for incidents
   actions?: Action[];

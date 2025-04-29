@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -30,7 +29,7 @@ const MyActionItems = () => {
   // Get all action items assigned to the current user
   const myActionItems = incidents.reduce<Array<{actionItem: ActionItem, incidentId: string, incidentType: string, incidentCategory: string}>>((acc, incident) => {
     const items = incident.actionItems?.filter(
-      item => item.assignedTo.toLowerCase() === user?.name.toLowerCase()
+      item => item.assignedTo.id === user?.id
     ) || [];
 
     const formattedItems = items.map(item => ({
@@ -127,6 +126,7 @@ const MyActionItems = () => {
                 <CardContent>
                   <div className="text-sm text-gray-500 mb-4">
                     <p className="font-medium text-gray-700">Incident: {incidentType} - {incidentCategory}</p>
+                    <p>Assigned to: {actionItem.assignedTo.name}</p>
                   </div>
                   <div className="flex justify-between items-center">
                     <Button 
