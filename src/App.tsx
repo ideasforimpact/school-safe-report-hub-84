@@ -14,6 +14,7 @@ import Dashboard from "./pages/Dashboard";
 import ReportIncident from "./pages/ReportIncident";
 import IncidentsList from "./pages/IncidentsList";
 import IncidentDetail from "./pages/IncidentDetail";
+import EditIncident from "./pages/EditIncident";
 import Insights from "./pages/Insights";
 import NotFound from "./pages/NotFound";
 import UserManagement from "./pages/UserManagement";
@@ -68,6 +69,14 @@ const App = () => (
                 element={
                   <RouteGuard>
                     <IncidentDetail />
+                  </RouteGuard>
+                }
+              />
+              <Route
+                path="/incidents/edit/:id"
+                element={
+                  <RouteGuard>
+                    <EditIncident />
                   </RouteGuard>
                 }
               />

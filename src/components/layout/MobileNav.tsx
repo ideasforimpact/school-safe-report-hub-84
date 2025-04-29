@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Menu, X, Home, PieChart, AlertTriangle, List, CheckSquare, Users } from 'lucide-react';
+import { Menu, X, Home, PieChart, AlertTriangle, List, CheckSquare, Users, Edit } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetTrigger, SheetContent, SheetClose } from '@/components/ui/sheet';

@@ -9,7 +9,8 @@ import {
   AlertTriangle,
   List,
   CheckSquare,
-  Users 
+  Users,
+  Edit 
 } from 'lucide-react';
 
 const Sidebar = () => {

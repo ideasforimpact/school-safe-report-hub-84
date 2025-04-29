@@ -1,7 +1,16 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useIncidents, IncidentType, IncidentCategory, IncidentLocation, Person } from '@/contexts/IncidentContext';
+import { 
+  useIncidents, 
+  IncidentType, 
+  IncidentCategory, 
+  IncidentLocation, 
+  Person,
+  subcategories,
+  nearMissSubcategories,
+  unsafeConditionSubcategories
+} from '@/contexts/IncidentContext';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -26,17 +35,63 @@ const ReportIncident = () => {
   const [formData, setFormData] = useState({
     type: '' as IncidentType,
     category: '' as IncidentCategory,
+    subcategory: '',
     description: '',
     date: new Date().toISOString().split('T')[0],
     time: new Date().toTimeString().split(' ')[0].slice(0, 5),
     location: '' as IncidentLocation,
   });
 
+  // State to store available subcategories based on type and category
+  const [availableSubcategories, setAvailableSubcategories] = useState<string[]>([]);
+
+  // Update available subcategories when type or category changes
+  useEffect(() => {
+    if (!formData.type || !formData.category) {
+      setAvailableSubcategories([]);
+      return;
+    }
+
+    if (formData.type === 'Incident') {
+      setAvailableSubcategories(subcategories[formData.category as IncidentCategory] || []);
+    } else if (formData.type === 'Near Miss') {
+      // For near miss, we need to show specific subcategories based on selected category
+      const nearMissCategory = formData.category;
+      const subcats = nearMissSubcategories[nearMissCategory] || [];
+      setAvailableSubcategories(subcats);
+    } else if (formData.type === 'Unsafe Condition') {
+      // For unsafe condition, show specific subcategories
+      const unsafeCategory = formData.category;
+      const subcats = unsafeConditionSubcategories[unsafeCategory] || [];
+      setAvailableSubcategories(subcats);
+    }
+  }, [formData.type, formData.category]);
+
+  // Reset subcategory when available subcategories change
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      subcategory: ''
+    }));
+  }, [availableSubcategories]);
+
   const [peopleInvolved, setPeopleInvolved] = useState<Person[]>([
     { name: '', role: 'Student' as const, notes: '' }
   ]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Get categories based on selected type
+  const getCategoriesForType = (type: IncidentType): string[] => {
+    if (type === 'Incident') {
+      return Object.keys(subcategories);
+    } else if (type === 'Near Miss') {
+      return Object.keys(nearMissSubcategories);
+    } else if (type === 'Unsafe Condition') {
+      return Object.keys(unsafeConditionSubcategories);
+    }
+    return [];
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -67,7 +122,7 @@ const ReportIncident = () => {
     e.preventDefault();
     
     // Basic validation
-    if (!formData.type || !formData.category || !formData.description || !formData.location) {
+    if (!formData.type || !formData.category || !formData.subcategory || !formData.description || !formData.location) {
       toast.error("Please fill in all required fields");
       return;
     }
@@ -84,6 +139,7 @@ const ReportIncident = () => {
       addIncident({
         type: formData.type as IncidentType,
         category: formData.category as IncidentCategory,
+        subcategory: formData.subcategory,
         description: formData.description,
         date: dateTime,
         location: formData.location as IncidentLocation,
@@ -147,18 +203,55 @@ const ReportIncident = () => {
                   <Select 
                     onValueChange={(value) => handleSelectChange('category', value)}
                     required
+                    disabled={!formData.type}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Physical Injury">Physical Injury</SelectItem>
-                      <SelectItem value="Bullying">Bullying</SelectItem>
-                      <SelectItem value="Tech Misuse">Tech Misuse</SelectItem>
-                      <SelectItem value="Property Damage">Property Damage</SelectItem>
-                      <SelectItem value="Health Concern">Health Concern</SelectItem>
-                      <SelectItem value="Security Breach">Security Breach</SelectItem>
-                      <SelectItem value="Other">Other</SelectItem>
+                      {formData.type && getCategoriesForType(formData.type as IncidentType).map(category => (
+                        <SelectItem key={category} value={category}>{category}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="space-y-2">
+                  <label htmlFor="subcategory" className="text-sm font-medium">
+                    Subcategory <span className="text-red-500">*</span>
+                  </label>
+                  <Select 
+                    onValueChange={(value) => handleSelectChange('subcategory', value)}
+                    required
+                    disabled={availableSubcategories.length === 0}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select subcategory" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableSubcategories.map(subcategory => (
+                        <SelectItem key={subcategory} value={subcategory}>{subcategory}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="location" className="text-sm font-medium">
+                    Where it Happened <span className="text-red-500">*</span>
+                  </label>
+                  <Select 
+                    onValueChange={(value) => handleSelectChange('location', value)}
+                    required
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select location" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="On Campus">On Campus</SelectItem>
+                      <SelectItem value="Off Campus">Off Campus</SelectItem>
+                      <SelectItem value="In Transit">In Transit</SelectItem>
+                      <SelectItem value="During Function">During Function</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -205,26 +298,6 @@ const ReportIncident = () => {
                     onChange={handleChange}
                     required
                   />
-                </div>
-
-                <div className="space-y-2 md:col-span-2">
-                  <label htmlFor="location" className="text-sm font-medium">
-                    Where it Happened <span className="text-red-500">*</span>
-                  </label>
-                  <Select 
-                    onValueChange={(value) => handleSelectChange('location', value)}
-                    required
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select location" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="On Campus">On Campus</SelectItem>
-                      <SelectItem value="Off Campus">Off Campus</SelectItem>
-                      <SelectItem value="In Transit">In Transit</SelectItem>
-                      <SelectItem value="During Function">During Function</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
               </div>
 

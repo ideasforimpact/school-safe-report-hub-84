@@ -1,11 +1,14 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   useIncidents, 
   IncidentType, 
   IncidentCategory,
-  IncidentStatus 
+  IncidentStatus,
+  subcategories,
+  nearMissSubcategories,
+  unsafeConditionSubcategories
 } from '@/contexts/IncidentContext';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -25,7 +28,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { AlertTriangle, Search, Calendar } from 'lucide-react';
+import { AlertTriangle, Search, Calendar, Edit } from 'lucide-react';
 
 const IncidentsList = () => {
   const { incidents } = useIncidents();
@@ -35,11 +38,68 @@ const IncidentsList = () => {
   const [filters, setFilters] = useState({
     type: '',
     category: '',
+    subcategory: '',
     status: '',
     dateFrom: '',
     dateTo: '',
     search: '',
   });
+
+  const [availableCategories, setAvailableCategories] = useState<string[]>([]);
+  const [availableSubcategories, setAvailableSubcategories] = useState<string[]>([]);
+
+  // Update available categories when type changes
+  useEffect(() => {
+    if (!filters.type) {
+      setAvailableCategories([]);
+      return;
+    }
+
+    if (filters.type === 'Incident') {
+      setAvailableCategories(Object.keys(subcategories));
+    } else if (filters.type === 'Near Miss') {
+      setAvailableCategories(Object.keys(nearMissSubcategories));
+    } else if (filters.type === 'Unsafe Condition') {
+      setAvailableCategories(Object.keys(unsafeConditionSubcategories));
+    } else {
+      setAvailableCategories([]);
+    }
+  }, [filters.type]);
+
+  // Update available subcategories when type or category changes
+  useEffect(() => {
+    if (!filters.type || !filters.category) {
+      setAvailableSubcategories([]);
+      return;
+    }
+
+    if (filters.type === 'Incident') {
+      setAvailableSubcategories(subcategories[filters.category as IncidentCategory] || []);
+    } else if (filters.type === 'Near Miss') {
+      setAvailableSubcategories(nearMissSubcategories[filters.category] || []);
+    } else if (filters.type === 'Unsafe Condition') {
+      setAvailableSubcategories(unsafeConditionSubcategories[filters.category] || []);
+    } else {
+      setAvailableSubcategories([]);
+    }
+  }, [filters.type, filters.category]);
+
+  // Reset category and subcategory when type changes
+  useEffect(() => {
+    setFilters(prev => ({
+      ...prev,
+      category: '',
+      subcategory: ''
+    }));
+  }, [filters.type]);
+
+  // Reset subcategory when category changes
+  useEffect(() => {
+    setFilters(prev => ({
+      ...prev,
+      subcategory: ''
+    }));
+  }, [filters.category]);
 
   const handleFilterChange = (field: string, value: string) => {
     setFilters(prev => ({ ...prev, [field]: value }));
@@ -49,6 +109,7 @@ const IncidentsList = () => {
     setFilters({
       type: '',
       category: '',
+      subcategory: '',
       status: '',
       dateFrom: '',
       dateTo: '',
@@ -63,6 +124,9 @@ const IncidentsList = () => {
     
     // Filter by category
     if (filters.category && incident.category !== filters.category) return false;
+    
+    // Filter by subcategory
+    if (filters.subcategory && incident.subcategory !== filters.subcategory) return false;
     
     // Filter by status
     if (filters.status && incident.status !== filters.status) return false;
@@ -89,6 +153,8 @@ const IncidentsList = () => {
       if (incident.description.toLowerCase().includes(searchLower)) return true;
       // Search in category
       if (incident.category.toLowerCase().includes(searchLower)) return true;
+      // Search in subcategory
+      if (incident.subcategory && incident.subcategory.toLowerCase().includes(searchLower)) return true;
       // Search in people involved
       if (incident.peopleInvolved.some(p => 
         p.name.toLowerCase().includes(searchLower) || 
@@ -148,7 +214,7 @@ const IncidentsList = () => {
         <div className="bg-white rounded-lg shadow p-6">
           <div className="space-y-4">
             <h2 className="font-semibold text-lg">Filters</h2>
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
                   <Search className="h-4 w-4 text-gray-400" />
@@ -170,29 +236,10 @@ const IncidentsList = () => {
                   <SelectValue placeholder="Type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="">All Types</SelectItem>
                   <SelectItem value="Incident">Incident</SelectItem>
                   <SelectItem value="Near Miss">Near Miss</SelectItem>
                   <SelectItem value="Unsafe Condition">Unsafe Condition</SelectItem>
-                </SelectContent>
-              </Select>
-              
-              <Select 
-                value={filters.category} 
-                onValueChange={(value) => handleFilterChange('category', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  <SelectItem value="Physical Injury">Physical Injury</SelectItem>
-                  <SelectItem value="Bullying">Bullying</SelectItem>
-                  <SelectItem value="Tech Misuse">Tech Misuse</SelectItem>
-                  <SelectItem value="Property Damage">Property Damage</SelectItem>
-                  <SelectItem value="Health Concern">Health Concern</SelectItem>
-                  <SelectItem value="Security Breach">Security Breach</SelectItem>
-                  <SelectItem value="Other">Other</SelectItem>
                 </SelectContent>
               </Select>
               
@@ -204,10 +251,44 @@ const IncidentsList = () => {
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="">All Statuses</SelectItem>
                   <SelectItem value="Open">Open</SelectItem>
                   <SelectItem value="In Progress">In Progress</SelectItem>
                   <SelectItem value="Closed">Closed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Select 
+                value={filters.category} 
+                onValueChange={(value) => handleFilterChange('category', value)}
+                disabled={availableCategories.length === 0}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Categories</SelectItem>
+                  {availableCategories.map(category => (
+                    <SelectItem key={category} value={category}>{category}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              <Select 
+                value={filters.subcategory} 
+                onValueChange={(value) => handleFilterChange('subcategory', value)}
+                disabled={availableSubcategories.length === 0}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Subcategory" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Subcategories</SelectItem>
+                  {availableSubcategories.map(subcategory => (
+                    <SelectItem key={subcategory} value={subcategory}>{subcategory}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               
@@ -250,6 +331,7 @@ const IncidentsList = () => {
                   <TableRow>
                     <TableHead>Type</TableHead>
                     <TableHead>Category</TableHead>
+                    <TableHead>Subcategory</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>Description</TableHead>
                     <TableHead>Status</TableHead>
@@ -261,6 +343,7 @@ const IncidentsList = () => {
                     <TableRow key={incident.id}>
                       <TableCell>{incident.type}</TableCell>
                       <TableCell>{incident.category}</TableCell>
+                      <TableCell>{incident.subcategory || "-"}</TableCell>
                       <TableCell>{formatDate(incident.date)}</TableCell>
                       <TableCell className="max-w-xs">
                         <div className="truncate">
@@ -273,13 +356,22 @@ const IncidentsList = () => {
                         </span>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => navigate(`/incidents/${incident.id}`)}
-                        >
-                          View
-                        </Button>
+                        <div className="flex justify-end space-x-2">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => navigate(`/incidents/${incident.id}`)}
+                          >
+                            View
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => navigate(`/incidents/edit/${incident.id}`)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
