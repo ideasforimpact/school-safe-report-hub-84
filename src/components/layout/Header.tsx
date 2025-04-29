@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { LogOut, User, Lock } from 'lucide-react';
+import { LogOut, User, Lock, HelpCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ChangePasswordDialog } from '@/components/ChangePasswordDialog';
 
@@ -52,6 +52,11 @@ const Header = () => {
               <li>
                 <Link to="/pricing" className="text-gray-700 hover:text-primary-600 font-medium">
                   Pricing
+                </Link>
+              </li>
+              <li>
+                <Link to="/support" className="text-gray-700 hover:text-primary-600 font-medium">
+                  Support
                 </Link>
               </li>
             </ul>
