@@ -1,9 +1,10 @@
 
-import { Navigate } from 'react-router-dom';
+import React from 'react';
+import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface RouteGuardProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   requireAdmin?: boolean;
 }
 
@@ -18,7 +19,8 @@ const RouteGuard = ({ children, requireAdmin = false }: RouteGuardProps) => {
     return <Navigate to="/dashboard" />;
   }
 
-  return <>{children}</>;
+  // Return children if provided, otherwise return Outlet for nested routes
+  return children ? <>{children}</> : <Outlet />;
 };
 
 export default RouteGuard;

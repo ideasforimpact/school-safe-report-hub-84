@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
@@ -17,17 +18,17 @@ import Support from '@/pages/Support';
 import Pricing from '@/pages/Pricing';
 import Blog from '@/pages/Blog';
 import Benchmarking from '@/pages/Benchmarking';
-import { AuthContextProvider } from '@/contexts/AuthContext';
-import { IncidentContextProvider } from '@/contexts/IncidentContext';
-import { FacilityContextProvider } from '@/contexts/FacilityContext';
+import { AuthProvider } from '@/contexts/AuthContext';
+import { IncidentProvider } from '@/contexts/IncidentContext';
+import { FacilityProvider } from '@/contexts/FacilityContext';
 import RouteGuard from '@/components/RouteGuard';
 
 function App() {
   return (
     <BrowserRouter>
-      <AuthContextProvider>
-        <FacilityContextProvider>
-          <IncidentContextProvider>
+      <AuthProvider>
+        <FacilityProvider>
+          <IncidentProvider>
             <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/login" element={<Login />} />
@@ -50,9 +51,9 @@ function App() {
               
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </IncidentContextProvider>
-        </FacilityContextProvider>
-      </AuthContextProvider>
+          </IncidentProvider>
+        </FacilityProvider>
+      </AuthProvider>
       <Toaster />
     </BrowserRouter>
   );
