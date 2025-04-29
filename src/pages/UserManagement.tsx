@@ -85,10 +85,11 @@ const UserManagement = () => {
       email: user.email,
       password: '',
       role: user.role,
-      modulePermissions: user.modulePermissions || {
-        incidentReporting: true,
-        allIncidents: true,
-        insights: true
+      modulePermissions: {
+        incidentReporting: user.modulePermissions?.incidentReporting ?? true,
+        allIncidents: user.modulePermissions?.allIncidents ?? true,
+        insights: user.modulePermissions?.insights ?? true,
+        benchmarking: user.modulePermissions?.benchmarking ?? false
       }
     });
     setIsEditDialogOpen(true);
