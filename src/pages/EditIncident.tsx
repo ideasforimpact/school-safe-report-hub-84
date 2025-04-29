@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
@@ -442,7 +441,7 @@ const EditIncident = () => {
                       </Button>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                       <div className="space-y-2">
                         <label className="text-sm font-medium">Name</label>
                         <Input
@@ -467,6 +466,21 @@ const EditIncident = () => {
                             <SelectItem value="Other">Other</SelectItem>
                           </SelectContent>
                         </Select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">
+                          {person.role === 'Student' ? 'Student ID' : person.role === 'Staff' ? 'Staff ID' : 'ID'} 
+                          {person.role !== 'Other' && <span className="text-red-500">*</span>}
+                        </label>
+                        <Input
+                          value={person.id || ''}
+                          onChange={(e) => handlePersonChange(index, 'id', e.target.value)}
+                          placeholder={`${person.role} ID`}
+                          required={person.role !== 'Other'}
+                        />
                       </div>
 
                       <div className="space-y-2">

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -81,7 +80,7 @@ const ReportIncident = () => {
   }, [availableSubcategories]);
 
   const [peopleInvolved, setPeopleInvolved] = useState<Person[]>([
-    { name: '', role: 'Student' as const, notes: '' }
+    { name: '', role: 'Student' as const, id: '', notes: '' }
   ]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -114,7 +113,7 @@ const ReportIncident = () => {
   };
 
   const addPerson = () => {
-    setPeopleInvolved([...peopleInvolved, { name: '', role: 'Student', notes: '' }]);
+    setPeopleInvolved([...peopleInvolved, { name: '', role: 'Student', id: '', notes: '' }]);
   };
 
   const removePerson = (index: number) => {
@@ -394,7 +393,7 @@ const ReportIncident = () => {
                       )}
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                       <div className="space-y-2">
                         <label className="text-sm font-medium">Name</label>
                         <Input
@@ -419,6 +418,21 @@ const ReportIncident = () => {
                             <SelectItem value="Other">Other</SelectItem>
                           </SelectContent>
                         </Select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">
+                          {person.role === 'Student' ? 'Student ID' : person.role === 'Staff' ? 'Staff ID' : 'ID'} 
+                          {person.role !== 'Other' && <span className="text-red-500">*</span>}
+                        </label>
+                        <Input
+                          value={person.id || ''}
+                          onChange={(e) => handlePersonChange(index, 'id', e.target.value)}
+                          placeholder={`${person.role} ID`}
+                          required={person.role !== 'Other'}
+                        />
                       </div>
 
                       <div className="space-y-2">

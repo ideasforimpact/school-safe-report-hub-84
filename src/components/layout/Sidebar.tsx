@@ -11,7 +11,8 @@ import {
   List,
   CheckSquare,
   Users,
-  Building
+  Building,
+  BarChart
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -56,6 +57,12 @@ const Sidebar = () => {
       label: 'Insights',
       path: '/insights',
       allowed: permissions.insights,
+    },
+    {
+      icon: BarChart,
+      label: 'Benchmarking',
+      path: '/benchmarking',
+      allowed: isAdmin,
     },
     {
       icon: Users,

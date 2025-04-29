@@ -52,6 +52,11 @@ const MobileNav = () => {
       allowed: permissions.insights,
     },
     {
+      label: 'Benchmarking',
+      path: '/benchmarking',
+      allowed: isAdmin,
+    },
+    {
       label: 'User Management',
       path: '/users',
       allowed: isAdmin,
@@ -75,24 +80,17 @@ const MobileNav = () => {
         </button>
       </SheetTrigger>
       <SheetContent side="left" className="w-64">
-        <Accordion type="single" collapsible>
-          <AccordionItem value="menu">
-            <AccordionTrigger className="font-semibold">Menu</AccordionTrigger>
-            <AccordionContent>
-              <div className="flex flex-col space-y-2 pl-2">
-                {menuItems.filter(item => item.allowed).map((item) => (
-                  <button
-                    key={item.path}
-                    onClick={() => handleNavigation(item.path)}
-                    className="text-left px-2 py-1.5 hover:bg-gray-100 rounded-md"
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
+        <div className="flex flex-col space-y-2 pt-4">
+          {menuItems.filter(item => item.allowed).map((item) => (
+            <button
+              key={item.path}
+              onClick={() => handleNavigation(item.path)}
+              className="text-left px-4 py-3 hover:bg-gray-100 rounded-md"
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
       </SheetContent>
     </Sheet>
   );
