@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
@@ -14,6 +13,7 @@ import {
 } from '@/contexts/IncidentContext';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/layout/Layout';
+import ImageUpload from '@/components/ImageUpload'; // Import the ImageUpload component
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -42,7 +42,8 @@ const EditIncident = () => {
     date: '',
     time: '',
     location: '' as IncidentLocation,
-    status: ''
+    status: '',
+    image: undefined as string | undefined // Add image field
   });
 
   const [peopleInvolved, setPeopleInvolved] = useState<Person[]>([]);
@@ -77,7 +78,8 @@ const EditIncident = () => {
       date: date.toISOString().split('T')[0],
       time: date.toTimeString().split(' ')[0].slice(0, 5),
       location: incident.location,
-      status: incident.status
+      status: incident.status,
+      image: incident.image // Load existing image
     });
 
     setPeopleInvolved([...incident.peopleInvolved]);
@@ -113,6 +115,10 @@ const EditIncident = () => {
       return Object.keys(unsafeConditionSubcategories);
     }
     return [];
+  };
+
+  const handleImageChange = (imageBase64: string | undefined) => {
+    setFormData(prev => ({ ...prev, image: imageBase64 }));
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -168,7 +174,8 @@ const EditIncident = () => {
         date: dateTime,
         location: formData.location,
         status: formData.status as IncidentStatus,
-        peopleInvolved: validPeople
+        peopleInvolved: validPeople,
+        image: formData.image // Update image
       });
       
       toast.success("Incident updated successfully");
@@ -293,6 +300,16 @@ const EditIncident = () => {
                     onChange={handleChange}
                     rows={4}
                     required
+                  />
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-sm font-medium">
+                    Image Documentation (Optional)
+                  </label>
+                  <ImageUpload 
+                    onImageChange={handleImageChange} 
+                    initialImage={formData.image}
                   />
                 </div>
 

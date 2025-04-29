@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -13,6 +12,7 @@ import {
 } from '@/contexts/IncidentContext';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/layout/Layout';
+import ImageUpload from '@/components/ImageUpload'; // Import the ImageUpload component
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -40,6 +40,7 @@ const ReportIncident = () => {
     date: new Date().toISOString().split('T')[0],
     time: new Date().toTimeString().split(' ')[0].slice(0, 5),
     location: '' as IncidentLocation,
+    image: undefined as string | undefined, // Add image field
   });
 
   // State to store available subcategories based on type and category
@@ -118,6 +119,10 @@ const ReportIncident = () => {
     setPeopleInvolved(updatedPeople);
   };
 
+  const handleImageChange = (imageBase64: string | undefined) => {
+    setFormData(prev => ({ ...prev, image: imageBase64 }));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -144,6 +149,7 @@ const ReportIncident = () => {
         date: dateTime,
         location: formData.location as IncidentLocation,
         peopleInvolved: validPeople,
+        image: formData.image, // Add image to the incident
         reportedBy: {
           id: user?.id || '',
           name: user?.name || ''
@@ -268,6 +274,16 @@ const ReportIncident = () => {
                     onChange={handleChange}
                     rows={4}
                     required
+                  />
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-sm font-medium">
+                    Image Documentation (Optional)
+                  </label>
+                  <ImageUpload 
+                    onImageChange={handleImageChange} 
+                    initialImage={formData.image}
                   />
                 </div>
 

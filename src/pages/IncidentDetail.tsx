@@ -1,9 +1,9 @@
-
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useIncidents, IncidentStatus, Action, ActionItem } from '@/contexts/IncidentContext';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/layout/Layout';
+import ImageUpload from '@/components/ImageUpload'; // Import the ImageUpload component
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -36,7 +36,8 @@ import { Separator } from '@/components/ui/separator';
 import { 
   ArrowLeft, AlertOctagon, Clock, MapPin, 
   Users, Plus, Edit, Trash2, CheckCircle, 
-  LayoutList, CalendarClock, UserCircle 
+  LayoutList, CalendarClock, UserCircle,
+  Image
 } from 'lucide-react';
 
 const IncidentDetail = () => {
@@ -51,6 +52,7 @@ const IncidentDetail = () => {
     description: '',
     responsiblePerson: '',
     date: new Date(),
+    image: undefined // Add image field
   });
 
   const [statusUpdate, setStatusUpdate] = useState<IncidentStatus>(incident?.status || 'Open');
@@ -64,7 +66,8 @@ const IncidentDetail = () => {
     dueDate: new Date(),
     assignedTo: '',
     status: 'Pending',
-    createdBy: { id: user?.id || '', name: user?.name || '' }
+    createdBy: { id: user?.id || '', name: user?.name || '' },
+    image: undefined // Add image field
   });
 
   if (!incident) {
@@ -133,6 +136,14 @@ const IncidentDetail = () => {
     updateIncident(incident.id, { status: statusUpdate });
   };
 
+  const handleActionImageChange = (imageBase64: string | undefined) => {
+    setFormAction(prev => ({ ...prev, image: imageBase64 }));
+  };
+
+  const handleActionItemImageChange = (imageBase64: string | undefined) => {
+    setActionItemForm(prev => ({ ...prev, image: imageBase64 }));
+  };
+
   const handleActionSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -149,6 +160,7 @@ const IncidentDetail = () => {
       description: '',
       responsiblePerson: '',
       date: new Date(),
+      image: undefined
     });
   };
 
@@ -181,7 +193,8 @@ const IncidentDetail = () => {
       dueDate: new Date(),
       assignedTo: '',
       status: 'Pending',
-      createdBy: { id: user?.id || '', name: user?.name || '' }
+      createdBy: { id: user?.id || '', name: user?.name || '' },
+      image: undefined // Reset image
     });
   };
 
@@ -192,7 +205,8 @@ const IncidentDetail = () => {
       dueDate: new Date(item.dueDate),
       assignedTo: item.assignedTo,
       status: item.status,
-      createdBy: item.createdBy
+      createdBy: item.createdBy,
+      image: item.image // Load existing image
     });
     setShowEditActionItem(true);
   };
@@ -263,6 +277,18 @@ const IncidentDetail = () => {
                 <div>
                   <h3 className="font-medium">Description</h3>
                   <p className="mt-1">{incident.description}</p>
+
+                  {/* Display incident image if available */}
+                  {incident.image && (
+                    <div className="mt-4">
+                      <h3 className="font-medium mb-2">Image Documentation</h3>
+                      <img 
+                        src={incident.image} 
+                        alt="Incident documentation" 
+                        className="max-w-full h-auto rounded-md border" 
+                      />
+                    </div>
+                  )}
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -358,6 +384,16 @@ const IncidentDetail = () => {
                         />
                       </div>
                       
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">
+                          Image Documentation (Optional)
+                        </label>
+                        <ImageUpload 
+                          onImageChange={handleActionItemImageChange}
+                          initialImage={actionItemForm.image}
+                        />
+                      </div>
+                      
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <label htmlFor="assignedTo" className="text-sm font-medium">
@@ -443,6 +479,17 @@ const IncidentDetail = () => {
                             {item.status}
                           </span>
                         </div>
+
+                        {/* Display action item image if available */}
+                        {item.image && (
+                          <div className="mt-3">
+                            <img 
+                              src={item.image} 
+                              alt="Action item documentation" 
+                              className="w-full max-h-40 object-contain rounded-md border" 
+                            />
+                          </div>
+                        )}
                         
                         {canEditActionItem(item) && (
                           <div className="mt-3 flex justify-end gap-2">
@@ -490,6 +537,16 @@ const IncidentDetail = () => {
                       onChange={(e) => setActionItemForm(prev => ({ ...prev, description: e.target.value }))}
                       placeholder="What needs to be done?"
                       required
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">
+                      Image Documentation (Optional)
+                    </label>
+                    <ImageUpload 
+                      onImageChange={handleActionItemImageChange}
+                      initialImage={actionItemForm.image}
                     />
                   </div>
                   
@@ -577,6 +634,16 @@ const IncidentDetail = () => {
                         required
                       />
                     </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">
+                        Image Documentation (Optional)
+                      </label>
+                      <ImageUpload 
+                        onImageChange={handleActionImageChange}
+                        initialImage={formAction.image}
+                      />
+                    </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
@@ -632,6 +699,17 @@ const IncidentDetail = () => {
                         <p className="text-sm text-gray-600 mt-1">
                           By: {action.responsiblePerson}
                         </p>
+
+                        {/* Display action image if available */}
+                        {action.image && (
+                          <div className="mt-3">
+                            <img 
+                              src={action.image} 
+                              alt="Action documentation" 
+                              className="w-full h-auto rounded-md border" 
+                            />
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

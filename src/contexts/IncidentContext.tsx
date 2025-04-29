@@ -175,6 +175,7 @@ export interface Action {
   description: string;
   responsiblePerson: string;
   date: Date;
+  image?: string; // Adding optional image URL for actions
 }
 
 export interface ActionItem {
@@ -187,6 +188,7 @@ export interface ActionItem {
     id: string;
     name: string;
   };
+  image?: string; // Adding optional image URL for action items
   createdAt: Date;
   updatedAt: Date;
 }
@@ -205,6 +207,7 @@ export interface Incident {
     id: string;
     name: string;
   };
+  image?: string; // Adding optional image URL for incidents
   actions?: Action[];
   actionItems?: ActionItem[];
   createdAt: Date;
