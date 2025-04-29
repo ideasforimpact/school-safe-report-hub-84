@@ -49,7 +49,7 @@ const DEFAULT_REPORTER_PERMISSIONS: ModulePermissions = {
 const INITIAL_MOCK_USERS = [
   {
     id: '1',
-    name: 'Admin User',
+    name: 'John Smith',
     email: 'admin@school.edu',
     password: 'admin123',
     role: 'admin' as UserRole,
@@ -57,7 +57,7 @@ const INITIAL_MOCK_USERS = [
   },
   {
     id: '2',
-    name: 'Teacher Reporter',
+    name: 'Jeff Davis',
     email: 'reporter@school.edu',
     password: 'reporter123',
     role: 'reporter' as UserRole,
