@@ -44,7 +44,9 @@ const AuditTrail = ({ activities, maxHeight = "400px" }: AuditTrailProps) => {
   const getActivityColor = (activity: Activity) => {
     switch (activity.type) {
       case 'incident':
-        return 'bg-blue-100 text-blue-800';
+        return activity.activity === 'create' 
+          ? 'bg-blue-100 text-blue-800' 
+          : 'bg-blue-100 text-blue-800';
       case 'status':
         return activity.activity === 'close' 
           ? 'bg-green-100 text-green-800' 
@@ -56,6 +58,14 @@ const AuditTrail = ({ activities, maxHeight = "400px" }: AuditTrailProps) => {
       default:
         return 'bg-gray-100 text-gray-800';
     }
+  };
+
+  // Format activity details to include creator information
+  const formatActivityDetails = (activity: Activity) => {
+    if (activity.activity === 'create' && activity.type === 'incident') {
+      return `Incident created by ${activity.user}`;
+    }
+    return activity.details;
   };
 
   return (
@@ -81,7 +91,7 @@ const AuditTrail = ({ activities, maxHeight = "400px" }: AuditTrailProps) => {
                       </span>
                       <span className="font-medium">{activity.user}</span>
                     </div>
-                    <p className="mt-1 text-sm text-gray-600">{activity.details}</p>
+                    <p className="mt-1 text-sm text-gray-600">{formatActivityDetails(activity)}</p>
                   </div>
                   <time className="text-xs text-gray-500">{formatDate(new Date(activity.date))}</time>
                 </div>

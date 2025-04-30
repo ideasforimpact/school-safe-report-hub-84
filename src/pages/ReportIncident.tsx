@@ -328,7 +328,7 @@ const ReportIncident = () => {
                     onValueChange={(value) => handleSelectChange('owner', value)}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Assign to staff member" />
+                      <SelectValue placeholder="Assign to staff member (optional)" />
                     </SelectTrigger>
                     <SelectContent>
                       {users.map(user => (
