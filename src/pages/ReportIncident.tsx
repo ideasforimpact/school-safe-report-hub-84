@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -43,7 +44,6 @@ const ReportIncident = () => {
     date: new Date().toISOString().split('T')[0],
     time: new Date().toTimeString().split(' ')[0].slice(0, 5),
     location: '' as IncidentLocation,
-    owner: '',
     facility: '' as SchoolFacility,
     image: undefined as string | undefined,
     status: 'Open' as IncidentStatus
@@ -147,9 +147,6 @@ const ReportIncident = () => {
       // Combine date and time
       const dateTime = new Date(`${formData.date}T${formData.time}`);
       
-      // Find selected owner
-      const selectedOwner = formData.owner ? users.find(u => u.id === formData.owner) : undefined;
-      
       addIncident({
         type: formData.type as IncidentType,
         category: formData.category as IncidentCategory,
@@ -160,7 +157,6 @@ const ReportIncident = () => {
         location: formData.location as IncidentLocation,
         peopleInvolved: validPeople,
         image: formData.image,
-        owner: selectedOwner ? { id: selectedOwner.id, name: selectedOwner.name } : undefined,
         facility: formData.facility as SchoolFacility,
         reportedBy: {
           id: user?.id || '',
@@ -316,24 +312,6 @@ const ReportIncident = () => {
                       <SelectItem value="Auditorium">Auditorium</SelectItem>
                       <SelectItem value="Computer Lab">Computer Lab</SelectItem>
                       <SelectItem value="Other">Other</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <label htmlFor="owner" className="text-sm font-medium">
-                    Assigned to
-                  </label>
-                  <Select 
-                    onValueChange={(value) => handleSelectChange('owner', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Assign to staff member (optional)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {users.map(user => (
-                        <SelectItem key={user.id} value={user.id}>{user.name} ({user.role})</SelectItem>
-                      ))}
                     </SelectContent>
                   </Select>
                 </div>
