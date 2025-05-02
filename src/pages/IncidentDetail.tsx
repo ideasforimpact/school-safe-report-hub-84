@@ -1,3 +1,4 @@
+
 import { useParams, useNavigate } from 'react-router-dom';
 import { useIncidents } from '@/contexts/IncidentContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,6 +8,7 @@ import { useIncidentDetail } from '@/hooks/useIncidentDetail';
 
 // Refactored components
 import IncidentHeader from '@/components/incident/IncidentHeader';
+import IncidentDetailsCard from '@/components/incident/IncidentDetailsCard';
 import IncidentTabs from '@/components/incident/IncidentTabs';
 import CommentsList from '@/components/incident/CommentsList';
 import AddActionForm from '@/components/incident/AddActionForm';
@@ -54,8 +56,6 @@ const IncidentDetail = () => {
     return isAdmin || item.createdBy.id === user?.id;
   };
 
-  
-
   return (
     <Layout>
       <div className="space-y-6">
@@ -72,10 +72,9 @@ const IncidentDetail = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="md:col-span-2 space-y-6">
-            {/* Tabs for Incident Details and Audit Trail */}
-            <IncidentTabs 
+            {/* Incident Details Card - Always visible */}
+            <IncidentDetailsCard 
               incident={incident} 
-              activities={incidentActivities} 
               formatDateTime={formatDateTime} 
             />
             
@@ -93,6 +92,14 @@ const IncidentDetail = () => {
               userName={user?.name || ''}
             />
 
+            {/* Audit Trail in a collapsible section */}
+            <div className="mt-6">
+              <IncidentTabs 
+                activities={incidentActivities} 
+                formatDateTime={formatDateTime} 
+              />
+            </div>
+            
             {/* Add Action Form - only for admins */}
             {isAdmin && (
               <AddActionForm onSubmit={handleActionSubmit} />
