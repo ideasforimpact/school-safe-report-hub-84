@@ -33,9 +33,10 @@ interface IncidentContextType {
   generateTicketId: () => string;
 }
 
+// Create the context with a default undefined value
 const IncidentContext = createContext<IncidentContextType | undefined>(undefined);
 
-export const IncidentProvider = ({ children }: { children: ReactNode }) => {
+export const IncidentProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [incidents, setIncidents] = useState<Incident[]>(() => {
     const savedIncidents = localStorage.getItem('incidents');
     return savedIncidents ? JSON.parse(savedIncidents) : generateSampleIncidents();
@@ -75,25 +76,29 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
   // Hooks for activity-related operations
   const { getRecentActivities, getIncidentActivities } = useActivities(incidents, activities);
 
+  // Create the context value object
+  const contextValue: IncidentContextType = {
+    incidents, 
+    users: sampleUsers as User[],
+    addIncident, 
+    updateIncident, 
+    getIncident,
+    addActionItem,
+    updateActionItem,
+    deleteActionItem,
+    getRecentActivities,
+    getIncidentActivities,
+    generateTicketId
+  };
+
   return (
-    <IncidentContext.Provider value={{ 
-      incidents, 
-      users: sampleUsers as User[],  // Type assertion to fix the role compatibility issue
-      addIncident, 
-      updateIncident, 
-      getIncident,
-      addActionItem,
-      updateActionItem,
-      deleteActionItem,
-      getRecentActivities,
-      getIncidentActivities,
-      generateTicketId
-    }}>
+    <IncidentContext.Provider value={contextValue}>
       {children}
     </IncidentContext.Provider>
   );
 };
 
+// Hook to use the incident context
 export const useIncidents = () => {
   const context = useContext(IncidentContext);
   if (context === undefined) {
