@@ -57,6 +57,18 @@ export interface Comment {
   updatedAt: Date;
 }
 
+// Renamed ActionItem to Comment
+export interface ActionItem {
+  id: string;
+  description: string;
+  dueDate: Date;
+  assignedTo: UserRef;
+  status: 'Not Started' | 'In Progress' | 'Completed' | 'Blocked';
+  createdBy: UserRef;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface Incident {
   id: string;
   ticketId: string;
@@ -78,6 +90,7 @@ export interface Incident {
   documents?: Document[];
   actions?: Action[];
   comments?: Comment[];
+  actionItems?: ActionItem[]; // Keep for backward compatibility
   createdAt: Date;
   updatedAt: Date;
   priority?: 'Low' | 'Medium' | 'High' | 'Critical';
@@ -92,7 +105,7 @@ export interface User {
 
 // Activity history with enhanced audit information
 export interface Activity {
-  type: 'incident' | 'action' | 'status' | 'comment';
+  type: 'incident' | 'action' | 'status' | 'comment' | 'actionItem';
   activity: 'create' | 'update' | 'delete' | 'close' | 'reopen';
   entityId: string;
   entityTitle: string;

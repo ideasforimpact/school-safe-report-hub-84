@@ -4,6 +4,7 @@ import { generateTicketId, sampleUsers } from '@/utils/incidentUtils';
 import { useIncidentActions } from '@/hooks/useIncidentActions';
 import { useActionItems } from '@/hooks/useActionItems';
 import { useActivities } from '@/hooks/useActivities';
+import { useComments } from '@/hooks/useComments';
 import { useConfigManagement } from '@/hooks/useConfigManagement';
 import { Incident, User, Activity } from '@/types/incident';
 import { generateSampleIncidents } from '@/utils/sampleIncidentData';
@@ -63,6 +64,13 @@ export const IncidentProvider: React.FC<{ children: ReactNode }> = ({ children }
     setIncidents,
     addActivity
   );
+
+  // Hooks for comment operations
+  const { addComment, updateComment, deleteComment } = useComments(
+    incidents,
+    setIncidents,
+    addActivity
+  );
   
   // Hooks for activity-related operations
   const { getRecentActivities, getIncidentActivities } = useActivities(incidents, activities);
@@ -77,9 +85,15 @@ export const IncidentProvider: React.FC<{ children: ReactNode }> = ({ children }
     addIncident, 
     updateIncident, 
     getIncident,
+    // ActionItems operations
     addActionItem,
     updateActionItem,
     deleteActionItem,
+    // Comment operations
+    addComment,
+    updateComment,
+    deleteComment,
+    // Activity operations
     getRecentActivities,
     getIncidentActivities,
     generateTicketId

@@ -1,3 +1,4 @@
+
 import { Incident, User, Activity, ActionItem } from '@/types/incident';
 
 export interface ConfigItem {
@@ -37,9 +38,14 @@ export interface IncidentContextType {
   addIncident: (incident: Omit<Incident, 'id' | 'status' | 'createdAt' | 'updatedAt' | 'ticketId'>) => void;
   updateIncident: (id: string, updates: Partial<Incident>) => void;
   getIncident: (id: string) => Incident | undefined;
+  // ActionItems operations (renamed to comments in the UI)
   addActionItem: (incidentId: string, actionItem: Omit<ActionItem, 'id' | 'createdAt' | 'updatedAt'>) => void;
   updateActionItem: (incidentId: string, actionItemId: string, updates: Partial<ActionItem>) => void;
   deleteActionItem: (incidentId: string, actionItemId: string) => void;
+  // Comments operations
+  addComment: (incidentId: string, comment: Omit<Comment, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateComment: (incidentId: string, commentId: string, updates: Partial<Comment>) => void;
+  deleteComment: (incidentId: string, commentId: string) => void;
   getRecentActivities: () => Activity[];
   getIncidentActivities: (incidentId: string) => Activity[];
   generateTicketId: () => string;
