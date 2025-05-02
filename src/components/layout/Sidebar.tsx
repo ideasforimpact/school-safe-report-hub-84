@@ -12,7 +12,8 @@ import {
   CheckSquare,
   Users,
   Building,
-  BarChart
+  BarChart,
+  Settings
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -75,6 +76,12 @@ const Sidebar = () => {
       icon: Building,
       label: 'Facility Management',
       path: '/facilities',
+      allowed: isAdmin,
+    },
+    {
+      icon: Settings,
+      label: 'Configuration',
+      path: '/configuration',
       allowed: isAdmin,
     }
   ];
