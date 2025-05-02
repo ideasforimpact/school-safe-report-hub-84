@@ -16,6 +16,8 @@ import FacilityManagement from '@/pages/FacilityManagement';
 import ConfigurationManagement from '@/pages/ConfigurationManagement';
 import ClientManagement from '@/pages/ClientManagement';
 import BackofficeDashboard from '@/pages/backoffice/BackofficeDashboard';
+import BackofficeAnalytics from '@/pages/backoffice/BackofficeAnalytics';
+import BackofficeSettings from '@/pages/backoffice/BackofficeSettings';
 import NotFound from '@/pages/NotFound';
 import Support from '@/pages/Support';
 import Pricing from '@/pages/Pricing';
@@ -44,6 +46,9 @@ function App() {
                 
                 {/* Backoffice Routes */}
                 <Route path="/backoffice" element={<BackofficeDashboard />} />
+                <Route path="/backoffice/analytics" element={<BackofficeAnalytics />} />
+                <Route path="/backoffice/settings" element={<BackofficeSettings />} />
+                <Route path="/backoffice/clients" element={<ClientManagement />} />
                 
                 <Route element={<RouteGuard />}>
                   <Route path="/dashboard" element={<Dashboard />} />
