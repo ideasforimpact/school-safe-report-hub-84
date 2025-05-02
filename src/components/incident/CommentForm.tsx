@@ -138,7 +138,7 @@ const CommentForm: React.FC<CommentFormProps> = ({
             onValueChange={(value) => {
               setCommentForm(prev => ({ 
                 ...prev, 
-                status: value as Comment['status'] 
+                status: value as IncidentComment['status'] 
               }));
             }}
           >

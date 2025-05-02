@@ -1,3 +1,4 @@
+
 import { Incident, Comment as IncidentComment, Activity } from '@/types/incident';
 import { toast } from "@/components/ui/sonner";
 

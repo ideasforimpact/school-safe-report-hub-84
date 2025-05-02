@@ -6,7 +6,7 @@ import { useActionItems } from '@/hooks/useActionItems';
 import { useActivities } from '@/hooks/useActivities';
 import { useComments } from '@/hooks/useComments';
 import { useConfigManagement } from '@/hooks/useConfigManagement';
-import { Incident, User, Activity } from '@/types/incident';
+import { Incident, User, Activity, Comment as IncidentComment } from '@/types/incident';
 import { generateSampleIncidents } from '@/utils/sampleIncidentData';
 import { subcategories, nearMissSubcategories, unsafeConditionSubcategories } from '@/data/incidentCategories';
 import { IncidentContextType } from './types';

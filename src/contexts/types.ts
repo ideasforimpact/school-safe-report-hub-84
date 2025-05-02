@@ -1,5 +1,4 @@
-
-import { Incident, User, Activity, ActionItem } from '@/types/incident';
+import { Incident, User, Activity, ActionItem, Comment as IncidentComment } from '@/types/incident';
 
 export interface ConfigItem {
   id: string;
@@ -43,8 +42,8 @@ export interface IncidentContextType {
   updateActionItem: (incidentId: string, actionItemId: string, updates: Partial<ActionItem>) => void;
   deleteActionItem: (incidentId: string, actionItemId: string) => void;
   // Comments operations
-  addComment: (incidentId: string, comment: Omit<Comment, 'id' | 'createdAt' | 'updatedAt'>) => void;
-  updateComment: (incidentId: string, commentId: string, updates: Partial<Comment>) => void;
+  addComment: (incidentId: string, comment: Omit<IncidentComment, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateComment: (incidentId: string, commentId: string, updates: Partial<IncidentComment>) => void;
   deleteComment: (incidentId: string, commentId: string) => void;
   getRecentActivities: () => Activity[];
   getIncidentActivities: (incidentId: string) => Activity[];
