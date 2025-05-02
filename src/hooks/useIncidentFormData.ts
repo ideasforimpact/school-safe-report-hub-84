@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { IncidentStatus, IncidentType } from '@/types/incident';
 
@@ -28,15 +27,19 @@ export function useIncidentFormData() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Handle both date and time changes in one function
+  // Combined function to handle both date and time changes
   const handleDateTimeChange = (date: Date | undefined, timeString?: string) => {
     if (date) {
       // Update the date
+      const formattedDate = date.toISOString().split('T')[0];
+      
+      // If time is provided, update it too, otherwise keep the current time
+      const updatedTime = timeString !== undefined ? timeString : formData.time;
+      
       setFormData(prev => ({
         ...prev,
-        date: date.toISOString().split('T')[0],
-        // If time is provided, update it too
-        ...(timeString !== undefined && { time: timeString })
+        date: formattedDate,
+        time: updatedTime
       }));
     }
   };
