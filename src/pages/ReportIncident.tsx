@@ -27,6 +27,7 @@ const ReportIncident = () => {
     setIsSubmitting,
     handleChange,
     handleSelectChange,
+    handleDateTimeChange,
     handlePersonChange,
     addPerson,
     removePerson,
@@ -119,6 +120,7 @@ const ReportIncident = () => {
                 formData={formData}
                 onChange={handleChange}
                 onSelectChange={handleSelectChange}
+                onDateTimeChange={handleDateTimeChange}
                 supportingFiles={supportingFiles}
                 onFilesChange={handleFilesChange}
                 categories={categories}

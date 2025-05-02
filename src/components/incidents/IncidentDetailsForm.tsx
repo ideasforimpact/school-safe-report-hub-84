@@ -3,6 +3,8 @@ import React, { useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import MultipleFilesUpload from '@/components/MultipleFilesUpload';
+import { Calendar as CalendarIcon, Clock } from 'lucide-react';
+import { format } from 'date-fns';
 import { 
   Select,
   SelectContent,
@@ -12,6 +14,14 @@ import {
 } from '@/components/ui/select';
 import { FileItem } from '@/types/fileTypes';
 import { IncidentType } from '@/types/incident';
+import { Button } from '@/components/ui/button';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
+import { Calendar } from '@/components/ui/calendar';
 
 interface ConfigItem {
   id: string;
@@ -34,6 +44,7 @@ interface IncidentDetailsFormProps {
   };
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   onSelectChange: (name: string, value: string) => void;
+  onDateTimeChange: (date: Date | undefined, timeString?: string) => void;
   supportingFiles: FileItem[];
   onFilesChange: (files: FileItem[]) => void;
   categories: ConfigItem[];
@@ -46,6 +57,7 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
   formData,
   onChange,
   onSelectChange,
+  onDateTimeChange,
   supportingFiles,
   onFilesChange,
   categories,
@@ -53,6 +65,18 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
   locations,
   facilities
 }) => {
+  // Calculate the current selected date from formData if available
+  const selectedDate = formData.date ? new Date(formData.date) : undefined;
+  
+  // Function to handle time selection
+  const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (selectedDate) {
+      onDateTimeChange(selectedDate, e.target.value);
+    } else {
+      onChange(e);
+    }
+  };
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div className="space-y-2">
@@ -229,33 +253,47 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
         </p>
       </div>
 
-      {/* Modified section to display date and time on the same line */}
+      {/* Integrated Date and Time picker */}
       <div className="space-y-2 md:col-span-2">
         <label className="text-sm font-medium">
           Date and Time of Occurrence <span className="text-red-500">*</span>
         </label>
-        <div className="flex space-x-3">
-          <div className="flex-1">
-            <Input
-              type="date"
-              id="date"
-              name="date"
-              value={formData.date}
-              onChange={onChange}
-              max={new Date().toISOString().split('T')[0]}
-              required
-              className="w-full"
-            />
-          </div>
-          <div className="flex-1">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                className={cn(
+                  "w-full justify-start text-left font-normal",
+                  !selectedDate && "text-muted-foreground"
+                )}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={(date) => onDateTimeChange(date, formData.time)}
+                initialFocus
+                disabled={(date) => date > new Date()}
+                className="p-3 pointer-events-auto"
+              />
+            </PopoverContent>
+          </Popover>
+          
+          <div className="relative">
+            <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               type="time"
               id="time"
               name="time"
               value={formData.time}
-              onChange={onChange}
+              onChange={handleTimeChange}
               required
-              className="w-full"
+              className="pl-10"
             />
           </div>
         </div>

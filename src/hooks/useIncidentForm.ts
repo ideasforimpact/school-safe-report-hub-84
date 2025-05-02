@@ -79,6 +79,19 @@ export function useIncidentForm() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  // Handle both date and time changes in one function
+  const handleDateTimeChange = (date: Date | undefined, timeString?: string) => {
+    if (date) {
+      // Update the date
+      setFormData(prev => ({
+        ...prev,
+        date: date.toISOString().split('T')[0],
+        // If time is provided, update it too
+        ...(timeString !== undefined && { time: timeString })
+      }));
+    }
+  };
+
   const handlePersonChange = (index: number, field: keyof Person, value: string) => {
     const updatedPeople = [...peopleInvolved];
     updatedPeople[index] = { ...updatedPeople[index], [field]: value };
@@ -126,6 +139,7 @@ export function useIncidentForm() {
     setIsSubmitting,
     handleChange,
     handleSelectChange,
+    handleDateTimeChange,
     handlePersonChange,
     addPerson,
     removePerson,
