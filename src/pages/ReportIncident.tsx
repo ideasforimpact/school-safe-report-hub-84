@@ -2,16 +2,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  useIncidents, 
-  IncidentType, 
-  IncidentCategory, 
-  IncidentLocation,
-  SchoolFacility, 
-  Person,
-  IncidentStatus,
-  subcategories,
-  nearMissSubcategories,
-  unsafeConditionSubcategories
+  useIncidents,
+  IncidentType,
+  IncidentStatus
 } from '@/contexts/IncidentContext';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/layout/Layout';
@@ -29,9 +22,18 @@ import {
 import { toast } from '@/components/ui/sonner';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { X, Plus, Ticket } from 'lucide-react';
+import { Person } from '@/types/incident';
 
 const ReportIncident = () => {
-  const { addIncident, users, generateTicketId } = useIncidents();
+  const { 
+    addIncident, 
+    users, 
+    generateTicketId,
+    categories,
+    subcategoryMappings,
+    locations,
+    facilities
+  } = useIncidents();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [nextTicketId, setNextTicketId] = useState('');
@@ -43,43 +45,33 @@ const ReportIncident = () => {
 
   const [formData, setFormData] = useState({
     type: '' as IncidentType,
-    category: '' as IncidentCategory,
+    categoryId: '',
     subcategory: '',
     description: '',
     rootCause: '',
     date: new Date().toISOString().split('T')[0],
     time: new Date().toTimeString().split(' ')[0].slice(0, 5),
-    location: '' as IncidentLocation,
-    facility: '' as SchoolFacility,
+    locationId: '',
+    facilityId: '',
     image: undefined as string | undefined,
     status: 'Open' as IncidentStatus,
     priority: 'Medium' as 'Low' | 'Medium' | 'High' | 'Critical'
   });
 
-  // State to store available subcategories based on type and category
-  const [availableSubcategories, setAvailableSubcategories] = useState<string[]>([]);
+  // State to store available subcategories based on selected category
+  const [availableSubcategories, setAvailableSubcategories] = useState<{id: string, name: string}[]>([]);
 
-  // Update available subcategories when type or category changes
+  // Update available subcategories when category changes
   useEffect(() => {
-    if (!formData.type || !formData.category) {
+    if (!formData.categoryId) {
       setAvailableSubcategories([]);
       return;
     }
 
-    if (formData.type === 'Incident') {
-      setAvailableSubcategories(subcategories[formData.category as IncidentCategory] || []);
-    } else if (formData.type === 'Near Miss') {
-      // For near miss, we need to show specific subcategories based on selected category
-      const nearMissCategory = formData.category;
-      const subcats = nearMissSubcategories[nearMissCategory] || [];
-      setAvailableSubcategories(subcats);
-    } else if (formData.type === 'Unsafe Condition') {
-      // For unsafe condition, show specific subcategories
-      const unsafeCategory = formData.category;
-      const subcats = unsafeConditionSubcategories[unsafeCategory] || [];
-      setAvailableSubcategories(subcats);
-    }
-  }, [formData.type, formData.category]);
+    // Get subcategories for this category
+    const subcats = subcategoryMappings[formData.categoryId] || [];
+    setAvailableSubcategories(subcats);
+  }, [formData.categoryId, subcategoryMappings]);
 
   // Reset subcategory when available subcategories change
   useEffect(() => {
@@ -94,18 +86,6 @@ const ReportIncident = () => {
   ]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Get categories based on selected type
-  const getCategoriesForType = (type: IncidentType): string[] => {
-    if (type === 'Incident') {
-      return Object.keys(subcategories);
-    } else if (type === 'Near Miss') {
-      return Object.keys(nearMissSubcategories);
-    } else if (type === 'Unsafe Condition') {
-      return Object.keys(unsafeConditionSubcategories);
-    }
-    return [];
-  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -136,11 +116,26 @@ const ReportIncident = () => {
     setFormData(prev => ({ ...prev, image: imageBase64 }));
   };
 
+  const getSelectedCategory = () => {
+    const category = categories.find(cat => cat.id === formData.categoryId);
+    return category ? category.name : '';
+  };
+
+  const getSelectedLocation = () => {
+    const location = locations.find(loc => loc.id === formData.locationId);
+    return location ? location.name : '';
+  };
+
+  const getSelectedFacility = () => {
+    const facility = facilities.find(fac => fac.id === formData.facilityId);
+    return facility ? facility.name : '';
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     // Basic validation
-    if (!formData.type || !formData.category || !formData.subcategory || !formData.description || !formData.location || !formData.facility) {
+    if (!formData.type || !formData.categoryId || !formData.subcategory || !formData.description || !formData.locationId || !formData.facilityId) {
       toast.error("Please fill in all required fields");
       return;
     }
@@ -154,17 +149,22 @@ const ReportIncident = () => {
       // Combine date and time
       const dateTime = new Date(`${formData.date}T${formData.time}`);
       
+      // Get the actual category, location and facility names
+      const categoryName = getSelectedCategory();
+      const locationName = getSelectedLocation();
+      const facilityName = getSelectedFacility();
+      
       addIncident({
         type: formData.type as IncidentType,
-        category: formData.category as IncidentCategory,
+        category: categoryName as any, // Type cast needed because we're using dynamic categories
         subcategory: formData.subcategory,
         description: formData.description,
         rootCause: formData.rootCause,
         date: dateTime,
-        location: formData.location as IncidentLocation,
+        location: locationName as any, // Type cast needed because we're using dynamic locations
         peopleInvolved: validPeople,
         image: formData.image,
-        facility: formData.facility as SchoolFacility,
+        facility: facilityName,
         priority: formData.priority,
         reportedBy: {
           id: user?.id || '',
@@ -270,20 +270,21 @@ const ReportIncident = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <label htmlFor="category" className="text-sm font-medium">
+                  <label htmlFor="categoryId" className="text-sm font-medium">
                     Category <span className="text-red-500">*</span>
                   </label>
                   <Select 
-                    onValueChange={(value) => handleSelectChange('category', value)}
+                    onValueChange={(value) => handleSelectChange('categoryId', value)}
                     required
-                    disabled={!formData.type}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
-                      {formData.type && getCategoriesForType(formData.type as IncidentType).map(category => (
-                        <SelectItem key={category} value={category}>{category}</SelectItem>
+                      {categories.map(category => (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -303,54 +304,52 @@ const ReportIncident = () => {
                     </SelectTrigger>
                     <SelectContent>
                       {availableSubcategories.map(subcategory => (
-                        <SelectItem key={subcategory} value={subcategory}>{subcategory}</SelectItem>
+                        <SelectItem key={subcategory.id} value={subcategory.name}>
+                          {subcategory.name}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <label htmlFor="location" className="text-sm font-medium">
+                  <label htmlFor="locationId" className="text-sm font-medium">
                     Where it Happened <span className="text-red-500">*</span>
                   </label>
                   <Select 
-                    onValueChange={(value) => handleSelectChange('location', value)}
+                    onValueChange={(value) => handleSelectChange('locationId', value)}
                     required
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select location" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="On Campus">On Campus</SelectItem>
-                      <SelectItem value="Off Campus">Off Campus</SelectItem>
-                      <SelectItem value="In Transit">In Transit</SelectItem>
-                      <SelectItem value="During Function">During Function</SelectItem>
+                      {locations.map(location => (
+                        <SelectItem key={location.id} value={location.id}>
+                          {location.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <label htmlFor="facility" className="text-sm font-medium">
+                  <label htmlFor="facilityId" className="text-sm font-medium">
                     School Facility <span className="text-red-500">*</span>
                   </label>
                   <Select 
-                    onValueChange={(value) => handleSelectChange('facility', value)}
+                    onValueChange={(value) => handleSelectChange('facilityId', value)}
                     required
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select facility" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Main Building">Main Building</SelectItem>
-                      <SelectItem value="Science Block">Science Block</SelectItem>
-                      <SelectItem value="Sports Complex">Sports Complex</SelectItem>
-                      <SelectItem value="Cafeteria">Cafeteria</SelectItem>
-                      <SelectItem value="Library">Library</SelectItem>
-                      <SelectItem value="Administrative Block">Administrative Block</SelectItem>
-                      <SelectItem value="Playground">Playground</SelectItem>
-                      <SelectItem value="Auditorium">Auditorium</SelectItem>
-                      <SelectItem value="Computer Lab">Computer Lab</SelectItem>
-                      <SelectItem value="Other">Other</SelectItem>
+                      {facilities.map(facility => (
+                        <SelectItem key={facility.id} value={facility.id}>
+                          {facility.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>

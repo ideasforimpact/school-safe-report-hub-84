@@ -13,6 +13,7 @@ import MyActionItems from '@/pages/MyActionItems';
 import Insights from '@/pages/Insights';
 import UserManagement from '@/pages/UserManagement';
 import FacilityManagement from '@/pages/FacilityManagement';
+import ConfigurationManagement from '@/pages/ConfigurationManagement'; // Add this line
 import NotFound from '@/pages/NotFound';
 import Support from '@/pages/Support';
 import Pricing from '@/pages/Pricing';
@@ -63,6 +64,7 @@ function App() {
                 <Route element={<RouteGuard requireAdmin={true} />}>
                   <Route path="/users" element={<UserManagement />} />
                   <Route path="/facilities" element={<FacilityManagement />} />
+                  <Route path="/configuration" element={<ConfigurationManagement />} /> {/* Add this line */}
                 </Route>
               </Route>
               
