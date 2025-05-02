@@ -47,6 +47,13 @@ const Home = () => {
                 <HelpCircle className="h-4 w-4 mr-1" />
                 Support
               </Link>
+              <Link 
+                to="/backoffice" 
+                className="flex items-center text-gray-700 hover:text-primary transition-colors font-medium"
+              >
+                <Users className="h-4 w-4 mr-1" />
+                Backoffice
+              </Link>
               <div className="ml-0 md:ml-4 mt-4 md:mt-0 w-full md:w-auto flex gap-2">
                 <Button 
                   variant="outline" 

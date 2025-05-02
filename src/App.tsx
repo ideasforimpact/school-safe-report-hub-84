@@ -15,6 +15,7 @@ import UserManagement from '@/pages/UserManagement';
 import FacilityManagement from '@/pages/FacilityManagement';
 import ConfigurationManagement from '@/pages/ConfigurationManagement';
 import ClientManagement from '@/pages/ClientManagement';
+import BackofficeDashboard from '@/pages/backoffice/BackofficeDashboard';
 import NotFound from '@/pages/NotFound';
 import Support from '@/pages/Support';
 import Pricing from '@/pages/Pricing';
@@ -40,6 +41,9 @@ function App() {
                 <Route path="/support" element={<Support />} />
                 <Route path="/pricing" element={<Pricing />} />
                 <Route path="/blog" element={<Blog />} />
+                
+                {/* Backoffice Routes */}
+                <Route path="/backoffice" element={<BackofficeDashboard />} />
                 
                 <Route element={<RouteGuard />}>
                   <Route path="/dashboard" element={<Dashboard />} />
