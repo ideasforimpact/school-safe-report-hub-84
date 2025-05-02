@@ -9,7 +9,7 @@ export type {
   Person,
   UserRef,
   Action,
-  ActionItem,
+  Comment,
   Incident,
   User,
   Activity

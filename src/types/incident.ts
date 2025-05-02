@@ -43,7 +43,7 @@ export interface Action {
   document?: string;
 }
 
-export interface ActionItem {
+export interface Comment {
   id: string;
   description: string;
   dueDate: Date;
@@ -77,7 +77,7 @@ export interface Incident {
   document?: string;
   documents?: Document[];
   actions?: Action[];
-  actionItems?: ActionItem[];
+  comments?: Comment[];
   createdAt: Date;
   updatedAt: Date;
   priority?: 'Low' | 'Medium' | 'High' | 'Critical';
@@ -92,7 +92,7 @@ export interface User {
 
 // Activity history with enhanced audit information
 export interface Activity {
-  type: 'incident' | 'action' | 'status' | 'actionItem';
+  type: 'incident' | 'action' | 'status' | 'comment';
   activity: 'create' | 'update' | 'delete' | 'close' | 'reopen';
   entityId: string;
   entityTitle: string;

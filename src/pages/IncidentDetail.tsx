@@ -1,6 +1,7 @@
+
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useIncidents, IncidentStatus, Action, ActionItem, UserRef } from '@/contexts/IncidentContext';
+import { useIncidents, IncidentStatus, Action, Comment, UserRef } from '@/contexts/IncidentContext';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/layout/Layout';
 import ImageUpload from '@/components/ImageUpload';
@@ -44,12 +45,12 @@ import {
   ArrowLeft, AlertOctagon, Clock, MapPin, 
   Users, Plus, Edit, Trash2, CheckCircle, 
   LayoutList, CalendarClock, UserCircle,
-  Image, ClipboardList
+  Image, ClipboardList, MessageSquare
 } from 'lucide-react';
 
 const IncidentDetail = () => {
   const { id } = useParams<{ id: string }>();
-  const { incidents, users, getIncident, updateIncident, addActionItem, updateActionItem, deleteActionItem, getIncidentActivities } = useIncidents();
+  const { incidents, users, getIncident, updateIncident, addComment, updateComment, deleteComment, getIncidentActivities } = useIncidents();
   const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
 
@@ -65,11 +66,11 @@ const IncidentDetail = () => {
 
   const [statusUpdate, setStatusUpdate] = useState<IncidentStatus>(incident?.status || 'Open');
   
-  // Action Item States
-  const [showAddActionItem, setShowAddActionItem] = useState(false);
-  const [showEditActionItem, setShowEditActionItem] = useState(false);
-  const [currentActionItem, setCurrentActionItem] = useState<ActionItem | null>(null);
-  const [actionItemForm, setActionItemForm] = useState<Omit<ActionItem, 'id' | 'createdAt' | 'updatedAt'>>({
+  // Comment States
+  const [showAddComment, setShowAddComment] = useState(false);
+  const [showEditComment, setShowEditComment] = useState(false);
+  const [currentComment, setCurrentComment] = useState<Comment | null>(null);
+  const [commentForm, setCommentForm] = useState<Omit<Comment, 'id' | 'createdAt' | 'updatedAt'>>({
     description: '',
     dueDate: new Date(),
     assignedTo: { id: '', name: '' },
@@ -127,7 +128,7 @@ const IncidentDetail = () => {
     }
   };
 
-  const getActionItemStatusColor = (status: ActionItem['status']) => {
+  const getCommentStatusColor = (status: Comment['status']) => {
     switch(status) {
       case 'Pending':
         return 'bg-orange-100 text-orange-800';
@@ -148,8 +149,8 @@ const IncidentDetail = () => {
     setFormAction(prev => ({ ...prev, image: imageBase64 }));
   };
 
-  const handleActionItemImageChange = (imageBase64: string | undefined) => {
-    setActionItemForm(prev => ({ ...prev, image: imageBase64 }));
+  const handleCommentImageChange = (imageBase64: string | undefined) => {
+    setCommentForm(prev => ({ ...prev, image: imageBase64 }));
   };
 
   const handleActionSubmit = (e: React.FormEvent) => {
@@ -172,31 +173,31 @@ const IncidentDetail = () => {
     });
   };
 
-  const handleAddActionItem = (e: React.FormEvent) => {
+  const handleAddComment = (e: React.FormEvent) => {
     e.preventDefault();
-    addActionItem(incident.id, actionItemForm);
-    setShowAddActionItem(false);
-    resetActionItemForm();
+    addComment(incident.id, commentForm);
+    setShowAddComment(false);
+    resetCommentForm();
   };
 
-  const handleEditActionItem = (e: React.FormEvent) => {
+  const handleEditComment = (e: React.FormEvent) => {
     e.preventDefault();
-    if (currentActionItem) {
-      updateActionItem(incident.id, currentActionItem.id, actionItemForm);
-      setShowEditActionItem(false);
-      setCurrentActionItem(null);
-      resetActionItemForm();
+    if (currentComment) {
+      updateComment(incident.id, currentComment.id, commentForm);
+      setShowEditComment(false);
+      setCurrentComment(null);
+      resetCommentForm();
     }
   };
 
-  const handleDeleteActionItem = (actionItemId: string) => {
-    if (confirm('Are you sure you want to delete this action item?')) {
-      deleteActionItem(incident.id, actionItemId);
+  const handleDeleteComment = (commentId: string) => {
+    if (confirm('Are you sure you want to delete this comment?')) {
+      deleteComment(incident.id, commentId);
     }
   };
 
-  const resetActionItemForm = () => {
-    setActionItemForm({
+  const resetCommentForm = () => {
+    setCommentForm({
       description: '',
       dueDate: new Date(),
       assignedTo: { id: '', name: '' },
@@ -206,9 +207,9 @@ const IncidentDetail = () => {
     });
   };
 
-  const openEditActionItem = (item: ActionItem) => {
-    setCurrentActionItem(item);
-    setActionItemForm({
+  const openEditComment = (item: Comment) => {
+    setCurrentComment(item);
+    setCommentForm({
       description: item.description,
       dueDate: new Date(item.dueDate),
       assignedTo: item.assignedTo,
@@ -216,17 +217,17 @@ const IncidentDetail = () => {
       createdBy: item.createdBy,
       image: item.image
     });
-    setShowEditActionItem(true);
+    setShowEditComment(true);
   };
 
-  const canEditActionItem = (item: ActionItem) => {
+  const canEditComment = (item: Comment) => {
     return isAdmin || item.createdBy.id === user?.id;
   };
 
   const handleAssignedUserChange = (userId: string) => {
     const selectedUser = users.find(u => u.id === userId);
     if (selectedUser) {
-      setActionItemForm(prev => ({
+      setCommentForm(prev => ({
         ...prev,
         assignedTo: { id: selectedUser.id, name: selectedUser.name }
       }));
@@ -400,55 +401,55 @@ const IncidentDetail = () => {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
-                  <CardTitle>Action Items</CardTitle>
+                  <CardTitle>Comments</CardTitle>
                   <CardDescription>
-                    Tasks to address this incident
+                    Discussion about this incident
                   </CardDescription>
                 </div>
-                <Dialog open={showAddActionItem} onOpenChange={setShowAddActionItem}>
+                <Dialog open={showAddComment} onOpenChange={setShowAddComment}>
                   <DialogTrigger asChild>
                     <Button size="sm">
-                      <Plus className="h-4 w-4 mr-1" /> Add Action Item
+                      <Plus className="h-4 w-4 mr-1" /> Add Comment
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
-                      <DialogTitle>Add Action Item</DialogTitle>
+                      <DialogTitle>Add Comment</DialogTitle>
                       <DialogDescription>
-                        Create a new action item for this incident
+                        Add a new comment to this incident
                       </DialogDescription>
                     </DialogHeader>
-                    <form onSubmit={handleAddActionItem} className="space-y-4">
+                    <form onSubmit={handleAddComment} className="space-y-4">
                       <div className="space-y-2">
                         <label htmlFor="description" className="text-sm font-medium">
-                          Description
+                          Comment
                         </label>
                         <Textarea
                           id="description"
-                          value={actionItemForm.description}
-                          onChange={(e) => setActionItemForm(prev => ({ ...prev, description: e.target.value }))}
-                          placeholder="What needs to be done?"
+                          value={commentForm.description}
+                          onChange={(e) => setCommentForm(prev => ({ ...prev, description: e.target.value }))}
+                          placeholder="Your comment"
                           required
                         />
                       </div>
                       
                       <div className="space-y-2">
                         <label className="text-sm font-medium">
-                          Image Documentation (Optional)
+                          Image (Optional)
                         </label>
                         <ImageUpload 
-                          onImageChange={handleActionItemImageChange}
-                          initialImage={actionItemForm.image}
+                          onImageChange={handleCommentImageChange}
+                          initialImage={commentForm.image}
                         />
                       </div>
                       
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <label htmlFor="assignedTo" className="text-sm font-medium">
-                            Assigned To
+                            Assign To
                           </label>
                           <Select 
-                            value={actionItemForm.assignedTo.id} 
+                            value={commentForm.assignedTo.id} 
                             onValueChange={handleAssignedUserChange}
                           >
                             <SelectTrigger>
@@ -471,8 +472,8 @@ const IncidentDetail = () => {
                           <Input
                             type="date"
                             id="dueDate"
-                            value={actionItemForm.dueDate ? new Date(actionItemForm.dueDate).toISOString().split('T')[0] : ''}
-                            onChange={(e) => setActionItemForm(prev => ({ ...prev, dueDate: new Date(e.target.value) }))}
+                            value={commentForm.dueDate ? new Date(commentForm.dueDate).toISOString().split('T')[0] : ''}
+                            onChange={(e) => setCommentForm(prev => ({ ...prev, dueDate: new Date(e.target.value) }))}
                             required
                           />
                         </div>
@@ -483,11 +484,11 @@ const IncidentDetail = () => {
                           Status
                         </label>
                         <Select 
-                          value={actionItemForm.status} 
+                          value={commentForm.status} 
                           onValueChange={(value) => {
-                            setActionItemForm(prev => ({ 
+                            setCommentForm(prev => ({ 
                               ...prev, 
-                              status: value as ActionItem['status'] 
+                              status: value as Comment['status'] 
                             }));
                           }}
                         >
@@ -506,16 +507,16 @@ const IncidentDetail = () => {
                         <DialogClose asChild>
                           <Button type="button" variant="outline">Cancel</Button>
                         </DialogClose>
-                        <Button type="submit">Add Action Item</Button>
+                        <Button type="submit">Add Comment</Button>
                       </DialogFooter>
                     </form>
                   </DialogContent>
                 </Dialog>
               </CardHeader>
               <CardContent>
-                {incident.actionItems && incident.actionItems.length > 0 ? (
+                {incident.comments && incident.comments.length > 0 ? (
                   <div className="space-y-4">
-                    {incident.actionItems.map((item) => (
+                    {incident.comments.map((item) => (
                       <div key={item.id} className="border rounded-lg p-4">
                         <div className="flex justify-between items-start">
                           <div className="space-y-1">
@@ -531,28 +532,28 @@ const IncidentDetail = () => {
                               </div>
                             </div>
                           </div>
-                          <span className={`text-xs px-2 py-1 rounded-full ${getActionItemStatusColor(item.status)}`}>
+                          <span className={`text-xs px-2 py-1 rounded-full ${getCommentStatusColor(item.status)}`}>
                             {item.status}
                           </span>
                         </div>
 
-                        {/* Display action item image if available */}
+                        {/* Display comment image if available */}
                         {item.image && (
                           <div className="mt-3">
                             <img 
                               src={item.image} 
-                              alt="Action item documentation" 
+                              alt="Comment documentation" 
                               className="w-full max-h-40 object-contain rounded-md border" 
                             />
                           </div>
                         )}
                         
-                        {canEditActionItem(item) && (
+                        {canEditComment(item) && (
                           <div className="mt-3 flex justify-end gap-2">
                             <Button 
                               size="sm" 
                               variant="outline" 
-                              onClick={() => openEditActionItem(item)}
+                              onClick={() => openEditComment(item)}
                               className="h-7 px-2"
                             >
                               <Edit className="h-3.5 w-3.5 mr-1" /> Edit
@@ -560,7 +561,7 @@ const IncidentDetail = () => {
                             <Button 
                               size="sm" 
                               variant="destructive" 
-                              onClick={() => handleDeleteActionItem(item.id)}
+                              onClick={() => handleDeleteComment(item.id)}
                               className="h-7 px-2"
                             >
                               <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
@@ -571,38 +572,38 @@ const IncidentDetail = () => {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-gray-500 text-center py-6">No action items added yet</p>
+                  <p className="text-gray-500 text-center py-6">No comments added yet</p>
                 )}
               </CardContent>
             </Card>
 
-            {/* Edit Action Item Dialog */}
-            <Dialog open={showEditActionItem} onOpenChange={setShowEditActionItem}>
+            {/* Edit Comment Dialog */}
+            <Dialog open={showEditComment} onOpenChange={setShowEditComment}>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Edit Action Item</DialogTitle>
+                  <DialogTitle>Edit Comment</DialogTitle>
                 </DialogHeader>
-                <form onSubmit={handleEditActionItem} className="space-y-4">
+                <form onSubmit={handleEditComment} className="space-y-4">
                   <div className="space-y-2">
                     <label htmlFor="edit-description" className="text-sm font-medium">
-                      Description
+                      Comment
                     </label>
                     <Textarea
                       id="edit-description"
-                      value={actionItemForm.description}
-                      onChange={(e) => setActionItemForm(prev => ({ ...prev, description: e.target.value }))}
-                      placeholder="What needs to be done?"
+                      value={commentForm.description}
+                      onChange={(e) => setCommentForm(prev => ({ ...prev, description: e.target.value }))}
+                      placeholder="Your comment"
                       required
                     />
                   </div>
                   
                   <div className="space-y-2">
                     <label className="text-sm font-medium">
-                      Image Documentation (Optional)
+                      Image (Optional)
                     </label>
                     <ImageUpload 
-                      onImageChange={handleActionItemImageChange}
-                      initialImage={actionItemForm.image}
+                      onImageChange={handleCommentImageChange}
+                      initialImage={commentForm.image}
                     />
                   </div>
                   
@@ -612,7 +613,7 @@ const IncidentDetail = () => {
                         Assigned To
                       </label>
                       <Select 
-                        value={actionItemForm.assignedTo.id} 
+                        value={commentForm.assignedTo.id} 
                         onValueChange={handleAssignedUserChange}
                       >
                         <SelectTrigger>
@@ -635,8 +636,8 @@ const IncidentDetail = () => {
                       <Input
                         type="date"
                         id="edit-dueDate"
-                        value={actionItemForm.dueDate ? new Date(actionItemForm.dueDate).toISOString().split('T')[0] : ''}
-                        onChange={(e) => setActionItemForm(prev => ({ ...prev, dueDate: new Date(e.target.value) }))}
+                        value={commentForm.dueDate ? new Date(commentForm.dueDate).toISOString().split('T')[0] : ''}
+                        onChange={(e) => setCommentForm(prev => ({ ...prev, dueDate: new Date(e.target.value) }))}
                         required
                       />
                     </div>
@@ -647,11 +648,11 @@ const IncidentDetail = () => {
                       Status
                     </label>
                     <Select 
-                      value={actionItemForm.status} 
+                      value={commentForm.status} 
                       onValueChange={(value) => {
-                        setActionItemForm(prev => ({ 
+                        setCommentForm(prev => ({ 
                           ...prev, 
-                          status: value as ActionItem['status']
+                          status: value as Comment['status']
                         }));
                       }}
                     >
@@ -670,7 +671,7 @@ const IncidentDetail = () => {
                     <DialogClose asChild>
                       <Button type="button" variant="outline">Cancel</Button>
                     </DialogClose>
-                    <Button type="submit">Update Action Item</Button>
+                    <Button type="submit">Update Comment</Button>
                   </DialogFooter>
                 </form>
               </DialogContent>
