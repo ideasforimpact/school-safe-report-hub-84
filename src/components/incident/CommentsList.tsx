@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
-import { Comment as IncidentComment } from '@/types/incident';
+import { Comment as IncidentComment, FileItem } from '@/types/incident';
 import { Button } from '@/components/ui/button';
-import { UserCircle, CalendarClock, MessageSquare, Edit, Trash2 } from 'lucide-react';
+import { UserCircle, CalendarClock, MessageSquare, Edit, Trash2, Paperclip } from 'lucide-react';
 import {
   Card,
   CardContent,
@@ -14,6 +14,11 @@ import {
   Dialog,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import CommentForm from './CommentForm';
 import { useIncidents } from '@/contexts/IncidentContext';
 
@@ -58,6 +63,31 @@ const CommentsList: React.FC<CommentsListProps> = ({
     setShowEditComment(true);
   };
 
+  // Helper function to render file preview based on type
+  const renderFilePreview = (file: FileItem) => {
+    if (file.type.startsWith('image/')) {
+      return (
+        <div className="border p-1 rounded bg-gray-50">
+          <img 
+            src={file.base64} 
+            alt={file.name} 
+            className="h-20 w-auto object-contain rounded" 
+          />
+          <p className="text-xs text-center truncate mt-1 max-w-[80px]">{file.name}</p>
+        </div>
+      );
+    } else {
+      // For non-image files, show an icon
+      let Icon = Paperclip;
+      return (
+        <div className="border p-2 rounded bg-gray-50 flex flex-col items-center">
+          <Icon className="h-10 w-10 text-gray-400" />
+          <p className="text-xs text-center truncate mt-1 max-w-[80px]">{file.name}</p>
+        </div>
+      );
+    }
+  };
+
   return (
     <>
       <Card>
@@ -82,7 +112,8 @@ const CommentsList: React.FC<CommentsListProps> = ({
                 assignedTo: { id: '', name: '' },
                 status: 'Pending',
                 createdBy: { id: userId, name: userName },
-                image: undefined
+                image: undefined,
+                files: []
               }}
               onSubmit={(commentData) => {
                 addComment(incident.id, commentData);
@@ -112,6 +143,14 @@ const CommentsList: React.FC<CommentsListProps> = ({
                           <CalendarClock className="h-3.5 w-3.5" />
                           <span>Due: {formatDate(new Date(comment.dueDate))}</span>
                         </div>
+                        
+                        {/* Show file count if there are files */}
+                        {comment.files && comment.files.length > 0 && (
+                          <div className="flex items-center gap-1">
+                            <Paperclip className="h-3.5 w-3.5" />
+                            <span>{comment.files.length} file(s)</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                     <span className={`text-xs px-2 py-1 rounded-full ${getCommentStatusColor(comment.status)}`}>
@@ -119,8 +158,8 @@ const CommentsList: React.FC<CommentsListProps> = ({
                     </span>
                   </div>
 
-                  {/* Display comment image if available */}
-                  {comment.image && (
+                  {/* Display legacy comment image if available */}
+                  {comment.image && !comment.files?.length && (
                     <div className="mt-3">
                       <img 
                         src={comment.image} 
@@ -128,6 +167,27 @@ const CommentsList: React.FC<CommentsListProps> = ({
                         className="w-full max-h-40 object-contain rounded-md border" 
                       />
                     </div>
+                  )}
+                  
+                  {/* Display new files if available */}
+                  {comment.files && comment.files.length > 0 && (
+                    <Collapsible className="mt-3">
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" size="sm" className="flex items-center gap-1 h-7">
+                          <Paperclip className="h-3.5 w-3.5" />
+                          <span>View {comment.files.length} attachments</span>
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-2">
+                        <div className="grid grid-cols-4 gap-2">
+                          {comment.files.map((file) => (
+                            <div key={file.id}>
+                              {renderFilePreview(file)}
+                            </div>
+                          ))}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
                   )}
                   
                   {canEditComment(comment) && (
@@ -170,7 +230,8 @@ const CommentsList: React.FC<CommentsListProps> = ({
               assignedTo: currentComment.assignedTo,
               status: currentComment.status,
               createdBy: currentComment.createdBy,
-              image: currentComment.image
+              image: currentComment.image,
+              files: currentComment.files || []
             }}
             onSubmit={(commentData) => {
               updateComment(incident.id, currentComment.id, commentData);

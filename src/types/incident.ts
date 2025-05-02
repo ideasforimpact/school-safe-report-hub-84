@@ -43,6 +43,14 @@ export interface Action {
   document?: string;
 }
 
+export interface FileItem {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  base64: string;
+}
+
 export interface Comment {
   id: string;
   description: string;
@@ -50,9 +58,10 @@ export interface Comment {
   assignedTo: UserRef;
   status: 'Pending' | 'In Progress' | 'Completed';
   createdBy: UserRef;
-  image?: string;
-  video?: string;
-  document?: string;
+  image?: string; // Kept for backward compatibility
+  video?: string; // Kept for backward compatibility
+  document?: string; // Kept for backward compatibility
+  files?: FileItem[]; // New field for multiple files
   createdAt: Date;
   updatedAt: Date;
 }

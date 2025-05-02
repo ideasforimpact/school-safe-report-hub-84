@@ -1,4 +1,3 @@
-
 import { useParams, useNavigate } from 'react-router-dom';
 import { useIncidents } from '@/contexts/IncidentContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -54,6 +53,8 @@ const IncidentDetail = () => {
   const canEditComment = (item: IncidentComment) => {
     return isAdmin || item.createdBy.id === user?.id;
   };
+
+  
 
   return (
     <Layout>
