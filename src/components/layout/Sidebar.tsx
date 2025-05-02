@@ -8,7 +8,6 @@ import {
   PieChart,
   AlertTriangle,
   List,
-  CheckSquare,
   Users,
   Building,
   BarChart,
@@ -77,12 +76,6 @@ const Sidebar = () => {
       label: 'All Incidents',
       path: '/incidents',
       allowed: permissions.allIncidents,
-    },
-    {
-      icon: CheckSquare,
-      label: 'My Action Items',
-      path: '/my-actions',
-      allowed: true,
     },
     {
       icon: PieChart,

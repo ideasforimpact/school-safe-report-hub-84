@@ -9,7 +9,6 @@ import ReportIncident from '@/pages/ReportIncident';
 import IncidentsList from '@/pages/IncidentsList';
 import IncidentDetail from '@/pages/IncidentDetail';
 import EditIncident from '@/pages/EditIncident';
-import MyActionItems from '@/pages/MyActionItems';
 import Insights from '@/pages/Insights';
 import UserManagement from '@/pages/UserManagement';
 import FacilityManagement from '@/pages/FacilityManagement';
@@ -66,8 +65,6 @@ function App() {
                     <Route path="/incidents/:id" element={<IncidentDetail />} />
                     <Route path="/incidents/:id/edit" element={<EditIncident />} />
                   </Route>
-                  
-                  <Route path="/my-actions" element={<MyActionItems />} />
                   
                   <Route element={<ModuleGuard moduleType="insights" />}>
                     <Route path="/insights" element={<Insights />} />
