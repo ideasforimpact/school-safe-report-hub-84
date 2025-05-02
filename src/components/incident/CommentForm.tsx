@@ -1,17 +1,9 @@
 
 import React, { useState } from 'react';
 import { Comment as IncidentComment, FileItem } from '@/types/incident';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import MultipleFilesUpload from '@/components/MultipleFilesUpload';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   DialogContent,
   DialogHeader,
@@ -58,16 +50,6 @@ const CommentForm: React.FC<CommentFormProps> = ({
     setCommentForm(prev => ({ ...prev, files }));
   };
 
-  const handleAssignedUserChange = (userId: string) => {
-    const selectedUser = users.find(u => u.id === userId);
-    if (selectedUser) {
-      setCommentForm(prev => ({
-        ...prev,
-        assignedTo: { id: selectedUser.id, name: selectedUser.name }
-      }));
-    }
-  };
-
   return (
     <DialogContent className="max-w-2xl">
       <DialogHeader>
@@ -95,66 +77,6 @@ const CommentForm: React.FC<CommentFormProps> = ({
                 placeholder="Your comment"
                 required
               />
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label htmlFor="assignedTo" className="text-sm font-medium">
-                  Assign To
-                </label>
-                <Select 
-                  value={commentForm.assignedTo.id} 
-                  onValueChange={handleAssignedUserChange}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a user" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {users.map(user => (
-                      <SelectItem key={user.id} value={user.id}>
-                        {user.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="space-y-2">
-                <label htmlFor="dueDate" className="text-sm font-medium">
-                  Due Date
-                </label>
-                <Input
-                  type="date"
-                  id="dueDate"
-                  value={commentForm.dueDate ? new Date(commentForm.dueDate).toISOString().split('T')[0] : ''}
-                  onChange={(e) => setCommentForm(prev => ({ ...prev, dueDate: new Date(e.target.value) }))}
-                  required
-                />
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <label htmlFor="status" className="text-sm font-medium">
-                Status
-              </label>
-              <Select 
-                value={commentForm.status} 
-                onValueChange={(value) => {
-                  setCommentForm(prev => ({ 
-                    ...prev, 
-                    status: value as IncidentComment['status'] 
-                  }));
-                }}
-              >
-                <SelectTrigger id="status">
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Pending">Pending</SelectItem>
-                  <SelectItem value="In Progress">In Progress</SelectItem>
-                  <SelectItem value="Completed">Completed</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
           </TabsContent>
 
