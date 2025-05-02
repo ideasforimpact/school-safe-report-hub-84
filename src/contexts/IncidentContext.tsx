@@ -5,9 +5,11 @@ import { useActionItems } from '@/hooks/useActionItems';
 import { useActivities } from '@/hooks/useActivities';
 import { Incident, User, Activity, ActionItem } from '@/types/incident';
 import { generateSampleIncidents } from '@/utils/sampleIncidentData';
+import { subcategories, nearMissSubcategories, unsafeConditionSubcategories } from '@/data/incidentCategories';
 
-// Re-export types
+// Re-export types and incident category data
 export * from '@/types/incidentTypes';
+export { subcategories, nearMissSubcategories, unsafeConditionSubcategories } from '@/data/incidentCategories';
 
 // Context interface
 interface ConfigItem {

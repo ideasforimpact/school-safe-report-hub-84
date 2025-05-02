@@ -14,3 +14,6 @@ export type {
   User,
   Activity
 } from '@/types/incident';
+
+// We also need to export the category data
+export { subcategories, nearMissSubcategories, unsafeConditionSubcategories } from '@/data/incidentCategories';
