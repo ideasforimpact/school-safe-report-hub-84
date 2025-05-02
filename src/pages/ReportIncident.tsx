@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -7,7 +8,6 @@ import {
 } from '@/contexts/IncidentContext';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/layout/Layout';
-import ImageUpload from '@/components/ImageUpload';
 import MultipleFilesUpload from '@/components/MultipleFilesUpload';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,7 +61,6 @@ const ReportIncident = () => {
     time: new Date().toTimeString().split(' ')[0].slice(0, 5),
     locationId: '',
     facilityId: '',
-    image: undefined as string | undefined,
     status: 'Open' as IncidentStatus,
     priority: 'Medium' as 'Low' | 'Medium' | 'High' | 'Critical'
   });
@@ -122,10 +121,6 @@ const ReportIncident = () => {
     setPeopleInvolved(updatedPeople);
   };
 
-  const handleImageChange = (imageBase64: string | undefined) => {
-    setFormData(prev => ({ ...prev, image: imageBase64 }));
-  };
-
   const handleFilesChange = (files: FileItem[]) => {
     setSupportingFiles(files);
   };
@@ -184,7 +179,6 @@ const ReportIncident = () => {
         date: dateTime,
         location: locationName as any, // Type cast needed because we're using dynamic locations
         peopleInvolved: validPeople,
-        image: formData.image,
         facility: facilityName,
         priority: formData.priority,
         documents: documents,
@@ -393,16 +387,6 @@ const ReportIncident = () => {
 
                 <div className="space-y-2 md:col-span-2">
                   <label className="text-sm font-medium">
-                    Image Documentation (Optional)
-                  </label>
-                  <ImageUpload 
-                    onImageChange={handleImageChange} 
-                    initialImage={formData.image}
-                  />
-                </div>
-
-                <div className="space-y-2 md:col-span-2">
-                  <label className="text-sm font-medium">
                     Supporting Documents (Optional)
                   </label>
                   <MultipleFilesUpload
@@ -558,3 +542,4 @@ const ReportIncident = () => {
 };
 
 export default ReportIncident;
+
