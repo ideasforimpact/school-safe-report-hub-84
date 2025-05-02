@@ -7,6 +7,7 @@ import { useFilesManagement } from './useFilesManagement';
 import { useSubcategories } from './useSubcategories';
 import { useTicketId } from './useTicketId';
 import { useSelectedValues } from './useSelectedValues';
+import { ConfigItem } from '@/contexts/types';
 
 export function useIncidentForm() {
   const { 

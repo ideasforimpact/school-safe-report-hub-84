@@ -1,8 +1,5 @@
 
-interface ConfigItem {
-  id: string;
-  name: string;
-}
+import { ConfigItem } from '@/contexts/types';
 
 export function useSelectedValues(
   categoryId: string,

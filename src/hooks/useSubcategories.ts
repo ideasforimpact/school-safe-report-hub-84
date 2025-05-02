@@ -1,13 +1,14 @@
 
 import { useState, useEffect } from 'react';
+import { SubcategoryItem } from '@/contexts/types';
 
 export function useSubcategories(
   categoryId: string, 
-  subcategoryMappings: Record<string, {id: string, name: string}[]>,
+  subcategoryMappings: Record<string, SubcategoryItem[]>,
   setFormData: React.Dispatch<React.SetStateAction<any>>
 ) {
   // State for available subcategories based on selected category
-  const [availableSubcategories, setAvailableSubcategories] = useState<{id: string, name: string}[]>([]);
+  const [availableSubcategories, setAvailableSubcategories] = useState<SubcategoryItem[]>([]);
 
   // Update available subcategories when category changes
   useEffect(() => {
