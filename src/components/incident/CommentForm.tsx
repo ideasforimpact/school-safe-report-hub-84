@@ -12,7 +12,6 @@ import {
   DialogFooter,
   DialogClose,
 } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface CommentFormProps {
   users: { id: string; name: string }[];
@@ -39,7 +38,6 @@ const CommentForm: React.FC<CommentFormProps> = ({
       files: initialCommentForm.files || []
     }
   );
-  const [activeTab, setActiveTab] = useState<string>("details");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,43 +57,35 @@ const CommentForm: React.FC<CommentFormProps> = ({
         </DialogDescription>
       </DialogHeader>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="details">Details</TabsTrigger>
-            <TabsTrigger value="attachments">Attachments</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="details" className="space-y-4 pt-2">
-            <div className="space-y-2">
-              <label htmlFor="description" className="text-sm font-medium">
-                Comment
-              </label>
-              <Textarea
-                id="description"
-                value={commentForm.description}
-                onChange={(e) => setCommentForm(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Your comment"
-                required
-              />
-            </div>
-          </TabsContent>
+        <div className="space-y-4">
+          {/* Comment details section */}
+          <div className="space-y-2">
+            <label htmlFor="description" className="text-sm font-medium">
+              Comment
+            </label>
+            <Textarea
+              id="description"
+              value={commentForm.description}
+              onChange={(e) => setCommentForm(prev => ({ ...prev, description: e.target.value }))}
+              placeholder="Your comment"
+              required
+              className="min-h-[120px]"
+            />
+          </div>
 
-          <TabsContent value="attachments" className="space-y-4 pt-2">
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-sm font-medium mb-2">Files</h3>
-                <p className="text-xs text-gray-500 mb-2">
-                  Upload images, documents, PDFs, or videos related to this comment.
-                </p>
-                <MultipleFilesUpload 
-                  onFilesChange={handleFilesChange}
-                  initialFiles={commentForm.files || []}
-                  maxFiles={5}
-                />
-              </div>
-            </div>
-          </TabsContent>
-        </Tabs>
+          {/* Attachments section */}
+          <div>
+            <h3 className="text-sm font-medium mb-2">Attachments</h3>
+            <p className="text-xs text-gray-500 mb-2">
+              Upload images, documents, PDFs, or videos related to this comment.
+            </p>
+            <MultipleFilesUpload 
+              onFilesChange={handleFilesChange}
+              initialFiles={commentForm.files || []}
+              maxFiles={5}
+            />
+          </div>
+        </div>
         
         <DialogFooter>
           <DialogClose asChild>
