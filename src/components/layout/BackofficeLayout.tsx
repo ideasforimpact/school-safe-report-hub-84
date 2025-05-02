@@ -1,8 +1,7 @@
 
 import { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { ShieldCheck, ArrowLeft } from 'lucide-react';
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ShieldCheck, ArrowLeft, LayoutDashboard, Users, ChartBarBig, Settings } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 interface BackofficeLayoutProps {
@@ -14,6 +13,13 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
   const location = useLocation();
   
   const isActive = (path: string) => location.pathname === path;
+
+  const navigationItems = [
+    { name: 'Dashboard', path: '/backoffice', icon: LayoutDashboard },
+    { name: 'Client Management', path: '/backoffice/clients', icon: Users },
+    { name: 'Analytics', path: '/backoffice/analytics', icon: ChartBarBig },
+    { name: 'Settings', path: '/backoffice/settings', icon: Settings },
+  ];
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -36,41 +42,25 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
         </div>
       </div>
       
-      {/* Tabs navigation */}
+      {/* Navigation tabs */}
       <div className="bg-white border-b border-gray-200">
         <div className="container mx-auto px-6">
-          <Tabs defaultValue="dashboard" className="w-full">
-            <TabsList className="w-full justify-start h-16">
-              <TabsTrigger 
-                value="dashboard" 
-                className={`${isActive('/backoffice') ? 'border-b-2 border-primary' : ''}`}
-                onClick={() => navigate('/backoffice')}
+          <nav className="flex space-x-8">
+            {navigationItems.map((item) => (
+              <button
+                key={item.path}
+                onClick={() => navigate(item.path)}
+                className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm ${
+                  isActive(item.path)
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                } transition-colors`}
               >
-                Dashboard
-              </TabsTrigger>
-              <TabsTrigger 
-                value="clients" 
-                className={`${isActive('/backoffice/clients') ? 'border-b-2 border-primary' : ''}`}
-                onClick={() => navigate('/backoffice/clients')}
-              >
-                Client Management
-              </TabsTrigger>
-              <TabsTrigger 
-                value="analytics" 
-                className={`${isActive('/backoffice/analytics') ? 'border-b-2 border-primary' : ''}`}
-                onClick={() => navigate('/backoffice/analytics')}
-              >
-                Analytics
-              </TabsTrigger>
-              <TabsTrigger 
-                value="settings" 
-                className={`${isActive('/backoffice/settings') ? 'border-b-2 border-primary' : ''}`}
-                onClick={() => navigate('/backoffice/settings')}
-              >
-                Settings
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
+                <item.icon className="h-5 w-5 mr-2" />
+                {item.name}
+              </button>
+            ))}
+          </nav>
         </div>
       </div>
       
