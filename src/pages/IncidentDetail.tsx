@@ -1,10 +1,10 @@
 
-import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useIncidents, IncidentStatus } from '@/contexts/IncidentContext';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/layout/Layout';
 import { Action, Comment } from '@/types/incident';
+import { useIncidentDetail } from '@/hooks/useIncidentDetail';
 
 // Refactored components
 import IncidentHeader from '@/components/incident/IncidentHeader';
@@ -18,11 +18,12 @@ const IncidentDetail = () => {
   const navigate = useNavigate();
   const { getIncident, updateIncident, addComment, updateComment, deleteComment, getIncidentActivities } = useIncidents();
   const { user, isAdmin } = useAuth();
+  const { formatDate, formatDateTime, getStatusColor, getCommentStatusColor, useStatusUpdate } = useIncidentDetail();
 
   const incident = getIncident(id || '');
   const incidentActivities = incident ? getIncidentActivities(incident.id) : [];
 
-  const [statusUpdate, setStatusUpdate] = useState<IncidentStatus>(incident?.status || 'Open');
+  const { statusUpdate, setStatusUpdate } = useStatusUpdate(incident?.status || 'Open');
 
   if (!incident) {
     return (
@@ -40,50 +41,6 @@ const IncidentDetail = () => {
       </Layout>
     );
   }
-
-  const formatDate = (date: Date) => {
-    return new Date(date).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
-  };
-
-  const formatDateTime = (date: Date) => {
-    return new Date(date).toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  const getStatusColor = (status: IncidentStatus) => {
-    switch(status) {
-      case 'Open':
-        return 'bg-red-100 text-red-800';
-      case 'In Progress':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'Closed':
-        return 'bg-green-100 text-green-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getCommentStatusColor = (status: Comment['status']) => {
-    switch(status) {
-      case 'Pending':
-        return 'bg-orange-100 text-orange-800';
-      case 'In Progress':
-        return 'bg-blue-100 text-blue-800';
-      case 'Completed':
-        return 'bg-green-100 text-green-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
 
   const handleStatusChange = () => {
     updateIncident(incident.id, { status: statusUpdate });

@@ -15,6 +15,7 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import CommentForm from './CommentForm';
+import { useIncidents } from '@/contexts/IncidentContext';
 
 interface CommentsListProps {
   comments: Comment[];
@@ -44,6 +45,7 @@ const CommentsList: React.FC<CommentsListProps> = ({
   const [showAddComment, setShowAddComment] = useState(false);
   const [showEditComment, setShowEditComment] = useState(false);
   const [currentComment, setCurrentComment] = useState<Comment | null>(null);
+  const { users } = useIncidents();
 
   const handleDelete = (commentId: string) => {
     if (confirm('Are you sure you want to delete this comment?')) {
@@ -73,7 +75,7 @@ const CommentsList: React.FC<CommentsListProps> = ({
               </Button>
             </DialogTrigger>
             <CommentForm
-              users={[]}
+              users={users}
               commentForm={{
                 description: '',
                 dueDate: new Date(),
@@ -161,7 +163,7 @@ const CommentsList: React.FC<CommentsListProps> = ({
       {currentComment && (
         <Dialog open={showEditComment} onOpenChange={setShowEditComment}>
           <CommentForm
-            users={[]}
+            users={users}
             commentForm={{
               description: currentComment.description,
               dueDate: new Date(currentComment.dueDate),
