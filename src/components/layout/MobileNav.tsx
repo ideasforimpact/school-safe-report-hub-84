@@ -71,6 +71,11 @@ const MobileNav = () => {
       label: 'Configuration',
       path: '/configuration',
       allowed: isAdmin,
+    },
+    {
+      label: 'Client Management',
+      path: '/clients',
+      allowed: isAdmin,
     }
   ];
 

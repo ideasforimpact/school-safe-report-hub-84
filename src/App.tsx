@@ -13,7 +13,8 @@ import MyActionItems from '@/pages/MyActionItems';
 import Insights from '@/pages/Insights';
 import UserManagement from '@/pages/UserManagement';
 import FacilityManagement from '@/pages/FacilityManagement';
-import ConfigurationManagement from '@/pages/ConfigurationManagement'; // Add this line
+import ConfigurationManagement from '@/pages/ConfigurationManagement';
+import ClientManagement from '@/pages/ClientManagement';
 import NotFound from '@/pages/NotFound';
 import Support from '@/pages/Support';
 import Pricing from '@/pages/Pricing';
@@ -22,6 +23,7 @@ import Benchmarking from '@/pages/Benchmarking';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { IncidentProvider } from '@/contexts/IncidentContext';
 import { FacilityProvider } from '@/contexts/FacilityContext';
+import { ClientProvider } from '@/contexts/ClientContext';
 import RouteGuard from '@/components/RouteGuard';
 import ModuleGuard from '@/components/ModuleGuard';
 
@@ -29,49 +31,52 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <FacilityProvider>
-          <IncidentProvider>
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/support" element={<Support />} />
-              <Route path="/pricing" element={<Pricing />} />
-              <Route path="/blog" element={<Blog />} />
-              
-              <Route element={<RouteGuard />}>
-                <Route path="/dashboard" element={<Dashboard />} />
+        <ClientProvider>
+          <FacilityProvider>
+            <IncidentProvider>
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/support" element={<Support />} />
+                <Route path="/pricing" element={<Pricing />} />
+                <Route path="/blog" element={<Blog />} />
                 
-                <Route element={<ModuleGuard moduleType="incidentReporting" />}>
-                  <Route path="/report" element={<ReportIncident />} />
+                <Route element={<RouteGuard />}>
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  
+                  <Route element={<ModuleGuard moduleType="incidentReporting" />}>
+                    <Route path="/report" element={<ReportIncident />} />
+                  </Route>
+                  
+                  <Route element={<ModuleGuard moduleType="allIncidents" />}>
+                    <Route path="/incidents" element={<IncidentsList />} />
+                    <Route path="/incidents/:id" element={<IncidentDetail />} />
+                    <Route path="/incidents/:id/edit" element={<EditIncident />} />
+                  </Route>
+                  
+                  <Route path="/my-actions" element={<MyActionItems />} />
+                  
+                  <Route element={<ModuleGuard moduleType="insights" />}>
+                    <Route path="/insights" element={<Insights />} />
+                  </Route>
+                  
+                  <Route element={<ModuleGuard moduleType="benchmarking" />}>
+                    <Route path="/benchmarking" element={<Benchmarking />} />
+                  </Route>
+                  
+                  <Route element={<RouteGuard requireAdmin={true} />}>
+                    <Route path="/users" element={<UserManagement />} />
+                    <Route path="/facilities" element={<FacilityManagement />} />
+                    <Route path="/configuration" element={<ConfigurationManagement />} />
+                    <Route path="/clients" element={<ClientManagement />} />
+                  </Route>
                 </Route>
                 
-                <Route element={<ModuleGuard moduleType="allIncidents" />}>
-                  <Route path="/incidents" element={<IncidentsList />} />
-                  <Route path="/incidents/:id" element={<IncidentDetail />} />
-                  <Route path="/incidents/:id/edit" element={<EditIncident />} />
-                </Route>
-                
-                <Route path="/my-actions" element={<MyActionItems />} />
-                
-                <Route element={<ModuleGuard moduleType="insights" />}>
-                  <Route path="/insights" element={<Insights />} />
-                </Route>
-                
-                <Route element={<ModuleGuard moduleType="benchmarking" />}>
-                  <Route path="/benchmarking" element={<Benchmarking />} />
-                </Route>
-                
-                <Route element={<RouteGuard requireAdmin={true} />}>
-                  <Route path="/users" element={<UserManagement />} />
-                  <Route path="/facilities" element={<FacilityManagement />} />
-                  <Route path="/configuration" element={<ConfigurationManagement />} /> {/* Add this line */}
-                </Route>
-              </Route>
-              
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </IncidentProvider>
-        </FacilityProvider>
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </IncidentProvider>
+          </FacilityProvider>
+        </ClientProvider>
       </AuthProvider>
       <Toaster />
     </BrowserRouter>

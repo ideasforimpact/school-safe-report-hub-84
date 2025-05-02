@@ -13,7 +13,8 @@ import {
   Users,
   Building,
   BarChart,
-  Settings
+  Settings,
+  User
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -82,6 +83,12 @@ const Sidebar = () => {
       icon: Settings,
       label: 'Configuration',
       path: '/configuration',
+      allowed: isAdmin,
+    },
+    {
+      icon: User,
+      label: 'Client Management',
+      path: '/clients',
       allowed: isAdmin,
     }
   ];
