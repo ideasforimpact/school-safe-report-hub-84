@@ -38,18 +38,22 @@ function App() {
           <FacilityProvider>
             <IncidentProvider>
               <Routes>
+                {/* Public Routes */}
                 <Route path="/" element={<Home />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/support" element={<Support />} />
                 <Route path="/pricing" element={<Pricing />} />
                 <Route path="/blog" element={<Blog />} />
                 
-                {/* Backoffice Routes */}
-                <Route path="/backoffice" element={<BackofficeDashboard />} />
-                <Route path="/backoffice/analytics" element={<BackofficeAnalytics />} />
-                <Route path="/backoffice/settings" element={<BackofficeSettings />} />
-                <Route path="/backoffice/clients" element={<ClientManagement />} />
+                {/* SaaS Owner Routes (Backoffice) */}
+                <Route element={<RouteGuard requireSaasOwner={true} />}>
+                  <Route path="/backoffice" element={<BackofficeDashboard />} />
+                  <Route path="/backoffice/analytics" element={<BackofficeAnalytics />} />
+                  <Route path="/backoffice/settings" element={<BackofficeSettings />} />
+                  <Route path="/backoffice/clients" element={<ClientManagement />} />
+                </Route>
                 
+                {/* Client Admin and User Routes */}
                 <Route element={<RouteGuard />}>
                   <Route path="/dashboard" element={<Dashboard />} />
                   
@@ -73,11 +77,11 @@ function App() {
                     <Route path="/benchmarking" element={<Benchmarking />} />
                   </Route>
                   
+                  {/* Client Admin Only Routes */}
                   <Route element={<RouteGuard requireAdmin={true} />}>
                     <Route path="/users" element={<UserManagement />} />
                     <Route path="/facilities" element={<FacilityManagement />} />
                     <Route path="/configuration" element={<ConfigurationManagement />} />
-                    <Route path="/clients" element={<ClientManagement />} />
                   </Route>
                 </Route>
                 

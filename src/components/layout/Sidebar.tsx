@@ -1,6 +1,5 @@
 
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { 
@@ -14,11 +13,12 @@ import {
   Building,
   BarChart,
   Settings,
-  User
+  User,
+  Briefcase
 } from 'lucide-react';
 
 const Sidebar = () => {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, isSaasOwner } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -30,7 +30,36 @@ const Sidebar = () => {
     benchmarking: false
   };
 
-  const menuItems = [
+  // SaaS Owner (Backoffice) Menu Items
+  const saasOwnerItems = [
+    {
+      icon: Home,
+      label: 'Dashboard',
+      path: '/backoffice',
+      allowed: true,
+    },
+    {
+      icon: Briefcase,
+      label: 'Client Management',
+      path: '/backoffice/clients',
+      allowed: true,
+    },
+    {
+      icon: BarChart,
+      label: 'Analytics',
+      path: '/backoffice/analytics',
+      allowed: true,
+    },
+    {
+      icon: Settings,
+      label: 'Settings',
+      path: '/backoffice/settings',
+      allowed: true,
+    },
+  ];
+
+  // Client Admin and User Menu Items
+  const clientItems = [
     {
       icon: Home,
       label: 'Dashboard',
@@ -71,27 +100,23 @@ const Sidebar = () => {
       icon: Users,
       label: 'User Management',
       path: '/users',
-      allowed: isAdmin,
+      allowed: isAdmin && !isSaasOwner,
     },
     {
       icon: Building,
       label: 'Facility Management',
       path: '/facilities',
-      allowed: isAdmin,
+      allowed: isAdmin && !isSaasOwner,
     },
     {
       icon: Settings,
       label: 'Configuration',
       path: '/configuration',
-      allowed: isAdmin,
+      allowed: isAdmin && !isSaasOwner,
     },
-    {
-      icon: User,
-      label: 'Client Management',
-      path: '/clients',
-      allowed: isAdmin,
-    }
   ];
+
+  const menuItems = isSaasOwner ? saasOwnerItems : clientItems;
 
   const isActive = (path: string) => location.pathname === path;
 

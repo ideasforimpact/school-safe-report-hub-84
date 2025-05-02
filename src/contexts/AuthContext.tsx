@@ -1,15 +1,14 @@
-
 import React, { createContext, useState, useContext, ReactNode } from 'react';
 import { toast } from "@/components/ui/sonner";
 
-export type UserRole = 'reporter' | 'admin';
+export type UserRole = 'reporter' | 'admin' | 'saas_owner';
 
 // Define module access permissions
 export interface ModulePermissions {
   incidentReporting: boolean;
   allIncidents: boolean;
   insights: boolean;
-  benchmarking: boolean; // Added benchmarking permission
+  benchmarking: boolean;
 }
 
 export interface User {
@@ -18,6 +17,7 @@ export interface User {
   email: string;
   role: UserRole;
   modulePermissions: ModulePermissions;
+  clientId?: string; // Added clientId to associate users with clients
 }
 
 interface AuthContextType {
@@ -26,7 +26,8 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   isAdmin: boolean;
-  addUser: (userData: { name: string; email: string; password: string; role: UserRole, modulePermissions: ModulePermissions }) => void;
+  isSaasOwner: boolean;
+  addUser: (userData: { name: string; email: string; password: string; role: UserRole, modulePermissions: ModulePermissions, clientId?: string }) => void;
   updateUser: (id: string, updates: Partial<User & { password?: string }>) => void;
   deleteUser: (id: string) => void;
   changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
@@ -39,33 +40,43 @@ const DEFAULT_ADMIN_PERMISSIONS: ModulePermissions = {
   incidentReporting: true,
   allIncidents: true,
   insights: true,
-  benchmarking: true // Added benchmarking permission for admins
+  benchmarking: true
 };
 
 const DEFAULT_REPORTER_PERMISSIONS: ModulePermissions = {
   incidentReporting: true,
   allIncidents: true,
   insights: true,
-  benchmarking: false // Reporters don't have benchmarking by default
+  benchmarking: false
 };
 
 // Mock users for demo purposes
 const INITIAL_MOCK_USERS = [
   {
     id: '1',
-    name: 'John Smith',
-    email: 'admin@school.edu',
-    password: 'admin123',
-    role: 'admin' as UserRole,
+    name: 'SaaS Owner',
+    email: 'owner@saasplatform.com',
+    password: 'owner123',
+    role: 'saas_owner' as UserRole,
     modulePermissions: DEFAULT_ADMIN_PERMISSIONS
   },
   {
     id: '2',
+    name: 'John Smith',
+    email: 'admin@school.edu',
+    password: 'admin123',
+    role: 'admin' as UserRole,
+    modulePermissions: DEFAULT_ADMIN_PERMISSIONS,
+    clientId: '1'
+  },
+  {
+    id: '3',
     name: 'Jeff Davis',
     email: 'reporter@school.edu',
     password: 'reporter123',
     role: 'reporter' as UserRole,
-    modulePermissions: DEFAULT_REPORTER_PERMISSIONS
+    modulePermissions: DEFAULT_REPORTER_PERMISSIONS,
+    clientId: '1'
   }
 ];
 
@@ -111,7 +122,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     toast.info("You've been logged out");
   };
 
-  const addUser = (userData: { name: string; email: string; password: string; role: UserRole; modulePermissions: ModulePermissions }) => {
+  const addUser = (userData: { name: string; email: string; password: string; role: UserRole; modulePermissions: ModulePermissions, clientId?: string }) => {
     // Check if email already exists
     const emailExists = users.some(u => u.email === userData.email);
     if (emailExists) {
@@ -125,7 +136,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       email: userData.email,
       password: userData.password,
       role: userData.role,
-      modulePermissions: userData.modulePermissions
+      modulePermissions: userData.modulePermissions,
+      clientId: userData.clientId
     };
 
     setUsers([...users, newUser]);
@@ -206,7 +218,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return true;
   };
 
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role === 'admin' || user?.role === 'saas_owner';
+  const isSaasOwner = user?.role === 'saas_owner';
 
   // Expose only user objects without passwords
   const usersWithoutPasswords = users.map(({ password, ...rest }) => rest);
@@ -218,6 +231,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       login, 
       logout, 
       isAdmin,
+      isSaasOwner,
       addUser,
       updateUser,
       deleteUser,
