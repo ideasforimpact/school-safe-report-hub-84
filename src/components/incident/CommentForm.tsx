@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Comment, UserRef } from '@/types/incident';
+import { Comment as IncidentComment } from '@/types/incident';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -23,8 +23,8 @@ import {
 
 interface CommentFormProps {
   users: { id: string; name: string }[];
-  commentForm: Omit<Comment, 'id' | 'createdAt' | 'updatedAt'>;
-  onSubmit: (data: Omit<Comment, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  commentForm: Omit<IncidentComment, 'id' | 'createdAt' | 'updatedAt'>;
+  onSubmit: (data: Omit<IncidentComment, 'id' | 'createdAt' | 'updatedAt'>) => void;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
@@ -40,7 +40,7 @@ const CommentForm: React.FC<CommentFormProps> = ({
   title,
   submitLabel
 }) => {
-  const [commentForm, setCommentForm] = useState<Omit<Comment, 'id' | 'createdAt' | 'updatedAt'>>(initialCommentForm);
+  const [commentForm, setCommentForm] = useState<Omit<IncidentComment, 'id' | 'createdAt' | 'updatedAt'>>(initialCommentForm);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

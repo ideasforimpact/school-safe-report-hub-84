@@ -1,9 +1,9 @@
 
 import { useParams, useNavigate } from 'react-router-dom';
-import { useIncidents, IncidentStatus } from '@/contexts/IncidentContext';
+import { useIncidents } from '@/contexts/IncidentContext';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/layout/Layout';
-import { Action, Comment } from '@/types/incident';
+import { Action, Comment as IncidentComment } from '@/types/incident';
 import { useIncidentDetail } from '@/hooks/useIncidentDetail';
 
 // Refactored components
@@ -51,7 +51,7 @@ const IncidentDetail = () => {
     updateIncident(incident.id, { actions: newActions });
   };
 
-  const canEditComment = (item: Comment) => {
+  const canEditComment = (item: IncidentComment) => {
     return isAdmin || item.createdBy.id === user?.id;
   };
 

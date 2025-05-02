@@ -1,5 +1,4 @@
-
-import { Incident, Comment, Activity } from '@/types/incident';
+import { Incident, Comment as IncidentComment, Activity } from '@/types/incident';
 import { toast } from "@/components/ui/sonner";
 
 export const useComments = (
@@ -8,9 +7,9 @@ export const useComments = (
   addActivity: (activity: Activity) => void
 ) => {
 
-  const addComment = (incidentId: string, commentData: Omit<Comment, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addComment = (incidentId: string, commentData: Omit<IncidentComment, 'id' | 'createdAt' | 'updatedAt'>) => {
     const now = new Date();
-    const newComment: Comment = {
+    const newComment: IncidentComment = {
       ...commentData,
       id: Date.now().toString(),
       createdAt: now,
@@ -47,7 +46,7 @@ export const useComments = (
     toast.success("Comment added");
   };
 
-  const updateComment = (incidentId: string, commentId: string, updates: Partial<Comment>) => {
+  const updateComment = (incidentId: string, commentId: string, updates: Partial<IncidentComment>) => {
     const now = new Date();
     const incident = incidents.find(inc => inc.id === incidentId);
     const currentComment = incident?.comments?.find(item => item.id === commentId);

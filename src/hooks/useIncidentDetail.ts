@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { IncidentStatus, Comment } from '@/types/incident';
+import { IncidentStatus, Comment as IncidentComment } from '@/types/incident';
 
 /**
  * Custom hook that provides formatting and utility functions for incident details
@@ -41,7 +41,7 @@ export const useIncidentDetail = () => {
   };
 
   // Get the appropriate color class for comment status badges
-  const getCommentStatusColor = (status: Comment['status']) => {
+  const getCommentStatusColor = (status: IncidentComment['status']) => {
     switch(status) {
       case 'Pending':
         return 'bg-orange-100 text-orange-800';

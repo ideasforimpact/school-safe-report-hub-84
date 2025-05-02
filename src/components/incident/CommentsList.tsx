@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Comment } from '@/types/incident';
+import { Comment as IncidentComment } from '@/types/incident';
 import { Button } from '@/components/ui/button';
 import { UserCircle, CalendarClock, MessageSquare, Edit, Trash2 } from 'lucide-react';
 import {
@@ -18,14 +18,14 @@ import CommentForm from './CommentForm';
 import { useIncidents } from '@/contexts/IncidentContext';
 
 interface CommentsListProps {
-  comments: Comment[];
+  comments: IncidentComment[];
   incident: { id: string };
-  addComment: (incidentId: string, commentData: Omit<Comment, 'id' | 'createdAt' | 'updatedAt'>) => void;
-  updateComment: (incidentId: string, commentId: string, updates: Partial<Comment>) => void;
+  addComment: (incidentId: string, commentData: Omit<IncidentComment, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  updateComment: (incidentId: string, commentId: string, updates: Partial<IncidentComment>) => void;
   deleteComment: (incidentId: string, commentId: string) => void;
   formatDate: (date: Date) => string;
-  getCommentStatusColor: (status: Comment['status']) => string;
-  canEditComment: (comment: Comment) => boolean;
+  getCommentStatusColor: (status: IncidentComment['status']) => string;
+  canEditComment: (comment: IncidentComment) => boolean;
   userId: string;
   userName: string;
 }
@@ -44,7 +44,7 @@ const CommentsList: React.FC<CommentsListProps> = ({
 }) => {
   const [showAddComment, setShowAddComment] = useState(false);
   const [showEditComment, setShowEditComment] = useState(false);
-  const [currentComment, setCurrentComment] = useState<Comment | null>(null);
+  const [currentComment, setCurrentComment] = useState<IncidentComment | null>(null);
   const { users } = useIncidents();
 
   const handleDelete = (commentId: string) => {
@@ -53,7 +53,7 @@ const CommentsList: React.FC<CommentsListProps> = ({
     }
   };
 
-  const openEditComment = (comment: Comment) => {
+  const openEditComment = (comment: IncidentComment) => {
     setCurrentComment(comment);
     setShowEditComment(true);
   };
