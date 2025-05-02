@@ -183,7 +183,7 @@ const ClientManagement = () => {
                       <TableCell>{client.phone}</TableCell>
                       <TableCell>{formatDate(client.creationDate)}</TableCell>
                       <TableCell>
-                        <Badge variant={client.active ? "success" : "destructive"}>
+                        <Badge variant={client.active ? "secondary" : "destructive"} className={client.active ? "bg-green-100 text-green-800" : ""}>
                           {client.active ? "Active" : "Inactive"}
                         </Badge>
                       </TableCell>
