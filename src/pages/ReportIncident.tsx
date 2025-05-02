@@ -28,12 +28,18 @@ import {
 } from '@/components/ui/select';
 import { toast } from '@/components/ui/sonner';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { X, Plus } from 'lucide-react';
+import { X, Plus, Ticket } from 'lucide-react';
 
 const ReportIncident = () => {
-  const { addIncident, users } = useIncidents();
+  const { addIncident, users, generateTicketId } = useIncidents();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [nextTicketId, setNextTicketId] = useState('');
+
+  useEffect(() => {
+    // Generate a preview of the next ticket ID
+    setNextTicketId(generateTicketId());
+  }, [generateTicketId]);
 
   const [formData, setFormData] = useState({
     type: '' as IncidentType,
@@ -46,7 +52,8 @@ const ReportIncident = () => {
     location: '' as IncidentLocation,
     facility: '' as SchoolFacility,
     image: undefined as string | undefined,
-    status: 'Open' as IncidentStatus
+    status: 'Open' as IncidentStatus,
+    priority: 'Medium' as 'Low' | 'Medium' | 'High' | 'Critical'
   });
 
   // State to store available subcategories based on type and category
@@ -158,6 +165,7 @@ const ReportIncident = () => {
         peopleInvolved: validPeople,
         image: formData.image,
         facility: formData.facility as SchoolFacility,
+        priority: formData.priority,
         reportedBy: {
           id: user?.id || '',
           name: user?.name || ''
@@ -183,6 +191,16 @@ const ReportIncident = () => {
           </p>
         </div>
 
+        <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-4 flex items-start">
+          <Ticket className="h-5 w-5 text-blue-600 mr-3 mt-0.5" />
+          <div>
+            <h3 className="font-medium text-blue-800">Ticket Information</h3>
+            <p className="text-sm text-blue-600 mt-1">
+              This incident will be assigned ticket ID: <strong>{nextTicketId}</strong>
+            </p>
+          </div>
+        </div>
+
         <form onSubmit={handleSubmit}>
           <Card>
             <CardHeader>
@@ -190,7 +208,7 @@ const ReportIncident = () => {
               <CardDescription>Provide information about what occurred</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-2">
                   <label htmlFor="type" className="text-sm font-medium">
                     Report Type <span className="text-red-500">*</span>
@@ -226,6 +244,27 @@ const ReportIncident = () => {
                       <SelectItem value="Open">Open</SelectItem>
                       <SelectItem value="In Progress">In Progress</SelectItem>
                       <SelectItem value="Closed">Closed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="priority" className="text-sm font-medium">
+                    Priority <span className="text-red-500">*</span>
+                  </label>
+                  <Select 
+                    value={formData.priority}
+                    onValueChange={(value) => handleSelectChange('priority', value)}
+                    required
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select priority" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Low">Low</SelectItem>
+                      <SelectItem value="Medium">Medium</SelectItem>
+                      <SelectItem value="High">High</SelectItem>
+                      <SelectItem value="Critical">Critical</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

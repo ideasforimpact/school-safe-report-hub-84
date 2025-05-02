@@ -28,7 +28,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { AlertTriangle, Search, Calendar, Edit } from 'lucide-react';
+import { AlertTriangle, Search, Calendar, Edit, Ticket } from 'lucide-react';
 
 const IncidentsList = () => {
   const { incidents } = useIncidents();
@@ -43,6 +43,7 @@ const IncidentsList = () => {
     dateFrom: '',
     dateTo: '',
     search: '',
+    priority: '',
   });
 
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
@@ -114,6 +115,7 @@ const IncidentsList = () => {
       dateFrom: '',
       dateTo: '',
       search: '',
+      priority: '',
     });
   };
 
@@ -130,6 +132,9 @@ const IncidentsList = () => {
     
     // Filter by status
     if (filters.status && incident.status !== filters.status) return false;
+    
+    // Filter by priority
+    if (filters.priority && incident.priority !== filters.priority) return false;
     
     // Filter by date range
     if (filters.dateFrom) {
@@ -149,6 +154,8 @@ const IncidentsList = () => {
     // Filter by search text
     if (filters.search) {
       const searchLower = filters.search.toLowerCase();
+      // Search in ticket ID
+      if (incident.ticketId.toLowerCase().includes(searchLower)) return true;
       // Search in description
       if (incident.description.toLowerCase().includes(searchLower)) return true;
       // Search in category
@@ -194,6 +201,21 @@ const IncidentsList = () => {
     }
   };
 
+  const getPriorityBadgeClass = (priority: string | undefined) => {
+    switch(priority) {
+      case 'Critical':
+        return 'bg-red-100 text-red-800';
+      case 'High':
+        return 'bg-orange-100 text-orange-800';
+      case 'Medium':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'Low':
+        return 'bg-green-100 text-green-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -221,7 +243,7 @@ const IncidentsList = () => {
                 </div>
                 <Input
                   type="search"
-                  placeholder="Search incidents..."
+                  placeholder="Search incidents or ticket ID..."
                   className="pl-10"
                   value={filters.search}
                   onChange={(e) => handleFilterChange('search', e.target.value)}
@@ -292,9 +314,21 @@ const IncidentsList = () => {
                 </SelectContent>
               </Select>
               
-              <Button variant="outline" onClick={clearFilters}>
-                Clear Filters
-              </Button>
+              <Select 
+                value={filters.priority} 
+                onValueChange={(value) => handleFilterChange('priority', value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Priority" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">All Priorities</SelectItem>
+                  <SelectItem value="Critical">Critical</SelectItem>
+                  <SelectItem value="High">High</SelectItem>
+                  <SelectItem value="Medium">Medium</SelectItem>
+                  <SelectItem value="Low">Low</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             
             <div className="flex flex-col sm:flex-row gap-4">
@@ -319,6 +353,10 @@ const IncidentsList = () => {
                   className="w-auto"
                 />
               </div>
+              
+              <Button variant="outline" onClick={clearFilters} className="ml-auto">
+                Clear Filters
+              </Button>
             </div>
           </div>
         </div>
@@ -329,26 +367,31 @@ const IncidentsList = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Ticket ID</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Category</TableHead>
-                    <TableHead>Subcategory</TableHead>
                     <TableHead>Date</TableHead>
-                    <TableHead>Description</TableHead>
+                    <TableHead>Priority</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {sortedIncidents.map((incident) => (
-                    <TableRow key={incident.id}>
+                    <TableRow key={incident.id} className="cursor-pointer hover:bg-gray-50" onClick={() => navigate(`/incidents/${incident.id}`)}>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center">
+                          <Ticket className="h-4 w-4 mr-2 text-blue-600" />
+                          {incident.ticketId}
+                        </div>
+                      </TableCell>
                       <TableCell>{incident.type}</TableCell>
                       <TableCell>{incident.category}</TableCell>
-                      <TableCell>{incident.subcategory || "-"}</TableCell>
                       <TableCell>{formatDate(incident.date)}</TableCell>
-                      <TableCell className="max-w-xs">
-                        <div className="truncate">
-                          {incident.description}
-                        </div>
+                      <TableCell>
+                        <span className={`px-2 py-1 rounded-full text-xs ${getPriorityBadgeClass(incident.priority)}`}>
+                          {incident.priority || 'Medium'}
+                        </span>
                       </TableCell>
                       <TableCell>
                         <span className={`px-2 py-1 rounded-full text-xs ${getStatusBadgeClass(incident.status)}`}>
@@ -360,14 +403,20 @@ const IncidentsList = () => {
                           <Button 
                             variant="ghost" 
                             size="sm"
-                            onClick={() => navigate(`/incidents/${incident.id}`)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/incidents/${incident.id}`);
+                            }}
                           >
                             View
                           </Button>
                           <Button 
                             variant="ghost" 
                             size="sm"
-                            onClick={() => navigate(`/incidents/edit/${incident.id}`)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/incidents/${incident.id}/edit`);
+                            }}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>

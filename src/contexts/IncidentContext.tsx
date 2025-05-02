@@ -206,6 +206,7 @@ export interface ActionItem {
 
 export interface Incident {
   id: string;
+  ticketId: string; // Added ticket ID for the ticketing system
   type: IncidentType;
   category: IncidentCategory;
   subcategory: string;
@@ -225,6 +226,7 @@ export interface Incident {
   actionItems?: ActionItem[];
   createdAt: Date;
   updatedAt: Date;
+  priority?: 'Low' | 'Medium' | 'High' | 'Critical'; // Added priority field
 }
 
 // Create a user type for dropdown selection
@@ -237,7 +239,7 @@ export interface User {
 interface IncidentContextType {
   incidents: Incident[];
   users: User[];
-  addIncident: (incident: Omit<Incident, 'id' | 'status' | 'createdAt' | 'updatedAt'>) => void;
+  addIncident: (incident: Omit<Incident, 'id' | 'status' | 'createdAt' | 'updatedAt' | 'ticketId'>) => void;
   updateIncident: (id: string, updates: Partial<Incident>) => void;
   getIncident: (id: string) => Incident | undefined;
   addActionItem: (incidentId: string, actionItem: Omit<ActionItem, 'id' | 'createdAt' | 'updatedAt'>) => void;
@@ -245,6 +247,7 @@ interface IncidentContextType {
   deleteActionItem: (incidentId: string, actionItemId: string) => void;
   getRecentActivities: () => Activity[];
   getIncidentActivities: (incidentId: string) => Activity[];
+  generateTicketId: () => string;
 }
 
 // Sample users for the demo
@@ -257,6 +260,14 @@ const sampleUsers: User[] = [
 
 const IncidentContext = createContext<IncidentContextType | undefined>(undefined);
 
+// Function to generate ticket IDs
+const generateTicketId = (): string => {
+  const prefix = "SR"; // Safety Report prefix
+  const timestamp = Date.now().toString().slice(-6); // Last 6 digits of timestamp
+  const randomDigits = Math.floor(Math.random() * 1000).toString().padStart(3, '0'); // 3 random digits
+  return `${prefix}-${timestamp}-${randomDigits}`;
+};
+
 // Sample data for demo purposes
 const generateSampleIncidents = (): Incident[] => {
   const pastDays = (days: number) => new Date(Date.now() - days * 24 * 60 * 60 * 1000);
@@ -264,6 +275,7 @@ const generateSampleIncidents = (): Incident[] => {
   return [
     {
       id: '1',
+      ticketId: 'SR-123456-001',
       type: 'Incident',
       category: 'Physical Injury',
       subcategory: 'Playground or sports injury',
@@ -293,11 +305,13 @@ const generateSampleIncidents = (): Incident[] => {
           updatedAt: pastDays(2)
         }
       ],
+      priority: 'Medium',
       createdAt: pastDays(2),
       updatedAt: pastDays(1)
     },
     {
       id: '2',
+      ticketId: 'SR-123457-002',
       type: 'Near Miss',
       category: 'Property Damage',
       subcategory: 'Damage to lab/sports/classroom equipment',
@@ -313,11 +327,13 @@ const generateSampleIncidents = (): Incident[] => {
       actions: [
         { description: 'Maintenance notified, area cordoned off', responsiblePerson: 'Janitor Brown', date: pastDays(5) }
       ],
+      priority: 'High',
       createdAt: pastDays(5),
       updatedAt: pastDays(4)
     },
     {
       id: '3',
+      ticketId: 'SR-123458-003',
       type: 'Unsafe Condition',
       category: 'Health Concern',
       subcategory: 'Suspected communicable disease',
@@ -327,11 +343,13 @@ const generateSampleIncidents = (): Incident[] => {
       peopleInvolved: [],
       status: 'Open',
       reportedBy: { id: '1', name: 'Admin User' },
+      priority: 'Medium',
       createdAt: pastDays(10),
       updatedAt: pastDays(10)
     },
     {
       id: '4',
+      ticketId: 'SR-123459-004',
       type: 'Incident',
       category: 'Bullying',
       subcategory: 'Name-calling, teasing, mocking',
@@ -344,11 +362,13 @@ const generateSampleIncidents = (): Incident[] => {
       ],
       status: 'Open',
       reportedBy: { id: '2', name: 'Teacher Reporter' },
+      priority: 'High',
       createdAt: pastDays(1),
       updatedAt: pastDays(1)
     },
     {
       id: '5',
+      ticketId: 'SR-123460-005',
       type: 'Incident',
       category: 'Tech Misuse',
       subcategory: 'Using phone or laptop without permission',
@@ -363,6 +383,7 @@ const generateSampleIncidents = (): Incident[] => {
       actions: [
         { description: 'Device confiscated, parent meeting scheduled', responsiblePerson: 'IT Admin', date: pastDays(3) }
       ],
+      priority: 'Low',
       createdAt: pastDays(3),
       updatedAt: pastDays(2)
     }
@@ -407,14 +428,18 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
     setActivities(prev => [activity, ...prev]);
   };
 
-  const addIncident = (incidentData: Omit<Incident, 'id' | 'status' | 'createdAt' | 'updatedAt'>) => {
+  const addIncident = (incidentData: Omit<Incident, 'id' | 'status' | 'createdAt' | 'updatedAt' | 'ticketId'>) => {
     const now = new Date();
+    const ticketId = generateTicketId();
+    
     const newIncident: Incident = {
       ...incidentData,
       id: Date.now().toString(),
+      ticketId,
       status: 'Open', // The status is set here internally
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
+      priority: incidentData.priority || 'Medium' // Default priority if not provided
     };
     
     setIncidents(prev => [newIncident, ...prev]);
@@ -422,7 +447,7 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
       type: 'incident',
       activity: 'create',
       entityId: newIncident.id,
-      entityTitle: `${newIncident.type}: ${newIncident.category} - ${newIncident.subcategory}`,
+      entityTitle: `${newIncident.ticketId}: ${newIncident.type}: ${newIncident.category} - ${newIncident.subcategory}`,
       user: newIncident.reportedBy.name,
       userId: newIncident.reportedBy.id,
       date: now,
@@ -682,7 +707,8 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
       updateActionItem,
       deleteActionItem,
       getRecentActivities,
-      getIncidentActivities
+      getIncidentActivities,
+      generateTicketId
     }}>
       {children}
     </IncidentContext.Provider>
