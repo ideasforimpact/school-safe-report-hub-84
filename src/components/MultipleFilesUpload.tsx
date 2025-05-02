@@ -1,9 +1,10 @@
 
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Upload, X, ImageIcon, FileText, Video, File } from 'lucide-react';
+import { Plus, X, ImageIcon, FileText, Video, File, FilePlus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { toast } from '@/components/ui/sonner';
 
 interface FileItem {
   id: string;
@@ -38,41 +39,33 @@ const MultipleFilesUpload = ({
     
     // Check if adding new files would exceed the maximum
     if (files.length + selectedFiles.length > maxFiles) {
-      alert(`You can upload a maximum of ${maxFiles} files.`);
+      toast.error(`You can upload a maximum of ${maxFiles} files.`);
       setIsUploading(false);
       return;
     }
 
-    // Process each file
-    const newFilesPromises = Array.from(selectedFiles).map(file => {
-      // Validate file size (max 25MB)
-      if (file.size > 25 * 1024 * 1024) {
-        alert(`File "${file.name}" exceeds the 25MB size limit.`);
-        return null;
-      }
+    // Process selected file (single file approach)
+    const file = selectedFiles[0];
+    
+    // Validate file size (max 25MB)
+    if (file.size > 25 * 1024 * 1024) {
+      toast.error(`File "${file.name}" exceeds the 25MB size limit.`);
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
 
-      return new Promise<FileItem | null>((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          resolve({
-            id: `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            name: file.name,
-            type: file.type,
-            size: file.size,
-            base64: reader.result as string
-          });
-        };
-        reader.onerror = () => {
-          alert(`Error reading file "${file.name}".`);
-          resolve(null);
-        };
-        reader.readAsDataURL(file);
-      });
-    });
-
-    Promise.all(newFilesPromises).then(newFiles => {
-      const validNewFiles = newFiles.filter(Boolean) as FileItem[];
-      const updatedFiles = [...files, ...validNewFiles];
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const newFile = {
+        id: `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        base64: reader.result as string
+      };
+      
+      const updatedFiles = [...files, newFile];
       setFiles(updatedFiles);
       onFilesChange(updatedFiles);
       setIsUploading(false);
@@ -81,7 +74,17 @@ const MultipleFilesUpload = ({
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
-    });
+      
+      toast.success(`File "${file.name}" added successfully`);
+    };
+    
+    reader.onerror = () => {
+      toast.error(`Error reading file "${file.name}".`);
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+    
+    reader.readAsDataURL(file);
   };
 
   const triggerFileInput = () => {
@@ -89,9 +92,13 @@ const MultipleFilesUpload = ({
   };
 
   const removeFile = (id: string) => {
+    const fileToRemove = files.find(file => file.id === id);
     const updatedFiles = files.filter(file => file.id !== id);
     setFiles(updatedFiles);
     onFilesChange(updatedFiles);
+    if (fileToRemove) {
+      toast.success(`File "${fileToRemove.name}" removed`);
+    }
   };
 
   const getFileTypeIcon = (fileType: string) => {
@@ -122,61 +129,63 @@ const MultipleFilesUpload = ({
         onChange={handleFileChange} 
         className="hidden" 
         accept="image/*,video/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
-        multiple
       />
       
-      <div className="border rounded-md p-4">
+      <div className="border rounded-md p-4 bg-white">
+        {/* File List */}
         {files.length > 0 && (
-          <ScrollArea className="h-[200px] mb-4">
-            <div className="space-y-2">
-              {files.map(file => (
-                <div key={file.id} className="flex items-center justify-between bg-gray-50 p-2 rounded-md">
-                  <div className="flex items-center overflow-hidden">
-                    {getFileTypeIcon(file.type)}
-                    <span className="text-sm font-medium truncate">{file.name}</span>
-                    <Badge variant="outline" className="ml-2">
-                      {formatFileSize(file.size)}
-                    </Badge>
+          <div className="mb-4">
+            <h4 className="text-sm font-medium mb-2">Added Files ({files.length}/{maxFiles})</h4>
+            <ScrollArea className="h-[150px]">
+              <div className="space-y-2">
+                {files.map(file => (
+                  <div key={file.id} className="flex items-center justify-between bg-gray-50 p-2 rounded-md border border-gray-200">
+                    <div className="flex items-center overflow-hidden">
+                      {getFileTypeIcon(file.type)}
+                      <span className="text-sm font-medium truncate">{file.name}</span>
+                      <Badge variant="outline" className="ml-2">
+                        {formatFileSize(file.size)}
+                      </Badge>
+                    </div>
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => removeFile(file.id)}
+                      className="flex-shrink-0"
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
                   </div>
-                  <Button 
-                    type="button" 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={() => removeFile(file.id)}
-                    className="flex-shrink-0"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </ScrollArea>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
         )}
 
+        {/* Add Button - Only shown if under max files */}
         {files.length < maxFiles && (
-          <div 
-            className="border border-dashed border-gray-300 rounded-md p-6 flex flex-col items-center justify-center bg-gray-50 cursor-pointer"
-            onClick={triggerFileInput}
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={triggerFileInput} 
+            className="w-full py-6 border-dashed flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100"
+            disabled={isUploading}
           >
-            <Upload className="h-8 w-8 text-gray-400 mb-2" />
-            <p className="text-sm text-gray-600">Click to upload files</p>
+            <FilePlus className="h-8 w-8 mb-2 text-gray-500" />
+            <span className="font-medium">
+              {isUploading ? 'Adding file...' : 'Add a file'}
+            </span>
             <p className="text-xs text-gray-500 mt-1">
               Images, videos, documents up to 25MB
             </p>
-            <Button 
-              type="button" 
-              variant="outline" 
-              className="mt-4" 
-              disabled={isUploading}
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              {isUploading ? 'Uploading...' : 'Upload Files'}
-            </Button>
-            <p className="text-xs text-gray-500 mt-2">
-              {files.length}/{maxFiles} files uploaded
-            </p>
-          </div>
+          </Button>
         )}
+        
+        {/* Counter showing files added */}
+        <div className="mt-2 text-xs text-right text-gray-500">
+          {files.length} of {maxFiles} files added
+        </div>
       </div>
     </div>
   );
