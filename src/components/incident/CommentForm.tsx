@@ -4,7 +4,6 @@ import { Comment as IncidentComment, FileItem } from '@/types/incident';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import ImageUpload from '@/components/ImageUpload';
 import MultipleFilesUpload from '@/components/MultipleFilesUpload';
 import {
   Select,
@@ -53,10 +52,6 @@ const CommentForm: React.FC<CommentFormProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit(commentForm);
-  };
-
-  const handleImageChange = (imageBase64: string | undefined) => {
-    setCommentForm(prev => ({ ...prev, image: imageBase64 }));
   };
 
   const handleFilesChange = (files: FileItem[]) => {
@@ -174,17 +169,6 @@ const CommentForm: React.FC<CommentFormProps> = ({
                   onFilesChange={handleFilesChange}
                   initialFiles={commentForm.files || []}
                   maxFiles={5}
-                />
-              </div>
-              
-              <div className="mt-6">
-                <h3 className="text-sm font-medium mb-2">Legacy Image Upload (For backward compatibility)</h3>
-                <p className="text-xs text-gray-500 mb-2">
-                  This is kept for backward compatibility. Please use the file uploader above instead.
-                </p>
-                <ImageUpload 
-                  onImageChange={handleImageChange}
-                  initialImage={commentForm.image}
                 />
               </div>
             </div>
