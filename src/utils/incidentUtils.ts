@@ -7,12 +7,12 @@ export const generateTicketId = (): string => {
   return `${prefix}-${timestamp}-${randomDigits}`;
 };
 
-// Sample users for the demo
+// Sample users for the demo - updated to match the User type exactly
 export const sampleUsers = [
-  { id: '1', name: 'Admin User', role: 'Admin' },
-  { id: '2', name: 'Teacher Reporter', role: 'Teacher' },
-  { id: '3', name: 'Safety Officer', role: 'Safety Officer' },
-  { id: '4', name: 'Maintenance Staff', role: 'Staff' },
+  { id: '1', name: 'Admin User', role: 'Admin' as const },
+  { id: '2', name: 'Teacher Reporter', role: 'Teacher' as const },
+  { id: '3', name: 'Safety Officer', role: 'Safety Officer' as const },
+  { id: '4', name: 'Maintenance Staff', role: 'Staff' as const },
 ];
 
 // Generate sample incidents for demo purposes

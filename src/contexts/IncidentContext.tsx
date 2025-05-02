@@ -1,11 +1,10 @@
-
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { useFacilities } from './FacilityContext';
 import { generateTicketId, sampleUsers, generateSampleIncidents } from '@/utils/incidentUtils';
 import { useIncidentActions } from '@/hooks/useIncidentActions';
 import { useActionItems } from '@/hooks/useActionItems';
 import { useActivities } from '@/hooks/useActivities';
-import { Incident, User, Activity } from '@/types/incident';
+import { Incident, User, Activity, ActionItem } from '@/types/incident';
 
 // Re-export types from types/incident.ts
 export type {
@@ -74,7 +73,7 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
     setIncidents,
     activities,
     setActivities,
-    sampleUsers
+    sampleUsers as User[]  // Type assertion to fix the role compatibility issue
   );
   
   // Hooks for action item operations
@@ -90,7 +89,7 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
   return (
     <IncidentContext.Provider value={{ 
       incidents, 
-      users: sampleUsers,
+      users: sampleUsers as User[],  // Type assertion to fix the role compatibility issue
       addIncident, 
       updateIncident, 
       getIncident,
