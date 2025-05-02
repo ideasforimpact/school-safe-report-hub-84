@@ -28,6 +28,12 @@ export interface UserRef {
   name: string;
 }
 
+export interface Document {
+  name: string;
+  type: string;
+  data: string; // Base64 encoded data
+}
+
 export interface Action {
   description: string;
   responsiblePerson: string;
@@ -69,6 +75,7 @@ export interface Incident {
   image?: string;
   video?: string;
   document?: string;
+  documents?: Document[];
   actions?: Action[];
   actionItems?: ActionItem[];
   createdAt: Date;

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -9,6 +8,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/layout/Layout';
 import ImageUpload from '@/components/ImageUpload';
+import MultipleFilesUpload from '@/components/MultipleFilesUpload';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -23,6 +23,14 @@ import { toast } from '@/components/ui/sonner';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { X, Plus, Ticket } from 'lucide-react';
 import { Person } from '@/types/incident';
+
+interface FileItem {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  base64: string;
+}
 
 const ReportIncident = () => {
   const { 
@@ -57,6 +65,8 @@ const ReportIncident = () => {
     status: 'Open' as IncidentStatus,
     priority: 'Medium' as 'Low' | 'Medium' | 'High' | 'Critical'
   });
+
+  const [supportingFiles, setSupportingFiles] = useState<FileItem[]>([]);
 
   // State to store available subcategories based on selected category
   const [availableSubcategories, setAvailableSubcategories] = useState<{id: string, name: string}[]>([]);
@@ -116,6 +126,10 @@ const ReportIncident = () => {
     setFormData(prev => ({ ...prev, image: imageBase64 }));
   };
 
+  const handleFilesChange = (files: FileItem[]) => {
+    setSupportingFiles(files);
+  };
+
   const getSelectedCategory = () => {
     const category = categories.find(cat => cat.id === formData.categoryId);
     return category ? category.name : '';
@@ -154,6 +168,13 @@ const ReportIncident = () => {
       const locationName = getSelectedLocation();
       const facilityName = getSelectedFacility();
       
+      // Process supporting documents
+      const documents = supportingFiles.map(file => ({
+        name: file.name,
+        type: file.type,
+        data: file.base64
+      }));
+      
       addIncident({
         type: formData.type as IncidentType,
         category: categoryName as any, // Type cast needed because we're using dynamic categories
@@ -166,6 +187,7 @@ const ReportIncident = () => {
         image: formData.image,
         facility: facilityName,
         priority: formData.priority,
+        documents: documents,
         reportedBy: {
           id: user?.id || '',
           name: user?.name || ''
@@ -377,6 +399,20 @@ const ReportIncident = () => {
                     onImageChange={handleImageChange} 
                     initialImage={formData.image}
                   />
+                </div>
+
+                <div className="space-y-2 md:col-span-2">
+                  <label className="text-sm font-medium">
+                    Supporting Documents (Optional)
+                  </label>
+                  <MultipleFilesUpload
+                    onFilesChange={handleFilesChange}
+                    initialFiles={supportingFiles}
+                    maxFiles={5}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Upload up to 5 files (images, videos, documents) to support this incident report
+                  </p>
                 </div>
 
                 <div className="space-y-2">
