@@ -229,33 +229,36 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
         </p>
       </div>
 
-      <div className="space-y-2">
-        <label htmlFor="date" className="text-sm font-medium">
-          Date of Occurrence <span className="text-red-500">*</span>
+      {/* Modified section to display date and time on the same line */}
+      <div className="space-y-2 md:col-span-2">
+        <label className="text-sm font-medium">
+          Date and Time of Occurrence <span className="text-red-500">*</span>
         </label>
-        <Input
-          type="date"
-          id="date"
-          name="date"
-          value={formData.date}
-          onChange={onChange}
-          max={new Date().toISOString().split('T')[0]}
-          required
-        />
-      </div>
-
-      <div className="space-y-2">
-        <label htmlFor="time" className="text-sm font-medium">
-          Time of Occurrence <span className="text-red-500">*</span>
-        </label>
-        <Input
-          type="time"
-          id="time"
-          name="time"
-          value={formData.time}
-          onChange={onChange}
-          required
-        />
+        <div className="flex space-x-3">
+          <div className="flex-1">
+            <Input
+              type="date"
+              id="date"
+              name="date"
+              value={formData.date}
+              onChange={onChange}
+              max={new Date().toISOString().split('T')[0]}
+              required
+              className="w-full"
+            />
+          </div>
+          <div className="flex-1">
+            <Input
+              type="time"
+              id="time"
+              name="time"
+              value={formData.time}
+              onChange={onChange}
+              required
+              className="w-full"
+            />
+          </div>
+        </div>
       </div>
       
       <div className="space-y-2 md:col-span-2 pt-4">
