@@ -1,28 +1,17 @@
+
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { useFacilities } from './FacilityContext';
-import { generateTicketId, sampleUsers, generateSampleIncidents } from '@/utils/incidentUtils';
+import { generateTicketId, sampleUsers } from '@/utils/incidentUtils';
 import { useIncidentActions } from '@/hooks/useIncidentActions';
 import { useActionItems } from '@/hooks/useActionItems';
 import { useActivities } from '@/hooks/useActivities';
 import { Incident, User, Activity, ActionItem } from '@/types/incident';
+import { generateSampleIncidents } from '@/utils/sampleIncidentData';
 
-// Re-export types from types/incident.ts
-export type {
-  IncidentType,
-  IncidentCategory,
-  IncidentLocation,
-  IncidentStatus,
-  SchoolFacility,
-  Person,
-  UserRef,
-  Action,
-  ActionItem,
-  Incident,
-  User,
-  Activity
-} from '@/types/incident';
+// Re-export types
+export * from '@/types/incidentTypes';
 
-// Re-export subcategories from data/incidentCategories.ts
+// Re-export subcategories
 export {
   subcategories,
   nearMissSubcategories,
