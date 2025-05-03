@@ -221,7 +221,7 @@ const IncidentDetail = () => {
                     className="flex items-center gap-1"
                   >
                     <Send className="h-4 w-4" />
-                    {isSubmitting ? 'Sending...' : 'Send Comment'}
+                    {isSubmitting ? 'Submitting...' : 'Submit Comment'}
                   </Button>
                 </div>
               </div>
@@ -269,3 +269,4 @@ const IncidentDetail = () => {
 };
 
 export default IncidentDetail;
+
