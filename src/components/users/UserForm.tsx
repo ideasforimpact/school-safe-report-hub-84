@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { UserRole, ModulePermissions } from '@/contexts/AuthContext';
+import { useIncidents } from '@/contexts/IncidentContext';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -32,6 +33,8 @@ interface UserFormProps {
 }
 
 const UserForm = ({ formData, setFormData, isEditMode = false }: UserFormProps) => {
+  const { designations = [] } = useIncidents();
+  
   const handleModulePermissionChange = (module: keyof ModulePermissions, value: boolean) => {
     setFormData({
       ...formData,
@@ -65,12 +68,35 @@ const UserForm = ({ formData, setFormData, isEditMode = false }: UserFormProps) 
       </div>
       <div className="space-y-2">
         <label htmlFor={isEditMode ? "edit-designation" : "designation"}>Designation</label>
-        <Input
-          id={isEditMode ? "edit-designation" : "designation"}
-          value={formData.designation || ''}
-          onChange={(e) => setFormData({...formData, designation: e.target.value})}
-          placeholder="Enter designation"
-        />
+        <Select 
+          value={formData.designation || ''} 
+          onValueChange={(value) => setFormData({...formData, designation: value})}
+        >
+          <SelectTrigger id={isEditMode ? "edit-designation" : "designation"}>
+            <SelectValue placeholder="Select designation" />
+          </SelectTrigger>
+          <SelectContent>
+            {designations.length > 0 ? (
+              designations.map((designation) => (
+                <SelectItem key={designation.id} value={designation.name}>
+                  {designation.name}
+                </SelectItem>
+              ))
+            ) : (
+              <SelectItem value="">No designations available</SelectItem>
+            )}
+            {/* Option to enter custom designation if needed */}
+            <SelectItem value="custom">Custom (enter below)</SelectItem>
+          </SelectContent>
+        </Select>
+        {formData.designation === 'custom' && (
+          <Input
+            className="mt-2"
+            placeholder="Enter custom designation"
+            value={formData.designation === 'custom' ? '' : formData.designation || ''}
+            onChange={(e) => setFormData({...formData, designation: e.target.value})}
+          />
+        )}
       </div>
       <div className="space-y-2">
         <label htmlFor={isEditMode ? "edit-password" : "password"}>

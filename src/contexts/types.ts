@@ -48,4 +48,10 @@ export interface IncidentContextType {
   getRecentActivities: () => Activity[];
   getIncidentActivities: (incidentId: string) => Activity[];
   generateTicketId: () => string;
+  
+  // Add these properties for designations
+  designations: ConfigItem[];
+  addDesignation: (name: string) => void;
+  updateDesignation: (id: string, name: string) => void;
+  deleteDesignation: (id: string) => void;
 }

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useIncidents } from '@/contexts/IncidentContext';
@@ -44,7 +43,11 @@ const ConfigurationManagement = () => {
     facilities,
     addFacility,
     deleteFacility,
-    updateFacility
+    updateFacility,
+    designations,
+    addDesignation,
+    updateDesignation,
+    deleteDesignation
   } = useIncidents();
   
   const [newCategory, setNewCategory] = useState('');
@@ -59,6 +62,9 @@ const ConfigurationManagement = () => {
   
   const [newFacility, setNewFacility] = useState('');
   const [editingFacility, setEditingFacility] = useState<{id: string, name: string} | null>(null);
+  
+  const [newDesignation, setNewDesignation] = useState('');
+  const [editingDesignation, setEditingDesignation] = useState<{id: string, name: string} | null>(null);
 
   // Category Management
   const handleCategoryAdd = () => {
@@ -177,13 +183,41 @@ const ConfigurationManagement = () => {
     toast.success("Facility updated successfully");
   };
 
+  // Designation Management
+  const handleDesignationAdd = () => {
+    if (!newDesignation.trim()) {
+      toast.error("Designation name cannot be empty");
+      return;
+    }
+    
+    addDesignation(newDesignation);
+    setNewDesignation('');
+    toast.success("Designation added successfully");
+  };
+
+  const handleDesignationDelete = (id: string) => {
+    deleteDesignation(id);
+    toast.success("Designation deleted successfully");
+  };
+
+  const handleDesignationUpdate = () => {
+    if (!editingDesignation || !editingDesignation.name.trim()) {
+      toast.error("Designation name cannot be empty");
+      return;
+    }
+    
+    updateDesignation(editingDesignation.id, editingDesignation.name);
+    setEditingDesignation(null);
+    toast.success("Designation updated successfully");
+  };
+
   return (
     <Layout>
       <div className="space-y-6 max-w-6xl mx-auto p-4">
         <div>
           <h1 className="text-2xl font-bold">Configuration Management</h1>
           <p className="text-gray-600 mt-1">
-            Manage incident categories, subcategories, locations, and facilities
+            Manage incident categories, subcategories, locations, facilities, and designations
           </p>
         </div>
 
@@ -193,6 +227,7 @@ const ConfigurationManagement = () => {
             <TabsTrigger value="subcategories">Subcategories</TabsTrigger>
             <TabsTrigger value="locations">Locations</TabsTrigger>
             <TabsTrigger value="facilities">Facilities</TabsTrigger>
+            <TabsTrigger value="designations">Designations</TabsTrigger>
           </TabsList>
           
           {/* Categories Tab */}
@@ -545,6 +580,92 @@ const ConfigurationManagement = () => {
                         </TableCell>
                       </TableRow>
                     ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          {/* Designations Tab */}
+          <TabsContent value="designations">
+            <Card>
+              <CardHeader>
+                <CardTitle>User Designations</CardTitle>
+                <CardDescription>Manage user role designations</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex gap-4 mb-6">
+                  <Input
+                    placeholder="New designation name"
+                    value={newDesignation}
+                    onChange={(e) => setNewDesignation(e.target.value)}
+                  />
+                  <Button onClick={handleDesignationAdd}>
+                    <Plus className="mr-2 h-4 w-4" /> Add Designation
+                  </Button>
+                </div>
+                
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Designation Name</TableHead>
+                      <TableHead className="w-[100px]">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {designations.map((designation) => (
+                      <TableRow key={designation.id}>
+                        <TableCell>{designation.name}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button variant="ghost" size="icon" onClick={() => setEditingDesignation({id: designation.id, name: designation.name})}>
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Edit Designation</DialogTitle>
+                                  <DialogDescription>
+                                    Update the designation name below
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <Input
+                                  placeholder="Designation name"
+                                  value={editingDesignation?.name || ''}
+                                  onChange={(e) => setEditingDesignation(prev => prev ? {...prev, name: e.target.value} : null)}
+                                  className="my-4"
+                                />
+                                <DialogFooter>
+                                  <DialogClose asChild>
+                                    <Button variant="outline" onClick={() => setEditingDesignation(null)}>Cancel</Button>
+                                  </DialogClose>
+                                  <DialogClose asChild>
+                                    <Button onClick={handleDesignationUpdate}>Save Changes</Button>
+                                  </DialogClose>
+                                </DialogFooter>
+                              </DialogContent>
+                            </Dialog>
+                            
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => handleDesignationDelete(designation.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {designations.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={2} className="text-center text-muted-foreground">
+                          No designations found
+                        </TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </CardContent>

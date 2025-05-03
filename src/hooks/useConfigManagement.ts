@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { ConfigItem, SubcategoryItem } from '@/contexts/types';
 
@@ -6,7 +5,8 @@ export function useConfigManagement(
   initialCategories: ConfigItem[],
   initialSubcategories: Record<string, SubcategoryItem[]>,
   initialLocations: ConfigItem[],
-  initialFacilities: ConfigItem[]
+  initialFacilities: ConfigItem[],
+  initialDesignations: ConfigItem[] = []
 ) {
   // Configuration state
   const [categories, setCategories] = useState<ConfigItem[]>(() => {
@@ -29,6 +29,11 @@ export function useConfigManagement(
     return saved ? JSON.parse(saved) : initialFacilities;
   });
 
+  const [designations, setDesignations] = useState<ConfigItem[]>(() => {
+    const saved = localStorage.getItem('designations');
+    return saved ? JSON.parse(saved) : initialDesignations;
+  });
+
   // Save data to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem('categories', JSON.stringify(categories));
@@ -45,6 +50,10 @@ export function useConfigManagement(
   useEffect(() => {
     localStorage.setItem('facilities', JSON.stringify(facilities));
   }, [facilities]);
+
+  useEffect(() => {
+    localStorage.setItem('designations', JSON.stringify(designations));
+  }, [designations]);
 
   // Categories management
   const addCategory = (name: string) => {
@@ -139,12 +148,32 @@ export function useConfigManagement(
     setFacilities(prev => prev.filter(fac => fac.id !== id));
   };
 
+  // Designations management
+  const addDesignation = (name: string) => {
+    const newDesignation = {
+      id: Date.now().toString(),
+      name
+    };
+    setDesignations(prev => [...prev, newDesignation]);
+  };
+
+  const updateDesignation = (id: string, name: string) => {
+    setDesignations(prev => prev.map(designation => 
+      designation.id === id ? { ...designation, name } : designation
+    ));
+  };
+
+  const deleteDesignation = (id: string) => {
+    setDesignations(prev => prev.filter(designation => designation.id !== id));
+  };
+
   return {
     // State
     categories,
     subcategoryMappings,
     locations,
     facilities,
+    designations,
     // Category methods
     addCategory,
     updateCategory,
@@ -160,6 +189,10 @@ export function useConfigManagement(
     // Facility methods
     addFacility,
     updateFacility,
-    deleteFacility
+    deleteFacility,
+    // Designation methods
+    addDesignation,
+    updateDesignation,
+    deleteDesignation
   };
 }
