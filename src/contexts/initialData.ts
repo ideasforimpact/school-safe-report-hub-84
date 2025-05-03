@@ -1,5 +1,4 @@
-
-import { ConfigItem, SubcategoryItem } from './types';
+import { ConfigItem, SubcategoryItem, SectionItem } from './types';
 
 // Initial configuration data
 export const initialCategories: ConfigItem[] = [
@@ -110,10 +109,11 @@ export const initialClasses: ConfigItem[] = [
   { id: '5', name: 'Class 5' }
 ];
 
-export const initialSections: ConfigItem[] = [
-  { id: '1', name: 'Section A' },
-  { id: '2', name: 'Section B' },
-  { id: '3', name: 'Section C' }
+// Update initialSections to have the correct type with classId
+export const initialSections: SectionItem[] = [
+  { id: '1', name: 'Section A', classId: '1' }, // Assign to Class 1
+  { id: '2', name: 'Section B', classId: '1' }, // Assign to Class 1
+  { id: '3', name: 'Section C', classId: '2' }  // Assign to Class 2
 ];
 
 // Adding sample incident data export to resolve the import error

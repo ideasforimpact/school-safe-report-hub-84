@@ -47,7 +47,7 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
     initialFacilities,
     initialDesignations,
     initialClasses,
-    initialSections
+    initialSections  // Now this is correctly typed as SectionItem[]
   );
 
   // Stub implementation for required methods
