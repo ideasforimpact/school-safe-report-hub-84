@@ -1,9 +1,8 @@
-
 import { useParams, useNavigate } from 'react-router-dom';
 import { useIncidents } from '@/contexts/IncidentContext';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/layout/Layout';
-import { Action, Comment as IncidentComment, FileItem, IncidentStatus } from '@/types/incident';
+import { Action, Comment as IncidentComment, FileItem, IncidentStatus, User as IncidentUser } from '@/types/incident';
 import { useIncidentDetail } from '@/hooks/useIncidentDetail';
 import { useState } from 'react';
 import { toast } from "sonner";
@@ -98,6 +97,13 @@ const IncidentDetail = () => {
     }
   };
 
+  // Convert AuthContext User to IncidentUser
+  const incidentUser: IncidentUser | null = user ? {
+    id: user.id,
+    name: user.name,
+    role: isAdmin ? 'Admin' : 'Staff'
+  } : null;
+
   return (
     <Layout>
       <IncidentDetailContent
@@ -121,7 +127,7 @@ const IncidentDetail = () => {
         updateComment={updateComment}
         deleteComment={deleteComment}
         canEditComment={canEditComment}
-        user={user}
+        user={incidentUser}
         isAdmin={isAdmin}
       />
     </Layout>
