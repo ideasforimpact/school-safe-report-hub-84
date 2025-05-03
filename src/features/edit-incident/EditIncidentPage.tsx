@@ -162,23 +162,20 @@ const EditIncidentPage = () => {
   return (
     <Layout>
       <div className="space-y-6 max-w-4xl mx-auto">
-        <div>
+        <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">Edit Incident</h1>
-          <p className="text-gray-600 mt-1">
-            Update incident details
-          </p>
-        </div>
-
-        {/* Void button */}
-        <div className="flex justify-end">
           <Button 
             variant="destructive" 
+            size="sm"
             onClick={() => setShowVoidDialog(true)}
             disabled={incident?.isVoided}
           >
             {incident?.isVoided ? 'Incident Voided' : 'Void Incident'}
           </Button>
         </div>
+        <p className="text-gray-600 mt-1">
+          Update incident details
+        </p>
 
         <EditIncidentForm
           formData={formData}
