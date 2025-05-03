@@ -1,4 +1,3 @@
-
 // Types for Incident Management System
 export type IncidentType = 'Incident' | 'Near Miss' | 'Unsafe Condition';
 export type IncidentCategory = 
@@ -41,6 +40,7 @@ export interface Action {
   image?: string;
   video?: string;
   document?: string;
+  files?: FileItem[]; // New field for multiple files
 }
 
 export interface FileItem {

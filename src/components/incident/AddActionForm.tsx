@@ -1,10 +1,11 @@
 
 import React, { useState } from 'react';
-import { Action } from '@/types/incident';
+import { Action, FileItem } from '@/types/incident';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import ImageUpload from '@/components/ImageUpload';
+import { useFilesManagement } from '@/hooks/useFilesManagement';
+import MultipleFilesUpload from '@/components/MultipleFilesUpload';
 import {
   Card,
   CardHeader,
@@ -25,20 +26,31 @@ const AddActionForm: React.FC<AddActionFormProps> = ({ onSubmit }) => {
     date: new Date(),
     image: undefined
   });
-
-  const handleActionImageChange = (imageBase64: string | undefined) => {
-    setFormAction(prev => ({ ...prev, image: imageBase64 }));
-  };
+  
+  // Use our files management hook for the supporting files
+  const { supportingFiles, handleFilesChange } = useFilesManagement();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formAction);
+    
+    // Include supporting files with the action
+    const actionWithFiles = {
+      ...formAction,
+      files: supportingFiles
+    };
+    
+    onSubmit(actionWithFiles);
+    
+    // Reset form
     setFormAction({
       description: '',
       responsiblePerson: '',
       date: new Date(),
       image: undefined
     });
+    
+    // Reset files
+    handleFilesChange([]);
   };
 
   return (
@@ -66,12 +78,16 @@ const AddActionForm: React.FC<AddActionFormProps> = ({ onSubmit }) => {
 
           <div className="space-y-2">
             <label className="text-sm font-medium">
-              Image Documentation (Optional)
+              Documentation Files
             </label>
-            <ImageUpload 
-              onImageChange={handleActionImageChange}
-              initialImage={formAction.image}
+            <MultipleFilesUpload
+              onFilesChange={handleFilesChange}
+              initialFiles={supportingFiles}
+              maxFiles={5}
             />
+            <p className="text-xs text-gray-500">
+              Upload images, videos, PDFs or other documentation (max 5 files)
+            </p>
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

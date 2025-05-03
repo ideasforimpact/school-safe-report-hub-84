@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { Action } from '@/types/incident';
+import { Action, FileItem } from '@/types/incident';
 import {
   Card,
   CardHeader,
@@ -8,6 +7,7 @@ import {
   CardDescription,
   CardContent,
 } from '@/components/ui/card';
+import FilePreview from './FilePreview';
 
 interface ActionsListProps {
   actions: Action[];
@@ -37,8 +37,20 @@ const ActionsList: React.FC<ActionsListProps> = ({
                   By: {action.responsiblePerson}
                 </p>
 
-                {/* Display action image if available */}
-                {action.image && (
+                {/* Display action files if available */}
+                {action.files && action.files.length > 0 && (
+                  <div className="mt-3">
+                    <p className="text-sm font-medium mb-2">Documentation:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {action.files.map((file, fileIndex) => (
+                        <FilePreview key={fileIndex} file={file} />
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Keep the old single image display for backward compatibility */}
+                {!action.files && action.image && (
                   <div className="mt-3">
                     <img 
                       src={action.image} 
