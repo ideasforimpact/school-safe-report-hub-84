@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useIncidents } from '@/contexts/IncidentContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { Action, Comment as IncidentComment, FileItem, IncidentStatus, User as IncidentUser } from '@/types/incident';
+import { Action, Comment as IncidentComment, FileItem, IncidentStatus, User as IncidentUser, ContributingFactor } from '@/types/incident';
 import { useIncidentDetail } from '@/hooks/useIncidentDetail';
 import { toast } from "sonner";
 import { compressImageData } from '@/utils/imageCompression';

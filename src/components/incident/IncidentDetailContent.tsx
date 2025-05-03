@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import IncidentHeader from './IncidentHeader';
 import IncidentDetailsCard from './IncidentDetailsCard';
@@ -8,6 +8,7 @@ import ActionsManager from './ActionsManager';
 import CommentsList from './CommentsList';
 import InlineCommentForm from './CommentForm.inline';
 import AuditTrail from '@/components/AuditTrail';
+import IncidentDetails from './IncidentDetails';
 
 const IncidentDetailContent = ({ 
   incident, 
@@ -56,9 +57,15 @@ const IncidentDetailContent = ({
         <TabsContent value="details" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2">
-              <IncidentDetailsCard 
+              <IncidentDetails 
                 incident={incident} 
                 formatDate={formatDate} 
+                formatDateTime={formatDateTime}
+                getStatusColor={getStatusColor}
+                handleStatusChange={handleStatusChange}
+                statusUpdate={statusUpdate}
+                setStatusUpdate={setStatusUpdate}
+                updateIncident={updateIncident}
               />
             </div>
             <div className="lg:col-span-1">
