@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Incident, Comment as IncidentComment, FileItem, Action } from '@/types/incident';
+import { Incident, Comment as IncidentComment, FileItem, Action, IncidentStatus } from '@/types/incident';
 import { User } from '@/contexts/IncidentContext';
 
 // Refactored components
@@ -24,8 +24,8 @@ interface IncidentDetailContentProps {
   handleCommentSubmit: () => void;
   handleActionSubmit: (action: Action) => void;
   handleStatusChange: () => void;
-  statusUpdate: string;
-  setStatusUpdate: (status: any) => void;
+  statusUpdate: IncidentStatus;
+  setStatusUpdate: (status: IncidentStatus) => void;
   formatDate: (date: Date) => string;
   formatDateTime: (date: Date) => string;
   getStatusColor: (status: string) => string;

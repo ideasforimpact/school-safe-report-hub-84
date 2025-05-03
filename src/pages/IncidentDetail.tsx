@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useIncidents } from '@/contexts/IncidentContext';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/layout/Layout';
-import { Action, Comment as IncidentComment, FileItem } from '@/types/incident';
+import { Action, Comment as IncidentComment, FileItem, IncidentStatus } from '@/types/incident';
 import { useIncidentDetail } from '@/hooks/useIncidentDetail';
 import { useState } from 'react';
 import { toast } from "sonner";
@@ -47,7 +47,7 @@ const IncidentDetail = () => {
   }
 
   const handleStatusChange = () => {
-    updateIncident(incident.id, { status: statusUpdate });
+    updateIncident(incident.id, { status: statusUpdate as IncidentStatus });
   };
 
   const handleActionSubmit = (action: Action) => {
