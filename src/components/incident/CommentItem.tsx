@@ -1,18 +1,21 @@
 
 import React, { useState } from 'react';
-import { Comment as IncidentComment, FileItem } from '@/types/incident';
-import { Button } from '@/components/ui/button';
-import { UserCircle, CalendarClock, MessageSquare, Edit, Trash2, Paperclip } from 'lucide-react';
+import { Comment as IncidentComment } from '@/types/incident';
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
+import { Button } from '@/components/ui/button';
+import { Trash2, Edit } from 'lucide-react';
+import FilePreview from './FilePreview';
 
 interface CommentItemProps {
   comment: IncidentComment;
   formatDate: (date: Date) => string;
-  formatDateTime: (date: Date) => string; // Add formatDateTime prop
+  formatDateTime: (date: Date) => string;
   getCommentStatusColor: (status: IncidentComment['status']) => string;
   canEdit: boolean;
   onEdit: (comment: IncidentComment) => void;
@@ -22,132 +25,128 @@ interface CommentItemProps {
 const CommentItem: React.FC<CommentItemProps> = ({
   comment,
   formatDate,
-  formatDateTime,
+  formatDateTime, // This was missing before
   getCommentStatusColor,
   canEdit,
   onEdit,
-  onDelete
+  onDelete,
 }) => {
-  const [showAttachments, setShowAttachments] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
-  // Helper function to render file preview based on type - with lazy loading
-  const renderFilePreview = (file: FileItem) => {
-    if (file.type.startsWith('image/')) {
-      return (
-        <div className="border p-1 rounded bg-gray-50">
-          {showAttachments ? (
-            <img 
-              src={file.base64} 
-              alt={file.name} 
-              loading="lazy"
-              className="h-20 w-auto object-contain rounded" 
-            />
-          ) : (
-            <div className="h-20 w-20 bg-gray-200 flex items-center justify-center">
-              <Paperclip className="h-6 w-6 text-gray-400" />
-            </div>
-          )}
-          <p className="text-xs text-center truncate mt-1 max-w-[80px]">{file.name}</p>
-        </div>
-      );
-    } else {
-      // For non-image files, show an icon
-      return (
-        <div className="border p-2 rounded bg-gray-50 flex flex-col items-center">
-          <Paperclip className="h-10 w-10 text-gray-400" />
-          <p className="text-xs text-center truncate mt-1 max-w-[80px]">{file.name}</p>
-        </div>
-      );
-    }
+  const toggleExpand = () => {
+    setIsExpanded(!isExpanded);
+  };
+
+  // Function to truncate long text
+  const truncateText = (text: string, maxLength: number = 150) => {
+    if (text.length <= maxLength) return text;
+    return text.slice(0, maxLength) + '...';
   };
 
   return (
-    <div className="border rounded-lg p-4">
-      <div className="flex justify-between items-start">
-        <div className="space-y-1">
-          <h4 className="font-medium">{comment.description}</h4>
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            {/* Display who created the comment */}
-            <div className="flex items-center gap-1">
-              <UserCircle className="h-3.5 w-3.5" />
-              <span>Added by: {comment.createdBy.name}</span>
-            </div>
-            
-            {/* Display when the comment was created instead of due date */}
-            <div className="flex items-center gap-1">
-              <CalendarClock className="h-3.5 w-3.5" />
-              <span>Added: {formatDateTime(new Date(comment.createdAt))}</span>
-            </div>
-            
-            {/* Show file count if there are files */}
-            {comment.files && comment.files.length > 0 && (
-              <div className="flex items-center gap-1">
-                <Paperclip className="h-3.5 w-3.5" />
-                <span>{comment.files.length} file(s)</span>
-              </div>
-            )}
-          </div>
+    <div className="p-4 border rounded-md mb-4 bg-gray-50 relative">
+      {/* Action buttons for edit/delete if user has permission */}
+      {canEdit && (
+        <div className="absolute top-3 right-3">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                <span className="sr-only">Open menu</span>
+                <svg
+                  width="15"
+                  height="15"
+                  viewBox="0 0 15 15"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4"
+                >
+                  <path
+                    d="M8.625 2.5C8.625 3.12132 8.12132 3.625 7.5 3.625C6.87868 3.625 6.375 3.12132 6.375 2.5C6.375 1.87868 6.87868 1.375 7.5 1.375C8.12132 1.375 8.625 1.87868 8.625 2.5ZM8.625 7.5C8.625 8.12132 8.12132 8.625 7.5 8.625C6.87868 8.625 6.375 8.12132 6.375 7.5C6.375 6.87868 6.87868 6.375 7.5 6.375C8.12132 6.375 8.625 6.87868 8.625 7.5ZM7.5 13.625C8.12132 13.625 8.625 13.1213 8.625 12.5C8.625 11.8787 8.12132 11.375 7.5 11.375C6.87868 11.375 6.375 11.8787 6.375 12.5C6.375 13.1213 6.87868 13.625 7.5 13.625Z"
+                    fill="currentColor"
+                    fillRule="evenodd"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => onEdit(comment)}>
+                <Edit className="mr-2 h-4 w-4" />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="text-red-600"
+                onClick={() => onDelete(comment.id)}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-        <span className={`text-xs px-2 py-1 rounded-full ${getCommentStatusColor(comment.status)}`}>
-          {comment.status}
-        </span>
+      )}
+
+      {/* Comment metadata */}
+      <div className="flex flex-wrap gap-2 items-center text-sm text-gray-600 mb-2">
+        <span className="font-medium">{comment.createdBy.name}</span>
+        <span>•</span>
+        <span>{formatDateTime(new Date(comment.createdAt))}</span>
+        {comment.status && (
+          <>
+            <span>•</span>
+            <span className={`px-2 py-0.5 rounded-full text-xs ${getCommentStatusColor(comment.status)}`}>
+              {comment.status}
+            </span>
+          </>
+        )}
       </div>
 
-      {/* Display legacy comment image if available */}
-      {comment.image && !comment.files?.length && (
+      {/* Comment description - truncated if long */}
+      <div className="mt-2">
+        {isExpanded || comment.description.length <= 150 ? (
+          <p className="whitespace-pre-wrap">{comment.description}</p>
+        ) : (
+          <>
+            <p className="whitespace-pre-wrap">{truncateText(comment.description)}</p>
+            <button
+              className="text-blue-600 hover:text-blue-800 text-sm mt-1"
+              onClick={toggleExpand}
+            >
+              Read more
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* Attachments */}
+      {(comment.files && comment.files.length > 0) && (
+        <div className="mt-3">
+          <h4 className="text-sm font-medium mb-2">Attachments</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {comment.files.map((file) => (
+              <FilePreview key={file.id} file={file} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Legacy support for single image */}
+      {comment.image && !comment.files && (
         <div className="mt-3">
           <img 
             src={comment.image} 
-            alt="Comment documentation" 
-            loading="lazy"
-            className="w-full max-h-40 object-contain rounded-md border" 
+            alt="Comment attachment" 
+            className="max-w-full h-auto rounded-md border" 
           />
         </div>
       )}
-      
-      {/* Display new files if available */}
-      {comment.files && comment.files.length > 0 && (
-        <Collapsible 
-          className="mt-3" 
-          open={showAttachments} 
-          onOpenChange={setShowAttachments}
-        >
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="sm" className="flex items-center gap-1 h-7">
-              <Paperclip className="h-3.5 w-3.5" />
-              <span>View {comment.files.length} attachments</span>
-            </Button>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="mt-2">
-            <div className="grid grid-cols-4 gap-2">
-              {comment.files.map((file) => (
-                <div key={file.id}>
-                  {renderFilePreview(file)}
-                </div>
-              ))}
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
-      )}
-      
-      {canEdit && (
-        <div className="mt-3 flex justify-end gap-2">
-          <Button 
-            size="sm" 
-            variant="outline" 
-            onClick={() => onEdit(comment)}
-            className="h-7 px-2"
-          >
-            <Edit className="h-3.5 w-3.5 mr-1" /> Edit
-          </Button>
-          <Button 
-            size="sm" 
-            variant="destructive" 
-            onClick={() => onDelete(comment.id)}
-            className="h-7 px-2"
-          >
-            <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
-          </Button>
+
+      {/* Assignment information */}
+      {comment.assignedTo && comment.assignedTo.name && (
+        <div className="mt-3 text-sm">
+          <span className="text-gray-600">Assigned to: </span>
+          <span className="font-medium">{comment.assignedTo.name}</span>
         </div>
       )}
     </div>
