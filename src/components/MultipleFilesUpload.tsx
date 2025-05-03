@@ -169,16 +169,18 @@ const MultipleFilesUpload = ({
             type="button" 
             variant="outline" 
             onClick={triggerFileInput} 
-            className="w-full py-6 border-dashed flex flex-col items-center justify-center bg-gray-50 hover:bg-gray-100"
+            className="w-full py-6 border-dashed flex items-center justify-center bg-gray-50 hover:bg-gray-100"
             disabled={isUploading}
           >
-            <FilePlus className="h-8 w-8 mb-2 text-gray-500" />
-            <span className="font-medium">
-              {isUploading ? 'Adding file...' : 'Add a file'}
-            </span>
-            <p className="text-xs text-gray-500 mt-1">
-              Images, videos, documents up to 25MB
-            </p>
+            <FilePlus className="h-5 w-5 mr-2 text-gray-500" />
+            <div>
+              <span className="font-medium">
+                {isUploading ? 'Adding file...' : 'Add a file'}
+              </span>
+              <p className="text-xs text-gray-500 mt-1">
+                Images, videos, documents up to 25MB
+              </p>
+            </div>
           </Button>
         )}
         
