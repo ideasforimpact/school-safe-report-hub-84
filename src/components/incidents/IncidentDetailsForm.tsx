@@ -1,11 +1,11 @@
 
 import React from 'react';
 import { FileItem } from '@/types/fileTypes';
-import IncidentTypeSection from './IncidentTypeSection';
-import CategorySection from './CategorySection';
-import LocationSection from './LocationSection';
-import DateTimeSection from './DateTimeSection';
-import DescriptionSection from './DescriptionSection';
+import IncidentTypeSection from './sections/IncidentTypeSection';
+import CategorySection from './sections/CategorySection';
+import LocationSection from './sections/LocationSection';
+import DateTimeSection from './sections/DateTimeSection';
+import DescriptionSection from './sections/DescriptionSection';
 
 interface ConfigItem {
   id: string;
@@ -50,7 +50,7 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
 }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-      {/* Incident Type and Priority Section - Status removed */}
+      {/* Incident Type and Priority Section */}
       <IncidentTypeSection
         type={formData.type}
         priority={formData.priority}
