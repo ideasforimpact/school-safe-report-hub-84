@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/layout/Layout';
 import { toast } from 'sonner';
 import EditIncidentForm from './EditIncidentForm';
-import { IncidentStatus, Person } from '@/types/incident';
+import { IncidentStatus, Person, IncidentType, IncidentCategory, IncidentLocation } from '@/types/incident';
 
 const EditIncidentPage = () => {
   const { getIncident, updateIncident, users } = useIncidents();
@@ -96,13 +96,13 @@ const EditIncidentPage = () => {
       const selectedOwner = formData.owner ? users.find(u => u.id === formData.owner) : undefined;
       
       updateIncident(id, {
-        type: formData.type,
-        category: formData.category,
+        type: formData.type as IncidentType,
+        category: formData.category as IncidentCategory,
         subcategory: formData.subcategory,
         description: formData.description,
         rootCause: formData.rootCause,
         date: dateTime,
-        location: formData.location,
+        location: formData.location as IncidentLocation,
         status: formData.status as IncidentStatus,
         peopleInvolved: validPeople,
         owner: selectedOwner ? { id: selectedOwner.id, name: selectedOwner.name } : undefined,
