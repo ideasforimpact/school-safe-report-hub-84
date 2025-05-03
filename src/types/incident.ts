@@ -1,3 +1,4 @@
+
 // Types for Incident Management System
 export type IncidentType = 'Incident' | 'Near Miss' | 'Unsafe Condition';
 export type IncidentCategory = 
@@ -78,6 +79,14 @@ export interface ActionItem {
   updatedAt: Date;
 }
 
+// Contributing Factors interface
+export interface ContributingFactor {
+  id: string;
+  category: string;
+  description: string;
+  weight: 'Low' | 'Medium' | 'High';
+}
+
 export interface Incident {
   id: string;
   ticketId: string;
@@ -103,6 +112,7 @@ export interface Incident {
   createdAt: Date;
   updatedAt: Date;
   priority?: 'Low' | 'Medium' | 'High' | 'Critical';
+  contributingFactors?: ContributingFactor[]; // Added contributing factors
 }
 
 // Create a user type for dropdown selection

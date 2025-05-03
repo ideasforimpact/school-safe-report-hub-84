@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { Incident, IncidentStatus } from '@/types/incident';
+import React, { useState } from 'react';
+import { Incident, IncidentStatus, ContributingFactor } from '@/types/incident';
 import {
   Card,
   CardContent,
@@ -16,6 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import IncidentClosureForm from './IncidentClosureForm';
 
 interface IncidentDetailsProps {
   incident: Incident;
@@ -25,6 +26,7 @@ interface IncidentDetailsProps {
   handleStatusChange: () => void;
   statusUpdate: IncidentStatus | string;
   setStatusUpdate: (status: IncidentStatus) => void;
+  updateIncident: (id: string, updates: Partial<Incident>) => void;
 }
 
 const IncidentDetails: React.FC<IncidentDetailsProps> = ({
@@ -34,9 +36,28 @@ const IncidentDetails: React.FC<IncidentDetailsProps> = ({
   getStatusColor,
   handleStatusChange,
   statusUpdate,
-  setStatusUpdate
+  setStatusUpdate,
+  updateIncident
 }) => {
   const statusOptions: IncidentStatus[] = ['Open', 'In Progress', 'Closed'];
+  const [isClosureFormOpen, setIsClosureFormOpen] = useState(false);
+  
+  const handleCloseButtonClick = () => {
+    setIsClosureFormOpen(true);
+  };
+  
+  const handleClosureFormSubmit = (data: {
+    rootCause: string;
+    contributingFactors: ContributingFactor[];
+  }) => {
+    updateIncident(incident.id, {
+      status: 'Closed',
+      rootCause: data.rootCause,
+      contributingFactors: data.contributingFactors
+    });
+    
+    setIsClosureFormOpen(false);
+  };
   
   return (
     <Card>
@@ -88,14 +109,25 @@ const IncidentDetails: React.FC<IncidentDetailsProps> = ({
                   ))}
                 </SelectContent>
               </Select>
-              <Button 
-                onClick={handleStatusChange}
-                variant="outline" 
-                size="sm"
-                disabled={statusUpdate === incident.status}
-              >
-                Update
-              </Button>
+              
+              {statusUpdate === 'Closed' && incident.status !== 'Closed' ? (
+                <Button 
+                  onClick={handleCloseButtonClick}
+                  variant="outline" 
+                  size="sm"
+                >
+                  Close Incident
+                </Button>
+              ) : (
+                <Button 
+                  onClick={handleStatusChange}
+                  variant="outline" 
+                  size="sm"
+                  disabled={statusUpdate === incident.status}
+                >
+                  Update
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -111,6 +143,29 @@ const IncidentDetails: React.FC<IncidentDetailsProps> = ({
             <p className="mt-1 whitespace-pre-wrap">{incident.rootCause}</p>
           </div>
         )}
+        
+        {incident.contributingFactors && incident.contributingFactors.length > 0 && (
+          <div className="mt-4">
+            <h3 className="font-medium text-sm">Contributing Factors</h3>
+            <div className="mt-2 space-y-2">
+              {incident.contributingFactors.map(factor => (
+                <div key={factor.id} className="border p-3 rounded-md bg-gray-50">
+                  <div className="flex justify-between">
+                    <span className="font-medium">{factor.category}</span>
+                    <span className={`text-xs px-2 py-1 rounded-full ${
+                      factor.weight === 'High' ? 'bg-red-100 text-red-800' :
+                      factor.weight === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-blue-100 text-blue-800'
+                    }`}>
+                      {factor.weight} Impact
+                    </span>
+                  </div>
+                  <p className="text-sm mt-1">{factor.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {incident.image && (
           <div className="mt-4">
@@ -123,6 +178,14 @@ const IncidentDetails: React.FC<IncidentDetailsProps> = ({
           </div>
         )}
       </CardContent>
+      
+      {/* Incident Closure Form */}
+      <IncidentClosureForm
+        incident={incident}
+        isOpen={isClosureFormOpen}
+        onClose={() => setIsClosureFormOpen(false)}
+        onSubmit={handleClosureFormSubmit}
+      />
     </Card>
   );
 };

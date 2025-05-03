@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Incident, Action, Comment as IncidentComment, IncidentStatus, User as IncidentUser } from '@/types/incident';
 import IncidentActions from '@/components/incident/IncidentActions';
@@ -30,6 +31,7 @@ interface IncidentDetailContentProps {
   canEditComment: (comment: IncidentComment) => boolean;
   user: IncidentUser | null;
   isAdmin: boolean;
+  updateIncident: (id: string, updates: Partial<Incident>) => void;
 }
 
 const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
@@ -54,7 +56,8 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
   deleteComment,
   canEditComment,
   user,
-  isAdmin
+  isAdmin,
+  updateIncident
 }) => {
   const [activeTab, setActiveTab] = useState("details");
 
@@ -81,6 +84,7 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
             handleStatusChange={handleStatusChange}
             statusUpdate={statusUpdate}
             setStatusUpdate={setStatusUpdate}
+            updateIncident={updateIncident}
           />
         </TabsContent>
         <TabsContent value="actions" className="space-y-4">

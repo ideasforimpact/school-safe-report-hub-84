@@ -1,3 +1,4 @@
+
 import { useParams, useNavigate } from 'react-router-dom';
 import { useIncidents } from '@/contexts/IncidentContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -129,6 +130,7 @@ const IncidentDetail = () => {
         canEditComment={canEditComment}
         user={incidentUser}
         isAdmin={isAdmin}
+        updateIncident={updateIncident}
       />
     </Layout>
   );
