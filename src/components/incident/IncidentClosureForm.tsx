@@ -36,41 +36,26 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
     incident.contributingFactors || []
   );
   
-  // Simplified action state
-  const [actions, setActions] = useState<Action[]>(
-    incident.actions || []
-  );
+  // Modified action state - now we'll just have a single action entry
   const [currentAction, setCurrentAction] = useState<Action>({
-    description: '',
+    description: incident.actions && incident.actions.length > 0 
+      ? incident.actions.map(a => a.description).join('\n\n')
+      : '',
     responsiblePerson: '',
     date: new Date(),
   });
 
-  const addAction = () => {
-    if (!currentAction.description) return;
-    
-    const newAction: Action = {
-      description: currentAction.description,
-      responsiblePerson: '', // Empty as per request
-      date: new Date() // Keep for data structure compatibility
-    };
-    
-    setActions([...actions, newAction]);
-    setCurrentAction({
-      description: '',
-      responsiblePerson: '',
-      date: new Date(),
-    });
-  };
-  
-  const removeAction = (index: number) => {
-    const updatedActions = [...actions];
-    updatedActions.splice(index, 1);
-    setActions(updatedActions);
-  };
-
   const handleSubmit = () => {
     if (!rootCause.trim()) return;
+    
+    // Create a single action from the text area content
+    const actions: Action[] = currentAction.description.trim() 
+      ? [{ 
+          description: currentAction.description.trim(), 
+          responsiblePerson: '', 
+          date: new Date() 
+        }] 
+      : [];
     
     onSubmit({
       rootCause,
@@ -96,13 +81,13 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
             setRootCause={setRootCause}
           />
 
-          {/* Actions Taken Section */}
+          {/* Actions Taken Section - Simplified */}
           <ActionsTakenForm
-            actions={actions}
+            actions={[]} // Not used in the simplified version
             currentAction={currentAction}
             setCurrentAction={setCurrentAction}
-            addAction={addAction}
-            removeAction={removeAction}
+            addAction={() => {}} // Not used in the simplified version
+            removeAction={() => {}} // Not used in the simplified version
           />
 
           {/* Contributing Factors Section */}
