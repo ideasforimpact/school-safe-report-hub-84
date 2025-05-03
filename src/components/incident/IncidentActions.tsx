@@ -9,6 +9,7 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import ActionsList from './ActionsList';
+import AddActionForm from './AddActionForm';
 
 interface IncidentActionsProps {
   incident: Incident;
@@ -29,7 +30,11 @@ const IncidentActions: React.FC<IncidentActionsProps> = ({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {/* Form to add new actions */}
+      <AddActionForm onSubmit={handleActionSubmit} />
+      
+      {/* List of existing actions */}
       <ActionsList 
         actions={incident.actions || []} 
         formatDate={formatDate} 
