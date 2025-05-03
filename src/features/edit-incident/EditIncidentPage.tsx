@@ -5,6 +5,7 @@ import EditIncidentForm from './EditIncidentForm';
 import EditIncidentHeader from './EditIncidentHeader';
 import VoidIncidentDialog from './VoidIncidentDialog';
 import { useEditIncident } from '@/hooks/useEditIncident';
+import { Person } from '@/types/incident'; // Add this import for Person type
 
 const EditIncidentPage = () => {
   const {
