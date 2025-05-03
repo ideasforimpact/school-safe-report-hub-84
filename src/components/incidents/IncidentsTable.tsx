@@ -70,6 +70,20 @@ const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
     );
   }
 
+  const handleRowClick = (incidentId: string) => {
+    navigate(`/incident/${incidentId}`);
+  };
+
+  const handleViewClick = (e: React.MouseEvent, incidentId: string) => {
+    e.stopPropagation();
+    navigate(`/incident/${incidentId}`);
+  };
+
+  const handleEditClick = (e: React.MouseEvent, incidentId: string) => {
+    e.stopPropagation();
+    navigate(`/incident/${incidentId}/edit`);
+  };
+
   return (
     <div className="bg-white rounded-lg shadow">
       <div className="overflow-x-auto">
@@ -90,7 +104,7 @@ const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
               <TableRow 
                 key={incident.id} 
                 className={`cursor-pointer hover:bg-gray-50 ${incident.isVoided ? 'bg-red-50' : ''}`}
-                onClick={() => navigate(`/incidents/${incident.id}`)}
+                onClick={() => handleRowClick(incident.id)}
               >
                 <TableCell className="font-medium">
                   <div className="flex items-center">
@@ -119,20 +133,14 @@ const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
                     <Button 
                       variant="ghost" 
                       size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/incidents/${incident.id}`);
-                      }}
+                      onClick={(e) => handleViewClick(e, incident.id)}
                     >
                       View
                     </Button>
                     <Button 
                       variant="ghost" 
                       size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/incidents/${incident.id}/edit`);
-                      }}
+                      onClick={(e) => handleEditClick(e, incident.id)}
                       disabled={incident.isVoided}
                     >
                       <Edit className="h-4 w-4" />

@@ -1,91 +1,76 @@
 
-import React from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { Toaster } from '@/components/ui/sonner';
-import Home from '@/pages/Home';
-import Login from '@/pages/Login';
-import Dashboard from '@/pages/Dashboard';
-import ReportIncident from '@/pages/ReportIncident';
-import IncidentsList from '@/pages/IncidentsList';
-import IncidentDetail from '@/pages/IncidentDetail';
-import EditIncident from '@/pages/EditIncident';
-import Insights from '@/pages/Insights';
-import UserManagement from '@/pages/UserManagement';
-import FacilityManagement from '@/pages/FacilityManagement';
-import ConfigurationManagement from '@/pages/ConfigurationManagement';
-import ClientManagement from '@/pages/ClientManagement';
-import StudentManagement from '@/pages/StudentManagement'; // Add this import
-import BackofficeDashboard from '@/pages/backoffice/BackofficeDashboard';
-import BackofficeAnalytics from '@/pages/backoffice/BackofficeAnalytics';
-import BackofficeSettings from '@/pages/backoffice/BackofficeSettings';
-import NotFound from '@/pages/NotFound';
-import Support from '@/pages/Support';
-import Pricing from '@/pages/Pricing';
-import Blog from '@/pages/Blog';
-import Benchmarking from '@/pages/Benchmarking';
-import { AuthProvider } from '@/contexts/AuthContext';
-import { IncidentProvider } from '@/contexts/IncidentContext';
-import { FacilityProvider } from '@/contexts/FacilityContext';
-import { ClientProvider } from '@/contexts/ClientContext';
-import { StudentProvider } from '@/contexts/StudentContext'; // Add this import
-import RouteGuard from '@/components/RouteGuard';
-import ModuleGuard from '@/components/ModuleGuard';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Home from './pages/Home';
+import Login from './pages/Login';
+import Dashboard from './pages/Dashboard';
+import IncidentsList from './pages/IncidentsList';
+import ReportIncident from './pages/ReportIncident';
+import IncidentDetail from './pages/IncidentDetail';
+import EditIncident from './pages/EditIncident';
+import Insights from './pages/Insights';
+import NotFound from './pages/NotFound';
+import { AuthProvider } from './contexts/auth/AuthContext';
+import { ClientProvider } from './contexts/ClientContext';
+import { FacilityProvider } from './contexts/FacilityContext';
+import { IncidentProvider } from './contexts/IncidentContext';
+import { StudentProvider } from './contexts/StudentContext';
+import RouteGuard from './components/RouteGuard';
+import ModuleGuard from './components/ModuleGuard';
+import ConfigurationManagement from './pages/ConfigurationManagement';
+import UserManagement from './pages/UserManagement';
+import StudentManagement from './pages/StudentManagement';
+import Support from './pages/Support';
+import Blog from './pages/Blog';
+import Pricing from './pages/Pricing';
+import FacilityManagement from './pages/FacilityManagement';
+import ClientManagement from './pages/ClientManagement';
+import Benchmarking from './pages/Benchmarking';
+import BackofficeDashboard from './pages/backoffice/BackofficeDashboard';
+import BackofficeAnalytics from './pages/backoffice/BackofficeAnalytics';
+import BackofficeSettings from './pages/backoffice/BackofficeSettings';
+
+import './App.css';
 
 function App() {
   return (
-    <BrowserRouter>
+    <Router>
       <AuthProvider>
         <ClientProvider>
           <FacilityProvider>
             <IncidentProvider>
-              <StudentProvider> {/* Add StudentProvider */}
+              <StudentProvider>
                 <Routes>
                   {/* Public Routes */}
                   <Route path="/" element={<Home />} />
                   <Route path="/login" element={<Login />} />
-                  <Route path="/support" element={<Support />} />
-                  <Route path="/pricing" element={<Pricing />} />
                   <Route path="/blog" element={<Blog />} />
+                  <Route path="/pricing" element={<Pricing />} />
+                  <Route path="/support" element={<Support />} />
                   
-                  {/* SaaS Owner Routes (Backoffice) */}
-                  <Route element={<RouteGuard requireSaasOwner={true} />}>
-                    <Route path="/backoffice" element={<BackofficeDashboard />} />
-                    <Route path="/backoffice/analytics" element={<BackofficeAnalytics />} />
-                    <Route path="/backoffice/settings" element={<BackofficeSettings />} />
-                    <Route path="/backoffice/clients" element={<ClientManagement />} />
-                  </Route>
-                  
-                  {/* Client Admin and User Routes */}
+                  {/* Protected Routes */}
                   <Route element={<RouteGuard />}>
-                    <Route path="/dashboard" element={<Dashboard />} />
-                    
-                    <Route element={<ModuleGuard moduleType="incidentReporting" />}>
-                      <Route path="/report" element={<ReportIncident />} />
-                    </Route>
-                    
-                    <Route element={<ModuleGuard moduleType="allIncidents" />}>
+                    <Route element={<ModuleGuard />}>
+                      <Route path="/dashboard" element={<Dashboard />} />
                       <Route path="/incidents" element={<IncidentsList />} />
-                      <Route path="/incidents/:id" element={<IncidentDetail />} />
-                      <Route path="/incidents/:id/edit" element={<EditIncident />} />
-                    </Route>
-                    
-                    <Route element={<ModuleGuard moduleType="insights" />}>
+                      <Route path="/incident/:id" element={<IncidentDetail />} />
+                      <Route path="/incident/:id/edit" element={<EditIncident />} />
+                      <Route path="/report-incident" element={<ReportIncident />} />
                       <Route path="/insights" element={<Insights />} />
-                    </Route>
-                    
-                    <Route element={<ModuleGuard moduleType="benchmarking" />}>
+                      <Route path="/configuration" element={<ConfigurationManagement />} />
+                      <Route path="/users" element={<UserManagement />} />
+                      <Route path="/students" element={<StudentManagement />} />
+                      <Route path="/facilities" element={<FacilityManagement />} />
+                      <Route path="/clients" element={<ClientManagement />} />
                       <Route path="/benchmarking" element={<Benchmarking />} />
                     </Route>
                     
-                    {/* Client Admin Only Routes */}
-                    <Route element={<RouteGuard requireAdmin={true} />}>
-                      <Route path="/users" element={<UserManagement />} />
-                      <Route path="/facilities" element={<FacilityManagement />} />
-                      <Route path="/configuration" element={<ConfigurationManagement />} />
-                      <Route path="/students" element={<StudentManagement />} /> {/* Add this route */}
-                    </Route>
+                    {/* Backoffice Routes */}
+                    <Route path="/backoffice/dashboard" element={<BackofficeDashboard />} />
+                    <Route path="/backoffice/analytics" element={<BackofficeAnalytics />} />
+                    <Route path="/backoffice/settings" element={<BackofficeSettings />} />
                   </Route>
                   
+                  {/* Not Found */}
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </StudentProvider>
@@ -93,8 +78,7 @@ function App() {
           </FacilityProvider>
         </ClientProvider>
       </AuthProvider>
-      <Toaster />
-    </BrowserRouter>
+    </Router>
   );
 }
 

@@ -113,7 +113,7 @@ export const useEditIncident = () => {
       });
       
       toast.success("Incident updated successfully");
-      navigate(`/incidents/${id}`);
+      navigate(`/incident/${id}`);
     } catch (error) {
       console.error('Error submitting form:', error);
       toast.error("An error occurred while updating the incident");
@@ -134,7 +134,7 @@ export const useEditIncident = () => {
       
       toast.success("Incident has been marked as void");
       setShowVoidDialog(false);
-      navigate(`/incidents/${id}`);
+      navigate(`/incident/${id}`);
     } catch (error) {
       console.error('Error voiding incident:', error);
       toast.error("An error occurred while voiding the incident");
