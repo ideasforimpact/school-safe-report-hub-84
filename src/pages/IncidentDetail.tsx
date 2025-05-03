@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useIncidents } from '@/contexts/IncidentContext';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/layout/Layout';
-import { Action, Comment as IncidentComment } from '@/types/incident';
+import { Action, Comment as IncidentComment, FileItem } from '@/types/incident';
 import { useIncidentDetail } from '@/hooks/useIncidentDetail';
 
 // Refactored components
@@ -17,8 +17,58 @@ import { useState } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import MultipleFilesUpload from '@/components/MultipleFilesUpload';
-import { FileItem } from '@/types/incident';
 import { Paperclip } from 'lucide-react';
+import { toast } from "sonner";
+
+// Helper function to compress image data
+const compressImageData = async (file: FileItem): Promise<FileItem> => {
+  // If it's not an image, return as is
+  if (!file.type.startsWith('image/')) {
+    return file;
+  }
+  
+  // For images, compress them
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const MAX_WIDTH = 800;
+      const MAX_HEIGHT = 600;
+      
+      let width = img.width;
+      let height = img.height;
+      
+      if (width > height) {
+        if (width > MAX_WIDTH) {
+          height = Math.round(height * (MAX_WIDTH / width));
+          width = MAX_WIDTH;
+        }
+      } else {
+        if (height > MAX_HEIGHT) {
+          width = Math.round(width * (MAX_HEIGHT / height));
+          height = MAX_HEIGHT;
+        }
+      }
+      
+      canvas.width = width;
+      canvas.height = height;
+      
+      const ctx = canvas.getContext('2d');
+      ctx?.drawImage(img, 0, 0, width, height);
+      
+      // Use lower quality for JPEG
+      const quality = file.type === 'image/jpeg' || file.type === 'image/jpg' ? 0.7 : 0.9;
+      const compressedBase64 = canvas.toDataURL(file.type, quality);
+      
+      resolve({
+        ...file,
+        base64: compressedBase64,
+        size: Math.round(compressedBase64.length * 0.75) // Approximate size after compression
+      });
+    };
+    img.src = file.base64;
+  });
+};
 
 const IncidentDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -67,26 +117,43 @@ const IncidentDetail = () => {
     return isAdmin || item.createdBy.id === user?.id;
   };
 
-  const handleCommentSubmit = () => {
+  const handleCommentSubmit = async () => {
     if (!commentText.trim()) return;
     
     setIsSubmitting(true);
     
-    const commentData: Omit<IncidentComment, 'id' | 'createdAt' | 'updatedAt'> = {
-      description: commentText,
-      dueDate: new Date(),
-      assignedTo: { id: '', name: '' },
-      status: 'Pending',
-      createdBy: { id: user?.id || '', name: user?.name || '' },
-      files: commentFiles
-    };
-    
-    addComment(incident.id, commentData);
-    
-    // Reset form
-    setCommentText('');
-    setCommentFiles([]);
-    setIsSubmitting(false);
+    try {
+      // Compress any images before saving
+      const processedFiles: FileItem[] = [];
+      
+      if (commentFiles.length > 0) {
+        for (const file of commentFiles) {
+          const processedFile = await compressImageData(file);
+          processedFiles.push(processedFile);
+        }
+      }
+      
+      const commentData: Omit<IncidentComment, 'id' | 'createdAt' | 'updatedAt'> = {
+        description: commentText,
+        dueDate: new Date(),
+        assignedTo: { id: '', name: '' },
+        status: 'Pending',
+        createdBy: { id: user?.id || '', name: user?.name || '' },
+        files: processedFiles
+      };
+      
+      addComment(incident.id, commentData);
+      toast.success("Comment added successfully");
+      
+      // Reset form
+      setCommentText('');
+      setCommentFiles([]);
+    } catch (error) {
+      console.error("Error adding comment:", error);
+      toast.error("Failed to add comment. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -130,7 +197,7 @@ const IncidentDetail = () => {
                   <MultipleFilesUpload
                     onFilesChange={setCommentFiles}
                     initialFiles={commentFiles}
-                    maxFiles={5}
+                    maxFiles={3} // Reduced from 5 to 3 to save storage
                   />
                 </div>
                 

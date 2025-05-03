@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Comment as IncidentComment, FileItem } from '@/types/incident';
 import { Button } from '@/components/ui/button';
 import { UserCircle, CalendarClock, MessageSquare, Edit, Trash2, Paperclip } from 'lucide-react';
@@ -26,16 +26,25 @@ const CommentItem: React.FC<CommentItemProps> = ({
   onEdit,
   onDelete
 }) => {
-  // Helper function to render file preview based on type
+  const [showAttachments, setShowAttachments] = useState(false);
+
+  // Helper function to render file preview based on type - with lazy loading
   const renderFilePreview = (file: FileItem) => {
     if (file.type.startsWith('image/')) {
       return (
         <div className="border p-1 rounded bg-gray-50">
-          <img 
-            src={file.base64} 
-            alt={file.name} 
-            className="h-20 w-auto object-contain rounded" 
-          />
+          {showAttachments ? (
+            <img 
+              src={file.base64} 
+              alt={file.name} 
+              loading="lazy"
+              className="h-20 w-auto object-contain rounded" 
+            />
+          ) : (
+            <div className="h-20 w-20 bg-gray-200 flex items-center justify-center">
+              <Paperclip className="h-6 w-6 text-gray-400" />
+            </div>
+          )}
           <p className="text-xs text-center truncate mt-1 max-w-[80px]">{file.name}</p>
         </div>
       );
@@ -85,6 +94,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
           <img 
             src={comment.image} 
             alt="Comment documentation" 
+            loading="lazy"
             className="w-full max-h-40 object-contain rounded-md border" 
           />
         </div>
@@ -92,7 +102,11 @@ const CommentItem: React.FC<CommentItemProps> = ({
       
       {/* Display new files if available */}
       {comment.files && comment.files.length > 0 && (
-        <Collapsible className="mt-3">
+        <Collapsible 
+          className="mt-3" 
+          open={showAttachments} 
+          onOpenChange={setShowAttachments}
+        >
           <CollapsibleTrigger asChild>
             <Button variant="ghost" size="sm" className="flex items-center gap-1 h-7">
               <Paperclip className="h-3.5 w-3.5" />

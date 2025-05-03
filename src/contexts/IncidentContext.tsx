@@ -20,25 +20,52 @@ export type { ConfigItem, SubcategoryItem } from './types';
 // Create the context with a default undefined value
 const IncidentContext = createContext<IncidentContextType | undefined>(undefined);
 
+// Helper function to safely save data to localStorage
+const safelySetLocalStorage = (key: string, value: string): boolean => {
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch (error) {
+    console.warn(`Error saving to localStorage: ${key}`, error);
+    return false;
+  }
+};
+
+// Helper function to safely get data from localStorage
+const safelyGetLocalStorage = <T,>(key: string, defaultValue: T): T => {
+  try {
+    const item = localStorage.getItem(key);
+    return item ? JSON.parse(item) : defaultValue;
+  } catch (error) {
+    console.warn(`Error reading from localStorage: ${key}`, error);
+    return defaultValue;
+  }
+};
+
 export const IncidentProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  // Initialize incidents with sample data, but don't load from localStorage if it would exceed quota
   const [incidents, setIncidents] = useState<Incident[]>(() => {
-    const savedIncidents = localStorage.getItem('incidents');
-    return savedIncidents ? JSON.parse(savedIncidents) : generateSampleIncidents();
+    return safelyGetLocalStorage<Incident[]>('incidents', generateSampleIncidents());
   });
 
   // Activity tracking with enhanced audit information
   const [activities, setActivities] = useState<Activity[]>(() => {
-    const savedActivities = localStorage.getItem('activities');
-    return savedActivities ? JSON.parse(savedActivities) : [];
+    return safelyGetLocalStorage<Activity[]>('activities', []);
   });
 
-  // Save data to localStorage whenever they change
+  // Save data to localStorage whenever they change, but handle quota errors gracefully
   useEffect(() => {
-    localStorage.setItem('incidents', JSON.stringify(incidents));
+    const incidentsJson = JSON.stringify(incidents);
+    // Only save if it's not too large (approximately checking)
+    if (incidentsJson.length < 4000000) { // ~4MB limit as a safe threshold
+      safelySetLocalStorage('incidents', incidentsJson);
+    } else {
+      console.warn('Incidents data too large for localStorage, not saving');
+    }
   }, [incidents]);
 
   useEffect(() => {
-    localStorage.setItem('activities', JSON.stringify(activities));
+    safelySetLocalStorage('activities', JSON.stringify(activities));
   }, [activities]);
 
   // Use our new configuration management hook
