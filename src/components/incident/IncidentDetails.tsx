@@ -5,6 +5,7 @@ import {
   Card,
   CardContent,
 } from '@/components/ui/card';
+import { BanIcon } from 'lucide-react';
 
 import IncidentDetailsHeader from './details/IncidentDetailsHeader';
 import IncidentMetadata from './details/IncidentMetadata';
@@ -88,6 +89,21 @@ const IncidentDetails: React.FC<IncidentDetailsProps> = ({
             formatDateTime={formatDateTime}
           />
 
+          {/* Show voided message if applicable */}
+          {incident.isVoided && (
+            <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-md space-y-2">
+              <div className="flex items-center gap-2 text-red-800">
+                <BanIcon className="h-5 w-5" />
+                <span className="font-medium">This incident has been voided</span>
+              </div>
+              {incident.voidReason && (
+                <p className="text-sm text-red-700 mt-1">
+                  <span className="font-medium">Reason:</span> {incident.voidReason}
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Show reopened flag if applicable */}
           {incident.wasReopened && incident.status !== 'Closed' && (
             <div className="px-3 py-1 bg-yellow-50 border border-yellow-200 rounded-md flex items-center gap-2 text-yellow-700">
@@ -99,8 +115,8 @@ const IncidentDetails: React.FC<IncidentDetailsProps> = ({
             </div>
           )}
 
-          {/* Only show status update section if incident is not closed */}
-          {incident.status !== 'Closed' && (
+          {/* Only show status update section if incident is not closed and not voided */}
+          {incident.status !== 'Closed' && !incident.isVoided && (
             <StatusUpdateSection
               currentStatus={incident.status}
               statusUpdate={statusUpdate}
@@ -141,7 +157,7 @@ const IncidentDetails: React.FC<IncidentDetailsProps> = ({
       {/* Incident Closure Form */}
       <IncidentClosureForm
         incident={incident}
-        isOpen={isFormOpen}
+        isOpen={isFormOpen && !incident.isVoided}
         onClose={() => setFormOpen(false)}
         onSubmit={handleClosureFormSubmit}
       />

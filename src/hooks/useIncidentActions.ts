@@ -52,6 +52,15 @@ export const useIncidentActions = (
     // Skip if no changes or incident not found
     if (!currentIncident) return;
     
+    // Check if incident is being voided
+    const isBeingVoided = updates.isVoided === true && !currentIncident.isVoided;
+    
+    // Don't allow updates to voided incidents unless it's an admin action
+    if (currentIncident.isVoided && !isBeingVoided) {
+      toast.error("Cannot update a voided incident");
+      return;
+    }
+    
     // Check if this is a reopened ticket (was previously closed and now being reopened)
     if (updates.status && 
         updates.status !== 'Closed' && 
@@ -66,6 +75,26 @@ export const useIncidentActions = (
           : incident
       )
     );
+    
+    // Handle voiding an incident
+    if (isBeingVoided) {
+      const user = updates.reportedBy?.name || currentIncident.reportedBy.name;
+      const userId = updates.reportedBy?.id || currentIncident.reportedBy.id;
+      
+      addActivity({
+        type: 'incident',
+        activity: 'void',
+        entityId: id,
+        entityTitle: `${currentIncident.ticketId}: ${currentIncident.type}: ${currentIncident.category} - ${currentIncident.subcategory}`,
+        user,
+        userId,
+        date: now,
+        details: `Incident voided by ${user}. Reason: ${updates.voidReason}`
+      });
+      
+      toast.warning("Incident has been marked as void");
+      return;
+    }
     
     // Log status change specifically
     if (updates.status && updates.status !== currentIncident.status) {

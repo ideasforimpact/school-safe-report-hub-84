@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ArrowLeft, Flag } from 'lucide-react';
+import { ArrowLeft, Flag, BanIcon } from 'lucide-react';
 
 interface IncidentHeaderProps {
   incident: Incident;
@@ -68,6 +68,12 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
               Reopened
             </span>
           )}
+          {incident.isVoided && (
+            <span className="text-xs px-2 py-1 rounded-full bg-red-100 text-red-800 flex items-center">
+              <BanIcon className="h-3 w-3 mr-1" />
+              Voided
+            </span>
+          )}
         </h1>
         
         <p className="text-gray-600 text-sm mt-1">
@@ -76,23 +82,27 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
       </div>
       
       <div className="flex gap-2">
-        <Select 
-          value={statusUpdate} 
-          onValueChange={handleStatusChange}
-        >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Update Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="Open">Open</SelectItem>
-            <SelectItem value="In Progress">In Progress</SelectItem>
-            <SelectItem value="Closed">Closed</SelectItem>
-          </SelectContent>
-        </Select>
-        
-        <Button onClick={onStatusChange}>
-          Update Status
-        </Button>
+        {!incident.isVoided && (
+          <>
+            <Select 
+              value={statusUpdate} 
+              onValueChange={handleStatusChange}
+            >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Update Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Open">Open</SelectItem>
+                <SelectItem value="In Progress">In Progress</SelectItem>
+                <SelectItem value="Closed">Closed</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            <Button onClick={onStatusChange}>
+              Update Status
+            </Button>
+          </>
+        )}
       </div>
     </div>
   );

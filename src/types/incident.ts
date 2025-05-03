@@ -114,6 +114,8 @@ export interface Incident {
   priority?: 'Low' | 'Medium' | 'High' | 'Critical';
   contributingFactors?: ContributingFactor[]; // Added contributing factors
   wasReopened?: boolean; // Flag to indicate if the ticket was reopened after being closed
+  isVoided?: boolean; // Flag to indicate if the incident record is voided
+  voidReason?: string; // Reason why the incident was voided
 }
 
 // Create a user type for dropdown selection
@@ -126,7 +128,7 @@ export interface User {
 // Activity history with enhanced audit information
 export interface Activity {
   type: 'incident' | 'action' | 'status' | 'comment' | 'actionItem';
-  activity: 'create' | 'update' | 'delete' | 'close' | 'reopen';
+  activity: 'create' | 'update' | 'delete' | 'close' | 'reopen' | 'void';
   entityId: string;
   entityTitle: string;
   user: string;

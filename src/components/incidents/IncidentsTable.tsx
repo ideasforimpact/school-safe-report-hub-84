@@ -10,7 +10,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Edit, Ticket } from 'lucide-react';
+import { Edit, Ticket, BanIcon } from 'lucide-react';
 
 interface IncidentsTableProps {
   incidents: Incident[];
@@ -28,7 +28,11 @@ const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
     });
   };
 
-  const getStatusBadgeClass = (status: IncidentStatus) => {
+  const getStatusBadgeClass = (status: IncidentStatus, isVoided?: boolean) => {
+    if (isVoided) {
+      return 'bg-red-100 text-red-800';
+    }
+    
     switch(status) {
       case 'Open':
         return 'bg-red-100 text-red-800';
@@ -85,13 +89,16 @@ const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
             {incidents.map((incident) => (
               <TableRow 
                 key={incident.id} 
-                className="cursor-pointer hover:bg-gray-50" 
+                className={`cursor-pointer hover:bg-gray-50 ${incident.isVoided ? 'bg-red-50' : ''}`}
                 onClick={() => navigate(`/incidents/${incident.id}`)}
               >
                 <TableCell className="font-medium">
                   <div className="flex items-center">
                     <Ticket className="h-4 w-4 mr-2 text-blue-600" />
                     {incident.ticketId}
+                    {incident.isVoided && (
+                      <BanIcon className="h-4 w-4 ml-2 text-red-600" />
+                    )}
                   </div>
                 </TableCell>
                 <TableCell>{incident.type}</TableCell>
@@ -103,8 +110,8 @@ const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
                   </span>
                 </TableCell>
                 <TableCell>
-                  <span className={`px-2 py-1 rounded-full text-xs ${getStatusBadgeClass(incident.status)}`}>
-                    {incident.status}
+                  <span className={`px-2 py-1 rounded-full text-xs ${getStatusBadgeClass(incident.status, incident.isVoided)}`}>
+                    {incident.isVoided ? 'Voided' : incident.status}
                   </span>
                 </TableCell>
                 <TableCell className="text-right">
@@ -126,6 +133,7 @@ const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
                         e.stopPropagation();
                         navigate(`/incidents/${incident.id}/edit`);
                       }}
+                      disabled={incident.isVoided}
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
