@@ -91,3 +91,15 @@ export const initialFacilities: ConfigItem[] = [
   { id: '9', name: 'Computer Lab' },
   { id: '10', name: 'Other' }
 ];
+
+export const initialDesignations: ConfigItem[] = [
+  { id: '1', name: 'Teacher' },
+  { id: '2', name: 'Administrator' },
+  { id: '3', name: 'Principal' },
+  { id: '4', name: 'Coordinator' },
+  { id: '5', name: 'Counselor' },
+  { id: '6', name: 'Staff' }
+];
+
+// Adding sample incident data export to resolve the import error
+export const sampleIncidentData = [];
