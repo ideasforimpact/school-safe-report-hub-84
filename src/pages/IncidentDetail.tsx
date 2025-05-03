@@ -7,15 +7,7 @@ import { Action, Comment as IncidentComment, FileItem } from '@/types/incident';
 import { useIncidentDetail } from '@/hooks/useIncidentDetail';
 import { useState } from 'react';
 import { toast } from "sonner";
-
-// Refactored components
-import IncidentHeader from '@/components/incident/IncidentHeader';
-import IncidentDetailsCard from '@/components/incident/IncidentDetailsCard';
-import IncidentTabs from '@/components/incident/IncidentTabs';
-import CommentsList from '@/components/incident/CommentsList';
-import AddActionForm from '@/components/incident/AddActionForm';
-import ActionsList from '@/components/incident/ActionsList';
-import InlineCommentForm from '@/components/incident/CommentForm.inline';
+import IncidentDetailContent from '@/components/incident/IncidentDetailContent';
 
 // Utility for image compression
 import { compressImageData } from '@/utils/imageCompression';
@@ -108,73 +100,30 @@ const IncidentDetail = () => {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        {/* Header with back button, title, and status management */}
-        <IncidentHeader 
-          incident={incident}
-          statusUpdate={statusUpdate}
-          setStatusUpdate={setStatusUpdate}
-          handleStatusChange={handleStatusChange}
-          formatDateTime={formatDateTime}
-          getStatusColor={getStatusColor}
-          isAdmin={isAdmin}
-        />
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-2 space-y-6">
-            {/* Incident Details Card - Always visible */}
-            <IncidentDetailsCard 
-              incident={incident} 
-              formatDateTime={formatDateTime} 
-            />
-            
-            {/* Inline Comment Form */}
-            <InlineCommentForm
-              onSubmit={handleCommentSubmit}
-              commentText={commentText}
-              setCommentText={setCommentText}
-              commentFiles={commentFiles}
-              setCommentFiles={setCommentFiles}
-              isSubmitting={isSubmitting}
-            />
-            
-            {/* Comments List */}
-            <CommentsList
-              comments={incident.comments || []}
-              incident={incident}
-              addComment={addComment}
-              updateComment={updateComment}
-              deleteComment={deleteComment}
-              formatDate={formatDate}
-              getCommentStatusColor={getCommentStatusColor}
-              canEditComment={canEditComment}
-              userId={user?.id || ''}
-              userName={user?.name || ''}
-            />
-
-            {/* Audit Trail in a collapsible section */}
-            <div className="mt-6">
-              <IncidentTabs 
-                activities={incidentActivities} 
-                formatDateTime={formatDateTime} 
-              />
-            </div>
-            
-            {/* Add Action Form - only for admins */}
-            {isAdmin && (
-              <AddActionForm onSubmit={handleActionSubmit} />
-            )}
-          </div>
-
-          <div>
-            {/* Actions Taken List */}
-            <ActionsList 
-              actions={incident.actions || []}
-              formatDate={formatDate}
-            />
-          </div>
-        </div>
-      </div>
+      <IncidentDetailContent
+        incident={incident}
+        incidentActivities={incidentActivities}
+        commentText={commentText}
+        setCommentText={setCommentText}
+        commentFiles={commentFiles}
+        setCommentFiles={setCommentFiles}
+        isSubmitting={isSubmitting}
+        handleCommentSubmit={handleCommentSubmit}
+        handleActionSubmit={handleActionSubmit}
+        handleStatusChange={handleStatusChange}
+        statusUpdate={statusUpdate}
+        setStatusUpdate={setStatusUpdate}
+        formatDate={formatDate}
+        formatDateTime={formatDateTime}
+        getStatusColor={getStatusColor}
+        getCommentStatusColor={getCommentStatusColor}
+        addComment={addComment}
+        updateComment={updateComment}
+        deleteComment={deleteComment}
+        canEditComment={canEditComment}
+        user={user}
+        isAdmin={isAdmin}
+      />
     </Layout>
   );
 };
