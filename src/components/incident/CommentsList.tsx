@@ -11,7 +11,6 @@ import {
 import { Dialog } from '@/components/ui/dialog';
 import CommentForm from './CommentForm';
 import CommentItem from './CommentItem';
-import AddCommentButton from './AddCommentButton';
 import { useIncidents } from '@/contexts/IncidentContext';
 
 interface CommentsListProps {
@@ -39,7 +38,6 @@ const CommentsList: React.FC<CommentsListProps> = ({
   userId,
   userName
 }) => {
-  const [showAddComment, setShowAddComment] = useState(false);
   const [showEditComment, setShowEditComment] = useState(false);
   const [currentComment, setCurrentComment] = useState<IncidentComment | null>(null);
   const { users } = useIncidents();
@@ -58,22 +56,13 @@ const CommentsList: React.FC<CommentsListProps> = ({
   return (
     <>
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader>
           <div>
             <CardTitle>Comments</CardTitle>
             <CardDescription>
               Discussion about this incident
             </CardDescription>
           </div>
-          <AddCommentButton 
-            isOpen={showAddComment}
-            setIsOpen={setShowAddComment}
-            users={users}
-            userId={userId}
-            userName={userName}
-            incidentId={incident.id}
-            onAddComment={addComment}
-          />
         </CardHeader>
         <CardContent>
           {comments && comments.length > 0 ? (

@@ -13,6 +13,12 @@ import IncidentTabs from '@/components/incident/IncidentTabs';
 import CommentsList from '@/components/incident/CommentsList';
 import AddActionForm from '@/components/incident/AddActionForm';
 import ActionsList from '@/components/incident/ActionsList';
+import { useState } from 'react';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import MultipleFilesUpload from '@/components/MultipleFilesUpload';
+import { FileItem } from '@/types/incident';
+import { Paperclip } from 'lucide-react';
 
 const IncidentDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -25,6 +31,11 @@ const IncidentDetail = () => {
   const incidentActivities = incident ? getIncidentActivities(incident.id) : [];
 
   const { statusUpdate, setStatusUpdate } = useStatusUpdate(incident?.status || 'Open');
+
+  // Comment form state
+  const [commentText, setCommentText] = useState('');
+  const [commentFiles, setCommentFiles] = useState<FileItem[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!incident) {
     return (
@@ -56,6 +67,28 @@ const IncidentDetail = () => {
     return isAdmin || item.createdBy.id === user?.id;
   };
 
+  const handleCommentSubmit = () => {
+    if (!commentText.trim()) return;
+    
+    setIsSubmitting(true);
+    
+    const commentData: Omit<IncidentComment, 'id' | 'createdAt' | 'updatedAt'> = {
+      description: commentText,
+      dueDate: new Date(),
+      assignedTo: { id: '', name: '' },
+      status: 'Pending',
+      createdBy: { id: user?.id || '', name: user?.name || '' },
+      files: commentFiles
+    };
+    
+    addComment(incident.id, commentData);
+    
+    // Reset form
+    setCommentText('');
+    setCommentFiles([]);
+    setIsSubmitting(false);
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -77,6 +110,40 @@ const IncidentDetail = () => {
               incident={incident} 
               formatDateTime={formatDateTime} 
             />
+            
+            {/* Inline Comment Form */}
+            <div className="bg-white rounded-md border shadow-sm p-4">
+              <h3 className="font-medium text-lg mb-3">Add Comment</h3>
+              <div className="space-y-4">
+                <Textarea
+                  placeholder="Type your comment here..."
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  className="min-h-[100px] w-full"
+                />
+                
+                <div>
+                  <h4 className="text-sm font-medium mb-2 flex items-center">
+                    <Paperclip className="h-4 w-4 mr-1" /> 
+                    Attachments
+                  </h4>
+                  <MultipleFilesUpload
+                    onFilesChange={setCommentFiles}
+                    initialFiles={commentFiles}
+                    maxFiles={5}
+                  />
+                </div>
+                
+                <div className="flex justify-end">
+                  <Button 
+                    onClick={handleCommentSubmit}
+                    disabled={!commentText.trim() || isSubmitting}
+                  >
+                    {isSubmitting ? 'Adding...' : 'Add Comment'}
+                  </Button>
+                </div>
+              </div>
+            </div>
             
             {/* Comments List */}
             <CommentsList
