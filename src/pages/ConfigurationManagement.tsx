@@ -8,6 +8,8 @@ import { SubcategoryTab } from '@/components/configuration/SubcategoryTab';
 import { LocationTab } from '@/components/configuration/LocationTab';
 import { FacilityTab } from '@/components/configuration/FacilityTab';
 import { DesignationTab } from '@/components/configuration/DesignationTab';
+import { ClassTab } from '@/components/configuration/ClassTab';
+import { SectionTab } from '@/components/configuration/SectionTab';
 
 const ConfigurationManagement = () => {
   const { 
@@ -30,7 +32,15 @@ const ConfigurationManagement = () => {
     designations,
     addDesignation,
     updateDesignation,
-    deleteDesignation
+    deleteDesignation,
+    classes,
+    addClass,
+    updateClass,
+    deleteClass,
+    sections,
+    addSection,
+    updateSection,
+    deleteSection
   } = useIncidents();
 
   return (
@@ -39,7 +49,7 @@ const ConfigurationManagement = () => {
         <div>
           <h1 className="text-2xl font-bold">Configuration Management</h1>
           <p className="text-gray-600 mt-1">
-            Manage incident categories, subcategories, locations, facilities, and designations
+            Manage incident categories, subcategories, locations, facilities, designations, classes, and sections
           </p>
         </div>
 
@@ -50,6 +60,8 @@ const ConfigurationManagement = () => {
             <TabsTrigger value="locations">Locations</TabsTrigger>
             <TabsTrigger value="facilities">Facilities</TabsTrigger>
             <TabsTrigger value="designations">Designations</TabsTrigger>
+            <TabsTrigger value="classes">Classes</TabsTrigger>
+            <TabsTrigger value="sections">Sections</TabsTrigger>
           </TabsList>
           
           {/* Categories Tab */}
@@ -100,6 +112,26 @@ const ConfigurationManagement = () => {
               addDesignation={addDesignation}
               updateDesignation={updateDesignation}
               deleteDesignation={deleteDesignation}
+            />
+          </TabsContent>
+          
+          {/* Classes Tab */}
+          <TabsContent value="classes">
+            <ClassTab 
+              classes={classes}
+              addClass={addClass}
+              updateClass={updateClass}
+              deleteClass={deleteClass}
+            />
+          </TabsContent>
+          
+          {/* Sections Tab */}
+          <TabsContent value="sections">
+            <SectionTab 
+              sections={sections}
+              addSection={addSection}
+              updateSection={updateSection}
+              deleteSection={deleteSection}
             />
           </TabsContent>
         </Tabs>

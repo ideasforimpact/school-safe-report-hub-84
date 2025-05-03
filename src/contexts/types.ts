@@ -33,6 +33,16 @@ export interface IncidentContextType {
   addFacility: (name: string) => void;
   updateFacility: (id: string, name: string) => void;
   deleteFacility: (id: string) => void;
+  // Class management
+  classes: ConfigItem[];
+  addClass: (name: string) => void;
+  updateClass: (id: string, name: string) => void;
+  deleteClass: (id: string) => void;
+  // Section management
+  sections: ConfigItem[];
+  addSection: (name: string) => void;
+  updateSection: (id: string, name: string) => void;
+  deleteSection: (id: string) => void;
   // Existing incident operations
   addIncident: (incident: Omit<Incident, 'id' | 'status' | 'createdAt' | 'updatedAt' | 'ticketId'>) => void;
   updateIncident: (id: string, updates: Partial<Incident>) => void;

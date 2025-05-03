@@ -2,7 +2,7 @@
 import React, { createContext, useState, useContext, ReactNode } from 'react';
 import { ConfigItem, SubcategoryItem, IncidentContextType } from './types';
 import { useConfigManagement } from '@/hooks/useConfigManagement'; 
-import { initialCategories, initialSubcategories, initialLocations, initialFacilities } from './initialData';
+import { initialCategories, initialSubcategories, initialLocations, initialFacilities, initialDesignations, initialClasses, initialSections } from './initialData';
 import { generateSampleIncidents } from '@/utils/sampleIncidentData';
 
 const IncidentContext = createContext<IncidentContextType | undefined>(undefined);
@@ -17,6 +17,8 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
     locations,
     facilities,
     designations,
+    classes,
+    sections,
     addCategory,
     updateCategory,
     deleteCategory,
@@ -31,13 +33,21 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
     deleteFacility,
     addDesignation,
     updateDesignation,
-    deleteDesignation
+    deleteDesignation,
+    addClass,
+    updateClass,
+    deleteClass,
+    addSection,
+    updateSection,
+    deleteSection
   } = useConfigManagement(
     initialCategories,
     initialSubcategories,
     initialLocations,
     initialFacilities,
-    [] // Initial empty array for designations
+    initialDesignations,
+    initialClasses,
+    initialSections
   );
 
   // Stub implementation for required methods
@@ -77,6 +87,14 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
     addDesignation,
     updateDesignation,
     deleteDesignation,
+    classes,
+    addClass,
+    updateClass,
+    deleteClass,
+    sections,
+    addSection,
+    updateSection,
+    deleteSection,
     // Add the required methods to satisfy the IncidentContextType
     addIncident,
     updateIncident,

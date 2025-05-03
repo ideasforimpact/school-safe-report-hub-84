@@ -6,7 +6,9 @@ export function useConfigManagement(
   initialSubcategories: Record<string, SubcategoryItem[]>,
   initialLocations: ConfigItem[],
   initialFacilities: ConfigItem[],
-  initialDesignations: ConfigItem[] = []
+  initialDesignations: ConfigItem[] = [],
+  initialClasses: ConfigItem[] = [],
+  initialSections: ConfigItem[] = []
 ) {
   // Configuration state
   const [categories, setCategories] = useState<ConfigItem[]>(() => {
@@ -33,6 +35,17 @@ export function useConfigManagement(
     const saved = localStorage.getItem('designations');
     return saved ? JSON.parse(saved) : initialDesignations;
   });
+  
+  // Add classes and sections state
+  const [classes, setClasses] = useState<ConfigItem[]>(() => {
+    const saved = localStorage.getItem('classes');
+    return saved ? JSON.parse(saved) : initialClasses;
+  });
+
+  const [sections, setSections] = useState<ConfigItem[]>(() => {
+    const saved = localStorage.getItem('sections');
+    return saved ? JSON.parse(saved) : initialSections;
+  });
 
   // Save data to localStorage whenever they change
   useEffect(() => {
@@ -54,6 +67,15 @@ export function useConfigManagement(
   useEffect(() => {
     localStorage.setItem('designations', JSON.stringify(designations));
   }, [designations]);
+  
+  // Add effects for classes and sections
+  useEffect(() => {
+    localStorage.setItem('classes', JSON.stringify(classes));
+  }, [classes]);
+
+  useEffect(() => {
+    localStorage.setItem('sections', JSON.stringify(sections));
+  }, [sections]);
 
   // Categories management
   const addCategory = (name: string) => {
@@ -167,6 +189,44 @@ export function useConfigManagement(
     setDesignations(prev => prev.filter(designation => designation.id !== id));
   };
 
+  // Classes management
+  const addClass = (name: string) => {
+    const newClass = {
+      id: Date.now().toString(),
+      name
+    };
+    setClasses(prev => [...prev, newClass]);
+  };
+
+  const updateClass = (id: string, name: string) => {
+    setClasses(prev => prev.map(cls => 
+      cls.id === id ? { ...cls, name } : cls
+    ));
+  };
+
+  const deleteClass = (id: string) => {
+    setClasses(prev => prev.filter(cls => cls.id !== id));
+  };
+
+  // Sections management
+  const addSection = (name: string) => {
+    const newSection = {
+      id: Date.now().toString(),
+      name
+    };
+    setSections(prev => [...prev, newSection]);
+  };
+
+  const updateSection = (id: string, name: string) => {
+    setSections(prev => prev.map(section => 
+      section.id === id ? { ...section, name } : section
+    ));
+  };
+
+  const deleteSection = (id: string) => {
+    setSections(prev => prev.filter(section => section.id !== id));
+  };
+
   return {
     // State
     categories,
@@ -174,6 +234,8 @@ export function useConfigManagement(
     locations,
     facilities,
     designations,
+    classes,
+    sections,
     // Category methods
     addCategory,
     updateCategory,
@@ -193,6 +255,14 @@ export function useConfigManagement(
     // Designation methods
     addDesignation,
     updateDesignation,
-    deleteDesignation
+    deleteDesignation,
+    // Class methods
+    addClass,
+    updateClass,
+    deleteClass,
+    // Section methods
+    addSection,
+    updateSection,
+    deleteSection
   };
 }

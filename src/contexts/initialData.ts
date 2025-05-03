@@ -101,5 +101,20 @@ export const initialDesignations: ConfigItem[] = [
   { id: '6', name: 'Staff' }
 ];
 
+// Add initial classes and sections
+export const initialClasses: ConfigItem[] = [
+  { id: '1', name: 'Class 1' },
+  { id: '2', name: 'Class 2' },
+  { id: '3', name: 'Class 3' },
+  { id: '4', name: 'Class 4' },
+  { id: '5', name: 'Class 5' }
+];
+
+export const initialSections: ConfigItem[] = [
+  { id: '1', name: 'Section A' },
+  { id: '2', name: 'Section B' },
+  { id: '3', name: 'Section C' }
+];
+
 // Adding sample incident data export to resolve the import error
 export const sampleIncidentData = [];
