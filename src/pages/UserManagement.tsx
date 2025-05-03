@@ -24,6 +24,7 @@ const UserManagement = () => {
     name: '',
     email: '',
     password: '',
+    designation: '',
     role: 'reporter' as UserRole,
     modulePermissions: {
       incidentReporting: true,
@@ -38,6 +39,7 @@ const UserManagement = () => {
       name: '',
       email: '',
       password: '',
+      designation: '',
       role: 'reporter',
       modulePermissions: {
         incidentReporting: true,
@@ -61,6 +63,7 @@ const UserManagement = () => {
       name: user.name,
       email: user.email,
       password: '',
+      designation: user.designation || '',
       role: user.role,
       modulePermissions: {
         incidentReporting: user.modulePermissions?.incidentReporting ?? true,
@@ -77,6 +80,7 @@ const UserManagement = () => {
       updateUser(currentUser.id, {
         name: formData.name,
         email: formData.email,
+        designation: formData.designation,
         role: formData.role,
         modulePermissions: formData.modulePermissions,
         ...(formData.password ? { password: formData.password } : {})

@@ -16,6 +16,7 @@ interface UserFormProps {
     name: string;
     email: string;
     password: string;
+    designation?: string;
     role: UserRole;
     modulePermissions: ModulePermissions;
   };
@@ -23,6 +24,7 @@ interface UserFormProps {
     name: string;
     email: string;
     password: string;
+    designation?: string;
     role: UserRole;
     modulePermissions: ModulePermissions;
   }>>;
@@ -59,6 +61,15 @@ const UserForm = ({ formData, setFormData, isEditMode = false }: UserFormProps) 
           value={formData.email}
           onChange={(e) => setFormData({...formData, email: e.target.value})}
           placeholder="Enter email"
+        />
+      </div>
+      <div className="space-y-2">
+        <label htmlFor={isEditMode ? "edit-designation" : "designation"}>Designation</label>
+        <Input
+          id={isEditMode ? "edit-designation" : "designation"}
+          value={formData.designation || ''}
+          onChange={(e) => setFormData({...formData, designation: e.target.value})}
+          placeholder="Enter designation"
         />
       </div>
       <div className="space-y-2">

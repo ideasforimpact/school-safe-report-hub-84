@@ -25,6 +25,7 @@ const UserList = ({ users, onEditClick, onDeleteUser }: UserListProps) => {
         <TableRow>
           <TableHead>Name</TableHead>
           <TableHead>Email</TableHead>
+          <TableHead>Designation</TableHead>
           <TableHead>Role</TableHead>
           <TableHead>Module Permissions</TableHead>
           <TableHead className="w-[100px]">Actions</TableHead>
@@ -35,6 +36,7 @@ const UserList = ({ users, onEditClick, onDeleteUser }: UserListProps) => {
           <TableRow key={user.id}>
             <TableCell>{user.name}</TableCell>
             <TableCell>{user.email}</TableCell>
+            <TableCell>{user.designation || '-'}</TableCell>
             <TableCell>
               <span className={`px-2 py-1 rounded-full text-xs ${
                 user.role === 'admin' || user.role === 'saas_owner' ? 'bg-primary-100 text-primary-800' : 'bg-gray-100 text-gray-800'

@@ -19,6 +19,7 @@ interface AddUserDialogProps {
     name: string;
     email: string;
     password: string;
+    designation?: string;
     role: UserRole;
     modulePermissions: ModulePermissions;
   };
@@ -26,6 +27,7 @@ interface AddUserDialogProps {
     name: string;
     email: string;
     password: string;
+    designation?: string;
     role: UserRole;
     modulePermissions: ModulePermissions;
   }>>;
