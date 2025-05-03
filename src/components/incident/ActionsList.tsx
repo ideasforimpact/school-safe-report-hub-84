@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Action, FileItem } from '@/types/incident';
 import {
@@ -19,9 +20,9 @@ const ActionsList: React.FC<ActionsListProps> = ({
   formatDate
 }) => {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Actions Taken</CardTitle>
+    <Card className="mt-6">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-lg">Actions Taken</CardTitle>
         <CardDescription>
           Steps taken to address this incident
         </CardDescription>

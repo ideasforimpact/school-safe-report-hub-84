@@ -12,6 +12,7 @@ import StatusUpdateSection from './details/StatusUpdateSection';
 import IncidentDescription from './details/IncidentDescription';
 import RootCauseDisplay from './details/RootCauseDisplay';
 import ContributingFactorsDisplay from './details/ContributingFactorsDisplay';
+import ActionsList from './ActionsList';
 import IncidentClosureForm from './IncidentClosureForm';
 
 interface IncidentDetailsProps {
@@ -115,6 +116,14 @@ const IncidentDetails: React.FC<IncidentDetailsProps> = ({
           
           {/* Contributing factors section */}
           <ContributingFactorsDisplay factors={incident.contributingFactors} />
+          
+          {/* Actions taken section */}
+          {incident.actions && incident.actions.length > 0 && (
+            <ActionsList 
+              actions={incident.actions} 
+              formatDate={formatDate}
+            />
+          )}
         </>
       )}
       

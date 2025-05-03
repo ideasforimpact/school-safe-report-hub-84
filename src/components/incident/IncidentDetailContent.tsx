@@ -8,7 +8,6 @@ import CommentsList from './CommentsList';
 import InlineCommentForm from './CommentForm.inline';
 import AuditTrail from '@/components/AuditTrail';
 import IncidentDetails from './IncidentDetails';
-import ActionsManager from './ActionsManager';
 import ActionsList from './ActionsList';
 
 const IncidentDetailContent = ({ 
@@ -90,16 +89,6 @@ const IncidentDetailContent = ({
                 setIsClosureFormOpen={setIsClosureFormOpen}
                 onClosureFormSubmit={handleClosureFormSubmit}
               />
-              
-              {/* Show Actions section only if the incident is closed and has actions */}
-              {incident.status === 'Closed' && incident.actions && incident.actions.length > 0 && (
-                <div className="mt-6">
-                  <ActionsList 
-                    actions={incident.actions} 
-                    formatDate={formatDate}
-                  />
-                </div>
-              )}
             </div>
             <div className="lg:col-span-1">
               <PeopleInvolved 
