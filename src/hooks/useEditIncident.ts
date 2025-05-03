@@ -29,7 +29,6 @@ export const useEditIncident = () => {
 
   const [peopleInvolved, setPeopleInvolved] = useState<Person[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [availableSubcategories, setAvailableSubcategories] = useState<string[]>([]);
   
   // Add state for void dialog
   const [showVoidDialog, setShowVoidDialog] = useState(false);
@@ -77,9 +76,7 @@ export const useEditIncident = () => {
   }, [id, getIncident, navigate, user, isAdmin]);
 
   // Handle form submission
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const handleSubmit = ({ formData, peopleInvolved }: { formData: any, peopleInvolved: Person[] }) => {
     if (!id) return;
     
     // Basic validation
@@ -151,8 +148,6 @@ export const useEditIncident = () => {
     peopleInvolved,
     setPeopleInvolved,
     isSubmitting,
-    availableSubcategories,
-    setAvailableSubcategories,
     handleSubmit,
     handleVoidIncident,
     showVoidDialog,

@@ -9,12 +9,8 @@ import { useEditIncident } from '@/hooks/useEditIncident';
 const EditIncidentPage = () => {
   const {
     formData,
-    setFormData,
     peopleInvolved,
-    setPeopleInvolved,
     isSubmitting,
-    availableSubcategories,
-    setAvailableSubcategories,
     handleSubmit,
     handleVoidIncident,
     showVoidDialog,
@@ -26,6 +22,13 @@ const EditIncidentPage = () => {
     id
   } = useEditIncident();
 
+  const handleFormSubmit = (updatedFormData: any, updatedPeople: Person[]) => {
+    handleSubmit({
+      formData: updatedFormData,
+      peopleInvolved: updatedPeople
+    });
+  };
+
   return (
     <Layout>
       <div className="space-y-6 max-w-4xl mx-auto">
@@ -35,14 +38,10 @@ const EditIncidentPage = () => {
         />
 
         <EditIncidentForm
-          formData={formData}
-          setFormData={setFormData}
-          peopleInvolved={peopleInvolved}
-          setPeopleInvolved={setPeopleInvolved}
-          availableSubcategories={availableSubcategories}
-          setAvailableSubcategories={setAvailableSubcategories}
+          initialFormData={formData}
+          initialPeopleInvolved={peopleInvolved}
           isSubmitting={isSubmitting}
-          onSubmit={handleSubmit}
+          onSubmit={handleFormSubmit}
           onCancel={() => navigate(`/incidents/${id}`)}
         />
         
