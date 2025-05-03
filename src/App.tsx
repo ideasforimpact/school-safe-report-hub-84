@@ -1,5 +1,5 @@
 
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -46,6 +46,9 @@ function App() {
                   <Route path="/blog" element={<Blog />} />
                   <Route path="/pricing" element={<Pricing />} />
                   <Route path="/support" element={<Support />} />
+                  
+                  {/* Redirect from /report to /report-incident */}
+                  <Route path="/report" element={<Navigate to="/report-incident" replace />} />
                   
                   {/* Protected Routes */}
                   <Route element={<RouteGuard />}>
