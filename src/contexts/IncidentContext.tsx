@@ -9,7 +9,23 @@ const IncidentContext = createContext<IncidentContextType | undefined>(undefined
 
 export const IncidentProvider = ({ children }: { children: ReactNode }) => {
   const [incidents, setIncidents] = useState(generateSampleIncidents());
-  const [users] = useState<IncidentContextType['users']>([]);
+  const [users] = useState<IncidentContextType['users']>([
+    { 
+      id: '1', 
+      name: 'Admin User',
+      role: 'Admin'
+    },
+    { 
+      id: '2', 
+      name: 'Safety Officer',
+      role: 'Safety Officer'
+    },
+    { 
+      id: '3', 
+      name: 'Teacher User',
+      role: 'Teacher'
+    }
+  ]);
 
   const {
     categories,
@@ -47,13 +63,25 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
     initialFacilities,
     initialDesignations,
     initialClasses,
-    initialSections  // Now this is correctly typed as SectionItem[]
+    initialSections
   );
 
-  // Stub implementation for required methods
+  // Properly implemented getIncident function
+  const getIncident = (id: string) => {
+    return incidents.find(incident => incident.id === id);
+  };
+
+  // Properly implemented updateIncident function
+  const updateIncident = (id: string, updates: Partial<any>) => {
+    setIncidents(prevIncidents => 
+      prevIncidents.map(incident => 
+        incident.id === id ? { ...incident, ...updates } : incident
+      )
+    );
+  };
+
+  // Stub implementations for other required methods
   const addIncident = () => {};
-  const updateIncident = () => {};
-  const getIncident = () => undefined;
   const addActionItem = () => {};
   const updateActionItem = () => {};
   const deleteActionItem = () => {};

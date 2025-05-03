@@ -72,7 +72,7 @@ export const useEditIncident = () => {
       image: incidentData.image
     });
 
-    setPeopleInvolved([...incidentData.peopleInvolved]);
+    setPeopleInvolved([...(incidentData.peopleInvolved || [])]);
   }, [id, getIncident, navigate, user, isAdmin]);
 
   // Handle form submission
