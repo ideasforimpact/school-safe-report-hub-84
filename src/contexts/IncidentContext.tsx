@@ -1,17 +1,22 @@
+
 import React, { createContext, useState, useContext, ReactNode } from 'react';
 import { ConfigItem, SubcategoryItem, IncidentContextType } from './types';
-import { useConfigManagement } from '@/hooks/useConfigManagement'; // Import useConfigManagement
-import { sampleIncidentData } from './initialData';
+import { useConfigManagement } from '@/hooks/useConfigManagement'; 
+import { initialCategories, initialSubcategories, initialLocations, initialFacilities } from './initialData';
+import { generateSampleIncidents } from '@/utils/sampleIncidentData';
 
 const IncidentContext = createContext<IncidentContextType | undefined>(undefined);
 
 export const IncidentProvider = ({ children }: { children: ReactNode }) => {
+  const [incidents, setIncidents] = useState(generateSampleIncidents());
+  const [users] = useState<IncidentContextType['users']>([]);
+
   const {
     categories,
     subcategoryMappings,
     locations,
     facilities,
-    designations, // Add this
+    designations,
     addCategory,
     updateCategory,
     deleteCategory,
@@ -24,18 +29,34 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
     addFacility,
     updateFacility,
     deleteFacility,
-    addDesignation,  // Add this
-    updateDesignation, // Add this
-    deleteDesignation // Add this
+    addDesignation,
+    updateDesignation,
+    deleteDesignation
   } = useConfigManagement(
-    sampleIncidentData.categories,
-    sampleIncidentData.subcategories,
-    sampleIncidentData.locations,
-    sampleIncidentData.facilities,
-    [] // Add initial empty array for designations
+    initialCategories,
+    initialSubcategories,
+    initialLocations,
+    initialFacilities,
+    [] // Initial empty array for designations
   );
 
+  // Stub implementation for required methods
+  const addIncident = () => {};
+  const updateIncident = () => {};
+  const getIncident = () => undefined;
+  const addActionItem = () => {};
+  const updateActionItem = () => {};
+  const deleteActionItem = () => {};
+  const addComment = () => {};
+  const updateComment = () => {};
+  const deleteComment = () => {};
+  const getRecentActivities = () => [];
+  const getIncidentActivities = () => [];
+  const generateTicketId = () => `SR-${Math.floor(Math.random() * 1000000)}-${Math.floor(Math.random() * 1000)}`;
+
   const value: IncidentContextType = {
+    incidents,
+    users,
     categories,
     addCategory,
     deleteCategory,
@@ -56,6 +77,19 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
     addDesignation,
     updateDesignation,
     deleteDesignation,
+    // Add the required methods to satisfy the IncidentContextType
+    addIncident,
+    updateIncident,
+    getIncident,
+    addActionItem,
+    updateActionItem,
+    deleteActionItem,
+    addComment,
+    updateComment,
+    deleteComment,
+    getRecentActivities,
+    getIncidentActivities,
+    generateTicketId
   };
 
   return (
@@ -73,3 +107,20 @@ export const useIncidents = () => {
   return context;
 };
 
+// Re-export types needed by other components
+export type { 
+  IncidentType, 
+  IncidentCategory, 
+  IncidentLocation, 
+  IncidentStatus, 
+  SchoolFacility, 
+  Activity,
+  Incident
+} from '@/types/incident';
+
+// Re-export subcategory data
+export { 
+  subcategories, 
+  nearMissSubcategories, 
+  unsafeConditionSubcategories 
+} from '@/data/incidentCategories';
