@@ -75,6 +75,13 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
         onSelectChange={onSelectChange}
       />
 
+      {/* Date and Time Section - Moved above Description section */}
+      <DateTimeSection
+        date={formData.date}
+        time={formData.time}
+        onDateTimeChange={onDateTimeChange}
+      />
+
       {/* Description and Supporting Documents Section */}
       <DescriptionSection
         description={formData.description}
@@ -82,13 +89,6 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
         supportingFiles={supportingFiles}
         onChange={onChange}
         onFilesChange={onFilesChange}
-      />
-
-      {/* Date and Time Section */}
-      <DateTimeSection
-        date={formData.date}
-        time={formData.time}
-        onDateTimeChange={onDateTimeChange}
       />
     </div>
   );
