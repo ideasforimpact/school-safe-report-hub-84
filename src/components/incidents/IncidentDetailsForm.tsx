@@ -23,7 +23,6 @@ interface IncidentDetailsFormProps {
     time: string;
     locationId: string;
     facilityId: string;
-    status: string;
     priority: 'Low' | 'Medium' | 'High' | 'Critical';
   };
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
@@ -51,10 +50,9 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
 }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-      {/* Incident Type, Status, and Priority Section */}
+      {/* Incident Type and Priority Section - Status removed */}
       <IncidentTypeSection
         type={formData.type}
-        status={formData.status}
         priority={formData.priority}
         onSelectChange={onSelectChange}
       />

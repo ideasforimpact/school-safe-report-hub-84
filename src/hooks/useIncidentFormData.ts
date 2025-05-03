@@ -13,7 +13,6 @@ export function useIncidentFormData() {
     time: new Date().toTimeString().split(' ')[0].slice(0, 5),
     locationId: '',
     facilityId: '',
-    status: 'Open' as IncidentStatus,
     priority: 'Medium' as 'Low' | 'Medium' | 'High' | 'Critical'
   });
 
