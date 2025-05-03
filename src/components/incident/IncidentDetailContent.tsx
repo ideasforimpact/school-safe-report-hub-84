@@ -58,7 +58,7 @@ const IncidentDetailContent = ({
             <div className="lg:col-span-2">
               <IncidentDetailsCard 
                 incident={incident} 
-                formatDate={formatDateTime} 
+                formatDate={formatDate} 
               />
             </div>
             <div className="lg:col-span-1">
@@ -89,19 +89,22 @@ const IncidentDetailContent = ({
           
           <CommentsList 
             comments={incident.comments || []}
-            getStatusColor={getCommentStatusColor}
-            canEditComment={canEditComment}
-            onUpdateComment={updateComment}
-            onDeleteComment={deleteComment}
-            incidentId={incident.id}
+            incident={incident}
+            addComment={addComment}
+            updateComment={updateComment}
+            deleteComment={deleteComment}
+            formatDate={formatDate}
             formatDateTime={formatDateTime}
+            getCommentStatusColor={getCommentStatusColor}
+            canEditComment={canEditComment}
+            userId={user?.id || ''}
+            userName={user?.name || ''}
           />
         </TabsContent>
         
         <TabsContent value="history" className="space-y-4">
           <AuditTrail 
             activities={incidentActivities}
-            formatDateTime={formatDateTime}
           />
         </TabsContent>
       </Tabs>

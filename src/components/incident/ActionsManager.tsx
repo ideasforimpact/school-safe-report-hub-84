@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import IncidentActions from './IncidentActions';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import ActionsList from './ActionsList';
 
 interface ActionsManagerProps {
   incidentId: string;
