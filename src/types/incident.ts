@@ -113,6 +113,7 @@ export interface Incident {
   updatedAt: Date;
   priority?: 'Low' | 'Medium' | 'High' | 'Critical';
   contributingFactors?: ContributingFactor[]; // Added contributing factors
+  wasReopened?: boolean; // Flag to indicate if the ticket was reopened after being closed
 }
 
 // Create a user type for dropdown selection

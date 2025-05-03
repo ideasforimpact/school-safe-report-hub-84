@@ -52,6 +52,13 @@ export const useIncidentActions = (
     // Skip if no changes or incident not found
     if (!currentIncident) return;
     
+    // Check if this is a reopened ticket (was previously closed and now being reopened)
+    if (updates.status && 
+        updates.status !== 'Closed' && 
+        currentIncident.status === 'Closed') {
+      updates.wasReopened = true;
+    }
+    
     setIncidents(prev => 
       prev.map(incident => 
         incident.id === id 
@@ -65,16 +72,32 @@ export const useIncidentActions = (
       const user = updates.reportedBy?.name || currentIncident.reportedBy.name;
       const userId = updates.reportedBy?.id || currentIncident.reportedBy.id;
       
-      addActivity({
-        type: 'status',
-        activity: updates.status === 'Closed' ? 'close' : 'update',
-        entityId: id,
-        entityTitle: `${currentIncident.type}: ${currentIncident.category} - ${currentIncident.subcategory}`,
-        user,
-        userId,
-        date: now,
-        details: `Status changed from ${currentIncident.status} to ${updates.status} by ${user}`
-      });
+      // Special handling for reopening
+      if (updates.status !== 'Closed' && currentIncident.status === 'Closed') {
+        addActivity({
+          type: 'status',
+          activity: 'reopen',
+          entityId: id,
+          entityTitle: `${currentIncident.type}: ${currentIncident.category} - ${currentIncident.subcategory}`,
+          user,
+          userId,
+          date: now,
+          details: `Incident reopened by ${user}`
+        });
+        toast.warning("Incident has been reopened");
+      } 
+      else {
+        addActivity({
+          type: 'status',
+          activity: updates.status === 'Closed' ? 'close' : 'update',
+          entityId: id,
+          entityTitle: `${currentIncident.type}: ${currentIncident.category} - ${currentIncident.subcategory}`,
+          user,
+          userId,
+          date: now,
+          details: `Status changed from ${currentIncident.status} to ${updates.status} by ${user}`
+        });
+      }
     } 
     // Log owner assignment
     else if (updates.owner && (!currentIncident.owner || updates.owner.id !== currentIncident.owner.id)) {

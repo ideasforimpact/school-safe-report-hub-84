@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Flag } from 'lucide-react';
 
 interface IncidentHeaderProps {
   incident: Incident;
@@ -62,6 +62,12 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
           <span className={`text-sm px-3 py-1 rounded-full ${getStatusColor(incident.status)}`}>
             {incident.status}
           </span>
+          {incident.wasReopened && incident.status !== 'Closed' && (
+            <span className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-800 flex items-center">
+              <Flag className="h-3 w-3 mr-1" />
+              Reopened
+            </span>
+          )}
         </h1>
         
         <p className="text-gray-600 text-sm mt-1">
