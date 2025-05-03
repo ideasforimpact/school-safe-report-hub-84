@@ -103,15 +103,15 @@ const MultipleFilesUpload = ({
 
   const getFileTypeIcon = (fileType: string) => {
     if (fileType.startsWith('image/')) {
-      return <ImageIcon className="h-4 w-4 mr-2" />;
+      return <ImageIcon className="h-4 w-4 mr-2 flex-shrink-0" />;
     } else if (fileType.startsWith('video/')) {
-      return <Video className="h-4 w-4 mr-2" />;
+      return <Video className="h-4 w-4 mr-2 flex-shrink-0" />;
     } else if (fileType.startsWith('application/pdf') || 
                fileType.startsWith('application/msword') ||
                fileType.includes('document')) {
-      return <FileText className="h-4 w-4 mr-2" />;
+      return <FileText className="h-4 w-4 mr-2 flex-shrink-0" />;
     } else {
-      return <File className="h-4 w-4 mr-2" />;
+      return <File className="h-4 w-4 mr-2 flex-shrink-0" />;
     }
   };
 
@@ -142,7 +142,7 @@ const MultipleFilesUpload = ({
                   <div key={file.id} className="flex items-center justify-between bg-gray-50 p-2 rounded-md border border-gray-200">
                     <div className="flex items-center overflow-hidden">
                       {getFileTypeIcon(file.type)}
-                      <span className="text-sm font-medium truncate">{file.name}</span>
+                      <span className="text-sm truncate">{file.name}</span>
                       <Badge variant="outline" className="ml-2">
                         {formatFileSize(file.size)}
                       </Badge>
