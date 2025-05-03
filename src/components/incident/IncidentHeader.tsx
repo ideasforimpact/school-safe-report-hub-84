@@ -16,20 +16,18 @@ interface IncidentHeaderProps {
   incident: Incident;
   statusUpdate: IncidentStatus;
   setStatusUpdate: (status: IncidentStatus) => void;
-  handleStatusChange: () => void;
-  formatDateTime: (date: Date) => string;
+  onStatusChange: () => void;
+  formatDate: (date: Date) => string;
   getStatusColor: (status: IncidentStatus) => string;
-  isAdmin: boolean;
 }
 
 const IncidentHeader: React.FC<IncidentHeaderProps> = ({
   incident,
   statusUpdate,
   setStatusUpdate,
-  handleStatusChange,
-  formatDateTime,
-  getStatusColor,
-  isAdmin
+  onStatusChange,
+  formatDate,
+  getStatusColor
 }) => {
   const navigate = useNavigate();
 
@@ -53,33 +51,31 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
         </h1>
         
         <p className="text-gray-600 text-sm mt-1">
-          Reported by {incident.reportedBy.name} on {formatDateTime(incident.createdAt)}
+          Reported by {incident.reportedBy.name} on {formatDate(incident.createdAt)}
         </p>
       </div>
       
-      {isAdmin && (
-        <div className="flex gap-2">
-          <Select 
-            value={statusUpdate} 
-            onValueChange={(value: string) => {
-              setStatusUpdate(value as IncidentStatus);
-            }}
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Update Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Open">Open</SelectItem>
-              <SelectItem value="In Progress">In Progress</SelectItem>
-              <SelectItem value="Closed">Closed</SelectItem>
-            </SelectContent>
-          </Select>
-          
-          <Button onClick={handleStatusChange}>
-            Update Status
-          </Button>
-        </div>
-      )}
+      <div className="flex gap-2">
+        <Select 
+          value={statusUpdate} 
+          onValueChange={(value: string) => {
+            setStatusUpdate(value as IncidentStatus);
+          }}
+        >
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Update Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Open">Open</SelectItem>
+            <SelectItem value="In Progress">In Progress</SelectItem>
+            <SelectItem value="Closed">Closed</SelectItem>
+          </SelectContent>
+        </Select>
+        
+        <Button onClick={onStatusChange}>
+          Update Status
+        </Button>
+      </div>
     </div>
   );
 };

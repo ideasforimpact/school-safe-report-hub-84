@@ -6,7 +6,7 @@ import IncidentDetailsCard from './IncidentDetailsCard';
 import PeopleInvolved from './PeopleInvolved';
 import ActionsManager from './ActionsManager';
 import CommentsList from './CommentsList';
-import CommentForm from './CommentForm';
+import InlineCommentForm from './CommentForm.inline';
 import AuditTrail from '@/components/AuditTrail';
 
 const IncidentDetailContent = ({ 
@@ -41,7 +41,7 @@ const IncidentDetailContent = ({
         statusUpdate={statusUpdate} 
         setStatusUpdate={setStatusUpdate} 
         onStatusChange={handleStatusChange}
-        formatDate={formatDate}
+        formatDate={formatDateTime}
         getStatusColor={getStatusColor}
       />
       
@@ -58,7 +58,7 @@ const IncidentDetailContent = ({
             <div className="lg:col-span-2">
               <IncidentDetailsCard 
                 incident={incident} 
-                formatDate={formatDate} 
+                formatDate={formatDateTime} 
               />
             </div>
             <div className="lg:col-span-1">
@@ -78,7 +78,7 @@ const IncidentDetailContent = ({
         </TabsContent>
         
         <TabsContent value="comments" className="space-y-6">
-          <CommentForm 
+          <InlineCommentForm 
             commentText={commentText}
             setCommentText={setCommentText}
             commentFiles={commentFiles}
@@ -89,12 +89,12 @@ const IncidentDetailContent = ({
           
           <CommentsList 
             comments={incident.comments || []}
-            formatDateTime={formatDateTime}
             getStatusColor={getCommentStatusColor}
             canEditComment={canEditComment}
             onUpdateComment={updateComment}
             onDeleteComment={deleteComment}
             incidentId={incident.id}
+            formatDateTime={formatDateTime}
           />
         </TabsContent>
         

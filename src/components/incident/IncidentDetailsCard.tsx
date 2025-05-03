@@ -13,12 +13,12 @@ import {
 
 interface IncidentDetailsCardProps {
   incident: Incident;
-  formatDateTime: (date: Date) => string;
+  formatDate: (date: Date) => string;
 }
 
 const IncidentDetailsCard: React.FC<IncidentDetailsCardProps> = ({
   incident,
-  formatDateTime
+  formatDate
 }) => {
   return (
     <Card>
@@ -56,7 +56,7 @@ const IncidentDetailsCard: React.FC<IncidentDetailsCardProps> = ({
             <Clock className="h-5 w-5 text-primary-600 mt-0.5" />
             <div>
               <p className="font-medium">Date & Time of Occurrence</p>
-              <p className="text-gray-600">{formatDateTime(incident.date)}</p>
+              <p className="text-gray-600">{formatDate(incident.date)}</p>
             </div>
           </div>
           
