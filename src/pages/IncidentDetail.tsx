@@ -17,7 +17,7 @@ import { useState } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import MultipleFilesUpload from '@/components/MultipleFilesUpload';
-import { Paperclip } from 'lucide-react';
+import { Paperclip, Send } from 'lucide-react';
 import { toast } from "sonner";
 
 // Helper function to compress image data
@@ -86,6 +86,7 @@ const IncidentDetail = () => {
   const [commentText, setCommentText] = useState('');
   const [commentFiles, setCommentFiles] = useState<FileItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showFileUpload, setShowFileUpload] = useState(false);
 
   if (!incident) {
     return (
@@ -148,6 +149,7 @@ const IncidentDetail = () => {
       // Reset form
       setCommentText('');
       setCommentFiles([]);
+      setShowFileUpload(false);
     } catch (error) {
       console.error("Error adding comment:", error);
       toast.error("Failed to add comment. Please try again.");
@@ -178,35 +180,48 @@ const IncidentDetail = () => {
               formatDateTime={formatDateTime} 
             />
             
-            {/* Inline Comment Form */}
+            {/* Improved Inline Comment Form */}
             <div className="bg-white rounded-md border shadow-sm p-4">
               <h3 className="font-medium text-lg mb-3">Add Comment</h3>
+              
               <div className="space-y-4">
-                <Textarea
-                  placeholder="Type your comment here..."
-                  value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  className="min-h-[100px] w-full"
-                />
-                
-                <div>
-                  <h4 className="text-sm font-medium mb-2 flex items-center">
-                    <Paperclip className="h-4 w-4 mr-1" /> 
-                    Attachments
-                  </h4>
-                  <MultipleFilesUpload
-                    onFilesChange={setCommentFiles}
-                    initialFiles={commentFiles}
-                    maxFiles={3} // Reduced from 5 to 3 to save storage
+                <div className="flex flex-col space-y-2">
+                  <Textarea
+                    placeholder="Type your comment here..."
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    className="min-h-[80px] w-full resize-none"
                   />
+                  
+                  {showFileUpload && (
+                    <div className="border-t pt-3 mt-2">
+                      <MultipleFilesUpload
+                        onFilesChange={setCommentFiles}
+                        initialFiles={commentFiles}
+                        maxFiles={3}
+                      />
+                    </div>
+                  )}
                 </div>
                 
-                <div className="flex justify-end">
+                <div className="flex justify-between items-center">
+                  <Button 
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowFileUpload(!showFileUpload)}
+                    className="flex items-center gap-1"
+                  >
+                    <Paperclip className="h-4 w-4" />
+                    {commentFiles.length > 0 ? `${commentFiles.length} file(s)` : "Add files"}
+                  </Button>
+                  
                   <Button 
                     onClick={handleCommentSubmit}
                     disabled={!commentText.trim() || isSubmitting}
+                    className="flex items-center gap-1"
                   >
-                    {isSubmitting ? 'Adding...' : 'Add Comment'}
+                    <Send className="h-4 w-4" />
+                    {isSubmitting ? 'Sending...' : 'Send Comment'}
                   </Button>
                 </div>
               </div>
