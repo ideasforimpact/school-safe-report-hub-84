@@ -45,7 +45,7 @@ const IncidentDetails: React.FC<IncidentDetailsProps> = ({
   setIsClosureFormOpen,
   onClosureFormSubmit
 }) => {
-  // Use provided state or create local state if not provided
+  // Use provided state or create local state
   const [localIsClosureFormOpen, setLocalIsClosureFormOpen] = React.useState(false);
   
   // Use either the props or local state
@@ -76,38 +76,47 @@ const IncidentDetails: React.FC<IncidentDetailsProps> = ({
   };
   
   return (
-    <Card>
-      <IncidentDetailsHeader />
-      
-      <CardContent className="space-y-4">
-        {/* Incident metadata section */}
-        <IncidentMetadata
-          incident={incident}
-          formatDateTime={formatDateTime}
-        />
-
-        {/* Status update section */}
-        <StatusUpdateSection
-          currentStatus={incident.status}
-          statusUpdate={statusUpdate}
-          setStatusUpdate={setStatusUpdate}
-          onStatusChange={handleStatusChange}
-          onCloseButtonClick={handleCloseButtonClick}
-          getStatusColor={getStatusColor}
-        />
-
-        {/* Description section */}
-        <IncidentDescription
-          description={incident.description}
-          image={incident.image}
-        />
-
-        {/* Root cause section (if available) */}
-        <RootCauseDisplay rootCause={incident.rootCause} />
+    <>
+      <Card>
+        <IncidentDetailsHeader />
         
-        {/* Contributing factors section (if available) */}
-        <ContributingFactorsDisplay factors={incident.contributingFactors} />
-      </CardContent>
+        <CardContent className="space-y-4">
+          {/* Incident metadata section */}
+          <IncidentMetadata
+            incident={incident}
+            formatDateTime={formatDateTime}
+          />
+
+          {/* Only show status update section if incident is not closed */}
+          {incident.status !== 'Closed' && (
+            <StatusUpdateSection
+              currentStatus={incident.status}
+              statusUpdate={statusUpdate}
+              setStatusUpdate={setStatusUpdate}
+              onStatusChange={handleStatusChange}
+              onCloseButtonClick={handleCloseButtonClick}
+              getStatusColor={getStatusColor}
+            />
+          )}
+
+          {/* Description section */}
+          <IncidentDescription
+            description={incident.description}
+            image={incident.image}
+          />
+        </CardContent>
+      </Card>
+      
+      {/* Show closure information only if the incident is closed */}
+      {incident.status === 'Closed' && (
+        <>
+          {/* Root cause section */}
+          <RootCauseDisplay rootCause={incident.rootCause} />
+          
+          {/* Contributing factors section */}
+          <ContributingFactorsDisplay factors={incident.contributingFactors} />
+        </>
+      )}
       
       {/* Incident Closure Form */}
       <IncidentClosureForm
@@ -116,7 +125,7 @@ const IncidentDetails: React.FC<IncidentDetailsProps> = ({
         onClose={() => setFormOpen(false)}
         onSubmit={handleClosureFormSubmit}
       />
-    </Card>
+    </>
   );
 };
 
