@@ -20,6 +20,7 @@ interface CommentsListProps {
   updateComment: (incidentId: string, commentId: string, updates: Partial<IncidentComment>) => void;
   deleteComment: (incidentId: string, commentId: string) => void;
   formatDate: (date: Date) => string;
+  formatDateTime: (date: Date) => string; // Add formatDateTime prop
   getCommentStatusColor: (status: IncidentComment['status']) => string;
   canEditComment: (comment: IncidentComment) => boolean;
   userId: string;
@@ -33,6 +34,7 @@ const CommentsList: React.FC<CommentsListProps> = ({
   updateComment,
   deleteComment,
   formatDate,
+  formatDateTime, // Add formatDateTime
   getCommentStatusColor,
   canEditComment,
   userId,
@@ -72,6 +74,7 @@ const CommentsList: React.FC<CommentsListProps> = ({
                   key={comment.id}
                   comment={comment}
                   formatDate={formatDate}
+                  formatDateTime={formatDateTime} // Pass formatDateTime
                   getCommentStatusColor={getCommentStatusColor}
                   canEdit={canEditComment(comment)}
                   onEdit={openEditComment}

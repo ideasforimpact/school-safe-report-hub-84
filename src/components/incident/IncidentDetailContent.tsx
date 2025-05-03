@@ -1,40 +1,34 @@
-
-import React from 'react';
-import { Incident, Comment as IncidentComment, FileItem, Action, IncidentStatus } from '@/types/incident';
-import { User } from '@/contexts/IncidentContext';
-
-// Refactored components
-import IncidentHeader from '@/components/incident/IncidentHeader';
-import IncidentDetailsCard from '@/components/incident/IncidentDetailsCard';
-import IncidentTabs from '@/components/incident/IncidentTabs';
+import React, { useState } from 'react';
+import { Incident, Action, Comment as IncidentComment, IncidentStatus, User as IncidentUser } from '@/types/incident';
+import IncidentActions from '@/components/incident/IncidentActions';
+import IncidentDetails from '@/components/incident/IncidentDetails';
+import ActivityList from '@/components/ActivityList';
 import CommentsList from '@/components/incident/CommentsList';
-import AddActionForm from '@/components/incident/AddActionForm';
-import ActionsList from '@/components/incident/ActionsList';
 import InlineCommentForm from '@/components/incident/CommentForm.inline';
-import { Activity } from '@/types/incident';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 interface IncidentDetailContentProps {
   incident: Incident;
-  incidentActivities: Activity[];
+  incidentActivities: any[];
   commentText: string;
   setCommentText: (text: string) => void;
-  commentFiles: FileItem[];
-  setCommentFiles: (files: FileItem[]) => void;
+  commentFiles: any[];
+  setCommentFiles: (files: any[]) => void;
   isSubmitting: boolean;
-  handleCommentSubmit: () => void;
+  handleCommentSubmit: () => Promise<void>;
   handleActionSubmit: (action: Action) => void;
   handleStatusChange: () => void;
-  statusUpdate: IncidentStatus;
+  statusUpdate: IncidentStatus | string;
   setStatusUpdate: (status: IncidentStatus) => void;
   formatDate: (date: Date) => string;
   formatDateTime: (date: Date) => string;
-  getStatusColor: (status: string) => string;
-  getCommentStatusColor: (status: string) => string;
+  getStatusColor: (status: IncidentStatus) => string;
+  getCommentStatusColor: (status: IncidentComment['status']) => string;
   addComment: (incidentId: string, commentData: Omit<IncidentComment, 'id' | 'createdAt' | 'updatedAt'>) => void;
   updateComment: (incidentId: string, commentId: string, updates: Partial<IncidentComment>) => void;
   deleteComment: (incidentId: string, commentId: string) => void;
   canEditComment: (comment: IncidentComment) => boolean;
-  user: User | null;
+  user: IncidentUser | null;
   isAdmin: boolean;
 }
 
@@ -56,79 +50,72 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
   getStatusColor,
   getCommentStatusColor,
   addComment,
-  updateComment,
+  updateComment, 
   deleteComment,
   canEditComment,
   user,
   isAdmin
 }) => {
-  return (
-    <div className="space-y-6">
-      {/* Header with back button, title, and status management */}
-      <IncidentHeader 
-        incident={incident}
-        statusUpdate={statusUpdate}
-        setStatusUpdate={setStatusUpdate}
-        handleStatusChange={handleStatusChange}
-        formatDateTime={formatDateTime}
-        getStatusColor={getStatusColor}
-        isAdmin={isAdmin}
-      />
+  const [activeTab, setActiveTab] = useState("details");
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="md:col-span-2 space-y-6">
-          {/* Incident Details Card - Always visible */}
-          <IncidentDetailsCard 
-            incident={incident} 
-            formatDateTime={formatDateTime} 
+  return (
+    <div className="container mx-auto p-4">
+      <div className="bg-white rounded-md shadow-sm p-4 mb-4">
+        <h1 className="text-2xl font-semibold">{incident.ticketId}: {incident.type}</h1>
+        <p className="text-gray-500">{incident.category} - {incident.subcategory}</p>
+      </div>
+
+      <Tabs defaultValue="details" className="w-full">
+        <TabsList>
+          <TabsTrigger value="details">Details</TabsTrigger>
+          <TabsTrigger value="actions">Actions</TabsTrigger>
+          <TabsTrigger value="comments">Comments</TabsTrigger>
+          <TabsTrigger value="activity">Activity</TabsTrigger>
+        </TabsList>
+        <TabsContent value="details" className="space-y-4">
+          <IncidentDetails
+            incident={incident}
+            formatDate={formatDate}
+            formatDateTime={formatDateTime}
+            getStatusColor={getStatusColor}
+            handleStatusChange={handleStatusChange}
+            statusUpdate={statusUpdate}
+            setStatusUpdate={setStatusUpdate}
           />
-          
+        </TabsContent>
+        <TabsContent value="actions" className="space-y-4">
+          <IncidentActions incident={incident} handleActionSubmit={handleActionSubmit} />
+        </TabsContent>
+        <TabsContent value="comments" className="space-y-4">
           {/* Inline Comment Form */}
-          <InlineCommentForm
-            onSubmit={handleCommentSubmit}
-            commentText={commentText}
-            setCommentText={setCommentText}
-            commentFiles={commentFiles}
-            setCommentFiles={setCommentFiles}
+          <InlineCommentForm 
+            onSubmit={handleCommentSubmit} 
+            commentText={commentText} 
+            setCommentText={setCommentText} 
+            commentFiles={commentFiles} 
+            setCommentFiles={setCommentFiles} 
             isSubmitting={isSubmitting}
           />
           
-          {/* Comments List */}
-          <CommentsList
+          {/* Comments List - now passing formatDateTime */}
+          <CommentsList 
             comments={incident.comments || []}
             incident={incident}
             addComment={addComment}
             updateComment={updateComment}
             deleteComment={deleteComment}
             formatDate={formatDate}
+            formatDateTime={formatDateTime}
             getCommentStatusColor={getCommentStatusColor}
             canEditComment={canEditComment}
             userId={user?.id || ''}
             userName={user?.name || ''}
           />
-
-          {/* Audit Trail in a collapsible section */}
-          <div className="mt-6">
-            <IncidentTabs 
-              activities={incidentActivities} 
-              formatDateTime={formatDateTime} 
-            />
-          </div>
-          
-          {/* Add Action Form - only for admins */}
-          {isAdmin && (
-            <AddActionForm onSubmit={handleActionSubmit} />
-          )}
-        </div>
-
-        <div>
-          {/* Actions Taken List */}
-          <ActionsList 
-            actions={incident.actions || []}
-            formatDate={formatDate}
-          />
-        </div>
-      </div>
+        </TabsContent>
+        <TabsContent value="activity" className="space-y-4">
+          <ActivityList activities={incidentActivities} formatDate={formatDate} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

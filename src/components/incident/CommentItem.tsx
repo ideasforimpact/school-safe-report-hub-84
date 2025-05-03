@@ -12,6 +12,7 @@ import {
 interface CommentItemProps {
   comment: IncidentComment;
   formatDate: (date: Date) => string;
+  formatDateTime: (date: Date) => string; // Add formatDateTime prop
   getCommentStatusColor: (status: IncidentComment['status']) => string;
   canEdit: boolean;
   onEdit: (comment: IncidentComment) => void;
@@ -21,6 +22,7 @@ interface CommentItemProps {
 const CommentItem: React.FC<CommentItemProps> = ({
   comment,
   formatDate,
+  formatDateTime,
   getCommentStatusColor,
   canEdit,
   onEdit,
@@ -65,13 +67,16 @@ const CommentItem: React.FC<CommentItemProps> = ({
         <div className="space-y-1">
           <h4 className="font-medium">{comment.description}</h4>
           <div className="flex items-center gap-2 text-sm text-gray-600">
+            {/* Display who created the comment */}
             <div className="flex items-center gap-1">
               <UserCircle className="h-3.5 w-3.5" />
-              <span>{comment.assignedTo.name}</span>
+              <span>Added by: {comment.createdBy.name}</span>
             </div>
+            
+            {/* Display when the comment was created instead of due date */}
             <div className="flex items-center gap-1">
               <CalendarClock className="h-3.5 w-3.5" />
-              <span>Due: {formatDate(new Date(comment.dueDate))}</span>
+              <span>Added: {formatDateTime(new Date(comment.createdAt))}</span>
             </div>
             
             {/* Show file count if there are files */}
