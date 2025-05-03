@@ -4,7 +4,7 @@ import { Incident, ContributingFactor, Action } from '@/types/incident';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -45,7 +45,7 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
     weight: 'Medium' as 'Low' | 'Medium' | 'High'
   });
   
-  // New state for actions
+  // Simplified action state
   const [actions, setActions] = useState<Action[]>(
     incident.actions || []
   );
@@ -75,11 +75,17 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
     setContributingFactors(contributingFactors.filter(factor => factor.id !== id));
   };
   
-  // Add action handler
+  // Add action handler - simplified
   const addAction = () => {
-    if (!currentAction.description || !currentAction.responsiblePerson) return;
+    if (!currentAction.description) return;
     
-    setActions([...actions, currentAction]);
+    const newAction: Action = {
+      description: currentAction.description,
+      responsiblePerson: '', // Empty as per request
+      date: new Date() // Keep for data structure compatibility
+    };
+    
+    setActions([...actions, newAction]);
     setCurrentAction({
       description: '',
       responsiblePerson: '',
@@ -123,14 +129,14 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
             setRootCause={setRootCause}
           />
 
-          {/* Actions Taken Section */}
+          {/* Actions Taken Section - Simplified */}
           <div className="space-y-4">
             <h3 className="font-medium">Actions Taken</h3>
             <p className="text-sm text-gray-600">
               List all actions taken to resolve this incident
             </p>
             
-            {/* Add Action Form */}
+            {/* Simplified Add Action Form */}
             <div className="space-y-3 border rounded-md p-3 bg-slate-50">
               <div>
                 <label className="text-sm font-medium">Action Description</label>
@@ -142,34 +148,15 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
                 />
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <label className="text-sm font-medium">Responsible Person</label>
-                  <Input
-                    placeholder="Who handled this action"
-                    value={currentAction.responsiblePerson}
-                    onChange={(e) => setCurrentAction(prev => ({ ...prev, responsiblePerson: e.target.value }))}
-                    className="mt-1"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Date</label>
-                  <Input
-                    type="date"
-                    value={currentAction.date ? new Date(currentAction.date).toISOString().split('T')[0] : ''}
-                    onChange={(e) => setCurrentAction(prev => ({ ...prev, date: new Date(e.target.value) }))}
-                    className="mt-1"
-                  />
-                </div>
-              </div>
-              
               <div className="flex justify-end">
                 <Button 
                   type="button" 
                   onClick={addAction}
-                  disabled={!currentAction.description || !currentAction.responsiblePerson}
+                  disabled={!currentAction.description}
+                  variant="outline"
+                  size="sm"
                 >
-                  <Plus className="w-4 h-4 mr-1" /> Add Action
+                  <Plus className="w-4 h-4 mr-1" /> Add
                 </Button>
               </div>
             </div>
@@ -181,9 +168,7 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
                 {actions.map((action, index) => (
                   <div key={index} className="flex items-start justify-between bg-white p-3 border rounded-md">
                     <div className="space-y-1">
-                      <p className="font-medium text-sm">{new Date(action.date).toLocaleDateString()}</p>
                       <p>{action.description}</p>
-                      <p className="text-sm text-gray-600">By: {action.responsiblePerson}</p>
                     </div>
                     <Button 
                       variant="ghost" 
@@ -191,7 +176,7 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
                       className="text-red-500 hover:text-red-700"
                       onClick={() => removeAction(index)}
                     >
-                      Remove
+                      <X className="w-4 h-4" />
                     </Button>
                   </div>
                 ))}
