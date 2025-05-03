@@ -4,7 +4,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import IncidentHeader from './IncidentHeader';
 import IncidentDetailsCard from './IncidentDetailsCard';
 import PeopleInvolved from './PeopleInvolved';
-import ActionsManager from './ActionsManager';
 import CommentsList from './CommentsList';
 import InlineCommentForm from './CommentForm.inline';
 import AuditTrail from '@/components/AuditTrail';
@@ -67,9 +66,8 @@ const IncidentDetailContent = ({
       />
       
       <Tabs defaultValue="details" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="details">Details</TabsTrigger>
-          <TabsTrigger value="actions">Actions</TabsTrigger>
           <TabsTrigger value="comments">Comments</TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
@@ -97,14 +95,6 @@ const IncidentDetailContent = ({
               />
             </div>
           </div>
-        </TabsContent>
-        
-        <TabsContent value="actions" className="space-y-6">
-          <ActionsManager 
-            incidentId={incident.id}
-            actions={incident.actions || []}
-            handleActionSubmit={handleActionSubmit}
-          />
         </TabsContent>
         
         <TabsContent value="comments" className="space-y-6">

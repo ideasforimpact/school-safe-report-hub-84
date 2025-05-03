@@ -11,13 +11,27 @@ interface ActionsManagerProps {
   incidentId: string;
   actions: Action[];
   handleActionSubmit: (action: Action) => void;
+  // This component is now only meant to be used during incident closure
+  closureMode?: boolean;
 }
 
 const ActionsManager: React.FC<ActionsManagerProps> = ({
   incidentId,
   actions,
-  handleActionSubmit
+  handleActionSubmit,
+  closureMode = false // Default to false, only true during closure
 }) => {
+  // Do not render this component unless we're in closure mode
+  if (!closureMode) {
+    return (
+      <Alert>
+        <AlertDescription>
+          Actions can only be added when closing an incident.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
   // State to toggle the action form visibility
   const [isAddingAction, setIsAddingAction] = useState(false);
 
