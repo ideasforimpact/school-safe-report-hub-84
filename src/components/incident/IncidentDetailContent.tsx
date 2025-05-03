@@ -1,41 +1,16 @@
 
-import React, { useState } from 'react';
-import { Incident, Action, Comment as IncidentComment, IncidentStatus, User as IncidentUser } from '@/types/incident';
-import IncidentActions from '@/components/incident/IncidentActions';
-import IncidentDetails from '@/components/incident/IncidentDetails';
-import ActivityList from '@/components/ActivityList';
-import CommentsList from '@/components/incident/CommentsList';
-import InlineCommentForm from '@/components/incident/CommentForm.inline';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import React from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import IncidentHeader from './IncidentHeader';
+import IncidentDetailsCard from './IncidentDetailsCard';
+import PeopleInvolved from './PeopleInvolved';
+import ActionsManager from './ActionsManager';
+import CommentsList from './CommentsList';
+import CommentForm from './CommentForm';
+import AuditTrail from '@/components/AuditTrail';
 
-interface IncidentDetailContentProps {
-  incident: Incident;
-  incidentActivities: any[];
-  commentText: string;
-  setCommentText: (text: string) => void;
-  commentFiles: any[];
-  setCommentFiles: (files: any[]) => void;
-  isSubmitting: boolean;
-  handleCommentSubmit: () => Promise<void>;
-  handleActionSubmit: (action: Action) => void;
-  handleStatusChange: () => void;
-  statusUpdate: IncidentStatus | string;
-  setStatusUpdate: (status: IncidentStatus) => void;
-  formatDate: (date: Date) => string;
-  formatDateTime: (date: Date) => string;
-  getStatusColor: (status: IncidentStatus) => string;
-  getCommentStatusColor: (status: IncidentComment['status']) => string;
-  addComment: (incidentId: string, commentData: Omit<IncidentComment, 'id' | 'createdAt' | 'updatedAt'>) => void;
-  updateComment: (incidentId: string, commentId: string, updates: Partial<IncidentComment>) => void;
-  deleteComment: (incidentId: string, commentId: string) => void;
-  canEditComment: (comment: IncidentComment) => boolean;
-  user: IncidentUser | null;
-  isAdmin: boolean;
-  updateIncident: (id: string, updates: Partial<Incident>) => void;
-}
-
-const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
-  incident,
+const IncidentDetailContent = ({ 
+  incident, 
   incidentActivities,
   commentText,
   setCommentText,
@@ -52,72 +27,82 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
   getStatusColor,
   getCommentStatusColor,
   addComment,
-  updateComment, 
+  updateComment,
   deleteComment,
   canEditComment,
   user,
   isAdmin,
   updateIncident
 }) => {
-  const [activeTab, setActiveTab] = useState("details");
-
   return (
-    <div className="container mx-auto p-4">
-      <div className="bg-white rounded-md shadow-sm p-4 mb-4">
-        <h1 className="text-2xl font-semibold">{incident.ticketId}: {incident.type}</h1>
-        <p className="text-gray-500">{incident.category} - {incident.subcategory}</p>
-      </div>
-
-      <Tabs defaultValue="details" className="w-full">
-        <TabsList>
+    <div className="container max-w-6xl py-6 space-y-6">
+      <IncidentHeader 
+        incident={incident} 
+        statusUpdate={statusUpdate} 
+        setStatusUpdate={setStatusUpdate} 
+        onStatusChange={handleStatusChange}
+        formatDate={formatDate}
+        getStatusColor={getStatusColor}
+      />
+      
+      <Tabs defaultValue="details" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="details">Details</TabsTrigger>
           <TabsTrigger value="actions">Actions</TabsTrigger>
           <TabsTrigger value="comments">Comments</TabsTrigger>
-          <TabsTrigger value="activity">Activity</TabsTrigger>
+          <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
-        <TabsContent value="details" className="space-y-4">
-          <IncidentDetails
-            incident={incident}
-            formatDate={formatDate}
-            formatDateTime={formatDateTime}
-            getStatusColor={getStatusColor}
-            handleStatusChange={handleStatusChange}
-            statusUpdate={statusUpdate}
-            setStatusUpdate={setStatusUpdate}
-            updateIncident={updateIncident}
+        
+        <TabsContent value="details" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <IncidentDetailsCard 
+                incident={incident} 
+                formatDate={formatDate} 
+              />
+            </div>
+            <div className="lg:col-span-1">
+              <PeopleInvolved 
+                people={incident.peopleInvolved} 
+              />
+            </div>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="actions" className="space-y-6">
+          <ActionsManager 
+            incidentId={incident.id}
+            actions={incident.actions || []}
+            handleActionSubmit={handleActionSubmit}
           />
         </TabsContent>
-        <TabsContent value="actions" className="space-y-4">
-          <IncidentActions incident={incident} handleActionSubmit={handleActionSubmit} />
-        </TabsContent>
-        <TabsContent value="comments" className="space-y-4">
-          {/* Inline Comment Form */}
-          <InlineCommentForm 
-            onSubmit={handleCommentSubmit} 
-            commentText={commentText} 
-            setCommentText={setCommentText} 
-            commentFiles={commentFiles} 
-            setCommentFiles={setCommentFiles} 
+        
+        <TabsContent value="comments" className="space-y-6">
+          <CommentForm 
+            commentText={commentText}
+            setCommentText={setCommentText}
+            commentFiles={commentFiles}
+            setCommentFiles={setCommentFiles}
             isSubmitting={isSubmitting}
+            onSubmit={handleCommentSubmit}
           />
           
-          {/* Comments List - now passing formatDateTime */}
           <CommentsList 
             comments={incident.comments || []}
-            incident={incident}
-            addComment={addComment}
-            updateComment={updateComment}
-            deleteComment={deleteComment}
-            formatDate={formatDate}
             formatDateTime={formatDateTime}
-            getCommentStatusColor={getCommentStatusColor}
+            getStatusColor={getCommentStatusColor}
             canEditComment={canEditComment}
-            userId={user?.id || ''}
-            userName={user?.name || ''}
+            onUpdateComment={updateComment}
+            onDeleteComment={deleteComment}
+            incidentId={incident.id}
           />
         </TabsContent>
-        <TabsContent value="activity" className="space-y-4">
-          <ActivityList activities={incidentActivities} formatDate={formatDate} />
+        
+        <TabsContent value="history" className="space-y-4">
+          <AuditTrail 
+            activities={incidentActivities}
+            formatDateTime={formatDateTime}
+          />
         </TabsContent>
       </Tabs>
     </div>

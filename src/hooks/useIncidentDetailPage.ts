@@ -42,6 +42,7 @@ export const useIncidentDetailPage = () => {
     if (incident) {
       const newActions = [...(incident.actions || []), action];
       updateIncident(incident.id, { actions: newActions });
+      toast.success("Action added successfully");
     }
   };
 
