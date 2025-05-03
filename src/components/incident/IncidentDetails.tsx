@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Incident, IncidentStatus, ContributingFactor, Action } from '@/types/incident';
 import {
   Card,
@@ -23,6 +23,13 @@ interface IncidentDetailsProps {
   statusUpdate: IncidentStatus | string;
   setStatusUpdate: (status: IncidentStatus) => void;
   updateIncident: (id: string, updates: Partial<Incident>) => void;
+  isClosureFormOpen?: boolean;
+  setIsClosureFormOpen?: (isOpen: boolean) => void;
+  onClosureFormSubmit?: (data: {
+    rootCause: string;
+    contributingFactors: ContributingFactor[];
+    actions: Action[];
+  }) => void;
 }
 
 const IncidentDetails: React.FC<IncidentDetailsProps> = ({
@@ -33,13 +40,20 @@ const IncidentDetails: React.FC<IncidentDetailsProps> = ({
   handleStatusChange,
   statusUpdate,
   setStatusUpdate,
-  updateIncident
+  updateIncident,
+  isClosureFormOpen = false,
+  setIsClosureFormOpen,
+  onClosureFormSubmit
 }) => {
-  const [isClosureFormOpen, setIsClosureFormOpen] = useState(false);
+  // Use provided state or create local state if not provided
+  const [localIsClosureFormOpen, setLocalIsClosureFormOpen] = React.useState(false);
+  
+  // Use either the props or local state
+  const isFormOpen = isClosureFormOpen !== undefined ? isClosureFormOpen : localIsClosureFormOpen;
+  const setFormOpen = setIsClosureFormOpen || setLocalIsClosureFormOpen;
   
   const handleCloseButtonClick = () => {
-    console.log("Opening closure form");
-    setIsClosureFormOpen(true);
+    setFormOpen(true);
   };
   
   const handleClosureFormSubmit = (data: {
@@ -47,14 +61,18 @@ const IncidentDetails: React.FC<IncidentDetailsProps> = ({
     contributingFactors: ContributingFactor[];
     actions: Action[];
   }) => {
-    updateIncident(incident.id, {
-      status: 'Closed',
-      rootCause: data.rootCause,
-      contributingFactors: data.contributingFactors,
-      actions: data.actions
-    });
-    
-    setIsClosureFormOpen(false);
+    if (onClosureFormSubmit) {
+      onClosureFormSubmit(data);
+    } else {
+      updateIncident(incident.id, {
+        status: 'Closed',
+        rootCause: data.rootCause,
+        contributingFactors: data.contributingFactors,
+        actions: data.actions
+      });
+      
+      setFormOpen(false);
+    }
   };
   
   return (
@@ -94,8 +112,8 @@ const IncidentDetails: React.FC<IncidentDetailsProps> = ({
       {/* Incident Closure Form */}
       <IncidentClosureForm
         incident={incident}
-        isOpen={isClosureFormOpen}
-        onClose={() => setIsClosureFormOpen(false)}
+        isOpen={isFormOpen}
+        onClose={() => setFormOpen(false)}
         onSubmit={handleClosureFormSubmit}
       />
     </Card>

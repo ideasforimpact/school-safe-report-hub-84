@@ -19,6 +19,7 @@ interface IncidentHeaderProps {
   onStatusChange: () => void;
   formatDate: (date: Date) => string;
   getStatusColor: (status: IncidentStatus) => string;
+  onCloseButtonClick?: () => void; // Added this prop
 }
 
 const IncidentHeader: React.FC<IncidentHeaderProps> = ({
@@ -27,9 +28,22 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
   setStatusUpdate,
   onStatusChange,
   formatDate,
-  getStatusColor
+  getStatusColor,
+  onCloseButtonClick
 }) => {
   const navigate = useNavigate();
+
+  // Handler for status change in header
+  const handleStatusChange = (value: string) => {
+    setStatusUpdate(value as IncidentStatus);
+    
+    // If user selects Closed status and the incident isn't already closed,
+    // open the closure form instead of directly updating the status
+    if (value === 'Closed' && incident.status !== 'Closed' && onCloseButtonClick) {
+      onCloseButtonClick();
+      return;
+    }
+  };
 
   return (
     <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
@@ -58,9 +72,7 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
       <div className="flex gap-2">
         <Select 
           value={statusUpdate} 
-          onValueChange={(value: string) => {
-            setStatusUpdate(value as IncidentStatus);
-          }}
+          onValueChange={handleStatusChange}
         >
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="Update Status" />

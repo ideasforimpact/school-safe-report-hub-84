@@ -35,6 +35,25 @@ const IncidentDetailContent = ({
   isAdmin,
   updateIncident
 }) => {
+  // State for controlling the incident closure form
+  const [isClosureFormOpen, setIsClosureFormOpen] = useState(false);
+
+  // Handler to open the closure form
+  const handleOpenClosureForm = () => {
+    setIsClosureFormOpen(true);
+  };
+
+  // Handler for closure form submission
+  const handleClosureFormSubmit = (data) => {
+    updateIncident(incident.id, {
+      status: 'Closed',
+      rootCause: data.rootCause,
+      contributingFactors: data.contributingFactors,
+      actions: data.actions
+    });
+    setIsClosureFormOpen(false);
+  };
+
   return (
     <div className="container max-w-6xl py-6 space-y-6">
       <IncidentHeader 
@@ -44,6 +63,7 @@ const IncidentDetailContent = ({
         onStatusChange={handleStatusChange}
         formatDate={formatDateTime}
         getStatusColor={getStatusColor}
+        onCloseButtonClick={handleOpenClosureForm}
       />
       
       <Tabs defaultValue="details" className="space-y-4">
@@ -66,6 +86,9 @@ const IncidentDetailContent = ({
                 statusUpdate={statusUpdate}
                 setStatusUpdate={setStatusUpdate}
                 updateIncident={updateIncident}
+                isClosureFormOpen={isClosureFormOpen}
+                setIsClosureFormOpen={setIsClosureFormOpen}
+                onClosureFormSubmit={handleClosureFormSubmit}
               />
             </div>
             <div className="lg:col-span-1">
