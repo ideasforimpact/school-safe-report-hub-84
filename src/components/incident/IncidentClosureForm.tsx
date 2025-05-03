@@ -11,10 +11,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import RootCauseAnalysis from './closure/RootCauseAnalysis';
-import ContributingFactorForm from './closure/ContributingFactorForm';
-import ContributingFactorsList from './closure/ContributingFactorsList';
 import ActionsTakenForm from './closure/ActionsTakenForm';
-import { getWeightColor } from './closure/closureUtils';
+import ContributingFactorsSection from './closure/ContributingFactorsSection';
 
 interface IncidentClosureFormProps {
   incident: Incident;
@@ -37,11 +35,6 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
   const [contributingFactors, setContributingFactors] = useState<ContributingFactor[]>(
     incident.contributingFactors || []
   );
-  const [currentFactor, setCurrentFactor] = useState({
-    category: '',
-    description: '',
-    weight: 'Medium' as 'Low' | 'Medium' | 'High'
-  });
   
   // Simplified action state
   const [actions, setActions] = useState<Action[]>(
@@ -53,27 +46,6 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
     date: new Date(),
   });
 
-  const addFactor = () => {
-    if (!currentFactor.category || !currentFactor.description) return;
-    
-    const newFactor: ContributingFactor = {
-      id: Date.now().toString(),
-      ...currentFactor
-    };
-    
-    setContributingFactors([...contributingFactors, newFactor]);
-    setCurrentFactor({
-      category: '',
-      description: '',
-      weight: 'Medium'
-    });
-  };
-
-  const removeFactor = (id: string) => {
-    setContributingFactors(contributingFactors.filter(factor => factor.id !== id));
-  };
-  
-  // Add action handler - simplified
   const addAction = () => {
     if (!currentAction.description) return;
     
@@ -91,7 +63,6 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
     });
   };
   
-  // Remove action handler
   const removeAction = (index: number) => {
     const updatedActions = [...actions];
     updatedActions.splice(index, 1);
@@ -107,8 +78,6 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
       actions
     });
   };
-
-  console.log("Closure form isOpen:", isOpen);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -136,26 +105,11 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
             removeAction={removeAction}
           />
 
-          {/* Contributing Factors */}
-          <div className="space-y-4">
-            <h3 className="font-medium">Contributing Factors</h3>
-            <p className="text-sm text-gray-600">
-              List all factors that contributed to this incident
-            </p>
-
-            <ContributingFactorForm
-              currentFactor={currentFactor}
-              setCurrentFactor={setCurrentFactor}
-              addFactor={addFactor}
-            />
-
-            {/* Factors List */}
-            <ContributingFactorsList
-              factors={contributingFactors}
-              removeFactor={removeFactor}
-              getWeightColor={getWeightColor}
-            />
-          </div>
+          {/* Contributing Factors Section */}
+          <ContributingFactorsSection 
+            contributingFactors={contributingFactors}
+            setContributingFactors={setContributingFactors}
+          />
         </div>
 
         <DialogFooter className="gap-2 sm:gap-0">
