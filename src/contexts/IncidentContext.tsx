@@ -1,6 +1,6 @@
 
 import React, { createContext, useState, useContext, ReactNode } from 'react';
-import { ConfigItem, SubcategoryItem, IncidentContextType } from './types';
+import { ConfigItem, SubcategoryItem, IncidentContextType, SectionItem } from './types';
 import { useConfigManagement } from '@/hooks/useConfigManagement'; 
 import { initialCategories, initialSubcategories, initialLocations, initialFacilities, initialDesignations, initialClasses, initialSections } from './initialData';
 import { generateSampleIncidents } from '@/utils/sampleIncidentData';

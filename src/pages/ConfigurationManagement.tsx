@@ -129,6 +129,7 @@ const ConfigurationManagement = () => {
           <TabsContent value="sections">
             <SectionTab 
               sections={sections}
+              classes={classes}
               addSection={addSection}
               updateSection={updateSection}
               deleteSection={deleteSection}

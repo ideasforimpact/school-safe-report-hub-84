@@ -1,5 +1,6 @@
+
 import { useState, useEffect } from 'react';
-import { ConfigItem, SubcategoryItem } from '@/contexts/types';
+import { ConfigItem, SubcategoryItem, SectionItem } from '@/contexts/types';
 
 export function useConfigManagement(
   initialCategories: ConfigItem[],
@@ -8,7 +9,7 @@ export function useConfigManagement(
   initialFacilities: ConfigItem[],
   initialDesignations: ConfigItem[] = [],
   initialClasses: ConfigItem[] = [],
-  initialSections: ConfigItem[] = []
+  initialSections: SectionItem[] = []
 ) {
   // Configuration state
   const [categories, setCategories] = useState<ConfigItem[]>(() => {
@@ -42,7 +43,7 @@ export function useConfigManagement(
     return saved ? JSON.parse(saved) : initialClasses;
   });
 
-  const [sections, setSections] = useState<ConfigItem[]>(() => {
+  const [sections, setSections] = useState<SectionItem[]>(() => {
     const saved = localStorage.getItem('sections');
     return saved ? JSON.parse(saved) : initialSections;
   });
@@ -206,20 +207,23 @@ export function useConfigManagement(
 
   const deleteClass = (id: string) => {
     setClasses(prev => prev.filter(cls => cls.id !== id));
+    // Remove sections associated with this class
+    setSections(prev => prev.filter(section => section.classId !== id));
   };
 
-  // Sections management
-  const addSection = (name: string) => {
+  // Sections management - modified to include classId
+  const addSection = (classId: string, name: string) => {
     const newSection = {
       id: Date.now().toString(),
-      name
+      name,
+      classId
     };
     setSections(prev => [...prev, newSection]);
   };
 
-  const updateSection = (id: string, name: string) => {
+  const updateSection = (id: string, classId: string, name: string) => {
     setSections(prev => prev.map(section => 
-      section.id === id ? { ...section, name } : section
+      section.id === id ? { ...section, name, classId } : section
     ));
   };
 

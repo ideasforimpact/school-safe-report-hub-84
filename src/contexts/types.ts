@@ -1,3 +1,4 @@
+
 import { Incident, User, Activity, ActionItem, Comment as IncidentComment } from '@/types/incident';
 
 export interface ConfigItem {
@@ -8,6 +9,12 @@ export interface ConfigItem {
 export interface SubcategoryItem {
   id: string;
   name: string;
+}
+
+export interface SectionItem {
+  id: string;
+  name: string;
+  classId: string;  // Reference to parent class
 }
 
 export interface IncidentContextType {
@@ -39,9 +46,9 @@ export interface IncidentContextType {
   updateClass: (id: string, name: string) => void;
   deleteClass: (id: string) => void;
   // Section management
-  sections: ConfigItem[];
-  addSection: (name: string) => void;
-  updateSection: (id: string, name: string) => void;
+  sections: SectionItem[];
+  addSection: (classId: string, name: string) => void;
+  updateSection: (id: string, classId: string, name: string) => void;
   deleteSection: (id: string) => void;
   // Existing incident operations
   addIncident: (incident: Omit<Incident, 'id' | 'status' | 'createdAt' | 'updatedAt' | 'ticketId'>) => void;

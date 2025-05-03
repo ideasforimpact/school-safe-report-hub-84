@@ -1,66 +1,124 @@
 
-import React from 'react';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger, 
-  DialogClose 
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import React, { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+interface SelectOption {
+  value: string;
+  label: string;
+}
+
+interface ExtraField {
+  type: "select";
+  label: string;
+  options: SelectOption[];
+  value: string;
+  onChange: (value: string) => void;
+}
 
 interface EditDialogProps {
   title: string;
   description: string;
   fieldLabel: string;
   value: string;
+  extraField?: ExtraField;
+  onOpenChange: (open: boolean) => void;
   onChange: (value: string) => void;
   onSave: () => void;
   triggerButton: React.ReactNode;
-  onOpenChange?: (open: boolean) => void;
 }
 
-export function EditDialog({ 
-  title, 
-  description, 
-  fieldLabel, 
-  value, 
-  onChange, 
+export const EditDialog = ({
+  title,
+  description,
+  fieldLabel,
+  value,
+  extraField,
+  onOpenChange,
+  onChange,
   onSave,
   triggerButton,
-  onOpenChange
-}: EditDialogProps) {
+}: EditDialogProps) => {
+  const [open, setOpen] = useState(false);
+  const [currentValue, setCurrentValue] = useState(value);
+
+  useEffect(() => {
+    setCurrentValue(value);
+  }, [value]);
+
+  const handleOpenChange = (newOpen: boolean) => {
+    setOpen(newOpen);
+    onOpenChange(newOpen);
+  };
+
+  const handleSave = () => {
+    onSave();
+    setOpen(false);
+  };
+
   return (
-    <Dialog onOpenChange={onOpenChange}>
-      <DialogTrigger asChild>
-        {triggerButton}
-      </DialogTrigger>
-      <DialogContent>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <div onClick={() => setOpen(true)}>{triggerButton}</div>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>
-            {description}
-          </DialogDescription>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-        <Input
-          placeholder={fieldLabel}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="my-4"
-        />
+        <div className="grid gap-4 py-4">
+          <div className="grid gap-2">
+            <Label htmlFor="name">{fieldLabel}</Label>
+            <Input
+              id="name"
+              value={currentValue}
+              onChange={(e) => {
+                setCurrentValue(e.target.value);
+                onChange(e.target.value);
+              }}
+              className="col-span-3"
+            />
+          </div>
+          
+          {extraField && extraField.type === "select" && (
+            <div className="grid gap-2">
+              <Label htmlFor="extraField">{extraField.label}</Label>
+              <Select 
+                value={extraField.value} 
+                onValueChange={extraField.onChange}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={`Select ${extraField.label}`} />
+                </SelectTrigger>
+                <SelectContent>
+                  {extraField.options.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
         <DialogFooter>
-          <DialogClose asChild>
-            <Button variant="outline">Cancel</Button>
-          </DialogClose>
-          <DialogClose asChild>
-            <Button onClick={onSave}>Save Changes</Button>
-          </DialogClose>
+          <Button onClick={handleSave}>Save changes</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
-}
+};
