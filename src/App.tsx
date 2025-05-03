@@ -49,7 +49,7 @@ function App() {
                   
                   {/* Protected Routes */}
                   <Route element={<RouteGuard />}>
-                    <Route element={<ModuleGuard />}>
+                    <Route element={<ModuleGuard moduleType="incidentReporting" />}>
                       <Route path="/dashboard" element={<Dashboard />} />
                       <Route path="/incidents" element={<IncidentsList />} />
                       <Route path="/incident/:id" element={<IncidentDetail />} />
