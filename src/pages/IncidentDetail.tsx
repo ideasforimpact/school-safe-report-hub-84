@@ -5,6 +5,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/layout/Layout';
 import { Action, Comment as IncidentComment, FileItem } from '@/types/incident';
 import { useIncidentDetail } from '@/hooks/useIncidentDetail';
+import { useState } from 'react';
+import { toast } from "sonner";
 
 // Refactored components
 import IncidentHeader from '@/components/incident/IncidentHeader';
@@ -13,62 +15,10 @@ import IncidentTabs from '@/components/incident/IncidentTabs';
 import CommentsList from '@/components/incident/CommentsList';
 import AddActionForm from '@/components/incident/AddActionForm';
 import ActionsList from '@/components/incident/ActionsList';
-import { useState } from 'react';
-import { Textarea } from '@/components/ui/textarea';
-import { Button } from '@/components/ui/button';
-import MultipleFilesUpload from '@/components/MultipleFilesUpload';
-import { Paperclip, Send } from 'lucide-react';
-import { toast } from "sonner";
+import InlineCommentForm from '@/components/incident/CommentForm.inline';
 
-// Helper function to compress image data
-const compressImageData = async (file: FileItem): Promise<FileItem> => {
-  // If it's not an image, return as is
-  if (!file.type.startsWith('image/')) {
-    return file;
-  }
-  
-  // For images, compress them
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      const MAX_WIDTH = 800;
-      const MAX_HEIGHT = 600;
-      
-      let width = img.width;
-      let height = img.height;
-      
-      if (width > height) {
-        if (width > MAX_WIDTH) {
-          height = Math.round(height * (MAX_WIDTH / width));
-          width = MAX_WIDTH;
-        }
-      } else {
-        if (height > MAX_HEIGHT) {
-          width = Math.round(width * (MAX_HEIGHT / height));
-          height = MAX_HEIGHT;
-        }
-      }
-      
-      canvas.width = width;
-      canvas.height = height;
-      
-      const ctx = canvas.getContext('2d');
-      ctx?.drawImage(img, 0, 0, width, height);
-      
-      // Use lower quality for JPEG
-      const quality = file.type === 'image/jpeg' || file.type === 'image/jpg' ? 0.7 : 0.9;
-      const compressedBase64 = canvas.toDataURL(file.type, quality);
-      
-      resolve({
-        ...file,
-        base64: compressedBase64,
-        size: Math.round(compressedBase64.length * 0.75) // Approximate size after compression
-      });
-    };
-    img.src = file.base64;
-  });
-};
+// Utility for image compression
+import { compressImageData } from '@/utils/imageCompression';
 
 const IncidentDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -86,7 +36,6 @@ const IncidentDetail = () => {
   const [commentText, setCommentText] = useState('');
   const [commentFiles, setCommentFiles] = useState<FileItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showFileUpload, setShowFileUpload] = useState(false);
 
   if (!incident) {
     return (
@@ -149,7 +98,6 @@ const IncidentDetail = () => {
       // Reset form
       setCommentText('');
       setCommentFiles([]);
-      setShowFileUpload(false);
     } catch (error) {
       console.error("Error adding comment:", error);
       toast.error("Failed to add comment. Please try again.");
@@ -180,52 +128,15 @@ const IncidentDetail = () => {
               formatDateTime={formatDateTime} 
             />
             
-            {/* Improved Inline Comment Form */}
-            <div className="bg-white rounded-md border shadow-sm p-4">
-              <h3 className="font-medium text-lg mb-3">Add Comment</h3>
-              
-              <div className="space-y-4">
-                <div className="flex flex-col space-y-2">
-                  <Textarea
-                    placeholder="Type your comment here..."
-                    value={commentText}
-                    onChange={(e) => setCommentText(e.target.value)}
-                    className="min-h-[80px] w-full resize-none"
-                  />
-                  
-                  {showFileUpload && (
-                    <div className="border-t pt-3 mt-2">
-                      <MultipleFilesUpload
-                        onFilesChange={setCommentFiles}
-                        initialFiles={commentFiles}
-                        maxFiles={3}
-                      />
-                    </div>
-                  )}
-                </div>
-                
-                <div className="flex justify-between items-center">
-                  <Button 
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowFileUpload(!showFileUpload)}
-                    className="flex items-center gap-1"
-                  >
-                    <Paperclip className="h-4 w-4" />
-                    {commentFiles.length > 0 ? `${commentFiles.length} file(s)` : "Add files"}
-                  </Button>
-                  
-                  <Button 
-                    onClick={handleCommentSubmit}
-                    disabled={!commentText.trim() || isSubmitting}
-                    className="flex items-center gap-1"
-                  >
-                    <Send className="h-4 w-4" />
-                    {isSubmitting ? 'Submitting...' : 'Submit Comment'}
-                  </Button>
-                </div>
-              </div>
-            </div>
+            {/* Inline Comment Form */}
+            <InlineCommentForm
+              onSubmit={handleCommentSubmit}
+              commentText={commentText}
+              setCommentText={setCommentText}
+              commentFiles={commentFiles}
+              setCommentFiles={setCommentFiles}
+              isSubmitting={isSubmitting}
+            />
             
             {/* Comments List */}
             <CommentsList
@@ -269,4 +180,3 @@ const IncidentDetail = () => {
 };
 
 export default IncidentDetail;
-
