@@ -1,7 +1,10 @@
 
 import React, { useState } from 'react';
-import { Incident, ContributingFactor } from '@/types/incident';
+import { Incident, ContributingFactor, Action } from '@/types/incident';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Plus } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -22,6 +25,7 @@ interface IncidentClosureFormProps {
   onSubmit: (data: {
     rootCause: string;
     contributingFactors: ContributingFactor[];
+    actions: Action[];
   }) => void;
 }
 
@@ -39,6 +43,16 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
     category: '',
     description: '',
     weight: 'Medium' as 'Low' | 'Medium' | 'High'
+  });
+  
+  // New state for actions
+  const [actions, setActions] = useState<Action[]>(
+    incident.actions || []
+  );
+  const [currentAction, setCurrentAction] = useState<Action>({
+    description: '',
+    responsiblePerson: '',
+    date: new Date(),
   });
 
   const addFactor = () => {
@@ -60,13 +74,33 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
   const removeFactor = (id: string) => {
     setContributingFactors(contributingFactors.filter(factor => factor.id !== id));
   };
+  
+  // Add action handler
+  const addAction = () => {
+    if (!currentAction.description || !currentAction.responsiblePerson) return;
+    
+    setActions([...actions, currentAction]);
+    setCurrentAction({
+      description: '',
+      responsiblePerson: '',
+      date: new Date(),
+    });
+  };
+  
+  // Remove action handler
+  const removeAction = (index: number) => {
+    const updatedActions = [...actions];
+    updatedActions.splice(index, 1);
+    setActions(updatedActions);
+  };
 
   const handleSubmit = () => {
     if (!rootCause.trim()) return;
     
     onSubmit({
       rootCause,
-      contributingFactors
+      contributingFactors,
+      actions
     });
   };
 
@@ -74,7 +108,7 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Close Incident - Final Analysis</DialogTitle>
           <DialogDescription>
@@ -88,6 +122,82 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
             rootCause={rootCause}
             setRootCause={setRootCause}
           />
+
+          {/* Actions Taken Section */}
+          <div className="space-y-4">
+            <h3 className="font-medium">Actions Taken</h3>
+            <p className="text-sm text-gray-600">
+              List all actions taken to resolve this incident
+            </p>
+            
+            {/* Add Action Form */}
+            <div className="space-y-3 border rounded-md p-3 bg-slate-50">
+              <div>
+                <label className="text-sm font-medium">Action Description</label>
+                <Textarea
+                  placeholder="Describe what was done to address the incident"
+                  value={currentAction.description}
+                  onChange={(e) => setCurrentAction(prev => ({ ...prev, description: e.target.value }))}
+                  className="mt-1"
+                />
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-sm font-medium">Responsible Person</label>
+                  <Input
+                    placeholder="Who handled this action"
+                    value={currentAction.responsiblePerson}
+                    onChange={(e) => setCurrentAction(prev => ({ ...prev, responsiblePerson: e.target.value }))}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Date</label>
+                  <Input
+                    type="date"
+                    value={currentAction.date ? new Date(currentAction.date).toISOString().split('T')[0] : ''}
+                    onChange={(e) => setCurrentAction(prev => ({ ...prev, date: new Date(e.target.value) }))}
+                    className="mt-1"
+                  />
+                </div>
+              </div>
+              
+              <div className="flex justify-end">
+                <Button 
+                  type="button" 
+                  onClick={addAction}
+                  disabled={!currentAction.description || !currentAction.responsiblePerson}
+                >
+                  <Plus className="w-4 h-4 mr-1" /> Add Action
+                </Button>
+              </div>
+            </div>
+            
+            {/* Actions List */}
+            {actions.length > 0 && (
+              <div className="space-y-2 mt-4">
+                <h4 className="text-sm font-medium">Added Actions:</h4>
+                {actions.map((action, index) => (
+                  <div key={index} className="flex items-start justify-between bg-white p-3 border rounded-md">
+                    <div className="space-y-1">
+                      <p className="font-medium text-sm">{new Date(action.date).toLocaleDateString()}</p>
+                      <p>{action.description}</p>
+                      <p className="text-sm text-gray-600">By: {action.responsiblePerson}</p>
+                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="text-red-500 hover:text-red-700"
+                      onClick={() => removeAction(index)}
+                    >
+                      Remove
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Contributing Factors */}
           <div className="space-y-4">

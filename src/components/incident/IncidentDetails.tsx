@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Incident, IncidentStatus, ContributingFactor } from '@/types/incident';
+import { Incident, IncidentStatus, ContributingFactor, Action } from '@/types/incident';
 import {
   Card,
   CardContent,
@@ -45,11 +45,13 @@ const IncidentDetails: React.FC<IncidentDetailsProps> = ({
   const handleClosureFormSubmit = (data: {
     rootCause: string;
     contributingFactors: ContributingFactor[];
+    actions: Action[];
   }) => {
     updateIncident(incident.id, {
       status: 'Closed',
       rootCause: data.rootCause,
-      contributingFactors: data.contributingFactors
+      contributingFactors: data.contributingFactors,
+      actions: data.actions
     });
     
     setIsClosureFormOpen(false);
