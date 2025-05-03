@@ -70,6 +70,8 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
     });
   };
 
+  console.log("Closure form isOpen:", isOpen);
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl">

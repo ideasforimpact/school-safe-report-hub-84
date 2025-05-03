@@ -38,6 +38,7 @@ const IncidentDetails: React.FC<IncidentDetailsProps> = ({
   const [isClosureFormOpen, setIsClosureFormOpen] = useState(false);
   
   const handleCloseButtonClick = () => {
+    console.log("Opening closure form");
     setIsClosureFormOpen(true);
   };
   
