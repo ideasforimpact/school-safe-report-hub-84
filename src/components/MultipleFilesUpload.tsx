@@ -1,4 +1,3 @@
-
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus, X, ImageIcon, FileText, Video, File, FilePlus } from 'lucide-react';
@@ -172,16 +171,18 @@ const MultipleFilesUpload = ({
             className="w-full py-6 border-dashed flex items-center justify-center bg-gray-50 hover:bg-gray-100"
             disabled={isUploading}
           >
-            <FilePlus className="h-5 w-5 mr-2 text-gray-500" />
-            <div>
-              <span className="font-medium">
-                {isUploading ? 'Adding file...' : 'Add a file'}
-              </span>
-              <p className="text-xs text-gray-500 mt-1">
-                Images, videos, documents up to 25MB
-              </p>
-            </div>
+            <FilePlus className="h-5 w-5 mr-2" />
+            <span className="font-medium">
+              {isUploading ? 'Adding file...' : 'Add a file'}
+            </span>
           </Button>
+        )}
+        
+        {/* Description text below the button */}
+        {files.length < maxFiles && (
+          <p className="text-xs text-gray-500 mt-2 text-center">
+            Images, videos, documents up to 25MB
+          </p>
         )}
         
         {/* Counter showing files added */}
