@@ -13,7 +13,8 @@ import {
   BarChart,
   Settings,
   User,
-  Briefcase
+  Briefcase,
+  GraduationCap
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -93,6 +94,12 @@ const Sidebar = () => {
       icon: Users,
       label: 'User Management',
       path: '/users',
+      allowed: isAdmin && !isSaasOwner,
+    },
+    {
+      icon: GraduationCap, // New icon for student management
+      label: 'Student Management',
+      path: '/students',
       allowed: isAdmin && !isSaasOwner,
     },
     {

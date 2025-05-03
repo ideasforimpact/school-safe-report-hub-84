@@ -14,6 +14,7 @@ import UserManagement from '@/pages/UserManagement';
 import FacilityManagement from '@/pages/FacilityManagement';
 import ConfigurationManagement from '@/pages/ConfigurationManagement';
 import ClientManagement from '@/pages/ClientManagement';
+import StudentManagement from '@/pages/StudentManagement'; // Add this import
 import BackofficeDashboard from '@/pages/backoffice/BackofficeDashboard';
 import BackofficeAnalytics from '@/pages/backoffice/BackofficeAnalytics';
 import BackofficeSettings from '@/pages/backoffice/BackofficeSettings';
@@ -26,6 +27,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { IncidentProvider } from '@/contexts/IncidentContext';
 import { FacilityProvider } from '@/contexts/FacilityContext';
 import { ClientProvider } from '@/contexts/ClientContext';
+import { StudentProvider } from '@/contexts/StudentContext'; // Add this import
 import RouteGuard from '@/components/RouteGuard';
 import ModuleGuard from '@/components/ModuleGuard';
 
@@ -36,54 +38,57 @@ function App() {
         <ClientProvider>
           <FacilityProvider>
             <IncidentProvider>
-              <Routes>
-                {/* Public Routes */}
-                <Route path="/" element={<Home />} />
-                <Route path="/login" element={<Login />} />
-                <Route path="/support" element={<Support />} />
-                <Route path="/pricing" element={<Pricing />} />
-                <Route path="/blog" element={<Blog />} />
-                
-                {/* SaaS Owner Routes (Backoffice) */}
-                <Route element={<RouteGuard requireSaasOwner={true} />}>
-                  <Route path="/backoffice" element={<BackofficeDashboard />} />
-                  <Route path="/backoffice/analytics" element={<BackofficeAnalytics />} />
-                  <Route path="/backoffice/settings" element={<BackofficeSettings />} />
-                  <Route path="/backoffice/clients" element={<ClientManagement />} />
-                </Route>
-                
-                {/* Client Admin and User Routes */}
-                <Route element={<RouteGuard />}>
-                  <Route path="/dashboard" element={<Dashboard />} />
+              <StudentProvider> {/* Add StudentProvider */}
+                <Routes>
+                  {/* Public Routes */}
+                  <Route path="/" element={<Home />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/support" element={<Support />} />
+                  <Route path="/pricing" element={<Pricing />} />
+                  <Route path="/blog" element={<Blog />} />
                   
-                  <Route element={<ModuleGuard moduleType="incidentReporting" />}>
-                    <Route path="/report" element={<ReportIncident />} />
+                  {/* SaaS Owner Routes (Backoffice) */}
+                  <Route element={<RouteGuard requireSaasOwner={true} />}>
+                    <Route path="/backoffice" element={<BackofficeDashboard />} />
+                    <Route path="/backoffice/analytics" element={<BackofficeAnalytics />} />
+                    <Route path="/backoffice/settings" element={<BackofficeSettings />} />
+                    <Route path="/backoffice/clients" element={<ClientManagement />} />
                   </Route>
                   
-                  <Route element={<ModuleGuard moduleType="allIncidents" />}>
-                    <Route path="/incidents" element={<IncidentsList />} />
-                    <Route path="/incidents/:id" element={<IncidentDetail />} />
-                    <Route path="/incidents/:id/edit" element={<EditIncident />} />
+                  {/* Client Admin and User Routes */}
+                  <Route element={<RouteGuard />}>
+                    <Route path="/dashboard" element={<Dashboard />} />
+                    
+                    <Route element={<ModuleGuard moduleType="incidentReporting" />}>
+                      <Route path="/report" element={<ReportIncident />} />
+                    </Route>
+                    
+                    <Route element={<ModuleGuard moduleType="allIncidents" />}>
+                      <Route path="/incidents" element={<IncidentsList />} />
+                      <Route path="/incidents/:id" element={<IncidentDetail />} />
+                      <Route path="/incidents/:id/edit" element={<EditIncident />} />
+                    </Route>
+                    
+                    <Route element={<ModuleGuard moduleType="insights" />}>
+                      <Route path="/insights" element={<Insights />} />
+                    </Route>
+                    
+                    <Route element={<ModuleGuard moduleType="benchmarking" />}>
+                      <Route path="/benchmarking" element={<Benchmarking />} />
+                    </Route>
+                    
+                    {/* Client Admin Only Routes */}
+                    <Route element={<RouteGuard requireAdmin={true} />}>
+                      <Route path="/users" element={<UserManagement />} />
+                      <Route path="/facilities" element={<FacilityManagement />} />
+                      <Route path="/configuration" element={<ConfigurationManagement />} />
+                      <Route path="/students" element={<StudentManagement />} /> {/* Add this route */}
+                    </Route>
                   </Route>
                   
-                  <Route element={<ModuleGuard moduleType="insights" />}>
-                    <Route path="/insights" element={<Insights />} />
-                  </Route>
-                  
-                  <Route element={<ModuleGuard moduleType="benchmarking" />}>
-                    <Route path="/benchmarking" element={<Benchmarking />} />
-                  </Route>
-                  
-                  {/* Client Admin Only Routes */}
-                  <Route element={<RouteGuard requireAdmin={true} />}>
-                    <Route path="/users" element={<UserManagement />} />
-                    <Route path="/facilities" element={<FacilityManagement />} />
-                    <Route path="/configuration" element={<ConfigurationManagement />} />
-                  </Route>
-                </Route>
-                
-                <Route path="*" element={<NotFound />} />
-              </Routes>
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </StudentProvider>
             </IncidentProvider>
           </FacilityProvider>
         </ClientProvider>
