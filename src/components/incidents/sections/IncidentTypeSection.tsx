@@ -7,6 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { IncidentType } from '@/types/incident';
 
 interface IncidentTypeSectionProps {
   type: string;

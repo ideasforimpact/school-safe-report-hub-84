@@ -1,12 +1,13 @@
 
 import { useState } from 'react';
 import { useAuth } from '@/contexts/auth/AuthContext';
+import { IncidentType } from '@/types/incident';
 
 export function useIncidentFormData() {
   const { user } = useAuth();
   
   const [formData, setFormData] = useState({
-    type: '',
+    type: '' as string,
     categoryId: '',
     subcategory: '',
     description: '',

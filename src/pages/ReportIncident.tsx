@@ -11,6 +11,7 @@ import { useIncidentForm } from '@/hooks/useIncidentForm';
 import TicketInfoBanner from '@/components/incidents/TicketInfoBanner';
 import IncidentDetailsForm from '@/components/incidents/IncidentDetailsForm';
 import PeopleInvolvedSection from '@/components/incidents/PeopleInvolvedSection';
+import { IncidentType } from '@/types/incident';
 
 const ReportIncident = () => {
   const { addIncident, users } = useIncidents();
@@ -80,7 +81,7 @@ const ReportIncident = () => {
         : undefined;
       
       addIncident({
-        type: formData.type,
+        type: formData.type as IncidentType, // Type assertion to ensure it's an IncidentType
         category: categoryName as any,
         subcategory: formData.subcategory,
         description: formData.description,
