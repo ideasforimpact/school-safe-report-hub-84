@@ -47,11 +47,6 @@ const MobileNav = () => {
       allowed: permissions.allIncidents,
     },
     {
-      label: 'My Action Items',
-      path: '/my-actions',
-      allowed: true,
-    },
-    {
       label: 'Insights',
       path: '/insights',
       allowed: permissions.insights,
@@ -75,11 +70,6 @@ const MobileNav = () => {
       label: 'Configuration',
       path: '/configuration',
       allowed: isAdmin,
-    },
-    {
-      label: 'Client Management',
-      path: '/clients',
-      allowed: isAdmin,
     }
   ];
 
@@ -90,17 +80,18 @@ const MobileNav = () => {
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <button className="rounded-md p-2 bg-white shadow">
+        <button className="rounded-full p-2 bg-white shadow">
           <Menu size={20} />
         </button>
       </SheetTrigger>
       <SheetContent side="left" className="w-64">
-        <div className="flex flex-col space-y-2 pt-4">
+        <div className="flex flex-col space-y-2 pt-8">
           <SidebarMenu>
             {menuItems.filter(item => item.allowed).map((item) => (
               <SidebarMenuItem key={item.path}>
                 <SidebarMenuButton 
                   onClick={() => handleNavigation(item.path)}
+                  className="rounded-md"
                 >
                   <span>{item.label}</span>
                 </SidebarMenuButton>

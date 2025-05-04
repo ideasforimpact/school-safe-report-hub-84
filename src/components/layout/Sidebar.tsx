@@ -1,7 +1,6 @@
 
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { cn } from '@/lib/utils';
 import { 
   Home, 
   FileText, 
@@ -12,9 +11,6 @@ import {
   Building,
   BarChart,
   Settings,
-  User,
-  Briefcase,
-  GraduationCap,
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
@@ -48,7 +44,7 @@ const Sidebar = () => {
   };
 
   // Client Admin and User Menu Items
-  const clientItems = [
+  const menuItems = [
     {
       icon: Home,
       label: 'Dashboard',
@@ -86,12 +82,6 @@ const Sidebar = () => {
       allowed: isAdmin && !isSaasOwner,
     },
     {
-      icon: GraduationCap,
-      label: 'Student Management',
-      path: '/students',
-      allowed: isAdmin && !isSaasOwner,
-    },
-    {
       icon: Building,
       label: 'Facility Management',
       path: '/facilities',
@@ -110,13 +100,13 @@ const Sidebar = () => {
   return (
     <ShadcnSidebar collapsible="icon" variant="sidebar">
       <div className="flex justify-end p-2">
-        <SidebarTrigger>
-          {open ? <ChevronLeft size={18} /> : <ChevronRight size={18} />}
+        <SidebarTrigger className="bg-white hover:bg-gray-100 rounded-full p-1">
+          {open ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
         </SidebarTrigger>
       </div>
       <SidebarContent>
         <SidebarMenu>
-          {clientItems
+          {menuItems
             .filter(item => item.allowed)
             .map((item) => (
             <SidebarMenuItem key={item.path}>
@@ -124,8 +114,9 @@ const Sidebar = () => {
                 onClick={() => navigate(item.path)}
                 isActive={isActive(item.path)}
                 tooltip={item.label}
+                className="rounded-md transition-colors"
               >
-                <item.icon size={18} />
+                <item.icon size={20} />
                 <span>{item.label}</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
