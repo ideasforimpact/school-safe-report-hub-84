@@ -1,6 +1,7 @@
 
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { cn } from '@/lib/utils';
 import { 
   Home, 
   FileText, 
@@ -11,24 +12,15 @@ import {
   Building,
   BarChart,
   Settings,
-  ChevronLeft,
-  ChevronRight
+  User,
+  Briefcase,
+  GraduationCap
 } from 'lucide-react';
-import {
-  Sidebar as ShadcnSidebar,
-  SidebarContent,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarTrigger,
-  useSidebar
-} from '@/components/ui/sidebar';
 
 const Sidebar = () => {
   const { user, isAdmin, isSaasOwner } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const { open } = useSidebar();
   
   // If user is a SaaS owner, don't render the sidebar since they use the horizontal navigation
   if (isSaasOwner) {
@@ -44,7 +36,7 @@ const Sidebar = () => {
   };
 
   // Client Admin and User Menu Items
-  const menuItems = [
+  const clientItems = [
     {
       icon: Home,
       label: 'Dashboard',
@@ -82,6 +74,12 @@ const Sidebar = () => {
       allowed: isAdmin && !isSaasOwner,
     },
     {
+      icon: GraduationCap,
+      label: 'Student Management',
+      path: '/students',
+      allowed: isAdmin && !isSaasOwner,
+    },
+    {
       icon: Building,
       label: 'Facility Management',
       path: '/facilities',
@@ -98,32 +96,30 @@ const Sidebar = () => {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <ShadcnSidebar collapsible="icon" variant="sidebar">
-      <div className="flex justify-end p-2">
-        <SidebarTrigger className="bg-white hover:bg-gray-100 rounded-full p-1">
-          {open ? <ChevronLeft size={16} /> : <ChevronRight size={16} />}
-        </SidebarTrigger>
-      </div>
-      <SidebarContent>
-        <SidebarMenu>
-          {menuItems
+    <aside className="bg-gray-50 w-64 min-h-screen py-6 hidden md:block">
+      <nav>
+        <ul className="space-y-2 px-4">
+          {clientItems
             .filter(item => item.allowed)
             .map((item) => (
-            <SidebarMenuItem key={item.path}>
-              <SidebarMenuButton 
+            <li key={item.path}>
+              <button
                 onClick={() => navigate(item.path)}
-                isActive={isActive(item.path)}
-                tooltip={item.label}
-                className="rounded-md transition-colors"
+                className={cn(
+                  "w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors",
+                  isActive(item.path)
+                    ? "bg-primary-50 text-primary-700"
+                    : "text-gray-600 hover:bg-gray-100"
+                )}
               >
-                <item.icon size={20} />
+                <item.icon size={18} />
                 <span>{item.label}</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+              </button>
+            </li>
           ))}
-        </SidebarMenu>
-      </SidebarContent>
-    </ShadcnSidebar>
+        </ul>
+      </nav>
+    </aside>
   );
 };
 

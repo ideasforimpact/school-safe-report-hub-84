@@ -8,10 +8,11 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import {
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton
-} from "@/components/ui/sidebar";
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 const MobileNav = () => {
   const { user, isAdmin, isSaasOwner } = useAuth();
@@ -47,6 +48,11 @@ const MobileNav = () => {
       allowed: permissions.allIncidents,
     },
     {
+      label: 'My Action Items',
+      path: '/my-actions',
+      allowed: true,
+    },
+    {
       label: 'Insights',
       path: '/insights',
       allowed: permissions.insights,
@@ -70,6 +76,11 @@ const MobileNav = () => {
       label: 'Configuration',
       path: '/configuration',
       allowed: isAdmin,
+    },
+    {
+      label: 'Client Management',
+      path: '/clients',
+      allowed: isAdmin,
     }
   ];
 
@@ -80,24 +91,21 @@ const MobileNav = () => {
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <button className="rounded-full p-2 bg-white shadow">
+        <button className="rounded-md p-2 bg-white shadow">
           <Menu size={20} />
         </button>
       </SheetTrigger>
       <SheetContent side="left" className="w-64">
-        <div className="flex flex-col space-y-2 pt-8">
-          <SidebarMenu>
-            {menuItems.filter(item => item.allowed).map((item) => (
-              <SidebarMenuItem key={item.path}>
-                <SidebarMenuButton 
-                  onClick={() => handleNavigation(item.path)}
-                  className="rounded-md"
-                >
-                  <span>{item.label}</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
+        <div className="flex flex-col space-y-2 pt-4">
+          {menuItems.filter(item => item.allowed).map((item) => (
+            <button
+              key={item.path}
+              onClick={() => handleNavigation(item.path)}
+              className="text-left px-4 py-3 hover:bg-gray-100 rounded-md"
+            >
+              {item.label}
+            </button>
+          ))}
         </div>
       </SheetContent>
     </Sheet>

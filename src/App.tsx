@@ -34,8 +34,8 @@ import './App.css';
 function App() {
   return (
     <Router>
-      <ClientProvider>
-        <AuthProvider>
+      <AuthProvider>
+        <ClientProvider>
           <FacilityProvider>
             <IncidentProvider>
               <StudentProvider>
@@ -82,8 +82,8 @@ function App() {
               </StudentProvider>
             </IncidentProvider>
           </FacilityProvider>
-        </AuthProvider>
-      </ClientProvider>
+        </ClientProvider>
+      </AuthProvider>
     </Router>
   );
 }
