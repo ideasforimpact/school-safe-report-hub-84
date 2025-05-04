@@ -17,6 +17,7 @@ import {
   GraduationCap
 } from 'lucide-react';
 
+// This component is kept for reference but not used in the new horizontal navigation layout
 const Sidebar = () => {
   const { user, isAdmin, isSaasOwner } = useAuth();
   const navigate = useNavigate();
