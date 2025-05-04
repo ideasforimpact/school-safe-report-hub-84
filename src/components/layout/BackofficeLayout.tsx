@@ -23,7 +23,7 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
   const isActive = (path: string) => location.pathname === path;
 
   const navigationItems = [
-    { name: 'Dashboard', path: '/backoffice' },
+    { name: 'Dashboard', path: '/dashboard' },
     { name: 'Client Management', path: '/backoffice/clients' },
     { name: 'Analytics', path: '/backoffice/analytics' },
     { name: 'Settings', path: '/backoffice/settings' },

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import BackofficeLayout from '@/components/layout/BackofficeLayout';
+import Layout from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   Card,
@@ -33,7 +33,7 @@ const ClientManagement = () => {
 
   if (!isAdmin) {
     return (
-      <BackofficeLayout>
+      <Layout>
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
@@ -41,12 +41,12 @@ const ClientManagement = () => {
             </div>
           </CardContent>
         </Card>
-      </BackofficeLayout>
+      </Layout>
     );
   }
 
   return (
-    <BackofficeLayout>
+    <Layout>
       <div className="space-y-6">
         <ClientHeader onAddClick={() => setIsAddDialogOpen(true)} />
 
@@ -94,7 +94,7 @@ const ClientManagement = () => {
         }}
         isEdit={true}
       />
-    </BackofficeLayout>
+    </Layout>
   );
 };
 

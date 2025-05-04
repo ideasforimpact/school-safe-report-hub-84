@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import BackofficeLayout from '@/components/layout/BackofficeLayout';
+import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Settings, Shield, BellRing, Globe, Key } from "lucide-react";
@@ -27,7 +27,7 @@ const BackofficeSettings = () => {
   };
   
   return (
-    <BackofficeLayout>
+    <Layout>
       <div className="space-y-8">
         <div>
           <h1 className="text-3xl font-bold">Settings</h1>
@@ -122,7 +122,7 @@ const BackofficeSettings = () => {
           </TabsContent>
         </Tabs>
       </div>
-    </BackofficeLayout>
+    </Layout>
   );
 };
 

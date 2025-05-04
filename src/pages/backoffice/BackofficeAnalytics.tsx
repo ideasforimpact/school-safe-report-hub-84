@@ -1,6 +1,5 @@
-
 import { useState } from 'react';
-import BackofficeLayout from '@/components/layout/BackofficeLayout';
+import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { BarChart, LineChart, ActivitySquare, TrendingUp } from "lucide-react";
@@ -9,7 +8,7 @@ const BackofficeAnalytics = () => {
   const [activeTab, setActiveTab] = useState("usage");
   
   return (
-    <BackofficeLayout>
+    <Layout>
       <div className="space-y-8">
         <div>
           <h1 className="text-3xl font-bold">Analytics</h1>
@@ -135,7 +134,7 @@ const BackofficeAnalytics = () => {
           </TabsContent>
         </Tabs>
       </div>
-    </BackofficeLayout>
+    </Layout>
   );
 };
 
