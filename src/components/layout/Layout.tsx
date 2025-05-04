@@ -2,8 +2,7 @@
 import { ReactNode } from 'react';
 import Header from './Header';
 import MobileNav from './MobileNav';
-import { ShieldCheck } from 'lucide-react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClient } from '@/contexts/ClientContext';
 
@@ -33,27 +32,6 @@ const Layout = ({ children }: LayoutProps) => {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="container mx-auto py-4 px-6">
-          <div className="flex items-center space-x-3">
-            {userClient?.logo ? (
-              <img 
-                src={userClient.logo} 
-                alt={`${userClient.name} logo`}
-                className="h-9 w-auto"
-              />
-            ) : (
-              <ShieldCheck className="h-7 w-7 text-primary" />
-            )}
-            
-            <Link to={isSaasOwner ? "/backoffice" : "/dashboard"} className="flex items-center space-x-2">
-              <h1 className="text-2xl font-bold text-primary">
-                {userClient ? `${userClient.name} Safe School Console` : 'Safe School'}
-              </h1>
-            </Link>
-          </div>
-        </div>
-      </div>
       <Header />
       
       {/* Navigation tabs */}
