@@ -96,27 +96,30 @@ const Sidebar = () => {
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <aside className="bg-gray-50 w-64 min-h-screen py-6 hidden md:block">
+    <aside className="bg-gray-50 w-64 min-h-screen py-6 hidden md:block z-30 relative">
       <nav>
         <ul className="space-y-2 px-4">
           {clientItems
             .filter(item => item.allowed)
-            .map((item) => (
-            <li key={item.path}>
-              <button
-                onClick={() => navigate(item.path)}
-                className={cn(
-                  "w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors",
-                  isActive(item.path)
-                    ? "bg-primary-50 text-primary-700"
-                    : "text-gray-600 hover:bg-gray-100"
-                )}
-              >
-                <item.icon size={18} />
-                <span>{item.label}</span>
-              </button>
-            </li>
-          ))}
+            .map((item) => {
+              const Icon = item.icon;
+              return (
+                <li key={item.path}>
+                  <button
+                    onClick={() => navigate(item.path)}
+                    className={cn(
+                      "w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors",
+                      isActive(item.path)
+                        ? "bg-primary-50 text-primary-700"
+                        : "text-gray-600 hover:bg-gray-100"
+                    )}
+                  >
+                    <Icon size={18} />
+                    <span>{item.label}</span>
+                  </button>
+                </li>
+              );
+            })}
         </ul>
       </nav>
     </aside>

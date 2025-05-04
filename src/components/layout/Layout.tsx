@@ -21,7 +21,7 @@ const Layout = ({ children }: LayoutProps) => {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <div className="bg-white shadow-sm border-b border-gray-200">
+      <div className="bg-white shadow-sm border-b border-gray-200 relative z-10">
         <div className="container mx-auto py-4 px-6">
           <div className="flex items-center space-x-3">
             {userClient?.logo ? (
@@ -47,7 +47,7 @@ const Layout = ({ children }: LayoutProps) => {
         {/* Only show the sidebar for non-SaaS owners */}
         <Sidebar />
         <main className="flex-1 px-4 py-6 md:px-8">
-          <div className="flex md:hidden mb-4">
+          <div className="flex md:hidden mb-4 relative z-40">
             <MobileNav />
           </div>
           {children}
