@@ -53,28 +53,30 @@ const Layout = ({ children }: LayoutProps) => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="bg-white border-b border-gray-100 shadow-nav">
+      <div className="bg-white border-b border-gray-100 shadow-nav w-full">
         <Header />
         
-        {/* Navigation tabs - now part of the header section */}
-        <div className="container mx-auto px-4 hidden md:block">
-          <nav className="flex space-x-8 overflow-x-auto">
-            {navigationItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.path}
-                  onClick={() => navigate(item.path)}
-                  className={`flex items-center gap-2 py-4 px-3 nav-link ${
-                    isActive(item.path) ? 'active' : ''
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  <span>{item.name}</span>
-                </button>
-              );
-            })}
-          </nav>
+        {/* Navigation tabs - now full width */}
+        <div className="w-full bg-white">
+          <div className="container mx-auto px-4 hidden md:block">
+            <nav className="flex space-x-8 overflow-x-auto">
+              {navigationItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.path}
+                    onClick={() => navigate(item.path)}
+                    className={`flex items-center gap-2 py-4 px-3 nav-link ${
+                      isActive(item.path) ? 'active' : ''
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span>{item.name}</span>
+                  </button>
+                );
+              })}
+            </nav>
+          </div>
         </div>
       </div>
       
