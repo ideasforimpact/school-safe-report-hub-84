@@ -11,6 +11,7 @@ import {
   DialogHeader, 
   DialogTitle 
 } from "@/components/ui/dialog";
+import { ImageIcon } from 'lucide-react';
 
 interface AddClientFormData {
   name: string;
@@ -24,6 +25,7 @@ interface AddClientFormData {
     benchmarking: boolean;
   };
   active: boolean;
+  logo?: string;
 }
 
 interface AddClientDialogProps {
@@ -53,6 +55,17 @@ const AddClientDialog: React.FC<AddClientDialogProps> = ({
     });
   };
 
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setFormData({...formData, logo: reader.result as string});
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
@@ -63,6 +76,35 @@ const AddClientDialog: React.FC<AddClientDialogProps> = ({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
+          {/* Logo Upload */}
+          <div className="space-y-2">
+            <label className="font-medium">Client Logo</label>
+            <div className="flex items-center space-x-4">
+              <div className="h-20 w-20 border rounded flex items-center justify-center overflow-hidden">
+                {formData.logo ? (
+                  <img 
+                    src={formData.logo} 
+                    alt="Client logo" 
+                    className="h-full w-full object-contain" 
+                  />
+                ) : (
+                  <ImageIcon className="h-10 w-10 text-gray-300" />
+                )}
+              </div>
+              <div className="flex-1">
+                <Input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleLogoUpload}
+                  className="cursor-pointer"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Upload a logo image (PNG or JPG)
+                </p>
+              </div>
+            </div>
+          </div>
+          
           <div className="space-y-2">
             <label htmlFor="name">Client Name</label>
             <Input

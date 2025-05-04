@@ -1,7 +1,4 @@
 
-export type UserRole = 'reporter' | 'admin' | 'saas_owner';
-
-// Define module access permissions
 export interface ModulePermissions {
   incidentReporting: boolean;
   allIncidents: boolean;
@@ -9,14 +6,15 @@ export interface ModulePermissions {
   benchmarking: boolean;
 }
 
+export type UserRole = 'admin' | 'user' | 'saas_owner';
+
 export interface User {
   id: string;
   name: string;
   email: string;
   role: UserRole;
   modulePermissions: ModulePermissions;
-  clientId?: string; // Added clientId to associate users with clients
-  designation?: string; // Added designation field
+  clientId?: string; // Optional client ID to associate user with a client
 }
 
 export interface UserWithPassword extends User {
@@ -30,7 +28,14 @@ export interface AuthContextType {
   logout: () => void;
   isAdmin: boolean;
   isSaasOwner: boolean;
-  addUser: (userData: { name: string; email: string; password: string; role: UserRole, modulePermissions: ModulePermissions, clientId?: string, designation?: string }) => void;
+  addUser: (userData: { 
+    name: string; 
+    email: string; 
+    password: string; 
+    role: UserRole; 
+    modulePermissions: ModulePermissions;
+    clientId?: string;
+  }) => void;
   updateUser: (id: string, updates: Partial<User & { password?: string }>) => void;
   deleteUser: (id: string) => void;
   changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;

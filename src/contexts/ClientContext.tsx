@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, ReactNode } from 'react';
 import { toast } from "@/components/ui/sonner";
 
@@ -16,6 +15,7 @@ export interface Client {
     benchmarking: boolean;
   };
   active: boolean;
+  logo?: string; // Optional logo URL
 }
 
 interface ClientContextType {

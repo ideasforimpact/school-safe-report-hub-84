@@ -31,6 +31,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Edit, Trash2, Plus } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import ClientFormDialog from '@/components/backoffice/ClientFormDialog';
 
 const ClientManagement = () => {
   const { isAdmin } = useAuth();
@@ -49,7 +50,8 @@ const ClientManagement = () => {
       insights: true,
       benchmarking: false
     },
-    active: true
+    active: true,
+    logo: ''
   });
 
   const resetForm = () => {
@@ -64,7 +66,8 @@ const ClientManagement = () => {
         insights: true,
         benchmarking: false
       },
-      active: true
+      active: true,
+      logo: ''
     });
     setCurrentClient(null);
   };
@@ -88,7 +91,8 @@ const ClientManagement = () => {
         insights: client.moduleAccess?.insights ?? true,
         benchmarking: client.moduleAccess?.benchmarking ?? false
       },
-      active: client.active
+      active: client.active,
+      logo: client.logo || ''
     });
     setIsEditDialogOpen(true);
   };
@@ -105,16 +109,6 @@ const ClientManagement = () => {
     if (confirm('Are you sure you want to delete this client?')) {
       deleteClient(id);
     }
-  };
-
-  const handleModuleAccessChange = (module: keyof Client['moduleAccess'], value: boolean) => {
-    setFormData({
-      ...formData,
-      moduleAccess: {
-        ...formData.moduleAccess,
-        [module]: value
-      }
-    });
   };
 
   const formatDate = (dateString: string) => {
@@ -157,6 +151,7 @@ const ClientManagement = () => {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Logo</TableHead>
                   <TableHead>Name</TableHead>
                   <TableHead>Contact Person</TableHead>
                   <TableHead>Email</TableHead>
@@ -170,13 +165,28 @@ const ClientManagement = () => {
               <TableBody>
                 {clients.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-4">
+                    <TableCell colSpan={9} className="text-center py-4">
                       No clients found. Add a client to get started.
                     </TableCell>
                   </TableRow>
                 ) : (
                   clients.map((client) => (
                     <TableRow key={client.id}>
+                      <TableCell>
+                        {client.logo ? (
+                          <div className="h-10 w-10 overflow-hidden rounded">
+                            <img 
+                              src={client.logo} 
+                              alt={`${client.name} logo`} 
+                              className="h-full w-full object-contain"
+                            />
+                          </div>
+                        ) : (
+                          <div className="h-10 w-10 bg-gray-200 rounded flex items-center justify-center text-gray-500">
+                            {client.name.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                      </TableCell>
                       <TableCell className="font-medium">{client.name}</TableCell>
                       <TableCell>{client.contactPerson}</TableCell>
                       <TableCell>{client.email}</TableCell>
@@ -230,291 +240,32 @@ const ClientManagement = () => {
         </Card>
       </div>
 
-      {/* Add Client Dialog */}
-      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Add New Client</DialogTitle>
-            <DialogDescription>
-              Add a new client to the system
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label htmlFor="name">Client Name</label>
-              <Input
-                id="name"
-                value={formData.name}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
-                placeholder="Enter client name"
-              />
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="contactPerson">Contact Person</label>
-              <Input
-                id="contactPerson"
-                value={formData.contactPerson}
-                onChange={(e) => setFormData({...formData, contactPerson: e.target.value})}
-                placeholder="Enter contact person name"
-              />
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="email">Email</label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({...formData, email: e.target.value})}
-                placeholder="Enter email"
-              />
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="phone">Phone</label>
-              <Input
-                id="phone"
-                value={formData.phone}
-                onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                placeholder="Enter phone number"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <label className="font-medium">Module Access</label>
-              <div className="grid grid-cols-1 gap-2 pt-2">
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="incident-reporting"
-                    checked={formData.moduleAccess.incidentReporting}
-                    onCheckedChange={(checked) => 
-                      handleModuleAccessChange('incidentReporting', checked === true)
-                    }
-                  />
-                  <label 
-                    htmlFor="incident-reporting"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    Incident Reporting
-                  </label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="all-incidents"
-                    checked={formData.moduleAccess.allIncidents}
-                    onCheckedChange={(checked) => 
-                      handleModuleAccessChange('allIncidents', checked === true)
-                    }
-                  />
-                  <label 
-                    htmlFor="all-incidents"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    All Incidents
-                  </label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="insights"
-                    checked={formData.moduleAccess.insights}
-                    onCheckedChange={(checked) => 
-                      handleModuleAccessChange('insights', checked === true)
-                    }
-                  />
-                  <label 
-                    htmlFor="insights"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    Insights
-                  </label>
-                </div>
+      {/* Use the new ClientFormDialog component instead of inline dialogs */}
+      <ClientFormDialog 
+        isOpen={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
+        formData={formData}
+        setFormData={setFormData}
+        onSubmit={handleAddClient}
+        onCancel={() => {
+          setIsAddDialogOpen(false);
+          resetForm();
+        }}
+        isEdit={false}
+      />
 
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="benchmarking"
-                    checked={formData.moduleAccess.benchmarking}
-                    onCheckedChange={(checked) => 
-                      handleModuleAccessChange('benchmarking', checked === true)
-                    }
-                  />
-                  <label 
-                    htmlFor="benchmarking"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    Benchmarking
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-2 pt-2">
-              <Checkbox 
-                id="active-status"
-                checked={formData.active}
-                onCheckedChange={(checked) => 
-                  setFormData({...formData, active: checked === true})
-                }
-              />
-              <label 
-                htmlFor="active-status"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                Active Client
-              </label>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setIsAddDialogOpen(false);
-              resetForm();
-            }}>
-              Cancel
-            </Button>
-            <Button onClick={handleAddClient}>Add Client</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Client Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Edit Client</DialogTitle>
-            <DialogDescription>
-              Update client information
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label htmlFor="edit-name">Client Name</label>
-              <Input
-                id="edit-name"
-                value={formData.name}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
-              />
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="edit-contactPerson">Contact Person</label>
-              <Input
-                id="edit-contactPerson"
-                value={formData.contactPerson}
-                onChange={(e) => setFormData({...formData, contactPerson: e.target.value})}
-              />
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="edit-email">Email</label>
-              <Input
-                id="edit-email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({...formData, email: e.target.value})}
-              />
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="edit-phone">Phone</label>
-              <Input
-                id="edit-phone"
-                value={formData.phone}
-                onChange={(e) => setFormData({...formData, phone: e.target.value})}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <label className="font-medium">Module Access</label>
-              <div className="grid grid-cols-1 gap-2 pt-2">
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="edit-incident-reporting"
-                    checked={formData.moduleAccess.incidentReporting}
-                    onCheckedChange={(checked) => 
-                      handleModuleAccessChange('incidentReporting', checked === true)
-                    }
-                  />
-                  <label 
-                    htmlFor="edit-incident-reporting"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    Incident Reporting
-                  </label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="edit-all-incidents"
-                    checked={formData.moduleAccess.allIncidents}
-                    onCheckedChange={(checked) => 
-                      handleModuleAccessChange('allIncidents', checked === true)
-                    }
-                  />
-                  <label 
-                    htmlFor="edit-all-incidents"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    All Incidents
-                  </label>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="edit-insights"
-                    checked={formData.moduleAccess.insights}
-                    onCheckedChange={(checked) => 
-                      handleModuleAccessChange('insights', checked === true)
-                    }
-                  />
-                  <label 
-                    htmlFor="edit-insights"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    Insights
-                  </label>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                  <Checkbox 
-                    id="edit-benchmarking"
-                    checked={formData.moduleAccess.benchmarking}
-                    onCheckedChange={(checked) => 
-                      handleModuleAccessChange('benchmarking', checked === true)
-                    }
-                  />
-                  <label 
-                    htmlFor="edit-benchmarking"
-                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    Benchmarking
-                  </label>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-2 pt-2">
-              <Checkbox 
-                id="edit-active-status"
-                checked={formData.active}
-                onCheckedChange={(checked) => 
-                  setFormData({...formData, active: checked === true})
-                }
-              />
-              <label 
-                htmlFor="edit-active-status"
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                Active Client
-              </label>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => {
-              setIsEditDialogOpen(false);
-              resetForm();
-            }}>
-              Cancel
-            </Button>
-            <Button onClick={handleUpdateClient}>Update Client</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ClientFormDialog 
+        isOpen={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        formData={formData}
+        setFormData={setFormData}
+        onSubmit={handleUpdateClient}
+        onCancel={() => {
+          setIsEditDialogOpen(false);
+          resetForm();
+        }}
+        isEdit={true}
+      />
     </Layout>
   );
 };

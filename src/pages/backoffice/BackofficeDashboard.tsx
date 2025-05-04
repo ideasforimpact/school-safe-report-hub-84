@@ -21,7 +21,8 @@ const BackofficeDashboard = () => {
       insights: true,
       benchmarking: false
     },
-    active: true
+    active: true,
+    logo: ''
   });
   
   // Sample metrics data (in a real app, this would come from an API)
@@ -53,7 +54,8 @@ const BackofficeDashboard = () => {
         insights: true,
         benchmarking: false
       },
-      active: true
+      active: true,
+      logo: ''
     });
   };
 
