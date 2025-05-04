@@ -1,29 +1,35 @@
+
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
-import { toast } from "@/components/ui/sonner";
 import { User, UserRole, ModulePermissions, AuthContextType, UserWithPassword } from './types';
-import { INITIAL_MOCK_USERS } from './initialData';
-import { validateUserEmail, validateAdminDeletion, excludePasswordFromUser, excludePasswordFromUsers } from './utils';
+import { excludePasswordFromUser, excludePasswordFromUsers } from './utils';
 import { useClient } from '../ClientContext';
+import {
+  getUserFromStorage,
+  getUsersFromStorage,
+  saveUserToStorage,
+  saveUsersToStorage,
+  loginUser,
+  logoutUser,
+  changeUserPassword
+} from '@/services/auth/authService';
+import {
+  addNewUser,
+  updateExistingUser,
+  deleteExistingUser
+} from '@/services/auth/userManagementService';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<User | null>(() => {
-    const savedUser = localStorage.getItem('user');
-    return savedUser ? JSON.parse(savedUser) : null;
-  });
-
-  const [users, setUsers] = useState<UserWithPassword[]>(() => {
-    const savedUsers = localStorage.getItem('users');
-    return savedUsers ? JSON.parse(savedUsers) : INITIAL_MOCK_USERS;
-  });
+  const [user, setUser] = useState<User | null>(() => getUserFromStorage());
+  const [users, setUsers] = useState<UserWithPassword[]>(() => getUsersFromStorage());
 
   // Get client context to validate domains
   const clientContext = useContext(React.createContext<{ isEmailDomainAllowed?: (email: string, clientId: string) => boolean }>({}));
   
   // Save users to localStorage whenever they change
   useEffect(() => {
-    localStorage.setItem('users', JSON.stringify(users));
+    saveUsersToStorage(users);
   }, [users]);
 
   // Debug: Log current users to help debugging
@@ -32,63 +38,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [users]);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 800));
+    const loggedInUser = await loginUser(
+      email, 
+      password, 
+      users,
+      clientContext.isEmailDomainAllowed
+    );
     
-    console.log("Attempting login with:", email, password);
-    console.log("Available users:", users.map(u => ({ email: u.email, password: u.password })));
-    
-    // Reset users to initial data if they got corrupted
-    if (!users.length || !users.some(u => u.email === "owner@saasplatform.com")) {
-      console.log("Resetting users to initial data");
-      const resetUsers = INITIAL_MOCK_USERS;
-      setUsers(resetUsers);
-      localStorage.setItem('users', JSON.stringify(resetUsers));
+    if (loggedInUser) {
+      setUser(loggedInUser);
+      saveUserToStorage(loggedInUser);
       
-      // Try to find the user in the reset data
-      const foundUser = resetUsers.find(
-        u => u.email === email && u.password === password
-      );
-      
-      if (foundUser) {
-        const userWithoutPassword = excludePasswordFromUser(foundUser);
-        setUser(userWithoutPassword);
-        localStorage.setItem('user', JSON.stringify(userWithoutPassword));
-        toast.success(`Welcome back, ${userWithoutPassword.name}!`);
-        return true;
+      // Update users list if it was reset during login
+      const currentUsers = getUsersFromStorage();
+      if (currentUsers !== users) {
+        setUsers(currentUsers);
       }
-    } else {
-      // Normal login flow
-      const foundUser = users.find(
-        u => u.email === email && u.password === password
-      );
       
-      if (foundUser) {
-        // If user isn't a SaaS Owner, validate their email domain against client's allowed domains
-        if (foundUser.role !== 'saas_owner' && foundUser.clientId && clientContext.isEmailDomainAllowed) {
-          const isAllowed = clientContext.isEmailDomainAllowed(email, foundUser.clientId);
-          if (!isAllowed) {
-            toast.error("Your email domain is not allowed to access this client's portal");
-            return false;
-          }
-        }
-
-        const userWithoutPassword = excludePasswordFromUser(foundUser);
-        setUser(userWithoutPassword);
-        localStorage.setItem('user', JSON.stringify(userWithoutPassword));
-        toast.success(`Welcome back, ${userWithoutPassword.name}!`);
-        return true;
-      }
+      return true;
     }
     
-    toast.error("Invalid email or password");
     return false;
   };
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('user');
-    toast.info("You've been logged out");
+    logoutUser();
   };
 
   const addUser = (userData: { 
@@ -100,92 +75,46 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     clientId?: string;
     designation?: string;
   }) => {
-    // Check if email already exists
-    if (!validateUserEmail(users, userData.email)) {
-      return;
+    const updatedUsers = addNewUser(users, userData, clientContext.isEmailDomainAllowed);
+    if (updatedUsers) {
+      setUsers(updatedUsers);
     }
-
-    // If the user is being added with a client ID, validate the email domain
-    if (userData.clientId && userData.role !== 'saas_owner' && clientContext.isEmailDomainAllowed) {
-      const isAllowed = clientContext.isEmailDomainAllowed(userData.email, userData.clientId);
-      if (!isAllowed) {
-        toast.error(`The email domain isn't allowed for this client. Please use an approved domain.`);
-        return;
-      }
-    }
-
-    const newUser: UserWithPassword = {
-      id: Date.now().toString(),
-      name: userData.name,
-      email: userData.email,
-      password: userData.password,
-      role: userData.role,
-      modulePermissions: userData.modulePermissions,
-      clientId: userData.clientId,
-      designation: userData.designation
-    };
-
-    setUsers([...users, newUser]);
-    toast.success("User added successfully");
   };
 
   const updateUser = (id: string, updates: Partial<User & { password?: string }>) => {
-    // Check if email already exists and it's not the current user
-    if (updates.email && !validateUserEmail(users, updates.email, id)) {
-      return;
-    }
-
-    setUsers(users.map(u => {
-      if (u.id === id) {
-        return { ...u, ...updates };
+    const updatedUsers = updateExistingUser(users, id, updates);
+    if (updatedUsers) {
+      setUsers(updatedUsers);
+      
+      // If the currently logged-in user is being updated, update their session too
+      if (user && user.id === id) {
+        const { password, ...updatesWithoutPassword } = updates;
+        const updatedUser = { ...user, ...updatesWithoutPassword };
+        setUser(updatedUser);
+        saveUserToStorage(updatedUser);
       }
-      return u;
-    }));
-
-    // If the currently logged-in user is being updated, update their session too
-    if (user && user.id === id) {
-      const { password, ...updatesWithoutPassword } = updates;
-      const updatedUser = { ...user, ...updatesWithoutPassword };
-      setUser(updatedUser);
-      localStorage.setItem('user', JSON.stringify(updatedUser));
     }
-
-    toast.success("User updated successfully");
   };
 
   const deleteUser = (id: string) => {
-    if (!validateAdminDeletion(users, id, user?.id)) {
-      return;
+    const updatedUsers = deleteExistingUser(users, id, user?.id);
+    if (updatedUsers) {
+      setUsers(updatedUsers);
     }
-
-    setUsers(users.filter(u => u.id !== id));
-    toast.success("User deleted successfully");
   };
 
   const changePassword = async (currentPassword: string, newPassword: string): Promise<boolean> => {
-    // First, verify the current password
     if (!user) {
-      toast.error("You must be logged in to change your password");
       return false;
     }
 
-    const userRecord = users.find(u => u.id === user.id);
-    
-    if (!userRecord || userRecord.password !== currentPassword) {
-      toast.error("Current password is incorrect");
-      return false;
+    const updatedUsers = changeUserPassword(users, user.id, currentPassword, newPassword);
+    if (updatedUsers) {
+      setUsers(updatedUsers);
+      return true;
     }
 
-    // Update the password
-    setUsers(users.map(u => {
-      if (u.id === user.id) {
-        return { ...u, password: newPassword };
-      }
-      return u;
-    }));
-
-    toast.success("Password changed successfully");
-    return true;
+    return false;
   };
 
   const isAdmin = user?.role === 'admin' || user?.role === 'saas_owner';

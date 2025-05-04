@@ -109,3 +109,29 @@ export const isEmailDomainAllowed = (email: string, allowedDomains: string[]): b
     allowedDomain.toLowerCase() === domain
   );
 };
+
+/**
+ * Validate OAuth provider configuration
+ * Returns true if the provider is properly configured
+ */
+export const isProviderConfigured = (provider: string): boolean => {
+  const config = providerConfigs[provider.toLowerCase()];
+  if (!config) return false;
+  
+  // Check if clientId is actually set to a real value
+  return config.clientId && !config.clientId.includes('-client-id');
+};
+
+/**
+ * Get all configured providers for a client
+ * Returns only the providers that are both enabled for the client and properly configured
+ */
+export const getConfiguredProvidersForClient = (
+  clientProviders: {[key: string]: boolean}
+): string[] => {
+  if (!clientProviders) return [];
+  
+  return Object.entries(clientProviders)
+    .filter(([provider, enabled]) => enabled && isProviderConfigured(provider))
+    .map(([provider]) => provider);
+};
