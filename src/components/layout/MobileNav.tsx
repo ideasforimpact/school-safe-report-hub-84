@@ -15,8 +15,13 @@ import {
 } from "@/components/ui/accordion";
 
 const MobileNav = () => {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, isSaasOwner } = useAuth();
   const navigate = useNavigate();
+  
+  // If user is a SaaS owner, don't render the mobile nav since they use the horizontal navigation
+  if (isSaasOwner) {
+    return null;
+  }
   
   // Get user permissions
   const permissions = user?.modulePermissions || {

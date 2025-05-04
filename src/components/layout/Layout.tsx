@@ -13,7 +13,7 @@ interface LayoutProps {
 }
 
 const Layout = ({ children }: LayoutProps) => {
-  const { user } = useAuth();
+  const { user, isSaasOwner } = useAuth();
   const { clients } = useClient();
   
   // Find the client associated with the current user
@@ -44,6 +44,7 @@ const Layout = ({ children }: LayoutProps) => {
       </div>
       <Header />
       <div className="flex">
+        {/* Only show the sidebar for non-SaaS owners */}
         <Sidebar />
         <main className="flex-1 px-4 py-6 md:px-8">
           <div className="flex md:hidden mb-4">
