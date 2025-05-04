@@ -8,14 +8,14 @@ const IncidentsHeader = () => {
 
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-      <div>
+      <div className="text-left w-full">
         <h1 className="text-2xl font-bold">All Incidents</h1>
         <p className="text-gray-600 mt-1">
           View and manage reported incidents
         </p>
       </div>
       
-      <Button onClick={() => navigate('/report')}>
+      <Button onClick={() => navigate('/report-incident')}>
         <AlertTriangle className="h-4 w-4 mr-2" />
         Report New
       </Button>
