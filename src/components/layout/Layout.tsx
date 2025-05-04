@@ -53,7 +53,7 @@ const Layout = ({
         
         {/* Navigation tabs - now full width */}
         <div className="w-full bg-white">
-          <div className="container mx-auto px-4 hidden md:block bg-gray-100">
+          <div className="container mx-auto px-4 hidden md:block bg-neutral-50">
             <nav className="flex space-x-8 overflow-x-auto">
               {navigationItems.map(item => {
               const Icon = item.icon;
