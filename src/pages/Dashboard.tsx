@@ -1,4 +1,3 @@
-
 import { useNavigate } from 'react-router-dom';
 import { useIncidents } from '@/contexts/IncidentContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -8,6 +7,8 @@ import QuickActions from '@/components/dashboard/QuickActions';
 import RecentActivities from '@/components/dashboard/RecentActivities';
 import IncidentStatusSection from '@/components/dashboard/IncidentStatusSection';
 import SafetyResources from '@/components/dashboard/SafetyResources';
+import { Button } from '@/components/ui/button';
+import { AlertTriangle } from 'lucide-react';
 
 const Dashboard = () => {
   const { incidents, getRecentActivities } = useIncidents();
@@ -60,9 +61,16 @@ const Dashboard = () => {
   return (
     <Layout>
       <div className="space-y-6 md:space-y-8 w-full">
-        <div className="w-full text-left">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Welcome to {schoolName} Safety Dashboard</h1>
-          <p className="text-sm md:text-base text-gray-600 mt-1">Track, manage, and analyze school safety incidents</p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 w-full">
+          <div className="text-left">
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Welcome to {schoolName} Safety Dashboard</h1>
+            <p className="text-sm md:text-base text-gray-600 mt-1">Track, manage, and analyze school safety incidents</p>
+          </div>
+          
+          <Button onClick={() => navigate('/report-incident')} className="whitespace-nowrap">
+            <AlertTriangle className="h-4 w-4 mr-2" />
+            Report New Incident
+          </Button>
         </div>
 
         {/* Summary Cards Section */}
