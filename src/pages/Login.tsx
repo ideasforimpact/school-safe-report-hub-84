@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -21,6 +22,7 @@ const Login = () => {
     setIsLoading(true);
 
     try {
+      console.log("Attempting to log in with:", email, password);
       const success = await login(email, password);
       if (success) {
         navigate("/dashboard");
@@ -28,8 +30,30 @@ const Login = () => {
         setError("Invalid email or password");
       }
     } catch (err) {
+      console.error("Login error:", err);
       setError("An error occurred. Please try again.");
-      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDemoLogin = async (demoEmail: string, demoPassword: string) => {
+    setEmail(demoEmail);
+    setPassword(demoPassword);
+    setError("");
+    setIsLoading(true);
+
+    try {
+      console.log("Using demo credentials:", demoEmail, demoPassword);
+      const success = await login(demoEmail, demoPassword);
+      if (success) {
+        navigate("/dashboard");
+      } else {
+        setError("Demo login failed. Please try again.");
+      }
+    } catch (err) {
+      console.error("Demo login error:", err);
+      setError("An error occurred with demo login. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -117,9 +141,35 @@ const Login = () => {
 
         <div className="text-center mt-6 text-sm text-gray-600 p-4 bg-white/80 rounded-md shadow-sm">
           <p>Demo Credentials:</p>
-          <p className="mt-1">SaaS Owner: owner@saasplatform.com / owner123</p>
-          <p className="mt-1">Admin: admin@school.edu / admin123</p>
-          <p>Reporter: reporter@school.edu / reporter123</p>
+          <div className="mt-2 space-y-2">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full text-xs" 
+              onClick={() => handleDemoLogin("owner@saasplatform.com", "owner123")}
+              disabled={isLoading}
+            >
+              Login as SaaS Owner
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full text-xs" 
+              onClick={() => handleDemoLogin("admin@school.edu", "admin123")}
+              disabled={isLoading}
+            >
+              Login as Admin
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full text-xs" 
+              onClick={() => handleDemoLogin("reporter@school.edu", "reporter123")}
+              disabled={isLoading}
+            >
+              Login as Reporter
+            </Button>
+          </div>
         </div>
       </div>
     </div>

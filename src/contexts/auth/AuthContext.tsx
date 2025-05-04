@@ -23,24 +23,54 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem('users', JSON.stringify(users));
   }, [users]);
 
+  // Debug: Log current users to help debugging
+  useEffect(() => {
+    console.log("Current users in AuthContext:", users);
+  }, [users]);
+
   const login = async (email: string, password: string): Promise<boolean> => {
     // Simulate API call delay
     await new Promise(resolve => setTimeout(resolve, 800));
     
-    const foundUser = users.find(
-      u => u.email === email && u.password === password
-    );
+    console.log("Attempting login with:", email, password);
+    console.log("Available users:", users.map(u => ({ email: u.email, password: u.password })));
     
-    if (foundUser) {
-      const userWithoutPassword = excludePasswordFromUser(foundUser);
-      setUser(userWithoutPassword);
-      localStorage.setItem('user', JSON.stringify(userWithoutPassword));
-      toast.success(`Welcome back, ${userWithoutPassword.name}!`);
-      return true;
+    // Reset users to initial data if they got corrupted
+    if (!users.length || !users.some(u => u.email === "owner@saasplatform.com")) {
+      console.log("Resetting users to initial data");
+      const resetUsers = INITIAL_MOCK_USERS;
+      setUsers(resetUsers);
+      localStorage.setItem('users', JSON.stringify(resetUsers));
+      
+      // Try to find the user in the reset data
+      const foundUser = resetUsers.find(
+        u => u.email === email && u.password === password
+      );
+      
+      if (foundUser) {
+        const userWithoutPassword = excludePasswordFromUser(foundUser);
+        setUser(userWithoutPassword);
+        localStorage.setItem('user', JSON.stringify(userWithoutPassword));
+        toast.success(`Welcome back, ${userWithoutPassword.name}!`);
+        return true;
+      }
     } else {
-      toast.error("Invalid email or password");
-      return false;
+      // Normal login flow
+      const foundUser = users.find(
+        u => u.email === email && u.password === password
+      );
+      
+      if (foundUser) {
+        const userWithoutPassword = excludePasswordFromUser(foundUser);
+        setUser(userWithoutPassword);
+        localStorage.setItem('user', JSON.stringify(userWithoutPassword));
+        toast.success(`Welcome back, ${userWithoutPassword.name}!`);
+        return true;
+      }
     }
+    
+    toast.error("Invalid email or password");
+    return false;
   };
 
   const logout = () => {
