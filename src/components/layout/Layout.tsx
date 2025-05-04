@@ -53,10 +53,10 @@ const Layout = ({ children }: LayoutProps) => {
 
   return (
     <div className="min-h-screen bg-background">
-      <Header />
-      
-      {/* Navigation tabs */}
-      <div className="bg-white border-b border-gray-100 shadow-nav w-full">
+      <div className="bg-white border-b border-gray-100 shadow-nav">
+        <Header />
+        
+        {/* Navigation tabs - now part of the header section */}
         <div className="container mx-auto px-4 hidden md:block">
           <nav className="flex space-x-8 overflow-x-auto">
             {navigationItems.map((item) => {

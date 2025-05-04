@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -38,8 +37,8 @@ const Header = () => {
   };
 
   return (
-    <header className="bg-white py-3 border-b border-gray-100 shadow-nav w-full">
-      <div className="container mx-auto px-4 flex items-center justify-between">
+    <div className="container mx-auto px-4 py-3">
+      <div className="flex items-center justify-between">
         {/* Logo Section */}
         <div className="flex items-center space-x-3">
           {userClient?.logo ? (
@@ -176,7 +175,7 @@ const Header = () => {
           </Button>
         )}
       </div>
-    </header>
+    </div>
   );
 };
 
