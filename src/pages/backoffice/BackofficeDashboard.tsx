@@ -4,7 +4,7 @@ import BackofficeLayout from '@/components/layout/BackofficeLayout';
 import { useClient } from '@/contexts/ClientContext';
 import MetricsCards from '@/components/backoffice/MetricsCards';
 import ClientsTable from '@/components/backoffice/ClientsTable';
-import AddClientDialog from '@/components/backoffice/AddClientDialog';
+import ClientDialog from '@/components/backoffice/ClientDialog';
 
 const BackofficeDashboard = () => {
   const { clients, addClient } = useClient();
@@ -114,14 +114,15 @@ const BackofficeDashboard = () => {
         />
       </div>
       
-      {/* Add Client Dialog */}
-      <AddClientDialog 
+      {/* Add Client Dialog - Using the new ClientDialog component */}
+      <ClientDialog 
         isOpen={isAddDialogOpen}
         onOpenChange={setIsAddDialogOpen}
         formData={formData}
         setFormData={setFormData}
-        onAddClient={handleAddClient}
+        onSubmit={handleAddClient}
         onCancel={handleCancelAdd}
+        isEdit={false}
       />
     </BackofficeLayout>
   );
