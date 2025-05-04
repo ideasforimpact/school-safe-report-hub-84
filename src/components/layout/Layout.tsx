@@ -39,7 +39,7 @@ const Layout = ({
         </div>
         
         {/* Main Content - width will automatically adjust based on sidebar state */}
-        <div className="flex-1 pt-16 transition-all duration-300">
+        <div className="flex-1 pt-16 transition-all duration-300 pl-0 md:pl-24">
           <div className="container mx-auto p-4 md:p-6">
             <div className="mb-4 md:hidden">
               <MobileNav />

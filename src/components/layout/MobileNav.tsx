@@ -83,7 +83,7 @@ const MobileNav = () => {
       <SheetContent side="left" className="w-64 p-0 bg-[#1E2F97]">
         <div className="py-8 px-4">
           <h2 className="text-lg font-semibold mb-6 px-2 text-white">Navigation</h2>
-          <nav>
+          <nav className="flex flex-wrap gap-2">
             {navigationItems.map(item => {
               const Icon = item.icon;
               return (
@@ -95,14 +95,14 @@ const MobileNav = () => {
                     const closeButton = document.querySelector('[data-radix-sheet-close]') as HTMLElement;
                     if (closeButton) closeButton.click();
                   }}
-                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left mb-1 transition-colors ${
+                  className={`flex flex-col items-center w-[70px] py-3 px-2 rounded-lg text-center space-y-1 ${
                     isActive(item.path)
                       ? "bg-blue-700 text-white"
                       : "text-blue-100 hover:bg-blue-800 hover:text-white"
                   }`}
                 >
                   <Icon size={18} />
-                  <span>{item.name}</span>
+                  <span className="text-xs">{item.name}</span>
                 </button>
               );
             })}

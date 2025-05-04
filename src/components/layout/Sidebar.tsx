@@ -98,16 +98,17 @@ const Sidebar = () => {
     return location.pathname === path || (path !== '/' && location.pathname.startsWith(path));
   };
 
+  // Always use the compact sidebar style but with variable width
   return (
     <aside 
       className={cn(
         "fixed top-16 left-0 bottom-0 bg-[#1E2F97] transition-all duration-300 flex flex-col z-30",
-        collapsed ? "w-16" : "w-64"
+        collapsed ? "w-20" : "w-24" // slightly wider to accommodate text below icons
       )}
     >
       <div className="flex-1 py-6">
         <nav className="px-2">
-          <ul className="space-y-2">
+          <ul className="space-y-4">
             {menuItems
               .filter(item => item.allowed)
               .map((item) => {
@@ -117,16 +118,16 @@ const Sidebar = () => {
                     <button
                       onClick={() => navigate(item.path)}
                       className={cn(
-                        "w-full flex items-center px-3 py-3 rounded-md transition-colors",
+                        "w-full flex flex-col items-center justify-center py-3 px-1 rounded-md transition-colors text-center",
                         isActive(item.path)
                           ? "bg-blue-700 text-white"
                           : "text-blue-100 hover:bg-blue-800 hover:text-white"
                       )}
                     >
-                      <IconComponent className="h-5 w-5" />
-                      {!collapsed && (
-                        <span className="ml-3 transition-opacity duration-300">{item.label}</span>
-                      )}
+                      <IconComponent className="h-5 w-5 mb-1" />
+                      <span className="text-[10px] font-medium whitespace-normal text-center">
+                        {item.label}
+                      </span>
                     </button>
                   </li>
                 );
@@ -142,7 +143,6 @@ const Sidebar = () => {
           className="w-full flex items-center justify-center px-3 py-2 rounded-md text-blue-100 hover:bg-blue-800"
         >
           {collapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
-          {!collapsed && <span className="ml-2">Collapse</span>}
         </button>
       </div>
     </aside>
