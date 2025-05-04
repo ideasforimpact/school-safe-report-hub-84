@@ -21,6 +21,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface ClientsTableProps {
   clients: Client[];
@@ -75,13 +81,15 @@ const ClientsTable: React.FC<ClientsTableProps> = ({
               <TableHead>Status</TableHead>
               <TableHead>Created On</TableHead>
               <TableHead>Module Access</TableHead>
+              <TableHead>Auth Providers</TableHead>
+              <TableHead>Allowed Domains</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredClients.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-4 text-gray-500">
+                <TableCell colSpan={8} className="text-center py-4 text-gray-500">
                   No clients found. Add a new client to get started.
                 </TableCell>
               </TableRow>
@@ -105,6 +113,47 @@ const ClientsTable: React.FC<ClientsTableProps> = ({
                         <Badge variant="outline" className="bg-purple-100 text-purple-800">Insights</Badge>
                       )}
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {client.authProviders?.google && (
+                        <Badge variant="outline" className="bg-red-50 text-red-600">Google</Badge>
+                      )}
+                      {client.authProviders?.microsoft && (
+                        <Badge variant="outline" className="bg-blue-50 text-blue-600">Microsoft</Badge>
+                      )}
+                      {client.authProviders?.zoho && (
+                        <Badge variant="outline" className="bg-green-50 text-green-600">Zoho</Badge>
+                      )}
+                      {(!client.authProviders || (!client.authProviders.google && !client.authProviders.microsoft && !client.authProviders.zoho)) && (
+                        <span className="text-xs text-gray-500">Not Configured</span>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {client.allowedDomains && client.allowedDomains.length > 0 ? (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Badge variant="outline" className="bg-gray-50">
+                              {client.allowedDomains.length} domain{client.allowedDomains.length !== 1 ? 's' : ''}
+                            </Badge>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <div className="p-1">
+                              <p className="font-medium mb-1">Allowed domains:</p>
+                              <ul className="text-xs">
+                                {client.allowedDomains.map((domain, index) => (
+                                  <li key={index}>{domain}</li>
+                                ))}
+                              </ul>
+                            </div>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    ) : (
+                      <span className="text-xs text-gray-500">Any Domain</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="sm" className="h-8 w-8 p-0">

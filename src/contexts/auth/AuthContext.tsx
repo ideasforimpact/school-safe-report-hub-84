@@ -1,9 +1,9 @@
-
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { toast } from "@/components/ui/sonner";
 import { User, UserRole, ModulePermissions, AuthContextType, UserWithPassword } from './types';
 import { INITIAL_MOCK_USERS } from './initialData';
 import { validateUserEmail, validateAdminDeletion, excludePasswordFromUser, excludePasswordFromUsers } from './utils';
+import { useClient } from '../ClientContext';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -18,6 +18,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return savedUsers ? JSON.parse(savedUsers) : INITIAL_MOCK_USERS;
   });
 
+  // Get client context to validate domains
+  const clientContext = useContext(React.createContext<{ isEmailDomainAllowed?: (email: string, clientId: string) => boolean }>({}));
+  
   // Save users to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem('users', JSON.stringify(users));
@@ -61,6 +64,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       );
       
       if (foundUser) {
+        // If user isn't a SaaS Owner, validate their email domain against client's allowed domains
+        if (foundUser.role !== 'saas_owner' && foundUser.clientId && clientContext.isEmailDomainAllowed) {
+          const isAllowed = clientContext.isEmailDomainAllowed(email, foundUser.clientId);
+          if (!isAllowed) {
+            toast.error("Your email domain is not allowed to access this client's portal");
+            return false;
+          }
+        }
+
         const userWithoutPassword = excludePasswordFromUser(foundUser);
         setUser(userWithoutPassword);
         localStorage.setItem('user', JSON.stringify(userWithoutPassword));
@@ -79,10 +91,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     toast.info("You've been logged out");
   };
 
-  const addUser = (userData: { name: string; email: string; password: string; role: UserRole; modulePermissions: ModulePermissions, clientId?: string }) => {
+  const addUser = (userData: { 
+    name: string; 
+    email: string; 
+    password: string; 
+    role: UserRole; 
+    modulePermissions: ModulePermissions;
+    clientId?: string;
+    designation?: string;
+  }) => {
     // Check if email already exists
     if (!validateUserEmail(users, userData.email)) {
       return;
+    }
+
+    // If the user is being added with a client ID, validate the email domain
+    if (userData.clientId && userData.role !== 'saas_owner' && clientContext.isEmailDomainAllowed) {
+      const isAllowed = clientContext.isEmailDomainAllowed(userData.email, userData.clientId);
+      if (!isAllowed) {
+        toast.error(`The email domain isn't allowed for this client. Please use an approved domain.`);
+        return;
+      }
     }
 
     const newUser: UserWithPassword = {
@@ -92,7 +121,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       password: userData.password,
       role: userData.role,
       modulePermissions: userData.modulePermissions,
-      clientId: userData.clientId
+      clientId: userData.clientId,
+      designation: userData.designation
     };
 
     setUsers([...users, newUser]);

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, ShieldCheck } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -57,6 +58,17 @@ const Login = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // This function would be implemented when we connect to real OAuth providers
+  const handleOAuthLogin = (provider: string) => {
+    setIsLoading(true);
+    // In a real implementation, this would redirect to the OAuth provider
+    console.log(`Authenticating with ${provider}...`);
+    setTimeout(() => {
+      setError(`${provider} authentication is not configured yet. Please use email and password.`);
+      setIsLoading(false);
+    }, 1000);
   };
 
   return (
@@ -127,11 +139,48 @@ const Login = () => {
               >
                 {isLoading ? "Logging in..." : "Log in"}
               </Button>
+              
+              <div className="w-full flex items-center gap-2 my-2">
+                <Separator className="flex-1" />
+                <span className="text-xs text-gray-500">OR</span>
+                <Separator className="flex-1" />
+              </div>
+              
+              <div className="grid grid-cols-3 gap-2 w-full">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => handleOAuthLogin('Google')}
+                  disabled={isLoading}
+                >
+                  Google
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => handleOAuthLogin('Microsoft')}
+                  disabled={isLoading}
+                >
+                  Microsoft
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => handleOAuthLogin('Zoho')}
+                  disabled={isLoading}
+                >
+                  Zoho
+                </Button>
+              </div>
+              
               <Button 
                 type="button" 
                 variant="outline" 
                 onClick={() => navigate('/home')} 
-                className="w-full transition-all hover:bg-primary/10"
+                className="w-full mt-4 transition-all hover:bg-primary/10"
               >
                 Back to Home
               </Button>

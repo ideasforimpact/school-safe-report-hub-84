@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, ReactNode } from 'react';
 import { toast } from "@/components/ui/sonner";
 
@@ -16,6 +17,12 @@ export interface Client {
   };
   active: boolean;
   logo?: string; // Optional logo URL
+  allowedDomains: string[]; // Array of allowed email domains
+  authProviders: {
+    google: boolean;
+    microsoft: boolean;
+    zoho: boolean;
+  };
 }
 
 interface ClientContextType {
@@ -24,6 +31,7 @@ interface ClientContextType {
   updateClient: (id: string, updates: Partial<Client>) => void;
   deleteClient: (id: string) => void;
   getClientById: (id: string) => Client | undefined;
+  isEmailDomainAllowed: (email: string, clientId: string) => boolean;
 }
 
 const ClientContext = createContext<ClientContextType | undefined>(undefined);
@@ -69,13 +77,29 @@ export const ClientProvider = ({ children }: { children: ReactNode }) => {
     return clients.find(client => client.id === id);
   };
 
+  // Function to validate if an email domain is allowed for a specific client
+  const isEmailDomainAllowed = (email: string, clientId: string): boolean => {
+    const client = getClientById(clientId);
+    if (!client || !client.allowedDomains || client.allowedDomains.length === 0) {
+      return false;
+    }
+
+    const domain = email.split('@')[1]?.toLowerCase();
+    if (!domain) return false;
+
+    return client.allowedDomains.some(allowedDomain => 
+      allowedDomain.toLowerCase() === domain
+    );
+  };
+
   return (
     <ClientContext.Provider value={{ 
       clients, 
       addClient, 
       updateClient, 
       deleteClient,
-      getClientById
+      getClientById,
+      isEmailDomainAllowed
     }}>
       {children}
     </ClientContext.Provider>

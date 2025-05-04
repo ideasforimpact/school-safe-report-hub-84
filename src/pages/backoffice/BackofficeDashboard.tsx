@@ -22,7 +22,13 @@ const BackofficeDashboard = () => {
       benchmarking: false
     },
     active: true,
-    logo: ''
+    logo: '',
+    allowedDomains: [],
+    authProviders: {
+      google: false,
+      microsoft: false,
+      zoho: false
+    }
   });
   
   // Sample metrics data (in a real app, this would come from an API)
@@ -55,7 +61,13 @@ const BackofficeDashboard = () => {
         benchmarking: false
       },
       active: true,
-      logo: ''
+      logo: '',
+      allowedDomains: [],
+      authProviders: {
+        google: false,
+        microsoft: false,
+        zoho: false
+      }
     });
   };
 
