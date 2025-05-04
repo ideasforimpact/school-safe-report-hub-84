@@ -56,8 +56,8 @@ const Layout = ({ children }: LayoutProps) => {
       <Header />
       
       {/* Navigation tabs */}
-      <div className="bg-white border-b border-gray-100 shadow-nav">
-        <div className="max-w-[95%] w-full mx-auto hidden md:block">
+      <div className="bg-white border-b border-gray-100 shadow-nav w-full">
+        <div className="container mx-auto px-4 hidden md:block">
           <nav className="flex space-x-8 overflow-x-auto">
             {navigationItems.map((item) => {
               const Icon = item.icon;
@@ -78,7 +78,7 @@ const Layout = ({ children }: LayoutProps) => {
         </div>
       </div>
       
-      <div className="max-w-[95%] w-full mx-auto py-6 px-4">
+      <div className="container mx-auto px-4 py-6">
         <div className="flex md:hidden mb-4">
           <MobileNav />
         </div>
