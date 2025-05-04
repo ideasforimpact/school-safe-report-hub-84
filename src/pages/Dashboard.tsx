@@ -1,10 +1,9 @@
+
 import { useNavigate } from 'react-router-dom';
 import { useIncidents } from '@/contexts/IncidentContext';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/layout/Layout';
 import SummaryCards from '@/components/dashboard/SummaryCards';
-import QuickActions from '@/components/dashboard/QuickActions';
-import RecentActivities from '@/components/dashboard/RecentActivities';
 import IncidentStatusSection from '@/components/dashboard/IncidentStatusSection';
 import SafetyResources from '@/components/dashboard/SafetyResources';
 import { Button } from '@/components/ui/button';
@@ -39,24 +38,6 @@ const Dashboard = () => {
   
   // Total people involved
   const totalPeopleInvolved = incidents.reduce((total, inc) => total + (inc.peopleInvolved?.length || 0), 0);
-  
-  // Get recent activities
-  const recentActivities = getRecentActivities();
-
-  // Handle activity click
-  const handleActivityClick = (activity: any) => {
-    if (activity.type === 'incident') {
-      navigate(`/incidents/${activity.entityId}`);
-    } else if (activity.type === 'action') {
-      // Find the incident that contains this action item
-      const incident = incidents.find(inc => 
-        inc.actionItems?.some(item => item.id === activity.entityId)
-      );
-      if (incident) {
-        navigate(`/incidents/${incident.id}`);
-      }
-    }
-  };
 
   return (
     <Layout>
@@ -83,21 +64,21 @@ const Dashboard = () => {
           totalPeopleInvolved={totalPeopleInvolved}
         />
         
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-          <div className="lg:col-span-1">
-            {/* Incident Status Chart Section */}
+        {/* Insights Grid - Replace QuickActions and RecentActivities with more insights */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+          {/* Incident Status Chart */}
+          <div>
             <IncidentStatusSection />
           </div>
           
-          <div className="lg:col-span-2 space-y-4 md:space-y-6">
-            {/* Quick Actions Section */}
-            <QuickActions />
-            
-            {/* Recent Activities Section */}
-            <RecentActivities 
-              activities={recentActivities}
-              onActivityClick={handleActivityClick}
-            />
+          {/* Category Distribution */}
+          <div>
+            <IncidentStatusSection title="Category Distribution" />
+          </div>
+          
+          {/* Monthly Trend */}
+          <div>
+            <IncidentStatusSection title="Monthly Trend" />
           </div>
         </div>
 
