@@ -1,0 +1,58 @@
+
+import { 
+  NavigationMenuItem, 
+  NavigationMenuTrigger, 
+  NavigationMenuContent,
+  NavigationMenuLink 
+} from "@/components/ui/navigation-menu";
+import { cn } from "@/lib/utils";
+import { NavItem } from "./types";
+
+interface DesktopDropdownItemProps {
+  item: NavItem;
+  isActive: (path: string) => boolean;
+  handleNavigation: (path: string) => void;
+  isItemActive: (item: NavItem) => boolean;
+}
+
+const DesktopDropdownItem = ({ item, isActive, handleNavigation, isItemActive }: DesktopDropdownItemProps) => {
+  // Filter items by permission
+  const dropdownItems = item.items?.filter(subItem => subItem.allowed) || [];
+  if (dropdownItems.length === 0) return null;
+  
+  return (
+    <NavigationMenuItem key={item.title}>
+      <NavigationMenuTrigger className={cn(
+        "px-4 py-2 text-sm font-medium",
+        isItemActive(item)
+          ? "text-primary font-semibold" 
+          : "text-gray-700"
+      )}>
+        {item.title}
+      </NavigationMenuTrigger>
+      <NavigationMenuContent>
+        <ul className="grid w-[200px] gap-1 p-2">
+          {dropdownItems.map((subItem) => (
+            <li key={subItem.title}>
+              <NavigationMenuLink asChild>
+                <button
+                  onClick={() => handleNavigation(subItem.path)}
+                  className={cn(
+                    "flex w-full select-none items-center rounded-md px-3 py-2 text-sm",
+                    isActive(subItem.path)
+                      ? "bg-primary/10 text-primary font-medium"
+                      : "text-gray-700 hover:bg-gray-100"
+                  )}
+                >
+                  {subItem.title}
+                </button>
+              </NavigationMenuLink>
+            </li>
+          ))}
+        </ul>
+      </NavigationMenuContent>
+    </NavigationMenuItem>
+  );
+};
+
+export default DesktopDropdownItem;
