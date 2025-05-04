@@ -14,6 +14,9 @@ const Dashboard = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  // School name that would come from backend in a real implementation
+  const schoolName = "Raks Pallikkoodam";
+
   // Calculate summary statistics
   const openIncidents = incidents.filter(inc => inc.status === 'Open').length;
   
@@ -58,7 +61,7 @@ const Dashboard = () => {
     <Layout>
       <div className="space-y-6 md:space-y-8 w-full">
         <div className="w-full">
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Welcome, {user?.name}</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Welcome to {schoolName} Safety Dashboard</h1>
           <p className="text-sm md:text-base text-gray-600 mt-1">Track, manage, and analyze school safety incidents</p>
         </div>
 
