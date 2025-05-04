@@ -24,8 +24,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(() => getUserFromStorage());
   const [users, setUsers] = useState<UserWithPassword[]>(() => getUsersFromStorage());
 
-  // Get client context to validate domains
-  const clientContext = useContext(React.createContext<{ isEmailDomainAllowed?: (email: string, clientId: string) => boolean }>({}));
+  // Get client context
+  const { isEmailDomainAllowed } = useClient();
   
   // Save users to localStorage whenever they change
   useEffect(() => {
@@ -42,7 +42,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       email, 
       password, 
       users,
-      clientContext.isEmailDomainAllowed
+      isEmailDomainAllowed
     );
     
     if (loggedInUser) {
@@ -75,7 +75,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     clientId?: string;
     designation?: string;
   }) => {
-    const updatedUsers = addNewUser(users, userData, clientContext.isEmailDomainAllowed);
+    const updatedUsers = addNewUser(users, userData, isEmailDomainAllowed);
     if (updatedUsers) {
       setUsers(updatedUsers);
     }
