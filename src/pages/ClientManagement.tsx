@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useClient, Client } from '@/contexts/ClientContext';
@@ -17,20 +18,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Edit, Trash2, Plus } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import ClientFormDialog from '@/components/backoffice/ClientFormDialog';
+import ClientDialog from '@/components/backoffice/ClientDialog';
 
 const ClientManagement = () => {
   const { isAdmin } = useAuth();
@@ -257,8 +248,8 @@ const ClientManagement = () => {
         </Card>
       </div>
 
-      {/* Use the new ClientFormDialog component instead of inline dialogs */}
-      <ClientFormDialog 
+      {/* Use the new unified ClientDialog component */}
+      <ClientDialog 
         isOpen={isAddDialogOpen}
         onOpenChange={setIsAddDialogOpen}
         formData={formData}
@@ -271,7 +262,7 @@ const ClientManagement = () => {
         isEdit={false}
       />
 
-      <ClientFormDialog 
+      <ClientDialog 
         isOpen={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}
         formData={formData}

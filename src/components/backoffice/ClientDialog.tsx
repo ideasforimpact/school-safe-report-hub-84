@@ -9,13 +9,13 @@ import {
   DialogDescription, 
   DialogFooter, 
   DialogHeader, 
-  DialogTitle 
+  DialogTitle
 } from "@/components/ui/dialog";
 import { ImageIcon, Plus, X } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-interface AddClientFormData {
+interface ClientFormData {
   name: string;
   email: string;
   contactPerson: string;
@@ -27,7 +27,7 @@ interface AddClientFormData {
     benchmarking: boolean;
   };
   active: boolean;
-  logo?: string;
+  logo: string;
   allowedDomains: string[];
   authProviders: {
     google: boolean;
@@ -36,22 +36,24 @@ interface AddClientFormData {
   };
 }
 
-interface AddClientDialogProps {
+interface ClientDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  formData: AddClientFormData;
-  setFormData: React.Dispatch<React.SetStateAction<AddClientFormData>>;
-  onAddClient: () => void;
+  formData: ClientFormData;
+  setFormData: React.Dispatch<React.SetStateAction<ClientFormData>>;
+  onSubmit: () => void;
   onCancel: () => void;
+  isEdit?: boolean;
 }
 
-const AddClientDialog: React.FC<AddClientDialogProps> = ({
+const ClientDialog: React.FC<ClientDialogProps> = ({
   isOpen,
   onOpenChange,
   formData,
   setFormData,
-  onAddClient,
-  onCancel
+  onSubmit,
+  onCancel,
+  isEdit = false
 }) => {
   const [newDomain, setNewDomain] = useState('');
 
@@ -110,9 +112,9 @@ const AddClientDialog: React.FC<AddClientDialogProps> = ({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add New Client</DialogTitle>
+          <DialogTitle>{isEdit ? 'Edit Client' : 'Add New Client'}</DialogTitle>
           <DialogDescription>
-            Quickly onboard a new client to the platform
+            {isEdit ? 'Update client information' : 'Quickly onboard a new client to the platform'}
           </DialogDescription>
         </DialogHeader>
 
@@ -383,15 +385,15 @@ const AddClientDialog: React.FC<AddClientDialogProps> = ({
           </TabsContent>
         </Tabs>
 
-        <DialogFooter>
+        <DialogFooter className="mt-6">
           <Button variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button onClick={onAddClient}>Add Client</Button>
+          <Button onClick={onSubmit}>{isEdit ? 'Update Client' : 'Add Client'}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 };
 
-export default AddClientDialog;
+export default ClientDialog;
