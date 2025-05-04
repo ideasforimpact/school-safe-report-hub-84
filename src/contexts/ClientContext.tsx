@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import {
   addClient as addClientService,
@@ -9,6 +8,7 @@ import {
   getClientsFromStorage,
   saveClientsToStorage
 } from '@/services/client/clientService';
+import { OAuthProviderName } from '@/utils/authProviders';
 
 export interface Client {
   id: string;
@@ -27,9 +27,7 @@ export interface Client {
   logo?: string; // Optional logo URL
   allowedDomains: string[]; // Array of allowed email domains
   authProviders: {
-    google: boolean;
-    microsoft: boolean;
-    zoho: boolean;
+    [key in OAuthProviderName]?: boolean;
   };
 }
 

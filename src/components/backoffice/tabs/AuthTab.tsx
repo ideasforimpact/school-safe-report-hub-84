@@ -2,19 +2,18 @@
 import React from 'react';
 import DomainInput from './DomainInput';
 import AuthProvidersSection from './AuthProvidersSection';
+import { OAuthProviderName } from '@/utils/authProviders';
 
 interface AuthTabProps {
   formData: {
     allowedDomains: string[];
     authProviders: {
-      google: boolean;
-      microsoft: boolean;
-      zoho: boolean;
+      [key in OAuthProviderName]?: boolean;
     };
   };
   onAddDomain: (domain: string) => void;
   onRemoveDomain: (domain: string) => void;
-  onProviderChange: (provider: string, value: boolean) => void;
+  onProviderChange: (provider: OAuthProviderName, value: boolean) => void;
 }
 
 const AuthTab = ({ 

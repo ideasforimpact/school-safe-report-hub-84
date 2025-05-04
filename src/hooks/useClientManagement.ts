@@ -1,6 +1,6 @@
-
 import { useState } from 'react';
 import { Client, useClient } from '@/contexts/ClientContext';
+import { OAuthProviderName } from '@/utils/authProviders';
 
 export interface ClientFormData {
   name: string;
@@ -17,9 +17,7 @@ export interface ClientFormData {
   logo: string;
   allowedDomains: string[];
   authProviders: {
-    google: boolean;
-    microsoft: boolean;
-    zoho: boolean;
+    [key in OAuthProviderName]?: boolean;
   };
 }
 

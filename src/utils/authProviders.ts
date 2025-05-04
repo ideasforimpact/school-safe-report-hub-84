@@ -4,6 +4,9 @@
  * In a real implementation, these would connect to the actual OAuth services.
  */
 
+// Define a string union type for provider names
+export type OAuthProviderName = 'google' | 'microsoft' | 'zoho';
+
 // Interface for OAuth provider configuration
 export interface OAuthProviderConfig {
   name: string;
@@ -13,10 +16,14 @@ export interface OAuthProviderConfig {
   tokenEndpoint: string;
   scope: string;
   responseType: string;
+  isConfigured?: boolean; // Optional property to check if provider is configured
 }
 
+// Type for the record of all available providers
+export type OAuthProviderConfigs = Record<OAuthProviderName, OAuthProviderConfig>;
+
 // Mock configurations for each provider
-export const providerConfigs: Record<string, OAuthProviderConfig> = {
+export const providerConfigs: OAuthProviderConfigs = {
   google: {
     name: "Google",
     clientId: "google-client-id", // Would be replaced with actual client ID
@@ -51,25 +58,26 @@ export const providerConfigs: Record<string, OAuthProviderConfig> = {
  * In a real implementation, this would save to a database or config store
  */
 export const updateProviderConfig = (
-  provider: string, 
+  provider: OAuthProviderName, 
   updates: Partial<OAuthProviderConfig>
 ): void => {
-  if (providerConfigs[provider.toLowerCase()]) {
-    Object.assign(providerConfigs[provider.toLowerCase()], updates);
-    console.log(`Updated ${provider} configuration:`, providerConfigs[provider.toLowerCase()]);
+  if (providerConfigs[provider]) {
+    Object.assign(providerConfigs[provider], updates);
+    console.log(`Updated ${provider} configuration:`, providerConfigs[provider]);
     // In a real implementation, you would persist this change to a database
+  } else {
+    throw new Error(`Unknown provider: ${provider}`);
   }
 };
 
 /**
  * Redirects the user to the OAuth provider's authorization page
  */
-export const redirectToOAuthProvider = (provider: string): void => {
-  const config = providerConfigs[provider.toLowerCase()];
+export const redirectToOAuthProvider = (provider: OAuthProviderName): void => {
+  const config = providerConfigs[provider];
   
   if (!config) {
-    console.error(`Unknown provider: ${provider}`);
-    return;
+    throw new Error(`Unknown provider: ${provider}`);
   }
   
   const params = new URLSearchParams({
@@ -114,8 +122,8 @@ export const isEmailDomainAllowed = (email: string, allowedDomains: string[]): b
  * Validate OAuth provider configuration
  * Returns true if the provider is properly configured
  */
-export const isProviderConfigured = (provider: string): boolean => {
-  const config = providerConfigs[provider.toLowerCase()];
+export const isProviderConfigured = (provider: OAuthProviderName): boolean => {
+  const config = providerConfigs[provider];
   if (!config) return false;
   
   // Check if clientId is actually set to a real value
@@ -127,11 +135,22 @@ export const isProviderConfigured = (provider: string): boolean => {
  * Returns only the providers that are both enabled for the client and properly configured
  */
 export const getConfiguredProvidersForClient = (
-  clientProviders: {[key: string]: boolean}
-): string[] => {
+  clientProviders: Partial<Record<OAuthProviderName, boolean>>
+): OAuthProviderName[] => {
   if (!clientProviders) return [];
   
   return Object.entries(clientProviders)
-    .filter(([provider, enabled]) => enabled && isProviderConfigured(provider))
-    .map(([provider]) => provider);
+    .filter(([provider, enabled]) => {
+      // Ensure that we only consider valid provider names
+      if (!isValidProviderName(provider)) return false;
+      return enabled && isProviderConfigured(provider as OAuthProviderName);
+    })
+    .map(([provider]) => provider as OAuthProviderName);
+};
+
+/**
+ * Type guard to check if a string is a valid OAuth provider name
+ */
+export const isValidProviderName = (name: string): name is OAuthProviderName => {
+  return ['google', 'microsoft', 'zoho'].includes(name);
 };

@@ -1,14 +1,13 @@
 
 import React from 'react';
 import { Checkbox } from "@/components/ui/checkbox";
+import { OAuthProviderName } from '@/utils/authProviders';
 
 interface AuthProvidersSectionProps {
   authProviders: {
-    google: boolean;
-    microsoft: boolean;
-    zoho: boolean;
+    [key in OAuthProviderName]?: boolean;
   };
-  onProviderChange: (provider: string, value: boolean) => void;
+  onProviderChange: (provider: OAuthProviderName, value: boolean) => void;
 }
 
 const AuthProvidersSection = ({ authProviders, onProviderChange }: AuthProvidersSectionProps) => {

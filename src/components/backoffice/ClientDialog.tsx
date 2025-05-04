@@ -13,27 +13,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import BasicInfoTab from './tabs/BasicInfoTab';
 import ModuleAccessTab from './tabs/ModuleAccessTab';
 import AuthTab from './tabs/AuthTab';
-
-interface ClientFormData {
-  name: string;
-  email: string;
-  contactPerson: string;
-  phone: string;
-  moduleAccess: {
-    incidentReporting: boolean;
-    allIncidents: boolean;
-    insights: boolean;
-    benchmarking: boolean;
-  };
-  active: boolean;
-  logo: string;
-  allowedDomains: string[];
-  authProviders: {
-    google: boolean;
-    microsoft: boolean;
-    zoho: boolean;
-  };
-}
+import { OAuthProviderName } from '@/utils/authProviders';
+import { ClientFormData } from '@/hooks/useClientManagement';
 
 interface ClientDialogProps {
   isOpen: boolean;
@@ -75,7 +56,7 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
     });
   };
 
-  const handleAuthProviderChange = (provider: string, value: boolean) => {
+  const handleAuthProviderChange = (provider: OAuthProviderName, value: boolean) => {
     setFormData({
       ...formData,
       authProviders: {

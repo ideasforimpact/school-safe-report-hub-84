@@ -8,7 +8,16 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Settings, Shield, BellRing, Globe, Key } from "lucide-react";
-import { providerConfigs } from '@/utils/authProviders';
+import { providerConfigs, OAuthProviderName, updateProviderConfig } from '@/utils/authProviders';
+import { toast } from "@/components/ui/sonner";
+
+interface OAuthSettings {
+  [key in OAuthProviderName]: {
+    clientId: string;
+    clientSecret: string;
+    enabled: boolean;
+  };
+}
 
 const BackofficeSettings = () => {
   const [generalSettings, setGeneralSettings] = useState({
@@ -19,8 +28,8 @@ const BackofficeSettings = () => {
     autoLogout: true
   });
   
-  // Add OAuth provider settings state
-  const [oauthSettings, setOauthSettings] = useState({
+  // Add OAuth provider settings state with improved typing
+  const [oauthSettings, setOauthSettings] = useState<OAuthSettings>({
     google: {
       clientId: providerConfigs.google.clientId || "",
       clientSecret: "",
@@ -45,21 +54,36 @@ const BackofficeSettings = () => {
     }));
   };
   
-  const handleOAuthSettingChange = (provider: string, field: string, value: string | boolean) => {
+  const handleOAuthSettingChange = (provider: OAuthProviderName, field: string, value: string | boolean) => {
     setOauthSettings(prev => ({
       ...prev,
       [provider]: {
-        ...prev[provider as keyof typeof prev],
+        ...prev[provider],
         [field]: value
       }
     }));
   };
   
-  // Function to save OAuth settings (would connect to your backend in a real implementation)
+  // Function to save OAuth settings with proper error handling
   const saveOAuthSettings = () => {
-    console.log("OAuth settings to save:", oauthSettings);
-    // In a real implementation, you would save these to your backend/database
-    alert("OAuth settings saved successfully");
+    try {
+      // Update provider configurations with the new settings
+      Object.keys(oauthSettings).forEach((provider) => {
+        const providerName = provider as OAuthProviderName;
+        const settings = oauthSettings[providerName];
+        
+        updateProviderConfig(providerName, { 
+          clientId: settings.clientId,
+          // In a real implementation, you would securely handle the client secret
+          // We're not storing it in the provider config for this demo
+        });
+      });
+      
+      toast.success("OAuth settings saved successfully");
+    } catch (error) {
+      console.error("Error saving OAuth settings:", error);
+      toast.error("Failed to save OAuth settings");
+    }
   };
   
   return (
