@@ -15,13 +15,8 @@ import {
 } from "@/components/ui/accordion";
 
 const MobileNav = () => {
-  const { user, isAdmin, isSaasOwner } = useAuth();
+  const { user, isAdmin } = useAuth();
   const navigate = useNavigate();
-  
-  // If user is a SaaS owner, don't render the mobile nav since they use the horizontal navigation
-  if (isSaasOwner) {
-    return null;
-  }
   
   // Get user permissions
   const permissions = user?.modulePermissions || {
@@ -95,13 +90,13 @@ const MobileNav = () => {
           <Menu size={20} />
         </button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-64 bg-white" style={{ zIndex: 50 }}>
+      <SheetContent side="left" className="w-64">
         <div className="flex flex-col space-y-2 pt-4">
           {menuItems.filter(item => item.allowed).map((item) => (
             <button
               key={item.path}
               onClick={() => handleNavigation(item.path)}
-              className="text-left px-4 py-3 hover:bg-gray-100 rounded-md text-gray-800"
+              className="text-left px-4 py-3 hover:bg-gray-100 rounded-md"
             >
               {item.label}
             </button>

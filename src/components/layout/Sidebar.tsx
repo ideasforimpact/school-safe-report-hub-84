@@ -22,11 +22,6 @@ const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // If user is a SaaS owner, don't render the sidebar since they use the horizontal navigation
-  if (isSaasOwner) {
-    return null;
-  }
-  
   // Get user permissions
   const permissions = user?.modulePermissions || {
     incidentReporting: true,
@@ -34,6 +29,34 @@ const Sidebar = () => {
     insights: true,
     benchmarking: false
   };
+
+  // SaaS Owner (Backoffice) Menu Items
+  const saasOwnerItems = [
+    {
+      icon: Home,
+      label: 'Dashboard',
+      path: '/backoffice',
+      allowed: true,
+    },
+    {
+      icon: Briefcase,
+      label: 'Client Management',
+      path: '/backoffice/clients',
+      allowed: true,
+    },
+    {
+      icon: BarChart,
+      label: 'Analytics',
+      path: '/backoffice/analytics',
+      allowed: true,
+    },
+    {
+      icon: Settings,
+      label: 'Settings',
+      path: '/backoffice/settings',
+      allowed: true,
+    },
+  ];
 
   // Client Admin and User Menu Items
   const clientItems = [
@@ -93,33 +116,32 @@ const Sidebar = () => {
     },
   ];
 
+  const menuItems = isSaasOwner ? saasOwnerItems : clientItems;
+
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <aside className="bg-gray-50 w-64 min-h-screen py-6 hidden md:block z-30 relative">
+    <aside className="bg-gray-50 w-64 min-h-screen py-6 hidden md:block">
       <nav>
         <ul className="space-y-2 px-4">
-          {clientItems
+          {menuItems
             .filter(item => item.allowed)
-            .map((item) => {
-              const Icon = item.icon;
-              return (
-                <li key={item.path}>
-                  <button
-                    onClick={() => navigate(item.path)}
-                    className={cn(
-                      "w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors",
-                      isActive(item.path)
-                        ? "bg-primary-50 text-primary-700"
-                        : "text-gray-600 hover:bg-gray-100"
-                    )}
-                  >
-                    <Icon size={18} />
-                    <span>{item.label}</span>
-                  </button>
-                </li>
-              );
-            })}
+            .map((item) => (
+            <li key={item.path}>
+              <button
+                onClick={() => navigate(item.path)}
+                className={cn(
+                  "w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors",
+                  isActive(item.path)
+                    ? "bg-primary-50 text-primary-700"
+                    : "text-gray-600 hover:bg-gray-100"
+                )}
+              >
+                <item.icon size={18} />
+                <span>{item.label}</span>
+              </button>
+            </li>
+          ))}
         </ul>
       </nav>
     </aside>
