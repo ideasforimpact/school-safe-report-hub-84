@@ -13,7 +13,7 @@ import IncidentDetailsForm from '@/components/incidents/IncidentDetailsForm';
 import PeopleInvolvedSection from '@/components/incidents/PeopleInvolvedSection';
 
 const ReportIncident = () => {
-  const { addIncident } = useIncidents();
+  const { addIncident, users } = useIncidents();
   const { user } = useAuth();
   const navigate = useNavigate();
   
@@ -70,14 +70,23 @@ const ReportIncident = () => {
         data: file.base64
       }));
       
+      // Get selected owner if any
+      const selectedOwner = formData.owner 
+        ? users.find(u => u.id === formData.owner) 
+        : undefined;
+        
+      const owner = selectedOwner 
+        ? { id: selectedOwner.id, name: selectedOwner.name } 
+        : undefined;
+      
       addIncident({
         type: formData.type,
-        category: categoryName as any, // Type cast needed because we're using dynamic categories
+        category: categoryName as any,
         subcategory: formData.subcategory,
         description: formData.description,
         rootCause: formData.rootCause,
         date: dateTime,
-        location: locationName as any, // Type cast needed because we're using dynamic locations
+        location: locationName as any,
         peopleInvolved: validPeople,
         facility: facilityName,
         priority: formData.priority,
@@ -85,7 +94,8 @@ const ReportIncident = () => {
         reportedBy: {
           id: user?.id || '',
           name: user?.name || ''
-        }
+        },
+        owner: owner // Add the owner to the incident
       });
       
       navigate('/incidents');
@@ -127,6 +137,7 @@ const ReportIncident = () => {
                 availableSubcategories={availableSubcategories}
                 locations={locations}
                 facilities={facilities}
+                users={users}
               />
 
               <PeopleInvolvedSection

@@ -1,11 +1,13 @@
 
 import React from 'react';
 import { FileItem } from '@/types/fileTypes';
+import { User } from '@/types/incident';
 import IncidentTypeSection from './sections/IncidentTypeSection';
 import CategorySection from './sections/CategorySection';
 import LocationSection from './sections/LocationSection';
 import DateTimeSection from './sections/DateTimeSection';
 import DescriptionSection from './sections/DescriptionSection';
+import AssignmentSection from './sections/AssignmentSection';
 
 interface ConfigItem {
   id: string;
@@ -24,6 +26,7 @@ interface IncidentDetailsFormProps {
     locationId: string;
     facilityId: string;
     priority: 'Low' | 'Medium' | 'High' | 'Critical';
+    owner: string;
   };
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   onSelectChange: (name: string, value: string) => void;
@@ -34,6 +37,7 @@ interface IncidentDetailsFormProps {
   availableSubcategories: {id: string, name: string}[];
   locations: ConfigItem[];
   facilities: ConfigItem[];
+  users: User[];
 }
 
 const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
@@ -46,7 +50,8 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
   categories,
   availableSubcategories,
   locations,
-  facilities
+  facilities,
+  users
 }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -75,11 +80,18 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
         onSelectChange={onSelectChange}
       />
 
-      {/* Date and Time Section - Moved above Description section */}
+      {/* Date and Time Section */}
       <DateTimeSection
         date={formData.date}
         time={formData.time}
         onDateTimeChange={onDateTimeChange}
+      />
+
+      {/* Assignment Section */}
+      <AssignmentSection 
+        owner={formData.owner}
+        users={users}
+        onSelectChange={onSelectChange}
       />
 
       {/* Description and Supporting Documents Section */}

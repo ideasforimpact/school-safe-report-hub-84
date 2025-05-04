@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
-import { IncidentStatus, IncidentType } from '@/types/incident';
+
+import { useState } from 'react';
+import { useAuth } from '@/contexts/auth/AuthContext';
 
 export function useIncidentFormData() {
-  // Form data state
+  const { user } = useAuth();
+  
   const [formData, setFormData] = useState({
-    type: '' as IncidentType,
+    type: '',
     categoryId: '',
     subcategory: '',
     description: '',
@@ -13,10 +15,10 @@ export function useIncidentFormData() {
     time: new Date().toTimeString().split(' ')[0].slice(0, 5),
     locationId: '',
     facilityId: '',
-    priority: 'Medium' as 'Low' | 'Medium' | 'High' | 'Critical'
+    priority: 'Medium' as 'Low' | 'Medium' | 'High' | 'Critical',
+    owner: user?.id || '' // Default to current user
   });
 
-  // Form handling functions
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -26,20 +28,15 @@ export function useIncidentFormData() {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Combined function to handle both date and time changes
   const handleDateTimeChange = (date: Date | undefined, timeString?: string) => {
     if (date) {
-      // Update the date
-      const formattedDate = date.toISOString().split('T')[0];
-      
-      // If time is provided, update it too, otherwise keep the current time
-      const updatedTime = timeString !== undefined ? timeString : formData.time;
-      
-      setFormData(prev => ({
-        ...prev,
-        date: formattedDate,
-        time: updatedTime
+      setFormData(prev => ({ 
+        ...prev, 
+        date: date.toISOString().split('T')[0]
       }));
+    }
+    if (timeString) {
+      setFormData(prev => ({ ...prev, time: timeString }));
     }
   };
 

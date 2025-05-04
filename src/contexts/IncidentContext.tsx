@@ -4,11 +4,14 @@ import { ConfigItem, SubcategoryItem, IncidentContextType, SectionItem } from '.
 import { useConfigManagement } from '@/hooks/useConfigManagement'; 
 import { initialCategories, initialSubcategories, initialLocations, initialFacilities, initialDesignations, initialClasses, initialSections } from './initialData';
 import { generateSampleIncidents } from '@/utils/sampleIncidentData';
+import { useIncidentActions } from '@/hooks/useIncidentActions';
+import { Activity } from '@/types/incident';
 
 const IncidentContext = createContext<IncidentContextType | undefined>(undefined);
 
 export const IncidentProvider = ({ children }: { children: ReactNode }) => {
   const [incidents, setIncidents] = useState(generateSampleIncidents());
+  const [activities, setActivities] = useState<Activity[]>([]);
   const [users] = useState<IncidentContextType['users']>([
     { 
       id: '1', 
@@ -66,22 +69,15 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
     initialSections
   );
 
-  // Properly implemented getIncident function
-  const getIncident = (id: string) => {
-    return incidents.find(incident => incident.id === id);
-  };
-
-  // Properly implemented updateIncident function
-  const updateIncident = (id: string, updates: Partial<any>) => {
-    setIncidents(prevIncidents => 
-      prevIncidents.map(incident => 
-        incident.id === id ? { ...incident, ...updates } : incident
-      )
-    );
-  };
+  // Use the incident actions hook
+  const {
+    addIncident,
+    updateIncident,
+    getIncident,
+    addActivity
+  } = useIncidentActions(incidents, setIncidents, activities, setActivities, users);
 
   // Stub implementations for other required methods
-  const addIncident = () => {};
   const addActionItem = () => {};
   const updateActionItem = () => {};
   const deleteActionItem = () => {};

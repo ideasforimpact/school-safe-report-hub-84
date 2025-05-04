@@ -1,6 +1,7 @@
 
 import { useState } from 'react';
 import { useIncidents } from '@/contexts/IncidentContext';
+import { useAuth } from '@/contexts/auth/AuthContext';
 import { useIncidentFormData } from './useIncidentFormData';
 import { usePeopleInvolved } from './usePeopleInvolved';
 import { useFilesManagement } from './useFilesManagement';
@@ -15,8 +16,11 @@ export function useIncidentForm() {
     categories,
     subcategoryMappings,
     locations,
-    facilities 
+    facilities,
+    users
   } = useIncidents();
+
+  const { user } = useAuth();
 
   const {
     formData,
@@ -62,6 +66,13 @@ export function useIncidentForm() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Set default owner to current user when component mounts
+  useState(() => {
+    if (user?.id && !formData.owner) {
+      setFormData(prev => ({...prev, owner: user.id}));
+    }
+  });
+
   return {
     nextTicketId,
     formData,
@@ -84,6 +95,7 @@ export function useIncidentForm() {
     getSelectedFacility,
     categories,
     locations,
-    facilities
+    facilities,
+    users
   };
 }
