@@ -9,6 +9,7 @@ export interface NavSubItem {
 export interface NavItem {
   title: string;
   path?: string;
+  icon?: string; // Add optional icon property
   allowed: boolean;
   items?: NavSubItem[];
 }

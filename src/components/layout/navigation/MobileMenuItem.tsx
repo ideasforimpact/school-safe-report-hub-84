@@ -1,6 +1,7 @@
 
 import { cn } from "@/lib/utils";
 import { NavItem } from "./types";
+import * as Icons from 'lucide-react';
 
 interface MobileMenuItemProps {
   item: NavItem;
@@ -9,18 +10,22 @@ interface MobileMenuItemProps {
 }
 
 const MobileMenuItem = ({ item, isActive, handleNavigation }: MobileMenuItemProps) => {
+  // Get icon component if icon name is provided
+  const IconComponent = item.icon ? Icons[item.icon as keyof typeof Icons] : null;
+  
   if (!item.items) {
     return (
       <button
         key={item.title}
         onClick={() => item.path && handleNavigation(item.path)}
         className={cn(
-          "block px-3 py-2 rounded-md text-base font-medium w-full text-left",
+          "flex items-center gap-3 px-3 py-2 rounded-md text-base font-medium w-full text-left",
           item.path && isActive(item.path)
             ? "bg-primary/10 text-primary"
             : "text-gray-700 hover:bg-gray-50"
         )}
       >
+        {IconComponent && <IconComponent className="h-5 w-5" />}
         {item.title}
       </button>
     );

@@ -2,6 +2,7 @@
 import { NavigationMenuItem, NavigationMenuLink } from "@/components/ui/navigation-menu";
 import { cn } from "@/lib/utils";
 import { NavItem } from "./types";
+import * as Icons from 'lucide-react';
 
 interface DesktopMenuItemProps {
   item: NavItem;
@@ -11,6 +12,9 @@ interface DesktopMenuItemProps {
 }
 
 const DesktopMenuItem = ({ item, isActive, handleNavigation, isItemActive }: DesktopMenuItemProps) => {
+  // Get icon component if icon name is provided
+  const IconComponent = item.icon ? Icons[item.icon as keyof typeof Icons] : null;
+  
   // Regular menu item without dropdown
   if (!item.items) {
     return (
@@ -19,12 +23,13 @@ const DesktopMenuItem = ({ item, isActive, handleNavigation, isItemActive }: Des
           <button
             onClick={() => item.path && handleNavigation(item.path)}
             className={cn(
-              "px-4 py-2 text-sm font-medium",
+              "px-4 py-2 text-sm font-medium flex items-center gap-2",
               item.path && isActive(item.path)
                 ? "text-primary font-semibold"
                 : "text-gray-700 hover:text-primary hover:bg-gray-50 rounded-md"
             )}
           >
+            {IconComponent && <IconComponent className="h-4 w-4" />}
             {item.title}
           </button>
         </NavigationMenuLink>

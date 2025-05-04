@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/navigation-menu";
 import { cn } from "@/lib/utils";
 import { NavItem } from "./types";
+import * as Icons from 'lucide-react';
 
 interface DesktopDropdownItemProps {
   item: NavItem;
@@ -16,6 +17,9 @@ interface DesktopDropdownItemProps {
 }
 
 const DesktopDropdownItem = ({ item, isActive, handleNavigation, isItemActive }: DesktopDropdownItemProps) => {
+  // Get icon component if icon name is provided
+  const IconComponent = item.icon ? Icons[item.icon as keyof typeof Icons] : null;
+  
   // Filter items by permission
   const dropdownItems = item.items?.filter(subItem => subItem.allowed) || [];
   if (dropdownItems.length === 0) return null;
@@ -23,11 +27,12 @@ const DesktopDropdownItem = ({ item, isActive, handleNavigation, isItemActive }:
   return (
     <NavigationMenuItem key={item.title} className="relative">
       <NavigationMenuTrigger className={cn(
-        "px-4 py-2 text-sm font-medium",
+        "px-4 py-2 text-sm font-medium flex items-center gap-2",
         isItemActive(item)
           ? "text-primary font-semibold" 
           : "text-gray-700"
       )}>
+        {IconComponent && <IconComponent className="h-4 w-4" />}
         {item.title}
       </NavigationMenuTrigger>
       <NavigationMenuContent className="absolute z-50">

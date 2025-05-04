@@ -25,10 +25,12 @@ export function useNavigation() {
     {
       title: "Dashboard",
       path: "/dashboard",
+      icon: "home",
       allowed: true,
     },
     {
       title: "Incidents",
+      icon: "flag",
       allowed: permissions.incidentReporting || permissions.allIncidents,
       items: [
         {
@@ -45,6 +47,7 @@ export function useNavigation() {
     },
     {
       title: "Analytics",
+      icon: "bar-chart",
       allowed: permissions.insights || permissions.benchmarking,
       items: [
         {
@@ -61,6 +64,7 @@ export function useNavigation() {
     },
     {
       title: "Administration",
+      icon: "settings",
       allowed: isAdmin,
       items: [
         {
@@ -86,6 +90,7 @@ export function useNavigation() {
   const backofficeItems: NavItem[] = [
     {
       title: "Backoffice",
+      icon: "briefcase",
       allowed: isSaasOwner,
       items: [
         {
