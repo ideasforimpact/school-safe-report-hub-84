@@ -12,7 +12,8 @@ interface MobileMenuItemProps {
 
 const MobileMenuItem = ({ item, isActive, handleNavigation }: MobileMenuItemProps) => {
   // Get icon component if icon name is provided
-  const IconComponent = item.icon ? Icons[item.icon as keyof typeof Icons] : null;
+  const iconName = item.icon as keyof typeof Icons;
+  const hasIcon = item.icon && Icons[iconName];
   
   if (!item.items) {
     return (
@@ -26,7 +27,7 @@ const MobileMenuItem = ({ item, isActive, handleNavigation }: MobileMenuItemProp
             : "text-gray-700 hover:bg-gray-50"
         )}
       >
-        {IconComponent && React.createElement(IconComponent, { className: "h-5 w-5" })}
+        {hasIcon && React.createElement(Icons[iconName], { className: "h-5 w-5" })}
         {item.title}
       </button>
     );
