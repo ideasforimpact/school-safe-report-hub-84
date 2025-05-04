@@ -3,7 +3,6 @@ import React from 'react';
 import { cn } from "@/lib/utils";
 import { NavItem } from "./types";
 import * as Icons from 'lucide-react';
-import { LucideIcon } from 'lucide-react';
 
 interface MobileMenuItemProps {
   item: NavItem;
@@ -13,7 +12,7 @@ interface MobileMenuItemProps {
 
 const MobileMenuItem = ({ item, isActive, handleNavigation }: MobileMenuItemProps) => {
   // Get icon component if icon name is provided
-  const IconComponent = item.icon ? (Icons[item.icon as keyof typeof Icons] as LucideIcon) : null;
+  const IconComponent = item.icon ? Icons[item.icon as keyof typeof Icons] : null;
   
   if (!item.items) {
     return (

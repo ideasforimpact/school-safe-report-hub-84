@@ -4,7 +4,6 @@ import { NavigationMenuItem, NavigationMenuLink } from "@/components/ui/navigati
 import { cn } from "@/lib/utils";
 import { NavItem } from "./types";
 import * as Icons from 'lucide-react';
-import { LucideIcon } from 'lucide-react';
 
 interface DesktopMenuItemProps {
   item: NavItem;
@@ -15,7 +14,7 @@ interface DesktopMenuItemProps {
 
 const DesktopMenuItem = ({ item, isActive, handleNavigation, isItemActive }: DesktopMenuItemProps) => {
   // Get icon component if icon name is provided
-  const IconComponent = item.icon ? (Icons[item.icon as keyof typeof Icons] as LucideIcon) : null;
+  const IconComponent = item.icon ? Icons[item.icon as keyof typeof Icons] : null;
   
   // Regular menu item without dropdown
   if (!item.items) {
