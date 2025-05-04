@@ -8,11 +8,10 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton
+} from "@/components/ui/sidebar";
 
 const MobileNav = () => {
   const { user, isAdmin, isSaasOwner } = useAuth();
@@ -97,15 +96,17 @@ const MobileNav = () => {
       </SheetTrigger>
       <SheetContent side="left" className="w-64">
         <div className="flex flex-col space-y-2 pt-4">
-          {menuItems.filter(item => item.allowed).map((item) => (
-            <button
-              key={item.path}
-              onClick={() => handleNavigation(item.path)}
-              className="text-left px-4 py-3 hover:bg-gray-100 rounded-md"
-            >
-              {item.label}
-            </button>
-          ))}
+          <SidebarMenu>
+            {menuItems.filter(item => item.allowed).map((item) => (
+              <SidebarMenuItem key={item.path}>
+                <SidebarMenuButton 
+                  onClick={() => handleNavigation(item.path)}
+                >
+                  <span>{item.label}</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
+          </SidebarMenu>
         </div>
       </SheetContent>
     </Sheet>
