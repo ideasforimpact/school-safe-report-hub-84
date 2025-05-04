@@ -43,7 +43,7 @@ const MobileNav = () => {
       icon: LayoutDashboard
     },
     {
-      name: 'Report Incident',
+      name: 'Report',
       path: '/report-incident',
       icon: AlertTriangle
     },
@@ -58,7 +58,7 @@ const MobileNav = () => {
       icon: BarChart3
     },
     {
-      name: 'Benchmarking',
+      name: 'Benchmark',
       path: '/benchmarking',
       icon: BarChart
     }

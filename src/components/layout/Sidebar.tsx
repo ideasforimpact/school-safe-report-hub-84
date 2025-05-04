@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -67,7 +68,7 @@ const Sidebar = () => {
     },
     {
       icon: AlertTriangle,
-      label: 'Report Incident',
+      label: 'Report',
       path: '/report-incident',
       allowed: permissions.incidentReporting,
     },
@@ -85,7 +86,7 @@ const Sidebar = () => {
     },
     {
       icon: BarChart,
-      label: 'Benchmarking',
+      label: 'Benchmark',
       path: '/benchmarking',
       allowed: permissions.benchmarking,
     },
