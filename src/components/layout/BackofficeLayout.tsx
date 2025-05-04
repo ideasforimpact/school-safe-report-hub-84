@@ -1,7 +1,6 @@
 
 import { ReactNode } from 'react';
-import { Link } from 'react-router-dom';
-import { ShieldCheck, ArrowLeft, LogOut } from 'lucide-react';
+import { ShieldCheck, LogOut } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
@@ -66,13 +65,6 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
-              <Link 
-                to="/"
-                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                <span>Back to Main Site</span>
-              </Link>
             </div>
           </div>
         </div>
