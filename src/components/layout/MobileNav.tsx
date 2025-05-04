@@ -1,6 +1,6 @@
 
 import { Menu } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   Sheet,
@@ -12,6 +12,7 @@ import { LayoutDashboard, AlertTriangle, FileText, BarChart3, BarChart } from 'l
 const MobileNav = () => {
   const { user, isAdmin, isSaasOwner } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   
   // Get user permissions
   const permissions = user?.modulePermissions || {
@@ -31,7 +32,7 @@ const MobileNav = () => {
     },
     {
       label: 'Report Incident',
-      path: '/report',
+      path: '/report-incident', // Updated path to match the actual route
       allowed: permissions.incidentReporting,
       icon: AlertTriangle,
     },
@@ -55,6 +56,8 @@ const MobileNav = () => {
     },
   ];
 
+  const isActive = (path: string) => location.pathname === path;
+
   const handleNavigation = (path: string) => {
     navigate(path);
   };
@@ -74,7 +77,7 @@ const MobileNav = () => {
               <button
                 key={item.path}
                 onClick={() => handleNavigation(item.path)}
-                className="flex items-center gap-3 text-left px-4 py-3 hover:bg-gray-50 rounded-md text-gray-700 hover:text-primary-600"
+                className={`flex items-center gap-3 text-left px-4 py-3 hover:bg-gray-50 rounded-md ${isActive(item.path) ? 'text-primary-600 bg-gray-50' : 'text-gray-700 hover:text-primary-600'}`}
               >
                 <Icon className="h-5 w-5" />
                 {item.label}

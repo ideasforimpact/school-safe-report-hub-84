@@ -1,3 +1,4 @@
+
 import { ReactNode } from 'react';
 import Header from './Header';
 import MobileNav from './MobileNav';
@@ -31,7 +32,7 @@ const Layout = ({
     icon: LayoutDashboard
   }, {
     name: 'Report Incident',
-    path: '/report',
+    path: '/report-incident',  // Changed from /report to /report-incident to match actual route
     icon: AlertTriangle
   }, {
     name: 'All Incidents',
@@ -46,7 +47,15 @@ const Layout = ({
     path: '/benchmarking',
     icon: BarChart
   }];
-  const isActive = (path: string) => location.pathname === path;
+  
+  // Check if path is active, including checking if current path starts with item path for nested routes
+  const isActive = (path: string) => {
+    if (path === '/report-incident' && location.pathname === '/report-incident') {
+      return true;
+    }
+    return location.pathname === path;
+  };
+  
   return <div className="min-h-screen bg-background">
       <div className="bg-white border-b border-gray-100 shadow-nav w-full">
         <Header />
