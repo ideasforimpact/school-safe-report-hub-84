@@ -7,6 +7,7 @@ import {
   SheetContent,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { LayoutDashboard, AlertTriangle, FileText, BarChart3, BarChart } from 'lucide-react';
 
 const MobileNav = () => {
   const { user, isAdmin, isSaasOwner } = useAuth();
@@ -20,60 +21,39 @@ const MobileNav = () => {
     benchmarking: false
   };
   
-  // SaaS Owner (Backoffice) Menu Items
-  const saasOwnerItems = [
-    {
-      label: 'Dashboard',
-      path: '/backoffice',
-      allowed: true,
-    },
-    {
-      label: 'Client Management',
-      path: '/backoffice/clients',
-      allowed: true,
-    },
-    {
-      label: 'Analytics',
-      path: '/backoffice/analytics',
-      allowed: true,
-    },
-    {
-      label: 'Settings',
-      path: '/backoffice/settings',
-      allowed: true,
-    },
-  ];
-
   // Client Admin and User Menu Items
-  const clientItems = [
+  const menuItems = [
     {
       label: 'Dashboard',
       path: '/dashboard',
       allowed: true,
+      icon: LayoutDashboard,
     },
     {
       label: 'Report Incident',
       path: '/report',
       allowed: permissions.incidentReporting,
+      icon: AlertTriangle,
     },
     {
       label: 'All Incidents',
       path: '/incidents',
       allowed: permissions.allIncidents,
+      icon: FileText,
     },
     {
       label: 'Insights',
       path: '/insights',
       allowed: permissions.insights,
+      icon: BarChart3,
     },
     {
       label: 'Benchmarking',
       path: '/benchmarking',
       allowed: permissions.benchmarking,
+      icon: BarChart,
     },
   ];
-
-  const menuItems = isSaasOwner ? saasOwnerItems : clientItems;
 
   const handleNavigation = (path: string) => {
     navigate(path);
@@ -82,21 +62,25 @@ const MobileNav = () => {
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <button className="rounded-md p-2 bg-white shadow">
+        <button className="rounded-md p-2 bg-white shadow-card">
           <Menu size={20} />
         </button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-64">
-        <div className="flex flex-col space-y-2 pt-4">
-          {menuItems.filter(item => item.allowed).map((item) => (
-            <button
-              key={item.path}
-              onClick={() => handleNavigation(item.path)}
-              className="text-left px-4 py-3 hover:bg-gray-100 rounded-md"
-            >
-              {item.label}
-            </button>
-          ))}
+      <SheetContent side="left" className="w-64 border-r border-gray-100 pt-8">
+        <div className="flex flex-col space-y-1">
+          {menuItems.filter(item => item.allowed).map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.path}
+                onClick={() => handleNavigation(item.path)}
+                className="flex items-center gap-3 text-left px-4 py-3 hover:bg-gray-50 rounded-md text-gray-700 hover:text-primary-600"
+              >
+                <Icon className="h-5 w-5" />
+                {item.label}
+              </button>
+            );
+          })}
         </div>
       </SheetContent>
     </Sheet>

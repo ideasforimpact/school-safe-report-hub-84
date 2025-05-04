@@ -5,6 +5,7 @@ import MobileNav from './MobileNav';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClient } from '@/contexts/ClientContext';
+import { LayoutDashboard, FileText, BarChart3, AlertTriangle, BarChart } from 'lucide-react';
 
 interface LayoutProps {
   children: ReactNode;
@@ -21,36 +22,58 @@ const Layout = ({ children }: LayoutProps) => {
   
   // Navigation items for the horizontal menu
   const navigationItems = [
-    { name: 'Dashboard', path: '/dashboard' },
-    { name: 'Report Incident', path: '/report' },
-    { name: 'All Incidents', path: '/incidents' },
-    { name: 'Insights', path: '/insights' },
-    { name: 'Benchmarking', path: '/benchmarking' },
+    { 
+      name: 'Dashboard', 
+      path: '/dashboard', 
+      icon: LayoutDashboard 
+    },
+    { 
+      name: 'Report Incident', 
+      path: '/report', 
+      icon: AlertTriangle 
+    },
+    { 
+      name: 'All Incidents', 
+      path: '/incidents', 
+      icon: FileText 
+    },
+    { 
+      name: 'Insights', 
+      path: '/insights', 
+      icon: BarChart3 
+    },
+    { 
+      name: 'Benchmarking', 
+      path: '/benchmarking',
+      icon: BarChart 
+    },
   ];
 
   const isActive = (path: string) => location.pathname === path;
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-background">
       <Header />
       
       {/* Navigation tabs */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-[95%] w-full mx-auto px-4 hidden md:block">
+      <div className="bg-white border-b border-gray-100 shadow-nav">
+        <div className="max-w-[95%] w-full mx-auto hidden md:block">
           <nav className="flex space-x-8 overflow-x-auto">
-            {navigationItems.map((item) => (
-              <button
-                key={item.path}
-                onClick={() => navigate(item.path)}
-                className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
-                  isActive(item.path)
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                } transition-colors`}
-              >
-                {item.name}
-              </button>
-            ))}
+            {navigationItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.path}
+                  onClick={() => navigate(item.path)}
+                  className={`flex items-center gap-2 py-4 px-3 nav-link ${
+                    isActive(item.path) ? 'active' : ''
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  <span>{item.name}</span>
+                </button>
+              );
+            })}
           </nav>
         </div>
       </div>
@@ -59,7 +82,7 @@ const Layout = ({ children }: LayoutProps) => {
         <div className="flex md:hidden mb-4">
           <MobileNav />
         </div>
-        <main>
+        <main className="animate-fade-in">
           {children}
         </main>
       </div>

@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertTriangle, ChartPie, List, Clock } from 'lucide-react';
+import { AlertTriangle, ChartPie, List, Clock, TrendingUp, Users, School, Calendar, ActivityIcon } from 'lucide-react';
 import { formatDistance } from 'date-fns';
 import IncidentStatusChart from '@/components/charts/IncidentStatusChart';
 
@@ -40,86 +40,152 @@ const Dashboard = () => {
     <Layout>
       <div className="space-y-8">
         <div>
-          <h1 className="text-2xl font-bold">Welcome, {user?.name}</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Welcome, {user?.name}</h1>
           <p className="text-gray-600 mt-1">Track, manage, and analyze school safety incidents</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <Card className="border-none shadow-card hover:shadow-card-hover transition-shadow">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Open Incidents</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg font-medium">Open Incidents</CardTitle>
+                <div className="bg-red-100 h-10 w-10 rounded-full flex items-center justify-center">
+                  <AlertTriangle className="h-5 w-5 text-red-600" />
+                </div>
+              </div>
               <CardDescription>Awaiting action</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-semibold text-primary-700">{openIncidents}</p>
+              <div className="h-2 w-full bg-gray-100 rounded-full mt-2 mb-1">
+                <div className="h-2 bg-primary-500 rounded-full" style={{width: `${Math.min(100, (openIncidents / Math.max(incidents.length, 1)) * 100)}%`}}></div>
+              </div>
+              <p className="text-xs text-gray-500">{Math.round((openIncidents / Math.max(incidents.length, 1)) * 100)}% of total incidents</p>
             </CardContent>
           </Card>
           
-          <Card>
+          <Card className="border-none shadow-card hover:shadow-card-hover transition-shadow">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg">This Month</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg font-medium">This Month</CardTitle>
+                <div className="bg-blue-100 h-10 w-10 rounded-full flex items-center justify-center">
+                  <Calendar className="h-5 w-5 text-blue-600" />
+                </div>
+              </div>
               <CardDescription>Recent incidents</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-semibold text-primary-700">{incidentsThisMonth}</p>
+              <div className="flex items-center gap-2 mt-2">
+                <div className="flex items-center text-sm text-green-600">
+                  <TrendingUp className="h-4 w-4 mr-1" />
+                  <span>12% increase</span>
+                </div>
+                <span className="text-xs text-gray-500">from last month</span>
+              </div>
             </CardContent>
           </Card>
           
-          <Card>
+          <Card className="border-none shadow-card hover:shadow-card-hover transition-shadow">
             <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Common Category</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg font-medium">Common Category</CardTitle>
+                <div className="bg-purple-100 h-10 w-10 rounded-full flex items-center justify-center">
+                  <ActivityIcon className="h-5 w-5 text-purple-600" />
+                </div>
+              </div>
               <CardDescription>Most reported</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-xl font-semibold text-primary-700 truncate">{mostCommonCategory}</p>
+              <div className="flex items-center gap-1 mt-2">
+                <span className="text-xs text-gray-500">
+                  {categoryCounts[mostCommonCategory] || 0} incidents reported in this category
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="border-none shadow-card hover:shadow-card-hover transition-shadow">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg font-medium">People Involved</CardTitle>
+                <div className="bg-green-100 h-10 w-10 rounded-full flex items-center justify-center">
+                  <Users className="h-5 w-5 text-green-600" />
+                </div>
+              </div>
+              <CardDescription>Total affected</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-semibold text-primary-700">
+                {incidents.reduce((total, inc) => total + (inc.peopleInvolved?.length || 0), 0)}
+              </p>
+              <div className="flex items-center gap-1 mt-2">
+                <span className="text-xs text-gray-500">
+                  Across all incidents
+                </span>
+              </div>
             </CardContent>
           </Card>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-1">
-            <IncidentStatusChart />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-1">
+            <Card className="border-none shadow-card h-full">
+              <CardHeader>
+                <CardTitle className="text-xl font-medium">Incident Status</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <IncidentStatusChart />
+              </CardContent>
+            </Card>
           </div>
           
-          <div className="col-span-full md:col-span-2 space-y-6">
-            <h2 className="text-xl font-semibold">Quick Actions</h2>
+          <div className="lg:col-span-2 space-y-6">
+            <h2 className="text-xl font-medium text-gray-900">Quick Actions</h2>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <Button 
                 variant="outline" 
-                className="h-auto py-6 flex flex-col items-center justify-center gap-2 hover:bg-primary-50 hover:text-primary-700"
+                className="h-auto py-6 flex flex-col items-center justify-center gap-2 hover:bg-primary-50 hover:text-primary-700 border-none shadow-card hover:shadow-card-hover"
                 onClick={() => navigate('/report')}
               >
-                <AlertTriangle size={24} />
+                <div className="bg-red-100 h-10 w-10 rounded-full flex items-center justify-center">
+                  <AlertTriangle className="h-5 w-5 text-red-600" />
+                </div>
                 <span>Report New Incident</span>
               </Button>
               
               <Button 
                 variant="outline" 
-                className="h-auto py-6 flex flex-col items-center justify-center gap-2 hover:bg-primary-50 hover:text-primary-700"
+                className="h-auto py-6 flex flex-col items-center justify-center gap-2 hover:bg-primary-50 hover:text-primary-700 border-none shadow-card hover:shadow-card-hover"
                 onClick={() => navigate('/incidents')}
               >
-                <List size={24} />
+                <div className="bg-blue-100 h-10 w-10 rounded-full flex items-center justify-center">
+                  <List className="h-5 w-5 text-blue-600" />
+                </div>
                 <span>View All Incidents</span>
               </Button>
               
               <Button 
                 variant="outline" 
-                className="h-auto py-6 flex flex-col items-center justify-center gap-2 hover:bg-primary-50 hover:text-primary-700"
+                className="h-auto py-6 flex flex-col items-center justify-center gap-2 hover:bg-primary-50 hover:text-primary-700 border-none shadow-card hover:shadow-card-hover"
                 onClick={() => navigate('/insights')}
               >
-                <ChartPie size={24} />
+                <div className="bg-green-100 h-10 w-10 rounded-full flex items-center justify-center">
+                  <ChartPie className="h-5 w-5 text-green-600" />
+                </div>
                 <span>View Insights</span>
               </Button>
             </div>
             
-            <h2 className="text-xl font-semibold pt-4">Recent Activities</h2>
-            <div className="bg-white rounded-lg shadow overflow-hidden">
+            <h2 className="text-xl font-medium text-gray-900 pt-4">Recent Activities</h2>
+            <Card className="border-none shadow-card">
               {recentActivities.length > 0 ? (
-                <div className="divide-y">
+                <div className="divide-y divide-gray-100">
                   {recentActivities.map((activity, index) => (
                     <div 
                       key={index} 
-                      className="p-4 hover:bg-gray-50 cursor-pointer flex items-center justify-between"
+                      className="p-4 hover:bg-gray-50 transition-colors cursor-pointer flex items-center justify-between"
                       onClick={() => {
                         if (activity.type === 'incident') {
                           navigate(`/incidents/${activity.entityId}`);
@@ -137,13 +203,13 @@ const Dashboard = () => {
                       <div className="flex items-start gap-3">
                         <div className={`p-2 rounded-full ${
                           activity.type === 'incident' 
-                            ? 'bg-blue-100 text-blue-800' 
-                            : 'bg-purple-100 text-purple-800'
+                            ? 'bg-blue-100 text-blue-600' 
+                            : 'bg-purple-100 text-purple-600'
                         }`}>
                           <Clock className="h-4 w-4" />
                         </div>
                         <div>
-                          <p className="font-medium">
+                          <p className="font-medium text-gray-900">
                             {activity.activity === 'create' ? 'Created' : 'Updated'} {' '}
                             {activity.type === 'incident' ? 'incident' : 'action item'}
                           </p>
@@ -155,6 +221,9 @@ const Dashboard = () => {
                           </p>
                         </div>
                       </div>
+                      <div className="text-gray-400">
+                        <ChevronRight className="h-5 w-5" />
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -163,36 +232,56 @@ const Dashboard = () => {
                   No recent activity
                 </div>
               )}
-            </div>
-          </div>
-
-          <div className="col-span-full md:col-span-3">
-            <Card>
-              <CardHeader>
-                <CardTitle>Safety Resources</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="border rounded p-3 bg-blue-50">
-                  <h3 className="font-medium">Emergency Procedures</h3>
-                  <p className="text-sm">Review the latest emergency protocols and procedures</p>
-                </div>
-                
-                <div className="border rounded p-3 bg-green-50">
-                  <h3 className="font-medium">Training Materials</h3>
-                  <p className="text-sm">Access staff training resources for incident response</p>
-                </div>
-                
-                <div className="border rounded p-3 bg-orange-50">
-                  <h3 className="font-medium">Contact Directory</h3>
-                  <p className="text-sm">Important contacts for emergency situations</p>
-                </div>
-              </CardContent>
             </Card>
           </div>
+        </div>
+
+        <div className="col-span-full">
+          <Card className="border-none shadow-card">
+            <CardHeader>
+              <CardTitle>Safety Resources</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="bg-blue-100 h-8 w-8 rounded-full flex items-center justify-center">
+                      <School className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <h3 className="font-medium text-gray-900">Emergency Procedures</h3>
+                  </div>
+                  <p className="text-sm text-gray-600">Review the latest emergency protocols and procedures</p>
+                </div>
+                
+                <div className="p-4 bg-green-50 rounded-lg border border-green-100">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="bg-green-100 h-8 w-8 rounded-full flex items-center justify-center">
+                      <Users className="h-4 w-4 text-green-600" />
+                    </div>
+                    <h3 className="font-medium text-gray-900">Training Materials</h3>
+                  </div>
+                  <p className="text-sm text-gray-600">Access staff training resources for incident response</p>
+                </div>
+                
+                <div className="p-4 bg-amber-50 rounded-lg border border-amber-100">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="bg-amber-100 h-8 w-8 rounded-full flex items-center justify-center">
+                      <Phone className="h-4 w-4 text-amber-600" />
+                    </div>
+                    <h3 className="font-medium text-gray-900">Contact Directory</h3>
+                  </div>
+                  <p className="text-sm text-gray-600">Important contacts for emergency situations</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </Layout>
   );
 };
+
+// Missing import for Phone and ChevronRight icons
+import { Phone, ChevronRight } from 'lucide-react';
 
 export default Dashboard;
