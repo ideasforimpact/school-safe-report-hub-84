@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { 
   NavigationMenuItem, 
   NavigationMenuTrigger, 
@@ -32,7 +33,7 @@ const DesktopDropdownItem = ({ item, isActive, handleNavigation, isItemActive }:
           ? "text-primary font-semibold" 
           : "text-gray-700"
       )}>
-        {IconComponent && <IconComponent className="h-4 w-4" />}
+        {IconComponent && React.createElement(IconComponent, { className: "h-4 w-4" })}
         {item.title}
       </NavigationMenuTrigger>
       <NavigationMenuContent className="absolute z-50">

@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { cn } from "@/lib/utils";
 import { NavItem } from "./types";
 import * as Icons from 'lucide-react';
@@ -25,7 +26,7 @@ const MobileMenuItem = ({ item, isActive, handleNavigation }: MobileMenuItemProp
             : "text-gray-700 hover:bg-gray-50"
         )}
       >
-        {IconComponent && <IconComponent className="h-5 w-5" />}
+        {IconComponent && React.createElement(IconComponent, { className: "h-5 w-5" })}
         {item.title}
       </button>
     );
