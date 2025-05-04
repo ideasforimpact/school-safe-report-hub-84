@@ -54,7 +54,7 @@ const AddActionForm: React.FC<AddActionFormProps> = ({ onSubmit }) => {
   };
 
   return (
-    <Card>
+    <Card className="border-none shadow-card">
       <CardHeader>
         <CardTitle>Add Action Taken</CardTitle>
         <CardDescription>
@@ -62,7 +62,7 @@ const AddActionForm: React.FC<AddActionFormProps> = ({ onSubmit }) => {
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 md:space-y-6">
           <div className="space-y-2">
             <label htmlFor="actionDescription" className="text-sm font-medium">
               Action Description
@@ -118,7 +118,7 @@ const AddActionForm: React.FC<AddActionFormProps> = ({ onSubmit }) => {
             </div>
           </div>
         </CardContent>
-        <CardFooter>
+        <CardFooter className="pt-2">
           <Button type="submit">Add Action</Button>
         </CardFooter>
       </form>

@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIncidents } from '@/contexts/IncidentContext';
@@ -110,9 +109,9 @@ const ReportIncident = () => {
 
   return (
     <Layout>
-      <div className="space-y-6 max-w-4xl mx-auto">
+      <div className="space-y-4 md:space-y-6 w-full overflow-x-hidden">
         <div>
-          <h1 className="text-2xl font-bold">Report New Incident</h1>
+          <h1 className="text-2xl md:text-3xl font-bold">Report New Incident</h1>
           <p className="text-gray-600 mt-1">
             Document safety incidents, near misses, or unsafe conditions
           </p>
@@ -120,8 +119,8 @@ const ReportIncident = () => {
 
         <TicketInfoBanner ticketId={nextTicketId} />
 
-        <form onSubmit={handleSubmit}>
-          <Card>
+        <form onSubmit={handleSubmit} className="w-full">
+          <Card className="border-none shadow-card">
             <CardHeader>
               <CardTitle>Incident Details</CardTitle>
               <CardDescription>Provide information about what occurred</CardDescription>
