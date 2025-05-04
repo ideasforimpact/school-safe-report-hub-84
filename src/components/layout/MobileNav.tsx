@@ -95,13 +95,13 @@ const MobileNav = () => {
                     const closeButton = document.querySelector('[data-radix-sheet-close]') as HTMLElement;
                     if (closeButton) closeButton.click();
                   }}
-                  className={`flex flex-col items-center w-[70px] py-3 px-2 rounded-lg text-center space-y-1 ${
+                  className={`flex flex-col items-center w-[80px] py-3 px-2 rounded-lg text-center space-y-1 ${
                     isActive(item.path)
                       ? "bg-blue-700 text-white"
                       : "text-blue-100 hover:bg-blue-800 hover:text-white"
                   }`}
                 >
-                  <Icon size={18} />
+                  <Icon size={20} />
                   <span className="text-xs">{item.name}</span>
                 </button>
               );

@@ -1,9 +1,7 @@
-
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
-import { ChevronLeft, ChevronRight } from 'lucide-react'; 
 import { 
   Home, 
   FileText, 
@@ -20,6 +18,7 @@ const Sidebar = () => {
   const { user, isAdmin, isSaasOwner } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  // We keep the state but won't provide UI to toggle it
   const [collapsed, setCollapsed] = useState(false);
   
   // Get user permissions
@@ -98,17 +97,17 @@ const Sidebar = () => {
     return location.pathname === path || (path !== '/' && location.pathname.startsWith(path));
   };
 
-  // Always use the compact sidebar style but with variable width
+  // Always use the compact sidebar style with increased width
   return (
     <aside 
       className={cn(
         "fixed top-16 left-0 bottom-0 bg-[#1E2F97] transition-all duration-300 flex flex-col z-30",
-        collapsed ? "w-20" : "w-24" // slightly wider to accommodate text below icons
+        collapsed ? "w-24" : "w-28" // slightly increased width for better readability
       )}
     >
       <div className="flex-1 py-6">
         <nav className="px-2">
-          <ul className="space-y-4">
+          <ul className="space-y-5">
             {menuItems
               .filter(item => item.allowed)
               .map((item) => {
@@ -118,14 +117,14 @@ const Sidebar = () => {
                     <button
                       onClick={() => navigate(item.path)}
                       className={cn(
-                        "w-full flex flex-col items-center justify-center py-3 px-1 rounded-md transition-colors text-center",
+                        "w-full flex flex-col items-center justify-center py-3 px-2 rounded-md transition-colors text-center",
                         isActive(item.path)
                           ? "bg-blue-700 text-white"
                           : "text-blue-100 hover:bg-blue-800 hover:text-white"
                       )}
                     >
-                      <IconComponent className="h-5 w-5 mb-1" />
-                      <span className="text-[10px] font-medium whitespace-normal text-center">
+                      <IconComponent className="h-6 w-6 mb-1" />
+                      <span className="text-[11px] font-medium whitespace-normal text-center">
                         {item.label}
                       </span>
                     </button>
@@ -135,16 +134,7 @@ const Sidebar = () => {
           </ul>
         </nav>
       </div>
-      
-      {/* Toggle collapse button */}
-      <div className="py-4 px-2">
-        <button 
-          onClick={() => setCollapsed(!collapsed)} 
-          className="w-full flex items-center justify-center px-3 py-2 rounded-md text-blue-100 hover:bg-blue-800"
-        >
-          {collapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
-        </button>
-      </div>
+      {/* Removed the collapse button */}
     </aside>
   );
 };
