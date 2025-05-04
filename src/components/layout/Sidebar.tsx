@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -98,16 +97,15 @@ const Sidebar = () => {
     return location.pathname === path || (path !== '/' && location.pathname.startsWith(path));
   };
 
-  // Changed from top-16 to top-0 to extend to full height
+  // Positioned at the very top with no padding-top
   return (
     <aside 
       className={cn(
-        "fixed top-0 left-0 bottom-0 bg-[#1E2F97] transition-all duration-300 flex flex-col z-30",
+        "fixed top-0 left-0 bottom-0 bg-[#1E2F97] transition-all duration-300 flex flex-col z-50",
         collapsed ? "w-24" : "w-28" // slightly increased width for better readability
       )}
     >
-      {/* Added padding-top to account for the header height */}
-      <div className="flex-1 py-6 pt-16">
+      <div className="flex-1 py-6">
         <nav className="px-2">
           <ul className="space-y-5">
             {menuItems

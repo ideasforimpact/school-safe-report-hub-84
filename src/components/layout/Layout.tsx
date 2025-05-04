@@ -27,26 +27,28 @@ const Layout = ({
   
   return (
     <div className="min-h-screen bg-[#F4F6F9]">
-      {/* Header */}
-      <div className="fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-100 shadow-sm">
-        <Header />
-      </div>
-      
       <div className="flex">
-        {/* Desktop Sidebar - now positioned with top-0 instead of top-16 */}
+        {/* Desktop Sidebar - positioned from the very top */}
         <div className="hidden md:block">
           <Sidebar />
         </div>
         
-        {/* Main Content - width will automatically adjust based on sidebar state */}
-        <div className="flex-1 pt-16 transition-all duration-300 pl-0 md:pl-28">
-          <div className="mx-auto">
-            <div className="mb-4 md:hidden">
-              <MobileNav />
+        <div className="flex-1">
+          {/* Header - positioned only in the content area */}
+          <div className="fixed top-0 right-0 z-40 bg-white border-b border-gray-100 shadow-sm md:left-28">
+            <Header />
+          </div>
+          
+          {/* Main Content - with padding top for header */}
+          <div className="pt-16 transition-all duration-300">
+            <div className="mx-auto">
+              <div className="mb-4 md:hidden">
+                <MobileNav />
+              </div>
+              <main className="animate-fade-in">
+                {children}
+              </main>
             </div>
-            <main className="animate-fade-in">
-              {children}
-            </main>
           </div>
         </div>
       </div>
