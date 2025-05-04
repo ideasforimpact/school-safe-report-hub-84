@@ -13,6 +13,20 @@ import {
 } from "@/components/ui/navigation-menu";
 import { cn } from "@/lib/utils";
 
+// Define proper TypeScript interfaces for our navigation items
+interface NavSubItem {
+  title: string;
+  path: string;
+  allowed: boolean;
+}
+
+interface NavItem {
+  title: string;
+  path?: string; // Now path is optional
+  allowed: boolean;
+  items?: NavSubItem[];
+}
+
 const MainNav = () => {
   const { user, isAdmin, isSaasOwner } = useAuth();
   const navigate = useNavigate();
@@ -30,7 +44,7 @@ const MainNav = () => {
   const isActive = (path: string) => location.pathname === path;
   
   // Navigation structure
-  const navigation = [
+  const navigation: NavItem[] = [
     {
       title: "Dashboard",
       path: "/dashboard",
@@ -92,7 +106,7 @@ const MainNav = () => {
   ];
 
   // Special case for SaaS owners
-  const backofficeItems = [
+  const backofficeItems: NavItem[] = [
     {
       title: "Backoffice",
       allowed: isSaasOwner,
@@ -128,6 +142,21 @@ const MainNav = () => {
     setIsMobileMenuOpen(false);
   };
 
+  // Check if an item or any of its subitems is active
+  const isItemActive = (item: NavItem): boolean => {
+    // If the item has a direct path and it's active
+    if (item.path && isActive(item.path)) {
+      return true;
+    }
+    
+    // If the item has subitems, check if any of them are active
+    if (item.items) {
+      return item.items.some(subItem => subItem.path && isActive(subItem.path));
+    }
+    
+    return false;
+  };
+
   return (
     <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
       <div className="px-4 sm:px-6 lg:px-8">
@@ -155,10 +184,10 @@ const MainNav = () => {
                       <NavigationMenuItem key={item.title}>
                         <NavigationMenuLink asChild>
                           <button
-                            onClick={() => handleNavigation(item.path as string)}
+                            onClick={() => item.path && handleNavigation(item.path)}
                             className={cn(
                               "px-4 py-2 text-sm font-medium",
-                              isActive(item.path as string)
+                              item.path && isActive(item.path)
                                 ? "text-primary font-semibold"
                                 : "text-gray-700 hover:text-primary hover:bg-gray-50 rounded-md"
                             )}
@@ -178,7 +207,7 @@ const MainNav = () => {
                     <NavigationMenuItem key={item.title}>
                       <NavigationMenuTrigger className={cn(
                         "px-4 py-2 text-sm font-medium",
-                        dropdownItems.some(i => isActive(i.path)) 
+                        isItemActive(item)
                           ? "text-primary font-semibold" 
                           : "text-gray-700"
                       )}>
@@ -224,10 +253,10 @@ const MainNav = () => {
                 return (
                   <button
                     key={item.title}
-                    onClick={() => handleNavigation(item.path as string)}
+                    onClick={() => item.path && handleNavigation(item.path)}
                     className={cn(
                       "block px-3 py-2 rounded-md text-base font-medium w-full text-left",
-                      isActive(item.path as string)
+                      item.path && isActive(item.path)
                         ? "bg-primary/10 text-primary"
                         : "text-gray-700 hover:bg-gray-50"
                     )}
