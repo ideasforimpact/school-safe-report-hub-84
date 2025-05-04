@@ -47,6 +47,21 @@ export const providerConfigs: Record<string, OAuthProviderConfig> = {
 };
 
 /**
+ * Updates a provider configuration
+ * In a real implementation, this would save to a database or config store
+ */
+export const updateProviderConfig = (
+  provider: string, 
+  updates: Partial<OAuthProviderConfig>
+): void => {
+  if (providerConfigs[provider.toLowerCase()]) {
+    Object.assign(providerConfigs[provider.toLowerCase()], updates);
+    console.log(`Updated ${provider} configuration:`, providerConfigs[provider.toLowerCase()]);
+    // In a real implementation, you would persist this change to a database
+  }
+};
+
+/**
  * Redirects the user to the OAuth provider's authorization page
  */
 export const redirectToOAuthProvider = (provider: string): void => {

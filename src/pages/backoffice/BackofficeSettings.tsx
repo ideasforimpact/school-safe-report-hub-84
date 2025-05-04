@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import BackofficeLayout from '@/components/layout/BackofficeLayout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -8,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Settings, Shield, BellRing, Globe } from "lucide-react";
+import { Settings, Shield, BellRing, Globe, Key } from "lucide-react";
+import { providerConfigs } from '@/utils/authProviders';
 
 const BackofficeSettings = () => {
   const [generalSettings, setGeneralSettings] = useState({
@@ -19,11 +19,47 @@ const BackofficeSettings = () => {
     autoLogout: true
   });
   
+  // Add OAuth provider settings state
+  const [oauthSettings, setOauthSettings] = useState({
+    google: {
+      clientId: providerConfigs.google.clientId || "",
+      clientSecret: "",
+      enabled: true
+    },
+    microsoft: {
+      clientId: providerConfigs.microsoft.clientId || "",
+      clientSecret: "",
+      enabled: true
+    },
+    zoho: {
+      clientId: providerConfigs.zoho.clientId || "",
+      clientSecret: "",
+      enabled: true
+    }
+  });
+  
   const handleGeneralSettingChange = (key: string, value: string | boolean) => {
     setGeneralSettings(prev => ({
       ...prev,
       [key]: value
     }));
+  };
+  
+  const handleOAuthSettingChange = (provider: string, field: string, value: string | boolean) => {
+    setOauthSettings(prev => ({
+      ...prev,
+      [provider]: {
+        ...prev[provider as keyof typeof prev],
+        [field]: value
+      }
+    }));
+  };
+  
+  // Function to save OAuth settings (would connect to your backend in a real implementation)
+  const saveOAuthSettings = () => {
+    console.log("OAuth settings to save:", oauthSettings);
+    // In a real implementation, you would save these to your backend/database
+    alert("OAuth settings saved successfully");
   };
   
   return (
@@ -43,6 +79,10 @@ const BackofficeSettings = () => {
             <TabsTrigger value="security" className="flex items-center gap-2">
               <Shield className="h-4 w-4" />
               <span>Security</span>
+            </TabsTrigger>
+            <TabsTrigger value="oauth" className="flex items-center gap-2">
+              <Key className="h-4 w-4" />
+              <span>OAuth Providers</span>
             </TabsTrigger>
             <TabsTrigger value="notifications" className="flex items-center gap-2">
               <BellRing className="h-4 w-4" />
@@ -199,6 +239,177 @@ const BackofficeSettings = () => {
                   <div className="flex justify-end space-x-2">
                     <Button variant="outline">Cancel</Button>
                     <Button>Save Changes</Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="oauth">
+            <Card>
+              <CardHeader>
+                <CardTitle>OAuth Provider Settings</CardTitle>
+                <CardDescription>Configure OAuth provider credentials for client authentication</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {/* Google OAuth Configuration */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="google-enabled">Google Authentication</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Enable Google as an authentication provider
+                        </p>
+                      </div>
+                      <Switch 
+                        id="google-enabled"
+                        checked={oauthSettings.google.enabled}
+                        onCheckedChange={(checked) => handleOAuthSettingChange('google', 'enabled', checked)}
+                      />
+                    </div>
+                    
+                    {oauthSettings.google.enabled && (
+                      <div className="space-y-4 border-l-2 pl-4 ml-2 border-gray-100">
+                        <div className="space-y-2">
+                          <Label htmlFor="google-client-id">Client ID</Label>
+                          <Input 
+                            id="google-client-id"
+                            value={oauthSettings.google.clientId}
+                            onChange={(e) => handleOAuthSettingChange('google', 'clientId', e.target.value)}
+                            placeholder="Your Google OAuth Client ID"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            Get this from Google Cloud Console
+                          </p>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="google-client-secret">Client Secret</Label>
+                          <Input 
+                            id="google-client-secret"
+                            type="password"
+                            value={oauthSettings.google.clientSecret}
+                            onChange={(e) => handleOAuthSettingChange('google', 'clientSecret', e.target.value)}
+                            placeholder="Your Google OAuth Client Secret"
+                          />
+                          <p className="text-xs text-muted-foreground">
+                            This value will be stored securely
+                          </p>
+                        </div>
+                        
+                        <p className="text-xs text-blue-600">
+                          <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer">
+                            How to create Google OAuth credentials
+                          </a>
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <Separator />
+                  
+                  {/* Microsoft OAuth Configuration */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="microsoft-enabled">Microsoft Authentication</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Enable Microsoft as an authentication provider
+                        </p>
+                      </div>
+                      <Switch 
+                        id="microsoft-enabled"
+                        checked={oauthSettings.microsoft.enabled}
+                        onCheckedChange={(checked) => handleOAuthSettingChange('microsoft', 'enabled', checked)}
+                      />
+                    </div>
+                    
+                    {oauthSettings.microsoft.enabled && (
+                      <div className="space-y-4 border-l-2 pl-4 ml-2 border-gray-100">
+                        <div className="space-y-2">
+                          <Label htmlFor="microsoft-client-id">Client ID</Label>
+                          <Input 
+                            id="microsoft-client-id"
+                            value={oauthSettings.microsoft.clientId}
+                            onChange={(e) => handleOAuthSettingChange('microsoft', 'clientId', e.target.value)}
+                            placeholder="Your Microsoft OAuth Client ID"
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="microsoft-client-secret">Client Secret</Label>
+                          <Input 
+                            id="microsoft-client-secret"
+                            type="password"
+                            value={oauthSettings.microsoft.clientSecret}
+                            onChange={(e) => handleOAuthSettingChange('microsoft', 'clientSecret', e.target.value)}
+                            placeholder="Your Microsoft OAuth Client Secret"
+                          />
+                        </div>
+                        
+                        <p className="text-xs text-blue-600">
+                          <a href="https://portal.azure.com/#blade/Microsoft_AAD_RegisteredApps/ApplicationsListBlade" target="_blank" rel="noopener noreferrer">
+                            How to create Microsoft OAuth credentials
+                          </a>
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <Separator />
+                  
+                  {/* Zoho OAuth Configuration */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="zoho-enabled">Zoho Authentication</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Enable Zoho as an authentication provider
+                        </p>
+                      </div>
+                      <Switch 
+                        id="zoho-enabled"
+                        checked={oauthSettings.zoho.enabled}
+                        onCheckedChange={(checked) => handleOAuthSettingChange('zoho', 'enabled', checked)}
+                      />
+                    </div>
+                    
+                    {oauthSettings.zoho.enabled && (
+                      <div className="space-y-4 border-l-2 pl-4 ml-2 border-gray-100">
+                        <div className="space-y-2">
+                          <Label htmlFor="zoho-client-id">Client ID</Label>
+                          <Input 
+                            id="zoho-client-id"
+                            value={oauthSettings.zoho.clientId}
+                            onChange={(e) => handleOAuthSettingChange('zoho', 'clientId', e.target.value)}
+                            placeholder="Your Zoho OAuth Client ID"
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <Label htmlFor="zoho-client-secret">Client Secret</Label>
+                          <Input 
+                            id="zoho-client-secret"
+                            type="password"
+                            value={oauthSettings.zoho.clientSecret}
+                            onChange={(e) => handleOAuthSettingChange('zoho', 'clientSecret', e.target.value)}
+                            placeholder="Your Zoho OAuth Client Secret"
+                          />
+                        </div>
+                        
+                        <p className="text-xs text-blue-600">
+                          <a href="https://api-console.zoho.com/" target="_blank" rel="noopener noreferrer">
+                            How to create Zoho OAuth credentials
+                          </a>
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex justify-end space-x-2 pt-4">
+                    <Button variant="outline">Cancel</Button>
+                    <Button onClick={saveOAuthSettings}>Save OAuth Settings</Button>
                   </div>
                 </div>
               </CardContent>
