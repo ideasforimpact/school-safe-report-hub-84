@@ -91,7 +91,9 @@ const MobileNav = () => {
                   key={item.path}
                   onClick={() => {
                     navigate(item.path);
-                    document.querySelector('[data-radix-sheet-close]')?.click();
+                    // Fix: Cast the Element to HTMLElement which has the click method
+                    const closeButton = document.querySelector('[data-radix-sheet-close]') as HTMLElement;
+                    if (closeButton) closeButton.click();
                   }}
                   className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left mb-1 transition-colors ${
                     isActive(item.path)
