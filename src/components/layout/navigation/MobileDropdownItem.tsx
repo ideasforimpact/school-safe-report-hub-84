@@ -4,6 +4,7 @@ import { ChevronDown } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import { NavItem } from "./types";
 import * as Icons from 'lucide-react';
+import { LucideIcon } from 'lucide-react';
 
 interface MobileDropdownItemProps {
   item: NavItem;
@@ -15,7 +16,7 @@ const MobileDropdownItem = ({ item, isActive, handleNavigation }: MobileDropdown
   const [isOpen, setIsOpen] = useState(false);
   
   // Get icon component if icon name is provided
-  const IconComponent = item.icon ? Icons[item.icon as keyof typeof Icons] : null;
+  const IconComponent = item.icon ? (Icons[item.icon as keyof typeof Icons] as LucideIcon) : null;
   
   // Filter items by permission
   const dropdownItems = item.items?.filter(subItem => subItem.allowed) || [];
@@ -34,7 +35,7 @@ const MobileDropdownItem = ({ item, isActive, handleNavigation }: MobileDropdown
         )}
       >
         <div className="flex items-center gap-3 flex-1">
-          {IconComponent && <IconComponent className="h-5 w-5" />}
+          {IconComponent && React.createElement(IconComponent, { className: "h-5 w-5" })}
           <span>{item.title}</span>
         </div>
         <ChevronDown

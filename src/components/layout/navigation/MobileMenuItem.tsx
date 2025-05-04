@@ -3,6 +3,7 @@ import React from 'react';
 import { cn } from "@/lib/utils";
 import { NavItem } from "./types";
 import * as Icons from 'lucide-react';
+import { LucideIcon } from 'lucide-react';
 
 interface MobileMenuItemProps {
   item: NavItem;
@@ -12,7 +13,7 @@ interface MobileMenuItemProps {
 
 const MobileMenuItem = ({ item, isActive, handleNavigation }: MobileMenuItemProps) => {
   // Get icon component if icon name is provided
-  const IconComponent = item.icon ? Icons[item.icon as keyof typeof Icons] : null;
+  const IconComponent = item.icon ? (Icons[item.icon as keyof typeof Icons] as LucideIcon) : null;
   
   if (!item.items) {
     return (
@@ -26,7 +27,7 @@ const MobileMenuItem = ({ item, isActive, handleNavigation }: MobileMenuItemProp
             : "text-gray-700 hover:bg-gray-50"
         )}
       >
-        {IconComponent && <IconComponent className="h-5 w-5" />}
+        {IconComponent && React.createElement(IconComponent, { className: "h-5 w-5" })}
         {item.title}
       </button>
     );
