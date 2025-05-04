@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { LogOut, User, Lock } from 'lucide-react';
+import { LogOut, User, Lock, Settings } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ChangePasswordDialog } from '@/components/ChangePasswordDialog';
 
@@ -60,6 +60,32 @@ const Header = () => {
                 {isAdmin ? 'Admin' : 'Reporter'}
               </span>
             )}
+
+            {/* Settings Menu - Only visible for admins */}
+            {isAdmin && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="h-8 w-8 mr-2" size="icon">
+                    <Settings size={18} className="text-gray-600" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => navigate('/configuration')}>
+                    Configuration
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/users')}>
+                    User Management
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/students')}>
+                    Student Management
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate('/facilities')}>
+                    Facility Management
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center space-x-2">

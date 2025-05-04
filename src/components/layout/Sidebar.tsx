@@ -1,3 +1,4 @@
+
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -88,30 +89,6 @@ const Sidebar = () => {
       label: 'Benchmarking',
       path: '/benchmarking',
       allowed: permissions.benchmarking,
-    },
-    {
-      icon: Users,
-      label: 'User Management',
-      path: '/users',
-      allowed: isAdmin && !isSaasOwner,
-    },
-    {
-      icon: GraduationCap,
-      label: 'Student Management',
-      path: '/students',
-      allowed: isAdmin && !isSaasOwner,
-    },
-    {
-      icon: Building,
-      label: 'Facility Management',
-      path: '/facilities',
-      allowed: isAdmin && !isSaasOwner,
-    },
-    {
-      icon: Settings,
-      label: 'Configuration',
-      path: '/configuration',
-      allowed: isAdmin && !isSaasOwner,
     },
   ];
 

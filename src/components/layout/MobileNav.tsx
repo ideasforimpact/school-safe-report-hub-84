@@ -1,3 +1,4 @@
+
 import { Menu } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -69,26 +70,6 @@ const MobileNav = () => {
       label: 'Benchmarking',
       path: '/benchmarking',
       allowed: permissions.benchmarking,
-    },
-    {
-      label: 'User Management',
-      path: '/users',
-      allowed: isAdmin && !isSaasOwner,
-    },
-    {
-      label: 'Student Management',
-      path: '/students',
-      allowed: isAdmin && !isSaasOwner,
-    },
-    {
-      label: 'Facility Management',
-      path: '/facilities',
-      allowed: isAdmin && !isSaasOwner,
-    },
-    {
-      label: 'Configuration',
-      path: '/configuration',
-      allowed: isAdmin && !isSaasOwner,
     },
   ];
 
