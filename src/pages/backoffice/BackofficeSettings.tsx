@@ -11,12 +11,18 @@ import { Settings, Shield, BellRing, Globe, Key } from "lucide-react";
 import { providerConfigs, OAuthProviderName, updateProviderConfig } from '@/utils/authProviders';
 import { toast } from "@/components/ui/sonner";
 
+// Fix for TS7061: A mapped type may not declare properties or methods
+type OAuthProviderSettings = {
+  clientId: string;
+  clientSecret: string;
+  enabled: boolean;
+};
+
+// Fixed interface definition
 interface OAuthSettings {
-  [key in OAuthProviderName]: {
-    clientId: string;
-    clientSecret: string;
-    enabled: boolean;
-  };
+  google: OAuthProviderSettings;
+  microsoft: OAuthProviderSettings;
+  zoho: OAuthProviderSettings;
 }
 
 const BackofficeSettings = () => {
