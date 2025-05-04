@@ -13,7 +13,7 @@ interface LayoutProps {
 }
 
 const Layout = ({ children }: LayoutProps) => {
-  const { user } = useAuth();
+  const { user, isSaasOwner } = useAuth();
   const { clients } = useClient();
   
   // Find the client associated with the current user
@@ -34,7 +34,7 @@ const Layout = ({ children }: LayoutProps) => {
               <ShieldCheck className="h-7 w-7 text-primary" />
             )}
             
-            <Link to="/dashboard" className="flex items-center space-x-2">
+            <Link to={isSaasOwner ? "/backoffice" : "/dashboard"} className="flex items-center space-x-2">
               <h1 className="text-2xl font-bold text-primary">
                 {userClient ? `${userClient.name} Safe School Console` : 'Safe School'}
               </h1>

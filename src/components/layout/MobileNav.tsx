@@ -7,15 +7,9 @@ import {
   SheetContent,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 
 const MobileNav = () => {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, isSaasOwner } = useAuth();
   const navigate = useNavigate();
   
   // Get user permissions
@@ -26,7 +20,32 @@ const MobileNav = () => {
     benchmarking: false
   };
   
-  const menuItems = [
+  // SaaS Owner (Backoffice) Menu Items
+  const saasOwnerItems = [
+    {
+      label: 'Dashboard',
+      path: '/backoffice',
+      allowed: true,
+    },
+    {
+      label: 'Client Management',
+      path: '/backoffice/clients',
+      allowed: true,
+    },
+    {
+      label: 'Analytics',
+      path: '/backoffice/analytics',
+      allowed: true,
+    },
+    {
+      label: 'Settings',
+      path: '/backoffice/settings',
+      allowed: true,
+    },
+  ];
+
+  // Client Admin and User Menu Items
+  const clientItems = [
     {
       label: 'Dashboard',
       path: '/dashboard',
@@ -60,24 +79,26 @@ const MobileNav = () => {
     {
       label: 'User Management',
       path: '/users',
-      allowed: isAdmin,
+      allowed: isAdmin && !isSaasOwner,
+    },
+    {
+      label: 'Student Management',
+      path: '/students',
+      allowed: isAdmin && !isSaasOwner,
     },
     {
       label: 'Facility Management',
       path: '/facilities',
-      allowed: isAdmin,
+      allowed: isAdmin && !isSaasOwner,
     },
     {
       label: 'Configuration',
       path: '/configuration',
-      allowed: isAdmin,
+      allowed: isAdmin && !isSaasOwner,
     },
-    {
-      label: 'Client Management',
-      path: '/clients',
-      allowed: isAdmin,
-    }
   ];
+
+  const menuItems = isSaasOwner ? saasOwnerItems : clientItems;
 
   const handleNavigation = (path: string) => {
     navigate(path);

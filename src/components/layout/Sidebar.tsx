@@ -79,6 +79,12 @@ const Sidebar = () => {
       allowed: permissions.allIncidents,
     },
     {
+      icon: FileText,
+      label: 'My Action Items',
+      path: '/my-actions',
+      allowed: true,
+    },
+    {
       icon: PieChart,
       label: 'Insights',
       path: '/insights',
@@ -126,22 +132,25 @@ const Sidebar = () => {
         <ul className="space-y-2 px-4">
           {menuItems
             .filter(item => item.allowed)
-            .map((item) => (
-            <li key={item.path}>
-              <button
-                onClick={() => navigate(item.path)}
-                className={cn(
-                  "w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors",
-                  isActive(item.path)
-                    ? "bg-primary-50 text-primary-700"
-                    : "text-gray-600 hover:bg-gray-100"
-                )}
-              >
-                <item.icon size={18} />
-                <span>{item.label}</span>
-              </button>
-            </li>
-          ))}
+            .map((item) => {
+              const IconComponent = item.icon;
+              return (
+                <li key={item.path}>
+                  <button
+                    onClick={() => navigate(item.path)}
+                    className={cn(
+                      "w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors",
+                      isActive(item.path)
+                        ? "bg-primary-50 text-primary-700"
+                        : "text-gray-600 hover:bg-gray-100"
+                    )}
+                  >
+                    <IconComponent size={18} />
+                    <span>{item.label}</span>
+                  </button>
+                </li>
+              );
+            })}
         </ul>
       </nav>
     </aside>

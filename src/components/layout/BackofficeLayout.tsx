@@ -1,7 +1,7 @@
 
 import { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { ShieldCheck, ArrowLeft, LayoutDashboard, Users, ChartBarBig, Settings } from 'lucide-react';
+import { ShieldCheck, ArrowLeft } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 interface BackofficeLayoutProps {
@@ -15,10 +15,10 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
   const isActive = (path: string) => location.pathname === path;
 
   const navigationItems = [
-    { name: 'Dashboard', path: '/backoffice', icon: LayoutDashboard },
-    { name: 'Client Management', path: '/backoffice/clients', icon: Users },
-    { name: 'Analytics', path: '/backoffice/analytics', icon: ChartBarBig },
-    { name: 'Settings', path: '/backoffice/settings', icon: Settings },
+    { name: 'Dashboard', path: '/backoffice' },
+    { name: 'Client Management', path: '/backoffice/clients' },
+    { name: 'Analytics', path: '/backoffice/analytics' },
+    { name: 'Settings', path: '/backoffice/settings' },
   ];
 
   return (
@@ -45,18 +45,17 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
       {/* Navigation tabs */}
       <div className="bg-white border-b border-gray-200">
         <div className="container mx-auto px-6">
-          <nav className="flex space-x-8">
+          <nav className="flex space-x-8 overflow-x-auto">
             {navigationItems.map((item) => (
               <button
                 key={item.path}
                 onClick={() => navigate(item.path)}
-                className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm ${
+                className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
                   isActive(item.path)
                     ? 'border-primary text-primary'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 } transition-colors`}
               >
-                <item.icon className="h-5 w-5 mr-2" />
                 {item.name}
               </button>
             ))}
