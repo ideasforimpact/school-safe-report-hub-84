@@ -60,7 +60,7 @@ const Dashboard = () => {
   return (
     <Layout>
       <div className="space-y-6 md:space-y-8 w-full">
-        <div className="w-full">
+        <div className="w-full text-left">
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Welcome to {schoolName} Safety Dashboard</h1>
           <p className="text-sm md:text-base text-gray-600 mt-1">Track, manage, and analyze school safety incidents</p>
         </div>
