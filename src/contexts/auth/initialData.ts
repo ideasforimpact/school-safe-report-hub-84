@@ -42,6 +42,7 @@ export const INITIAL_MOCK_USERS: UserWithPassword[] = [
     password: 'reporter123',
     role: 'reporter',
     modulePermissions: DEFAULT_REPORTER_PERMISSIONS,
-    clientId: '1'
+    clientId: '1',
+    designation: 'Teacher'
   }
 ];

@@ -6,7 +6,7 @@ export interface ModulePermissions {
   benchmarking: boolean;
 }
 
-export type UserRole = 'admin' | 'user' | 'saas_owner';
+export type UserRole = 'admin' | 'user' | 'saas_owner' | 'reporter';
 
 export interface User {
   id: string;
@@ -15,6 +15,7 @@ export interface User {
   role: UserRole;
   modulePermissions: ModulePermissions;
   clientId?: string; // Optional client ID to associate user with a client
+  designation?: string; // Added designation property
 }
 
 export interface UserWithPassword extends User {
@@ -35,6 +36,7 @@ export interface AuthContextType {
     role: UserRole; 
     modulePermissions: ModulePermissions;
     clientId?: string;
+    designation?: string; // Added designation property
   }) => void;
   updateUser: (id: string, updates: Partial<User & { password?: string }>) => void;
   deleteUser: (id: string) => void;
