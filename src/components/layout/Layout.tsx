@@ -33,7 +33,7 @@ const Layout = ({
           <Sidebar />
         </div>
         
-        <div className="flex-1">
+        <div className="flex-1 w-full overflow-x-hidden">
           {/* Header - positioned only in the content area */}
           <div className="fixed top-0 right-0 z-40 bg-white border-b border-gray-100 shadow-sm md:left-28">
             <Header />
@@ -41,11 +41,11 @@ const Layout = ({
           
           {/* Main Content - with padding top for header */}
           <div className="pt-16 transition-all duration-300">
-            <div className="container mx-auto px-4">
+            <div className="container mx-auto px-4 max-w-full md:px-6">
               <div className="mb-4 md:hidden">
                 <MobileNav />
               </div>
-              <main className="animate-fade-in">
+              <main className="animate-fade-in overflow-x-hidden">
                 {children}
               </main>
             </div>
