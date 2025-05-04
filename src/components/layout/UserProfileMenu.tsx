@@ -6,7 +6,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { LogOut, Lock, ChevronDown } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ChangePasswordDialog } from '@/components/ChangePasswordDialog';
-import { User } from '@/contexts/types';
+import { User } from '@/contexts/auth/types';
 
 interface UserProfileMenuProps {
   user: User;
