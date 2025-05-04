@@ -21,7 +21,7 @@ const DesktopDropdownItem = ({ item, isActive, handleNavigation, isItemActive }:
   if (dropdownItems.length === 0) return null;
   
   return (
-    <NavigationMenuItem key={item.title}>
+    <NavigationMenuItem key={item.title} className="relative">
       <NavigationMenuTrigger className={cn(
         "px-4 py-2 text-sm font-medium",
         isItemActive(item)
@@ -30,8 +30,8 @@ const DesktopDropdownItem = ({ item, isActive, handleNavigation, isItemActive }:
       )}>
         {item.title}
       </NavigationMenuTrigger>
-      <NavigationMenuContent>
-        <ul className="grid w-[200px] gap-1 p-2">
+      <NavigationMenuContent className="absolute z-50">
+        <ul className="grid w-[200px] gap-1 p-2 bg-white rounded-md shadow-lg">
           {dropdownItems.map((subItem) => (
             <li key={subItem.title}>
               <NavigationMenuLink asChild>

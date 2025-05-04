@@ -23,7 +23,7 @@ const DesktopNavigation = ({
   return (
     <div className="hidden md:flex md:flex-1">
       <NavigationMenu className="mx-auto md:mx-0">
-        <NavigationMenuList>
+        <NavigationMenuList className="space-x-2">
           {navItems.map((item) => {
             if (!item.items) {
               return (
