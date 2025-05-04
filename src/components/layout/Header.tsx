@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -43,24 +42,24 @@ const Header = () => {
 
   return (
     <div className="w-full h-16 bg-white shadow-sm">
-      <div className="w-full h-full px-4">
+      <div className="w-full h-full px-0">
         <div className="container mx-auto h-full flex items-center justify-between">
-          {/* Logo Section */}
-          <div className="flex items-center space-x-3">
-            <Link to={dashboardPath} className="flex items-center space-x-2 md:ml-16 lg:ml-64">
+          {/* Logo Section - Adjusted to left edge */}
+          <div className="flex items-center">
+            <Link to={dashboardPath} className="flex items-center">
               {userClient?.logo ? (
                 <img 
                   src={userClient.logo} 
                   alt={`${userClient.name} logo`}
-                  className="h-8 w-auto"
+                  className="h-8 w-auto ml-0"
                 />
               ) : (
-                <div className="h-8 w-8 bg-primary-100 rounded-md flex items-center justify-center">
+                <div className="h-8 w-8 bg-primary-100 rounded-md flex items-center justify-center ml-0">
                   <ShieldCheck className="h-5 w-5 text-primary-600" />
                 </div>
               )}
               
-              <h1 className="text-lg font-bold text-gray-800 hidden md:block">
+              <h1 className="text-lg font-bold text-gray-800 ml-2">
                 {isSaasOwner ? 'SaaS Admin Platform' : (userClient ? `${userClient.name} Safe School` : 'Safe School')}
               </h1>
             </Link>
