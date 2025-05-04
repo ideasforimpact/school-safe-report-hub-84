@@ -41,7 +41,7 @@ const Layout = ({
           
           {/* Main Content - with padding top for header */}
           <div className="pt-16 transition-all duration-300">
-            <div className="mx-auto">
+            <div className="container mx-auto px-4">
               <div className="mb-4 md:hidden">
                 <MobileNav />
               </div>
