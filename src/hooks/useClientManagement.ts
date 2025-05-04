@@ -23,53 +23,36 @@ export interface ClientFormData {
   };
 }
 
+const initialFormData: ClientFormData = {
+  name: '',
+  email: '',
+  contactPerson: '',
+  phone: '',
+  moduleAccess: {
+    incidentReporting: true,
+    allIncidents: true,
+    insights: true,
+    benchmarking: false
+  },
+  active: true,
+  logo: '',
+  allowedDomains: [],
+  authProviders: {
+    google: false,
+    microsoft: false,
+    zoho: false
+  }
+};
+
 export const useClientManagement = () => {
   const { clients, addClient, updateClient, deleteClient } = useClient();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [currentClient, setCurrentClient] = useState<Client | null>(null);
-  const [formData, setFormData] = useState<ClientFormData>({
-    name: '',
-    email: '',
-    contactPerson: '',
-    phone: '',
-    moduleAccess: {
-      incidentReporting: true,
-      allIncidents: true,
-      insights: true,
-      benchmarking: false
-    },
-    active: true,
-    logo: '',
-    allowedDomains: [],
-    authProviders: {
-      google: false,
-      microsoft: false,
-      zoho: false
-    }
-  });
+  const [formData, setFormData] = useState<ClientFormData>({...initialFormData});
 
   const resetForm = () => {
-    setFormData({
-      name: '',
-      email: '',
-      contactPerson: '',
-      phone: '',
-      moduleAccess: {
-        incidentReporting: true,
-        allIncidents: true,
-        insights: true,
-        benchmarking: false
-      },
-      active: true,
-      logo: '',
-      allowedDomains: [],
-      authProviders: {
-        google: false,
-        microsoft: false,
-        zoho: false
-      }
-    });
+    setFormData({...initialFormData});
     setCurrentClient(null);
   };
 

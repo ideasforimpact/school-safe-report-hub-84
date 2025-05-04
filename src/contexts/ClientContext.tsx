@@ -1,6 +1,14 @@
 
-import React, { createContext, useState, useContext, ReactNode } from 'react';
-import { toast } from "@/components/ui/sonner";
+import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
+import {
+  addClient as addClientService,
+  updateClient as updateClientService,
+  deleteClient as deleteClientService,
+  getClientById as getClientByIdService,
+  isEmailDomainAllowed as isEmailDomainAllowedService,
+  getClientsFromStorage,
+  saveClientsToStorage
+} from '@/services/client/clientService';
 
 export interface Client {
   id: string;
@@ -37,59 +45,33 @@ interface ClientContextType {
 const ClientContext = createContext<ClientContextType | undefined>(undefined);
 
 export const ClientProvider = ({ children }: { children: ReactNode }) => {
-  const [clients, setClients] = useState<Client[]>(() => {
-    const savedClients = localStorage.getItem('clients');
-    return savedClients ? JSON.parse(savedClients) : [];
-  });
+  const [clients, setClients] = useState<Client[]>(() => getClientsFromStorage());
 
   // Save clients to localStorage whenever they change
-  React.useEffect(() => {
-    localStorage.setItem('clients', JSON.stringify(clients));
+  useEffect(() => {
+    saveClientsToStorage(clients);
   }, [clients]);
 
   const addClient = (clientData: Omit<Client, 'id' | 'creationDate'>) => {
-    const newClient: Client = {
-      ...clientData,
-      id: Date.now().toString(),
-      creationDate: new Date().toISOString(),
-    };
-
-    setClients([...clients, newClient]);
-    toast.success("Client added successfully");
+    setClients(addClientService(clients, clientData));
   };
 
   const updateClient = (id: string, updates: Partial<Client>) => {
-    setClients(clients.map(client => {
-      if (client.id === id) {
-        return { ...client, ...updates };
-      }
-      return client;
-    }));
-    toast.success("Client updated successfully");
+    setClients(updateClientService(clients, id, updates));
   };
 
   const deleteClient = (id: string) => {
-    setClients(clients.filter(client => client.id !== id));
-    toast.success("Client deleted successfully");
+    setClients(deleteClientService(clients, id));
   };
 
   const getClientById = (id: string) => {
-    return clients.find(client => client.id === id);
+    return getClientByIdService(clients, id);
   };
 
   // Function to validate if an email domain is allowed for a specific client
   const isEmailDomainAllowed = (email: string, clientId: string): boolean => {
     const client = getClientById(clientId);
-    if (!client || !client.allowedDomains || client.allowedDomains.length === 0) {
-      return false;
-    }
-
-    const domain = email.split('@')[1]?.toLowerCase();
-    if (!domain) return false;
-
-    return client.allowedDomains.some(allowedDomain => 
-      allowedDomain.toLowerCase() === domain
-    );
+    return isEmailDomainAllowedService(email, client);
   };
 
   return (

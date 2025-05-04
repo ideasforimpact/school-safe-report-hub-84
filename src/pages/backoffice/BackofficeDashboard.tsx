@@ -5,31 +5,19 @@ import { useClient } from '@/contexts/ClientContext';
 import MetricsCards from '@/components/backoffice/MetricsCards';
 import ClientsTable from '@/components/backoffice/ClientsTable';
 import ClientDialog from '@/components/backoffice/ClientDialog';
+import useClientManagement from '@/hooks/useClientManagement';
 
 const BackofficeDashboard = () => {
-  const { clients, addClient } = useClient();
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const { clients } = useClient();
   const [searchTerm, setSearchTerm] = useState('');
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    contactPerson: '',
-    phone: '',
-    moduleAccess: {
-      incidentReporting: true,
-      allIncidents: true,
-      insights: true,
-      benchmarking: false
-    },
-    active: true,
-    logo: '',
-    allowedDomains: [],
-    authProviders: {
-      google: false,
-      microsoft: false,
-      zoho: false
-    }
-  });
+  const {
+    formData,
+    setFormData,
+    isAddDialogOpen,
+    setIsAddDialogOpen,
+    handleAddClient,
+    resetForm
+  } = useClientManagement();
   
   // Sample metrics data (in a real app, this would come from an API)
   const [metrics, setMetrics] = useState({
@@ -47,35 +35,6 @@ const BackofficeDashboard = () => {
       activeClients: clients.filter(c => c.active).length
     }));
   }, [clients]);
-  
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      email: '',
-      contactPerson: '',
-      phone: '',
-      moduleAccess: {
-        incidentReporting: true,
-        allIncidents: true,
-        insights: true,
-        benchmarking: false
-      },
-      active: true,
-      logo: '',
-      allowedDomains: [],
-      authProviders: {
-        google: false,
-        microsoft: false,
-        zoho: false
-      }
-    });
-  };
-
-  const handleAddClient = () => {
-    addClient(formData);
-    setIsAddDialogOpen(false);
-    resetForm();
-  };
   
   const handleCancelAdd = () => {
     setIsAddDialogOpen(false);
@@ -114,7 +73,7 @@ const BackofficeDashboard = () => {
         />
       </div>
       
-      {/* Add Client Dialog - Using the new ClientDialog component */}
+      {/* Add Client Dialog */}
       <ClientDialog 
         isOpen={isAddDialogOpen}
         onOpenChange={setIsAddDialogOpen}
