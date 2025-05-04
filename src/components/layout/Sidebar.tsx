@@ -98,15 +98,16 @@ const Sidebar = () => {
     return location.pathname === path || (path !== '/' && location.pathname.startsWith(path));
   };
 
-  // Always use the compact sidebar style with increased width
+  // Changed from top-16 to top-0 to extend to full height
   return (
     <aside 
       className={cn(
-        "fixed top-16 left-0 bottom-0 bg-[#1E2F97] transition-all duration-300 flex flex-col z-30",
+        "fixed top-0 left-0 bottom-0 bg-[#1E2F97] transition-all duration-300 flex flex-col z-30",
         collapsed ? "w-24" : "w-28" // slightly increased width for better readability
       )}
     >
-      <div className="flex-1 py-6">
+      {/* Added padding-top to account for the header height */}
+      <div className="flex-1 py-6 pt-16">
         <nav className="px-2">
           <ul className="space-y-5">
             {menuItems

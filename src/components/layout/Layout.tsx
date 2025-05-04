@@ -33,7 +33,7 @@ const Layout = ({
       </div>
       
       <div className="flex">
-        {/* Desktop Sidebar */}
+        {/* Desktop Sidebar - now positioned with top-0 instead of top-16 */}
         <div className="hidden md:block">
           <Sidebar />
         </div>
