@@ -97,7 +97,7 @@ const Sidebar = () => {
       allowed: isAdmin && !isSaasOwner,
     },
     {
-      icon: GraduationCap, // New icon for student management
+      icon: GraduationCap,
       label: 'Student Management',
       path: '/students',
       allowed: isAdmin && !isSaasOwner,

@@ -52,6 +52,7 @@ function App() {
                   
                   {/* Protected Routes */}
                   <Route element={<RouteGuard />}>
+                    {/* Client User Routes */}
                     <Route element={<ModuleGuard moduleType="incidentReporting" />}>
                       <Route path="/dashboard" element={<Dashboard />} />
                       <Route path="/incidents" element={<IncidentsList />} />
@@ -63,14 +64,16 @@ function App() {
                       <Route path="/users" element={<UserManagement />} />
                       <Route path="/students" element={<StudentManagement />} />
                       <Route path="/facilities" element={<FacilityManagement />} />
-                      <Route path="/clients" element={<ClientManagement />} />
                       <Route path="/benchmarking" element={<Benchmarking />} />
                     </Route>
                     
-                    {/* Backoffice Routes */}
-                    <Route path="/backoffice/dashboard" element={<BackofficeDashboard />} />
-                    <Route path="/backoffice/analytics" element={<BackofficeAnalytics />} />
-                    <Route path="/backoffice/settings" element={<BackofficeSettings />} />
+                    {/* Backoffice Routes - SaaS Owner Routes */}
+                    <Route element={<RouteGuard requireSaasOwner={true} />}>
+                      <Route path="/backoffice" element={<BackofficeDashboard />} />
+                      <Route path="/backoffice/clients" element={<ClientManagement />} />
+                      <Route path="/backoffice/analytics" element={<BackofficeAnalytics />} />
+                      <Route path="/backoffice/settings" element={<BackofficeSettings />} />
+                    </Route>
                   </Route>
                   
                   {/* Not Found */}
