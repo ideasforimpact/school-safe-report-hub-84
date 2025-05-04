@@ -14,9 +14,8 @@ interface MobileDropdownItemProps {
 const MobileDropdownItem = ({ item, isActive, handleNavigation }: MobileDropdownItemProps) => {
   const [isOpen, setIsOpen] = useState(false);
   
-  // Get icon component if icon name is provided
-  const iconName = item.icon as keyof typeof Icons;
-  const Icon = item.icon && Icons[iconName]; // Get the icon component
+  // Get icon component
+  const IconComponent = item.icon ? Icons[item.icon as keyof typeof Icons] : null;
   
   // Filter items by permission
   const dropdownItems = item.items?.filter(subItem => subItem.allowed) || [];
@@ -35,7 +34,7 @@ const MobileDropdownItem = ({ item, isActive, handleNavigation }: MobileDropdown
         )}
       >
         <div className="flex items-center gap-3 flex-1">
-          {Icon && <Icon className="h-5 w-5" />}
+          {IconComponent && React.createElement(IconComponent, { className: "h-5 w-5" })}
           <span>{item.title}</span>
         </div>
         <ChevronDown
