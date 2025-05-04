@@ -28,8 +28,8 @@ const Header = () => {
   };
 
   return (
-    <header className="bg-white py-4 px-6 border-b border-gray-200">
-      <div className="container mx-auto flex items-center justify-between w-full">
+    <header className="bg-white py-4 px-4 border-b border-gray-200">
+      <div className="max-w-[95%] w-full mx-auto flex items-center justify-between">
         {/* Logo Section */}
         <div className="flex items-center space-x-3">
           {userClient?.logo ? (

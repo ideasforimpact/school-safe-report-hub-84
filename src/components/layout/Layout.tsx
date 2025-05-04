@@ -36,7 +36,7 @@ const Layout = ({ children }: LayoutProps) => {
       
       {/* Navigation tabs */}
       <div className="bg-white border-b border-gray-200">
-        <div className="container mx-auto px-6 hidden md:block">
+        <div className="max-w-[95%] w-full mx-auto px-4 hidden md:block">
           <nav className="flex space-x-8 overflow-x-auto">
             {navigationItems.map((item) => (
               <button
@@ -55,7 +55,7 @@ const Layout = ({ children }: LayoutProps) => {
         </div>
       </div>
       
-      <div className="container mx-auto py-6 px-6">
+      <div className="max-w-[95%] w-full mx-auto py-6 px-4">
         <div className="flex md:hidden mb-4">
           <MobileNav />
         </div>
