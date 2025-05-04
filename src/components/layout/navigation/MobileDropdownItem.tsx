@@ -16,7 +16,7 @@ const MobileDropdownItem = ({ item, isActive, handleNavigation }: MobileDropdown
   
   // Get icon component if icon name is provided
   const iconName = item.icon as keyof typeof Icons;
-  const hasIcon = item.icon && Icons[iconName];
+  const Icon = item.icon && Icons[iconName]; // Get the icon component
   
   // Filter items by permission
   const dropdownItems = item.items?.filter(subItem => subItem.allowed) || [];
@@ -35,7 +35,7 @@ const MobileDropdownItem = ({ item, isActive, handleNavigation }: MobileDropdown
         )}
       >
         <div className="flex items-center gap-3 flex-1">
-          {hasIcon && React.createElement(Icons[iconName], { className: "h-5 w-5" })}
+          {Icon && <Icon className="h-5 w-5" />}
           <span>{item.title}</span>
         </div>
         <ChevronDown

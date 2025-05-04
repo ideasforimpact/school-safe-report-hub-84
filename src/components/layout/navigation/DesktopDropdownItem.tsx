@@ -20,7 +20,7 @@ interface DesktopDropdownItemProps {
 const DesktopDropdownItem = ({ item, isActive, handleNavigation, isItemActive }: DesktopDropdownItemProps) => {
   // Get icon component if icon name is provided
   const iconName = item.icon as keyof typeof Icons;
-  const hasIcon = item.icon && Icons[iconName];
+  const Icon = item.icon && Icons[iconName]; // Get the icon component
   
   // Filter items by permission
   const dropdownItems = item.items?.filter(subItem => subItem.allowed) || [];
@@ -34,7 +34,7 @@ const DesktopDropdownItem = ({ item, isActive, handleNavigation, isItemActive }:
           ? "text-primary font-semibold" 
           : "text-gray-700"
       )}>
-        {hasIcon && React.createElement(Icons[iconName], { className: "h-4 w-4" })}
+        {Icon && <Icon className="h-4 w-4" />}
         {item.title}
       </NavigationMenuTrigger>
       <NavigationMenuContent className="absolute z-50">

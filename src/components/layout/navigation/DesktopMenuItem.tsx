@@ -15,7 +15,7 @@ interface DesktopMenuItemProps {
 const DesktopMenuItem = ({ item, isActive, handleNavigation, isItemActive }: DesktopMenuItemProps) => {
   // Get icon component if icon name is provided
   const iconName = item.icon as keyof typeof Icons;
-  const hasIcon = item.icon && Icons[iconName];
+  const Icon = item.icon && Icons[iconName]; // Get the icon component
   
   // Regular menu item without dropdown
   if (!item.items) {
@@ -31,7 +31,7 @@ const DesktopMenuItem = ({ item, isActive, handleNavigation, isItemActive }: Des
                 : "text-gray-700 hover:text-primary hover:bg-gray-50 rounded-md"
             )}
           >
-            {hasIcon && React.createElement(Icons[iconName], { className: "h-4 w-4" })}
+            {Icon && <Icon className="h-4 w-4" />}
             {item.title}
           </button>
         </NavigationMenuLink>
