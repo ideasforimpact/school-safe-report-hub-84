@@ -9,9 +9,9 @@ const InsightsHeader = () => {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div className="text-left w-full">
-        <h1 className="text-2xl font-bold">Insights</h1>
+        <h1 className="text-2xl font-bold">Insights &amp; Reports</h1>
         <p className="text-gray-600 mt-1">
-          View analytics and statistics about incidents
+          Analyze incident data and trends
         </p>
       </div>
       
