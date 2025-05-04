@@ -1,8 +1,16 @@
 
 import { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { ShieldCheck, ArrowLeft } from 'lucide-react';
+import { ShieldCheck, ArrowLeft, LogOut } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { 
+  DropdownMenu,
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu";
+import { Button } from '@/components/ui/button';
 
 interface BackofficeLayoutProps {
   children: ReactNode;
@@ -11,6 +19,7 @@ interface BackofficeLayoutProps {
 const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, logout } = useAuth();
   
   const isActive = (path: string) => location.pathname === path;
 
@@ -20,6 +29,11 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
     { name: 'Analytics', path: '/backoffice/analytics' },
     { name: 'Settings', path: '/backoffice/settings' },
   ];
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -31,13 +45,35 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
               <ShieldCheck className="h-7 w-7 text-primary" />
               <h1 className="text-2xl font-bold text-primary">Safe School Backoffice</h1>
             </div>
-            <Link 
-              to="/"
-              className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <span>Back to Main Site</span>
-            </Link>
+            <div className="flex items-center space-x-4">
+              {user && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="flex items-center space-x-2">
+                      <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center">
+                        <span className="font-medium text-sm text-primary-700">
+                          {user.name.substring(0, 1).toUpperCase()}
+                        </span>
+                      </div>
+                      <span>{user.name}</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+                      <LogOut size={16} className="mr-2" />
+                      <span>Logout</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              <Link 
+                to="/"
+                className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span>Back to Main Site</span>
+              </Link>
+            </div>
           </div>
         </div>
       </div>
