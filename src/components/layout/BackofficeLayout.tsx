@@ -35,7 +35,7 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <ShieldCheck className="h-7 w-7 text-primary" />
-              <h1 className="text-2xl font-bold text-primary">Safe School Backoffice</h1>
+              <h1 className="text-xl font-bold text-primary">Safe School Backoffice</h1>
             </div>
             <Link 
               to="/"
@@ -48,7 +48,7 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
       </div>
       
       {/* Navigation tabs */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="container mx-auto">
           <NavigationMenu className="mx-auto">
             <NavigationMenuList>
@@ -58,7 +58,7 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
                     className={`block px-4 py-3 text-sm ${
                       isActive(item.path)
                         ? 'text-primary border-b-2 border-primary'
-                        : 'text-gray-500 hover:text-gray-900'
+                        : 'text-gray-700 hover:text-gray-900'
                     } transition-colors`}
                     onClick={() => navigate(item.path)}
                   >

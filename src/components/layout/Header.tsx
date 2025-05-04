@@ -23,38 +23,44 @@ const Header = () => {
   };
 
   return (
-    <header className="bg-white py-4 px-6 border-b border-gray-200">
-      <div className="container mx-auto flex flex-col md:flex-row md:items-center md:justify-between w-full">
-        {isHomePage && (
-          <nav className="mb-4 md:mb-0">
-            <ul className="flex space-x-6 items-center">
-              <li>
-                <Link to="/" className="flex items-center text-gray-700 hover:text-primary-600 font-medium">
-                  Home
-                </Link>
-              </li>
-              <li>
-                <Link to="/blog" className="flex items-center text-gray-700 hover:text-primary-600 font-medium">
-                  Blog
-                </Link>
-              </li>
-              <li>
-                <Link to="/pricing" className="flex items-center text-gray-700 hover:text-primary-600 font-medium">
-                  Pricing
-                </Link>
-              </li>
-              <li>
-                <Link to="/support" className="flex items-center text-gray-700 hover:text-primary-600 font-medium">
-                  Support
-                </Link>
-              </li>
-            </ul>
-          </nav>
-        )}
+    <header className="bg-white py-4 px-6 shadow-sm">
+      <div className="container mx-auto flex items-center justify-between w-full">
+        <div className="flex items-center">
+          <Link to="/" className="text-xl font-bold text-primary">
+            Safe School
+          </Link>
+          
+          {isHomePage && (
+            <nav className="hidden md:flex ml-8">
+              <ul className="flex space-x-6">
+                <li>
+                  <Link to="/" className="text-gray-700 hover:text-primary-600 font-medium">
+                    Home
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/blog" className="text-gray-700 hover:text-primary-600 font-medium">
+                    Blog
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/pricing" className="text-gray-700 hover:text-primary-600 font-medium">
+                    Pricing
+                  </Link>
+                </li>
+                <li>
+                  <Link to="/support" className="text-gray-700 hover:text-primary-600 font-medium">
+                    Support
+                  </Link>
+                </li>
+              </ul>
+            </nav>
+          )}
+        </div>
         
         {/* User Menu */}
         {user ? (
-          <div className="flex items-center ml-auto">
+          <div className="flex items-center">
             {user && (
               <span className="bg-primary-100 text-primary-800 text-xs px-2 py-1 rounded-full mr-3">
                 {isAdmin ? 'Admin' : 'Reporter'}
