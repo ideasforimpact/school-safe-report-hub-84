@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -36,6 +37,9 @@ const Header = () => {
       .substring(0, 2);
   };
 
+  // Determine the dashboard path based on user role
+  const dashboardPath = isSaasOwner ? "/backoffice" : "/dashboard";
+
   return (
     <div className="w-full">
       <div className="w-full px-4 py-3">
@@ -54,9 +58,9 @@ const Header = () => {
               </div>
             )}
             
-            <Link to={isSaasOwner ? "/backoffice" : "/dashboard"} className="flex items-center space-x-2">
+            <Link to={dashboardPath} className="flex items-center space-x-2">
               <h1 className="text-xl font-bold bg-gradient-to-r from-primary-700 to-secondary-600 text-transparent bg-clip-text hidden md:block">
-                {userClient ? `${userClient.name} Safe School` : 'Safe School'}
+                {isSaasOwner ? 'SaaS Admin Platform' : (userClient ? `${userClient.name} Safe School` : 'Safe School')}
               </h1>
             </Link>
           </div>
@@ -103,12 +107,12 @@ const Header = () => {
 
               {user && (
                 <span className="bg-primary-50 text-primary-700 text-xs px-2 py-1 rounded-full mr-2 hidden md:inline-flex">
-                  {isAdmin ? 'Admin' : 'Reporter'}
+                  {isSaasOwner ? 'SaaS Owner' : (isAdmin ? 'Admin' : 'Reporter')}
                 </span>
               )}
 
               {/* Settings Menu - Only visible for admins */}
-              {isAdmin && (
+              {isAdmin && !isSaasOwner && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="text-gray-500 hover:text-gray-700">

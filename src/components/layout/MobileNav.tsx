@@ -1,89 +1,110 @@
 
-import { Menu } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
+import { Menu } from "lucide-react";
 import { useAuth } from '@/contexts/AuthContext';
-import {
-  Sheet,
-  SheetContent,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import { LayoutDashboard, AlertTriangle, FileText, BarChart3, BarChart } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { LayoutDashboard, FileText, BarChart3, AlertTriangle, BarChart, Users, Building, Settings } from 'lucide-react';
 
 const MobileNav = () => {
-  const { user, isAdmin, isSaasOwner } = useAuth();
+  const { isSaasOwner } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Get user permissions
-  const permissions = user?.modulePermissions || {
-    incidentReporting: true,
-    allIncidents: true,
-    insights: true,
-    benchmarking: false
-  };
-  
-  // Client Admin and User Menu Items
-  const menuItems = [
+  // Navigation items for SaaS owner (backoffice)
+  const saasOwnerNavigationItems = [
     {
-      label: 'Dashboard',
-      path: '/dashboard',
-      allowed: true,
-      icon: LayoutDashboard,
+      name: 'Dashboard',
+      path: '/backoffice',
+      icon: LayoutDashboard
     },
     {
-      label: 'Report Incident',
-      path: '/report-incident', // Updated path to match the actual route
-      allowed: permissions.incidentReporting,
-      icon: AlertTriangle,
+      name: 'Clients',
+      path: '/backoffice/clients',
+      icon: Building
     },
     {
-      label: 'All Incidents',
-      path: '/incidents',
-      allowed: permissions.allIncidents,
-      icon: FileText,
+      name: 'Analytics',
+      path: '/backoffice/analytics',
+      icon: BarChart3
     },
     {
-      label: 'Insights',
-      path: '/insights',
-      allowed: permissions.insights,
-      icon: BarChart3,
-    },
-    {
-      label: 'Benchmarking',
-      path: '/benchmarking',
-      allowed: permissions.benchmarking,
-      icon: BarChart,
-    },
+      name: 'Settings',
+      path: '/backoffice/settings',
+      icon: Settings
+    }
   ];
 
-  const isActive = (path: string) => location.pathname === path;
-
-  const handleNavigation = (path: string) => {
-    navigate(path);
+  // Navigation items for school admins/users
+  const clientNavigationItems = [
+    {
+      name: 'Dashboard',
+      path: '/dashboard',
+      icon: LayoutDashboard
+    },
+    {
+      name: 'Report Incident',
+      path: '/report-incident',
+      icon: AlertTriangle
+    },
+    {
+      name: 'All Incidents',
+      path: '/incidents',
+      icon: FileText
+    },
+    {
+      name: 'Insights',
+      path: '/insights',
+      icon: BarChart3
+    },
+    {
+      name: 'Benchmarking',
+      path: '/benchmarking',
+      icon: BarChart
+    }
+  ];
+  
+  // Select navigation items based on user role
+  const navigationItems = isSaasOwner ? saasOwnerNavigationItems : clientNavigationItems;
+  
+  // Check if path is active
+  const isActive = (path: string) => {
+    return location.pathname === path || (path !== '/' && location.pathname.startsWith(path));
   };
 
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <button className="rounded-md p-2 bg-white shadow-card">
-          <Menu size={20} />
-        </button>
+        <Button variant="outline" size="icon">
+          <Menu className="h-5 w-5" />
+          <span className="sr-only">Toggle navigation menu</span>
+        </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-64 border-r border-gray-100 pt-8">
-        <div className="flex flex-col space-y-1">
-          {menuItems.filter(item => item.allowed).map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.path}
-                onClick={() => handleNavigation(item.path)}
-                className={`flex items-center gap-3 text-left px-4 py-3 hover:bg-gray-50 rounded-md ${isActive(item.path) ? 'text-primary-600 bg-gray-50' : 'text-gray-700 hover:text-primary-600'}`}
-              >
-                <Icon className="h-5 w-5" />
-                {item.label}
-              </button>
-            );
-          })}
+      <SheetContent side="left" className="w-64 p-0">
+        <div className="py-8 px-4">
+          <h2 className="text-lg font-semibold mb-6 px-2">Navigation</h2>
+          <nav>
+            {navigationItems.map(item => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.path}
+                  onClick={() => {
+                    navigate(item.path);
+                    document.querySelector('[data-radix-sheet-close]')?.click();
+                  }}
+                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left mb-1 transition-colors ${
+                    isActive(item.path)
+                      ? "bg-primary-50 text-primary-700"
+                      : "text-gray-600 hover:bg-gray-100"
+                  }`}
+                >
+                  <Icon size={18} />
+                  <span>{item.name}</span>
+                </button>
+              );
+            })}
+          </nav>
         </div>
       </SheetContent>
     </Sheet>

@@ -5,10 +5,12 @@ import MobileNav from './MobileNav';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClient } from '@/contexts/ClientContext';
-import { LayoutDashboard, FileText, BarChart3, AlertTriangle, BarChart } from 'lucide-react';
+import { LayoutDashboard, FileText, BarChart3, AlertTriangle, BarChart, Users, Building, Settings } from 'lucide-react';
+
 interface LayoutProps {
   children: ReactNode;
 }
+
 const Layout = ({
   children
 }: LayoutProps) => {
@@ -25,35 +27,68 @@ const Layout = ({
   // Find the client associated with the current user
   const userClient = user?.clientId ? clients.find(c => c.id === user.clientId) : null;
 
-  // Navigation items for the horizontal menu
-  const navigationItems = [{
-    name: 'Dashboard',
-    path: '/dashboard',
-    icon: LayoutDashboard
-  }, {
-    name: 'Report Incident',
-    path: '/report-incident',  // Changed from /report to /report-incident to match actual route
-    icon: AlertTriangle
-  }, {
-    name: 'All Incidents',
-    path: '/incidents',
-    icon: FileText
-  }, {
-    name: 'Insights',
-    path: '/insights',
-    icon: BarChart3
-  }, {
-    name: 'Benchmarking',
-    path: '/benchmarking',
-    icon: BarChart
-  }];
+  // Navigation items for SaaS owner (backoffice)
+  const saasOwnerNavigationItems = [
+    {
+      name: 'Dashboard',
+      path: '/backoffice',
+      icon: LayoutDashboard
+    },
+    {
+      name: 'Clients',
+      path: '/backoffice/clients',
+      icon: Building
+    },
+    {
+      name: 'Analytics',
+      path: '/backoffice/analytics',
+      icon: BarChart3
+    },
+    {
+      name: 'Settings',
+      path: '/backoffice/settings',
+      icon: Settings
+    }
+  ];
+
+  // Navigation items for school admins/users
+  const clientNavigationItems = [
+    {
+      name: 'Dashboard',
+      path: '/dashboard',
+      icon: LayoutDashboard
+    },
+    {
+      name: 'Report Incident',
+      path: '/report-incident',
+      icon: AlertTriangle
+    },
+    {
+      name: 'All Incidents',
+      path: '/incidents',
+      icon: FileText
+    },
+    {
+      name: 'Insights',
+      path: '/insights',
+      icon: BarChart3
+    },
+    {
+      name: 'Benchmarking',
+      path: '/benchmarking',
+      icon: BarChart
+    }
+  ];
+  
+  // Select navigation items based on user role
+  const navigationItems = isSaasOwner ? saasOwnerNavigationItems : clientNavigationItems;
   
   // Check if path is active, including checking if current path starts with item path for nested routes
   const isActive = (path: string) => {
     if (path === '/report-incident' && location.pathname === '/report-incident') {
       return true;
     }
-    return location.pathname === path;
+    return location.pathname === path || (path !== '/' && location.pathname.startsWith(path));
   };
   
   return <div className="min-h-screen bg-background">
@@ -65,12 +100,18 @@ const Layout = ({
           <div className="container mx-auto px-4 hidden md:block bg-neutral-50">
             <nav className="flex space-x-8 overflow-x-auto">
               {navigationItems.map(item => {
-              const Icon = item.icon;
-              return <button key={item.path} onClick={() => navigate(item.path)} className={`flex items-center gap-2 py-4 px-3 nav-link ${isActive(item.path) ? 'active' : ''}`}>
+                const Icon = item.icon;
+                return (
+                  <button 
+                    key={item.path} 
+                    onClick={() => navigate(item.path)} 
+                    className={`flex items-center gap-2 py-4 px-3 nav-link ${isActive(item.path) ? 'active' : ''}`}
+                  >
                     <Icon className="h-4 w-4" />
                     <span>{item.name}</span>
-                  </button>;
-            })}
+                  </button>
+                );
+              })}
             </nav>
           </div>
         </div>
@@ -86,4 +127,5 @@ const Layout = ({
       </div>
     </div>;
 };
+
 export default Layout;
