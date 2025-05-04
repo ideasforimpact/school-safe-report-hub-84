@@ -11,11 +11,11 @@ import { AlertTriangle } from 'lucide-react';
 
 const Dashboard = () => {
   const { incidents, getRecentActivities } = useIncidents();
-  const { user } = useAuth();
+  const { user, isSaasOwner } = useAuth();
   const navigate = useNavigate();
 
   // School name that would come from backend in a real implementation
-  const schoolName = "Raks Pallikkoodam";
+  const schoolName = isSaasOwner ? "All Schools" : "Raks Pallikkoodam";
 
   // Calculate summary statistics
   const openIncidents = incidents.filter(inc => inc.status === 'Open').length;

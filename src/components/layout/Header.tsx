@@ -24,8 +24,8 @@ const Header = () => {
   // Find the client associated with the current user
   const userClient = user?.clientId ? clients.find(c => c.id === user.clientId) : null;
 
-  // Determine the dashboard path based on user role
-  const dashboardPath = isSaasOwner ? "/backoffice" : "/dashboard";
+  // Set dashboard path to /dashboard for all users
+  const dashboardPath = "/dashboard";
 
   return (
     <div className="w-full h-16 bg-white shadow-sm">
@@ -53,6 +53,9 @@ const Header = () => {
 
               {/* Settings Menu - Only visible for admins */}
               {isAdmin && !isSaasOwner && <AdminSettingsMenu />}
+              
+              {/* Show Admin Settings Menu for SaaS Owner too */}
+              {isSaasOwner && <AdminSettingsMenu />}
 
               <UserProfileMenu user={user} logout={logout} />
             </div>

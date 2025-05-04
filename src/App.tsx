@@ -25,7 +25,6 @@ import Pricing from './pages/Pricing';
 import FacilityManagement from './pages/FacilityManagement';
 import ClientManagement from './pages/ClientManagement';
 import Benchmarking from './pages/Benchmarking';
-import BackofficeDashboard from './pages/backoffice/BackofficeDashboard';
 import BackofficeAnalytics from './pages/backoffice/BackofficeAnalytics';
 import BackofficeSettings from './pages/backoffice/BackofficeSettings';
 
@@ -69,7 +68,8 @@ function App() {
                     
                     {/* Backoffice Routes - SaaS Owner Routes */}
                     <Route element={<RouteGuard requireSaasOwner={true} />}>
-                      <Route path="/backoffice" element={<BackofficeDashboard />} />
+                      {/* Redirect SaaS owner from /backoffice to /dashboard */}
+                      <Route path="/backoffice" element={<Navigate to="/dashboard" replace />} />
                       <Route path="/backoffice/clients" element={<ClientManagement />} />
                       <Route path="/backoffice/analytics" element={<BackofficeAnalytics />} />
                       <Route path="/backoffice/settings" element={<BackofficeSettings />} />

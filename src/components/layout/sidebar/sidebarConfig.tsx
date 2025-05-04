@@ -17,7 +17,7 @@ export const getSaasOwnerItems = () => [
   {
     icon: Home,
     label: 'Dashboard',
-    path: '/backoffice',
+    path: '/dashboard', // Changed from /backoffice to /dashboard
     allowed: true,
   },
   {
