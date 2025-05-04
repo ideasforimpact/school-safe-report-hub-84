@@ -34,7 +34,7 @@ const MobileDropdownItem = ({ item, isActive, handleNavigation }: MobileDropdown
         )}
       >
         <div className="flex items-center gap-3 flex-1">
-          {IconComponent && React.createElement(IconComponent, { className: "h-5 w-5" })}
+          {IconComponent && <IconComponent className="h-5 w-5" />}
           <span>{item.title}</span>
         </div>
         <ChevronDown

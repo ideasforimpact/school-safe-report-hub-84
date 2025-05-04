@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { NavigationMenuItem, NavigationMenuLink } from "@/components/ui/navigation-menu";
 import { cn } from "@/lib/utils";
 import { NavItem } from "./types";
@@ -29,7 +30,7 @@ const DesktopMenuItem = ({ item, isActive, handleNavigation, isItemActive }: Des
                 : "text-gray-700 hover:text-primary hover:bg-gray-50 rounded-md"
             )}
           >
-            {IconComponent && React.createElement(IconComponent, { className: "h-4 w-4" })}
+            {IconComponent && <IconComponent className="h-4 w-4" />}
             {item.title}
           </button>
         </NavigationMenuLink>

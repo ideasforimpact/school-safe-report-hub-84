@@ -26,7 +26,7 @@ const MobileMenuItem = ({ item, isActive, handleNavigation }: MobileMenuItemProp
             : "text-gray-700 hover:bg-gray-50"
         )}
       >
-        {IconComponent && React.createElement(IconComponent, { className: "h-5 w-5" })}
+        {IconComponent && <IconComponent className="h-5 w-5" />}
         {item.title}
       </button>
     );
