@@ -26,26 +26,27 @@ const Layout = ({
   const userClient = user?.clientId ? clients.find(c => c.id === user.clientId) : null;
   
   return (
-    <div className="min-h-screen bg-[#F4F6F9]">
-      <div className="flex">
-        {/* Desktop Sidebar - positioned from the very top */}
-        <div className="hidden md:block">
+    <div className="min-h-screen bg-[#F4F6F9] overflow-hidden">
+      <div className="flex w-full">
+        {/* Desktop Sidebar - fixed position with z-index */}
+        <div className="hidden md:block fixed top-0 bottom-0 left-0 z-50">
           <Sidebar />
         </div>
         
-        <div className="flex-1 w-full overflow-x-hidden">
-          {/* Header - positioned only in the content area */}
-          <div className="fixed top-0 right-0 z-40 bg-white border-b border-gray-100 shadow-sm md:left-28">
+        {/* Adjustable main content area with left padding on md screens */}
+        <div className="flex-1 w-full overflow-hidden md:pl-28">
+          {/* Header - fixed position */}
+          <div className="fixed top-0 right-0 left-0 z-40 bg-white border-b border-gray-100 shadow-sm md:left-28">
             <Header />
           </div>
           
-          {/* Main Content - with padding top for header */}
-          <div className="pt-16 transition-all duration-300">
-            <div className="container mx-auto px-4 max-w-full md:px-6">
+          {/* Main Content - with padding top for header and adjustable width */}
+          <div className="pt-16 transition-all duration-300 overflow-x-hidden w-full">
+            <div className="container mx-auto px-3 md:px-6">
               <div className="mb-4 md:hidden">
                 <MobileNav />
               </div>
-              <main className="animate-fade-in overflow-x-hidden">
+              <main className="animate-fade-in">
                 {children}
               </main>
             </div>

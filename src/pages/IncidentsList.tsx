@@ -20,7 +20,7 @@ const IncidentsList = () => {
 
   return (
     <Layout>
-      <div className="space-y-6">
+      <div className="space-y-4 md:space-y-6 w-full overflow-x-hidden">
         <IncidentsHeader />
         
         <IncidentFilters 
@@ -31,7 +31,9 @@ const IncidentsList = () => {
           availableSubcategories={availableSubcategories}
         />
 
-        <IncidentsTable incidents={filteredIncidents} />
+        <div className="overflow-x-auto w-full">
+          <IncidentsTable incidents={filteredIncidents} />
+        </div>
       </div>
     </Layout>
   );
