@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useClient, Client } from '@/contexts/ClientContext';
@@ -51,7 +50,13 @@ const ClientManagement = () => {
       benchmarking: false
     },
     active: true,
-    logo: ''
+    logo: '',
+    allowedDomains: [] as string[],
+    authProviders: {
+      google: false,
+      microsoft: false,
+      zoho: false
+    }
   });
 
   const resetForm = () => {
@@ -67,7 +72,13 @@ const ClientManagement = () => {
         benchmarking: false
       },
       active: true,
-      logo: ''
+      logo: '',
+      allowedDomains: [],
+      authProviders: {
+        google: false,
+        microsoft: false,
+        zoho: false
+      }
     });
     setCurrentClient(null);
   };
@@ -92,7 +103,13 @@ const ClientManagement = () => {
         benchmarking: client.moduleAccess?.benchmarking ?? false
       },
       active: client.active,
-      logo: client.logo || ''
+      logo: client.logo || '',
+      allowedDomains: client.allowedDomains || [],
+      authProviders: {
+        google: client.authProviders?.google ?? false,
+        microsoft: client.authProviders?.microsoft ?? false,
+        zoho: client.authProviders?.zoho ?? false
+      }
     });
     setIsEditDialogOpen(true);
   };

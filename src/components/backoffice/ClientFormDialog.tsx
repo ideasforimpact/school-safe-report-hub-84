@@ -9,8 +9,7 @@ import {
   DialogDescription, 
   DialogFooter, 
   DialogHeader, 
-  DialogTitle, 
-  DialogClose 
+  DialogTitle
 } from "@/components/ui/dialog";
 import { ImageIcon, Plus, X } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
@@ -105,6 +104,9 @@ const ClientFormDialog: React.FC<ClientFormDialogProps> = ({
       allowedDomains: formData.allowedDomains.filter(d => d !== domain)
     });
   };
+
+  // Ensure allowedDomains is always an array, even if it's undefined in the prop
+  const safeAllowedDomains = formData.allowedDomains || [];
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -292,7 +294,7 @@ const ClientFormDialog: React.FC<ClientFormDialogProps> = ({
                   placeholder="e.g. example.com" 
                   value={newDomain}
                   onChange={(e) => setNewDomain(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && addDomain()}
+                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addDomain())}
                 />
                 <Button type="button" onClick={addDomain} size="sm">
                   <Plus className="h-4 w-4" />
@@ -301,7 +303,7 @@ const ClientFormDialog: React.FC<ClientFormDialogProps> = ({
               </div>
 
               <div className="flex flex-wrap gap-2 mt-2">
-                {formData.allowedDomains.map((domain) => (
+                {safeAllowedDomains.map((domain) => (
                   <Badge key={domain} variant="secondary" className="flex items-center gap-1">
                     {domain}
                     <button 
@@ -313,7 +315,7 @@ const ClientFormDialog: React.FC<ClientFormDialogProps> = ({
                     </button>
                   </Badge>
                 ))}
-                {formData.allowedDomains.length === 0 && (
+                {safeAllowedDomains.length === 0 && (
                   <p className="text-sm text-gray-500 italic">No domains added yet</p>
                 )}
               </div>
