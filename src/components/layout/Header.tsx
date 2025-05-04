@@ -4,8 +4,9 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClient } from '@/contexts/ClientContext';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { LogOut, User, Lock, Settings, ShieldCheck, BellIcon, ChevronDown } from 'lucide-react';
+import { LogOut, User, Lock, Settings, ShieldCheck, BellIcon, ChevronDown, HelpCircle, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ChangePasswordDialog } from '@/components/ChangePasswordDialog';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -41,29 +42,42 @@ const Header = () => {
   const dashboardPath = isSaasOwner ? "/backoffice" : "/dashboard";
 
   return (
-    <div className="w-full">
-      <div className="w-full px-4 py-3">
-        <div className="container mx-auto flex items-center justify-between">
+    <div className="w-full h-16 bg-white shadow-sm">
+      <div className="w-full h-full px-4">
+        <div className="container mx-auto h-full flex items-center justify-between">
           {/* Logo Section */}
           <div className="flex items-center space-x-3">
-            {userClient?.logo ? (
-              <img 
-                src={userClient.logo} 
-                alt={`${userClient.name} logo`}
-                className="h-10 w-auto"
-              />
-            ) : (
-              <div className="h-10 w-10 bg-primary-100 rounded-md flex items-center justify-center">
-                <ShieldCheck className="h-6 w-6 text-primary-600" />
-              </div>
-            )}
-            
-            <Link to={dashboardPath} className="flex items-center space-x-2">
-              <h1 className="text-xl font-bold bg-gradient-to-r from-primary-700 to-secondary-600 text-transparent bg-clip-text hidden md:block">
+            <Link to={dashboardPath} className="flex items-center space-x-2 md:ml-16 lg:ml-64">
+              {userClient?.logo ? (
+                <img 
+                  src={userClient.logo} 
+                  alt={`${userClient.name} logo`}
+                  className="h-8 w-auto"
+                />
+              ) : (
+                <div className="h-8 w-8 bg-primary-100 rounded-md flex items-center justify-center">
+                  <ShieldCheck className="h-5 w-5 text-primary-600" />
+                </div>
+              )}
+              
+              <h1 className="text-lg font-bold text-gray-800 hidden md:block">
                 {isSaasOwner ? 'SaaS Admin Platform' : (userClient ? `${userClient.name} Safe School` : 'Safe School')}
               </h1>
             </Link>
           </div>
+          
+          {/* Search Bar - Only for logged-in users */}
+          {user && !isHomePage && (
+            <div className="hidden md:block max-w-md w-full mx-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Search..."
+                  className="pl-10 bg-gray-50 border border-gray-200 focus:border-primary-500 w-full"
+                />
+              </div>
+            </div>
+          )}
           
           {/* Navigation links for home page */}
           {isHomePage && (
@@ -95,18 +109,26 @@ const Header = () => {
           
           {/* User Menu */}
           {user ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="text-gray-500 hover:text-gray-700 relative"
+              >
+                <HelpCircle size={20} />
+              </Button>
+              
               <Button 
                 variant="ghost" 
                 size="icon" 
                 className="text-gray-500 hover:text-gray-700 relative"
               >
                 <BellIcon size={20} />
-                <span className="absolute top-1 right-1 h-2 w-2 bg-primary-600 rounded-full"></span>
+                <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-red-500 rounded-full"></span>
               </Button>
 
               {user && (
-                <span className="bg-primary-50 text-primary-700 text-xs px-2 py-1 rounded-full mr-2 hidden md:inline-flex">
+                <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full mr-2 hidden md:inline-flex">
                   {isSaasOwner ? 'SaaS Owner' : (isAdmin ? 'Admin' : 'Reporter')}
                 </span>
               )}
@@ -119,7 +141,7 @@ const Header = () => {
                       <Settings size={20} />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56 bg-white border-gray-100 shadow-card">
+                  <DropdownMenuContent align="end" className="w-56 bg-white border-gray-100 shadow-lg">
                     <div className="px-2 py-2 text-sm font-medium text-gray-500">Settings</div>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => navigate('/configuration')} className="cursor-pointer">
@@ -140,9 +162,9 @@ const Header = () => {
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="flex items-center space-x-2 ml-2">
-                    <Avatar className="h-8 w-8 bg-primary-100">
-                      <AvatarFallback className="text-primary-700 text-sm font-medium">
+                  <Button variant="ghost" className="flex items-center space-x-2">
+                    <Avatar className="h-8 w-8 bg-blue-100">
+                      <AvatarFallback className="text-blue-700 text-sm font-medium">
                         {user.name ? getInitials(user.name) : 'U'}
                       </AvatarFallback>
                     </Avatar>
@@ -153,7 +175,7 @@ const Header = () => {
                     <ChevronDown size={16} className="text-gray-400 hidden md:block" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 bg-white border-gray-100 shadow-card">
+                <DropdownMenuContent align="end" className="w-56 bg-white border-gray-100 shadow-lg">
                   <div className="px-2 py-1.5 text-sm font-medium border-b border-gray-100 md:hidden">
                     <div>{user.name}</div>
                     <div className="text-xs text-gray-500 mt-0.5">{user.email}</div>

@@ -75,14 +75,14 @@ const MobileNav = () => {
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="outline" size="icon">
+        <Button variant="outline" size="icon" className="bg-white">
           <Menu className="h-5 w-5" />
           <span className="sr-only">Toggle navigation menu</span>
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-64 p-0">
+      <SheetContent side="left" className="w-64 p-0 bg-[#1E2F97]">
         <div className="py-8 px-4">
-          <h2 className="text-lg font-semibold mb-6 px-2">Navigation</h2>
+          <h2 className="text-lg font-semibold mb-6 px-2 text-white">Navigation</h2>
           <nav>
             {navigationItems.map(item => {
               const Icon = item.icon;
@@ -97,8 +97,8 @@ const MobileNav = () => {
                   }}
                   className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left mb-1 transition-colors ${
                     isActive(item.path)
-                      ? "bg-primary-50 text-primary-700"
-                      : "text-gray-600 hover:bg-gray-100"
+                      ? "bg-blue-700 text-white"
+                      : "text-blue-100 hover:bg-blue-800 hover:text-white"
                   }`}
                 >
                   <Icon size={18} />

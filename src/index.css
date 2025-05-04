@@ -33,9 +33,9 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 201 94% 46%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
-    --sidebar-background: 0 0% 98%;
+    --sidebar-background: 231 71% 35%;
     --sidebar-foreground: 240 5.3% 26.1%;
     --sidebar-primary: 201 94% 46%;
     --sidebar-primary-foreground: 0 0% 98%;
@@ -96,7 +96,7 @@
 
 @layer components {
   .enterprise-card {
-    @apply bg-white rounded-lg border border-gray-100 shadow-card transition-shadow hover:shadow-card-hover;
+    @apply bg-white rounded-lg border border-gray-100 shadow-md hover:shadow-lg transition-shadow;
   }
   
   .nav-link {
@@ -106,4 +106,25 @@
   .nav-link.active {
     @apply text-primary-600 after:bg-primary-600;
   }
+
+  .card-hover {
+    @apply transition-all duration-200 hover:-translate-y-1 hover:shadow-lg;
+  }
+  
+  .clickable {
+    @apply hover:bg-gray-50 active:bg-gray-100 transition-colors cursor-pointer;
+  }
+  
+  .btn-hover {
+    @apply transition-all duration-200 hover:scale-105;
+  }
+  
+  .stats-badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+}
+
+/* Add smooth scrolling to the whole document */
+html {
+  scroll-behavior: smooth;
 }
