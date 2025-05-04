@@ -1,4 +1,3 @@
-
 import { Menu } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -60,11 +59,6 @@ const MobileNav = () => {
       label: 'All Incidents',
       path: '/incidents',
       allowed: permissions.allIncidents,
-    },
-    {
-      label: 'My Action Items',
-      path: '/my-actions',
-      allowed: true,
     },
     {
       label: 'Insights',

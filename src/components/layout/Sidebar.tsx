@@ -1,4 +1,3 @@
-
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -77,12 +76,6 @@ const Sidebar = () => {
       label: 'All Incidents',
       path: '/incidents',
       allowed: permissions.allIncidents,
-    },
-    {
-      icon: FileText,
-      label: 'My Action Items',
-      path: '/my-actions',
-      allowed: true,
     },
     {
       icon: PieChart,
