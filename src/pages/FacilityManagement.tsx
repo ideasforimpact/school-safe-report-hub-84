@@ -8,7 +8,6 @@ import { toast } from "@/components/ui/sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import Layout from "@/components/layout/Layout";
 import { useAuth } from "@/contexts/AuthContext";
-import { SchoolFacility } from "@/contexts/IncidentContext";
 import { useFacilities } from "@/contexts/FacilityContext";
 
 const FacilityManagement = () => {

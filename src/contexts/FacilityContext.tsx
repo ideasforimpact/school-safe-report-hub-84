@@ -9,20 +9,11 @@ interface FacilityContextType {
   resetFacilities: () => void;
 }
 
-// Initial facilities from the IncidentContext SchoolFacility type
+// Initial facilities - simplified list with essential entries only
 const INITIAL_FACILITIES: string[] = [
-  // School Branches
-  'North Campus',
-  'South Campus',
-  'East Wing',
-  'West Wing',
-  'Downtown Branch',
-  'Suburban Campus',
-  'International Branch',
-  'Primary School Wing',
-  'Secondary School Wing',
-  'Higher Secondary Wing',
-  'Other'
+  'Classroom',
+  'Main Building',
+  'School Grounds'
 ];
 
 const FacilityContext = createContext<FacilityContextType | undefined>(undefined);

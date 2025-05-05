@@ -1,3 +1,4 @@
+
 import { ConfigItem, SubcategoryItem, SectionItem, ClassItem, CampusItem } from './types';
 
 // Initial configuration data
@@ -80,15 +81,8 @@ export const initialLocations: ConfigItem[] = [
 
 export const initialFacilities: ConfigItem[] = [
   { id: '1', name: 'Main Building' },
-  { id: '2', name: 'Science Block' },
-  { id: '3', name: 'Sports Complex' },
-  { id: '4', name: 'Cafeteria' },
-  { id: '5', name: 'Library' },
-  { id: '6', name: 'Administrative Block' },
-  { id: '7', name: 'Playground' },
-  { id: '8', name: 'Auditorium' },
-  { id: '9', name: 'Computer Lab' },
-  { id: '10', name: 'Other' }
+  { id: '2', name: 'Classroom' },
+  { id: '3', name: 'School Grounds' }
 ];
 
 export const initialDesignations: ConfigItem[] = [
