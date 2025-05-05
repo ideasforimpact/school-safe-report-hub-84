@@ -28,7 +28,9 @@ const CategoryFilter = ({ categories, selectedCategory, setSelectedCategory }: C
         </SelectTrigger>
         <SelectContent>
           {categories.map(category => (
-            <SelectItem key={category} value={category}>{category}</SelectItem>
+            <SelectItem key={category} value={category}>
+              {category}
+            </SelectItem>
           ))}
         </SelectContent>
       </Select>

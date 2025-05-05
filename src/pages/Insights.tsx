@@ -281,13 +281,17 @@ const Insights = () => {
     const peopleMap = new Map();
     
     filteredIncidents.forEach(incident => {
+      if (!incident.peopleInvolved) return; // Add null check for peopleInvolved
+      
       incident.peopleInvolved.forEach(person => {
-        const key = person.name;
+        // Use string key instead of object
+        const key = person.name || 'Unknown';
+        
         if (!peopleMap.has(key)) {
           peopleMap.set(key, {
-            name: person.name,
+            name: person.name || 'Unknown',
             id: person.id || 'Unknown', 
-            role: person.role,
+            role: person.role || 'Unknown',
             incidents: [],
             count: 0
           });
@@ -300,8 +304,8 @@ const Insights = () => {
           date: incident.date,
           type: incident.type,
           category: incident.category,
-          subcategory: incident.subcategory,
-          status: incident.status
+          subcategory: incident.subcategory || '',
+          status: incident.status || 'Unknown'
         });
       });
     });
@@ -386,7 +390,7 @@ const Insights = () => {
           dateRange={dateRange}
           handleDateRangeChange={handleDateRangeChange}
           availableSubcategories={availableSubcategories}
-          peopleInvolved={peopleInvolved}
+          peopleInvolved={peopleInvolved.map(person => typeof person === 'object' ? person.name || 'Unknown' : person)}
           facilities={facilities}
           isAdmin={isAdmin}
         />
