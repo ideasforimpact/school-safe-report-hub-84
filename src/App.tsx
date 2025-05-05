@@ -17,6 +17,8 @@ import BackofficeLayout from './components/layout/BackofficeLayout';
 import EducationalConfiguration from './pages/EducationalConfiguration';
 import OtherConfiguration from './pages/OtherConfiguration';
 import { ClientProvider } from './contexts/ClientContext';
+import Insights from './pages/Insights';
+import BackofficeAnalytics from './pages/backoffice/BackofficeAnalytics';
 
 const App: React.FC = () => {
   return (
@@ -34,6 +36,7 @@ const App: React.FC = () => {
                 <Route path="/incident/:id" element={<IncidentDetail />} />
                 <Route path="/configuration" element={<ConfigurationManagement />} />
                 <Route path="/incident-configuration" element={<IncidentConfiguration />} />
+                <Route path="/insights" element={<Insights />} />
                 
                 {/* Configuration routes */}
                 <Route path="/category-configuration" element={<CategoryConfiguration />} />
@@ -45,8 +48,9 @@ const App: React.FC = () => {
                 <Route path="/educational-configuration" element={<EducationalConfiguration />} />
                 <Route path="/other-configuration" element={<OtherConfiguration />} />
                 
-                {/* Backoffice route with layout */}
+                {/* Backoffice routes */}
                 <Route path="/backoffice" element={<BackofficeLayout><Dashboard /></BackofficeLayout>} />
+                <Route path="/backoffice/analytics" element={<BackofficeLayout><BackofficeAnalytics /></BackofficeLayout>} />
               </Routes>
             </FacilityProvider>
           </IncidentProvider>
