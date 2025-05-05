@@ -1,3 +1,4 @@
+
 import { useNavigate } from 'react-router-dom';
 import { Incident, IncidentStatus } from '@/contexts/IncidentContext';
 import {
@@ -59,6 +60,17 @@ const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
     }
   };
 
+  // Function to extract simple numeric ID from ticket ID (1-1000)
+  const getSimpleId = (ticketId: string): string => {
+    // Extract numbers from the ticket ID and convert to number
+    const numbers = ticketId.match(/\d+/g);
+    if (!numbers || numbers.length === 0) return "1";
+    
+    // Get the first number and ensure it's between 1 and 1000
+    const idNumber = parseInt(numbers[0], 10) % 1000;
+    return idNumber === 0 ? "1000" : idNumber.toString();
+  };
+
   if (incidents.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow">
@@ -89,7 +101,7 @@ const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Ticket ID</TableHead>
+              <TableHead>ID</TableHead>
               <TableHead className="text-left">Category</TableHead>
               <TableHead className="text-left">Date</TableHead>
               <TableHead className="text-left">Status</TableHead>
@@ -107,7 +119,7 @@ const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
                   <div className="flex items-center">
                     <Ticket className="h-4 w-4 mr-2 text-blue-600" />
                     {getPriorityIcon(incident.priority)}
-                    <span className="ml-2">{incident.ticketId}</span>
+                    <span className="ml-2">{getSimpleId(incident.ticketId)}</span>
                     {incident.isVoided && (
                       <BanIcon className="h-4 w-4 ml-2 text-red-600" />
                     )}
