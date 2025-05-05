@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Incident, IncidentStatus } from '@/contexts/IncidentContext';
 import {
@@ -16,16 +16,109 @@ import {
   Ticket, 
   BanIcon, 
   Calendar, 
-  Building2
+  Building2,
+  ChevronUp,
+  ChevronDown,
 } from 'lucide-react';
 import { getPriorityIcon } from '@/utils/priorityIcons';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
 
 interface IncidentsTableProps {
   incidents: Incident[];
 }
 
+type SortField = 'ticketId' | 'date' | 'category' | 'priority' | 'location' | 'facility' | 'status';
+type SortDirection = 'asc' | 'desc';
+
 const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
   const navigate = useNavigate();
+  const [sortField, setSortField] = useState<SortField>('date');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  
+  // Sort incidents
+  const sortedIncidents = [...incidents].sort((a, b) => {
+    switch (sortField) {
+      case 'ticketId':
+        return sortDirection === 'asc' 
+          ? getSimpleId(a.ticketId).localeCompare(getSimpleId(b.ticketId))
+          : getSimpleId(b.ticketId).localeCompare(getSimpleId(a.ticketId));
+      case 'date':
+        return sortDirection === 'asc'
+          ? new Date(a.date).getTime() - new Date(b.date).getTime()
+          : new Date(b.date).getTime() - new Date(a.date).getTime();
+      case 'category':
+        return sortDirection === 'asc'
+          ? a.category.localeCompare(b.category)
+          : b.category.localeCompare(a.category);
+      case 'priority':
+        const priorityOrder = { 'Critical': 3, 'High': 2, 'Medium': 1, 'Low': 0 };
+        const priorityA = priorityOrder[a.priority as keyof typeof priorityOrder] || 1;
+        const priorityB = priorityOrder[b.priority as keyof typeof priorityOrder] || 1;
+        return sortDirection === 'asc' ? priorityA - priorityB : priorityB - priorityA;
+      case 'location':
+        return sortDirection === 'asc'
+          ? (a.location || '').localeCompare(b.location || '')
+          : (b.location || '').localeCompare(a.location || '');
+      case 'facility':
+        return sortDirection === 'asc'
+          ? (a.facility || '').localeCompare(b.facility || '')
+          : (b.facility || '').localeCompare(a.facility || '');
+      case 'status':
+        return sortDirection === 'asc'
+          ? a.status.localeCompare(b.status)
+          : b.status.localeCompare(a.status);
+      default:
+        return 0;
+    }
+  });
+  
+  // Calculate pagination
+  const totalPages = Math.ceil(sortedIncidents.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedIncidents = sortedIncidents.slice(startIndex, startIndex + itemsPerPage);
+  
+  // Handle column sort
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      // Toggle direction if already sorting by this field
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Set new field and default to descending
+      setSortField(field);
+      setSortDirection('desc');
+    }
+    // Reset to first page when sorting changes
+    setCurrentPage(1);
+  };
+  
+  // Get column header with sort indicators
+  const getSortableHeader = (field: SortField, label: string) => {
+    return (
+      <div 
+        className="flex items-center cursor-pointer"
+        onClick={() => handleSort(field)}
+      >
+        <span>{label}</span>
+        <div className="ml-1 flex flex-col">
+          <ChevronUp 
+            className={`h-3 w-3 ${sortField === field && sortDirection === 'asc' ? 'text-blue-600' : 'text-gray-300'}`}
+          />
+          <ChevronDown 
+            className={`h-3 w-3 mt-[-3px] ${sortField === field && sortDirection === 'desc' ? 'text-blue-600' : 'text-gray-300'}`}
+          />
+        </div>
+      </div>
+    );
+  };
   
   const formatDate = (dateString: string | Date) => {
     const date = new Date(dateString);
@@ -87,6 +180,43 @@ const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
     e.stopPropagation();
     navigate(`/incident/${incidentId}/edit`);
   };
+  
+  // Generate page numbers for pagination
+  const getPageNumbers = () => {
+    const pageNumbers = [];
+    const maxVisiblePages = 5;
+    
+    if (totalPages <= maxVisiblePages) {
+      // Show all pages if there are few
+      for (let i = 1; i <= totalPages; i++) {
+        pageNumbers.push(i);
+      }
+    } else {
+      // Show first page, current page, and pages around it
+      if (currentPage <= 3) {
+        // Near the start
+        for (let i = 1; i <= Math.min(maxVisiblePages, totalPages); i++) {
+          pageNumbers.push(i);
+        }
+        if (totalPages > maxVisiblePages) pageNumbers.push(-1); // Ellipsis
+      } else if (currentPage > totalPages - 3) {
+        // Near the end
+        pageNumbers.push(1, -1); // First page and ellipsis
+        for (let i = Math.max(totalPages - maxVisiblePages + 3, 1); i <= totalPages; i++) {
+          pageNumbers.push(i);
+        }
+      } else {
+        // Middle
+        pageNumbers.push(1, -1); // First page and ellipsis
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+          pageNumbers.push(i);
+        }
+        pageNumbers.push(-1, totalPages); // Ellipsis and last page
+      }
+    }
+    
+    return pageNumbers;
+  };
 
   return (
     <div className="bg-white rounded-lg shadow">
@@ -94,18 +224,18 @@ const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>ID</TableHead>
-              <TableHead className="text-left">Date</TableHead>
-              <TableHead className="text-left">Category</TableHead>
-              <TableHead className="text-left">Priority</TableHead>
-              <TableHead className="text-left">Location</TableHead>
-              <TableHead className="text-left">Facility</TableHead>
-              <TableHead className="text-left">Status</TableHead>
+              <TableHead>{getSortableHeader('ticketId', 'ID')}</TableHead>
+              <TableHead className="text-left">{getSortableHeader('date', 'Date')}</TableHead>
+              <TableHead className="text-left">{getSortableHeader('category', 'Category')}</TableHead>
+              <TableHead className="text-left">{getSortableHeader('priority', 'Priority')}</TableHead>
+              <TableHead className="text-left">{getSortableHeader('location', 'Location')}</TableHead>
+              <TableHead className="text-left">{getSortableHeader('facility', 'Facility')}</TableHead>
+              <TableHead className="text-left">{getSortableHeader('status', 'Status')}</TableHead>
               <TableHead className="text-left">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {incidents.map((incident) => (
+            {paginatedIncidents.map((incident) => (
               <TableRow 
                 key={incident.id} 
                 className={`cursor-pointer hover:bg-gray-50 ${incident.isVoided ? 'bg-red-50' : ''}`}
@@ -129,7 +259,7 @@ const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
                 <TableCell className="text-left">{incident.category}</TableCell>
                 <TableCell className="text-left">
                   <div className="flex items-center">
-                    {getPriorityIcon(incident.priority)()}
+                    {React.createElement(getPriorityIcon(incident.priority))}
                     <span className="ml-2">{incident.priority || 'Medium'}</span>
                   </div>
                 </TableCell>
@@ -169,6 +299,48 @@ const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
           </TableBody>
         </Table>
       </div>
+      
+      {totalPages > 1 && (
+        <div className="py-4 border-t">
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious 
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+              
+              {getPageNumbers().map((pageNum, index) => 
+                pageNum === -1 ? (
+                  <PaginationItem key={`ellipsis-${index}`}>
+                    <span className="flex h-10 w-10 items-center justify-center">...</span>
+                  </PaginationItem>
+                ) : (
+                  <PaginationItem key={pageNum}>
+                    <PaginationLink
+                      isActive={currentPage === pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className="cursor-pointer"
+                    >
+                      {pageNum}
+                    </PaginationLink>
+                  </PaginationItem>
+                )
+              )}
+              
+              <PaginationItem>
+                <PaginationNext 
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
+      )}
     </div>
   );
 };
