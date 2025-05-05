@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIncidents } from '@/contexts/IncidentContext';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth/AuthContext';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/sonner';
@@ -84,7 +84,6 @@ const ReportIncident = () => {
         category: categoryName as any,
         subcategory: formData.subcategory,
         description: formData.description,
-        rootCause: formData.rootCause,
         date: dateTime,
         location: locationName as any,
         peopleInvolved: validPeople,

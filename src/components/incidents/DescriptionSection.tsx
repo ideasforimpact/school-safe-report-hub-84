@@ -6,7 +6,6 @@ import MultipleFilesUpload from '@/components/MultipleFilesUpload';
 
 interface DescriptionSectionProps {
   description: string;
-  rootCause: string;
   supportingFiles: FileItem[];
   onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   onFilesChange: (files: FileItem[]) => void;
@@ -14,7 +13,6 @@ interface DescriptionSectionProps {
 
 const DescriptionSection: React.FC<DescriptionSectionProps> = ({
   description,
-  rootCause,
   supportingFiles,
   onChange,
   onFilesChange,
@@ -48,20 +46,6 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
         <p className="text-xs text-gray-500 mt-1">
           Upload up to 5 files (images, videos, documents) to support this incident report
         </p>
-      </div>
-      
-      <div className="space-y-2 md:col-span-2 pt-4">
-        <label htmlFor="rootCause" className="text-sm font-medium">
-          Root Cause Analysis (Optional)
-        </label>
-        <Textarea
-          id="rootCause"
-          name="rootCause"
-          placeholder="Describe the underlying factors that contributed to this incident"
-          value={rootCause}
-          onChange={onChange}
-          rows={3}
-        />
       </div>
     </>
   );
