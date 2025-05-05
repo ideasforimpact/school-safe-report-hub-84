@@ -46,9 +46,9 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
           Incident Image (Optional)
         </label>
         <ImageUpload
-          value={image}
-          onChange={onImageChange}
-          maxSize={1024 * 1024 * 5} // 5MB
+          initialImage={image}
+          onImageChange={onImageChange}
+          className=""
         />
       </div>
 
