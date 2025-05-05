@@ -10,14 +10,75 @@ export function useCategoryManagement(
   const [categories, setCategories] = useState<ConfigItem[]>(initialCategories);
   const [subcategoryMappings, setSubcategoryMappings] = useState<Record<string, SubcategoryItem[]>>(initialSubcategories);
 
-  // Load from localStorage on mount
+  // Load from localStorage on mount and ensure initialCategories are present
   useEffect(() => {
     const savedCategories = localStorage.getItem('categories');
     if (savedCategories) {
       try {
-        setCategories(JSON.parse(savedCategories));
+        const parsedCategories = JSON.parse(savedCategories);
+        
+        // Check if Digital Safety exists
+        const digitalSafetyExists = parsedCategories.some(
+          (cat: ConfigItem) => cat.name.toLowerCase() === 'digital safety'
+        );
+        
+        if (!digitalSafetyExists) {
+          // Add Digital Safety if it doesn't exist
+          const digitalSafetyCategory = {
+            id: Date.now().toString(),
+            name: 'Digital Safety'
+          };
+          const updatedCategories = [...parsedCategories, digitalSafetyCategory];
+          localStorage.setItem('categories', JSON.stringify(updatedCategories));
+          setCategories(updatedCategories);
+          
+          // Initialize empty subcategory for Digital Safety
+          setSubcategoryMappings(prev => {
+            const updated = {
+              ...prev,
+              [digitalSafetyCategory.id]: []
+            };
+            localStorage.setItem('subcategories', JSON.stringify(updated));
+            return updated;
+          });
+          
+          console.log("Digital Safety category added during initialization");
+        } else {
+          setCategories(parsedCategories);
+        }
       } catch (e) {
         console.error('Error parsing categories from localStorage', e);
+        setCategories(initialCategories);
+      }
+    } else {
+      // No categories in localStorage, use initialCategories and ensure Digital Safety exists
+      const digitalSafetyExists = initialCategories.some(
+        cat => cat.name.toLowerCase() === 'digital safety'
+      );
+      
+      if (!digitalSafetyExists) {
+        const digitalSafetyCategory = {
+          id: Date.now().toString(),
+          name: 'Digital Safety'
+        };
+        const updatedCategories = [...initialCategories, digitalSafetyCategory];
+        localStorage.setItem('categories', JSON.stringify(updatedCategories));
+        setCategories(updatedCategories);
+        
+        // Initialize empty subcategory for Digital Safety
+        setSubcategoryMappings(prev => {
+          const updated = {
+            ...prev,
+            [digitalSafetyCategory.id]: []
+          };
+          localStorage.setItem('subcategories', JSON.stringify(updated));
+          return updated;
+        });
+        
+        console.log("Digital Safety category added during initialization with empty localStorage");
+      } else {
+        setCategories(initialCategories);
+        localStorage.setItem('categories', JSON.stringify(initialCategories));
       }
     }
 
@@ -27,7 +88,10 @@ export function useCategoryManagement(
         setSubcategoryMappings(JSON.parse(savedSubcategories));
       } catch (e) {
         console.error('Error parsing subcategories from localStorage', e);
+        setSubcategoryMappings(initialSubcategories);
       }
+    } else {
+      localStorage.setItem('subcategories', JSON.stringify(initialSubcategories));
     }
   }, []);
 
