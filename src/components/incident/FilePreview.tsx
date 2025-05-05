@@ -1,13 +1,21 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { FileItem } from '@/types/incident';
-import { Paperclip, FileText, ImageIcon, Video, File } from 'lucide-react';
+import { Paperclip, FileText, ImageIcon, Video, File, Maximize2 } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface FilePreviewProps {
   file: FileItem;
 }
 
 const FilePreview: React.FC<FilePreviewProps> = ({ file }) => {
+  const [previewOpen, setPreviewOpen] = useState(false);
+  
   const getFileIcon = (fileType: string) => {
     if (fileType.startsWith('image/')) {
       return <ImageIcon className="h-4 w-4 mr-2 flex-shrink-0" />;
@@ -21,19 +29,47 @@ const FilePreview: React.FC<FilePreviewProps> = ({ file }) => {
     }
   };
 
+  const openPreview = () => {
+    if (file.type.startsWith('image/')) {
+      setPreviewOpen(true);
+    }
+  };
+
   if (file.type.startsWith('image/')) {
     return (
-      <div className="border p-2 rounded bg-gray-50 w-full">
-        <img 
-          src={file.base64} 
-          alt={file.name} 
-          className="h-20 w-auto object-contain rounded mb-2" 
-        />
-        <div className="flex items-center">
-          <ImageIcon className="h-4 w-4 mr-2 text-gray-500" />
-          <p className="text-xs truncate">{file.name}</p>
+      <>
+        <div 
+          className="border p-2 rounded bg-gray-50 w-full cursor-pointer hover:bg-gray-100"
+          onClick={openPreview}
+        >
+          <img 
+            src={file.base64} 
+            alt={file.name} 
+            className="h-20 w-auto object-contain rounded mb-2" 
+          />
+          <div className="flex items-center">
+            <ImageIcon className="h-4 w-4 mr-2 text-gray-500" />
+            <p className="text-xs truncate">{file.name}</p>
+            <Maximize2 className="h-3 w-3 ml-auto text-blue-500" />
+          </div>
         </div>
-      </div>
+        
+        {/* Image Preview Dialog */}
+        <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+          <DialogContent className="sm:max-w-3xl">
+            <DialogHeader>
+              <DialogTitle className="text-lg">{file.name}</DialogTitle>
+            </DialogHeader>
+            <div className="flex justify-center items-center py-4">
+              <img 
+                src={file.base64} 
+                alt={file.name} 
+                className="max-h-[70vh] max-w-full object-contain rounded-md"
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+      </>
     );
   } else {
     return (

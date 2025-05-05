@@ -1,10 +1,16 @@
 
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus, X, ImageIcon, FileText, Video, File, FilePlus, Trash2 } from 'lucide-react';
+import { Plus, X, ImageIcon, FileText, Video, File, FilePlus, Trash2, Maximize2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from '@/components/ui/sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface FileItem {
   id: string;
@@ -29,6 +35,8 @@ const MultipleFilesUpload = ({
 }: MultipleFilesUploadProps) => {
   const [files, setFiles] = useState<FileItem[]>(initialFiles);
   const [isUploading, setIsUploading] = useState(false);
+  const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -101,6 +109,11 @@ const MultipleFilesUpload = ({
     }
   };
 
+  const openPreview = (file: FileItem) => {
+    setPreviewFile(file);
+    setPreviewOpen(true);
+  };
+
   const getFileTypeIcon = (fileType: string) => {
     if (fileType.startsWith('image/')) {
       return <ImageIcon className="h-4 w-4 mr-2 flex-shrink-0" />;
@@ -140,23 +153,53 @@ const MultipleFilesUpload = ({
               <div className="space-y-2">
                 {files.map(file => (
                   <div key={file.id} className="flex items-center justify-between bg-gray-50 p-2 rounded-md border border-gray-200">
-                    <div className="flex items-center overflow-hidden">
-                      {getFileTypeIcon(file.type)}
-                      <span className="text-sm truncate">{file.name}</span>
-                      <Badge variant="outline" className="ml-2">
-                        {formatFileSize(file.size)}
-                      </Badge>
+                    <div className="flex items-center overflow-hidden flex-grow">
+                      {file.type.startsWith('image/') ? (
+                        <div className="flex items-center cursor-pointer" onClick={() => openPreview(file)}>
+                          <div className="h-10 w-10 mr-2 rounded overflow-hidden flex-shrink-0 border">
+                            <img src={file.base64} alt={file.name} className="h-full w-full object-cover" />
+                          </div>
+                          <div className="overflow-hidden">
+                            <span className="text-sm truncate block">{file.name}</span>
+                            <Badge variant="outline" className="mt-1">
+                              {formatFileSize(file.size)}
+                            </Badge>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center overflow-hidden">
+                          {getFileTypeIcon(file.type)}
+                          <span className="text-sm truncate">{file.name}</span>
+                          <Badge variant="outline" className="ml-2">
+                            {formatFileSize(file.size)}
+                          </Badge>
+                        </div>
+                      )}
                     </div>
-                    <Button 
-                      type="button" 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => removeFile(file.id)}
-                      className="flex-shrink-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                      title="Delete file"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center">
+                      {file.type.startsWith('image/') && (
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => openPreview(file)}
+                          className="flex-shrink-0 text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                          title="View image"
+                        >
+                          <Maximize2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => removeFile(file.id)}
+                        className="flex-shrink-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                        title="Delete file"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -192,6 +235,24 @@ const MultipleFilesUpload = ({
           {files.length} of {maxFiles} files added
         </div>
       </div>
+
+      {/* Image Preview Dialog */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg">{previewFile?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="flex justify-center items-center py-4">
+            {previewFile?.type.startsWith('image/') && (
+              <img 
+                src={previewFile.base64} 
+                alt={previewFile.name} 
+                className="max-h-[70vh] max-w-full object-contain rounded-md"
+              />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
