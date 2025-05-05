@@ -14,7 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { ConfigItem } from '@/contexts/types';
 import { EditDialog } from './EditDialog';
-import { toast } from '@/components/ui/sonner';
+import { toast } from 'sonner';
 
 interface CategoryTabProps {
   categories: ConfigItem[];
@@ -32,18 +32,22 @@ export const CategoryTab = ({
   const [newCategory, setNewCategory] = useState('');
   const [editingCategory, setEditingCategory] = useState<{id: string, name: string} | null>(null);
 
-  const handleCategoryAdd = () => {
+  const handleCategoryAdd = (e: React.FormEvent) => {
+    e.preventDefault();
+    
     if (!newCategory.trim()) {
       toast.error("Category name cannot be empty");
       return;
     }
     
-    addCategory(newCategory);
+    addCategory(newCategory.trim());
     setNewCategory('');
+    toast.success("Category added successfully");
   };
 
   const handleCategoryDelete = (id: string) => {
     deleteCategory(id);
+    toast.success("Category deleted successfully");
   };
 
   const handleCategoryUpdate = () => {
@@ -52,8 +56,9 @@ export const CategoryTab = ({
       return;
     }
     
-    updateCategory(editingCategory.id, editingCategory.name);
+    updateCategory(editingCategory.id, editingCategory.name.trim());
     setEditingCategory(null);
+    toast.success("Category updated successfully");
   };
 
   return (
@@ -63,21 +68,16 @@ export const CategoryTab = ({
         <CardDescription>Manage available incident categories</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex gap-4 mb-6">
+        <form onSubmit={handleCategoryAdd} className="flex gap-4 mb-6">
           <Input
             placeholder="New category name"
             value={newCategory}
             onChange={(e) => setNewCategory(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                handleCategoryAdd();
-              }
-            }}
           />
-          <Button onClick={handleCategoryAdd}>
+          <Button type="submit">
             <Plus className="mr-2 h-4 w-4" /> Add Category
           </Button>
-        </div>
+        </form>
         
         <Table>
           <TableHeader>

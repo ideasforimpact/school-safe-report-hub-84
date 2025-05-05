@@ -14,7 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { ConfigItem, SubcategoryItem } from '@/contexts/types';
 import { EditDialog } from './EditDialog';
-import { toast } from '@/components/ui/sonner';
+import { toast } from 'sonner';
 
 interface SubcategoryTabProps {
   categories: ConfigItem[];
@@ -35,13 +35,15 @@ export const SubcategoryTab = ({
   const [newSubcategoryParent, setNewSubcategoryParent] = useState('');
   const [editingSubcategory, setEditingSubcategory] = useState<{id: string, name: string, parentId: string} | null>(null);
 
-  const handleSubcategoryAdd = () => {
+  const handleSubcategoryAdd = (e: React.FormEvent) => {
+    e.preventDefault();
+    
     if (!newSubcategoryName.trim() || !newSubcategoryParent) {
       toast.error("Subcategory name and parent category are required");
       return;
     }
     
-    addSubcategory(newSubcategoryParent, newSubcategoryName);
+    addSubcategory(newSubcategoryParent, newSubcategoryName.trim());
     setNewSubcategoryName('');
     setNewSubcategoryParent('');
     toast.success("Subcategory added successfully");
@@ -61,7 +63,7 @@ export const SubcategoryTab = ({
     updateSubcategory(
       editingSubcategory.parentId, 
       editingSubcategory.id, 
-      editingSubcategory.name
+      editingSubcategory.name.trim()
     );
     setEditingSubcategory(null);
     toast.success("Subcategory updated successfully");
@@ -74,13 +76,14 @@ export const SubcategoryTab = ({
         <CardDescription>Manage subcategories for each category</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <form onSubmit={handleSubcategoryAdd} className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           <div className="flex flex-col gap-2">
             <label className="text-sm font-medium">Parent Category</label>
             <select
               className="border border-input bg-background px-3 py-2 rounded-md"
               value={newSubcategoryParent}
               onChange={(e) => setNewSubcategoryParent(e.target.value)}
+              required
             >
               <option value="">Select a category</option>
               {categories.map((category) => (
@@ -97,13 +100,14 @@ export const SubcategoryTab = ({
                 placeholder="New subcategory name"
                 value={newSubcategoryName}
                 onChange={(e) => setNewSubcategoryName(e.target.value)}
+                required
               />
-              <Button onClick={handleSubcategoryAdd}>
+              <Button type="submit">
                 <Plus className="mr-2 h-4 w-4" /> Add
               </Button>
             </div>
           </div>
-        </div>
+        </form>
         
         {categories.map((category) => (
           <div key={category.id} className="mb-8">

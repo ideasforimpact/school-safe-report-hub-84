@@ -16,13 +16,16 @@ export function useCategoryManagement(
       id: Date.now().toString(),
       name
     };
+    
     setCategories(prev => [...prev, newCategory]);
+    
     // Initialize empty subcategory list for this category
     setSubcategoryMappings(prev => ({
       ...prev,
       [newCategory.id]: []
     }));
     
+    console.log("Category added:", newCategory);
     return newCategory; // Return the new category so we can use it if needed
   };
 
@@ -30,15 +33,19 @@ export function useCategoryManagement(
     setCategories(prev => prev.map(cat => 
       cat.id === id ? { ...cat, name } : cat
     ));
+    console.log("Category updated:", id, name);
   };
 
   const deleteCategory = (id: string) => {
     setCategories(prev => prev.filter(cat => cat.id !== id));
+    
     // Remove subcategories for this category
     setSubcategoryMappings(prev => {
       const { [id]: _, ...rest } = prev;
       return rest;
     });
+    
+    console.log("Category deleted:", id);
   };
 
   // Subcategories management
@@ -47,11 +54,13 @@ export function useCategoryManagement(
       id: `${categoryId}-${Date.now()}`,
       name
     };
+    
     setSubcategoryMappings(prev => ({
       ...prev,
       [categoryId]: [...(prev[categoryId] || []), newSubcategory]
     }));
     
+    console.log("Subcategory added:", categoryId, newSubcategory);
     return newSubcategory; // Return the new subcategory
   };
 
@@ -62,6 +71,7 @@ export function useCategoryManagement(
         subcat.id === id ? { ...subcat, name } : subcat
       )
     }));
+    console.log("Subcategory updated:", categoryId, id, name);
   };
 
   const deleteSubcategory = (categoryId: string, id: string) => {
@@ -69,6 +79,7 @@ export function useCategoryManagement(
       ...prev,
       [categoryId]: prev[categoryId].filter(subcat => subcat.id !== id)
     }));
+    console.log("Subcategory deleted:", categoryId, id);
   };
 
   return {
