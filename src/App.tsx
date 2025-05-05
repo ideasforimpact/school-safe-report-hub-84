@@ -9,7 +9,6 @@ import IncidentDetail from './pages/IncidentDetail';
 import ConfigurationManagement from './pages/configuration/ConfigurationManagement';
 import IncidentConfiguration from './pages/IncidentConfiguration';
 import CategoryConfiguration from './pages/CategoryConfiguration';
-import LocationFacilityConfiguration from './pages/LocationFacilityConfiguration';
 import { IncidentProvider } from './contexts/IncidentContext';
 import { FacilityProvider } from './contexts/FacilityContext';
 import Login from './pages/Login';
@@ -38,7 +37,6 @@ const App: React.FC = () => {
                 
                 {/* Configuration routes */}
                 <Route path="/category-configuration" element={<CategoryConfiguration />} />
-                <Route path="/location-facility-configuration" element={<LocationFacilityConfiguration />} />
                 
                 {/* Auth routes */}
                 <Route path="/login" element={<Login />} />
