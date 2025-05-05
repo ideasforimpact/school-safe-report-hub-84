@@ -1,4 +1,3 @@
-
 import React from 'react';
 import TimeSeriesAnalysis from '../charts/TimeSeriesAnalysis';
 import RiskAssessmentChart from '../charts/RiskAssessmentChart';
@@ -115,13 +114,6 @@ const DashboardTab: React.FC<DashboardTabProps> = ({
           data={heatmapData} 
           title="Incident Hotspots"
           description="Heatmap showing when and where incidents occur most frequently"
-        />
-        
-        {/* Incident details - most recent incidents */}
-        <IncidentDetailsCard 
-          incidents={recentIncidents} 
-          title="Recent Incidents"
-          description="Most recently reported incidents matching your filters"
         />
       </div>
     </div>
