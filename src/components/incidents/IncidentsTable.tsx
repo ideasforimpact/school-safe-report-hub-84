@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Incident, IncidentStatus } from '@/contexts/IncidentContext';
@@ -35,6 +36,18 @@ interface IncidentsTableProps {
 
 type SortField = 'ticketId' | 'date' | 'category' | 'priority' | 'location' | 'facility' | 'status';
 type SortDirection = 'asc' | 'desc';
+
+// Function to extract simple numeric ID from ticket ID (1-1000)
+// Moved this function to the top level scope before it's used
+const getSimpleId = (ticketId: string): string => {
+  // Extract numbers from the ticket ID and convert to number
+  const numbers = ticketId.match(/\d+/g);
+  if (!numbers || numbers.length === 0) return "1";
+  
+  // Get the first number and ensure it's between 1 and 1000
+  const idNumber = parseInt(numbers[0], 10) % 1000;
+  return idNumber === 0 ? "1000" : idNumber.toString();
+};
 
 const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
   const navigate = useNavigate();
@@ -143,17 +156,6 @@ const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
       default:
         return 'bg-gray-100 text-gray-800';
     }
-  };
-
-  // Function to extract simple numeric ID from ticket ID (1-1000)
-  const getSimpleId = (ticketId: string): string => {
-    // Extract numbers from the ticket ID and convert to number
-    const numbers = ticketId.match(/\d+/g);
-    if (!numbers || numbers.length === 0) return "1";
-    
-    // Get the first number and ensure it's between 1 and 1000
-    const idNumber = parseInt(numbers[0], 10) % 1000;
-    return idNumber === 0 ? "1000" : idNumber.toString();
   };
 
   if (incidents.length === 0) {
