@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from 'react';
 import { useIncidents } from '@/contexts/IncidentContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,11 +8,15 @@ import { Download } from 'lucide-react';
 import { DateRange } from 'react-day-picker';
 import { format, startOfYear, startOfMonth, isBefore, isAfter } from 'date-fns';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import InsightsHeader from '@/components/insights/InsightsHeader';
 import InsightsFilters from '@/components/insights/InsightsFilters';
 import ChartsTab from '@/components/insights/tabs/ChartsTab';
 import PeopleTab from '@/components/insights/tabs/PeopleTab';
 import { COLORS, downloadCSV, prepareIncidentsExport, preparePeopleExport, PersonData } from '@/utils/insightsUtils';
+import { filterByDateRange, DateRangeFilter } from '@/utils/dateRangeUtils';
+import TimeSeriesAnalysis from '@/components/insights/charts/TimeSeriesAnalysis';
+import HeatmapChart from '@/components/insights/charts/HeatmapChart';
+import RiskAssessmentChart from '@/components/insights/charts/RiskAssessmentChart';
+import IncidentDetailsCard from '@/components/insights/charts/IncidentDetailsCard';
 
 const Insights = () => {
   const { incidents } = useIncidents();
@@ -25,15 +28,11 @@ const Insights = () => {
   const currentYear = currentDate.getFullYear();
   const currentMonth = currentDate.getMonth();
   
-  // Calculate default date range
-  const defaultFrom = startOfMonth(currentDate);
-  const defaultTo = currentDate;
-  
   // Active tab state
-  const [activeTab, setActiveTab] = useState("charts");
+  const [activeTab, setActiveTab] = useState("dashboard");
   
   // Filters
-  const [dateFilter, setDateFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState<DateRangeFilter>('month');
   const [typeFilter, setTypeFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [subcategoryFilter, setSubcategoryFilter] = useState('all');
@@ -73,31 +72,11 @@ const Insights = () => {
 
   // Apply filters
   const filteredIncidents = useMemo(() => {
-    return incidents.filter(incident => {
-      const incidentDate = new Date(incident.date);
-      
-      // Apply date filter
-      if (dateFilter === 'month') {
-        if (
-          incidentDate.getMonth() !== currentMonth ||
-          incidentDate.getFullYear() !== currentYear
-        ) {
-          return false;
-        }
-      } else if (dateFilter === 'year') {
-        if (incidentDate.getFullYear() !== currentYear) {
-          return false;
-        }
-      } else if (dateFilter === 'custom' && dateRange) {
-        // Apply custom date range if selected
-        if (dateRange.from && isBefore(incidentDate, dateRange.from)) {
-          return false;
-        }
-        if (dateRange.to && isAfter(incidentDate, dateRange.to)) {
-          return false;
-        }
-      }
-      
+    // First apply date filtering
+    let result = filterByDateRange(incidents, dateFilter, dateRange);
+    
+    // Then apply the rest of the filters
+    return result.filter(incident => {
       // Apply type filter
       if (typeFilter !== 'all' && incident.type !== typeFilter) {
         return false;
@@ -136,7 +115,7 @@ const Insights = () => {
       
       return true;
     });
-  }, [incidents, dateFilter, typeFilter, categoryFilter, subcategoryFilter, facilityFilter, personFilter, roleFilter, currentMonth, currentYear, dateRange, isAdmin]);
+  }, [incidents, dateFilter, typeFilter, categoryFilter, subcategoryFilter, facilityFilter, personFilter, roleFilter, dateRange, isAdmin]);
 
   // Prepare data for charts
   const categoryData = useMemo(() => {
@@ -326,6 +305,87 @@ const Insights = () => {
     return Array.from(roleCounts.entries()).map(([name, value]) => ({ name, value }));
   }, [peopleData]);
 
+  // Heatmap data - shows when and where incidents occur
+  const heatmapData = useMemo(() => {
+    const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const locationMap = new Map<string, Map<string, number>>();
+    
+    // Initialize data structure
+    filteredIncidents.forEach(incident => {
+      const location = incident.location || 'Unknown';
+      if (!locationMap.has(location)) {
+        const dayMap = new Map<string, number>();
+        days.forEach(day => dayMap.set(day, 0));
+        locationMap.set(location, dayMap);
+      }
+      
+      // Increment count for the location and day
+      const date = new Date(incident.date);
+      const dayName = days[date.getDay() === 0 ? 6 : date.getDay() - 1]; // Convert to 0 = Monday format
+      const dayMap = locationMap.get(location);
+      if (dayMap) {
+        dayMap.set(dayName, (dayMap.get(dayName) || 0) + 1);
+      }
+    });
+    
+    // Convert to the format needed by the heatmap
+    return Array.from(locationMap.entries())
+      .map(([name, dayMap]) => ({
+        name,
+        values: Array.from(dayMap.entries()).map(([day, value]) => ({
+          day,
+          value
+        }))
+      }))
+      // Take only top 7 locations for readability
+      .sort((a, b) => {
+        const sumA = a.values.reduce((sum, v) => sum + v.value, 0);
+        const sumB = b.values.reduce((sum, v) => sum + v.value, 0);
+        return sumB - sumA;
+      })
+      .slice(0, 7);
+  }, [filteredIncidents]);
+
+  // Risk assessment data - shows each category's risk score
+  const riskData = useMemo(() => {
+    const categoryRiskMap = new Map<string, { count: number, severity: number, incidents: any[] }>();
+    
+    filteredIncidents.forEach(incident => {
+      const category = incident.category;
+      if (!categoryRiskMap.has(category)) {
+        categoryRiskMap.set(category, { count: 0, severity: 0, incidents: [] });
+      }
+      
+      const data = categoryRiskMap.get(category);
+      if (data) {
+        data.count++;
+        data.incidents.push(incident);
+        
+        // Calculate severity based on priority
+        let severityScore = 3; // Default medium severity
+        if (incident.priority === 'Critical') severityScore = 5;
+        else if (incident.priority === 'High') severityScore = 4;
+        else if (incident.priority === 'Medium') severityScore = 3;
+        else if (incident.priority === 'Low') severityScore = 2;
+        
+        // Accumulate severity
+        data.severity += severityScore;
+      }
+    });
+    
+    // Calculate average severity and frequency for each category
+    const maxCount = Math.max(1, ...Array.from(categoryRiskMap.values()).map(v => v.count));
+    
+    return Array.from(categoryRiskMap.entries()).map(([name, data]) => ({
+      name,
+      // Normalize frequency to 0-5 scale
+      frequency: Math.min(5, Math.round((data.count / maxCount) * 5)),
+      // Average severity on 0-5 scale
+      severity: Math.min(5, Math.round(data.severity / data.count)),
+      count: data.count
+    }));
+  }, [filteredIncidents]);
+
   // Export data as CSV
   const exportToCSV = () => {
     const csvContent = prepareIncidentsExport(filteredIncidents);
@@ -397,11 +457,37 @@ const Insights = () => {
         />
 
         {/* Tabs content */}
-        <Tabs defaultValue="charts" value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-2 w-[400px]">
+        <Tabs defaultValue="dashboard" value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid grid-cols-3 w-[500px]">
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="charts">Charts & Analytics</TabsTrigger>
             <TabsTrigger value="people">People Report</TabsTrigger>
           </TabsList>
+          
+          {/* Dashboard tab content */}
+          <TabsContent value="dashboard">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Enhanced time series analysis */}
+              <TimeSeriesAnalysis data={timeSeriesData} />
+              
+              {/* Risk assessment matrix */}
+              <RiskAssessmentChart data={riskData} />
+              
+              {/* Heatmap showing when and where incidents occur */}
+              <HeatmapChart 
+                data={heatmapData} 
+                title="Incident Hotspots"
+                description="Heatmap showing when and where incidents occur most frequently"
+              />
+              
+              {/* Incident details - most recent incidents */}
+              <IncidentDetailsCard 
+                incidents={filteredIncidents.slice(0, 10)} 
+                title="Recent Incidents"
+                description="Most recently reported incidents matching your filters"
+              />
+            </div>
+          </TabsContent>
           
           {/* Charts tab content */}
           <TabsContent value="charts">

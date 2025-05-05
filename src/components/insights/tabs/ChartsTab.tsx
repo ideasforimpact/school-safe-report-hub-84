@@ -2,8 +2,9 @@
 import React from 'react';
 import CategoryChart from '../charts/CategoryChart';
 import BarChartComponent from '../charts/BarChartComponent';
-import TimeSeriesChart from '../charts/TimeSeriesChart';
+import TimeSeriesAnalysis from '../charts/TimeSeriesAnalysis';
 import StatusChart from '../charts/StatusChart';
+import HeatmapChart from '../charts/HeatmapChart';
 
 interface ChartsTabProps {
   categoryData: Array<{name: string, value: number}>;
@@ -41,7 +42,11 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
           data={typeData}
         />
         
-        <TimeSeriesChart data={timeSeriesData} />
+        <TimeSeriesAnalysis 
+          data={timeSeriesData} 
+          title="Incidents Over Time"
+          description="Monthly trend of incidents with statistical analysis"
+        />
         
         <BarChartComponent 
           title="Incident Location" 
@@ -52,7 +57,12 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
         />
 
         {isAdmin && facilityData.length > 0 && (
-          <CategoryChart data={facilityData} colors={colors} />
+          <CategoryChart 
+            data={facilityData} 
+            colors={colors}
+            title="Incidents by Facility"
+            description="Distribution of incidents across different school facilities"
+          />
         )}
 
         <BarChartComponent 
@@ -63,7 +73,12 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
           layout="vertical"
         />
         
-        <CategoryChart data={assigneeData} colors={colors} />
+        <CategoryChart 
+          data={assigneeData} 
+          colors={colors}
+          title="Incident Ownership"
+          description="Distribution of incidents by assigned owner"
+        />
       </div>
 
       <StatusChart data={statusData} />
