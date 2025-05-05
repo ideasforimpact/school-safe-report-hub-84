@@ -52,7 +52,7 @@ const processSubcategoryData = (
     [];
   
   return subcategories.map(subcategory => {
-    const dataItem: Record<string, any> = { name: subcategory };
+    const dataItem: BenchmarkingChartData = { name: subcategory };
     
     // Add school data - filtered by date range
     const schoolCount = filteredIncidents
@@ -96,10 +96,12 @@ const processCategoryData = (
       .filter(incident => incident.category === selectedCategory)
       .length;
     
-    return {
+    const chartItem: BenchmarkingChartData = {
       name: city,
       'City Average': totalCityIncidents,
       'Your School': schoolCategoryCount
     };
+    
+    return chartItem;
   });
 };
