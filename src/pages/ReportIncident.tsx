@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIncidents } from '@/contexts/IncidentContext';
@@ -108,7 +109,7 @@ const ReportIncident = () => {
   return (
     <Layout>
       <div className="space-y-4 md:space-y-6 w-full overflow-x-hidden">
-        <div>
+        <div className="text-left">
           <h1 className="text-2xl md:text-3xl font-bold">Report New Incident</h1>
           <p className="text-gray-600 mt-1">
             Document safety incidents, near misses, or unsafe conditions
