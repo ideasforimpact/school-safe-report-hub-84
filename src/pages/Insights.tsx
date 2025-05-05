@@ -159,7 +159,9 @@ const Insights = () => {
   const subcategoryData = useMemo(() => {
     const subcategoryCounts = filteredIncidents.reduce((acc, incident) => {
       const { subcategory } = incident;
-      acc[subcategory] = (acc[subcategory] || 0) + 1;
+      if (subcategory) { // Add null check for subcategory
+        acc[subcategory] = (acc[subcategory] || 0) + 1;
+      }
       return acc;
     }, {} as Record<string, number>);
     
@@ -177,7 +179,9 @@ const Insights = () => {
   const typeData = useMemo(() => {
     const typeCounts = filteredIncidents.reduce((acc, incident) => {
       const { type } = incident;
-      acc[type] = (acc[type] || 0) + 1;
+      if (type) { // Add null check for type
+        acc[type] = (acc[type] || 0) + 1;
+      }
       return acc;
     }, {} as Record<string, number>);
     
@@ -190,7 +194,9 @@ const Insights = () => {
   const statusData = useMemo(() => {
     const statusCounts = filteredIncidents.reduce((acc, incident) => {
       const { status } = incident;
-      acc[status] = (acc[status] || 0) + 1;
+      if (status) { // Add null check for status
+        acc[status] = (acc[status] || 0) + 1;
+      }
       return acc;
     }, {} as Record<string, number>);
     
@@ -230,7 +236,9 @@ const Insights = () => {
   const locationData = useMemo(() => {
     const locationCounts = filteredIncidents.reduce((acc, incident) => {
       const { location } = incident;
-      acc[location] = (acc[location] || 0) + 1;
+      if (location) { // Add null check for location
+        acc[location] = (acc[location] || 0) + 1;
+      }
       return acc;
     }, {} as Record<string, number>);
     
@@ -933,7 +941,7 @@ const Insights = () => {
                           const mostRecent = sortedIncidents[0];
                           
                           return (
-                            <TableRow key={person.name + person.role}>
+                            <TableRow key={`${person.name}-${person.role}`}>
                               <TableCell className="font-medium">{person.name}</TableCell>
                               <TableCell>{person.id}</TableCell>
                               <TableCell>

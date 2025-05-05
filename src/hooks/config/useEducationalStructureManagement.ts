@@ -75,7 +75,6 @@ export function useEducationalStructureManagement(
     setSections(prev => prev.filter(section => section.id !== id));
   };
 
-  // Make sure to return string values when needed
   return {
     campuses,
     classes,

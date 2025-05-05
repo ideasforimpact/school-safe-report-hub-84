@@ -192,7 +192,7 @@ export const useBenchmarkingData = () => {
 
   return {
     selectedCategory,
-    setSelectedCategory,
+    setSelectedCategory: (category: IncidentCategory | string) => setSelectedCategory(category as IncidentCategory),
     selectedCities,
     setSelectedCities,
     showSubcategories,
