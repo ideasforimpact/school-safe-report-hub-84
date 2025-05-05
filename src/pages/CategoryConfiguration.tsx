@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,6 +11,7 @@ import { AlertTriangle } from 'lucide-react';
 
 const CategoryConfiguration = () => {
   const [activeTab, setActiveTab] = useState('categories');
+  const [isAddingDigitalSafety, setIsAddingDigitalSafety] = useState(false);
 
   const { 
     categories,
@@ -22,32 +24,40 @@ const CategoryConfiguration = () => {
     deleteSubcategory
   } = useIncidents();
 
-  // Modified to safely check for Digital Safety and avoid duplicate attempts
+  // Add Digital Safety category if it doesn't exist
   useEffect(() => {
+    // Don't attempt to add Digital Safety if we're already trying to add it
+    // or if categories haven't loaded yet
+    if (isAddingDigitalSafety || categories.length === 0) {
+      return;
+    }
+    
     console.log("Current categories in UI:", categories);
     
-    // Check for Digital Safety
+    // Check if Digital Safety already exists
     const digitalSafetyExists = categories.some(cat => 
       cat.name.toLowerCase() === 'digital safety'
     );
     
     console.log("Digital Safety exists:", digitalSafetyExists);
     
-    // Only try to add if it doesn't exist AND we have at least one category loaded
-    // This ensures we're not trying to add before data is loaded
-    if (!digitalSafetyExists && categories.length > 0) {
+    // Only try to add if it doesn't exist
+    if (!digitalSafetyExists) {
+      setIsAddingDigitalSafety(true);
+      
       try {
-        // Don't attempt to add it if it already exists
         addCategory('Digital Safety');
         toast.success("Digital Safety category added successfully");
       } catch (error) {
-        // Only log error if it's not about duplicate category
-        if (!(error instanceof Error) || !error.message.includes("already exists")) {
+        if (error instanceof Error && !error.message.includes("already exists")) {
           console.error("Error adding Digital Safety category:", error);
+          toast.error(`Failed to add Digital Safety category: ${error.message}`);
         }
+      } finally {
+        setIsAddingDigitalSafety(false);
       }
     }
-  }, [categories, addCategory]);
+  }, [categories, addCategory, isAddingDigitalSafety]);
 
   const handleAddCategory = (name: string) => {
     if (!name.trim()) {
@@ -61,7 +71,7 @@ const CategoryConfiguration = () => {
       toast.success("Category added successfully");
     } catch (error) {
       console.error("Error adding category:", error);
-      toast.error("Failed to add category");
+      toast.error(error instanceof Error ? error.message : "Failed to add category");
     }
   };
 
@@ -72,7 +82,7 @@ const CategoryConfiguration = () => {
       toast.success("Category updated successfully");
     } catch (error) {
       console.error("Error updating category:", error);
-      toast.error("Failed to update category");
+      toast.error(error instanceof Error ? error.message : "Failed to update category");
     }
   };
 
@@ -83,7 +93,7 @@ const CategoryConfiguration = () => {
       toast.success("Category deleted successfully");
     } catch (error) {
       console.error("Error deleting category:", error);
-      toast.error("Failed to delete category");
+      toast.error(error instanceof Error ? error.message : "Failed to delete category");
     }
   };
 
@@ -93,7 +103,7 @@ const CategoryConfiguration = () => {
       toast.success("Subcategory added successfully");
     } catch (error) {
       console.error("Error adding subcategory:", error);
-      toast.error("Failed to add subcategory");
+      toast.error(error instanceof Error ? error.message : "Failed to add subcategory");
     }
   };
 
@@ -103,7 +113,7 @@ const CategoryConfiguration = () => {
       toast.success("Subcategory updated successfully");
     } catch (error) {
       console.error("Error updating subcategory:", error);
-      toast.error("Failed to update subcategory");
+      toast.error(error instanceof Error ? error.message : "Failed to update subcategory");
     }
   };
 
@@ -113,7 +123,7 @@ const CategoryConfiguration = () => {
       toast.success("Subcategory deleted successfully");
     } catch (error) {
       console.error("Error deleting subcategory:", error);
-      toast.error("Failed to delete subcategory");
+      toast.error(error instanceof Error ? error.message : "Failed to delete subcategory");
     }
   };
 
