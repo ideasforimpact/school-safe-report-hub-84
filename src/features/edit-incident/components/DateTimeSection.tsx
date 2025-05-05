@@ -32,7 +32,7 @@ const DateTimeSection: React.FC<DateTimeSectionProps> = ({
         </label>
         <DatePicker
           date={dateObj}
-          onSelect={handleDateChange}
+          onChange={handleDateChange}
           className="w-full"
         />
       </div>

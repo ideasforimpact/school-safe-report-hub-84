@@ -64,6 +64,7 @@ const IncidentDetailsSection: React.FC<IncidentDetailsProps> = ({
         type={formData.type}
         status={formData.status}
         onSelectChange={onSelectChange}
+        getCategoriesForType={getCategoriesForType}
       />
 
       {/* Priority Section */}
