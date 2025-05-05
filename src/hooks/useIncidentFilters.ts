@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Incident } from '@/types/incident';
 import { 
@@ -225,8 +224,7 @@ export function useIncidentFilters(incidents: Incident[]) {
           incident.image || 
           incident.video || 
           incident.document || 
-          (incident.documents && incident.documents.length > 0) ||
-          (incident.files && incident.files.length > 0)
+          (incident.documents && incident.documents.length > 0)
         );
         if (!hasAttachments) return false;
       }
