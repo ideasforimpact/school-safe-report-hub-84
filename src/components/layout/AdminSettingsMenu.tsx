@@ -26,9 +26,6 @@ const AdminSettingsMenu = () => {
         <DropdownMenuItem onClick={() => navigate('/students')} className="cursor-pointer">
           Student Management
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => navigate('/facilities')} className="cursor-pointer">
-          Facility Management
-        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
