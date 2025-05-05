@@ -68,7 +68,6 @@ const IncidentDetailsSection: React.FC<IncidentDetailsProps> = ({
         type={formData.type}
         status={formData.status}
         onSelectChange={onSelectChange}
-        getCategoriesForType={getCategoriesForType}
       />
 
       {/* Priority Section */}
@@ -109,8 +108,8 @@ const IncidentDetailsSection: React.FC<IncidentDetailsProps> = ({
         onSelectChange={onSelectChange}
       />
 
-      {/* Description, Image, and Supporting Documents Section */}
-      <div className="md:col-span-3">
+      {/* Description, Image, and Supporting Documents Section - now spans full width */}
+      <div className="md:col-span-3 w-full">
         <DescriptionSection
           description={formData.description}
           image={image}

@@ -93,8 +93,8 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
         onSelectChange={onSelectChange}
       />
 
-      {/* Description Section */}
-      <div className="md:col-span-1">
+      {/* Description Section - now spans full width */}
+      <div className="md:col-span-3">
         <DescriptionSection
           description={formData.description}
           supportingFiles={supportingFiles}

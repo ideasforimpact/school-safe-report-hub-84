@@ -18,7 +18,7 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
   onFilesChange,
 }) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:col-span-3 w-full">
       <div className="space-y-2">
         <label htmlFor="description" className="text-sm font-medium">
           Description <span className="text-red-500">*</span>
@@ -31,6 +31,7 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
           onChange={onChange}
           rows={4}
           required
+          className="w-full"
         />
       </div>
 
@@ -42,6 +43,7 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
           onFilesChange={onFilesChange}
           initialFiles={supportingFiles}
           maxFiles={5}
+          className="w-full"
         />
         <p className="text-xs text-gray-500 mt-1">
           Upload up to 5 files (images, videos, documents) to support this incident report
