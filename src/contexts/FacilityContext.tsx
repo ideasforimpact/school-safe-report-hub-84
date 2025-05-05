@@ -13,7 +13,8 @@ interface FacilityContextType {
 const INITIAL_FACILITIES: string[] = [
   'Classroom',
   'Main Building',
-  'School Grounds'
+  'School Grounds',
+  'Others'
 ];
 
 const FacilityContext = createContext<FacilityContextType | undefined>(undefined);

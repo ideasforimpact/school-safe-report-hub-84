@@ -1,4 +1,3 @@
-
 import { ConfigItem, SubcategoryItem, SectionItem, ClassItem, CampusItem } from './types';
 
 // Initial configuration data
@@ -82,7 +81,8 @@ export const initialLocations: ConfigItem[] = [
 export const initialFacilities: ConfigItem[] = [
   { id: '1', name: 'Main Building' },
   { id: '2', name: 'Classroom' },
-  { id: '3', name: 'School Grounds' }
+  { id: '3', name: 'School Grounds' },
+  { id: '4', name: 'Others' }
 ];
 
 export const initialDesignations: ConfigItem[] = [
