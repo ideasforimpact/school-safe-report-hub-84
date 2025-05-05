@@ -22,7 +22,7 @@ const CategoryConfiguration = () => {
     deleteSubcategory
   } = useIncidents();
 
-  // Explicitly log the categories for debugging
+  // Modified to safely check for Digital Safety and avoid duplicate attempts
   useEffect(() => {
     console.log("Current categories in UI:", categories);
     
@@ -33,10 +33,12 @@ const CategoryConfiguration = () => {
     
     console.log("Digital Safety exists:", digitalSafetyExists);
     
+    // Only try to add if it doesn't exist AND we have at least one category loaded
+    // This ensures we're not trying to add before data is loaded
     if (!digitalSafetyExists && categories.length > 0) {
       try {
-        const newCategory = addCategory('Digital Safety');
-        console.log("Digital Safety category added:", newCategory);
+        // Don't attempt to add it if it already exists
+        addCategory('Digital Safety');
         toast.success("Digital Safety category added successfully");
       } catch (error) {
         // Only log error if it's not about duplicate category
@@ -45,7 +47,7 @@ const CategoryConfiguration = () => {
         }
       }
     }
-  }, [categories, addCategory]);  // Added addCategory to dependency array
+  }, [categories, addCategory]);
 
   const handleAddCategory = (name: string) => {
     if (!name.trim()) {

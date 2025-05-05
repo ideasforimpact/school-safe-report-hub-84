@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { ConfigItem, SubcategoryItem } from '@/contexts/types';
 
@@ -101,17 +100,19 @@ export function useCategoryManagement(
       throw new Error("Category name cannot be empty");
     }
     
+    // Check for duplicate category names before creating a new one
+    const nameToCheck = name.trim().toLowerCase();
+    const exists = categories.some(cat => cat.name.toLowerCase() === nameToCheck);
+    if (exists) {
+      throw new Error(`Category "${name}" already exists`);
+    }
+
     const newCategory = {
       id: Date.now().toString(),
       name: name.trim()
     };
     
     setCategories(prev => {
-      // Check for duplicate category names
-      const exists = prev.some(cat => cat.name.toLowerCase() === name.trim().toLowerCase());
-      if (exists) {
-        throw new Error(`Category "${name}" already exists`);
-      }
       const updated = [...prev, newCategory];
       // Save to localStorage
       localStorage.setItem('categories', JSON.stringify(updated));
