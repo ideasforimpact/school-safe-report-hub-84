@@ -13,6 +13,7 @@ import {
   SignalMedium,
   SignalLow
 } from 'lucide-react';
+import { getPriorityIcon } from '@/utils/priorityIcons';
 
 interface PrioritySectionProps {
   priority: 'Low' | 'Medium' | 'High' | 'Critical';
@@ -23,22 +24,6 @@ const PrioritySection: React.FC<PrioritySectionProps> = ({
   priority,
   onSelectChange,
 }) => {
-  // Helper function to get priority icon, consistent with other components
-  const getPriorityIcon = (priority: string) => {
-    switch(priority) {
-      case 'Critical':
-        return <AlertOctagon className="h-4 w-4 text-red-600" aria-label="Critical Priority" />;
-      case 'High':
-        return <AlertTriangle className="h-4 w-4 text-orange-500" aria-label="High Priority" />;
-      case 'Medium':
-        return <SignalMedium className="h-4 w-4 text-yellow-600" aria-label="Medium Priority" />;
-      case 'Low':
-        return <SignalLow className="h-4 w-4 text-green-600" aria-label="Low Priority" />;
-      default:
-        return <SignalMedium className="h-4 w-4 text-yellow-600" aria-label="Medium Priority" />;
-    }
-  };
-
   return (
     <div className="space-y-2">
       <label htmlFor="priority" className="text-sm font-medium">
@@ -53,7 +38,7 @@ const PrioritySection: React.FC<PrioritySectionProps> = ({
           <SelectValue placeholder="Select priority">
             {priority && (
               <div className="flex items-center">
-                {getPriorityIcon(priority)}
+                {React.createElement(getPriorityIcon(priority)())}
                 <span className="ml-2">{priority}</span>
               </div>
             )}

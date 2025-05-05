@@ -127,7 +127,7 @@ const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
                 <TableCell className="text-left">{incident.category}</TableCell>
                 <TableCell className="text-left">
                   <div className="flex items-center">
-                    {getPriorityIcon(incident.priority)}
+                    {React.createElement(getPriorityIcon(incident.priority)())}
                     <span className="ml-2">{incident.priority || 'Medium'}</span>
                   </div>
                 </TableCell>
