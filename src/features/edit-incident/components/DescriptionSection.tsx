@@ -1,13 +1,13 @@
 
 import React from 'react';
-import { Textarea } from '@/components/ui/textarea';
 import { FileItem } from '@/types/incident';
+import { Textarea } from '@/components/ui/textarea';
 import MultipleFilesUpload from '@/components/MultipleFilesUpload';
 import ImageUpload from '@/components/ImageUpload';
 
 interface DescriptionSectionProps {
   description: string;
-  image: string | undefined;
+  image?: string;
   supportingFiles: FileItem[];
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   onImageChange: (imageBase64: string | undefined) => void;
@@ -23,11 +23,12 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
   onFilesChange,
 }) => {
   return (
-    <div className="space-y-4 w-full">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="space-y-4">
+        <h3 className="text-lg font-medium">Description</h3>
         <div className="space-y-2">
           <label htmlFor="description" className="text-sm font-medium">
-            Description <span className="text-red-500">*</span>
+            Detailed Information <span className="text-red-500">*</span>
           </label>
           <Textarea
             id="description"
@@ -35,37 +36,39 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
             placeholder="Describe what happened in detail"
             value={description}
             onChange={onChange}
-            rows={4}
+            rows={6}
             required
-            className="w-full"
+            className="resize-none"
           />
         </div>
-
+        
         <div className="space-y-2">
           <label className="text-sm font-medium">
-            Supporting Documents (Optional)
+            Main Image
+          </label>
+          <ImageUpload
+            onImageChange={onImageChange}
+            initialImage={image}
+          />
+        </div>
+      </div>
+      
+      <div className="space-y-4">
+        <h3 className="text-lg font-medium">Supporting Documents</h3>
+        <div className="space-y-2">
+          <label className="text-sm font-medium">
+            Additional Files (Optional)
           </label>
           <MultipleFilesUpload
             onFilesChange={onFilesChange}
             initialFiles={supportingFiles}
             maxFiles={5}
-            className="w-full"
+            className="min-h-52"
           />
           <p className="text-xs text-gray-500 mt-1">
             Upload up to 5 files (images, videos, documents) to support this incident report
           </p>
         </div>
-      </div>
-      
-      <div className="space-y-2">
-        <label htmlFor="image" className="text-sm font-medium">
-          Incident Image (Optional)
-        </label>
-        <ImageUpload
-          initialImage={image}
-          onImageChange={onImageChange}
-          className="w-full"
-        />
       </div>
     </div>
   );

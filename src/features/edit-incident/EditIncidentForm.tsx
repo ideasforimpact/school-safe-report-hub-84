@@ -28,8 +28,8 @@ const EditIncidentForm = () => {
 
   return (
     <form onSubmit={handleSubmit}>
-      <Card className="border-none shadow-card">
-        <CardContent className="space-y-6 pt-6">
+      <Card className="border-none shadow-md">
+        <CardContent className="p-8">
           {/* Incident Details Section */}
           <IncidentDetailsSection
             formData={formData}
@@ -48,7 +48,7 @@ const EditIncidentForm = () => {
             getCategoriesForType={getCategoriesForType}
           />
 
-          <div className="flex justify-end space-x-2 pt-4">
+          <div className="flex justify-end space-x-2 pt-8 mt-6 border-t border-gray-100">
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? 'Saving...' : 'Save Changes'}
             </Button>

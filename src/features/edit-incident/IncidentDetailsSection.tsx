@@ -58,55 +58,57 @@ const IncidentDetailsSection: React.FC<IncidentDetailsProps> = ({
   getCategoriesForType
 }) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-      {/* Type and Status Section */}
-      <TypeStatusSection
-        type={formData.type}
-        status={formData.status}
-        onSelectChange={onSelectChange}
-        getCategoriesForType={getCategoriesForType}
-      />
+    <div className="space-y-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* First column */}
+        <div className="space-y-6">
+          <TypeStatusSection
+            type={formData.type}
+            status={formData.status}
+            onSelectChange={onSelectChange}
+            getCategoriesForType={getCategoriesForType}
+          />
 
-      {/* Priority Section */}
-      <PrioritySection
-        priority={formData.priority}
-        onSelectChange={onSelectChange}
-      />
+          <PrioritySection
+            priority={formData.priority}
+            onSelectChange={onSelectChange}
+          />
 
-      {/* Category and Subcategory Section */}
-      <CategorySubcategorySection
-        categoryId={formData.categoryId}
-        categories={categories}
-        subcategory={formData.subcategory}
-        availableSubcategories={availableSubcategories}
-        onSelectChange={onSelectChange}
-      />
+          <DateTimeSection
+            date={formData.date}
+            time={formData.time}
+            onChange={onDateTimeChange}
+          />
+        </div>
 
-      {/* Location and Facility Section */}
-      <LocationFacilitySection
-        location={formData.locationId}
-        locations={locations}
-        facility={formData.facilityId}
-        facilities={facilities}
-        onSelectChange={onSelectChange}
-      />
+        {/* Second column */}
+        <div className="space-y-6">
+          <CategorySubcategorySection
+            categoryId={formData.categoryId}
+            categories={categories}
+            subcategory={formData.subcategory}
+            availableSubcategories={availableSubcategories}
+            onSelectChange={onSelectChange}
+          />
 
-      {/* Date and Time Section */}
-      <DateTimeSection
-        date={formData.date}
-        time={formData.time}
-        onChange={onDateTimeChange}
-      />
+          <LocationFacilitySection
+            location={formData.locationId}
+            locations={locations}
+            facility={formData.facilityId}
+            facilities={facilities}
+            onSelectChange={onSelectChange}
+          />
 
-      {/* Assignment Section */}
-      <AssignmentSection 
-        owner={formData.owner}
-        users={users}
-        onSelectChange={onSelectChange}
-      />
+          <AssignmentSection 
+            owner={formData.owner}
+            users={users}
+            onSelectChange={onSelectChange}
+          />
+        </div>
+      </div>
 
-      {/* Description, Image, and Supporting Documents Section - now spans full width */}
-      <div className="md:col-span-3 w-full">
+      {/* Description section - full width */}
+      <div className="pt-4 border-t border-gray-100">
         <DescriptionSection
           description={formData.description}
           image={image}
