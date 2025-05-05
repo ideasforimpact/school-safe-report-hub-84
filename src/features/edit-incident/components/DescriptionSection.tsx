@@ -1,26 +1,32 @@
 
 import React from 'react';
 import { Textarea } from '@/components/ui/textarea';
+import { FileItem } from '@/types/incident';
+import MultipleFilesUpload from '@/components/MultipleFilesUpload';
 import ImageUpload from '@/components/ImageUpload';
 
 interface DescriptionSectionProps {
   description: string;
   rootCause: string;
   image: string | undefined;
+  supportingFiles: FileItem[];
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   onImageChange: (imageBase64: string | undefined) => void;
+  onFilesChange: (files: FileItem[]) => void;
 }
 
 const DescriptionSection: React.FC<DescriptionSectionProps> = ({
   description,
   rootCause,
   image,
+  supportingFiles,
   onChange,
   onImageChange,
+  onFilesChange,
 }) => {
   return (
-    <>
-      <div className="space-y-2 md:col-span-2">
+    <div className="space-y-6">
+      <div className="space-y-2">
         <label htmlFor="description" className="text-sm font-medium">
           Description <span className="text-red-500">*</span>
         </label>
@@ -35,17 +41,32 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
         />
       </div>
 
-      <div className="space-y-2 md:col-span-2">
-        <label className="text-sm font-medium">
-          Image Documentation (Optional)
+      <div className="space-y-2">
+        <label htmlFor="image" className="text-sm font-medium">
+          Incident Image (Optional)
         </label>
-        <ImageUpload 
-          onImageChange={onImageChange}
-          initialImage={image}
+        <ImageUpload
+          value={image}
+          onChange={onImageChange}
+          maxSize={1024 * 1024 * 5} // 5MB
         />
       </div>
+
+      <div className="space-y-2">
+        <label className="text-sm font-medium">
+          Supporting Documents (Optional)
+        </label>
+        <MultipleFilesUpload
+          onFilesChange={onFilesChange}
+          initialFiles={supportingFiles}
+          maxFiles={5}
+        />
+        <p className="text-xs text-gray-500 mt-1">
+          Upload up to 5 files (images, videos, documents) to support this incident report
+        </p>
+      </div>
       
-      <div className="space-y-2 md:col-span-2 pt-4">
+      <div className="space-y-2">
         <label htmlFor="rootCause" className="text-sm font-medium">
           Root Cause Analysis (Optional)
         </label>
@@ -58,7 +79,7 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
           rows={3}
         />
       </div>
-    </>
+    </div>
   );
 };
 

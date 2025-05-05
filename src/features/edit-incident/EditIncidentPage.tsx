@@ -5,7 +5,7 @@ import EditIncidentForm from './EditIncidentForm';
 import EditIncidentHeader from './EditIncidentHeader';
 import VoidIncidentDialog from './VoidIncidentDialog';
 import { useEditIncident } from '@/hooks/useEditIncident';
-import { Person } from '@/types/incident'; // Add this import for Person type
+import { Person } from '@/types/incident'; // Import for Person type
 
 const EditIncidentPage = () => {
   const {
@@ -30,12 +30,26 @@ const EditIncidentPage = () => {
     });
   };
 
+  if (!incident) {
+    return (
+      <Layout>
+        <div className="space-y-4 md:space-y-6 w-full overflow-x-hidden">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold">Edit Incident</h1>
+            <p className="text-gray-500">Loading incident details...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
-      <div className="space-y-6 max-w-4xl mx-auto">
+      <div className="space-y-4 md:space-y-6 w-full overflow-x-hidden">
         <EditIncidentHeader 
           isVoided={incident?.isVoided} 
           onVoidClick={() => setShowVoidDialog(true)} 
+          ticketId={incident.ticketId}
         />
 
         <EditIncidentForm
@@ -43,7 +57,7 @@ const EditIncidentPage = () => {
           initialPeopleInvolved={peopleInvolved}
           isSubmitting={isSubmitting}
           onSubmit={handleFormSubmit}
-          onCancel={() => navigate(`/incidents/${id}`)}
+          onCancel={() => navigate(`/incident/${id}`)}
         />
         
         <VoidIncidentDialog

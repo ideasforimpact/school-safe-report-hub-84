@@ -24,6 +24,7 @@ export const useEditIncident = () => {
     status: '',
     owner: '',
     facility: '',
+    priority: 'Medium' as 'Low' | 'Medium' | 'High' | 'Critical',
     image: undefined as string | undefined
   });
 
@@ -69,6 +70,7 @@ export const useEditIncident = () => {
       status: incidentData.status,
       owner: incidentData.owner?.id || '',
       facility: incidentData.facility || 'Other',
+      priority: incidentData.priority || 'Medium',
       image: incidentData.image
     });
 
@@ -106,6 +108,7 @@ export const useEditIncident = () => {
         date: dateTime,
         location: formData.location as any,
         status: formData.status as IncidentStatus,
+        priority: formData.priority,
         peopleInvolved: validPeople,
         owner: selectedOwner ? { id: selectedOwner.id, name: selectedOwner.name } : undefined,
         facility: formData.facility,

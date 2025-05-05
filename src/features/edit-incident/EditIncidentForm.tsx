@@ -40,9 +40,11 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
     peopleInvolved,
     setPeopleInvolved,
     availableSubcategories,
+    supportingFiles,
     handleChange,
     handleSelectChange,
     handleImageChange,
+    handleFilesChange,
     getCategoriesForType
   } = useEditIncidentForm(initialFormData, initialPeopleInvolved);
 
@@ -52,8 +54,8 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
   };
 
   return (
-    <form onSubmit={handleFormSubmit}>
-      <Card>
+    <form onSubmit={handleFormSubmit} className="w-full">
+      <Card className="border-none shadow-card">
         <CardHeader>
           <CardTitle>Incident Details</CardTitle>
           <CardDescription>Update information about what occurred</CardDescription>
@@ -61,9 +63,11 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
         <CardContent className="space-y-6">
           <IncidentDetailsSection
             formData={formData}
+            supportingFiles={supportingFiles}
             onChange={handleChange}
             onSelectChange={handleSelectChange}
             onImageChange={handleImageChange}
+            onFilesChange={handleFilesChange}
             getCategoriesForType={getCategoriesForType}
             availableSubcategories={availableSubcategories}
           />

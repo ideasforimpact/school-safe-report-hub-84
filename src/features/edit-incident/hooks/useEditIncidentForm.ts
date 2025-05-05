@@ -1,8 +1,9 @@
 
 import { useEffect, useState } from 'react';
-import { Person } from '@/types/incident';
+import { Person, FileItem } from '@/types/incident';
 import { subcategories, nearMissSubcategories, unsafeConditionSubcategories } from '@/contexts/IncidentContext';
 import { IncidentType } from '@/types/incident';
+import { useIncidents } from '@/contexts/IncidentContext';
 
 export const useEditIncidentForm = (
   initialFormData: {
@@ -21,11 +22,16 @@ export const useEditIncidentForm = (
   },
   initialPeopleInvolved: Person[]
 ) => {
+  const { users } = useIncidents();
+  
   // Form data state
   const [formData, setFormData] = useState(initialFormData);
   
   // People involved state
   const [peopleInvolved, setPeopleInvolved] = useState<Person[]>(initialPeopleInvolved);
+  
+  // Supporting files state (empty by default as we don't have edit capability for files right now)
+  const [supportingFiles, setSupportingFiles] = useState<FileItem[]>([]);
   
   // Subcategories state
   const [availableSubcategories, setAvailableSubcategories] = useState<string[]>([]);
@@ -42,6 +48,10 @@ export const useEditIncidentForm = (
 
   const handleImageChange = (imageBase64: string | undefined) => {
     setFormData(prev => ({ ...prev, image: imageBase64 }));
+  };
+  
+  const handleFilesChange = (files: FileItem[]) => {
+    setSupportingFiles(files);
   };
 
   // Update available subcategories when type or category changes
@@ -81,11 +91,13 @@ export const useEditIncidentForm = (
     setFormData,
     peopleInvolved,
     setPeopleInvolved,
+    supportingFiles,
     availableSubcategories,
     setAvailableSubcategories,
     handleChange,
     handleSelectChange,
     handleImageChange,
+    handleFilesChange,
     getCategoriesForType
   };
 };

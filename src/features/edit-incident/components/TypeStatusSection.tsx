@@ -23,7 +23,7 @@ const TypeStatusSection: React.FC<TypeStatusSectionProps> = ({
   getCategoriesForType,
 }) => {
   return (
-    <>
+    <div className="space-y-6">
       <div className="space-y-2">
         <label htmlFor="type" className="text-sm font-medium">
           Report Type <span className="text-red-500">*</span>
@@ -63,7 +63,7 @@ const TypeStatusSection: React.FC<TypeStatusSectionProps> = ({
           </SelectContent>
         </Select>
       </div>
-    </>
+    </div>
   );
 };
 

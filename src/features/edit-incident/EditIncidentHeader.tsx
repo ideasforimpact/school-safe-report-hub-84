@@ -1,33 +1,42 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
+import { AlertTriangle } from 'lucide-react';
 
 interface EditIncidentHeaderProps {
-  isVoided: boolean | undefined;
+  isVoided?: boolean;
   onVoidClick: () => void;
+  ticketId?: string;
 }
 
 const EditIncidentHeader: React.FC<EditIncidentHeaderProps> = ({ 
   isVoided, 
-  onVoidClick 
+  onVoidClick,
+  ticketId 
 }) => {
   return (
-    <>
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Edit Incident</h1>
-        <Button 
-          variant="destructive" 
-          size="sm"
-          onClick={onVoidClick}
-          disabled={isVoided}
-        >
-          {isVoided ? 'Incident Voided' : 'Void Incident'}
-        </Button>
+    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div>
+        <h1 className="text-2xl md:text-3xl font-bold">Edit Incident</h1>
+        {ticketId && (
+          <p className="text-gray-600 mt-1">
+            Ticket ID: <span className="font-medium">{ticketId}</span>
+          </p>
+        )}
       </div>
-      <p className="text-gray-600 mt-1">
-        Update incident details
-      </p>
-    </>
+      
+      {!isVoided && (
+        <Button 
+          onClick={onVoidClick} 
+          variant="destructive"
+          size="sm"
+          className="flex items-center gap-2"
+        >
+          <AlertTriangle className="h-4 w-4" />
+          Void Incident
+        </Button>
+      )}
+    </div>
   );
 };
 

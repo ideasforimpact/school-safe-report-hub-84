@@ -1,15 +1,16 @@
 
 import React from 'react';
-import { IncidentType } from '@/types/incident';
+import { IncidentType, FileItem } from '@/types/incident';
 import { useIncidents } from '@/contexts/IncidentContext';
 
-// Import our new component sections
+// Import our component sections
 import TypeStatusSection from './components/TypeStatusSection';
 import CategorySubcategorySection from './components/CategorySubcategorySection';
 import LocationFacilitySection from './components/LocationFacilitySection';
 import AssignmentSection from './components/AssignmentSection';
 import DescriptionSection from './components/DescriptionSection';
 import DateTimeSection from './components/DateTimeSection';
+import PrioritySection from './components/PrioritySection';
 
 interface IncidentDetailsSectionProps {
   formData: {
@@ -25,19 +26,24 @@ interface IncidentDetailsSectionProps {
     owner: string;
     facility: string;
     image: string | undefined;
+    priority?: 'Low' | 'Medium' | 'High' | 'Critical';
   };
+  supportingFiles: FileItem[];
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   onSelectChange: (name: string, value: string) => void;
   onImageChange: (imageBase64: string | undefined) => void;
+  onFilesChange: (files: FileItem[]) => void;
   getCategoriesForType: (type: IncidentType) => string[];
   availableSubcategories: string[];
 }
 
 const IncidentDetailsSection: React.FC<IncidentDetailsSectionProps> = ({
   formData,
+  supportingFiles,
   onChange,
   onSelectChange,
   onImageChange,
+  onFilesChange,
   getCategoriesForType,
   availableSubcategories
 }) => {
@@ -52,6 +58,12 @@ const IncidentDetailsSection: React.FC<IncidentDetailsSectionProps> = ({
         status={formData.status}
         onSelectChange={onSelectChange}
         getCategoriesForType={getCategoriesForType}
+      />
+
+      {/* Priority */}
+      <PrioritySection
+        priority={formData.priority || 'Medium'}
+        onSelectChange={onSelectChange}
       />
 
       {/* Category and Subcategory */}
@@ -77,21 +89,25 @@ const IncidentDetailsSection: React.FC<IncidentDetailsSectionProps> = ({
         onSelectChange={onSelectChange}
       />
 
-      {/* Description and Image */}
-      <DescriptionSection
-        description={formData.description}
-        rootCause={formData.rootCause}
-        image={formData.image}
-        onChange={onChange}
-        onImageChange={onImageChange}
-      />
-
       {/* Date and Time */}
       <DateTimeSection
         date={formData.date}
         time={formData.time}
         onChange={onChange}
       />
+
+      {/* Description, Root Cause and Supporting Files */}
+      <div className="md:col-span-2">
+        <DescriptionSection
+          description={formData.description}
+          rootCause={formData.rootCause}
+          image={formData.image}
+          supportingFiles={supportingFiles}
+          onChange={onChange}
+          onImageChange={onImageChange}
+          onFilesChange={onFilesChange}
+        />
+      </div>
     </div>
   );
 };
