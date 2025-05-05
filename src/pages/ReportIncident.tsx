@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIncidents } from '@/contexts/IncidentContext';
@@ -6,7 +5,7 @@ import { useAuth } from '@/contexts/auth/AuthContext';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/sonner';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { useIncidentForm } from '@/hooks/useIncidentForm';
 import TicketInfoBanner from '@/components/incidents/TicketInfoBanner';
 import IncidentDetailsForm from '@/components/incidents/IncidentDetailsForm';
@@ -121,10 +120,6 @@ const ReportIncident = () => {
 
         <form onSubmit={handleSubmit} className="w-full">
           <Card className="border-none shadow-card">
-            <CardHeader>
-              <CardTitle>Incident Details</CardTitle>
-              <CardDescription>Provide information about what occurred</CardDescription>
-            </CardHeader>
             <CardContent className="space-y-6">
               <IncidentDetailsForm
                 formData={formData}
