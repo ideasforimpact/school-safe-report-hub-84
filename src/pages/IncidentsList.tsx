@@ -18,9 +18,26 @@ const IncidentsList = () => {
     filteredIncidents,
     availableCategories,
     availableSubcategories,
+    availableLocations,
+    availableFacilities,
+    availableOwners,
     handleFilterChange,
+    toggleAdvancedFilters,
     clearFilters
   } = useIncidentFilters(incidents);
+
+  // Count active filters
+  const activeFilterCount = Object.entries(filters).filter(([key, value]) => {
+    // Skip these properties when counting active filters
+    if (
+      key === 'showAdvancedFilters' || 
+      (typeof value === 'boolean' && value === false) ||
+      (typeof value === 'string' && value === '')
+    ) {
+      return false;
+    }
+    return true;
+  }).length;
 
   return (
     <Layout>
@@ -28,19 +45,31 @@ const IncidentsList = () => {
         <IncidentsHeader />
         
         <div className="flex justify-between items-center">
-          <IncidentFilters 
-            filters={filters}
-            onFilterChange={handleFilterChange}
-            onClearFilters={clearFilters}
-            availableCategories={availableCategories}
-            availableSubcategories={availableSubcategories}
-          />
+          <div className="flex items-center">
+            {activeFilterCount > 0 && (
+              <span className="text-sm font-medium mr-2 text-blue-600">
+                {activeFilterCount} filters applied
+              </span>
+            )}
+          </div>
           
           <ViewToggle 
             viewType={viewType} 
             onViewChange={setViewType} 
           />
         </div>
+
+        <IncidentFilters 
+          filters={filters}
+          onFilterChange={handleFilterChange}
+          onClearFilters={clearFilters}
+          toggleAdvancedFilters={toggleAdvancedFilters}
+          availableCategories={availableCategories}
+          availableSubcategories={availableSubcategories}
+          availableLocations={availableLocations}
+          availableFacilities={availableFacilities}
+          availableOwners={availableOwners}
+        />
 
         <div className="overflow-x-auto w-full">
           {viewType === 'table' ? (

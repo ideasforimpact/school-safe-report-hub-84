@@ -16,6 +16,14 @@ export interface FilterState {
   dateTo: string;
   search: string;
   priority: string;
+  location: string;
+  facility: string;
+  owner: string;
+  isVoided: boolean;
+  wasReopened: boolean;
+  hasAttachments: boolean;
+  involvedRole: string;
+  showAdvancedFilters: boolean;
 }
 
 export function useIncidentFilters(incidents: Incident[]) {
@@ -29,10 +37,21 @@ export function useIncidentFilters(incidents: Incident[]) {
     dateTo: '',
     search: '',
     priority: '',
+    location: '',
+    facility: '',
+    owner: '',
+    isVoided: false,
+    wasReopened: false,
+    hasAttachments: false,
+    involvedRole: '',
+    showAdvancedFilters: false
   });
 
   const [availableCategories, setAvailableCategories] = useState<string[]>([]);
   const [availableSubcategories, setAvailableSubcategories] = useState<string[]>([]);
+  const [availableLocations, setAvailableLocations] = useState<string[]>([]);
+  const [availableFacilities, setAvailableFacilities] = useState<string[]>([]);
+  const [availableOwners, setAvailableOwners] = useState<{id: string, name: string}[]>([]);
   const [filteredIncidents, setFilteredIncidents] = useState<Incident[]>(incidents);
 
   // Update available categories when type changes
@@ -71,6 +90,45 @@ export function useIncidentFilters(incidents: Incident[]) {
     }
   }, [filters.type, filters.category]);
 
+  // Extract unique locations from incidents
+  useEffect(() => {
+    const locations = new Set<string>();
+    
+    incidents.forEach(incident => {
+      if (incident.location) {
+        locations.add(incident.location);
+      }
+    });
+    
+    setAvailableLocations(Array.from(locations));
+  }, [incidents]);
+
+  // Extract unique facilities from incidents based on selected location
+  useEffect(() => {
+    const facilities = new Set<string>();
+    
+    incidents.forEach(incident => {
+      if ((!filters.location || incident.location === filters.location) && incident.facility) {
+        facilities.add(incident.facility);
+      }
+    });
+    
+    setAvailableFacilities(Array.from(facilities));
+  }, [incidents, filters.location]);
+
+  // Extract unique owners from incidents
+  useEffect(() => {
+    const ownersMap = new Map<string, {id: string, name: string}>();
+    
+    incidents.forEach(incident => {
+      if (incident.owner) {
+        ownersMap.set(incident.owner.id, incident.owner);
+      }
+    });
+    
+    setAvailableOwners(Array.from(ownersMap.values()));
+  }, [incidents]);
+
   // Reset category and subcategory when type changes
   useEffect(() => {
     setFilters(prev => ({
@@ -88,8 +146,23 @@ export function useIncidentFilters(incidents: Incident[]) {
     }));
   }, [filters.category]);
 
-  const handleFilterChange = (field: string, value: string) => {
+  // Reset facility when location changes
+  useEffect(() => {
+    setFilters(prev => ({
+      ...prev,
+      facility: ''
+    }));
+  }, [filters.location]);
+
+  const handleFilterChange = (field: string, value: any) => {
     setFilters(prev => ({ ...prev, [field]: value }));
+  };
+
+  const toggleAdvancedFilters = () => {
+    setFilters(prev => ({ 
+      ...prev, 
+      showAdvancedFilters: !prev.showAdvancedFilters 
+    }));
   };
 
   const clearFilters = () => {
@@ -102,6 +175,14 @@ export function useIncidentFilters(incidents: Incident[]) {
       dateTo: '',
       search: '',
       priority: '',
+      location: '',
+      facility: '',
+      owner: '',
+      isVoided: false,
+      wasReopened: false,
+      hasAttachments: false,
+      involvedRole: '',
+      showAdvancedFilters: filters.showAdvancedFilters
     });
   };
 
@@ -122,6 +203,38 @@ export function useIncidentFilters(incidents: Incident[]) {
       
       // Filter by priority
       if (filters.priority && incident.priority !== filters.priority) return false;
+      
+      // Filter by location
+      if (filters.location && incident.location !== filters.location) return false;
+      
+      // Filter by facility
+      if (filters.facility && incident.facility !== filters.facility) return false;
+      
+      // Filter by owner
+      if (filters.owner && (!incident.owner || incident.owner.id !== filters.owner)) return false;
+      
+      // Filter voided incidents
+      if (filters.isVoided && !incident.isVoided) return false;
+      
+      // Filter reopened incidents
+      if (filters.wasReopened && !incident.wasReopened) return false;
+      
+      // Filter by attachments
+      if (filters.hasAttachments) {
+        const hasAttachments = Boolean(
+          incident.image || 
+          incident.video || 
+          incident.document || 
+          (incident.documents && incident.documents.length > 0) ||
+          (incident.files && incident.files.length > 0)
+        );
+        if (!hasAttachments) return false;
+      }
+      
+      // Filter by people involved role
+      if (filters.involvedRole && !incident.peopleInvolved.some(person => person.role === filters.involvedRole)) {
+        return false;
+      }
       
       // Filter by date range
       if (filters.dateFrom) {
@@ -174,7 +287,11 @@ export function useIncidentFilters(incidents: Incident[]) {
     filteredIncidents,
     availableCategories,
     availableSubcategories,
+    availableLocations,
+    availableFacilities,
+    availableOwners,
     handleFilterChange,
+    toggleAdvancedFilters,
     clearFilters
   };
 }
