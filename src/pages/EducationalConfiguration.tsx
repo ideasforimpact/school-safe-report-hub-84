@@ -4,7 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
 import { useIncidents } from '@/contexts/IncidentContext';
 import { EducationalStructureConfig } from './configuration/EducationalStructureConfig';
-import { toast } from '@/components/ui/sonner';
+import { toast } from 'sonner';
 import { CampusItem, ClassItem, SectionItem } from '@/contexts/types';
 
 const EducationalConfiguration = () => {
@@ -48,8 +48,13 @@ const EducationalConfiguration = () => {
 
   const handleAddCampus = (name: string) => {
     try {
-      contextAddCampus(name);
-      // No need to check the return value - context will update and trigger useEffect
+      console.log('EducationalConfiguration: Adding campus:', name); // Debug log
+      const newCampus = contextAddCampus(name);
+      console.log('New campus created:', newCampus); // Debug log
+      
+      // Manually update the local state to ensure UI update
+      setCampuses(prev => [...prev, newCampus]);
+      
       toast.success("Campus added successfully");
     } catch (error) {
       console.error("Error adding campus:", error);

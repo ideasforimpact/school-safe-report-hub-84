@@ -14,7 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { CampusItem } from '@/contexts/types';
 import { EditDialog } from './EditDialog';
-import { toast } from '@/components/ui/sonner';
+import { toast } from 'sonner';
 
 interface CampusTabProps {
   campuses: CampusItem[];
@@ -45,6 +45,7 @@ export const CampusTab = ({
     
     addCampus(newCampus.trim());
     setNewCampus('');
+    console.log("Adding campus:", newCampus.trim()); // Debug log
   };
 
   const handleCampusDelete = (id: string) => {
@@ -71,7 +72,7 @@ export const CampusTab = ({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault(); // Prevent form submission on Enter key
-      handleCampusAdd(e);
+      handleCampusAdd(e as unknown as React.FormEvent);
     }
   };
 
