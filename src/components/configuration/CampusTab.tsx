@@ -40,7 +40,7 @@ export const CampusTab = ({
       return;
     }
     
-    addCampus(newCampus);
+    addCampus(newCampus.trim());
     setNewCampus('');
     toast.success("Campus added successfully");
   };
@@ -63,9 +63,15 @@ export const CampusTab = ({
       return;
     }
     
-    updateCampus(editingCampus.id, editingCampus.name);
+    updateCampus(editingCampus.id, editingCampus.name.trim());
     setEditingCampus(null);
     toast.success("Campus updated successfully");
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleCampusAdd();
+    }
   };
 
   return (
@@ -81,6 +87,7 @@ export const CampusTab = ({
               placeholder="New campus name (e.g., Main Campus)"
               value={newCampus}
               onChange={(e) => setNewCampus(e.target.value)}
+              onKeyDown={handleKeyDown}
             />
           </div>
           <Button onClick={handleCampusAdd} className="whitespace-nowrap">
@@ -96,48 +103,56 @@ export const CampusTab = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {campuses.map((campus) => (
-              <TableRow key={campus.id}>
-                <TableCell>{campus.name}</TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
-                    <EditDialog
-                      title="Edit Campus"
-                      description="Update the campus name below"
-                      fieldLabel="Campus name"
-                      value={campus.name}
-                      onOpenChange={(open) => {
-                        if (open) {
-                          setEditingCampus({
-                            id: campus.id, 
-                            name: campus.name
-                          });
-                        } else {
-                          setEditingCampus(null);
-                        }
-                      }}
-                      onChange={(value) => setEditingCampus(prev => 
-                        prev ? {...prev, name: value} : null
-                      )}
-                      onSave={handleCampusUpdate}
-                      triggerButton={
-                        <Button variant="ghost" size="icon">
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                      }
-                    />
-                    
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => handleCampusDelete(campus.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+            {campuses.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={2} className="text-center py-4 text-muted-foreground">
+                  No campuses available. Add your first campus above.
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              campuses.map((campus) => (
+                <TableRow key={campus.id}>
+                  <TableCell>{campus.name}</TableCell>
+                  <TableCell>
+                    <div className="flex gap-2">
+                      <EditDialog
+                        title="Edit Campus"
+                        description="Update the campus name below"
+                        fieldLabel="Campus name"
+                        value={campus.name}
+                        onOpenChange={(open) => {
+                          if (open) {
+                            setEditingCampus({
+                              id: campus.id, 
+                              name: campus.name
+                            });
+                          } else {
+                            setEditingCampus(null);
+                          }
+                        }}
+                        onChange={(value) => setEditingCampus(prev => 
+                          prev ? {...prev, name: value} : null
+                        )}
+                        onSave={handleCampusUpdate}
+                        triggerButton={
+                          <Button variant="ghost" size="icon">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        }
+                      />
+                      
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => handleCampusDelete(campus.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </CardContent>
