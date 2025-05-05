@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -18,6 +18,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { toast } from '@/components/ui/sonner';
+import { Form, FormField, FormItem, FormLabel, FormControl } from '@/components/ui/form';
+import { useForm } from 'react-hook-form';
 
 interface ExtraFieldOption {
   value: string;
@@ -44,6 +47,10 @@ interface EditDialogProps {
   extraField?: ExtraFieldProps;
 }
 
+interface FormValues {
+  name: string;
+}
+
 export const EditDialog = ({
   title,
   description,
@@ -57,6 +64,13 @@ export const EditDialog = ({
 }: EditDialogProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [localValue, setLocalValue] = useState(value);
+  
+  // Reset form when dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      setLocalValue(value);
+    }
+  }, [isOpen, value]);
 
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
@@ -67,9 +81,20 @@ export const EditDialog = ({
   };
 
   const handleSave = () => {
-    onChange(localValue);
-    onSave();
-    setIsOpen(false);
+    if (!localValue || localValue.trim() === '') {
+      toast.error("Please enter a valid name");
+      return;
+    }
+    
+    try {
+      onChange(localValue);
+      onSave();
+      toast.success("Successfully saved");
+      setIsOpen(false);
+    } catch (error) {
+      console.error("Error saving:", error);
+      toast.error("Failed to save");
+    }
   };
 
   return (
@@ -95,6 +120,12 @@ export const EditDialog = ({
               onChange={(e) => setLocalValue(e.target.value)}
               className="col-span-3"
               autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  handleSave();
+                }
+              }}
             />
           </div>
           
