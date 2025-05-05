@@ -103,6 +103,7 @@ const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
             <TableRow>
               <TableHead>ID</TableHead>
               <TableHead className="text-left">Category</TableHead>
+              <TableHead className="text-left">Location</TableHead>
               <TableHead className="text-left">Date</TableHead>
               <TableHead className="text-left">Status</TableHead>
               <TableHead className="text-left">Actions</TableHead>
@@ -126,6 +127,7 @@ const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
                   </div>
                 </TableCell>
                 <TableCell className="text-left">{incident.category}</TableCell>
+                <TableCell className="text-left">{incident.location}</TableCell>
                 <TableCell className="text-left">{formatDate(incident.date)}</TableCell>
                 <TableCell className="text-left">
                   <span className={`px-2 py-1 rounded-full text-xs ${getStatusBadgeClass(incident.status, incident.isVoided)}`}>
