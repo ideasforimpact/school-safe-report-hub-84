@@ -13,13 +13,17 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
+export interface DatePickerProps {
+  date: Date | undefined;
+  onChange: (date: Date | undefined) => void;
+  className?: string;
+}
+
 export function DatePicker({
   date,
   onChange,
-}: {
-  date: Date | undefined;
-  onChange: (date: Date | undefined) => void;
-}) {
+  className,
+}: DatePickerProps) {
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -27,7 +31,8 @@ export function DatePicker({
           variant={"outline"}
           className={cn(
             "w-full justify-start text-left font-normal",
-            !date && "text-muted-foreground"
+            !date && "text-muted-foreground",
+            className
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />

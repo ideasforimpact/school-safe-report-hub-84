@@ -7,13 +7,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { IncidentType } from '@/types/incident';
+import { ConfigItem } from '@/contexts/types';
 
 interface TypeStatusSectionProps {
   type: string;
   status: string;
   onSelectChange: (name: string, value: string) => void;
-  getCategoriesForType?: (type: IncidentType) => string[];
+  getCategoriesForType?: (type: string) => ConfigItem[];
 }
 
 const TypeStatusSection: React.FC<TypeStatusSectionProps> = ({
