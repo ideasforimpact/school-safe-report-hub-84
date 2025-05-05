@@ -81,7 +81,7 @@ const IncidentsCardView: React.FC<IncidentsCardViewProps> = ({ incidents }) => {
           onClick={() => handleCardClick(incident.id)}
         >
           <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
+            <div className="flex items-start justify-between">
               <div className="flex items-center">
                 <Ticket className="h-4 w-4 mr-2 text-blue-600" />
                 <span className="font-medium">{incident.ticketId}</span>
@@ -96,17 +96,17 @@ const IncidentsCardView: React.FC<IncidentsCardViewProps> = ({ incidents }) => {
           </CardHeader>
           
           <CardContent className="pb-3">
-            <div className="mb-2">
+            <div className="mb-2 text-left">
               <Badge variant="outline" className="mr-2">{incident.type}</Badge>
               <Badge className={getStatusBadgeClass(incident.status, incident.isVoided)}>
                 {incident.isVoided ? 'Voided' : incident.status}
               </Badge>
             </div>
-            <p className="font-medium">{incident.category}</p>
+            <p className="font-medium text-left">{incident.category}</p>
             {incident.subcategory && (
-              <p className="text-sm text-gray-600">{incident.subcategory}</p>
+              <p className="text-sm text-gray-600 text-left">{incident.subcategory}</p>
             )}
-            <p className="text-xs text-gray-500 mt-2">
+            <p className="text-xs text-gray-500 mt-2 text-left">
               Reported: {formatDate(incident.date)}
             </p>
           </CardContent>
