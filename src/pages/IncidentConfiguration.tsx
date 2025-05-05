@@ -5,29 +5,44 @@ import Layout from '@/components/layout/Layout';
 import { useIncidents } from '@/contexts/IncidentContext';
 import { IncidentRelatedConfig } from './configuration/IncidentRelatedConfig';
 import { toast } from '@/components/ui/sonner';
+import { ConfigItem } from '@/contexts/types';
 
 const IncidentConfiguration = () => {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('categories');
   
   const { 
-    categories, 
-    addCategory, 
-    deleteCategory, 
-    updateCategory,
-    subcategoryMappings, 
-    addSubcategory, 
-    deleteSubcategory, 
-    updateSubcategory,
-    locations,
-    addLocation,
-    deleteLocation,
-    updateLocation,
-    facilities,
-    addFacility,
-    deleteFacility,
-    updateFacility
+    categories: contextCategories, 
+    addCategory: contextAddCategory, 
+    deleteCategory: contextDeleteCategory, 
+    updateCategory: contextUpdateCategory,
+    subcategoryMappings: contextSubcategories, 
+    addSubcategory: contextAddSubcategory, 
+    deleteSubcategory: contextDeleteSubcategory, 
+    updateSubcategory: contextUpdateSubcategory,
+    locations: contextLocations,
+    addLocation: contextAddLocation,
+    deleteLocation: contextDeleteLocation,
+    updateLocation: contextUpdateLocation,
+    facilities: contextFacilities,
+    addFacility: contextAddFacility,
+    deleteFacility: contextDeleteFacility,
+    updateFacility: contextUpdateFacility
   } = useIncidents();
+
+  // Local state to track changes
+  const [categories, setCategories] = useState<ConfigItem[]>(contextCategories);
+  const [subcategoryMappings, setSubcategoryMappings] = useState(contextSubcategories);
+  const [locations, setLocations] = useState(contextLocations);
+  const [facilities, setFacilities] = useState(contextFacilities);
+
+  // Update local state when context changes
+  useEffect(() => {
+    setCategories(contextCategories);
+    setSubcategoryMappings(contextSubcategories);
+    setLocations(contextLocations);
+    setFacilities(contextFacilities);
+  }, [contextCategories, contextSubcategories, contextLocations, contextFacilities]);
 
   // Set initial tab based on URL parameter when component mounts
   useEffect(() => {
@@ -39,7 +54,7 @@ const IncidentConfiguration = () => {
 
   const handleAddCategory = (name: string) => {
     try {
-      addCategory(name);
+      contextAddCategory(name);
       toast.success("Category added successfully");
     } catch (error) {
       console.error("Error adding category:", error);
@@ -49,7 +64,7 @@ const IncidentConfiguration = () => {
 
   const handleUpdateCategory = (id: string, name: string) => {
     try {
-      updateCategory(id, name);
+      contextUpdateCategory(id, name);
       toast.success("Category updated successfully");
     } catch (error) {
       console.error("Error updating category:", error);
@@ -59,7 +74,7 @@ const IncidentConfiguration = () => {
 
   const handleDeleteCategory = (id: string) => {
     try {
-      deleteCategory(id);
+      contextDeleteCategory(id);
       toast.success("Category deleted successfully");
     } catch (error) {
       console.error("Error deleting category:", error);
@@ -69,7 +84,7 @@ const IncidentConfiguration = () => {
 
   const handleAddSubcategory = (categoryId: string, name: string) => {
     try {
-      addSubcategory(categoryId, name);
+      contextAddSubcategory(categoryId, name);
       toast.success("Subcategory added successfully");
     } catch (error) {
       console.error("Error adding subcategory:", error);
@@ -79,7 +94,7 @@ const IncidentConfiguration = () => {
 
   const handleUpdateSubcategory = (categoryId: string, id: string, name: string) => {
     try {
-      updateSubcategory(categoryId, id, name);
+      contextUpdateSubcategory(categoryId, id, name);
       toast.success("Subcategory updated successfully");
     } catch (error) {
       console.error("Error updating subcategory:", error);
@@ -89,7 +104,7 @@ const IncidentConfiguration = () => {
 
   const handleDeleteSubcategory = (categoryId: string, id: string) => {
     try {
-      deleteSubcategory(categoryId, id);
+      contextDeleteSubcategory(categoryId, id);
       toast.success("Subcategory deleted successfully");
     } catch (error) {
       console.error("Error deleting subcategory:", error);
@@ -99,7 +114,7 @@ const IncidentConfiguration = () => {
 
   const handleAddLocation = (name: string) => {
     try {
-      addLocation(name);
+      contextAddLocation(name);
       toast.success("Location added successfully");
     } catch (error) {
       console.error("Error adding location:", error);
@@ -109,7 +124,7 @@ const IncidentConfiguration = () => {
 
   const handleUpdateLocation = (id: string, name: string) => {
     try {
-      updateLocation(id, name);
+      contextUpdateLocation(id, name);
       toast.success("Location updated successfully");
     } catch (error) {
       console.error("Error updating location:", error);
@@ -119,7 +134,7 @@ const IncidentConfiguration = () => {
 
   const handleDeleteLocation = (id: string) => {
     try {
-      deleteLocation(id);
+      contextDeleteLocation(id);
       toast.success("Location deleted successfully");
     } catch (error) {
       console.error("Error deleting location:", error);
@@ -129,7 +144,7 @@ const IncidentConfiguration = () => {
 
   const handleAddFacility = (name: string) => {
     try {
-      addFacility(name);
+      contextAddFacility(name);
       toast.success("Facility added successfully");
     } catch (error) {
       console.error("Error adding facility:", error);
@@ -139,7 +154,7 @@ const IncidentConfiguration = () => {
 
   const handleUpdateFacility = (id: string, name: string) => {
     try {
-      updateFacility(id, name);
+      contextUpdateFacility(id, name);
       toast.success("Facility updated successfully");
     } catch (error) {
       console.error("Error updating facility:", error);
@@ -149,7 +164,7 @@ const IncidentConfiguration = () => {
 
   const handleDeleteFacility = (id: string) => {
     try {
-      deleteFacility(id);
+      contextDeleteFacility(id);
       toast.success("Facility deleted successfully");
     } catch (error) {
       console.error("Error deleting facility:", error);

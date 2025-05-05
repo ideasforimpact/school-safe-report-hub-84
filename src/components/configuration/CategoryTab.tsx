@@ -68,6 +68,11 @@ export const CategoryTab = ({
             placeholder="New category name"
             value={newCategory}
             onChange={(e) => setNewCategory(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleCategoryAdd();
+              }
+            }}
           />
           <Button onClick={handleCategoryAdd}>
             <Plus className="mr-2 h-4 w-4" /> Add Category
@@ -82,43 +87,51 @@ export const CategoryTab = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {categories.map((category) => (
-              <TableRow key={category.id}>
-                <TableCell>{category.name}</TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
-                    <EditDialog
-                      title="Edit Category"
-                      description="Update the category name below"
-                      fieldLabel="Category name"
-                      value={category.name}
-                      onOpenChange={(open) => {
-                        if (open) {
-                          setEditingCategory({id: category.id, name: category.name});
-                        } else {
-                          setEditingCategory(null);
-                        }
-                      }}
-                      onChange={(value) => setEditingCategory(prev => prev ? {...prev, name: value} : null)}
-                      onSave={handleCategoryUpdate}
-                      triggerButton={
-                        <Button variant="ghost" size="icon">
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                      }
-                    />
-                    
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => handleCategoryDelete(category.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+            {categories.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={2} className="text-center py-4 text-gray-500">
+                  No categories found. Add one to get started.
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              categories.map((category) => (
+                <TableRow key={category.id}>
+                  <TableCell>{category.name}</TableCell>
+                  <TableCell>
+                    <div className="flex gap-2">
+                      <EditDialog
+                        title="Edit Category"
+                        description="Update the category name below"
+                        fieldLabel="Category name"
+                        value={category.name}
+                        onOpenChange={(open) => {
+                          if (open) {
+                            setEditingCategory({id: category.id, name: category.name});
+                          } else {
+                            setEditingCategory(null);
+                          }
+                        }}
+                        onChange={(value) => setEditingCategory(prev => prev ? {...prev, name: value} : null)}
+                        onSave={handleCategoryUpdate}
+                        triggerButton={
+                          <Button variant="ghost" size="icon">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        }
+                      />
+                      
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => handleCategoryDelete(category.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </CardContent>

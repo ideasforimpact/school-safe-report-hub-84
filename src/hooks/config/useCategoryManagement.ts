@@ -22,6 +22,8 @@ export function useCategoryManagement(
       ...prev,
       [newCategory.id]: []
     }));
+    
+    return newCategory; // Return the new category so we can use it if needed
   };
 
   const updateCategory = (id: string, name: string) => {
@@ -49,6 +51,8 @@ export function useCategoryManagement(
       ...prev,
       [categoryId]: [...(prev[categoryId] || []), newSubcategory]
     }));
+    
+    return newSubcategory; // Return the new subcategory
   };
 
   const updateSubcategory = (categoryId: string, id: string, name: string) => {
