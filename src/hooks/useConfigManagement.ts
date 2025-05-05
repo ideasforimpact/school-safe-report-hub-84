@@ -1,5 +1,12 @@
-import { useState, useEffect } from 'react';
+
 import { ConfigItem, SubcategoryItem, SectionItem, ClassItem, CampusItem } from '@/contexts/types';
+import { ConfigManagement } from './config/types';
+import { useCategoryManagement } from './config/useCategoryManagement';
+import { useLocationManagement } from './config/useLocationManagement';
+import { useDesignationManagement } from './config/useDesignationManagement';
+import { useEducationalStructureManagement } from './config/useEducationalStructureManagement';
+import { useLocalStoragePersistence } from './config/useLocalStoragePersistence';
+import { useState } from 'react';
 
 export function useConfigManagement(
   initialCategories: ConfigItem[],
@@ -10,7 +17,7 @@ export function useConfigManagement(
   initialCampuses: CampusItem[] = [],
   initialClasses: ClassItem[] = [],
   initialSections: SectionItem[] = []
-) {
+): ConfigManagement {
   // Configuration state
   const [categories, setCategories] = useState<ConfigItem[]>(() => {
     const saved = localStorage.getItem('categories');
@@ -36,14 +43,12 @@ export function useConfigManagement(
     const saved = localStorage.getItem('designations');
     return saved ? JSON.parse(saved) : initialDesignations;
   });
-  
-  // Add campuses state
+
   const [campuses, setCampuses] = useState<CampusItem[]>(() => {
     const saved = localStorage.getItem('campuses');
     return saved ? JSON.parse(saved) : initialCampuses;
   });
-  
-  // Add classes state with updated type
+
   const [classes, setClasses] = useState<ClassItem[]>(() => {
     const saved = localStorage.getItem('classes');
     return saved ? JSON.parse(saved) : initialClasses;
@@ -54,215 +59,33 @@ export function useConfigManagement(
     return saved ? JSON.parse(saved) : initialSections;
   });
 
-  // Save data to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem('categories', JSON.stringify(categories));
-  }, [categories]);
-
-  useEffect(() => {
-    localStorage.setItem('subcategories', JSON.stringify(subcategoryMappings));
-  }, [subcategoryMappings]);
-
-  useEffect(() => {
-    localStorage.setItem('locations', JSON.stringify(locations));
-  }, [locations]);
-
-  useEffect(() => {
-    localStorage.setItem('facilities', JSON.stringify(facilities));
-  }, [facilities]);
-
-  useEffect(() => {
-    localStorage.setItem('designations', JSON.stringify(designations));
-  }, [designations]);
+  // Get category and subcategory management functions
+  const categoryManagement = useCategoryManagement(categories, subcategoryMappings);
   
-  // Add effect for campuses
-  useEffect(() => {
-    localStorage.setItem('campuses', JSON.stringify(campuses));
-  }, [campuses]);
+  // Get location and facility management functions
+  const locationManagement = useLocationManagement(locations, facilities);
   
-  // Add effects for classes and sections
-  useEffect(() => {
-    localStorage.setItem('classes', JSON.stringify(classes));
-  }, [classes]);
+  // Get designation management functions
+  const designationManagement = useDesignationManagement(designations);
+  
+  // Get educational structure management functions
+  const educationalStructureManagement = useEducationalStructureManagement(
+    campuses,
+    classes,
+    sections
+  );
 
-  useEffect(() => {
-    localStorage.setItem('sections', JSON.stringify(sections));
-  }, [sections]);
-
-  // Categories management
-  const addCategory = (name: string) => {
-    const newCategory = {
-      id: Date.now().toString(),
-      name
-    };
-    setCategories(prev => [...prev, newCategory]);
-    // Initialize empty subcategory list for this category
-    setSubcategoryMappings(prev => ({
-      ...prev,
-      [newCategory.id]: []
-    }));
-  };
-
-  const updateCategory = (id: string, name: string) => {
-    setCategories(prev => prev.map(cat => 
-      cat.id === id ? { ...cat, name } : cat
-    ));
-  };
-
-  const deleteCategory = (id: string) => {
-    setCategories(prev => prev.filter(cat => cat.id !== id));
-    // Remove subcategories for this category
-    const { [id]: _, ...rest } = subcategoryMappings;
-    setSubcategoryMappings(rest);
-  };
-
-  // Subcategories management
-  const addSubcategory = (categoryId: string, name: string) => {
-    const newSubcategory = {
-      id: `${categoryId}-${Date.now()}`,
-      name
-    };
-    setSubcategoryMappings(prev => ({
-      ...prev,
-      [categoryId]: [...(prev[categoryId] || []), newSubcategory]
-    }));
-  };
-
-  const updateSubcategory = (categoryId: string, id: string, name: string) => {
-    setSubcategoryMappings(prev => ({
-      ...prev,
-      [categoryId]: prev[categoryId].map(subcat =>
-        subcat.id === id ? { ...subcat, name } : subcat
-      )
-    }));
-  };
-
-  const deleteSubcategory = (categoryId: string, id: string) => {
-    setSubcategoryMappings(prev => ({
-      ...prev,
-      [categoryId]: prev[categoryId].filter(subcat => subcat.id !== id)
-    }));
-  };
-
-  // Locations management
-  const addLocation = (name: string) => {
-    const newLocation = {
-      id: Date.now().toString(),
-      name
-    };
-    setLocations(prev => [...prev, newLocation]);
-  };
-
-  const updateLocation = (id: string, name: string) => {
-    setLocations(prev => prev.map(loc => 
-      loc.id === id ? { ...loc, name } : loc
-    ));
-  };
-
-  const deleteLocation = (id: string) => {
-    setLocations(prev => prev.filter(loc => loc.id !== id));
-  };
-
-  // Facilities management
-  const addFacility = (name: string) => {
-    const newFacility = {
-      id: Date.now().toString(),
-      name
-    };
-    setFacilities(prev => [...prev, newFacility]);
-  };
-
-  const updateFacility = (id: string, name: string) => {
-    setFacilities(prev => prev.map(fac => 
-      fac.id === id ? { ...fac, name } : fac
-    ));
-  };
-
-  const deleteFacility = (id: string) => {
-    setFacilities(prev => prev.filter(fac => fac.id !== id));
-  };
-
-  // Designations management
-  const addDesignation = (name: string) => {
-    const newDesignation = {
-      id: Date.now().toString(),
-      name
-    };
-    setDesignations(prev => [...prev, newDesignation]);
-  };
-
-  const updateDesignation = (id: string, name: string) => {
-    setDesignations(prev => prev.map(designation => 
-      designation.id === id ? { ...designation, name } : designation
-    ));
-  };
-
-  const deleteDesignation = (id: string) => {
-    setDesignations(prev => prev.filter(designation => designation.id !== id));
-  };
-
-  // Campus management
-  const addCampus = (name: string) => {
-    const newCampus = {
-      id: Date.now().toString(),
-      name
-    };
-    setCampuses(prev => [...prev, newCampus]);
-  };
-
-  const updateCampus = (id: string, name: string) => {
-    setCampuses(prev => prev.map(campus => 
-      campus.id === id ? { ...campus, name } : campus
-    ));
-  };
-
-  const deleteCampus = (id: string) => {
-    setCampuses(prev => prev.filter(campus => campus.id !== id));
-    // Remove classes associated with this campus
-    setClasses(prev => prev.filter(cls => cls.campusId !== id));
-  };
-
-  // Classes management - updated to include campusId
-  const addClass = (campusId: string, name: string) => {
-    const newClass = {
-      id: Date.now().toString(),
-      name,
-      campusId
-    };
-    setClasses(prev => [...prev, newClass]);
-  };
-
-  const updateClass = (id: string, campusId: string, name: string) => {
-    setClasses(prev => prev.map(cls => 
-      cls.id === id ? { ...cls, name, campusId } : cls
-    ));
-  };
-
-  const deleteClass = (id: string) => {
-    setClasses(prev => prev.filter(cls => cls.id !== id));
-    // Remove sections associated with this class
-    setSections(prev => prev.filter(section => section.classId !== id));
-  };
-
-  // Sections management
-  const addSection = (classId: string, name: string) => {
-    const newSection = {
-      id: Date.now().toString(),
-      name,
-      classId
-    };
-    setSections(prev => [...prev, newSection]);
-  };
-
-  const updateSection = (id: string, classId: string, name: string) => {
-    setSections(prev => prev.map(section => 
-      section.id === id ? { ...section, name, classId } : section
-    ));
-  };
-
-  const deleteSection = (id: string) => {
-    setSections(prev => prev.filter(section => section.id !== id));
-  };
+  // Set up localStorage persistence
+  useLocalStoragePersistence({
+    categories,
+    subcategoryMappings,
+    locations,
+    facilities,
+    designations,
+    campuses,
+    classes,
+    sections
+  });
 
   return {
     // State
@@ -274,37 +97,33 @@ export function useConfigManagement(
     campuses,
     classes,
     sections,
-    // Category methods
-    addCategory,
-    updateCategory,
-    deleteCategory,
-    // Subcategory methods
-    addSubcategory,
-    updateSubcategory,
-    deleteSubcategory,
-    // Location methods
-    addLocation,
-    updateLocation,
-    deleteLocation,
-    // Facility methods
-    addFacility,
-    updateFacility,
-    deleteFacility,
-    // Designation methods
-    addDesignation,
-    updateDesignation,
-    deleteDesignation,
-    // Campus methods
-    addCampus,
-    updateCampus,
-    deleteCampus,
-    // Class methods
-    addClass,
-    updateClass,
-    deleteClass,
-    // Section methods
-    addSection,
-    updateSection,
-    deleteSection
+    // Functions from category management
+    addCategory: categoryManagement.addCategory,
+    updateCategory: categoryManagement.updateCategory,
+    deleteCategory: categoryManagement.deleteCategory,
+    addSubcategory: categoryManagement.addSubcategory,
+    updateSubcategory: categoryManagement.updateSubcategory,
+    deleteSubcategory: categoryManagement.deleteSubcategory,
+    // Functions from location management
+    addLocation: locationManagement.addLocation,
+    updateLocation: locationManagement.updateLocation,
+    deleteLocation: locationManagement.deleteLocation,
+    addFacility: locationManagement.addFacility,
+    updateFacility: locationManagement.updateFacility,
+    deleteFacility: locationManagement.deleteFacility,
+    // Functions from designation management
+    addDesignation: designationManagement.addDesignation,
+    updateDesignation: designationManagement.updateDesignation,
+    deleteDesignation: designationManagement.deleteDesignation,
+    // Functions from educational structure management
+    addCampus: educationalStructureManagement.addCampus,
+    updateCampus: educationalStructureManagement.updateCampus,
+    deleteCampus: educationalStructureManagement.deleteCampus,
+    addClass: educationalStructureManagement.addClass,
+    updateClass: educationalStructureManagement.updateClass,
+    deleteClass: educationalStructureManagement.deleteClass,
+    addSection: educationalStructureManagement.addSection,
+    updateSection: educationalStructureManagement.updateSection,
+    deleteSection: educationalStructureManagement.deleteSection
   };
 }
