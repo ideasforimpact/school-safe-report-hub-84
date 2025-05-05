@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Incident, IncidentStatus } from '@/contexts/IncidentContext';
@@ -305,11 +304,17 @@ const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
           <Pagination>
             <PaginationContent>
               <PaginationItem>
-                <PaginationPrevious 
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                  disabled={currentPage === 1}
-                  className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                />
+                {currentPage === 1 ? (
+                  <PaginationPrevious 
+                    className="pointer-events-none opacity-50"
+                    aria-disabled="true"
+                  />
+                ) : (
+                  <PaginationPrevious 
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    className="cursor-pointer"
+                  />
+                )}
               </PaginationItem>
               
               {getPageNumbers().map((pageNum, index) => 
@@ -331,11 +336,17 @@ const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
               )}
               
               <PaginationItem>
-                <PaginationNext 
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                  disabled={currentPage === totalPages}
-                  className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                />
+                {currentPage === totalPages ? (
+                  <PaginationNext 
+                    className="pointer-events-none opacity-50" 
+                    aria-disabled="true"
+                  />
+                ) : (
+                  <PaginationNext 
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    className="cursor-pointer"
+                  />
+                )}
               </PaginationItem>
             </PaginationContent>
           </Pagination>
