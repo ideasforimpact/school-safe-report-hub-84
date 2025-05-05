@@ -10,7 +10,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Edit, Ticket, BanIcon } from 'lucide-react';
+import { Edit, Ticket, BanIcon, AlertCircle, ArrowUp, ArrowRight, ArrowDown } from 'lucide-react';
 
 interface IncidentsTableProps {
   incidents: Incident[];
@@ -45,18 +45,18 @@ const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
     }
   };
 
-  const getPriorityBadgeClass = (priority: string | undefined) => {
+  const getPriorityIcon = (priority: string | undefined) => {
     switch(priority) {
       case 'Critical':
-        return 'bg-red-100 text-red-800';
+        return <AlertCircle className="h-4 w-4 text-red-600" title="Critical Priority" />;
       case 'High':
-        return 'bg-orange-100 text-orange-800';
+        return <ArrowUp className="h-4 w-4 text-orange-500" title="High Priority" />;
       case 'Medium':
-        return 'bg-yellow-100 text-yellow-800';
+        return <ArrowRight className="h-4 w-4 text-yellow-600" title="Medium Priority" />;
       case 'Low':
-        return 'bg-green-100 text-green-800';
+        return <ArrowDown className="h-4 w-4 text-green-600" title="Low Priority" />;
       default:
-        return 'bg-gray-100 text-gray-800';
+        return <ArrowRight className="h-4 w-4 text-yellow-600" title="Medium Priority" />;
     }
   };
 
@@ -94,7 +94,7 @@ const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
               {/* Type column removed */}
               <TableHead className="text-left">Category</TableHead>
               <TableHead className="text-left">Date</TableHead>
-              <TableHead className="text-left">Priority</TableHead>
+              {/* Priority column removed */}
               <TableHead className="text-left">Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -109,7 +109,8 @@ const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
                 <TableCell className="font-medium">
                   <div className="flex items-center">
                     <Ticket className="h-4 w-4 mr-2 text-blue-600" />
-                    {incident.ticketId}
+                    {getPriorityIcon(incident.priority)}
+                    <span className="ml-2">{incident.ticketId}</span>
                     {incident.isVoided && (
                       <BanIcon className="h-4 w-4 ml-2 text-red-600" />
                     )}
@@ -118,11 +119,7 @@ const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
                 {/* Type cell removed */}
                 <TableCell className="text-left">{incident.category}</TableCell>
                 <TableCell className="text-left">{formatDate(incident.date)}</TableCell>
-                <TableCell className="text-left">
-                  <span className={`px-2 py-1 rounded-full text-xs ${getPriorityBadgeClass(incident.priority)}`}>
-                    {incident.priority || 'Medium'}
-                  </span>
-                </TableCell>
+                {/* Priority cell removed */}
                 <TableCell className="text-left">
                   <span className={`px-2 py-1 rounded-full text-xs ${getStatusBadgeClass(incident.status, incident.isVoided)}`}>
                     {incident.isVoided ? 'Voided' : incident.status}
