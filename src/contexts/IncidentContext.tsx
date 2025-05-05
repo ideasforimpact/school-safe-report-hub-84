@@ -5,7 +5,7 @@ import { useConfigManagement } from '@/hooks/useConfigManagement';
 import { initialCategories, initialSubcategories, initialLocations, initialFacilities, initialDesignations, initialCampuses, initialClasses, initialSections } from './initialData';
 import { generateSampleIncidents } from '@/utils/sampleIncidentData';
 import { useIncidentActions } from '@/hooks/useIncidentActions';
-import { Activity } from '@/types/incident';
+import { Activity, Incident, Comment } from '@/types/incident';
 
 const IncidentContext = createContext<IncidentContextType | undefined>(undefined);
 
@@ -82,15 +82,45 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
     addActivity
   } = useIncidentActions(incidents, setIncidents, activities, setActivities, users);
 
-  // Stub implementations for other required methods
+  // Implement the required methods
   const addActionItem = () => {};
+  
   const updateActionItem = () => {};
+  
   const deleteActionItem = () => {};
-  const addComment = () => {};
+  
+  const addComment = (incidentId: string, comment: Omit<Comment, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const now = new Date();
+    const newComment = {
+      ...comment,
+      id: Date.now().toString(),
+      createdAt: now,
+      updatedAt: now
+    };
+    
+    setIncidents(prev => 
+      prev.map(incident => 
+        incident.id === incidentId
+          ? {
+              ...incident,
+              comments: [...(incident.comments || []), newComment]
+            }
+          : incident
+      )
+    );
+    
+    return newComment;
+  };
+  
   const updateComment = () => {};
+  
   const deleteComment = () => {};
-  const getRecentActivities = () => [];
-  const getIncidentActivities = () => [];
+  
+  const getRecentActivities = () => activities.slice(0, 10);
+  
+  const getIncidentActivities = (incidentId: string) => 
+    activities.filter(activity => activity.entityId === incidentId);
+  
   const generateTicketId = () => `SR-${Math.floor(Math.random() * 1000000)}-${Math.floor(Math.random() * 1000)}`;
 
   const value: IncidentContextType = {

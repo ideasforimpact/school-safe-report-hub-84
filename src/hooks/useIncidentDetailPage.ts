@@ -15,7 +15,8 @@ export const useIncidentDetailPage = () => {
   const { user, isAdmin } = useAuth();
   const { formatDate, formatDateTime, getStatusColor, getCommentStatusColor, useStatusUpdate } = useIncidentDetail();
 
-  const incident = getIncident(id || '');
+  // Get the incident and check if it exists
+  const incident = id ? getIncident(id) : null;
   const incidentActivities = incident ? getIncidentActivities(incident.id) : [];
 
   const { statusUpdate, setStatusUpdate } = useStatusUpdate(incident?.status || 'Open');
