@@ -55,13 +55,14 @@ export const SectionTab = ({
       return;
     }
     
-    console.log("Adding section:", newSection, "to class:", selectedClassId);
+    console.log("Adding section:", newSection.trim(), "to class:", selectedClassId);
     addSection(selectedClassId, newSection.trim());
     setNewSection('');
   };
 
   const handleSectionDelete = (id: string) => {
     deleteSection(id);
+    toast.success("Section deleted successfully");
   };
 
   const handleSectionUpdate = () => {
@@ -75,8 +76,9 @@ export const SectionTab = ({
       return;
     }
     
-    updateSection(editingSection.id, editingSection.classId, editingSection.name);
+    updateSection(editingSection.id, editingSection.classId, editingSection.name.trim());
     setEditingSection(null);
+    toast.success("Section updated successfully");
   };
 
   const getClassName = (classId: string) => {
