@@ -42,6 +42,7 @@ interface IncidentDetailsProps {
   locations: ConfigItem[];
   facilities: ConfigItem[];
   users: any[];
+  getCategoriesForType: (type: string) => ConfigItem[];
 }
 
 const IncidentDetailsSection: React.FC<IncidentDetailsProps> = ({
@@ -57,7 +58,8 @@ const IncidentDetailsSection: React.FC<IncidentDetailsProps> = ({
   availableSubcategories,
   locations,
   facilities,
-  users
+  users,
+  getCategoriesForType
 }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
@@ -66,6 +68,7 @@ const IncidentDetailsSection: React.FC<IncidentDetailsProps> = ({
         type={formData.type}
         status={formData.status}
         onSelectChange={onSelectChange}
+        getCategoriesForType={getCategoriesForType}
       />
 
       {/* Priority Section */}
@@ -107,7 +110,7 @@ const IncidentDetailsSection: React.FC<IncidentDetailsProps> = ({
       />
 
       {/* Description, Image, and Supporting Documents Section */}
-      <div className="md:col-span-1">
+      <div className="md:col-span-3">
         <DescriptionSection
           description={formData.description}
           image={image}

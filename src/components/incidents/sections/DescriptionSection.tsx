@@ -18,7 +18,7 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
   onFilesChange,
 }) => {
   return (
-    <>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div className="space-y-2">
         <label htmlFor="description" className="text-sm font-medium">
           Description <span className="text-red-500">*</span>
@@ -47,7 +47,7 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
           Upload up to 5 files (images, videos, documents) to support this incident report
         </p>
       </div>
-    </>
+    </div>
   );
 };
 

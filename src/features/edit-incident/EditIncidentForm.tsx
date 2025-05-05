@@ -1,94 +1,59 @@
 
 import React from 'react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Person } from '@/types/incident';
 import IncidentDetailsSection from './IncidentDetailsSection';
-import PeopleInvolvedSection from './PeopleInvolvedSection';
 import { useEditIncidentForm } from './hooks/useEditIncidentForm';
 
-interface EditIncidentFormProps {
-  initialFormData: {
-    type: string;
-    category: string;
-    subcategory: string;
-    description: string;
-    rootCause: string;
-    date: string;
-    time: string;
-    location: string;
-    status: string;
-    owner: string;
-    facility: string;
-    image: string | undefined;
-  };
-  initialPeopleInvolved: Person[];
-  isSubmitting: boolean;
-  onSubmit: (updatedFormData: any, updatedPeople: Person[]) => void;
-  onCancel: () => void;
-}
-
-const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
-  initialFormData,
-  initialPeopleInvolved,
-  isSubmitting,
-  onSubmit,
-  onCancel
-}) => {
+const EditIncidentForm = () => {
   const {
     formData,
-    peopleInvolved,
-    setPeopleInvolved,
-    availableSubcategories,
+    image,
     supportingFiles,
+    peopleInvolved,
+    availableSubcategories,
     handleChange,
     handleSelectChange,
-    handleImageChange,
+    handleDateTimeChange,
     handleFilesChange,
+    onImageChange,
+    isSubmitting,
+    handleSubmit,
+    getCategories,
+    getLocations,
+    getFacilities,
+    getUsers,
     getCategoriesForType
-  } = useEditIncidentForm(initialFormData, initialPeopleInvolved);
-
-  const handleFormSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSubmit(formData, peopleInvolved);
-  };
+  } = useEditIncidentForm();
 
   return (
-    <form onSubmit={handleFormSubmit} className="w-full">
+    <form onSubmit={handleSubmit}>
       <Card className="border-none shadow-card">
-        <CardHeader>
-          <CardTitle>Incident Details</CardTitle>
-          <CardDescription>Update information about what occurred</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6 pt-6">
+          {/* Incident Details Section */}
           <IncidentDetailsSection
             formData={formData}
-            supportingFiles={supportingFiles}
+            image={image}
             onChange={handleChange}
             onSelectChange={handleSelectChange}
-            onImageChange={handleImageChange}
+            onDateTimeChange={handleDateTimeChange}
+            supportingFiles={supportingFiles}
             onFilesChange={handleFilesChange}
-            getCategoriesForType={getCategoriesForType}
+            onImageChange={onImageChange}
+            categories={getCategories()}
             availableSubcategories={availableSubcategories}
+            locations={getLocations()}
+            facilities={getFacilities()}
+            users={getUsers()}
+            getCategoriesForType={getCategoriesForType}
           />
 
-          <PeopleInvolvedSection
-            peopleInvolved={peopleInvolved}
-            setPeopleInvolved={setPeopleInvolved}
-          />
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </div>
         </CardContent>
-        <CardFooter className="flex justify-between">
-          <Button 
-            type="button" 
-            variant="outline"
-            onClick={onCancel}
-          >
-            Cancel
-          </Button>
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Saving..." : "Save Changes"}
-          </Button>
-        </CardFooter>
       </Card>
     </form>
   );

@@ -24,21 +24,37 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
 }) => {
   return (
     <div className="space-y-4">
-      <div className="space-y-2">
-        <label htmlFor="description" className="text-sm font-medium">
-          Description <span className="text-red-500">*</span>
-        </label>
-        <Textarea
-          id="description"
-          name="description"
-          placeholder="Describe what happened in detail"
-          value={description}
-          onChange={onChange}
-          rows={4}
-          required
-        />
-      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <label htmlFor="description" className="text-sm font-medium">
+            Description <span className="text-red-500">*</span>
+          </label>
+          <Textarea
+            id="description"
+            name="description"
+            placeholder="Describe what happened in detail"
+            value={description}
+            onChange={onChange}
+            rows={4}
+            required
+          />
+        </div>
 
+        <div className="space-y-2">
+          <label className="text-sm font-medium">
+            Supporting Documents (Optional)
+          </label>
+          <MultipleFilesUpload
+            onFilesChange={onFilesChange}
+            initialFiles={supportingFiles}
+            maxFiles={5}
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Upload up to 5 files (images, videos, documents) to support this incident report
+          </p>
+        </div>
+      </div>
+      
       <div className="space-y-2">
         <label htmlFor="image" className="text-sm font-medium">
           Incident Image (Optional)
@@ -48,20 +64,6 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
           onImageChange={onImageChange}
           className=""
         />
-      </div>
-
-      <div className="space-y-2">
-        <label className="text-sm font-medium">
-          Supporting Documents (Optional)
-        </label>
-        <MultipleFilesUpload
-          onFilesChange={onFilesChange}
-          initialFiles={supportingFiles}
-          maxFiles={5}
-        />
-        <p className="text-xs text-gray-500 mt-1">
-          Upload up to 5 files (images, videos, documents) to support this incident report
-        </p>
       </div>
     </div>
   );
