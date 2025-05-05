@@ -58,7 +58,7 @@ const CategoryConfiguration = () => {
       try {
         const newCategory = addCategory('Digital Safety');
         // Update local state immediately for the UI
-        setLocalCategories(prev => [...prev, newCategory]);
+        setLocalCategories(prevCategories => [...prevCategories, newCategory]);
         toast.success("Digital Safety category added successfully");
         setDigitalSafetyAdded(true);
       } catch (error) {
@@ -88,7 +88,7 @@ const CategoryConfiguration = () => {
     try {
       const newCategory = addCategory(name);
       // Update local state immediately
-      setLocalCategories(prev => [...prev, newCategory]);
+      setLocalCategories(prevCategories => [...prevCategories, newCategory]);
       console.log("Category added successfully:", newCategory);
       toast.success("Category added successfully");
     } catch (error) {
@@ -101,7 +101,7 @@ const CategoryConfiguration = () => {
     try {
       updateCategory(id, name);
       // Update local state immediately
-      setLocalCategories(prev => prev.map(cat => 
+      setLocalCategories(prevCategories => prevCategories.map(cat => 
         cat.id === id ? { ...cat, name } : cat
       ));
       console.log("Category updated:", id, name);
@@ -116,7 +116,7 @@ const CategoryConfiguration = () => {
     try {
       deleteCategory(id);
       // Update local state immediately
-      setLocalCategories(prev => prev.filter(cat => cat.id !== id));
+      setLocalCategories(prevCategories => prevCategories.filter(cat => cat.id !== id));
       // Also remove from subcategory mappings
       const { [id]: _, ...rest } = localSubcategoryMappings;
       setLocalSubcategoryMappings(rest);
