@@ -7,7 +7,7 @@ import BenchmarkingFilters from '@/components/benchmarking/BenchmarkingFilters';
 import BenchmarkingContent from '@/components/benchmarking/BenchmarkingContent';
 import AboutBenchmarkingData from '@/components/benchmarking/AboutBenchmarkingData';
 import ViewToggle from '@/components/benchmarking/ViewToggle';
-import { useBenchmarkingData } from '@/hooks/useBenchmarkingData';
+import { useBenchmarkingData } from '@/hooks/benchmarking';
 
 const Benchmarking = () => {
   const {
