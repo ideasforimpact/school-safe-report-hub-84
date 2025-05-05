@@ -56,12 +56,14 @@ const CategoryConfiguration = () => {
       setIsAddingDigitalSafety(true);
       
       try {
-        const newCategory = addCategory('Digital Safety');
-        console.log("Adding Digital Safety category result:", newCategory);
+        // Call addCategory but don't directly use the return value in a condition
+        const result = addCategory('Digital Safety');
+        console.log("Adding Digital Safety category result:", result);
         
-        // Only update state if we got a valid result back
-        if (typeof newCategory === 'object' && newCategory !== null) {
-          setLocalCategories(prevCategories => [...prevCategories, newCategory as ConfigItem]);
+        // Type guard: check if result is a valid object with expected structure
+        if (result && typeof result === 'object' && 'id' in result && 'name' in result) {
+          const newCategory = result as ConfigItem;
+          setLocalCategories(prevCategories => [...prevCategories, newCategory]);
           toast.success("Digital Safety category added successfully");
           setDigitalSafetyAdded(true);
         }
@@ -90,12 +92,14 @@ const CategoryConfiguration = () => {
     }
     
     try {
-      const newCategory = addCategory(name);
-      console.log("Category add result:", newCategory);
+      // Call addCategory but don't directly use the return value in a condition
+      const result = addCategory(name);
+      console.log("Category add result:", result);
       
-      // Only update state if we got a valid result back
-      if (typeof newCategory === 'object' && newCategory !== null) {
-        setLocalCategories(prevCategories => [...prevCategories, newCategory as ConfigItem]);
+      // Type guard: check if result is a valid object with expected structure
+      if (result && typeof result === 'object' && 'id' in result && 'name' in result) {
+        const newCategory = result as ConfigItem;
+        setLocalCategories(prevCategories => [...prevCategories, newCategory]);
         console.log("Category added successfully:", newCategory);
         toast.success("Category added successfully");
       }
@@ -138,14 +142,15 @@ const CategoryConfiguration = () => {
 
   const handleAddSubcategory = (categoryId: string, name: string) => {
     try {
-      const newSubcategory = addSubcategory(categoryId, name);
-      console.log("Subcategory add result:", newSubcategory);
+      // Call addSubcategory but don't directly use the return value in a condition
+      const result = addSubcategory(categoryId, name);
+      console.log("Subcategory add result:", result);
       
-      // Only update state if we got a valid result back
-      if (typeof newSubcategory === 'object' && newSubcategory !== null) {
+      // Type guard: check if result is a valid object with expected structure
+      if (result && typeof result === 'object' && 'id' in result && 'name' in result) {
         setLocalSubcategoryMappings(prev => ({
           ...prev,
-          [categoryId]: [...(prev[categoryId] || []), newSubcategory]
+          [categoryId]: [...(prev[categoryId] || []), result]
         }));
         toast.success("Subcategory added successfully");
       }
