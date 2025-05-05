@@ -510,7 +510,7 @@ export const generateDemoIncidents = (count: number = 100): Incident[] => {
       });
     }
     
-    // Generate action items for some incidents
+    // Generate action items for some incidents with the correct status type
     const actionItems = Math.random() < 0.6 && (status === 'In Progress' || status === 'Closed') ? [
       {
         id: `action-${i}-1`,
@@ -530,7 +530,7 @@ export const generateDemoIncidents = (count: number = 100): Incident[] => {
         ])}`,
         dueDate: new Date(date.getTime() + (Math.floor(Math.random() * 14) + 7) * 86400000), // 7-21 days later
         assignedTo: owner || reportedBy,
-        status: status === 'Closed' ? 'Completed' : 'In Progress',
+        status: status === 'Closed' ? 'Completed' as const : 'In Progress' as const, // Use type assertion to match the expected literals
         createdBy: reportedBy,
         createdAt: date,
         updatedAt: new Date(date.getTime() + Math.floor(Math.random() * 3) * 86400000) // 0-3 days later
