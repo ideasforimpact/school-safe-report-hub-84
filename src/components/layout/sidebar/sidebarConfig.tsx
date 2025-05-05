@@ -48,12 +48,7 @@ export const getClientItems = (permissions: ModulePermissions) => [
     path: '/dashboard',
     allowed: true,
   },
-  {
-    icon: AlertTriangle,
-    label: 'Report',
-    path: '/report-incident',
-    allowed: permissions.incidentReporting,
-  },
+  // Removed the Report item from the sidebar
   {
     icon: List,
     label: 'All Incidents',
@@ -73,3 +68,4 @@ export const getClientItems = (permissions: ModulePermissions) => [
     allowed: permissions.benchmarking,
   },
 ];
+
