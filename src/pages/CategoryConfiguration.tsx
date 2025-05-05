@@ -12,6 +12,7 @@ import { AlertTriangle } from 'lucide-react';
 const CategoryConfiguration = () => {
   const [activeTab, setActiveTab] = useState('categories');
   const [isAddingDigitalSafety, setIsAddingDigitalSafety] = useState(false);
+  const [digitalSafetyAdded, setDigitalSafetyAdded] = useState(false);
 
   const { 
     categories,
@@ -26,13 +27,11 @@ const CategoryConfiguration = () => {
 
   // Add Digital Safety category if it doesn't exist
   useEffect(() => {
-    // Don't attempt to add Digital Safety if we're already trying to add it
-    // or if categories haven't loaded yet
-    if (isAddingDigitalSafety || categories.length === 0) {
+    // Don't attempt to add Digital Safety if we're already trying to add it,
+    // or if categories haven't loaded yet, or if we've already successfully added it
+    if (isAddingDigitalSafety || categories.length === 0 || digitalSafetyAdded) {
       return;
     }
-    
-    console.log("Current categories in UI:", categories);
     
     // Check if Digital Safety already exists
     const digitalSafetyExists = categories.some(cat => 
@@ -48,16 +47,24 @@ const CategoryConfiguration = () => {
       try {
         addCategory('Digital Safety');
         toast.success("Digital Safety category added successfully");
+        setDigitalSafetyAdded(true);
       } catch (error) {
+        console.error("Error adding Digital Safety category:", error);
+        // Only show error toast if it's not because the category already exists
         if (error instanceof Error && !error.message.includes("already exists")) {
-          console.error("Error adding Digital Safety category:", error);
           toast.error(`Failed to add Digital Safety category: ${error.message}`);
+        } else {
+          // If the error is because it already exists, mark it as added
+          setDigitalSafetyAdded(true);
         }
       } finally {
         setIsAddingDigitalSafety(false);
       }
+    } else {
+      // Mark as added if it already exists
+      setDigitalSafetyAdded(true);
     }
-  }, [categories, addCategory, isAddingDigitalSafety]);
+  }, [categories, addCategory, isAddingDigitalSafety, digitalSafetyAdded]);
 
   const handleAddCategory = (name: string) => {
     if (!name.trim()) {

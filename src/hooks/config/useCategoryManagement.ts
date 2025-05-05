@@ -101,6 +101,12 @@ export function useCategoryManagement(
     if (exists) {
       throw new Error(`Category "${name}" already exists`);
     }
+
+    // Find if the category exists
+    const categoryExists = categories.some(cat => cat.id === id);
+    if (!categoryExists) {
+      throw new Error(`Category with ID "${id}" not found`);
+    }
     
     // Update categories state
     const updatedCategories = categories.map(cat => 
@@ -115,6 +121,12 @@ export function useCategoryManagement(
   };
 
   const deleteCategory = (id: string) => {
+    // Check if the category exists
+    const categoryExists = categories.some(cat => cat.id === id);
+    if (!categoryExists) {
+      throw new Error(`Category with ID "${id}" not found`);
+    }
+    
     // Update categories state
     const updatedCategories = categories.filter(cat => cat.id !== id);
     setCategories(updatedCategories);
@@ -136,6 +148,12 @@ export function useCategoryManagement(
   const addSubcategory = (categoryId: string, name: string) => {
     if (!name.trim()) {
       throw new Error("Subcategory name cannot be empty");
+    }
+    
+    // Check if the category exists
+    const categoryExists = categories.some(cat => cat.id === categoryId);
+    if (!categoryExists) {
+      throw new Error(`Category with ID "${categoryId}" not found`);
     }
     
     // Check for duplicate subcategory names
@@ -174,6 +192,18 @@ export function useCategoryManagement(
       throw new Error("Subcategory name cannot be empty");
     }
     
+    // Check if the category exists
+    const categoryExists = categories.some(cat => cat.id === categoryId);
+    if (!categoryExists) {
+      throw new Error(`Category with ID "${categoryId}" not found`);
+    }
+    
+    // Check if the subcategory exists
+    const subcategoryExists = (subcategoryMappings[categoryId] || []).some(subcat => subcat.id === id);
+    if (!subcategoryExists) {
+      throw new Error(`Subcategory with ID "${id}" not found in category "${categoryId}"`);
+    }
+    
     // Check for duplicate subcategory names
     const nameToCheck = name.trim().toLowerCase();
     const categorySubcategories = subcategoryMappings[categoryId] || [];
@@ -201,6 +231,18 @@ export function useCategoryManagement(
   };
 
   const deleteSubcategory = (categoryId: string, id: string) => {
+    // Check if the category exists
+    const categoryExists = categories.some(cat => cat.id === categoryId);
+    if (!categoryExists) {
+      throw new Error(`Category with ID "${categoryId}" not found`);
+    }
+    
+    // Check if the subcategory exists
+    const subcategoryExists = (subcategoryMappings[categoryId] || []).some(subcat => subcat.id === id);
+    if (!subcategoryExists) {
+      throw new Error(`Subcategory with ID "${id}" not found in category "${categoryId}"`);
+    }
+    
     // Update subcategories state
     const updatedSubcategories = {
       ...subcategoryMappings,
