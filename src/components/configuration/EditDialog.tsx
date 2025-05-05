@@ -101,7 +101,7 @@ export const EditDialog = ({
                 value={extraField.value} 
                 onValueChange={extraField.onChange}
               >
-                <SelectTrigger>
+                <SelectTrigger id="extraField">
                   <SelectValue placeholder={`Select ${extraField.label}`} />
                 </SelectTrigger>
                 <SelectContent>
