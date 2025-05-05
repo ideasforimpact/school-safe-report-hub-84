@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, ReactNode } from 'react';
 import { IncidentContextType } from './types';
 import { useConfigManagement } from '@/hooks/useConfigManagement'; 
@@ -180,6 +179,4 @@ export const useIncidents = () => {
 };
 
 // Re-export types needed by other components
-export {
-  IncidentContextType
-};
+export type { IncidentContextType };
