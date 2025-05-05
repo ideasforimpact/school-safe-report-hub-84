@@ -24,8 +24,14 @@ const CategoryConfiguration = () => {
   } = useIncidents();
 
   const handleAddCategory = (name: string) => {
+    if (!name.trim()) {
+      toast.error("Category name cannot be empty");
+      return;
+    }
+    
     try {
-      addCategory(name);
+      const newCategory = addCategory(name);
+      console.log("Category added successfully:", newCategory);
       toast.success("Category added successfully");
     } catch (error) {
       console.error("Error adding category:", error);
@@ -36,6 +42,7 @@ const CategoryConfiguration = () => {
   const handleUpdateCategory = (id: string, name: string) => {
     try {
       updateCategory(id, name);
+      console.log("Category updated:", id, name);
       toast.success("Category updated successfully");
     } catch (error) {
       console.error("Error updating category:", error);
@@ -46,8 +53,8 @@ const CategoryConfiguration = () => {
   const handleDeleteCategory = (id: string) => {
     try {
       deleteCategory(id);
-      toast.success("Category deleted successfully");
       console.log("Category deleted:", id);
+      toast.success("Category deleted successfully");
     } catch (error) {
       console.error("Error deleting category:", error);
       toast.error("Failed to delete category");

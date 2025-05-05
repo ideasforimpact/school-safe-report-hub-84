@@ -12,9 +12,13 @@ export function useCategoryManagement(
 
   // Categories management
   const addCategory = (name: string) => {
+    if (!name.trim()) {
+      throw new Error("Category name cannot be empty");
+    }
+    
     const newCategory = {
       id: Date.now().toString(),
-      name
+      name: name.trim()
     };
     
     setCategories(prev => [...prev, newCategory]);
@@ -30,8 +34,12 @@ export function useCategoryManagement(
   };
 
   const updateCategory = (id: string, name: string) => {
+    if (!name.trim()) {
+      throw new Error("Category name cannot be empty");
+    }
+    
     setCategories(prev => prev.map(cat => 
-      cat.id === id ? { ...cat, name } : cat
+      cat.id === id ? { ...cat, name: name.trim() } : cat
     ));
     console.log("Category updated:", id, name);
   };
@@ -50,9 +58,13 @@ export function useCategoryManagement(
 
   // Subcategories management
   const addSubcategory = (categoryId: string, name: string) => {
+    if (!name.trim()) {
+      throw new Error("Subcategory name cannot be empty");
+    }
+    
     const newSubcategory = {
       id: `${categoryId}-${Date.now()}`,
-      name
+      name: name.trim()
     };
     
     setSubcategoryMappings(prev => ({
@@ -65,10 +77,14 @@ export function useCategoryManagement(
   };
 
   const updateSubcategory = (categoryId: string, id: string, name: string) => {
+    if (!name.trim()) {
+      throw new Error("Subcategory name cannot be empty");
+    }
+    
     setSubcategoryMappings(prev => ({
       ...prev,
       [categoryId]: prev[categoryId].map(subcat =>
-        subcat.id === id ? { ...subcat, name } : subcat
+        subcat.id === id ? { ...subcat, name: name.trim() } : subcat
       )
     }));
     console.log("Subcategory updated:", categoryId, id, name);

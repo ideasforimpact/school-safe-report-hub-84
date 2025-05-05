@@ -43,14 +43,10 @@ export const CategoryTab = ({
       return;
     }
     
-    try {
-      addCategory(newCategory.trim());
-      setNewCategory('');
-      toast.success("Category added successfully");
-    } catch (error) {
-      console.error("Error adding category:", error);
-      toast.error("Failed to add category");
-    }
+    addCategory(newCategory.trim());
+    setNewCategory('');
+    console.log("Category add initiated with name:", newCategory.trim());
+    toast.success("Category added successfully");
   };
 
   const handleCategoryDelete = (id: string) => {
@@ -102,8 +98,8 @@ export const CategoryTab = ({
             onChange={(e) => setNewCategory(e.target.value)}
             className="flex-1"
           />
-          <Button type="submit">
-            <Plus className="mr-2 h-4 w-4" /> Add Category
+          <Button type="submit" className="flex items-center gap-2">
+            <Plus className="h-4 w-4" /> Add Category
           </Button>
         </form>
         
