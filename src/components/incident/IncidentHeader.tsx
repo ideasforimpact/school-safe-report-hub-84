@@ -47,14 +47,16 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
 
   return (
     <div className="space-y-4">
-      <Button 
-        variant="ghost" 
-        className="-ml-2 flex items-center" 
-        onClick={() => navigate('/incidents')}
-      >
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Back to Incidents
-      </Button>
+      <div className="w-full flex">
+        <Button 
+          variant="ghost" 
+          className="-ml-4 flex items-center" 
+          onClick={() => navigate('/incidents')}
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Incidents
+        </Button>
+      </div>
       
       <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
         <div>
