@@ -32,6 +32,42 @@ const EducationalConfiguration = () => {
     }
   }, [searchParams]);
 
+  const handleAddCampus = (name: string) => {
+    addCampus(name);
+  };
+
+  const handleUpdateCampus = (id: string, name: string) => {
+    updateCampus(id, name);
+  };
+
+  const handleDeleteCampus = (id: string) => {
+    deleteCampus(id);
+  };
+
+  const handleAddClass = (campusId: string, name: string) => {
+    addClass(campusId, name);
+  };
+
+  const handleUpdateClass = (id: string, campusId: string, name: string) => {
+    updateClass(id, campusId, name);
+  };
+
+  const handleDeleteClass = (id: string) => {
+    deleteClass(id);
+  };
+
+  const handleAddSection = (classId: string, name: string) => {
+    addSection(classId, name);
+  };
+
+  const handleUpdateSection = (id: string, classId: string, name: string) => {
+    updateSection(id, classId, name);
+  };
+
+  const handleDeleteSection = (id: string) => {
+    deleteSection(id);
+  };
+
   return (
     <Layout>
       <div className="space-y-6 max-w-6xl mx-auto p-4">
@@ -46,17 +82,17 @@ const EducationalConfiguration = () => {
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           campuses={campuses}
-          addCampus={addCampus}
-          updateCampus={updateCampus}
-          deleteCampus={deleteCampus}
+          addCampus={handleAddCampus}
+          updateCampus={handleUpdateCampus}
+          deleteCampus={handleDeleteCampus}
           classes={classes}
-          addClass={addClass}
-          updateClass={updateClass}
-          deleteClass={deleteClass}
+          addClass={handleAddClass}
+          updateClass={handleUpdateClass}
+          deleteClass={handleDeleteClass}
           sections={sections}
-          addSection={addSection}
-          updateSection={updateSection}
-          deleteSection={deleteSection}
+          addSection={handleAddSection}
+          updateSection={handleUpdateSection}
+          deleteSection={handleDeleteSection}
         />
       </div>
     </Layout>

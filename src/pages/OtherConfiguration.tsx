@@ -24,6 +24,18 @@ const OtherConfiguration = () => {
     }
   }, [searchParams]);
 
+  const handleAddDesignation = (name: string) => {
+    addDesignation(name);
+  };
+
+  const handleUpdateDesignation = (id: string, name: string) => {
+    updateDesignation(id, name);
+  };
+
+  const handleDeleteDesignation = (id: string) => {
+    deleteDesignation(id);
+  };
+
   return (
     <Layout>
       <div className="space-y-6 max-w-6xl mx-auto p-4">
@@ -38,9 +50,9 @@ const OtherConfiguration = () => {
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           designations={designations}
-          addDesignation={addDesignation}
-          updateDesignation={updateDesignation}
-          deleteDesignation={deleteDesignation}
+          addDesignation={handleAddDesignation}
+          updateDesignation={handleUpdateDesignation}
+          deleteDesignation={handleDeleteDesignation}
         />
       </div>
     </Layout>

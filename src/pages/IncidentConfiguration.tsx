@@ -36,6 +36,54 @@ const IncidentConfiguration = () => {
     }
   }, [searchParams]);
 
+  const handleAddCategory = (name: string) => {
+    addCategory(name);
+  };
+
+  const handleUpdateCategory = (id: string, name: string) => {
+    updateCategory(id, name);
+  };
+
+  const handleDeleteCategory = (id: string) => {
+    deleteCategory(id);
+  };
+
+  const handleAddSubcategory = (categoryId: string, name: string) => {
+    addSubcategory(categoryId, name);
+  };
+
+  const handleUpdateSubcategory = (categoryId: string, id: string, name: string) => {
+    updateSubcategory(categoryId, id, name);
+  };
+
+  const handleDeleteSubcategory = (categoryId: string, id: string) => {
+    deleteSubcategory(categoryId, id);
+  };
+
+  const handleAddLocation = (name: string) => {
+    addLocation(name);
+  };
+
+  const handleUpdateLocation = (id: string, name: string) => {
+    updateLocation(id, name);
+  };
+
+  const handleDeleteLocation = (id: string) => {
+    deleteLocation(id);
+  };
+
+  const handleAddFacility = (name: string) => {
+    addFacility(name);
+  };
+
+  const handleUpdateFacility = (id: string, name: string) => {
+    updateFacility(id, name);
+  };
+
+  const handleDeleteFacility = (id: string) => {
+    deleteFacility(id);
+  };
+
   return (
     <Layout>
       <div className="space-y-6 max-w-6xl mx-auto p-4">
@@ -50,21 +98,21 @@ const IncidentConfiguration = () => {
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           categories={categories}
-          addCategory={addCategory}
-          updateCategory={updateCategory}
-          deleteCategory={deleteCategory}
+          addCategory={handleAddCategory}
+          updateCategory={handleUpdateCategory}
+          deleteCategory={handleDeleteCategory}
           subcategoryMappings={subcategoryMappings}
-          addSubcategory={addSubcategory}
-          updateSubcategory={updateSubcategory}
-          deleteSubcategory={deleteSubcategory}
+          addSubcategory={handleAddSubcategory}
+          updateSubcategory={handleUpdateSubcategory}
+          deleteSubcategory={handleDeleteSubcategory}
           locations={locations}
-          addLocation={addLocation}
-          updateLocation={updateLocation}
-          deleteLocation={deleteLocation}
+          addLocation={handleAddLocation}
+          updateLocation={handleUpdateLocation}
+          deleteLocation={handleDeleteLocation}
           facilities={facilities}
-          addFacility={addFacility}
-          updateFacility={updateFacility}
-          deleteFacility={deleteFacility}
+          addFacility={handleAddFacility}
+          updateFacility={handleUpdateFacility}
+          deleteFacility={handleDeleteFacility}
         />
       </div>
     </Layout>
