@@ -1,6 +1,7 @@
 
-import React, { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Dialog,
   DialogContent,
@@ -8,36 +9,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-
-interface SelectOption {
-  value: string;
-  label: string;
-}
-
-interface ExtraField {
-  type: "select";
-  label: string;
-  options: SelectOption[];
-  value: string;
-  onChange: (value: string) => void;
-}
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
 interface EditDialogProps {
   title: string;
   description: string;
   fieldLabel: string;
   value: string;
-  extraField?: ExtraField;
   onOpenChange: (open: boolean) => void;
   onChange: (value: string) => void;
   onSave: () => void;
@@ -49,74 +28,59 @@ export const EditDialog = ({
   description,
   fieldLabel,
   value,
-  extraField,
   onOpenChange,
   onChange,
   onSave,
   triggerButton,
 }: EditDialogProps) => {
-  const [open, setOpen] = useState(false);
-  const [currentValue, setCurrentValue] = useState(value);
+  const [isOpen, setIsOpen] = useState(false);
+  const [localValue, setLocalValue] = useState(value);
 
-  useEffect(() => {
-    setCurrentValue(value);
-  }, [value]);
-
-  const handleOpenChange = (newOpen: boolean) => {
-    setOpen(newOpen);
-    onOpenChange(newOpen);
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (open) {
+      setLocalValue(value);
+    }
+    onOpenChange(open);
   };
 
   const handleSave = () => {
+    onChange(localValue);
     onSave();
-    setOpen(false);
+    setIsOpen(false);
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <div onClick={() => setOpen(true)}>{triggerButton}</div>
-      <DialogContent className="sm:max-w-md">
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <DialogTrigger asChild>
+        {triggerButton}
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
+          <DialogDescription>
+            {description}
+          </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="name">{fieldLabel}</Label>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <label htmlFor="name" className="text-sm font-medium col-span-1">
+              {fieldLabel}
+            </label>
             <Input
               id="name"
-              value={currentValue}
-              onChange={(e) => {
-                setCurrentValue(e.target.value);
-                onChange(e.target.value);
-              }}
+              value={localValue}
+              onChange={(e) => setLocalValue(e.target.value)}
               className="col-span-3"
+              autoFocus
             />
           </div>
-          
-          {extraField && extraField.type === "select" && (
-            <div className="grid gap-2">
-              <Label htmlFor="extraField">{extraField.label}</Label>
-              <Select 
-                value={extraField.value} 
-                onValueChange={extraField.onChange}
-              >
-                <SelectTrigger id="extraField">
-                  <SelectValue placeholder={`Select ${extraField.label}`} />
-                </SelectTrigger>
-                <SelectContent>
-                  {extraField.options.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
         </div>
         <DialogFooter>
-          <Button onClick={handleSave}>Save changes</Button>
+          <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
+            Cancel
+          </Button>
+          <Button type="button" onClick={handleSave}>Save</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
