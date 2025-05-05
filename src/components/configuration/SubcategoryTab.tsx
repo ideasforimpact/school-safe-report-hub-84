@@ -36,6 +36,7 @@ export const SubcategoryTab = ({
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [newSubcategory, setNewSubcategory] = useState('');
   const [editingSubcategory, setEditingSubcategory] = useState<{id: string, name: string} | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   
   const selectedCategorySubcategories = selectedCategoryId 
     ? subcategoryMappings[selectedCategoryId] || [] 
@@ -71,12 +72,16 @@ export const SubcategoryTab = ({
   const handleSubcategoryDelete = (id: string) => {
     if (!selectedCategoryId) return;
     
+    setIsDeleting(true);
     try {
       deleteSubcategory(selectedCategoryId, id);
       toast.success("Subcategory deleted successfully");
+      console.log("Subcategory deleted:", selectedCategoryId, id);
     } catch (error) {
       console.error("Error deleting subcategory:", error);
       toast.error("Failed to delete subcategory");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -206,6 +211,7 @@ export const SubcategoryTab = ({
                                 <AlertDialogAction 
                                   onClick={() => handleSubcategoryDelete(subcategory.id)}
                                   className="bg-red-600 hover:bg-red-700"
+                                  disabled={isDeleting}
                                 >
                                   Delete
                                 </AlertDialogAction>

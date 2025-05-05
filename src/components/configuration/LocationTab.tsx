@@ -32,6 +32,7 @@ export const LocationTab = ({
 }: LocationTabProps) => {
   const [newLocation, setNewLocation] = useState('');
   const [editingLocation, setEditingLocation] = useState<{id: string, name: string} | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleLocationAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,12 +53,16 @@ export const LocationTab = ({
   };
 
   const handleLocationDelete = (id: string) => {
+    setIsDeleting(true);
     try {
       deleteLocation(id);
       toast.success("Location deleted successfully");
+      console.log("Location deleted:", id);
     } catch (error) {
       console.error("Error deleting location:", error);
       toast.error("Failed to delete location");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -161,6 +166,7 @@ export const LocationTab = ({
                             <AlertDialogAction 
                               onClick={() => handleLocationDelete(location.id)}
                               className="bg-red-600 hover:bg-red-700"
+                              disabled={isDeleting}
                             >
                               Delete
                             </AlertDialogAction>

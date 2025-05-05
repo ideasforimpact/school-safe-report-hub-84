@@ -47,6 +47,7 @@ const CategoryConfiguration = () => {
     try {
       deleteCategory(id);
       toast.success("Category deleted successfully");
+      console.log("Category deleted:", id);
     } catch (error) {
       console.error("Error deleting category:", error);
       toast.error("Failed to delete category");

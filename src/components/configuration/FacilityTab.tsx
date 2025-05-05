@@ -32,6 +32,7 @@ export const FacilityTab = ({
 }: FacilityTabProps) => {
   const [newFacility, setNewFacility] = useState('');
   const [editingFacility, setEditingFacility] = useState<{id: string, name: string} | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleFacilityAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,12 +53,16 @@ export const FacilityTab = ({
   };
 
   const handleFacilityDelete = (id: string) => {
+    setIsDeleting(true);
     try {
       deleteFacility(id);
       toast.success("Facility deleted successfully");
+      console.log("Facility deleted:", id);
     } catch (error) {
       console.error("Error deleting facility:", error);
       toast.error("Failed to delete facility");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -161,6 +166,7 @@ export const FacilityTab = ({
                             <AlertDialogAction 
                               onClick={() => handleFacilityDelete(facility.id)}
                               className="bg-red-600 hover:bg-red-700"
+                              disabled={isDeleting}
                             >
                               Delete
                             </AlertDialogAction>

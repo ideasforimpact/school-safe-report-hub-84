@@ -32,6 +32,8 @@ export const CategoryTab = ({
 }: CategoryTabProps) => {
   const [newCategory, setNewCategory] = useState('');
   const [editingCategory, setEditingCategory] = useState<{id: string, name: string} | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [currentDeleteId, setCurrentDeleteId] = useState<string | null>(null);
 
   const handleCategoryAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,12 +54,17 @@ export const CategoryTab = ({
   };
 
   const handleCategoryDelete = (id: string) => {
+    setIsDeleting(true);
     try {
       deleteCategory(id);
       toast.success("Category deleted successfully");
+      console.log("Category deleted:", id);
     } catch (error) {
       console.error("Error deleting category:", error);
       toast.error("Failed to delete category");
+    } finally {
+      setIsDeleting(false);
+      setCurrentDeleteId(null);
     }
   };
 
@@ -75,6 +82,10 @@ export const CategoryTab = ({
       console.error("Error updating category:", error);
       toast.error("Failed to update category");
     }
+  };
+
+  const prepareDelete = (id: string) => {
+    setCurrentDeleteId(id);
   };
 
   return (
@@ -145,7 +156,11 @@ export const CategoryTab = ({
                       
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => prepareDelete(category.id)}
+                          >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </AlertDialogTrigger>
@@ -161,6 +176,7 @@ export const CategoryTab = ({
                             <AlertDialogAction 
                               onClick={() => handleCategoryDelete(category.id)}
                               className="bg-red-600 hover:bg-red-700"
+                              disabled={isDeleting}
                             >
                               Delete
                             </AlertDialogAction>
