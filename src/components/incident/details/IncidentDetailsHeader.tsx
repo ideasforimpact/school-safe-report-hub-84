@@ -17,7 +17,7 @@ const IncidentDetailsHeader: React.FC<IncidentDetailsHeaderProps> = ({
   description = "View and update incident information"
 }) => {
   return (
-    <CardHeader>
+    <CardHeader className="text-left">
       <CardTitle>{title}</CardTitle>
       <CardDescription>
         {description}

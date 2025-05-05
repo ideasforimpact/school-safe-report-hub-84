@@ -14,9 +14,9 @@ const RootCauseDisplay: React.FC<RootCauseDisplayProps> = ({
   return (
     <Card className="mt-6">
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg">Root Cause Analysis</CardTitle>
+        <CardTitle className="text-lg text-left">Root Cause Analysis</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="text-left">
         <p className="whitespace-pre-wrap">{rootCause}</p>
       </CardContent>
     </Card>

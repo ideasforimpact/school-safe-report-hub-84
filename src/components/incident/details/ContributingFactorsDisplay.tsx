@@ -16,12 +16,12 @@ const ContributingFactorsDisplay: React.FC<ContributingFactorsDisplayProps> = ({
   return (
     <Card className="mt-6">
       <CardHeader className="pb-2">
-        <CardTitle className="text-lg">Contributing Factors</CardTitle>
+        <CardTitle className="text-lg text-left">Contributing Factors</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-2">
           {factors.map(factor => (
-            <div key={factor.id} className="border p-3 rounded-md bg-gray-50">
+            <div key={factor.id} className="border p-3 rounded-md bg-gray-50 text-left">
               <div className="flex justify-between">
                 <span className="font-medium">{factor.category}</span>
                 <span className={`text-xs px-2 py-1 rounded-full ${getWeightColor(factor.weight)}`}>

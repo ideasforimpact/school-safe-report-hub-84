@@ -30,7 +30,7 @@ const StatusUpdateSection: React.FC<StatusUpdateSectionProps> = ({
   const statusOptions: IncidentStatus[] = ['Open', 'In Progress', 'Closed'];
   
   return (
-    <div>
+    <div className="text-left">
       <h3 className="font-medium text-sm">Status</h3>
       <div className="flex items-center space-x-2">
         <Select 

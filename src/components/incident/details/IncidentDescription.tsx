@@ -11,7 +11,7 @@ const IncidentDescription: React.FC<IncidentDescriptionProps> = ({
   image
 }) => {
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 text-left">
       <div className="space-y-2">
         <h3 className="font-medium text-sm text-gray-500">Description</h3>
         <p className="whitespace-pre-wrap text-gray-800">{description}</p>
@@ -24,6 +24,10 @@ const IncidentDescription: React.FC<IncidentDescriptionProps> = ({
             src={image} 
             alt="Incident" 
             className="rounded-md border max-w-full h-auto" 
+            onError={(e) => {
+              console.error("Image failed to load:", image);
+              e.currentTarget.src = "https://via.placeholder.com/400x300?text=Image+Not+Available";
+            }}
           />
         </div>
       )}
