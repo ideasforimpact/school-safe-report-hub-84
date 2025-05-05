@@ -1,3 +1,4 @@
+
 import { useState, useMemo } from 'react';
 import { useIncidents } from '@/contexts/IncidentContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -61,7 +62,7 @@ const Insights = () => {
     incidents.forEach(incident => {
       if (incident.peopleInvolved) {
         incident.peopleInvolved.forEach(person => {
-          if (person.name) {
+          if (person && person.name) {
             people.add(person.name);
           }
         });
@@ -390,7 +391,7 @@ const Insights = () => {
           dateRange={dateRange}
           handleDateRangeChange={handleDateRangeChange}
           availableSubcategories={availableSubcategories}
-          peopleInvolved={peopleInvolved.map(person => typeof person === 'object' ? person.name || 'Unknown' : person)}
+          peopleInvolved={peopleInvolved}
           facilities={facilities}
           isAdmin={isAdmin}
         />
