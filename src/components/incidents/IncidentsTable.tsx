@@ -1,3 +1,4 @@
+
 import { useNavigate } from 'react-router-dom';
 import { Incident, IncidentStatus } from '@/contexts/IncidentContext';
 import {
@@ -91,10 +92,10 @@ const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
             <TableRow>
               <TableHead>Ticket ID</TableHead>
               {/* Type column removed */}
-              <TableHead>Category</TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead>Priority</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead className="text-left">Category</TableHead>
+              <TableHead className="text-left">Date</TableHead>
+              <TableHead className="text-left">Priority</TableHead>
+              <TableHead className="text-left">Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -115,14 +116,14 @@ const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
                   </div>
                 </TableCell>
                 {/* Type cell removed */}
-                <TableCell>{incident.category}</TableCell>
-                <TableCell>{formatDate(incident.date)}</TableCell>
-                <TableCell>
+                <TableCell className="text-left">{incident.category}</TableCell>
+                <TableCell className="text-left">{formatDate(incident.date)}</TableCell>
+                <TableCell className="text-left">
                   <span className={`px-2 py-1 rounded-full text-xs ${getPriorityBadgeClass(incident.priority)}`}>
                     {incident.priority || 'Medium'}
                   </span>
                 </TableCell>
-                <TableCell>
+                <TableCell className="text-left">
                   <span className={`px-2 py-1 rounded-full text-xs ${getStatusBadgeClass(incident.status, incident.isVoided)}`}>
                     {incident.isVoided ? 'Voided' : incident.status}
                   </span>
