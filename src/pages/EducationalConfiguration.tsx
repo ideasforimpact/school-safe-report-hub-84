@@ -5,6 +5,7 @@ import Layout from '@/components/layout/Layout';
 import { useIncidents } from '@/contexts/IncidentContext';
 import { EducationalStructureConfig } from './configuration/EducationalStructureConfig';
 import { toast } from '@/components/ui/sonner';
+import { CampusItem, ClassItem, SectionItem } from '@/contexts/types';
 
 const EducationalConfiguration = () => {
   const [searchParams] = useSearchParams();
@@ -48,9 +49,11 @@ const EducationalConfiguration = () => {
   const handleAddCampus = (name: string) => {
     try {
       const newCampus = contextAddCampus(name);
-      // Ensure local state is updated immediately
-      setCampuses(prev => [...prev, newCampus]);
-      toast.success("Campus added successfully");
+      if (newCampus) {
+        // Update local state with the returned campus object
+        setCampuses(prev => [...prev, newCampus]);
+        toast.success("Campus added successfully");
+      }
     } catch (error) {
       console.error("Error adding campus:", error);
       toast.error("Failed to add campus");
@@ -84,9 +87,11 @@ const EducationalConfiguration = () => {
   const handleAddClass = (campusId: string, name: string) => {
     try {
       const newClass = contextAddClass(campusId, name);
-      // Update local state
-      setClasses(prev => [...prev, newClass]);
-      toast.success("Class added successfully");
+      if (newClass) {
+        // Update local state with the returned class object
+        setClasses(prev => [...prev, newClass]);
+        toast.success("Class added successfully");
+      }
     } catch (error) {
       console.error("Error adding class:", error);
       toast.error("Failed to add class");
@@ -120,9 +125,11 @@ const EducationalConfiguration = () => {
   const handleAddSection = (classId: string, name: string) => {
     try {
       const newSection = contextAddSection(classId, name);
-      // Update local state
-      setSections(prev => [...prev, newSection]);
-      toast.success("Section added successfully");
+      if (newSection) {
+        // Update local state with the returned section object
+        setSections(prev => [...prev, newSection]);
+        toast.success("Section added successfully");
+      }
     } catch (error) {
       console.error("Error adding section:", error);
       toast.error("Failed to add section");
