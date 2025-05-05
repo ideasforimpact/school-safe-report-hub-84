@@ -8,6 +8,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ConfigItem } from '@/contexts/types';
+import { useFacilities } from '@/contexts/FacilityContext';
 
 interface LocationFacilitySectionProps {
   locationId: string;
@@ -24,6 +25,30 @@ const LocationFacilitySection: React.FC<LocationFacilitySectionProps> = ({
   facilities,
   onSelectChange,
 }) => {
+  // Also get the facilities from context to supplement the facilities from config management
+  const { facilities: contextFacilities } = useFacilities();
+
+  // Create a merged list of facilities
+  const allFacilities = [...facilities];
+  
+  // Add facilities from context if they don't already exist and aren't empty
+  contextFacilities.forEach(facilityName => {
+    if (facilityName && typeof facilityName === 'string' && facilityName.trim() !== '') {
+      const exists = facilities.some(f => f.name === facilityName);
+      if (!exists) {
+        allFacilities.push({
+          id: `facility-${facilityName}`,
+          name: facilityName
+        });
+      }
+    }
+  });
+
+  // Filter out any facilities with empty names
+  const filteredFacilities = allFacilities.filter(
+    facility => facility.name && facility.name.trim() !== ''
+  );
+
   return (
     <div className="space-y-6">
       <div className="space-y-2">
@@ -61,11 +86,15 @@ const LocationFacilitySection: React.FC<LocationFacilitySectionProps> = ({
             <SelectValue placeholder="Select facility" />
           </SelectTrigger>
           <SelectContent>
-            {facilities.map((fac) => (
-              <SelectItem key={fac.id} value={fac.id}>
-                {fac.name}
-              </SelectItem>
-            ))}
+            {filteredFacilities.length > 0 ? (
+              filteredFacilities.map((facility, index) => (
+                <SelectItem key={`${facility.id}-${index}`} value={facility.id}>
+                  {facility.name}
+                </SelectItem>
+              ))
+            ) : (
+              <div className="px-2 py-2 text-sm text-gray-500">No facilities available</div>
+            )}
           </SelectContent>
         </Select>
       </div>
