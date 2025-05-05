@@ -1,8 +1,9 @@
 
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tooltip } from '@/components/ui/tooltip';
 
-// Custom heatmap colors
+// Custom heatmap colors - using a blue gradient for better visual hierarchy
 const getColor = (value: number) => {
   if (value === 0) return '#f3f4f6'; // Light gray for no incidents
   if (value <= 2) return '#dbeafe'; // Very light blue
@@ -37,27 +38,29 @@ const HeatmapChart: React.FC<HeatmapChartProps> = ({
   }, 0);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
+    <Card className="overflow-hidden border shadow-md hover:shadow-lg transition-shadow duration-300">
+      <CardHeader className="bg-gradient-to-r from-indigo-50 to-blue-50 border-b pb-4">
+        <CardTitle className="text-lg font-bold text-indigo-900">{title}</CardTitle>
+        <CardDescription className="text-indigo-700">{description}</CardDescription>
       </CardHeader>
       
-      <CardContent>
+      <CardContent className="p-4">
         <div className="overflow-x-auto">
           <div className="min-w-[600px]">
             {/* Day headers */}
             <div className="grid grid-cols-8 gap-1 mb-3">
-              <div className="font-medium text-sm text-gray-500 px-2"></div>
+              <div className="px-2 py-1 font-medium text-sm text-indigo-600"></div>
               {days.map(day => (
-                <div key={day} className="font-medium text-sm text-center">{day}</div>
+                <div key={day} className="px-1 py-1 font-medium text-sm text-center bg-indigo-50 rounded-t-md">{day}</div>
               ))}
             </div>
             
             {/* Heatmap data */}
             {data.map((location, idx) => (
-              <div key={idx} className="grid grid-cols-8 gap-1 mb-2">
-                <div className="font-medium text-sm truncate px-2">{location.name}</div>
+              <div key={idx} className="grid grid-cols-8 gap-1 mb-2 group">
+                <div className="px-2 py-1 font-medium text-sm truncate bg-indigo-50 rounded-l-md flex items-center">
+                  {location.name}
+                </div>
                 
                 {days.map(day => {
                   const dayData = location.values.find(v => v.day === day);
@@ -66,7 +69,7 @@ const HeatmapChart: React.FC<HeatmapChartProps> = ({
                   return (
                     <div 
                       key={day}
-                      className="aspect-square rounded-sm flex items-center justify-center text-xs font-medium" 
+                      className="aspect-square rounded-md flex items-center justify-center text-xs font-medium transition-all duration-150 hover:scale-105 hover:shadow-md" 
                       style={{ 
                         backgroundColor: getColor(value),
                         color: value > 5 ? 'white' : 'black'
@@ -82,16 +85,19 @@ const HeatmapChart: React.FC<HeatmapChartProps> = ({
           </div>
           
           {/* Legend */}
-          <div className="flex items-center justify-end mt-4 gap-2 text-xs text-gray-500">
-            <div>Fewer</div>
-            {[0, 2, 5, 10, 20].map((value, i) => (
-              <div 
-                key={i} 
-                className="h-3 w-3 rounded-sm"
-                style={{ backgroundColor: getColor(value) }}
-              ></div>
-            ))}
-            <div>More</div>
+          <div className="flex items-center justify-end mt-6 gap-2 bg-slate-50 p-3 rounded-md">
+            <div className="text-xs text-gray-600 font-medium">Incidents:</div>
+            <div className="flex items-center gap-1">
+              <div className="text-xs text-gray-600">Fewer</div>
+              {[0, 2, 5, 10, 20].map((value, i) => (
+                <div 
+                  key={i} 
+                  className="h-4 w-4 rounded-sm border border-slate-200"
+                  style={{ backgroundColor: getColor(value) }}
+                ></div>
+              ))}
+              <div className="text-xs text-gray-600">More</div>
+            </div>
           </div>
         </div>
       </CardContent>
