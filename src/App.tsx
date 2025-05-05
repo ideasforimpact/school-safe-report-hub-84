@@ -19,6 +19,9 @@ import OtherConfiguration from './pages/OtherConfiguration';
 import { ClientProvider } from './contexts/ClientContext';
 import Insights from './pages/Insights';
 import BackofficeAnalytics from './pages/backoffice/BackofficeAnalytics';
+import UserManagement from './pages/UserManagement';
+import RouteGuard from './components/RouteGuard';
+import ModuleGuard from './components/ModuleGuard';
 
 const App: React.FC = () => {
   return (
@@ -29,24 +32,37 @@ const App: React.FC = () => {
             <FacilityProvider>
               <Routes>
                 <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/incidents" element={<IncidentsList />} />
-                <Route path="/report-incident" element={<ReportIncident />} />
-                <Route path="/edit-incident/:id" element={<EditIncident />} />
-                <Route path="/incident/:id" element={<IncidentDetail />} />
-                <Route path="/configuration" element={<ConfigurationManagement />} />
-                <Route path="/incident-configuration" element={<IncidentConfiguration />} />
-                <Route path="/insights" element={<Insights />} />
-                
-                {/* Configuration routes */}
-                <Route path="/category-configuration" element={<CategoryConfiguration />} />
-                
-                {/* Auth routes */}
                 <Route path="/login" element={<Login />} />
                 
-                {/* Educational & Other Configuration */}
-                <Route path="/educational-configuration" element={<EducationalConfiguration />} />
-                <Route path="/other-configuration" element={<OtherConfiguration />} />
+                {/* Protected routes - require authentication */}
+                <Route element={<RouteGuard />}>
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  
+                  {/* Incident routes with module guards */}
+                  <Route element={<ModuleGuard moduleType="incidentReporting" />}>
+                    <Route path="/report-incident" element={<ReportIncident />} />
+                  </Route>
+                  
+                  <Route element={<ModuleGuard moduleType="allIncidents" />}>
+                    <Route path="/incidents" element={<IncidentsList />} />
+                    <Route path="/edit-incident/:id" element={<EditIncident />} />
+                    <Route path="/incident/:id" element={<IncidentDetail />} />
+                  </Route>
+                  
+                  <Route element={<ModuleGuard moduleType="insights" />}>
+                    <Route path="/insights" element={<Insights />} />
+                  </Route>
+                  
+                  {/* Admin-only routes */}
+                  <Route element={<RouteGuard requireAdmin />}>
+                    <Route path="/configuration" element={<ConfigurationManagement />} />
+                    <Route path="/incident-configuration" element={<IncidentConfiguration />} />
+                    <Route path="/category-configuration" element={<CategoryConfiguration />} />
+                    <Route path="/educational-configuration" element={<EducationalConfiguration />} />
+                    <Route path="/other-configuration" element={<OtherConfiguration />} />
+                    <Route path="/user-management" element={<UserManagement />} />
+                  </Route>
+                </Route>
                 
                 {/* Backoffice routes */}
                 <Route path="/backoffice" element={<BackofficeLayout><Dashboard /></BackofficeLayout>} />
