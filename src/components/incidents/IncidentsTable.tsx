@@ -1,4 +1,3 @@
-
 import { useNavigate } from 'react-router-dom';
 import { Incident, IncidentStatus } from '@/contexts/IncidentContext';
 import {
@@ -10,7 +9,20 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Edit, Ticket, BanIcon, AlertCircle, ArrowUp, ArrowRight, ArrowDown, Calendar, Building2 } from 'lucide-react';
+import { 
+  Edit, 
+  Ticket, 
+  BanIcon, 
+  Calendar, 
+  Building2,
+  AlertCircle, 
+  AlertTriangle,
+  AlertOctagon,
+  SignalHigh, 
+  SignalMedium, 
+  SignalLow, 
+  SignalZero 
+} from 'lucide-react';
 
 interface IncidentsTableProps {
   incidents: Incident[];
@@ -48,15 +60,15 @@ const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
   const getPriorityIcon = (priority: string | undefined) => {
     switch(priority) {
       case 'Critical':
-        return <AlertCircle className="h-4 w-4 text-red-600" aria-label="Critical Priority" />;
+        return <AlertOctagon className="h-4 w-4 text-red-600" aria-label="Critical Priority" />;
       case 'High':
-        return <ArrowUp className="h-4 w-4 text-orange-500" aria-label="High Priority" />;
+        return <AlertTriangle className="h-4 w-4 text-orange-500" aria-label="High Priority" />;
       case 'Medium':
-        return <ArrowRight className="h-4 w-4 text-yellow-600" aria-label="Medium Priority" />;
+        return <SignalMedium className="h-4 w-4 text-yellow-600" aria-label="Medium Priority" />;
       case 'Low':
-        return <ArrowDown className="h-4 w-4 text-green-600" aria-label="Low Priority" />;
+        return <SignalLow className="h-4 w-4 text-green-600" aria-label="Low Priority" />;
       default:
-        return <ArrowRight className="h-4 w-4 text-yellow-600" aria-label="Medium Priority" />;
+        return <SignalMedium className="h-4 w-4 text-yellow-600" aria-label="Medium Priority" />;
     }
   };
 
