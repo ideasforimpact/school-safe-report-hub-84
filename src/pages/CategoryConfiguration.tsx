@@ -57,10 +57,12 @@ const CategoryConfiguration = () => {
       
       try {
         const newCategory = addCategory('Digital Safety');
-        // Update local state immediately for the UI
-        setLocalCategories(prevCategories => [...prevCategories, newCategory]);
-        toast.success("Digital Safety category added successfully");
-        setDigitalSafetyAdded(true);
+        // Update local state immediately for the UI - ensure we only add valid objects
+        if (newCategory) {
+          setLocalCategories(prevCategories => [...prevCategories, newCategory as ConfigItem]);
+          toast.success("Digital Safety category added successfully");
+          setDigitalSafetyAdded(true);
+        }
       } catch (error) {
         console.error("Error adding Digital Safety category:", error);
         // Only show error toast if it's not because the category already exists
@@ -87,10 +89,12 @@ const CategoryConfiguration = () => {
     
     try {
       const newCategory = addCategory(name);
-      // Update local state immediately
-      setLocalCategories(prevCategories => [...prevCategories, newCategory]);
-      console.log("Category added successfully:", newCategory);
-      toast.success("Category added successfully");
+      // Update local state immediately - ensure we only add valid objects
+      if (newCategory) {
+        setLocalCategories(prevCategories => [...prevCategories, newCategory as ConfigItem]);
+        console.log("Category added successfully:", newCategory);
+        toast.success("Category added successfully");
+      }
     } catch (error) {
       console.error("Error adding category:", error);
       toast.error(error instanceof Error ? error.message : "Failed to add category");
@@ -132,11 +136,13 @@ const CategoryConfiguration = () => {
     try {
       const newSubcategory = addSubcategory(categoryId, name);
       // Update local state immediately
-      setLocalSubcategoryMappings(prev => ({
-        ...prev,
-        [categoryId]: [...(prev[categoryId] || []), newSubcategory]
-      }));
-      toast.success("Subcategory added successfully");
+      if (newSubcategory) {
+        setLocalSubcategoryMappings(prev => ({
+          ...prev,
+          [categoryId]: [...(prev[categoryId] || []), newSubcategory]
+        }));
+        toast.success("Subcategory added successfully");
+      }
     } catch (error) {
       console.error("Error adding subcategory:", error);
       toast.error(error instanceof Error ? error.message : "Failed to add subcategory");
