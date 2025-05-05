@@ -13,9 +13,10 @@ export function usePeopleInvolved() {
     
     // If changing the role, clear the name and id fields to start fresh
     if (field === 'role') {
+      const typedRole = value as 'Student' | 'Staff' | 'Other';
       updatedPeople[index] = { 
         ...updatedPeople[index], 
-        [field]: value,
+        role: typedRole,
         name: '',
         id: '' 
       };
@@ -27,7 +28,7 @@ export function usePeopleInvolved() {
   };
 
   const addPerson = () => {
-    setPeopleInvolved([...peopleInvolved, { name: '', role: 'Student', id: '', notes: '' }]);
+    setPeopleInvolved([...peopleInvolved, { name: '', role: 'Student' as const, id: '', notes: '' }]);
   };
 
   const removePerson = (index: number) => {

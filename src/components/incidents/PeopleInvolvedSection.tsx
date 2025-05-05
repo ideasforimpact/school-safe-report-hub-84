@@ -73,7 +73,10 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
             <label className="text-sm font-medium">Role</label>
             <Select
               value={person.role}
-              onValueChange={(value) => onPersonChange(index, 'role', value)}
+              onValueChange={(value) => {
+                const typedRole = value as 'Student' | 'Staff' | 'Other';
+                onPersonChange(index, 'role', typedRole);
+              }}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -102,10 +105,10 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
             </div>
           </div>
 
-          {/* ID field - optional for students */}
+          {/* ID field - only required for staff */}
           <div className="space-y-2 mb-4">
             <label className="text-sm font-medium">
-              {person.role === 'Student' ? 'Student ID' : person.role === 'Staff' ? 'Staff ID' : 'ID'} 
+              {person.role === 'Student' ? 'Student ID (Optional)' : person.role === 'Staff' ? 'Staff ID' : 'ID'} 
               {person.role === 'Staff' && <span className="text-red-500">*</span>}
             </label>
             <Input

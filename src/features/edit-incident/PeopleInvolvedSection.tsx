@@ -29,9 +29,10 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
     
     // If changing the role, clear the name and id fields to start fresh
     if (field === 'role') {
+      const typedRole = value as 'Student' | 'Staff' | 'Other';
       updatedPeople[index] = { 
         ...updatedPeople[index], 
-        [field]: value,
+        role: typedRole,
         name: '',
         id: '' 
       };
@@ -50,7 +51,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   };
 
   const addPerson = () => {
-    setPeopleInvolved([...peopleInvolved, { name: '', role: 'Student', id: '', notes: '' }]);
+    setPeopleInvolved([...peopleInvolved, { name: '', role: 'Student' as const, id: '', notes: '' }]);
   };
 
   const removePerson = (index: number) => {
@@ -95,7 +96,10 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
             <label className="text-sm font-medium">Role</label>
             <Select
               value={person.role}
-              onValueChange={(value) => handlePersonChange(index, 'role', value)}
+              onValueChange={(value) => {
+                const typedRole = value as 'Student' | 'Staff' | 'Other';
+                handlePersonChange(index, 'role', typedRole);
+              }}
             >
               <SelectTrigger>
                 <SelectValue />
@@ -127,7 +131,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
           {/* ID field - optional for students */}
           <div className="space-y-2 mb-4">
             <label className="text-sm font-medium">
-              {person.role === 'Student' ? 'Student ID' : person.role === 'Staff' ? 'Staff ID' : 'ID'} 
+              {person.role === 'Student' ? 'Student ID (Optional)' : person.role === 'Staff' ? 'Staff ID' : 'ID'} 
               {person.role === 'Staff' && <span className="text-red-500">*</span>}
             </label>
             <Input
