@@ -23,7 +23,7 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
   onFilesChange,
 }) => {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="space-y-2">
         <label htmlFor="description" className="text-sm font-medium">
           Description <span className="text-red-500">*</span>

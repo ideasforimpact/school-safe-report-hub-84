@@ -19,7 +19,7 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
 }) => {
   return (
     <>
-      <div className="space-y-2 md:col-span-2">
+      <div className="space-y-2">
         <label htmlFor="description" className="text-sm font-medium">
           Description <span className="text-red-500">*</span>
         </label>
@@ -34,7 +34,7 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
         />
       </div>
 
-      <div className="space-y-2 md:col-span-2">
+      <div className="space-y-2">
         <label className="text-sm font-medium">
           Supporting Documents (Optional)
         </label>

@@ -107,7 +107,7 @@ const IncidentDetailsSection: React.FC<IncidentDetailsProps> = ({
       />
 
       {/* Description, Image, and Supporting Documents Section */}
-      <div className="md:col-span-3">
+      <div className="md:col-span-1">
         <DescriptionSection
           description={formData.description}
           image={image}

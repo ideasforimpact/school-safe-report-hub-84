@@ -93,13 +93,15 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
         onSelectChange={onSelectChange}
       />
 
-      {/* Description and Supporting Documents Section */}
-      <DescriptionSection
-        description={formData.description}
-        supportingFiles={supportingFiles}
-        onChange={onChange}
-        onFilesChange={onFilesChange}
-      />
+      {/* Description Section */}
+      <div className="md:col-span-1">
+        <DescriptionSection
+          description={formData.description}
+          supportingFiles={supportingFiles}
+          onChange={onChange}
+          onFilesChange={onFilesChange}
+        />
+      </div>
     </div>
   );
 };
