@@ -18,19 +18,19 @@ export function useEducationalStructureManagement(
       id: Date.now().toString(),
       name
     };
-    setCampuses(prev => [...prev, newCampus]);
+    setCampuses(prevCampuses => [...prevCampuses, newCampus]);
   };
 
   const updateCampus = (id: string, name: string): void => {
-    setCampuses(prev => prev.map(campus => 
+    setCampuses(prevCampuses => prevCampuses.map(campus => 
       campus.id === id ? { ...campus, name } : campus
     ));
   };
 
   const deleteCampus = (id: string): void => {
-    setCampuses(prev => prev.filter(campus => campus.id !== id));
+    setCampuses(prevCampuses => prevCampuses.filter(campus => campus.id !== id));
     // Remove classes associated with this campus
-    setClasses(prev => prev.filter(cls => cls.campusId !== id));
+    setClasses(prevClasses => prevClasses.filter(cls => cls.campusId !== id));
   };
 
   // Classes management
@@ -40,19 +40,19 @@ export function useEducationalStructureManagement(
       name,
       campusId
     };
-    setClasses(prev => [...prev, newClass]);
+    setClasses(prevClasses => [...prevClasses, newClass]);
   };
 
   const updateClass = (id: string, campusId: string, name: string): void => {
-    setClasses(prev => prev.map(cls => 
+    setClasses(prevClasses => prevClasses.map(cls => 
       cls.id === id ? { ...cls, name, campusId } : cls
     ));
   };
 
   const deleteClass = (id: string): void => {
-    setClasses(prev => prev.filter(cls => cls.id !== id));
+    setClasses(prevClasses => prevClasses.filter(cls => cls.id !== id));
     // Remove sections associated with this class
-    setSections(prev => prev.filter(section => section.classId !== id));
+    setSections(prevSections => prevSections.filter(section => section.classId !== id));
   };
 
   // Sections management
@@ -62,17 +62,17 @@ export function useEducationalStructureManagement(
       name,
       classId
     };
-    setSections(prev => [...prev, newSection]);
+    setSections(prevSections => [...prevSections, newSection]);
   };
 
   const updateSection = (id: string, classId: string, name: string): void => {
-    setSections(prev => prev.map(section => 
+    setSections(prevSections => prevSections.map(section => 
       section.id === id ? { ...section, name, classId } : section
     ));
   };
 
   const deleteSection = (id: string): void => {
-    setSections(prev => prev.filter(section => section.id !== id));
+    setSections(prevSections => prevSections.filter(section => section.id !== id));
   };
 
   return {

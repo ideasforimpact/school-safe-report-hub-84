@@ -27,9 +27,9 @@ const EducationalConfiguration = () => {
   } = useIncidents();
 
   // Local state to sync with context
-  const [campuses, setCampuses] = useState(contextCampuses);
-  const [classes, setClasses] = useState(contextClasses);
-  const [sections, setSections] = useState(contextSections);
+  const [campuses, setCampuses] = useState<CampusItem[]>(contextCampuses);
+  const [classes, setClasses] = useState<ClassItem[]>(contextClasses);
+  const [sections, setSections] = useState<SectionItem[]>(contextSections);
 
   // Update local state when context changes
   useEffect(() => {
@@ -50,10 +50,6 @@ const EducationalConfiguration = () => {
     try {
       console.log('EducationalConfiguration: Adding campus:', name); // Debug log
       contextAddCampus(name);
-      
-      // Refresh campuses from context (will be picked up by useEffect)
-      console.log('Campus added, refreshing from context');
-      
       toast.success("Campus added successfully");
     } catch (error) {
       console.error("Error adding campus:", error);
@@ -64,8 +60,6 @@ const EducationalConfiguration = () => {
   const handleUpdateCampus = (id: string, name: string) => {
     try {
       contextUpdateCampus(id, name);
-      // Update local state
-      setCampuses(prev => prev.map(c => c.id === id ? { ...c, name } : c));
       toast.success("Campus updated successfully");
     } catch (error) {
       console.error("Error updating campus:", error);
@@ -76,8 +70,6 @@ const EducationalConfiguration = () => {
   const handleDeleteCampus = (id: string) => {
     try {
       contextDeleteCampus(id);
-      // Update local state
-      setCampuses(prev => prev.filter(c => c.id !== id));
       toast.success("Campus deleted successfully");
     } catch (error) {
       console.error("Error deleting campus:", error);
@@ -89,9 +81,6 @@ const EducationalConfiguration = () => {
     try {
       console.log("EducationalConfiguration: Adding class:", name, "to campus:", campusId);
       contextAddClass(campusId, name);
-      // Refresh classes from context (will be picked up by useEffect)
-      console.log('Class added, refreshing from context');
-      
       toast.success("Class added successfully");
     } catch (error) {
       console.error("Error adding class:", error);
@@ -102,8 +91,6 @@ const EducationalConfiguration = () => {
   const handleUpdateClass = (id: string, campusId: string, name: string) => {
     try {
       contextUpdateClass(id, campusId, name);
-      // Update local state
-      setClasses(prev => prev.map(c => c.id === id ? { ...c, name, campusId } : c));
       toast.success("Class updated successfully");
     } catch (error) {
       console.error("Error updating class:", error);
@@ -114,8 +101,6 @@ const EducationalConfiguration = () => {
   const handleDeleteClass = (id: string) => {
     try {
       contextDeleteClass(id);
-      // Update local state
-      setClasses(prev => prev.filter(c => c.id !== id));
       toast.success("Class deleted successfully");
     } catch (error) {
       console.error("Error deleting class:", error);
@@ -127,9 +112,6 @@ const EducationalConfiguration = () => {
     try {
       console.log("EducationalConfiguration: Adding section:", name, "to class:", classId);
       contextAddSection(classId, name);
-      // Refresh sections from context (will be picked up by useEffect)
-      console.log('Section added, refreshing from context');
-      
       toast.success("Section added successfully");
     } catch (error) {
       console.error("Error adding section:", error);
@@ -140,8 +122,6 @@ const EducationalConfiguration = () => {
   const handleUpdateSection = (id: string, classId: string, name: string) => {
     try {
       contextUpdateSection(id, classId, name);
-      // Update local state
-      setSections(prev => prev.map(s => s.id === id ? { ...s, name, classId } : s));
       toast.success("Section updated successfully");
     } catch (error) {
       console.error("Error updating section:", error);
@@ -152,8 +132,6 @@ const EducationalConfiguration = () => {
   const handleDeleteSection = (id: string) => {
     try {
       contextDeleteSection(id);
-      // Update local state
-      setSections(prev => prev.filter(s => s.id !== id));
       toast.success("Section deleted successfully");
     } catch (error) {
       console.error("Error deleting section:", error);
