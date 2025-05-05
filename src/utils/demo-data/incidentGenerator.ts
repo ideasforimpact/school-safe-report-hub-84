@@ -1,3 +1,4 @@
+
 import { Incident, Person, UserRef, Action, ActionItem } from '@/types/incident';
 import { 
   studentPool, 
@@ -6,7 +7,7 @@ import {
   userRefs, 
   categoryDefinitions, 
   locations, 
-  facilities, 
+  facilityMappings,
   actionDescriptions, 
   rootCausePatterns 
 } from './dataPools';
@@ -113,7 +114,14 @@ const generateSingleIncident = (index: number, category: string): Incident => {
   
   // Select location and facility
   const location = getRandomItem(locations);
-  const facility = location === 'On Campus' ? getRandomItem(facilities) : '';
+  
+  // Get facilities specific to this location
+  const facilitiesForLocation = facilityMappings.find(mapping => mapping.location === location)?.facilities || [];
+  
+  // Ensure we have at least one facility
+  const facility = facilitiesForLocation.length > 0 
+    ? getRandomItem(facilitiesForLocation) 
+    : '';
   
   // Generate people involved
   const peopleInvolved = generatePeopleInvolved(category);
