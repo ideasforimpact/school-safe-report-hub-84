@@ -38,7 +38,7 @@ const PrioritySection: React.FC<PrioritySectionProps> = ({
           <SelectValue placeholder="Select priority">
             {priority && (
               <div className="flex items-center">
-                {React.createElement(getPriorityIcon(priority)())}
+                {getPriorityIcon(priority)()}
                 <span className="ml-2">{priority}</span>
               </div>
             )}

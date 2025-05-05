@@ -1,3 +1,5 @@
+
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Incident, IncidentStatus } from '@/contexts/IncidentContext';
 import {
@@ -127,7 +129,7 @@ const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
                 <TableCell className="text-left">{incident.category}</TableCell>
                 <TableCell className="text-left">
                   <div className="flex items-center">
-                    {React.createElement(getPriorityIcon(incident.priority)())}
+                    {getPriorityIcon(incident.priority)()}
                     <span className="ml-2">{incident.priority || 'Medium'}</span>
                   </div>
                 </TableCell>

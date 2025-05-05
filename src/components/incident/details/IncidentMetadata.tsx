@@ -33,7 +33,7 @@ const IncidentMetadata: React.FC<IncidentMetadataProps> = ({
       <div className="space-y-1 text-left">
         <h3 className="font-medium text-sm text-gray-500">Priority</h3>
         <p className="font-medium flex items-center">
-          {React.createElement(getPriorityIcon(incident.priority)())}
+          {getPriorityIcon(incident.priority)()}
           <span className="ml-2">{incident.priority || 'Medium'}</span>
         </p>
       </div>
