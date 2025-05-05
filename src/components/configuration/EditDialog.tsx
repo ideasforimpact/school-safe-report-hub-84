@@ -11,6 +11,26 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+interface ExtraFieldOption {
+  value: string;
+  label: string;
+}
+
+interface ExtraFieldProps {
+  type: "select";
+  label: string;
+  options: ExtraFieldOption[];
+  value: string;
+  onChange: (value: string) => void;
+}
 
 interface EditDialogProps {
   title: string;
@@ -21,6 +41,7 @@ interface EditDialogProps {
   onChange: (value: string) => void;
   onSave: () => void;
   triggerButton: React.ReactNode;
+  extraField?: ExtraFieldProps;
 }
 
 export const EditDialog = ({
@@ -32,6 +53,7 @@ export const EditDialog = ({
   onChange,
   onSave,
   triggerButton,
+  extraField,
 }: EditDialogProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [localValue, setLocalValue] = useState(value);
@@ -75,6 +97,31 @@ export const EditDialog = ({
               autoFocus
             />
           </div>
+          
+          {extraField && extraField.type === "select" && (
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label htmlFor="extraField" className="text-sm font-medium col-span-1">
+                {extraField.label}
+              </label>
+              <div className="col-span-3">
+                <Select 
+                  value={extraField.value} 
+                  onValueChange={extraField.onChange}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={`Select ${extraField.label}`} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {extraField.options.map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => setIsOpen(false)}>
