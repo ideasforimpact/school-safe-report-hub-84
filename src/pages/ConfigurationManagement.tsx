@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
 import { useIncidents } from '@/contexts/IncidentContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -23,6 +24,12 @@ import {
 } from 'lucide-react';
 
 const ConfigurationManagement = () => {
+  const [searchParams] = useSearchParams();
+  // Track the active top-level category
+  const [activeCategory, setActiveCategory] = useState('incident');
+  // Track the active tab within a category
+  const [activeTab, setActiveTab] = useState('');
+
   const { 
     categories, 
     addCategory, 
@@ -58,8 +65,19 @@ const ConfigurationManagement = () => {
     deleteSection
   } = useIncidents();
 
-  // Track the active top-level category
-  const [activeCategory, setActiveCategory] = useState('incident');
+  // Set initial tabs based on URL parameters when component mounts
+  useEffect(() => {
+    const category = searchParams.get('category');
+    const tab = searchParams.get('tab');
+    
+    if (category && ['incident', 'educational', 'other'].includes(category)) {
+      setActiveCategory(category);
+    }
+    
+    if (tab) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
   return (
     <Layout>
@@ -92,7 +110,7 @@ const ConfigurationManagement = () => {
           <TabsContent value="incident">
             <Card>
               <CardContent className="pt-6">
-                <Tabs defaultValue="categories">
+                <Tabs defaultValue="categories" value={activeTab || 'categories'} onValueChange={setActiveTab}>
                   <TabsList className="mb-4">
                     <TabsTrigger value="categories">Categories</TabsTrigger>
                     <TabsTrigger value="subcategories">Subcategories</TabsTrigger>
@@ -151,7 +169,7 @@ const ConfigurationManagement = () => {
           <TabsContent value="educational">
             <Card>
               <CardContent className="pt-6">
-                <Tabs defaultValue="campuses">
+                <Tabs defaultValue="campuses" value={activeTab || 'campuses'} onValueChange={setActiveTab}>
                   <TabsList className="mb-4">
                     <TabsTrigger value="campuses" className="flex items-center gap-2">
                       <Building className="h-4 w-4" />
@@ -205,7 +223,7 @@ const ConfigurationManagement = () => {
           <TabsContent value="other">
             <Card>
               <CardContent className="pt-6">
-                <Tabs defaultValue="designations">
+                <Tabs defaultValue="designations" value={activeTab || 'designations'} onValueChange={setActiveTab}>
                   <TabsList className="mb-4">
                     <TabsTrigger value="designations" className="flex items-center gap-2">
                       <UserCircle className="h-4 w-4" />
