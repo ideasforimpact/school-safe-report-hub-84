@@ -12,7 +12,7 @@ export const useEditIncidentForm = () => {
     id: '',
     ticketId: '',
     type: '',
-    status: '',
+    status: 'Open',
     categoryId: '',
     subcategory: '',
     description: '',
