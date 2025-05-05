@@ -2,13 +2,12 @@
 import { useState } from 'react';
 import { useIncidents } from '@/contexts/IncidentContext';
 import { useAuth } from '@/contexts/auth/AuthContext';
-import { useIncidentFormData } from './useIncidentFormData';
-import { usePeopleInvolved } from './usePeopleInvolved';
-import { useFilesManagement } from './useFilesManagement';
-import { useSubcategories } from './useSubcategories';
-import { useTicketId } from './useTicketId';
-import { useSelectedValues } from './useSelectedValues';
-import { ConfigItem } from '@/contexts/types';
+import { useIncidentFormData } from './incident-form/useIncidentFormData';
+import { usePeopleInvolved } from './incident-form/usePeopleInvolved';
+import { useFilesManagement } from './incident-form/useFilesManagement';
+import { useSubcategories } from './incident-form/useSubcategories';
+import { useTicketId } from './incident-form/useTicketId';
+import { useSelectedValues } from './incident-form/useSelectedValues';
 
 export function useIncidentForm() {
   const { 
@@ -28,7 +27,7 @@ export function useIncidentForm() {
     handleChange,
     handleSelectChange,
     handleDateTimeChange
-  } = useIncidentFormData();
+  } = useIncidentFormData(user);
 
   const {
     peopleInvolved,
@@ -65,13 +64,6 @@ export function useIncidentForm() {
   );
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Set default owner to current user when component mounts
-  useState(() => {
-    if (user?.id && !formData.owner) {
-      setFormData(prev => ({...prev, owner: user.id}));
-    }
-  });
 
   return {
     nextTicketId,
