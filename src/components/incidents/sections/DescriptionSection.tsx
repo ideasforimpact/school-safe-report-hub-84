@@ -19,8 +19,8 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
 }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:col-span-3 w-full">
-      <div className="space-y-2">
-        <label htmlFor="description" className="text-sm font-medium">
+      <div className="space-y-2 text-left">
+        <label htmlFor="description" className="text-sm font-medium text-left block">
           Description <span className="text-red-500">*</span>
         </label>
         <Textarea
@@ -35,8 +35,8 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
         />
       </div>
 
-      <div className="space-y-2">
-        <label className="text-sm font-medium">
+      <div className="space-y-2 text-left">
+        <label className="text-sm font-medium text-left block">
           Supporting Documents (Optional)
         </label>
         <MultipleFilesUpload

@@ -30,8 +30,8 @@ const CategorySection: React.FC<CategorySectionProps> = ({
 }) => {
   return (
     <>
-      <div className="space-y-2">
-        <label htmlFor="categoryId" className="text-sm font-medium">
+      <div className="space-y-2 text-left">
+        <label htmlFor="categoryId" className="text-sm font-medium text-left block">
           Category <span className="text-red-500">*</span>
         </label>
         <Select 
@@ -52,8 +52,8 @@ const CategorySection: React.FC<CategorySectionProps> = ({
         </Select>
       </div>
       
-      <div className="space-y-2">
-        <label htmlFor="subcategory" className="text-sm font-medium">
+      <div className="space-y-2 text-left">
+        <label htmlFor="subcategory" className="text-sm font-medium text-left block">
           Subcategory <span className="text-red-500">*</span>
         </label>
         <Select 

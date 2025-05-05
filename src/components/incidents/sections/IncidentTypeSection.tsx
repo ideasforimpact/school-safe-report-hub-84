@@ -22,8 +22,8 @@ const IncidentTypeSection: React.FC<IncidentTypeSectionProps> = ({
 }) => {
   return (
     <>
-      <div className="space-y-2">
-        <label htmlFor="type" className="text-sm font-medium">
+      <div className="space-y-2 text-left">
+        <label htmlFor="type" className="text-sm font-medium text-left block">
           Report Type <span className="text-red-500">*</span>
         </label>
         <Select 
@@ -42,8 +42,8 @@ const IncidentTypeSection: React.FC<IncidentTypeSectionProps> = ({
         </Select>
       </div>
 
-      <div className="space-y-2">
-        <label htmlFor="priority" className="text-sm font-medium">
+      <div className="space-y-2 text-left">
+        <label htmlFor="priority" className="text-sm font-medium text-left block">
           Priority <span className="text-red-500">*</span>
         </label>
         <Select 

@@ -21,8 +21,8 @@ const AssignmentSection: React.FC<AssignmentSectionProps> = ({
   onSelectChange,
 }) => {
   return (
-    <div className="space-y-2">
-      <label htmlFor="owner" className="text-sm font-medium">
+    <div className="space-y-2 text-left">
+      <label htmlFor="owner" className="text-sm font-medium text-left block">
         Assigned to
       </label>
       <Select 

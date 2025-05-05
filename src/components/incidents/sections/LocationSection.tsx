@@ -7,7 +7,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useFacilities } from '@/contexts/FacilityContext';
 
 interface ConfigItem {
   id: string;
@@ -29,48 +28,22 @@ const LocationSection: React.FC<LocationSectionProps> = ({
   facilities,
   onSelectChange,
 }) => {
-  // Get facilities from context to supplement the facilities from config management
-  const { facilities: contextFacilities } = useFacilities();
-
-  // Create a merged list of facilities
-  const allFacilities = [...facilities];
-  
-  // Add facilities from context if they don't already exist and aren't empty
-  // Add a type check to ensure facilityName is a string before calling trim()
-  contextFacilities.forEach(facilityName => {
-    // Make sure facilityName is a string and not null/undefined before using trim()
-    if (facilityName && typeof facilityName === 'string' && facilityName.trim() !== '') {
-      const exists = facilities.some(f => f.name === facilityName);
-      if (!exists) {
-        allFacilities.push({
-          id: `facility-${facilityName}`,
-          name: facilityName
-        });
-      }
-    }
-  });
-
-  // Filter out any facilities with empty names
-  const filteredFacilities = allFacilities.filter(
-    facility => facility.name && facility.name.trim() !== ''
-  );
-
   return (
     <>
-      <div className="space-y-2">
-        <label htmlFor="locationId" className="text-sm font-medium">
-          Where it Happened <span className="text-red-500">*</span>
+      <div className="space-y-2 text-left">
+        <label htmlFor="locationId" className="text-sm font-medium text-left block">
+          Location <span className="text-red-500">*</span>
         </label>
         <Select 
-          value={locationId}
+          value={locationId} 
           onValueChange={(value) => onSelectChange('locationId', value)}
           required
         >
-          <SelectTrigger>
+          <SelectTrigger id="locationId">
             <SelectValue placeholder="Select location" />
           </SelectTrigger>
           <SelectContent>
-            {locations.map(location => (
+            {locations.map((location) => (
               <SelectItem key={location.id} value={location.id}>
                 {location.name}
               </SelectItem>
@@ -78,29 +51,25 @@ const LocationSection: React.FC<LocationSectionProps> = ({
           </SelectContent>
         </Select>
       </div>
-
-      <div className="space-y-2">
-        <label htmlFor="facilityId" className="text-sm font-medium">
+      
+      <div className="space-y-2 text-left">
+        <label htmlFor="facilityId" className="text-sm font-medium text-left block">
           Facility <span className="text-red-500">*</span>
         </label>
         <Select 
-          value={facilityId}
+          value={facilityId} 
           onValueChange={(value) => onSelectChange('facilityId', value)}
           required
         >
-          <SelectTrigger>
+          <SelectTrigger id="facilityId">
             <SelectValue placeholder="Select facility" />
           </SelectTrigger>
           <SelectContent>
-            {filteredFacilities.length > 0 ? (
-              filteredFacilities.map((facility, index) => (
-                <SelectItem key={`${facility.id}-${index}`} value={facility.id}>
-                  {facility.name}
-                </SelectItem>
-              ))
-            ) : (
-              <div className="px-2 py-2 text-sm text-gray-500">No facilities available</div>
-            )}
+            {facilities.map((facility) => (
+              <SelectItem key={facility.id} value={facility.id}>
+                {facility.name}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
