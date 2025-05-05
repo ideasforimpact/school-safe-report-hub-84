@@ -32,12 +32,11 @@ const CategorySection: React.FC<CategorySectionProps> = ({
     <>
       <div className="space-y-2 text-left">
         <label htmlFor="categoryId" className="text-sm font-medium text-left block">
-          Category <span className="text-red-500">*</span>
+          Category
         </label>
         <Select 
           value={categoryId}
           onValueChange={(value) => onSelectChange('categoryId', value)}
-          required
         >
           <SelectTrigger>
             <SelectValue placeholder="Select category" />
@@ -54,12 +53,11 @@ const CategorySection: React.FC<CategorySectionProps> = ({
       
       <div className="space-y-2 text-left">
         <label htmlFor="subcategory" className="text-sm font-medium text-left block">
-          Subcategory <span className="text-red-500">*</span>
+          Subcategory
         </label>
         <Select 
           value={subcategory}
           onValueChange={(value) => onSelectChange('subcategory', value)}
-          required
           disabled={availableSubcategories.length === 0}
         >
           <SelectTrigger>

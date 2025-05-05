@@ -32,12 +32,11 @@ const LocationSection: React.FC<LocationSectionProps> = ({
     <>
       <div className="space-y-2 text-left">
         <label htmlFor="locationId" className="text-sm font-medium text-left block">
-          Location <span className="text-red-500">*</span>
+          Location
         </label>
         <Select 
           value={locationId} 
           onValueChange={(value) => onSelectChange('locationId', value)}
-          required
         >
           <SelectTrigger id="locationId">
             <SelectValue placeholder="Select location" />
@@ -54,12 +53,11 @@ const LocationSection: React.FC<LocationSectionProps> = ({
       
       <div className="space-y-2 text-left">
         <label htmlFor="facilityId" className="text-sm font-medium text-left block">
-          Facility <span className="text-red-500">*</span>
+          Facility
         </label>
         <Select 
           value={facilityId} 
           onValueChange={(value) => onSelectChange('facilityId', value)}
-          required
         >
           <SelectTrigger id="facilityId">
             <SelectValue placeholder="Select facility" />

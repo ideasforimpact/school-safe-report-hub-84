@@ -43,25 +43,23 @@ const ReportIncident = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Basic validation
-    if (!formData.type || !formData.categoryId || !formData.subcategory || !formData.description || !formData.locationId || !formData.facilityId) {
-      toast.error("Please fill in all required fields");
-      return;
-    }
-    
-    // Filter out empty people
-    const validPeople = peopleInvolved.filter(p => p.name.trim() !== '');
+    // Removed mandatory field validation to allow proceeding with any data
     
     setIsSubmitting(true);
     
     try {
-      // Combine date and time
-      const dateTime = new Date(`${formData.date}T${formData.time}`);
+      // Combine date and time if both are provided
+      const dateTime = formData.date && formData.time 
+        ? new Date(`${formData.date}T${formData.time}`) 
+        : new Date();
       
-      // Get the actual category, location and facility names
-      const categoryName = getSelectedCategory();
-      const locationName = getSelectedLocation();
-      const facilityName = getSelectedFacility();
+      // Get the actual category, location and facility names if available
+      const categoryName = formData.categoryId ? getSelectedCategory() : '';
+      const locationName = formData.locationId ? getSelectedLocation() : '';
+      const facilityName = formData.facilityId ? getSelectedFacility() : '';
+      
+      // Filter out empty people
+      const validPeople = peopleInvolved.filter(p => p.name.trim() !== '');
       
       // Process supporting documents
       const documents = supportingFiles.map(file => ({
@@ -80,21 +78,21 @@ const ReportIncident = () => {
         : undefined;
       
       addIncident({
-        type: formData.type as IncidentType, // Type assertion to ensure it's an IncidentType
+        type: (formData.type || 'Incident') as IncidentType,
         category: categoryName as any,
-        subcategory: formData.subcategory,
-        description: formData.description,
+        subcategory: formData.subcategory || '',
+        description: formData.description || '',
         date: dateTime,
         location: locationName as any,
         peopleInvolved: validPeople,
-        facility: facilityName,
-        priority: formData.priority,
+        facility: facilityName || '',
+        priority: formData.priority || 'Medium',
         documents: documents,
         reportedBy: {
           id: user?.id || '',
           name: user?.name || ''
         },
-        owner: owner // Add the owner to the incident
+        owner: owner
       });
       
       navigate('/incidents');

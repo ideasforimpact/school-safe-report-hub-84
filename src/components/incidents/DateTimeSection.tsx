@@ -53,7 +53,7 @@ const DateTimeSection: React.FC<DateTimeSectionProps> = ({
   return (
     <div className="space-y-2 md:col-span-2">
       <label className="text-sm font-medium">
-        Date and Time of Occurrence <span className="text-red-500">*</span>
+        Date and Time of Occurrence
       </label>
       <Popover>
         <PopoverTrigger asChild>

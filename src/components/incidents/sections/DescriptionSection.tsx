@@ -18,10 +18,10 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
   onFilesChange,
 }) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
-      <div className="space-y-2 text-left">
-        <label htmlFor="description" className="text-sm font-medium text-left block">
-          Description <span className="text-red-500">*</span>
+    <>
+      <div className="space-y-2 md:col-span-2">
+        <label htmlFor="description" className="text-sm font-medium">
+          Description
         </label>
         <Textarea
           id="description"
@@ -30,26 +30,23 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
           value={description}
           onChange={onChange}
           rows={4}
-          required
-          className="w-full"
         />
       </div>
 
-      <div className="space-y-2 text-left">
-        <label className="text-sm font-medium text-left block">
+      <div className="space-y-2 md:col-span-2">
+        <label className="text-sm font-medium">
           Supporting Documents (Optional)
         </label>
         <MultipleFilesUpload
           onFilesChange={onFilesChange}
           initialFiles={supportingFiles}
           maxFiles={5}
-          className="w-full"
         />
         <p className="text-xs text-gray-500 mt-1">
           Upload up to 5 files (images, videos, documents) to support this incident report
         </p>
       </div>
-    </div>
+    </>
   );
 };
 
