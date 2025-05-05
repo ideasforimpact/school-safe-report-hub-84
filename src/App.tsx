@@ -17,39 +17,42 @@ import { AuthProvider } from './contexts/AuthContext';
 import BackofficeLayout from './components/layout/BackofficeLayout';
 import EducationalConfiguration from './pages/EducationalConfiguration';
 import OtherConfiguration from './pages/OtherConfiguration';
+import { ClientProvider } from './contexts/ClientContext';
 
 const App: React.FC = () => {
   return (
     <Router>
       <AuthProvider>
-        <IncidentProvider>
-          <FacilityProvider>
-            <Routes>
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/incidents" element={<IncidentsList />} />
-              <Route path="/report-incident" element={<ReportIncident />} />
-              <Route path="/edit-incident/:id" element={<EditIncident />} />
-              <Route path="/incident/:id" element={<IncidentDetail />} />
-              <Route path="/configuration" element={<ConfigurationManagement />} />
-              <Route path="/incident-configuration" element={<IncidentConfiguration />} />
-              
-              {/* Configuration routes */}
-              <Route path="/category-configuration" element={<CategoryConfiguration />} />
-              <Route path="/location-facility-configuration" element={<LocationFacilityConfiguration />} />
-              
-              {/* Auth routes */}
-              <Route path="/login" element={<Login />} />
-              
-              {/* Educational & Other Configuration */}
-              <Route path="/educational-configuration" element={<EducationalConfiguration />} />
-              <Route path="/other-configuration" element={<OtherConfiguration />} />
-              
-              {/* Backoffice route with layout */}
-              <Route path="/backoffice" element={<BackofficeLayout><Dashboard /></BackofficeLayout>} />
-            </Routes>
-          </FacilityProvider>
-        </IncidentProvider>
+        <ClientProvider>
+          <IncidentProvider>
+            <FacilityProvider>
+              <Routes>
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/incidents" element={<IncidentsList />} />
+                <Route path="/report-incident" element={<ReportIncident />} />
+                <Route path="/edit-incident/:id" element={<EditIncident />} />
+                <Route path="/incident/:id" element={<IncidentDetail />} />
+                <Route path="/configuration" element={<ConfigurationManagement />} />
+                <Route path="/incident-configuration" element={<IncidentConfiguration />} />
+                
+                {/* Configuration routes */}
+                <Route path="/category-configuration" element={<CategoryConfiguration />} />
+                <Route path="/location-facility-configuration" element={<LocationFacilityConfiguration />} />
+                
+                {/* Auth routes */}
+                <Route path="/login" element={<Login />} />
+                
+                {/* Educational & Other Configuration */}
+                <Route path="/educational-configuration" element={<EducationalConfiguration />} />
+                <Route path="/other-configuration" element={<OtherConfiguration />} />
+                
+                {/* Backoffice route with layout */}
+                <Route path="/backoffice" element={<BackofficeLayout><Dashboard /></BackofficeLayout>} />
+              </Routes>
+            </FacilityProvider>
+          </IncidentProvider>
+        </ClientProvider>
       </AuthProvider>
     </Router>
   );
