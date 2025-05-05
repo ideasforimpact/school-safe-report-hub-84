@@ -32,17 +32,17 @@ const Layout = ({
           <Sidebar />
         </div>
         
-        {/* Adjustable main content area with left padding on md screens but no horizontal padding */}
+        {/* Adjustable main content area with left padding on md screens but centered content */}
         <div className="flex-1 w-full overflow-hidden md:pl-28">
           {/* Header - fixed position */}
           <div className="fixed top-0 right-0 left-0 z-40 bg-white border-b border-gray-100 shadow-sm md:left-28">
             <Header />
           </div>
           
-          {/* Main Content - with padding top for header but no horizontal padding */}
+          {/* Main Content - with padding top for header and centered content */}
           <div className="pt-16 transition-all duration-300 overflow-x-hidden w-full">
-            <div className="w-full mx-auto">
-              <div className="mb-4 md:hidden px-3">
+            <div className="max-w-6xl mx-auto px-4">
+              <div className="mb-4 md:hidden">
                 <MobileNav />
               </div>
               <main className="animate-fade-in">
