@@ -15,7 +15,6 @@ import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { ConfigItem } from '@/contexts/types';
 import { EditDialog } from './EditDialog';
 import { toast } from '@/components/ui/sonner';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 interface FacilityTabProps {
   facilities: ConfigItem[];
@@ -32,74 +31,51 @@ export const FacilityTab = ({
 }: FacilityTabProps) => {
   const [newFacility, setNewFacility] = useState('');
   const [editingFacility, setEditingFacility] = useState<{id: string, name: string} | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleFacilityAdd = (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const handleFacilityAdd = () => {
     if (!newFacility.trim()) {
       toast.error("Facility name cannot be empty");
       return;
     }
     
-    try {
-      addFacility(newFacility.trim());
-      setNewFacility('');
-      toast.success("Facility added successfully");
-    } catch (error) {
-      console.error("Error adding facility:", error);
-      toast.error("Failed to add facility");
-    }
+    addFacility(newFacility);
+    setNewFacility('');
+    toast.success("Facility added successfully");
   };
 
   const handleFacilityDelete = (id: string) => {
-    setIsDeleting(true);
-    try {
-      deleteFacility(id);
-      toast.success("Facility deleted successfully");
-      console.log("Facility deleted:", id);
-    } catch (error) {
-      console.error("Error deleting facility:", error);
-      toast.error("Failed to delete facility");
-    } finally {
-      setIsDeleting(false);
-    }
+    deleteFacility(id);
+    toast.success("Facility deleted successfully");
   };
 
-  const handleFacilityUpdate = (id: string, name: string) => {
-    if (!name.trim()) {
+  const handleFacilityUpdate = () => {
+    if (!editingFacility || !editingFacility.name.trim()) {
       toast.error("Facility name cannot be empty");
       return;
     }
     
-    try {
-      updateFacility(id, name.trim());
-      setEditingFacility(null);
-      toast.success("Facility updated successfully");
-    } catch (error) {
-      console.error("Error updating facility:", error);
-      toast.error("Failed to update facility");
-    }
+    updateFacility(editingFacility.id, editingFacility.name);
+    setEditingFacility(null);
+    toast.success("Facility updated successfully");
   };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Incident Facilities</CardTitle>
-        <CardDescription>Manage available incident facilities</CardDescription>
+        <CardTitle>School Facilities</CardTitle>
+        <CardDescription>Manage school facilities where incidents can occur</CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleFacilityAdd} className="flex gap-4 mb-6">
+        <div className="flex gap-4 mb-6">
           <Input
             placeholder="New facility name"
             value={newFacility}
             onChange={(e) => setNewFacility(e.target.value)}
-            className="flex-1"
           />
-          <Button type="submit">
+          <Button onClick={handleFacilityAdd}>
             <Plus className="mr-2 h-4 w-4" /> Add Facility
           </Button>
-        </form>
+        </div>
         
         <Table>
           <TableHeader>
@@ -109,75 +85,45 @@ export const FacilityTab = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {facilities.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={2} className="text-center py-4 text-gray-500">
-                  No facilities found. Add one to get started.
+            {facilities.map((facility) => (
+              <TableRow key={facility.id}>
+                <TableCell>{facility.name}</TableCell>
+                <TableCell>
+                  <div className="flex gap-2">
+                    <EditDialog
+                      title="Edit Facility"
+                      description="Update the facility name below"
+                      fieldLabel="Facility name"
+                      value={facility.name}
+                      onOpenChange={(open) => {
+                        if (open) {
+                          setEditingFacility({id: facility.id, name: facility.name});
+                        } else {
+                          setEditingFacility(null);
+                        }
+                      }}
+                      onChange={(value) => setEditingFacility(prev => 
+                        prev ? {...prev, name: value} : null
+                      )}
+                      onSave={handleFacilityUpdate}
+                      triggerButton={
+                        <Button variant="ghost" size="icon">
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      }
+                    />
+                    
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => handleFacilityDelete(facility.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
-            ) : (
-              facilities.map((facility) => (
-                <TableRow key={facility.id}>
-                  <TableCell>{facility.name}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <EditDialog
-                        title="Edit Facility"
-                        description="Update the facility name below"
-                        fieldLabel="Facility name"
-                        value={facility.name}
-                        onOpenChange={(open) => {
-                          if (open) {
-                            setEditingFacility({id: facility.id, name: facility.name});
-                          }
-                        }}
-                        onChange={(value) => {
-                          if (editingFacility) {
-                            setEditingFacility({...editingFacility, name: value});
-                          }
-                        }}
-                        onSave={() => {
-                          if (editingFacility) {
-                            handleFacilityUpdate(facility.id, editingFacility.name);
-                          }
-                        }}
-                        triggerButton={
-                          <Button variant="ghost" size="icon">
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                        }
-                      />
-                      
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete Facility</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to delete this facility? This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction 
-                              onClick={() => handleFacilityDelete(facility.id)}
-                              className="bg-red-600 hover:bg-red-700"
-                              disabled={isDeleting}
-                            >
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
+            ))}
           </TableBody>
         </Table>
       </CardContent>

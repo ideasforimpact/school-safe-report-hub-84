@@ -10,13 +10,11 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { ConfigItem, SubcategoryItem } from '@/contexts/types';
 import { EditDialog } from './EditDialog';
-import { toast } from '@/components/ui/sonner';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { toast } from 'sonner';
 
 interface SubcategoryTabProps {
   categories: ConfigItem[];
@@ -28,124 +26,92 @@ interface SubcategoryTabProps {
 
 export const SubcategoryTab = ({ 
   categories, 
-  subcategoryMappings,
-  addSubcategory,
-  updateSubcategory,
-  deleteSubcategory
+  subcategoryMappings, 
+  addSubcategory, 
+  updateSubcategory, 
+  deleteSubcategory 
 }: SubcategoryTabProps) => {
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
-  const [newSubcategory, setNewSubcategory] = useState('');
-  const [editingSubcategory, setEditingSubcategory] = useState<{id: string, name: string} | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  
-  const selectedCategorySubcategories = selectedCategoryId 
-    ? subcategoryMappings[selectedCategoryId] || [] 
-    : [];
-  
-  const selectedCategoryName = selectedCategoryId
-    ? categories.find(cat => cat.id === selectedCategoryId)?.name
-    : '';
+  const [newSubcategoryName, setNewSubcategoryName] = useState('');
+  const [newSubcategoryParent, setNewSubcategoryParent] = useState('');
+  const [editingSubcategory, setEditingSubcategory] = useState<{id: string, name: string, parentId: string} | null>(null);
 
   const handleSubcategoryAdd = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!selectedCategoryId) {
-      toast.error("Please select a category first");
+    if (!newSubcategoryName.trim() || !newSubcategoryParent) {
+      toast.error("Subcategory name and parent category are required");
       return;
     }
     
-    if (!newSubcategory.trim()) {
+    addSubcategory(newSubcategoryParent, newSubcategoryName.trim());
+    setNewSubcategoryName('');
+    setNewSubcategoryParent('');
+    toast.success("Subcategory added successfully");
+  };
+
+  const handleSubcategoryDelete = (parentId: string, id: string) => {
+    deleteSubcategory(parentId, id);
+    toast.success("Subcategory deleted successfully");
+  };
+
+  const handleSubcategoryUpdate = () => {
+    if (!editingSubcategory || !editingSubcategory.name.trim()) {
       toast.error("Subcategory name cannot be empty");
       return;
     }
     
-    try {
-      addSubcategory(selectedCategoryId, newSubcategory.trim());
-      setNewSubcategory('');
-      toast.success("Subcategory added successfully");
-    } catch (error) {
-      console.error("Error adding subcategory:", error);
-      toast.error("Failed to add subcategory");
-    }
-  };
-
-  const handleSubcategoryDelete = (id: string) => {
-    if (!selectedCategoryId) return;
-    
-    setIsDeleting(true);
-    try {
-      deleteSubcategory(selectedCategoryId, id);
-      toast.success("Subcategory deleted successfully");
-      console.log("Subcategory deleted:", selectedCategoryId, id);
-    } catch (error) {
-      console.error("Error deleting subcategory:", error);
-      toast.error("Failed to delete subcategory");
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  const handleSubcategoryUpdate = (id: string, name: string) => {
-    if (!selectedCategoryId) return;
-    
-    if (!name.trim()) {
-      toast.error("Subcategory name cannot be empty");
-      return;
-    }
-    
-    try {
-      updateSubcategory(selectedCategoryId, id, name.trim());
-      setEditingSubcategory(null);
-      toast.success("Subcategory updated successfully");
-    } catch (error) {
-      console.error("Error updating subcategory:", error);
-      toast.error("Failed to update subcategory");
-    }
+    updateSubcategory(
+      editingSubcategory.parentId, 
+      editingSubcategory.id, 
+      editingSubcategory.name.trim()
+    );
+    setEditingSubcategory(null);
+    toast.success("Subcategory updated successfully");
   };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Incident Subcategories</CardTitle>
-        <CardDescription>Manage available incident subcategories for each category</CardDescription>
+        <CardTitle>Subcategories</CardTitle>
+        <CardDescription>Manage subcategories for each category</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-2">
-            <div>
-              <label htmlFor="category" className="block text-sm font-medium mb-1">
-                Select Category
-              </label>
-              <Select value={selectedCategoryId} onValueChange={setSelectedCategoryId}>
-                <SelectTrigger id="category">
-                  <SelectValue placeholder="Select a category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+        <form onSubmit={handleSubcategoryAdd} className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium">Parent Category</label>
+            <select
+              className="border border-input bg-background px-3 py-2 rounded-md"
+              value={newSubcategoryParent}
+              onChange={(e) => setNewSubcategoryParent(e.target.value)}
+              required
+            >
+              <option value="">Select a category</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
           </div>
-          
-          {selectedCategoryId && (
-            <form onSubmit={handleSubcategoryAdd} className="flex gap-4 mb-6">
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium">New Subcategory</label>
+            <div className="flex gap-2">
               <Input
-                placeholder={`New subcategory for ${selectedCategoryName}`}
-                value={newSubcategory}
-                onChange={(e) => setNewSubcategory(e.target.value)}
-                className="flex-1"
+                placeholder="New subcategory name"
+                value={newSubcategoryName}
+                onChange={(e) => setNewSubcategoryName(e.target.value)}
+                required
               />
               <Button type="submit">
-                <Plus className="mr-2 h-4 w-4" /> Add Subcategory
+                <Plus className="mr-2 h-4 w-4" /> Add
               </Button>
-            </form>
-          )}
-          
-          {selectedCategoryId ? (
+            </div>
+          </div>
+        </form>
+        
+        {categories.map((category) => (
+          <div key={category.id} className="mb-8">
+            <h3 className="text-lg font-medium mb-2">{category.name}</h3>
             <Table>
               <TableHeader>
                 <TableRow>
@@ -154,83 +120,60 @@ export const SubcategoryTab = ({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {selectedCategorySubcategories.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={2} className="text-center py-4 text-gray-500">
-                      No subcategories found for this category. Add one to get started.
+                {subcategoryMappings[category.id]?.map((subcategory) => (
+                  <TableRow key={subcategory.id}>
+                    <TableCell>{subcategory.name}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <EditDialog
+                          title="Edit Subcategory"
+                          description="Update the subcategory name below"
+                          fieldLabel="Subcategory name"
+                          value={subcategory.name}
+                          onOpenChange={(open) => {
+                            if (open) {
+                              setEditingSubcategory({
+                                id: subcategory.id,
+                                name: subcategory.name,
+                                parentId: category.id
+                              });
+                            } else {
+                              setEditingSubcategory(null);
+                            }
+                          }}
+                          onChange={(value) => setEditingSubcategory(prev => 
+                            prev ? {...prev, name: value} : null
+                          )}
+                          onSave={handleSubcategoryUpdate}
+                          triggerButton={
+                            <Button variant="ghost" size="icon">
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          }
+                        />
+                        
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => handleSubcategoryDelete(category.id, subcategory.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
-                ) : (
-                  selectedCategorySubcategories.map((subcategory) => (
-                    <TableRow key={subcategory.id}>
-                      <TableCell>{subcategory.name}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <EditDialog
-                            title="Edit Subcategory"
-                            description="Update the subcategory name below"
-                            fieldLabel="Subcategory name"
-                            value={subcategory.name}
-                            onOpenChange={(open) => {
-                              if (open) {
-                                setEditingSubcategory({id: subcategory.id, name: subcategory.name});
-                              }
-                            }}
-                            onChange={(value) => {
-                              if (editingSubcategory) {
-                                setEditingSubcategory({...editingSubcategory, name: value});
-                              }
-                            }}
-                            onSave={() => {
-                              if (editingSubcategory) {
-                                handleSubcategoryUpdate(subcategory.id, editingSubcategory.name);
-                              }
-                            }}
-                            triggerButton={
-                              <Button variant="ghost" size="icon">
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                            }
-                          />
-                          
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Delete Subcategory</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Are you sure you want to delete this subcategory? This action cannot be undone.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction 
-                                  onClick={() => handleSubcategoryDelete(subcategory.id)}
-                                  className="bg-red-600 hover:bg-red-700"
-                                  disabled={isDeleting}
-                                >
-                                  Delete
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
+                ))}
+                {(!subcategoryMappings[category.id] || subcategoryMappings[category.id].length === 0) && (
+                  <TableRow>
+                    <TableCell colSpan={2} className="text-center text-muted-foreground">
+                      No subcategories found for this category
+                    </TableCell>
+                  </TableRow>
                 )}
               </TableBody>
             </Table>
-          ) : (
-            <div className="text-center p-6 bg-gray-50 rounded-md">
-              <p>Please select a category to manage its subcategories.</p>
-            </div>
-          )}
-        </div>
+          </div>
+        ))}
       </CardContent>
     </Card>
   );

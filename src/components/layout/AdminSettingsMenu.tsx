@@ -1,8 +1,7 @@
-
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuItem } from '@/components/ui/dropdown-menu';
-import { Settings, AlertTriangle, Users } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { Settings, AlertTriangle, Building, LayoutGrid } from 'lucide-react';
 
 const AdminSettingsMenu = () => {
   const navigate = useNavigate();
@@ -18,16 +17,32 @@ const AdminSettingsMenu = () => {
         <div className="px-2 py-2 text-sm font-medium text-gray-500">Settings</div>
         <DropdownMenuSeparator />
         
-        {/* Category Management */}
-        <DropdownMenuItem onClick={() => navigate('/category-configuration')} className="cursor-pointer">
+        {/* Incident Configuration */}
+        <DropdownMenuItem onClick={() => navigate('/incident-configuration')} className="cursor-pointer">
           <AlertTriangle className="h-4 w-4 mr-2" />
-          <span>Category Management</span>
+          <span>Incident Configuration</span>
         </DropdownMenuItem>
         
-        {/* User Management */}
-        <DropdownMenuItem onClick={() => navigate('/user-management')} className="cursor-pointer">
-          <Users className="h-4 w-4 mr-2" />
-          <span>User Management</span>
+        {/* Educational Structure */}
+        <DropdownMenuItem onClick={() => navigate('/educational-configuration')} className="cursor-pointer">
+          <Building className="h-4 w-4 mr-2" />
+          <span>Educational Structure</span>
+        </DropdownMenuItem>
+        
+        {/* Other Settings */}
+        <DropdownMenuItem onClick={() => navigate('/other-configuration')} className="cursor-pointer">
+          <LayoutGrid className="h-4 w-4 mr-2" />
+          <span>Other Settings</span>
+        </DropdownMenuItem>
+        
+        <DropdownMenuSeparator />
+        
+        {/* Keep basic settings */}
+        <DropdownMenuItem onClick={() => navigate('/users')} className="cursor-pointer">
+          User Management
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => navigate('/students')} className="cursor-pointer">
+          Student Management
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

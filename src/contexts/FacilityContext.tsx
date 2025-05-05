@@ -53,19 +53,16 @@ export const FacilityProvider = ({ children }: { children: ReactNode }) => {
 
   const addFacility = (facility: string) => {
     if (facility && typeof facility === 'string' && facility.trim() !== '') {
-      // Only add if not already exists
-      if (!facilities.includes(facility.trim())) {
-        setFacilities(prev => [...prev, facility.trim()]);
-        toast.success("Facility added successfully");
-      }
+      setFacilities(prev => [...prev, facility.trim()]);
+      toast.success("Facility added successfully");
     } else {
       toast.error("Invalid facility name");
     }
   };
 
   const resetFacilities = () => {
-    setFacilities(INITIAL_FACILITIES);
-    localStorage.setItem('facilities', JSON.stringify(INITIAL_FACILITIES));
+    setFacilities([]);
+    localStorage.setItem('facilities', JSON.stringify([]));
     toast.success("Facilities reset successfully");
   };
 

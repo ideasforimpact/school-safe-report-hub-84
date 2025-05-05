@@ -1,79 +1,97 @@
 
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Dashboard from './pages/Dashboard';
-import ReportIncident from './pages/ReportIncident';
-import EditIncident from './pages/EditIncident';
-import IncidentsList from './pages/IncidentsList';
-import IncidentDetail from './pages/IncidentDetail';
-import ConfigurationManagement from './pages/configuration/ConfigurationManagement';
-import IncidentConfiguration from './pages/IncidentConfiguration';
-import CategoryConfiguration from './pages/CategoryConfiguration';
-import { IncidentProvider } from './contexts/IncidentContext';
-import { FacilityProvider } from './contexts/FacilityContext';
+import Home from './pages/Home';
 import Login from './pages/Login';
-import { AuthProvider } from './contexts/AuthContext';
-import BackofficeLayout from './components/layout/BackofficeLayout';
-import EducationalConfiguration from './pages/EducationalConfiguration';
-import OtherConfiguration from './pages/OtherConfiguration';
-import { ClientProvider } from './contexts/ClientContext';
+import Dashboard from './pages/Dashboard';
+import IncidentsList from './pages/IncidentsList';
+import ReportIncident from './pages/ReportIncident';
+import IncidentDetail from './pages/IncidentDetail';
+import EditIncident from './pages/EditIncident';
 import Insights from './pages/Insights';
-import BackofficeAnalytics from './pages/backoffice/BackofficeAnalytics';
-import UserManagement from './pages/UserManagement';
+import NotFound from './pages/NotFound';
+import { AuthProvider } from './contexts/auth/AuthContext';
+import { ClientProvider } from './contexts/ClientContext';
+import { FacilityProvider } from './contexts/FacilityContext';
+import { IncidentProvider } from './contexts/IncidentContext';
+import { StudentProvider } from './contexts/StudentContext';
 import RouteGuard from './components/RouteGuard';
 import ModuleGuard from './components/ModuleGuard';
+import ConfigurationManagement from './pages/ConfigurationManagement';
+import IncidentConfiguration from './pages/IncidentConfiguration';
+import EducationalConfiguration from './pages/EducationalConfiguration';
+import OtherConfiguration from './pages/OtherConfiguration';
+import UserManagement from './pages/UserManagement';
+import StudentManagement from './pages/StudentManagement';
+import Support from './pages/Support';
+import Blog from './pages/Blog';
+import Pricing from './pages/Pricing';
+import FacilityManagement from './pages/FacilityManagement';
+import ClientManagement from './pages/ClientManagement';
+import Benchmarking from './pages/Benchmarking';
+import BackofficeAnalytics from './pages/backoffice/BackofficeAnalytics';
+import BackofficeSettings from './pages/backoffice/BackofficeSettings';
 
-const App: React.FC = () => {
+import './App.css';
+
+function App() {
   return (
     <Router>
       <AuthProvider>
         <ClientProvider>
-          <IncidentProvider>
-            <FacilityProvider>
-              <Routes>
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                <Route path="/login" element={<Login />} />
-                
-                {/* Protected routes - require authentication */}
-                <Route element={<RouteGuard />}>
-                  <Route path="/dashboard" element={<Dashboard />} />
+          <FacilityProvider>
+            <IncidentProvider>
+              <StudentProvider>
+                <Routes>
+                  {/* Public Routes */}
+                  <Route path="/" element={<Home />} />
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/blog" element={<Blog />} />
+                  <Route path="/pricing" element={<Pricing />} />
+                  <Route path="/support" element={<Support />} />
                   
-                  {/* Incident routes with module guards */}
-                  <Route element={<ModuleGuard moduleType="incidentReporting" />}>
-                    <Route path="/report-incident" element={<ReportIncident />} />
+                  {/* Redirect from /report to /report-incident */}
+                  <Route path="/report" element={<Navigate to="/report-incident" replace />} />
+                  
+                  {/* Protected Routes */}
+                  <Route element={<RouteGuard />}>
+                    {/* Client User Routes */}
+                    <Route element={<ModuleGuard moduleType="incidentReporting" />}>
+                      <Route path="/dashboard" element={<Dashboard />} />
+                      <Route path="/incidents" element={<IncidentsList />} />
+                      <Route path="/incident/:id" element={<IncidentDetail />} />
+                      <Route path="/incident/:id/edit" element={<EditIncident />} />
+                      <Route path="/report-incident" element={<ReportIncident />} />
+                      <Route path="/insights" element={<Insights />} />
+                      <Route path="/configuration" element={<ConfigurationManagement />} />
+                      <Route path="/incident-configuration" element={<IncidentConfiguration />} />
+                      <Route path="/educational-configuration" element={<EducationalConfiguration />} />
+                      <Route path="/other-configuration" element={<OtherConfiguration />} />
+                      <Route path="/users" element={<UserManagement />} />
+                      <Route path="/students" element={<StudentManagement />} />
+                      <Route path="/facilities" element={<FacilityManagement />} />
+                      <Route path="/benchmarking" element={<Benchmarking />} />
+                    </Route>
+                    
+                    {/* Backoffice Routes - SaaS Owner Routes */}
+                    <Route element={<RouteGuard requireSaasOwner={true} />}>
+                      {/* Redirect SaaS owner from /backoffice to /dashboard */}
+                      <Route path="/backoffice" element={<Navigate to="/dashboard" replace />} />
+                      <Route path="/backoffice/clients" element={<ClientManagement />} />
+                      <Route path="/backoffice/analytics" element={<BackofficeAnalytics />} />
+                      <Route path="/backoffice/settings" element={<BackofficeSettings />} />
+                    </Route>
                   </Route>
                   
-                  <Route element={<ModuleGuard moduleType="allIncidents" />}>
-                    <Route path="/incidents" element={<IncidentsList />} />
-                    <Route path="/edit-incident/:id" element={<EditIncident />} />
-                    <Route path="/incident/:id" element={<IncidentDetail />} />
-                  </Route>
-                  
-                  <Route element={<ModuleGuard moduleType="insights" />}>
-                    <Route path="/insights" element={<Insights />} />
-                  </Route>
-                  
-                  {/* Admin-only routes */}
-                  <Route element={<RouteGuard requireAdmin />}>
-                    <Route path="/configuration" element={<ConfigurationManagement />} />
-                    <Route path="/incident-configuration" element={<IncidentConfiguration />} />
-                    <Route path="/category-configuration" element={<CategoryConfiguration />} />
-                    <Route path="/educational-configuration" element={<EducationalConfiguration />} />
-                    <Route path="/other-configuration" element={<OtherConfiguration />} />
-                    <Route path="/user-management" element={<UserManagement />} />
-                  </Route>
-                </Route>
-                
-                {/* Backoffice routes */}
-                <Route path="/backoffice" element={<BackofficeLayout><Dashboard /></BackofficeLayout>} />
-                <Route path="/backoffice/analytics" element={<BackofficeLayout><BackofficeAnalytics /></BackofficeLayout>} />
-              </Routes>
-            </FacilityProvider>
-          </IncidentProvider>
+                  {/* Not Found */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </StudentProvider>
+            </IncidentProvider>
+          </FacilityProvider>
         </ClientProvider>
       </AuthProvider>
     </Router>
   );
-};
+}
 
 export default App;

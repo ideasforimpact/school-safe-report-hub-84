@@ -14,8 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { ConfigItem } from '@/contexts/types';
 import { EditDialog } from './EditDialog';
-import { toast } from '@/components/ui/sonner';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { toast } from 'sonner';
 
 interface CategoryTabProps {
   categories: ConfigItem[];
@@ -32,8 +31,6 @@ export const CategoryTab = ({
 }: CategoryTabProps) => {
   const [newCategory, setNewCategory] = useState('');
   const [editingCategory, setEditingCategory] = useState<{id: string, name: string} | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [currentDeleteId, setCurrentDeleteId] = useState<string | null>(null);
 
   const handleCategoryAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,43 +42,23 @@ export const CategoryTab = ({
     
     addCategory(newCategory.trim());
     setNewCategory('');
-    console.log("Category add initiated with name:", newCategory.trim());
     toast.success("Category added successfully");
   };
 
   const handleCategoryDelete = (id: string) => {
-    setIsDeleting(true);
-    try {
-      deleteCategory(id);
-      toast.success("Category deleted successfully");
-      console.log("Category deleted:", id);
-    } catch (error) {
-      console.error("Error deleting category:", error);
-      toast.error("Failed to delete category");
-    } finally {
-      setIsDeleting(false);
-      setCurrentDeleteId(null);
-    }
+    deleteCategory(id);
+    toast.success("Category deleted successfully");
   };
 
-  const handleCategoryUpdate = (id: string, name: string) => {
-    if (!name.trim()) {
+  const handleCategoryUpdate = () => {
+    if (!editingCategory || !editingCategory.name.trim()) {
       toast.error("Category name cannot be empty");
       return;
     }
     
-    try {
-      updateCategory(id, name.trim());
-      setEditingCategory(null);
-      toast.success("Category updated successfully");
-    } catch (error) {
-      console.error("Error updating category:", error);
-      toast.error("Failed to update category");
-    }
-  };
-
-  const prepareDelete = (id: string) => {
-    setCurrentDeleteId(id);
+    updateCategory(editingCategory.id, editingCategory.name.trim());
+    setEditingCategory(null);
+    toast.success("Category updated successfully");
   };
 
   return (
@@ -96,10 +73,9 @@ export const CategoryTab = ({
             placeholder="New category name"
             value={newCategory}
             onChange={(e) => setNewCategory(e.target.value)}
-            className="flex-1"
           />
-          <Button type="submit" className="flex items-center gap-2">
-            <Plus className="h-4 w-4" /> Add Category
+          <Button type="submit">
+            <Plus className="mr-2 h-4 w-4" /> Add Category
           </Button>
         </form>
         
@@ -131,18 +107,12 @@ export const CategoryTab = ({
                         onOpenChange={(open) => {
                           if (open) {
                             setEditingCategory({id: category.id, name: category.name});
+                          } else {
+                            setEditingCategory(null);
                           }
                         }}
-                        onChange={(value) => {
-                          if (editingCategory) {
-                            setEditingCategory({...editingCategory, name: value});
-                          }
-                        }}
-                        onSave={() => {
-                          if (editingCategory) {
-                            handleCategoryUpdate(category.id, editingCategory.name);
-                          }
-                        }}
+                        onChange={(value) => setEditingCategory(prev => prev ? {...prev, name: value} : null)}
+                        onSave={handleCategoryUpdate}
                         triggerButton={
                           <Button variant="ghost" size="icon">
                             <Pencil className="h-4 w-4" />
@@ -150,35 +120,13 @@ export const CategoryTab = ({
                         }
                       />
                       
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            onClick={() => prepareDelete(category.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete Category</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to delete this category? This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction 
-                              onClick={() => handleCategoryDelete(category.id)}
-                              className="bg-red-600 hover:bg-red-700"
-                              disabled={isDeleting}
-                            >
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => handleCategoryDelete(category.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </TableCell>
                 </TableRow>

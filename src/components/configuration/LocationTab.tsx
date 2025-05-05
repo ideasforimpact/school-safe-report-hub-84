@@ -15,7 +15,6 @@ import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { ConfigItem } from '@/contexts/types';
 import { EditDialog } from './EditDialog';
 import { toast } from '@/components/ui/sonner';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 interface LocationTabProps {
   locations: ConfigItem[];
@@ -32,70 +31,51 @@ export const LocationTab = ({
 }: LocationTabProps) => {
   const [newLocation, setNewLocation] = useState('');
   const [editingLocation, setEditingLocation] = useState<{id: string, name: string} | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleLocationAdd = (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const handleLocationAdd = () => {
     if (!newLocation.trim()) {
       toast.error("Location name cannot be empty");
       return;
     }
     
-    try {
-      addLocation(newLocation.trim());
-      setNewLocation('');
-    } catch (error) {
-      console.error("Error adding location:", error);
-      toast.error("Failed to add location");
-    }
+    addLocation(newLocation);
+    setNewLocation('');
+    toast.success("Location added successfully");
   };
 
-  const handleLocationUpdate = (id: string, name: string) => {
-    if (!name.trim()) {
+  const handleLocationDelete = (id: string) => {
+    deleteLocation(id);
+    toast.success("Location deleted successfully");
+  };
+
+  const handleLocationUpdate = () => {
+    if (!editingLocation || !editingLocation.name.trim()) {
       toast.error("Location name cannot be empty");
       return;
     }
     
-    try {
-      updateLocation(id, name.trim());
-      setEditingLocation(null);
-    } catch (error) {
-      console.error("Error updating location:", error);
-      toast.error("Failed to update location");
-    }
-  };
-  
-  const handleLocationDelete = (id: string) => {
-    setIsDeleting(true);
-    try {
-      deleteLocation(id);
-    } catch (error) {
-      console.error("Error deleting location:", error);
-      toast.error("Failed to delete location");
-    } finally {
-      setIsDeleting(false);
-    }
+    updateLocation(editingLocation.id, editingLocation.name);
+    setEditingLocation(null);
+    toast.success("Location updated successfully");
   };
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Incident Locations</CardTitle>
-        <CardDescription>Manage available incident locations</CardDescription>
+        <CardDescription>Manage where incidents can happen</CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleLocationAdd} className="flex gap-4 mb-6">
+        <div className="flex gap-4 mb-6">
           <Input
             placeholder="New location name"
             value={newLocation}
             onChange={(e) => setNewLocation(e.target.value)}
-            className="flex-1"
           />
-          <Button type="submit">
+          <Button onClick={handleLocationAdd}>
             <Plus className="mr-2 h-4 w-4" /> Add Location
           </Button>
-        </form>
+        </div>
         
         <Table>
           <TableHeader>
@@ -105,75 +85,45 @@ export const LocationTab = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {locations.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={2} className="text-center py-4 text-gray-500">
-                  No locations found. Add one to get started.
+            {locations.map((location) => (
+              <TableRow key={location.id}>
+                <TableCell>{location.name}</TableCell>
+                <TableCell>
+                  <div className="flex gap-2">
+                    <EditDialog
+                      title="Edit Location"
+                      description="Update the location name below"
+                      fieldLabel="Location name"
+                      value={location.name}
+                      onOpenChange={(open) => {
+                        if (open) {
+                          setEditingLocation({id: location.id, name: location.name});
+                        } else {
+                          setEditingLocation(null);
+                        }
+                      }}
+                      onChange={(value) => setEditingLocation(prev => 
+                        prev ? {...prev, name: value} : null
+                      )}
+                      onSave={handleLocationUpdate}
+                      triggerButton={
+                        <Button variant="ghost" size="icon">
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      }
+                    />
+                    
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => handleLocationDelete(location.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
-            ) : (
-              locations.map((location) => (
-                <TableRow key={location.id}>
-                  <TableCell>{location.name}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <EditDialog
-                        title="Edit Location"
-                        description="Update the location name below"
-                        fieldLabel="Location name"
-                        value={location.name}
-                        onOpenChange={(open) => {
-                          if (open) {
-                            setEditingLocation({id: location.id, name: location.name});
-                          }
-                        }}
-                        onChange={(value) => {
-                          if (editingLocation) {
-                            setEditingLocation({...editingLocation, name: value});
-                          }
-                        }}
-                        onSave={() => {
-                          if (editingLocation) {
-                            handleLocationUpdate(location.id, editingLocation.name);
-                          }
-                        }}
-                        triggerButton={
-                          <Button variant="ghost" size="icon">
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                        }
-                      />
-                      
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete Location</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to delete this location? This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction 
-                              onClick={() => handleLocationDelete(location.id)}
-                              className="bg-red-600 hover:bg-red-700"
-                              disabled={isDeleting}
-                            >
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
+            ))}
           </TableBody>
         </Table>
       </CardContent>
