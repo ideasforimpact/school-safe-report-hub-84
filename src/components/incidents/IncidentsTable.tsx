@@ -14,15 +14,9 @@ import {
   Ticket, 
   BanIcon, 
   Calendar, 
-  Building2,
-  AlertCircle, 
-  AlertTriangle,
-  AlertOctagon,
-  SignalHigh, 
-  SignalMedium, 
-  SignalLow, 
-  SignalZero 
+  Building2
 } from 'lucide-react';
+import { getPriorityIcon } from '@/utils/priorityIcons';
 
 interface IncidentsTableProps {
   incidents: Incident[];
@@ -54,21 +48,6 @@ const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
         return 'bg-green-100 text-green-800';
       default:
         return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getPriorityIcon = (priority: string | undefined) => {
-    switch(priority) {
-      case 'Critical':
-        return <AlertOctagon className="h-4 w-4 text-red-600" aria-label="Critical Priority" />;
-      case 'High':
-        return <AlertTriangle className="h-4 w-4 text-orange-500" aria-label="High Priority" />;
-      case 'Medium':
-        return <SignalMedium className="h-4 w-4 text-yellow-600" aria-label="Medium Priority" />;
-      case 'Low':
-        return <SignalLow className="h-4 w-4 text-green-600" aria-label="Low Priority" />;
-      default:
-        return <SignalMedium className="h-4 w-4 text-yellow-600" aria-label="Medium Priority" />;
     }
   };
 

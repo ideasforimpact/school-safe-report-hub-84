@@ -7,6 +7,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  AlertOctagon,
+  AlertTriangle,
+  SignalMedium,
+  SignalLow
+} from 'lucide-react';
 
 interface PrioritySectionProps {
   priority: 'Low' | 'Medium' | 'High' | 'Critical';
@@ -17,6 +23,22 @@ const PrioritySection: React.FC<PrioritySectionProps> = ({
   priority,
   onSelectChange,
 }) => {
+  // Helper function to get priority icon, consistent with other components
+  const getPriorityIcon = (priority: string) => {
+    switch(priority) {
+      case 'Critical':
+        return <AlertOctagon className="h-4 w-4 text-red-600" aria-label="Critical Priority" />;
+      case 'High':
+        return <AlertTriangle className="h-4 w-4 text-orange-500" aria-label="High Priority" />;
+      case 'Medium':
+        return <SignalMedium className="h-4 w-4 text-yellow-600" aria-label="Medium Priority" />;
+      case 'Low':
+        return <SignalLow className="h-4 w-4 text-green-600" aria-label="Low Priority" />;
+      default:
+        return <SignalMedium className="h-4 w-4 text-yellow-600" aria-label="Medium Priority" />;
+    }
+  };
+
   return (
     <div className="space-y-2">
       <label htmlFor="priority" className="text-sm font-medium">
@@ -28,13 +50,40 @@ const PrioritySection: React.FC<PrioritySectionProps> = ({
         required
       >
         <SelectTrigger>
-          <SelectValue placeholder="Select priority" />
+          <SelectValue placeholder="Select priority">
+            {priority && (
+              <div className="flex items-center">
+                {getPriorityIcon(priority)}
+                <span className="ml-2">{priority}</span>
+              </div>
+            )}
+          </SelectValue>
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="Low">Low</SelectItem>
-          <SelectItem value="Medium">Medium</SelectItem>
-          <SelectItem value="High">High</SelectItem>
-          <SelectItem value="Critical">Critical</SelectItem>
+          <SelectItem value="Low">
+            <div className="flex items-center">
+              <SignalLow className="h-4 w-4 text-green-600 mr-2" />
+              Low
+            </div>
+          </SelectItem>
+          <SelectItem value="Medium">
+            <div className="flex items-center">
+              <SignalMedium className="h-4 w-4 text-yellow-600 mr-2" />
+              Medium
+            </div>
+          </SelectItem>
+          <SelectItem value="High">
+            <div className="flex items-center">
+              <AlertTriangle className="h-4 w-4 text-orange-500 mr-2" />
+              High
+            </div>
+          </SelectItem>
+          <SelectItem value="Critical">
+            <div className="flex items-center">
+              <AlertOctagon className="h-4 w-4 text-red-600 mr-2" />
+              Critical
+            </div>
+          </SelectItem>
         </SelectContent>
       </Select>
     </div>
