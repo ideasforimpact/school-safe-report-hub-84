@@ -1,6 +1,7 @@
+
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus, X, ImageIcon, FileText, Video, File, FilePlus } from 'lucide-react';
+import { Plus, X, ImageIcon, FileText, Video, File, FilePlus, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from '@/components/ui/sonner';
@@ -151,9 +152,10 @@ const MultipleFilesUpload = ({
                       variant="ghost" 
                       size="sm" 
                       onClick={() => removeFile(file.id)}
-                      className="flex-shrink-0"
+                      className="flex-shrink-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                      title="Delete file"
                     >
-                      <X className="h-4 w-4" />
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 ))}
