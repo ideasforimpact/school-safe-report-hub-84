@@ -43,13 +43,13 @@ const IncidentFilters = ({
 
   // Count active advanced filters
   const activeAdvancedFilterCount = [
-    filters.location,
     filters.facility,
     filters.owner,
     filters.isVoided,
     filters.wasReopened,
     filters.hasAttachments,
-    filters.involvedRole
+    filters.involvedRole,
+    filters.type // Moved type to advanced filters
   ].filter(Boolean).length;
 
   return (
@@ -91,17 +91,18 @@ const IncidentFilters = ({
               </div>
               
               <Select 
-                value={filters.type} 
-                onValueChange={(value) => onFilterChange('type', value)}
+                value={filters.location} 
+                onValueChange={(value) => onFilterChange('location', value)}
+                disabled={availableLocations.length === 0}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Type" />
+                  <SelectValue placeholder="Location" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Types</SelectItem>
-                  <SelectItem value="Incident">Incident</SelectItem>
-                  <SelectItem value="Near Miss">Near Miss</SelectItem>
-                  <SelectItem value="Unsafe Condition">Unsafe Condition</SelectItem>
+                  <SelectItem value="">All Locations</SelectItem>
+                  {availableLocations.map(location => (
+                    <SelectItem key={location} value={location}>{location}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               
@@ -216,18 +217,17 @@ const IncidentFilters = ({
                   <div className="mt-4 space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <Select 
-                        value={filters.location} 
-                        onValueChange={(value) => onFilterChange('location', value)}
-                        disabled={availableLocations.length === 0}
+                        value={filters.type} 
+                        onValueChange={(value) => onFilterChange('type', value)}
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Location" />
+                          <SelectValue placeholder="Type" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">All Locations</SelectItem>
-                          {availableLocations.map(location => (
-                            <SelectItem key={location} value={location}>{location}</SelectItem>
-                          ))}
+                          <SelectItem value="">All Types</SelectItem>
+                          <SelectItem value="Incident">Incident</SelectItem>
+                          <SelectItem value="Near Miss">Near Miss</SelectItem>
+                          <SelectItem value="Unsafe Condition">Unsafe Condition</SelectItem>
                         </SelectContent>
                       </Select>
                       
