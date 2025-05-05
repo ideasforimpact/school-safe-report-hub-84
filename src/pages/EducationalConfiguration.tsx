@@ -48,12 +48,9 @@ const EducationalConfiguration = () => {
 
   const handleAddCampus = (name: string) => {
     try {
-      const newCampus = contextAddCampus(name);
-      if (newCampus) {
-        // Update local state with the returned campus object
-        setCampuses(prev => [...prev, newCampus]);
-        toast.success("Campus added successfully");
-      }
+      contextAddCampus(name);
+      // No need to check the return value - context will update and trigger useEffect
+      toast.success("Campus added successfully");
     } catch (error) {
       console.error("Error adding campus:", error);
       toast.error("Failed to add campus");
@@ -86,12 +83,9 @@ const EducationalConfiguration = () => {
 
   const handleAddClass = (campusId: string, name: string) => {
     try {
-      const newClass = contextAddClass(campusId, name);
-      if (newClass) {
-        // Update local state with the returned class object
-        setClasses(prev => [...prev, newClass]);
-        toast.success("Class added successfully");
-      }
+      contextAddClass(campusId, name);
+      // No need to check the return value - context will update and trigger useEffect
+      toast.success("Class added successfully");
     } catch (error) {
       console.error("Error adding class:", error);
       toast.error("Failed to add class");
@@ -124,12 +118,9 @@ const EducationalConfiguration = () => {
 
   const handleAddSection = (classId: string, name: string) => {
     try {
-      const newSection = contextAddSection(classId, name);
-      if (newSection) {
-        // Update local state with the returned section object
-        setSections(prev => [...prev, newSection]);
-        toast.success("Section added successfully");
-      }
+      contextAddSection(classId, name);
+      // No need to check the return value - context will update and trigger useEffect
+      toast.success("Section added successfully");
     } catch (error) {
       console.error("Error adding section:", error);
       toast.error("Failed to add section");
