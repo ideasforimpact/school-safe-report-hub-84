@@ -17,6 +17,9 @@ import { StudentProvider } from './contexts/StudentContext';
 import RouteGuard from './components/RouteGuard';
 import ModuleGuard from './components/ModuleGuard';
 import ConfigurationManagement from './pages/ConfigurationManagement';
+import IncidentConfiguration from './pages/IncidentConfiguration';
+import EducationalConfiguration from './pages/EducationalConfiguration';
+import OtherConfiguration from './pages/OtherConfiguration';
 import UserManagement from './pages/UserManagement';
 import StudentManagement from './pages/StudentManagement';
 import Support from './pages/Support';
@@ -60,6 +63,9 @@ function App() {
                       <Route path="/report-incident" element={<ReportIncident />} />
                       <Route path="/insights" element={<Insights />} />
                       <Route path="/configuration" element={<ConfigurationManagement />} />
+                      <Route path="/incident-configuration" element={<IncidentConfiguration />} />
+                      <Route path="/educational-configuration" element={<EducationalConfiguration />} />
+                      <Route path="/other-configuration" element={<OtherConfiguration />} />
                       <Route path="/users" element={<UserManagement />} />
                       <Route path="/students" element={<StudentManagement />} />
                       <Route path="/facilities" element={<FacilityManagement />} />
