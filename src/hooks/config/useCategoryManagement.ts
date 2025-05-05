@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ConfigItem, SubcategoryItem } from '@/contexts/types';
 
 export function useCategoryManagement(
@@ -9,6 +9,27 @@ export function useCategoryManagement(
   // Categories state
   const [categories, setCategories] = useState<ConfigItem[]>(initialCategories);
   const [subcategoryMappings, setSubcategoryMappings] = useState<Record<string, SubcategoryItem[]>>(initialSubcategories);
+
+  // Load from localStorage on mount
+  useEffect(() => {
+    const savedCategories = localStorage.getItem('categories');
+    if (savedCategories) {
+      try {
+        setCategories(JSON.parse(savedCategories));
+      } catch (e) {
+        console.error('Error parsing categories from localStorage', e);
+      }
+    }
+
+    const savedSubcategories = localStorage.getItem('subcategories');
+    if (savedSubcategories) {
+      try {
+        setSubcategoryMappings(JSON.parse(savedSubcategories));
+      } catch (e) {
+        console.error('Error parsing subcategories from localStorage', e);
+      }
+    }
+  }, []);
 
   // Categories management
   const addCategory = (name: string) => {
@@ -21,13 +42,28 @@ export function useCategoryManagement(
       name: name.trim()
     };
     
-    setCategories(prev => [...prev, newCategory]);
+    setCategories(prev => {
+      // Check for duplicate category names
+      const exists = prev.some(cat => cat.name.toLowerCase() === name.trim().toLowerCase());
+      if (exists) {
+        throw new Error(`Category "${name}" already exists`);
+      }
+      const updated = [...prev, newCategory];
+      // Save to localStorage
+      localStorage.setItem('categories', JSON.stringify(updated));
+      return updated;
+    });
     
     // Initialize empty subcategory list for this category
-    setSubcategoryMappings(prev => ({
-      ...prev,
-      [newCategory.id]: []
-    }));
+    setSubcategoryMappings(prev => {
+      const updated = {
+        ...prev,
+        [newCategory.id]: []
+      };
+      // Save to localStorage
+      localStorage.setItem('subcategories', JSON.stringify(updated));
+      return updated;
+    });
     
     console.log("Category added:", newCategory);
     return newCategory; // Return the new category so we can use it if needed
@@ -38,18 +74,30 @@ export function useCategoryManagement(
       throw new Error("Category name cannot be empty");
     }
     
-    setCategories(prev => prev.map(cat => 
-      cat.id === id ? { ...cat, name: name.trim() } : cat
-    ));
+    setCategories(prev => {
+      const updated = prev.map(cat => 
+        cat.id === id ? { ...cat, name: name.trim() } : cat
+      );
+      // Save to localStorage
+      localStorage.setItem('categories', JSON.stringify(updated));
+      return updated;
+    });
     console.log("Category updated:", id, name);
   };
 
   const deleteCategory = (id: string) => {
-    setCategories(prev => prev.filter(cat => cat.id !== id));
+    setCategories(prev => {
+      const updated = prev.filter(cat => cat.id !== id);
+      // Save to localStorage
+      localStorage.setItem('categories', JSON.stringify(updated));
+      return updated;
+    });
     
     // Remove subcategories for this category
     setSubcategoryMappings(prev => {
       const { [id]: _, ...rest } = prev;
+      // Save to localStorage
+      localStorage.setItem('subcategories', JSON.stringify(rest));
       return rest;
     });
     
@@ -67,10 +115,15 @@ export function useCategoryManagement(
       name: name.trim()
     };
     
-    setSubcategoryMappings(prev => ({
-      ...prev,
-      [categoryId]: [...(prev[categoryId] || []), newSubcategory]
-    }));
+    setSubcategoryMappings(prev => {
+      const updated = {
+        ...prev,
+        [categoryId]: [...(prev[categoryId] || []), newSubcategory]
+      };
+      // Save to localStorage
+      localStorage.setItem('subcategories', JSON.stringify(updated));
+      return updated;
+    });
     
     console.log("Subcategory added:", categoryId, newSubcategory);
     return newSubcategory; // Return the new subcategory
@@ -81,20 +134,30 @@ export function useCategoryManagement(
       throw new Error("Subcategory name cannot be empty");
     }
     
-    setSubcategoryMappings(prev => ({
-      ...prev,
-      [categoryId]: prev[categoryId].map(subcat =>
-        subcat.id === id ? { ...subcat, name: name.trim() } : subcat
-      )
-    }));
+    setSubcategoryMappings(prev => {
+      const updated = {
+        ...prev,
+        [categoryId]: prev[categoryId].map(subcat =>
+          subcat.id === id ? { ...subcat, name: name.trim() } : subcat
+        )
+      };
+      // Save to localStorage
+      localStorage.setItem('subcategories', JSON.stringify(updated));
+      return updated;
+    });
     console.log("Subcategory updated:", categoryId, id, name);
   };
 
   const deleteSubcategory = (categoryId: string, id: string) => {
-    setSubcategoryMappings(prev => ({
-      ...prev,
-      [categoryId]: prev[categoryId].filter(subcat => subcat.id !== id)
-    }));
+    setSubcategoryMappings(prev => {
+      const updated = {
+        ...prev,
+        [categoryId]: prev[categoryId].filter(subcat => subcat.id !== id)
+      };
+      // Save to localStorage
+      localStorage.setItem('subcategories', JSON.stringify(updated));
+      return updated;
+    });
     console.log("Subcategory deleted:", categoryId, id);
   };
 
