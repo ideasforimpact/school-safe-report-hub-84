@@ -1,0 +1,146 @@
+
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from '@/components/ui/table';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { CampusItem } from '@/contexts/types';
+import { EditDialog } from './EditDialog';
+import { toast } from 'sonner';
+
+interface CampusTabProps {
+  campuses: CampusItem[];
+  addCampus: (name: string) => void;
+  updateCampus: (id: string, name: string) => void;
+  deleteCampus: (id: string) => void;
+  classes: Array<{ id: string, name: string, campusId: string }>;
+}
+
+export const CampusTab = ({ 
+  campuses, 
+  addCampus, 
+  updateCampus, 
+  deleteCampus,
+  classes
+}: CampusTabProps) => {
+  const [newCampus, setNewCampus] = useState('');
+  const [editingCampus, setEditingCampus] = useState<{id: string, name: string} | null>(null);
+
+  const handleCampusAdd = () => {
+    if (!newCampus.trim()) {
+      toast.error("Campus name cannot be empty");
+      return;
+    }
+    
+    addCampus(newCampus);
+    setNewCampus('');
+    toast.success("Campus added successfully");
+  };
+
+  const handleCampusDelete = (id: string) => {
+    const hasClasses = classes.some(cls => cls.campusId === id);
+    
+    if (hasClasses) {
+      toast.error("Cannot delete campus with associated classes. Remove the classes first.");
+      return;
+    }
+    
+    deleteCampus(id);
+    toast.success("Campus deleted successfully");
+  };
+
+  const handleCampusUpdate = () => {
+    if (!editingCampus || !editingCampus.name.trim()) {
+      toast.error("Campus name cannot be empty");
+      return;
+    }
+    
+    updateCampus(editingCampus.id, editingCampus.name);
+    setEditingCampus(null);
+    toast.success("Campus updated successfully");
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Campus Management</CardTitle>
+        <CardDescription>Add, edit, or remove campuses</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex gap-4 mb-6 flex-col sm:flex-row">
+          <div className="flex-1">
+            <Input
+              placeholder="New campus name (e.g., Main Campus)"
+              value={newCampus}
+              onChange={(e) => setNewCampus(e.target.value)}
+            />
+          </div>
+          <Button onClick={handleCampusAdd} className="whitespace-nowrap">
+            <Plus className="mr-2 h-4 w-4" /> Add Campus
+          </Button>
+        </div>
+        
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Campus Name</TableHead>
+              <TableHead className="w-[100px]">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {campuses.map((campus) => (
+              <TableRow key={campus.id}>
+                <TableCell>{campus.name}</TableCell>
+                <TableCell>
+                  <div className="flex gap-2">
+                    <EditDialog
+                      title="Edit Campus"
+                      description="Update the campus name below"
+                      fieldLabel="Campus name"
+                      value={campus.name}
+                      onOpenChange={(open) => {
+                        if (open) {
+                          setEditingCampus({
+                            id: campus.id, 
+                            name: campus.name
+                          });
+                        } else {
+                          setEditingCampus(null);
+                        }
+                      }}
+                      onChange={(value) => setEditingCampus(prev => 
+                        prev ? {...prev, name: value} : null
+                      )}
+                      onSave={handleCampusUpdate}
+                      triggerButton={
+                        <Button variant="ghost" size="icon">
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      }
+                    />
+                    
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => handleCampusDelete(campus.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+};

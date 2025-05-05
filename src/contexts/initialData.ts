@@ -1,4 +1,4 @@
-import { ConfigItem, SubcategoryItem, SectionItem } from './types';
+import { ConfigItem, SubcategoryItem, SectionItem, ClassItem, CampusItem } from './types';
 
 // Initial configuration data
 export const initialCategories: ConfigItem[] = [
@@ -100,13 +100,20 @@ export const initialDesignations: ConfigItem[] = [
   { id: '6', name: 'Staff' }
 ];
 
-// Add initial classes and sections
-export const initialClasses: ConfigItem[] = [
-  { id: '1', name: 'Class 1' },
-  { id: '2', name: 'Class 2' },
-  { id: '3', name: 'Class 3' },
-  { id: '4', name: 'Class 4' },
-  { id: '5', name: 'Class 5' }
+// Add initial campuses
+export const initialCampuses: CampusItem[] = [
+  { id: '1', name: 'Main Campus' },
+  { id: '2', name: 'North Campus' },
+  { id: '3', name: 'South Campus' }
+];
+
+// Update initialClasses to have the correct type with campusId
+export const initialClasses: ClassItem[] = [
+  { id: '1', name: 'Class 1', campusId: '1' },
+  { id: '2', name: 'Class 2', campusId: '1' },
+  { id: '3', name: 'Class 3', campusId: '2' },
+  { id: '4', name: 'Class 4', campusId: '2' },
+  { id: '5', name: 'Class 5', campusId: '3' }
 ];
 
 // Update initialSections to have the correct type with classId

@@ -25,9 +25,9 @@ import {
 const formSchema = z.object({
   studentId: z.string().min(1, { message: 'Student ID is required' }),
   name: z.string().min(2, { message: 'Name is required and must be at least 2 characters' }),
+  campus: z.string().min(1, { message: 'Campus is required' }),
   grade: z.string().min(1, { message: 'Grade is required' }),
-  section: z.string().min(1, { message: 'Section is required' }),
-  campus: z.string().min(1, { message: 'Campus is required' })
+  section: z.string().min(1, { message: 'Section is required' })
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -39,8 +39,11 @@ interface StudentFormProps {
 }
 
 const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false }: StudentFormProps) => {
-  const { classes, sections } = useIncidents();
+  const { campuses, classes, sections } = useIncidents();
+  const [selectedCampus, setSelectedCampus] = useState<string>(defaultValues?.campus || '');
   const [selectedGrade, setSelectedGrade] = useState<string>(defaultValues?.grade || '');
+  
+  const [filteredClasses, setFilteredClasses] = useState<Array<{ id: string, name: string, campusId: string }>>([]);
   const [filteredSections, setFilteredSections] = useState<Array<{ id: string, name: string, classId: string }>>([]);
   
   const form = useForm<FormValues>({
@@ -48,16 +51,34 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false }: StudentF
     defaultValues: defaultValues || {
       studentId: '',
       name: '',
+      campus: '',
       grade: '',
-      section: '',
-      campus: ''
+      section: ''
     }
   });
+
+  // Filter classes based on selected campus
+  useEffect(() => {
+    if (selectedCampus) {
+      const campusSpecificClasses = classes.filter(cls => {
+        const campus = campuses.find(c => c.name === selectedCampus);
+        return campus && cls.campusId === campus.id;
+      });
+      setFilteredClasses(campusSpecificClasses);
+      // Reset grade and section when campus changes
+      if (!defaultValues?.grade) {
+        form.setValue('grade', '');
+        setSelectedGrade('');
+      }
+    } else {
+      setFilteredClasses([]);
+    }
+  }, [selectedCampus, campuses, classes, form, defaultValues]);
 
   // Filter sections based on selected class/grade
   useEffect(() => {
     if (selectedGrade) {
-      const selectedClass = classes.find(c => c.name === selectedGrade || c.id === selectedGrade);
+      const selectedClass = classes.find(c => c.name === selectedGrade);
       if (selectedClass) {
         const classSpecificSections = sections.filter(section => section.classId === selectedClass.id);
         setFilteredSections(classSpecificSections);
@@ -66,14 +87,18 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false }: StudentF
       }
     } else {
       setFilteredSections([]);
+      // Reset section when grade changes
+      if (!defaultValues?.section) {
+        form.setValue('section', '');
+      }
     }
-  }, [selectedGrade, classes, sections]);
+  }, [selectedGrade, classes, sections, form, defaultValues]);
 
   // Update section value when grade changes
   useEffect(() => {
     if (selectedGrade && form.getValues('section')) {
       const currentSection = form.getValues('section');
-      const sectionExists = filteredSections.some(section => section.name === currentSection || section.id === currentSection);
+      const sectionExists = filteredSections.some(section => section.name === currentSection);
       
       if (!sectionExists) {
         form.setValue('section', '');
@@ -114,6 +139,35 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false }: StudentF
         
         <FormField
           control={form.control}
+          name="campus"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Campus</FormLabel>
+              <FormControl>
+                <Select 
+                  value={field.value} 
+                  onValueChange={(value) => {
+                    field.onChange(value);
+                    setSelectedCampus(value);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select campus" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {campuses.map((campus) => (
+                      <SelectItem key={campus.id} value={campus.name}>{campus.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        
+        <FormField
+          control={form.control}
           name="grade"
           render={({ field }) => (
             <FormItem>
@@ -125,12 +179,13 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false }: StudentF
                     field.onChange(value);
                     setSelectedGrade(value);
                   }}
+                  disabled={!selectedCampus || filteredClasses.length === 0}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select grade" />
+                    <SelectValue placeholder={!selectedCampus ? "Select campus first" : "Select grade"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {classes.map((cls) => (
+                    {filteredClasses.map((cls) => (
                       <SelectItem key={cls.id} value={cls.name}>{cls.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -162,20 +217,6 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false }: StudentF
                     ))}
                   </SelectContent>
                 </Select>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        
-        <FormField
-          control={form.control}
-          name="campus"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Campus</FormLabel>
-              <FormControl>
-                <Input placeholder="Enter campus" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

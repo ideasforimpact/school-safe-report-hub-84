@@ -17,6 +17,12 @@ export interface SectionItem {
   classId: string;  // Reference to parent class
 }
 
+export interface ClassItem extends ConfigItem {
+  campusId: string;  // Reference to parent campus
+}
+
+export interface CampusItem extends ConfigItem {}
+
 export interface IncidentContextType {
   incidents: Incident[];
   users: User[];
@@ -40,10 +46,15 @@ export interface IncidentContextType {
   addFacility: (name: string) => void;
   updateFacility: (id: string, name: string) => void;
   deleteFacility: (id: string) => void;
+  // Campus management
+  campuses: CampusItem[];
+  addCampus: (name: string) => void;
+  updateCampus: (id: string, name: string) => void;
+  deleteCampus: (id: string) => void;
   // Class management
-  classes: ConfigItem[];
-  addClass: (name: string) => void;
-  updateClass: (id: string, name: string) => void;
+  classes: ClassItem[];
+  addClass: (campusId: string, name: string) => void;
+  updateClass: (id: string, campusId: string, name: string) => void;
   deleteClass: (id: string) => void;
   // Section management
   sections: SectionItem[];

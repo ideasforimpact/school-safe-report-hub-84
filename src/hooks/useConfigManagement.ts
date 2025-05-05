@@ -1,6 +1,5 @@
-
 import { useState, useEffect } from 'react';
-import { ConfigItem, SubcategoryItem, SectionItem } from '@/contexts/types';
+import { ConfigItem, SubcategoryItem, SectionItem, ClassItem, CampusItem } from '@/contexts/types';
 
 export function useConfigManagement(
   initialCategories: ConfigItem[],
@@ -8,7 +7,8 @@ export function useConfigManagement(
   initialLocations: ConfigItem[],
   initialFacilities: ConfigItem[],
   initialDesignations: ConfigItem[] = [],
-  initialClasses: ConfigItem[] = [],
+  initialCampuses: CampusItem[] = [],
+  initialClasses: ClassItem[] = [],
   initialSections: SectionItem[] = []
 ) {
   // Configuration state
@@ -37,8 +37,14 @@ export function useConfigManagement(
     return saved ? JSON.parse(saved) : initialDesignations;
   });
   
-  // Add classes and sections state
-  const [classes, setClasses] = useState<ConfigItem[]>(() => {
+  // Add campuses state
+  const [campuses, setCampuses] = useState<CampusItem[]>(() => {
+    const saved = localStorage.getItem('campuses');
+    return saved ? JSON.parse(saved) : initialCampuses;
+  });
+  
+  // Add classes state with updated type
+  const [classes, setClasses] = useState<ClassItem[]>(() => {
     const saved = localStorage.getItem('classes');
     return saved ? JSON.parse(saved) : initialClasses;
   });
@@ -68,6 +74,11 @@ export function useConfigManagement(
   useEffect(() => {
     localStorage.setItem('designations', JSON.stringify(designations));
   }, [designations]);
+  
+  // Add effect for campuses
+  useEffect(() => {
+    localStorage.setItem('campuses', JSON.stringify(campuses));
+  }, [campuses]);
   
   // Add effects for classes and sections
   useEffect(() => {
@@ -190,18 +201,40 @@ export function useConfigManagement(
     setDesignations(prev => prev.filter(designation => designation.id !== id));
   };
 
-  // Classes management
-  const addClass = (name: string) => {
-    const newClass = {
+  // Campus management
+  const addCampus = (name: string) => {
+    const newCampus = {
       id: Date.now().toString(),
       name
+    };
+    setCampuses(prev => [...prev, newCampus]);
+  };
+
+  const updateCampus = (id: string, name: string) => {
+    setCampuses(prev => prev.map(campus => 
+      campus.id === id ? { ...campus, name } : campus
+    ));
+  };
+
+  const deleteCampus = (id: string) => {
+    setCampuses(prev => prev.filter(campus => campus.id !== id));
+    // Remove classes associated with this campus
+    setClasses(prev => prev.filter(cls => cls.campusId !== id));
+  };
+
+  // Classes management - updated to include campusId
+  const addClass = (campusId: string, name: string) => {
+    const newClass = {
+      id: Date.now().toString(),
+      name,
+      campusId
     };
     setClasses(prev => [...prev, newClass]);
   };
 
-  const updateClass = (id: string, name: string) => {
+  const updateClass = (id: string, campusId: string, name: string) => {
     setClasses(prev => prev.map(cls => 
-      cls.id === id ? { ...cls, name } : cls
+      cls.id === id ? { ...cls, name, campusId } : cls
     ));
   };
 
@@ -211,7 +244,7 @@ export function useConfigManagement(
     setSections(prev => prev.filter(section => section.classId !== id));
   };
 
-  // Sections management - modified to include classId
+  // Sections management
   const addSection = (classId: string, name: string) => {
     const newSection = {
       id: Date.now().toString(),
@@ -238,6 +271,7 @@ export function useConfigManagement(
     locations,
     facilities,
     designations,
+    campuses,
     classes,
     sections,
     // Category methods
@@ -260,6 +294,10 @@ export function useConfigManagement(
     addDesignation,
     updateDesignation,
     deleteDesignation,
+    // Campus methods
+    addCampus,
+    updateCampus,
+    deleteCampus,
     // Class methods
     addClass,
     updateClass,

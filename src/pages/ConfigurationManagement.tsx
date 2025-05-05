@@ -8,8 +8,10 @@ import { SubcategoryTab } from '@/components/configuration/SubcategoryTab';
 import { LocationTab } from '@/components/configuration/LocationTab';
 import { FacilityTab } from '@/components/configuration/FacilityTab';
 import { DesignationTab } from '@/components/configuration/DesignationTab';
+import { CampusTab } from '@/components/configuration/CampusTab';
 import { ClassTab } from '@/components/configuration/ClassTab';
 import { SectionTab } from '@/components/configuration/SectionTab';
+import { Building, Folder, FolderOpen, Layers } from 'lucide-react';
 
 const ConfigurationManagement = () => {
   const { 
@@ -33,6 +35,10 @@ const ConfigurationManagement = () => {
     addDesignation,
     updateDesignation,
     deleteDesignation,
+    campuses,
+    addCampus,
+    updateCampus,
+    deleteCampus,
     classes,
     addClass,
     updateClass,
@@ -49,19 +55,29 @@ const ConfigurationManagement = () => {
         <div>
           <h1 className="text-2xl font-bold">Configuration Management</h1>
           <p className="text-gray-600 mt-1">
-            Manage incident categories, subcategories, locations, facilities, designations, classes, and sections
+            Manage incident categories, subcategories, locations, facilities, designations, campuses, classes, and sections
           </p>
         </div>
 
         <Tabs defaultValue="categories">
-          <TabsList className="mb-4">
+          <TabsList className="mb-4 flex flex-wrap">
             <TabsTrigger value="categories">Categories</TabsTrigger>
             <TabsTrigger value="subcategories">Subcategories</TabsTrigger>
             <TabsTrigger value="locations">Locations</TabsTrigger>
             <TabsTrigger value="facilities">Facilities</TabsTrigger>
             <TabsTrigger value="designations">Designations</TabsTrigger>
-            <TabsTrigger value="classes">Classes</TabsTrigger>
-            <TabsTrigger value="sections">Sections</TabsTrigger>
+            <TabsTrigger value="campuses" className="flex items-center gap-2">
+              <Building className="h-4 w-4" />
+              <span>Campuses</span>
+            </TabsTrigger>
+            <TabsTrigger value="classes" className="flex items-center gap-2">
+              <Folder className="h-4 w-4" />
+              <span>Classes</span>
+            </TabsTrigger>
+            <TabsTrigger value="sections" className="flex items-center gap-2">
+              <FolderOpen className="h-4 w-4" />
+              <span>Sections</span>
+            </TabsTrigger>
           </TabsList>
           
           {/* Categories Tab */}
@@ -115,10 +131,22 @@ const ConfigurationManagement = () => {
             />
           </TabsContent>
           
+          {/* Campuses Tab */}
+          <TabsContent value="campuses">
+            <CampusTab 
+              campuses={campuses}
+              addCampus={addCampus}
+              updateCampus={updateCampus}
+              deleteCampus={deleteCampus}
+              classes={classes}
+            />
+          </TabsContent>
+          
           {/* Classes Tab */}
           <TabsContent value="classes">
             <ClassTab 
               classes={classes}
+              campuses={campuses}
               addClass={addClass}
               updateClass={updateClass}
               deleteClass={deleteClass}
