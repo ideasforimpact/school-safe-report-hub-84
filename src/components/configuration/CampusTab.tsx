@@ -34,7 +34,10 @@ export const CampusTab = ({
   const [newCampus, setNewCampus] = useState('');
   const [editingCampus, setEditingCampus] = useState<{id: string, name: string} | null>(null);
 
-  const handleCampusAdd = () => {
+  const handleCampusAdd = (e: React.FormEvent) => {
+    // Prevent form submission default behavior
+    e.preventDefault();
+    
     if (!newCampus.trim()) {
       toast.error("Campus name cannot be empty");
       return;
@@ -67,7 +70,8 @@ export const CampusTab = ({
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      handleCampusAdd();
+      e.preventDefault(); // Prevent form submission on Enter key
+      handleCampusAdd(e);
     }
   };
 
@@ -78,19 +82,21 @@ export const CampusTab = ({
         <CardDescription>Add, edit, or remove campuses</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex gap-4 mb-6 flex-col sm:flex-row">
-          <div className="flex-1">
-            <Input
-              placeholder="New campus name (e.g., Main Campus)"
-              value={newCampus}
-              onChange={(e) => setNewCampus(e.target.value)}
-              onKeyDown={handleKeyDown}
-            />
+        <form onSubmit={handleCampusAdd} className="mb-6">
+          <div className="flex gap-4 flex-col sm:flex-row">
+            <div className="flex-1">
+              <Input
+                placeholder="New campus name (e.g., Main Campus)"
+                value={newCampus}
+                onChange={(e) => setNewCampus(e.target.value)}
+                onKeyDown={handleKeyDown}
+              />
+            </div>
+            <Button type="submit" className="whitespace-nowrap">
+              <Plus className="mr-2 h-4 w-4" /> Add Campus
+            </Button>
           </div>
-          <Button onClick={handleCampusAdd} className="whitespace-nowrap">
-            <Plus className="mr-2 h-4 w-4" /> Add Campus
-          </Button>
-        </div>
+        </form>
         
         <Table>
           <TableHeader>
