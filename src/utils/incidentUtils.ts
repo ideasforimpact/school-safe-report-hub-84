@@ -1,10 +1,9 @@
 
 // Function to generate ticket IDs
 export const generateTicketId = (): string => {
-  const prefix = "SR"; // Safety Report prefix
-  const timestamp = Date.now().toString().slice(-6); // Last 6 digits of timestamp
-  const randomDigits = Math.floor(Math.random() * 1000).toString().padStart(3, '0'); // 3 random digits
-  return `${prefix}-${timestamp}-${randomDigits}`;
+  // Simplified format: SR-[4-digit number]
+  const randomDigits = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+  return `SR-${randomDigits}`;
 };
 
 // Sample users for the demo - updated to match the User type exactly
