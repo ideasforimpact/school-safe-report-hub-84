@@ -45,24 +45,9 @@ export const LocationTab = ({
     try {
       addLocation(newLocation.trim());
       setNewLocation('');
-      toast.success("Location added successfully");
     } catch (error) {
       console.error("Error adding location:", error);
       toast.error("Failed to add location");
-    }
-  };
-
-  const handleLocationDelete = (id: string) => {
-    setIsDeleting(true);
-    try {
-      deleteLocation(id);
-      toast.success("Location deleted successfully");
-      console.log("Location deleted:", id);
-    } catch (error) {
-      console.error("Error deleting location:", error);
-      toast.error("Failed to delete location");
-    } finally {
-      setIsDeleting(false);
     }
   };
 
@@ -75,10 +60,21 @@ export const LocationTab = ({
     try {
       updateLocation(id, name.trim());
       setEditingLocation(null);
-      toast.success("Location updated successfully");
     } catch (error) {
       console.error("Error updating location:", error);
       toast.error("Failed to update location");
+    }
+  };
+  
+  const handleLocationDelete = (id: string) => {
+    setIsDeleting(true);
+    try {
+      deleteLocation(id);
+    } catch (error) {
+      console.error("Error deleting location:", error);
+      toast.error("Failed to delete location");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
