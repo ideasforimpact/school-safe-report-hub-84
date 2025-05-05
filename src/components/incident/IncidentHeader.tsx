@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ArrowLeft, Flag, BanIcon } from 'lucide-react';
+import { ArrowLeft, Flag, BanIcon, Ticket } from 'lucide-react';
 
 interface IncidentHeaderProps {
   incident: Incident;
@@ -60,6 +60,12 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
       
       <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
         <div>
+          <div className="flex items-center gap-3 mb-1">
+            <div className="bg-blue-100 text-blue-800 px-3 py-1.5 rounded-md flex items-center">
+              <Ticket className="h-4 w-4 mr-1.5" />
+              <span className="font-semibold">{incident.ticketId}</span>
+            </div>
+          </div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <span>{incident.type}: {incident.category}</span>
             <span className={`text-sm px-3 py-1 rounded-full ${getStatusColor(incident.status)}`}>
