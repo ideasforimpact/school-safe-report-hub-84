@@ -33,8 +33,10 @@ export function useCategoryManagement(
   const deleteCategory = (id: string) => {
     setCategories(prev => prev.filter(cat => cat.id !== id));
     // Remove subcategories for this category
-    const { [id]: _, ...rest } = subcategoryMappings;
-    setSubcategoryMappings(rest);
+    setSubcategoryMappings(prev => {
+      const { [id]: _, ...rest } = prev;
+      return rest;
+    });
   };
 
   // Subcategories management

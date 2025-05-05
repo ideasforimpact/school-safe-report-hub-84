@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
 import { useIncidents } from '@/contexts/IncidentContext';
 import { IncidentRelatedConfig } from './configuration/IncidentRelatedConfig';
+import { toast } from '@/components/ui/sonner';
 
 const IncidentConfiguration = () => {
   const [searchParams] = useSearchParams();
@@ -37,51 +38,123 @@ const IncidentConfiguration = () => {
   }, [searchParams]);
 
   const handleAddCategory = (name: string) => {
-    addCategory(name);
+    try {
+      addCategory(name);
+      toast.success("Category added successfully");
+    } catch (error) {
+      console.error("Error adding category:", error);
+      toast.error("Failed to add category");
+    }
   };
 
   const handleUpdateCategory = (id: string, name: string) => {
-    updateCategory(id, name);
+    try {
+      updateCategory(id, name);
+      toast.success("Category updated successfully");
+    } catch (error) {
+      console.error("Error updating category:", error);
+      toast.error("Failed to update category");
+    }
   };
 
   const handleDeleteCategory = (id: string) => {
-    deleteCategory(id);
+    try {
+      deleteCategory(id);
+      toast.success("Category deleted successfully");
+    } catch (error) {
+      console.error("Error deleting category:", error);
+      toast.error("Failed to delete category");
+    }
   };
 
   const handleAddSubcategory = (categoryId: string, name: string) => {
-    addSubcategory(categoryId, name);
+    try {
+      addSubcategory(categoryId, name);
+      toast.success("Subcategory added successfully");
+    } catch (error) {
+      console.error("Error adding subcategory:", error);
+      toast.error("Failed to add subcategory");
+    }
   };
 
   const handleUpdateSubcategory = (categoryId: string, id: string, name: string) => {
-    updateSubcategory(categoryId, id, name);
+    try {
+      updateSubcategory(categoryId, id, name);
+      toast.success("Subcategory updated successfully");
+    } catch (error) {
+      console.error("Error updating subcategory:", error);
+      toast.error("Failed to update subcategory");
+    }
   };
 
   const handleDeleteSubcategory = (categoryId: string, id: string) => {
-    deleteSubcategory(categoryId, id);
+    try {
+      deleteSubcategory(categoryId, id);
+      toast.success("Subcategory deleted successfully");
+    } catch (error) {
+      console.error("Error deleting subcategory:", error);
+      toast.error("Failed to delete subcategory");
+    }
   };
 
   const handleAddLocation = (name: string) => {
-    addLocation(name);
+    try {
+      addLocation(name);
+      toast.success("Location added successfully");
+    } catch (error) {
+      console.error("Error adding location:", error);
+      toast.error("Failed to add location");
+    }
   };
 
   const handleUpdateLocation = (id: string, name: string) => {
-    updateLocation(id, name);
+    try {
+      updateLocation(id, name);
+      toast.success("Location updated successfully");
+    } catch (error) {
+      console.error("Error updating location:", error);
+      toast.error("Failed to update location");
+    }
   };
 
   const handleDeleteLocation = (id: string) => {
-    deleteLocation(id);
+    try {
+      deleteLocation(id);
+      toast.success("Location deleted successfully");
+    } catch (error) {
+      console.error("Error deleting location:", error);
+      toast.error("Failed to delete location");
+    }
   };
 
   const handleAddFacility = (name: string) => {
-    addFacility(name);
+    try {
+      addFacility(name);
+      toast.success("Facility added successfully");
+    } catch (error) {
+      console.error("Error adding facility:", error);
+      toast.error("Failed to add facility");
+    }
   };
 
   const handleUpdateFacility = (id: string, name: string) => {
-    updateFacility(id, name);
+    try {
+      updateFacility(id, name);
+      toast.success("Facility updated successfully");
+    } catch (error) {
+      console.error("Error updating facility:", error);
+      toast.error("Failed to update facility");
+    }
   };
 
   const handleDeleteFacility = (id: string) => {
-    deleteFacility(id);
+    try {
+      deleteFacility(id);
+      toast.success("Facility deleted successfully");
+    } catch (error) {
+      console.error("Error deleting facility:", error);
+      toast.error("Failed to delete facility");
+    }
   };
 
   return (

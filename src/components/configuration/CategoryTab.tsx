@@ -40,12 +40,10 @@ export const CategoryTab = ({
     
     addCategory(newCategory);
     setNewCategory('');
-    toast.success("Category added successfully");
   };
 
   const handleCategoryDelete = (id: string) => {
     deleteCategory(id);
-    toast.success("Category deleted successfully");
   };
 
   const handleCategoryUpdate = () => {
@@ -56,7 +54,6 @@ export const CategoryTab = ({
     
     updateCategory(editingCategory.id, editingCategory.name);
     setEditingCategory(null);
-    toast.success("Category updated successfully");
   };
 
   return (
