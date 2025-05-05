@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent } from '@/components/ui/card';
@@ -46,7 +45,7 @@ const CategoryConfiguration = () => {
         }
       }
     }
-  }, [categories]);
+  }, [categories, addCategory]);  // Added addCategory to dependency array
 
   const handleAddCategory = (name: string) => {
     if (!name.trim()) {
