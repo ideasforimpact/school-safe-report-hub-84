@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -13,6 +13,14 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { useIncidents } from '@/contexts/IncidentContext';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from '@/components/ui/select';
 
 const formSchema = z.object({
   studentId: z.string().min(1, { message: 'Student ID is required' }),
@@ -31,6 +39,10 @@ interface StudentFormProps {
 }
 
 const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false }: StudentFormProps) => {
+  const { classes, sections } = useIncidents();
+  const [selectedGrade, setSelectedGrade] = useState<string>(defaultValues?.grade || '');
+  const [filteredSections, setFilteredSections] = useState<Array<{ id: string, name: string, classId: string }>>([]);
+  
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: defaultValues || {
@@ -41,6 +53,33 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false }: StudentF
       campus: ''
     }
   });
+
+  // Filter sections based on selected class/grade
+  useEffect(() => {
+    if (selectedGrade) {
+      const selectedClass = classes.find(c => c.name === selectedGrade || c.id === selectedGrade);
+      if (selectedClass) {
+        const classSpecificSections = sections.filter(section => section.classId === selectedClass.id);
+        setFilteredSections(classSpecificSections);
+      } else {
+        setFilteredSections([]);
+      }
+    } else {
+      setFilteredSections([]);
+    }
+  }, [selectedGrade, classes, sections]);
+
+  // Update section value when grade changes
+  useEffect(() => {
+    if (selectedGrade && form.getValues('section')) {
+      const currentSection = form.getValues('section');
+      const sectionExists = filteredSections.some(section => section.name === currentSection || section.id === currentSection);
+      
+      if (!sectionExists) {
+        form.setValue('section', '');
+      }
+    }
+  }, [filteredSections, form, selectedGrade]);
 
   return (
     <Form {...form}>
@@ -80,7 +119,22 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false }: StudentF
             <FormItem>
               <FormLabel>Grade</FormLabel>
               <FormControl>
-                <Input placeholder="Enter grade" {...field} />
+                <Select 
+                  value={field.value} 
+                  onValueChange={(value) => {
+                    field.onChange(value);
+                    setSelectedGrade(value);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select grade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {classes.map((cls) => (
+                      <SelectItem key={cls.id} value={cls.name}>{cls.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -94,7 +148,20 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false }: StudentF
             <FormItem>
               <FormLabel>Section</FormLabel>
               <FormControl>
-                <Input placeholder="Enter section" {...field} />
+                <Select 
+                  value={field.value} 
+                  onValueChange={field.onChange}
+                  disabled={!selectedGrade || filteredSections.length === 0}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={!selectedGrade ? "Select grade first" : "Select section"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {filteredSections.map((section) => (
+                      <SelectItem key={section.id} value={section.name}>{section.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </FormControl>
               <FormMessage />
             </FormItem>
