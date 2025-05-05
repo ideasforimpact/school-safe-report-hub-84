@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, X } from 'lucide-react';
+import { Plus, X, Search } from 'lucide-react';
 import { Person } from '@/types/incident';
 
 interface PeopleInvolvedSectionProps {
@@ -25,6 +25,24 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   onAddPerson,
   onRemovePerson
 }) => {
+  // State for search inputs
+  const [searchQueries, setSearchQueries] = useState<Record<number, string>>({});
+
+  const handleSearch = (index: number, query: string) => {
+    setSearchQueries(prev => ({ ...prev, [index]: query }));
+    // In a real application, this would trigger an API search based on role
+    // For now, we'll just update the name field directly
+    onPersonChange(index, 'name', query);
+  };
+
+  const getPlaceholderText = (role: string) => {
+    switch(role) {
+      case 'Student': return 'Search by student name or ID';
+      case 'Staff': return 'Search by staff name or ID';
+      default: return 'Search by name';
+    }
+  };
+
   return (
     <div className="pt-4">
       <div className="flex items-center justify-between mb-4">
@@ -50,56 +68,62 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Name</label>
-              <Input
-                value={person.name}
-                onChange={(e) => onPersonChange(index, 'name', e.target.value)}
-                placeholder="Full name"
-              />
-            </div>
+          {/* Role selection first */}
+          <div className="space-y-2 mb-4">
+            <label className="text-sm font-medium">Role</label>
+            <Select
+              value={person.role}
+              onValueChange={(value) => onPersonChange(index, 'role', value)}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="Student">Student</SelectItem>
+                <SelectItem value="Staff">Staff</SelectItem>
+                <SelectItem value="Other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Role</label>
-              <Select
-                value={person.role}
-                onValueChange={(value) => onPersonChange(index, 'role', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Student">Student</SelectItem>
-                  <SelectItem value="Staff">Staff</SelectItem>
-                  <SelectItem value="Other">Other</SelectItem>
-                </SelectContent>
-              </Select>
+          {/* Search for person based on role */}
+          <div className="space-y-2 mb-4">
+            <label className="text-sm font-medium">Name</label>
+            <div className="flex space-x-2">
+              <div className="relative flex-1">
+                <Input
+                  value={searchQueries[index] || ''}
+                  onChange={(e) => handleSearch(index, e.target.value)}
+                  placeholder={getPlaceholderText(person.role)}
+                  className="pr-8"
+                />
+                <Search className="h-4 w-4 absolute right-3 top-3 text-gray-400" />
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">
-                {person.role === 'Student' ? 'Student ID' : person.role === 'Staff' ? 'Staff ID' : 'ID'} 
-                {person.role !== 'Other' && <span className="text-red-500">*</span>}
-              </label>
-              <Input
-                value={person.id || ''}
-                onChange={(e) => onPersonChange(index, 'id', e.target.value)}
-                placeholder={`${person.role} ID`}
-                required={person.role !== 'Other'}
-              />
-            </div>
+          {/* ID field - optional for students */}
+          <div className="space-y-2 mb-4">
+            <label className="text-sm font-medium">
+              {person.role === 'Student' ? 'Student ID' : person.role === 'Staff' ? 'Staff ID' : 'ID'} 
+              {person.role === 'Staff' && <span className="text-red-500">*</span>}
+            </label>
+            <Input
+              value={person.id || ''}
+              onChange={(e) => onPersonChange(index, 'id', e.target.value)}
+              placeholder={`${person.role} ID`}
+              required={person.role === 'Staff'}
+            />
+          </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Notes (Optional)</label>
-              <Input
-                value={person.notes || ''}
-                onChange={(e) => onPersonChange(index, 'notes', e.target.value)}
-                placeholder="Additional details"
-              />
-            </div>
+          {/* Notes field */}
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Notes (Optional)</label>
+            <Input
+              value={person.notes || ''}
+              onChange={(e) => onPersonChange(index, 'notes', e.target.value)}
+              placeholder="Additional details"
+            />
           </div>
         </div>
       ))}

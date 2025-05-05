@@ -10,7 +10,19 @@ export function usePeopleInvolved() {
 
   const handlePersonChange = (index: number, field: keyof Person, value: string) => {
     const updatedPeople = [...peopleInvolved];
-    updatedPeople[index] = { ...updatedPeople[index], [field]: value };
+    
+    // If changing the role, clear the name and id fields to start fresh
+    if (field === 'role') {
+      updatedPeople[index] = { 
+        ...updatedPeople[index], 
+        [field]: value,
+        name: '',
+        id: '' 
+      };
+    } else {
+      updatedPeople[index] = { ...updatedPeople[index], [field]: value };
+    }
+    
     setPeopleInvolved(updatedPeople);
   };
 

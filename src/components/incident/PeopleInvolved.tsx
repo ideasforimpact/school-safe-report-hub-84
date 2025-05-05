@@ -25,6 +25,11 @@ const PeopleInvolved: React.FC<PeopleInvolvedProps> = ({ people }) => {
                   {person.role}
                 </span>
               </div>
+              {person.id && (
+                <p className="text-xs text-gray-500 mt-1">
+                  ID: {person.id}
+                </p>
+              )}
               {person.notes && (
                 <p className="text-sm text-gray-600 mt-1">{person.notes}</p>
               )}
