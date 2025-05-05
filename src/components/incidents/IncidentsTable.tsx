@@ -48,15 +48,15 @@ const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
   const getPriorityIcon = (priority: string | undefined) => {
     switch(priority) {
       case 'Critical':
-        return <AlertCircle className="h-4 w-4 text-red-600" title="Critical Priority" />;
+        return <AlertCircle className="h-4 w-4 text-red-600" aria-label="Critical Priority" />;
       case 'High':
-        return <ArrowUp className="h-4 w-4 text-orange-500" title="High Priority" />;
+        return <ArrowUp className="h-4 w-4 text-orange-500" aria-label="High Priority" />;
       case 'Medium':
-        return <ArrowRight className="h-4 w-4 text-yellow-600" title="Medium Priority" />;
+        return <ArrowRight className="h-4 w-4 text-yellow-600" aria-label="Medium Priority" />;
       case 'Low':
-        return <ArrowDown className="h-4 w-4 text-green-600" title="Low Priority" />;
+        return <ArrowDown className="h-4 w-4 text-green-600" aria-label="Low Priority" />;
       default:
-        return <ArrowRight className="h-4 w-4 text-yellow-600" title="Medium Priority" />;
+        return <ArrowRight className="h-4 w-4 text-yellow-600" aria-label="Medium Priority" />;
     }
   };
 
