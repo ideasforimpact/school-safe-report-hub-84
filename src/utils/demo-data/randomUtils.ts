@@ -51,9 +51,10 @@ export const generateRandomDate = (): Date => {
   return date;
 };
 
-// Generate ticket ID
+// Generate ticket ID - using the index to ensure unique IDs from 1 to 100
 export const generateTicketId = (index: number): string => {
   const year = new Date().getFullYear();
   const paddedIndex = String(index).padStart(3, '0');
   return `SR-${year}-${paddedIndex}`;
 };
+
