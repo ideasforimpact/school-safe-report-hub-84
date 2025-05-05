@@ -7,6 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useFacilities } from '@/contexts/FacilityContext';
 
 interface LocationFacilitySectionProps {
   location: string;
@@ -19,6 +20,9 @@ const LocationFacilitySection: React.FC<LocationFacilitySectionProps> = ({
   facility,
   onSelectChange,
 }) => {
+  // Get facilities from FacilityContext
+  const { facilities } = useFacilities();
+
   return (
     <>
       <div className="space-y-2">
@@ -55,16 +59,11 @@ const LocationFacilitySection: React.FC<LocationFacilitySectionProps> = ({
             <SelectValue placeholder="Select facility" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="Main Building">Main Building</SelectItem>
-            <SelectItem value="Science Block">Science Block</SelectItem>
-            <SelectItem value="Sports Complex">Sports Complex</SelectItem>
-            <SelectItem value="Cafeteria">Cafeteria</SelectItem>
-            <SelectItem value="Library">Library</SelectItem>
-            <SelectItem value="Administrative Block">Administrative Block</SelectItem>
-            <SelectItem value="Playground">Playground</SelectItem>
-            <SelectItem value="Auditorium">Auditorium</SelectItem>
-            <SelectItem value="Computer Lab">Computer Lab</SelectItem>
-            <SelectItem value="Other">Other</SelectItem>
+            {facilities.map((facility, index) => (
+              <SelectItem key={`facility-${index}`} value={facility}>
+                {facility}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
