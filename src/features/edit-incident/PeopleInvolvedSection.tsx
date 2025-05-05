@@ -27,14 +27,13 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   const handlePersonChange = (index: number, field: keyof Person, value: string) => {
     const updatedPeople = [...peopleInvolved];
     
-    // If changing the role, clear the name and id fields to start fresh
+    // If changing the role, clear the name field to start fresh
     if (field === 'role') {
       const typedRole = value as 'Student' | 'Staff' | 'Other';
       updatedPeople[index] = { 
         ...updatedPeople[index], 
         role: typedRole,
-        name: '',
-        id: '' 
+        name: ''
       };
     } else {
       updatedPeople[index] = { ...updatedPeople[index], [field]: value };
@@ -51,7 +50,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   };
 
   const addPerson = () => {
-    setPeopleInvolved([...peopleInvolved, { name: '', role: 'Student' as const, id: '', notes: '' }]);
+    setPeopleInvolved([...peopleInvolved, { name: '', role: 'Student' as const, notes: '' }]);
   };
 
   const removePerson = (index: number) => {
@@ -62,8 +61,8 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
 
   const getPlaceholderText = (role: string) => {
     switch(role) {
-      case 'Student': return 'Search by student name or ID';
-      case 'Staff': return 'Search by staff name or ID';
+      case 'Student': return 'Search by student name';
+      case 'Staff': return 'Search by staff name';
       default: return 'Search by name';
     }
   };
@@ -126,20 +125,6 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                 <Search className="h-4 w-4 absolute right-3 top-3 text-gray-400" />
               </div>
             </div>
-          </div>
-
-          {/* ID field - optional for students */}
-          <div className="space-y-2 mb-4">
-            <label className="text-sm font-medium">
-              {person.role === 'Student' ? 'Student ID (Optional)' : person.role === 'Staff' ? 'Staff ID' : 'ID'} 
-              {person.role === 'Staff' && <span className="text-red-500">*</span>}
-            </label>
-            <Input
-              value={person.id || ''}
-              onChange={(e) => handlePersonChange(index, 'id', e.target.value)}
-              placeholder={`${person.role} ID`}
-              required={person.role === 'Staff'}
-            />
           </div>
 
           {/* Notes field */}

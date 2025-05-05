@@ -37,8 +37,8 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
 
   const getPlaceholderText = (role: string) => {
     switch(role) {
-      case 'Student': return 'Search by student name or ID';
-      case 'Staff': return 'Search by staff name or ID';
+      case 'Student': return 'Search by student name';
+      case 'Staff': return 'Search by staff name';
       default: return 'Search by name';
     }
   };
@@ -103,20 +103,6 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                 <Search className="h-4 w-4 absolute right-3 top-3 text-gray-400" />
               </div>
             </div>
-          </div>
-
-          {/* ID field - only required for staff */}
-          <div className="space-y-2 mb-4">
-            <label className="text-sm font-medium">
-              {person.role === 'Student' ? 'Student ID (Optional)' : person.role === 'Staff' ? 'Staff ID' : 'ID'} 
-              {person.role === 'Staff' && <span className="text-red-500">*</span>}
-            </label>
-            <Input
-              value={person.id || ''}
-              onChange={(e) => onPersonChange(index, 'id', e.target.value)}
-              placeholder={`${person.role} ID`}
-              required={person.role === 'Staff'}
-            />
           </div>
 
           {/* Notes field */}

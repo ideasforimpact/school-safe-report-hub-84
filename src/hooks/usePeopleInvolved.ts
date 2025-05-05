@@ -5,20 +5,19 @@ import { Person } from '@/types/incident';
 export function usePeopleInvolved() {
   // People involved state
   const [peopleInvolved, setPeopleInvolved] = useState<Person[]>([
-    { name: '', role: 'Student' as const, id: '', notes: '' }
+    { name: '', role: 'Student' as const, notes: '' }
   ]);
 
   const handlePersonChange = (index: number, field: keyof Person, value: string) => {
     const updatedPeople = [...peopleInvolved];
     
-    // If changing the role, clear the name and id fields to start fresh
+    // If changing the role, clear the name field to start fresh
     if (field === 'role') {
       const typedRole = value as 'Student' | 'Staff' | 'Other';
       updatedPeople[index] = { 
         ...updatedPeople[index], 
         role: typedRole,
-        name: '',
-        id: '' 
+        name: '' 
       };
     } else {
       updatedPeople[index] = { ...updatedPeople[index], [field]: value };
@@ -28,7 +27,7 @@ export function usePeopleInvolved() {
   };
 
   const addPerson = () => {
-    setPeopleInvolved([...peopleInvolved, { name: '', role: 'Student' as const, id: '', notes: '' }]);
+    setPeopleInvolved([...peopleInvolved, { name: '', role: 'Student' as const, notes: '' }]);
   };
 
   const removePerson = (index: number) => {
