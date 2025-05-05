@@ -6,12 +6,9 @@ import { useIncidentFilters } from '@/hooks/useIncidentFilters';
 import IncidentsHeader from '@/components/incidents/IncidentsHeader';
 import IncidentFilters from '@/components/incidents/IncidentFilters';
 import IncidentsTable from '@/components/incidents/IncidentsTable';
-import IncidentsCardView from '@/components/incidents/IncidentsCardView';
-import ViewToggle from '@/components/incidents/ViewToggle';
 
 const IncidentsList = () => {
   const { incidents } = useIncidents();
-  const [viewType, setViewType] = useState<'table' | 'card'>('table');
   
   const {
     filters,
@@ -45,18 +42,11 @@ const IncidentsList = () => {
         <IncidentsHeader />
         
         <div className="flex justify-between items-center">
-          <div className="flex items-center">
-            {activeFilterCount > 0 && (
-              <span className="text-sm font-medium mr-2 text-blue-600">
-                {activeFilterCount} filters applied
-              </span>
-            )}
-          </div>
-          
-          <ViewToggle 
-            viewType={viewType} 
-            onViewChange={setViewType} 
-          />
+          {activeFilterCount > 0 && (
+            <span className="text-sm font-medium mr-2 text-blue-600">
+              {activeFilterCount} filters applied
+            </span>
+          )}
         </div>
 
         <IncidentFilters 
@@ -72,11 +62,7 @@ const IncidentsList = () => {
         />
 
         <div className="overflow-x-auto w-full">
-          {viewType === 'table' ? (
-            <IncidentsTable incidents={filteredIncidents} />
-          ) : (
-            <IncidentsCardView incidents={filteredIncidents} />
-          )}
+          <IncidentsTable incidents={filteredIncidents} />
         </div>
       </div>
     </Layout>
