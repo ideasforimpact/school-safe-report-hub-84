@@ -118,7 +118,7 @@ const IncidentsCardView: React.FC<IncidentsCardViewProps> = ({ incidents }) => {
               onClick={(e) => e.stopPropagation()}
               className="text-blue-600"
             >
-              View
+              Update
             </Button>
             <Button 
               variant="ghost" 
