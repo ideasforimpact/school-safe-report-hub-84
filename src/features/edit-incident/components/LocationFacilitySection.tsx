@@ -30,12 +30,14 @@ const LocationFacilitySection: React.FC<LocationFacilitySectionProps> = ({
   
   // Add facilities from context if they don't already exist
   contextFacilities.forEach(facilityName => {
-    const exists = configFacilities.some(f => f.name === facilityName);
-    if (!exists) {
-      allFacilities.push({
-        id: `facility-${facilityName}`,
-        name: facilityName
-      });
+    if (facilityName && facilityName.trim() !== '') {
+      const exists = configFacilities.some(f => f.name === facilityName);
+      if (!exists) {
+        allFacilities.push({
+          id: `facility-${facilityName}`,
+          name: facilityName
+        });
+      }
     }
   });
 
@@ -75,11 +77,15 @@ const LocationFacilitySection: React.FC<LocationFacilitySectionProps> = ({
             <SelectValue placeholder="Select facility" />
           </SelectTrigger>
           <SelectContent>
-            {allFacilities.map((facility) => (
-              <SelectItem key={facility.id} value={facility.name}>
-                {facility.name}
-              </SelectItem>
-            ))}
+            {allFacilities.length > 0 ? (
+              allFacilities.map((facility) => (
+                <SelectItem key={facility.id} value={facility.name}>
+                  {facility.name}
+                </SelectItem>
+              ))
+            ) : (
+              <div className="px-2 py-2 text-sm text-gray-500">No facilities available</div>
+            )}
           </SelectContent>
         </Select>
       </div>

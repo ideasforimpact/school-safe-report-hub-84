@@ -10,7 +10,7 @@ interface FacilityContextType {
 }
 
 // Initial facilities from the IncidentContext SchoolFacility type
-const INITIAL_FACILITIES = [
+const INITIAL_FACILITIES: string[] = [
   // School Branches
   'North Campus',
   'South Campus',
@@ -39,7 +39,9 @@ export const FacilityProvider = ({ children }: { children: ReactNode }) => {
   }, [facilities]);
 
   const addFacility = (facility: string) => {
-    setFacilities(prev => [...prev, facility]);
+    if (facility && facility.trim() !== '') {
+      setFacilities(prev => [...prev, facility.trim()]);
+    }
   };
 
   const resetFacilities = () => {
