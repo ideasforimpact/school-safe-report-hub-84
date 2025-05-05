@@ -1,4 +1,3 @@
-
 import { useNavigate } from 'react-router-dom';
 import { Incident, IncidentStatus } from '@/contexts/IncidentContext';
 import {
@@ -91,7 +90,7 @@ const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
           <TableHeader>
             <TableRow>
               <TableHead>Ticket ID</TableHead>
-              <TableHead>Type</TableHead>
+              {/* Type column removed */}
               <TableHead>Category</TableHead>
               <TableHead>Date</TableHead>
               <TableHead>Priority</TableHead>
@@ -115,7 +114,7 @@ const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
                     )}
                   </div>
                 </TableCell>
-                <TableCell>{incident.type}</TableCell>
+                {/* Type cell removed */}
                 <TableCell>{incident.category}</TableCell>
                 <TableCell>{formatDate(incident.date)}</TableCell>
                 <TableCell>
