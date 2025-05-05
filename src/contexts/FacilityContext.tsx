@@ -29,8 +29,21 @@ const FacilityContext = createContext<FacilityContextType | undefined>(undefined
 
 export const FacilityProvider = ({ children }: { children: ReactNode }) => {
   const [facilities, setFacilities] = useState<string[]>(() => {
-    const savedFacilities = localStorage.getItem('facilities');
-    return savedFacilities ? JSON.parse(savedFacilities) : INITIAL_FACILITIES;
+    try {
+      const savedFacilities = localStorage.getItem('facilities');
+      // Ensure we only use valid string arrays from localStorage
+      if (savedFacilities) {
+        const parsed = JSON.parse(savedFacilities);
+        if (Array.isArray(parsed)) {
+          // Filter out non-string values
+          return parsed.filter(item => typeof item === 'string');
+        }
+      }
+      return INITIAL_FACILITIES;
+    } catch (error) {
+      console.error('Error loading facilities from localStorage:', error);
+      return INITIAL_FACILITIES;
+    }
   });
 
   // Save facilities to localStorage whenever they change
@@ -39,14 +52,18 @@ export const FacilityProvider = ({ children }: { children: ReactNode }) => {
   }, [facilities]);
 
   const addFacility = (facility: string) => {
-    if (facility && facility.trim() !== '') {
+    if (facility && typeof facility === 'string' && facility.trim() !== '') {
       setFacilities(prev => [...prev, facility.trim()]);
+      toast.success("Facility added successfully");
+    } else {
+      toast.error("Invalid facility name");
     }
   };
 
   const resetFacilities = () => {
     setFacilities([]);
     localStorage.setItem('facilities', JSON.stringify([]));
+    toast.success("Facilities reset successfully");
   };
 
   return (

@@ -36,8 +36,10 @@ const LocationSection: React.FC<LocationSectionProps> = ({
   const allFacilities = [...facilities];
   
   // Add facilities from context if they don't already exist and aren't empty
+  // Add a type check to ensure facilityName is a string before calling trim()
   contextFacilities.forEach(facilityName => {
-    if (facilityName && facilityName.trim() !== '') {
+    // Make sure facilityName is a string and not null/undefined before using trim()
+    if (facilityName && typeof facilityName === 'string' && facilityName.trim() !== '') {
       const exists = facilities.some(f => f.name === facilityName);
       if (!exists) {
         allFacilities.push({
