@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { FileItem } from '@/types/incident';
+import { FileItem } from '@/types/fileTypes';
 import { Paperclip, FileText, ImageIcon, Video, File, Maximize2 } from 'lucide-react';
 import {
   Dialog,

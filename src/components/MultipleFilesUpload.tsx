@@ -1,10 +1,11 @@
 
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus, X, ImageIcon, FileText, Video, File, FilePlus, Trash2, Maximize2 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { FilePlus } from 'lucide-react';
 import { toast } from '@/components/ui/sonner';
+import { FileItem } from '@/types/fileTypes';
+import { formatFileSize } from '@/utils/fileUtils';
+import FileList from './file/FileList';
 import {
   Dialog,
   DialogContent,
@@ -12,14 +13,6 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-
-interface FileItem {
-  id: string;
-  name: string;
-  type: string;
-  size: number;
-  base64: string;
-}
 
 interface MultipleFilesUploadProps {
   onFilesChange: (files: FileItem[]) => void;
@@ -115,26 +108,6 @@ const MultipleFilesUpload = ({
     setPreviewOpen(true);
   };
 
-  const getFileTypeIcon = (fileType: string) => {
-    if (fileType.startsWith('image/')) {
-      return <ImageIcon className="h-4 w-4 mr-2 flex-shrink-0" />;
-    } else if (fileType.startsWith('video/')) {
-      return <Video className="h-4 w-4 mr-2 flex-shrink-0" />;
-    } else if (fileType.startsWith('application/pdf') || 
-               fileType.startsWith('application/msword') ||
-               fileType.includes('document')) {
-      return <FileText className="h-4 w-4 mr-2 flex-shrink-0" />;
-    } else {
-      return <File className="h-4 w-4 mr-2 flex-shrink-0" />;
-    }
-  };
-
-  const formatFileSize = (bytes: number): string => {
-    if (bytes < 1024) return bytes + ' B';
-    else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-    else return (bytes / 1048576).toFixed(1) + ' MB';
-  };
-
   return (
     <div className={`w-full ${className}`}>
       <input 
@@ -147,66 +120,11 @@ const MultipleFilesUpload = ({
       
       <div className="border rounded-md p-4 bg-white">
         {/* File List */}
-        {files.length > 0 && (
-          <div className="mb-4">
-            <h4 className="text-sm font-medium mb-2">Added Files ({files.length}/{maxFiles})</h4>
-            <ScrollArea className="h-[150px]">
-              <div className="space-y-2">
-                {files.map(file => (
-                  <div key={file.id} className="flex items-center justify-between bg-gray-50 p-2 rounded-md border border-gray-200">
-                    <div className="flex items-center overflow-hidden flex-grow">
-                      {file.type.startsWith('image/') ? (
-                        <div className="flex items-center cursor-pointer" onClick={() => openPreview(file)}>
-                          <div className="h-10 w-10 mr-2 rounded overflow-hidden flex-shrink-0 border">
-                            <img src={file.base64} alt={file.name} className="h-full w-full object-cover" />
-                          </div>
-                          <div className="overflow-hidden">
-                            <span className="text-sm truncate block">{file.name}</span>
-                            <Badge variant="outline" className="mt-1">
-                              {formatFileSize(file.size)}
-                            </Badge>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex items-center overflow-hidden">
-                          {getFileTypeIcon(file.type)}
-                          <span className="text-sm truncate">{file.name}</span>
-                          <Badge variant="outline" className="ml-2">
-                            {formatFileSize(file.size)}
-                          </Badge>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex items-center">
-                      {file.type.startsWith('image/') && (
-                        <Button 
-                          type="button" 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => openPreview(file)}
-                          className="flex-shrink-0 text-blue-500 hover:text-blue-700 hover:bg-blue-50"
-                          title="View image"
-                        >
-                          <Maximize2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => removeFile(file.id)}
-                        className="flex-shrink-0 hover:bg-red-50"
-                        title="Delete file"
-                      >
-                        <Trash2 className="h-4 w-4 text-red-500 hover:text-red-700" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </ScrollArea>
-          </div>
-        )}
+        <FileList 
+          files={files}
+          onPreviewFile={openPreview}
+          onRemoveFile={removeFile}
+        />
 
         {/* Add Button - Only shown if under max files */}
         {files.length < maxFiles && (
