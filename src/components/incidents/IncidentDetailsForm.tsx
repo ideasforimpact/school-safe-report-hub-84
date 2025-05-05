@@ -20,7 +20,6 @@ interface IncidentDetailsFormProps {
     categoryId: string;
     subcategory: string;
     description: string;
-    rootCause: string;
     date: string;
     time: string;
     locationId: string;
@@ -97,7 +96,6 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
       {/* Description and Supporting Documents Section */}
       <DescriptionSection
         description={formData.description}
-        rootCause={formData.rootCause}
         supportingFiles={supportingFiles}
         onChange={onChange}
         onFilesChange={onFilesChange}
