@@ -1,4 +1,3 @@
-
 import { useNavigate } from 'react-router-dom';
 import { Incident, IncidentStatus } from '@/contexts/IncidentContext';
 import {
@@ -91,12 +90,10 @@ const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
           <TableHeader>
             <TableRow>
               <TableHead>Ticket ID</TableHead>
-              {/* Type column removed */}
               <TableHead className="text-left">Category</TableHead>
               <TableHead className="text-left">Date</TableHead>
-              {/* Priority column removed */}
               <TableHead className="text-left">Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+              <TableHead className="text-left">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -116,17 +113,15 @@ const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
                     )}
                   </div>
                 </TableCell>
-                {/* Type cell removed */}
                 <TableCell className="text-left">{incident.category}</TableCell>
                 <TableCell className="text-left">{formatDate(incident.date)}</TableCell>
-                {/* Priority cell removed */}
                 <TableCell className="text-left">
                   <span className={`px-2 py-1 rounded-full text-xs ${getStatusBadgeClass(incident.status, incident.isVoided)}`}>
                     {incident.isVoided ? 'Voided' : incident.status}
                   </span>
                 </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end space-x-2">
+                <TableCell className="text-left">
+                  <div className="flex space-x-2">
                     <Button 
                       variant="ghost" 
                       size="sm"
