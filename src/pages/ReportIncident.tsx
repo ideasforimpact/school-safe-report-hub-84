@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/sonner';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { useIncidentForm } from '@/hooks/useIncidentForm';
-import TicketInfoBanner from '@/components/incidents/TicketInfoBanner';
 import IncidentDetailsForm from '@/components/incidents/IncidentDetailsForm';
 import PeopleInvolvedSection from '@/components/incidents/PeopleInvolvedSection';
 import { IncidentType } from '@/types/incident';
@@ -115,8 +114,6 @@ const ReportIncident = () => {
             Document safety incidents, near misses, or unsafe conditions
           </p>
         </div>
-
-        <TicketInfoBanner ticketId={nextTicketId} />
 
         <form onSubmit={handleSubmit} className="w-full">
           <Card className="border-none shadow-card">
