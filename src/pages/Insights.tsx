@@ -9,8 +9,9 @@ import ChartsTab from '@/components/insights/tabs/ChartsTab';
 import PeopleTab from '@/components/insights/tabs/PeopleTab';
 import DashboardTab from '@/components/insights/tabs/DashboardTab';
 import { useInsightsData } from '@/hooks/useInsightsData';
-import { COLORS, downloadCSV, prepareIncidentsExport, preparePeopleExport } from '@/utils/insightsUtils';
+import { downloadCSV, prepareIncidentsExport, preparePeopleExport } from '@/utils/insightsUtils';
 import { PersonData } from '@/utils/insightsUtils';
+import { CHART_COLOR_ARRAY } from '@/utils/chartColorUtils';
 
 const Insights = () => {
   const {
@@ -119,7 +120,7 @@ const Insights = () => {
               assigneeData={chartData.assigneeData}
               statusData={chartData.statusData}
               isAdmin={isAdmin}
-              colors={COLORS}
+              colors={CHART_COLOR_ARRAY}
             />
           </TabsContent>
           
@@ -127,7 +128,7 @@ const Insights = () => {
             <PeopleTab 
               roleDistributionData={roleDistributionData}
               peopleData={peopleData as PersonData[]}
-              colors={COLORS}
+              colors={CHART_COLOR_ARRAY}
             />
           </TabsContent>
         </Tabs>

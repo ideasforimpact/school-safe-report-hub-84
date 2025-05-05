@@ -1,28 +1,31 @@
 
-import { useState, useEffect } from 'react';
-import { User } from '@/types/incident';
+import { useState } from 'react';
+import { User as AuthUser } from '@/contexts/auth/types';
 
-export function useIncidentFormData(user: User | null) {
+// Initial form data state
+const initialFormData = {
+  type: 'Incident',
+  description: '',
+  rootCause: '',
+  date: new Date(),
+  locationId: '',
+  location: '',
+  categoryId: '',
+  subcategory: '',
+  facilityId: '',
+  priority: 'Medium',
+  status: 'Open'
+};
+
+export function useIncidentFormData(user: AuthUser | null) {
+  // Form data state
   const [formData, setFormData] = useState({
-    type: '' as string,
-    categoryId: '',
-    subcategory: '',
-    description: '',
-    date: new Date().toISOString().split('T')[0],
-    time: new Date().toTimeString().split(' ')[0].slice(0, 5),
-    locationId: '',
-    facilityId: '',
-    priority: 'Medium' as 'Low' | 'Medium' | 'High' | 'Critical',
-    owner: user?.id || '' // Default to current user
+    ...initialFormData,
+    reportedById: user?.id || '',
+    reportedBy: user?.name || ''
   });
 
-  // Set default owner to current user when component mounts
-  useEffect(() => {
-    if (user?.id && !formData.owner) {
-      setFormData(prev => ({...prev, owner: user.id}));
-    }
-  }, [user, formData.owner]);
-
+  // Form change handlers
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -32,16 +35,8 @@ export function useIncidentFormData(user: User | null) {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleDateTimeChange = (date: Date | undefined, timeString?: string) => {
-    if (date) {
-      setFormData(prev => ({ 
-        ...prev, 
-        date: date.toISOString().split('T')[0]
-      }));
-    }
-    if (timeString) {
-      setFormData(prev => ({ ...prev, time: timeString }));
-    }
+  const handleDateTimeChange = (date: Date) => {
+    setFormData(prev => ({ ...prev, date }));
   };
 
   return {

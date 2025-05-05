@@ -1,7 +1,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   LineChart, Line, CartesianGrid, XAxis, YAxis, 
   Tooltip, ResponsiveContainer, ReferenceLine, Area,
@@ -9,6 +9,7 @@ import {
 } from 'recharts';
 import { Badge } from '@/components/ui/badge';
 import { InfoIcon, TrendingUp, TrendingDown } from 'lucide-react';
+import { useTimeSeriesMetrics } from '@/hooks/insights/useTimeSeriesMetrics';
 
 interface TimeSeriesAnalysisProps {
   data: Array<{month: string, count: number}>;
@@ -22,29 +23,7 @@ const TimeSeriesAnalysis: React.FC<TimeSeriesAnalysisProps> = ({
   description = "Monthly trend of reported incidents with trend analysis"
 }) => {
   const [viewType, setViewType] = useState<'line' | 'area'>('line');
-  
-  // Calculate trend information
-  const trendAnalysis = useMemo(() => {
-    if (data.length < 2) return { trend: 'neutral', percentage: 0 };
-    
-    // Take the first and last values for basic trend calculation
-    const firstValue = data[0].count;
-    const lastValue = data[data.length - 1].count;
-    
-    // Calculate percentage change
-    let percentChange = 0;
-    if (firstValue > 0) {
-      percentChange = ((lastValue - firstValue) / firstValue) * 100;
-    }
-    
-    // Determine trend direction
-    const trend = percentChange > 0 ? 'up' : percentChange < 0 ? 'down' : 'neutral';
-    
-    return { 
-      trend, 
-      percentage: Math.abs(Math.round(percentChange)) 
-    };
-  }, [data]);
+  const metrics = useTimeSeriesMetrics(data);
   
   // Calculate average value for reference line
   const averageValue = useMemo(() => {
@@ -56,23 +35,23 @@ const TimeSeriesAnalysis: React.FC<TimeSeriesAnalysisProps> = ({
   return (
     <Card>
       <CardHeader>
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-start">
           <div>
             <CardTitle>{title}</CardTitle>
-            <CardDescription>{description}</CardDescription>
+            <CardDescription className="max-w-md">{description}</CardDescription>
           </div>
           
-          {trendAnalysis.trend !== 'neutral' && (
+          {data.length > 1 && (
             <Badge 
-              variant={trendAnalysis.trend === 'down' ? 'outline' : 'destructive'}
-              className="flex items-center gap-1"
+              variant={metrics.isIncreasing ? 'destructive' : 'outline'}
+              className="flex items-center gap-1 ml-2"
             >
-              {trendAnalysis.trend === 'up' ? (
+              {metrics.isIncreasing ? (
                 <TrendingUp className="h-3 w-3" />
               ) : (
                 <TrendingDown className="h-3 w-3" />
               )}
-              {trendAnalysis.percentage}% {trendAnalysis.trend === 'up' ? 'Increase' : 'Decrease'}
+              {metrics.percentageChange}% {metrics.isIncreasing ? 'Increase' : 'Decrease'}
             </Badge>
           )}
         </div>
@@ -111,7 +90,7 @@ const TimeSeriesAnalysis: React.FC<TimeSeriesAnalysisProps> = ({
                   type="monotone"
                   name="Incident Count"
                   dataKey="count"
-                  stroke="#3b82f6"
+                  stroke="#9b87f5"
                   activeDot={{ r: 8 }}
                   strokeWidth={2}
                 />
@@ -139,8 +118,8 @@ const TimeSeriesAnalysis: React.FC<TimeSeriesAnalysisProps> = ({
                   type="monotone"
                   name="Incident Count"
                   dataKey="count"
-                  stroke="#3b82f6"
-                  fill="#3b82f680"
+                  stroke="#9b87f5"
+                  fill="#e5deff"
                 />
               </AreaChart>
             )}
@@ -155,7 +134,11 @@ const TimeSeriesAnalysis: React.FC<TimeSeriesAnalysisProps> = ({
       <CardFooter className="text-xs text-muted-foreground border-t pt-4">
         <div className="flex items-center">
           <InfoIcon className="h-3 w-3 mr-1" />
-          <span>Trend calculated based on first and last data points</span>
+          <span>
+            {data.length > 1 ? 
+              `Change: ${metrics.currentPeriodCount} vs ${metrics.previousPeriodCount} incidents (previous period)` : 
+              'Insufficient data for trend analysis'}
+          </span>
         </div>
       </CardFooter>
     </Card>
