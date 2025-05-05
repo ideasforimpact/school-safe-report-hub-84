@@ -12,26 +12,26 @@ const IncidentMetadata: React.FC<IncidentMetadataProps> = ({
   formatDateTime
 }) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div>
-        <h3 className="font-medium text-sm">Type</h3>
-        <p>{incident.type}</p>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+      <div className="space-y-1">
+        <h3 className="font-medium text-sm text-gray-500">Type</h3>
+        <p className="font-medium">{incident.type}</p>
       </div>
-      <div>
-        <h3 className="font-medium text-sm">Category</h3>
-        <p>{incident.category} - {incident.subcategory}</p>
+      <div className="space-y-1">
+        <h3 className="font-medium text-sm text-gray-500">Category</h3>
+        <p className="font-medium">{incident.category} - {incident.subcategory}</p>
       </div>
-      <div>
-        <h3 className="font-medium text-sm">Date Reported</h3>
-        <p>{formatDateTime(incident.date)}</p>
+      <div className="space-y-1">
+        <h3 className="font-medium text-sm text-gray-500">Date Reported</h3>
+        <p className="font-medium">{formatDateTime(incident.date)}</p>
       </div>
-      <div>
-        <h3 className="font-medium text-sm">Location</h3>
-        <p>{incident.location}</p>
+      <div className="space-y-1">
+        <h3 className="font-medium text-sm text-gray-500">Location</h3>
+        <p className="font-medium">{incident.location}</p>
       </div>
-      <div>
-        <h3 className="font-medium text-sm">Reported By</h3>
-        <p>{incident.reportedBy.name}</p>
+      <div className="space-y-1">
+        <h3 className="font-medium text-sm text-gray-500">Reported By</h3>
+        <p className="font-medium">{incident.reportedBy.name}</p>
       </div>
     </div>
   );

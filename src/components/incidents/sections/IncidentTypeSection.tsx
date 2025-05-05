@@ -22,15 +22,15 @@ const IncidentTypeSection: React.FC<IncidentTypeSectionProps> = ({
 }) => {
   return (
     <>
-      <div className="space-y-2 text-left">
-        <label htmlFor="type" className="text-sm font-medium text-left block">
+      <div className="space-y-2 w-full">
+        <label htmlFor="type" className="text-sm font-medium block text-left">
           Report Type
         </label>
         <Select 
           value={type}
           onValueChange={(value) => onSelectChange('type', value)}
         >
-          <SelectTrigger>
+          <SelectTrigger className="w-full">
             <SelectValue placeholder="Select type" />
           </SelectTrigger>
           <SelectContent>
@@ -41,15 +41,15 @@ const IncidentTypeSection: React.FC<IncidentTypeSectionProps> = ({
         </Select>
       </div>
 
-      <div className="space-y-2 text-left">
-        <label htmlFor="priority" className="text-sm font-medium text-left block">
+      <div className="space-y-2 w-full">
+        <label htmlFor="priority" className="text-sm font-medium block text-left">
           Priority
         </label>
         <Select 
           value={priority}
           onValueChange={(value) => onSelectChange('priority', value)}
         >
-          <SelectTrigger>
+          <SelectTrigger className="w-full">
             <SelectValue placeholder="Select priority" />
           </SelectTrigger>
           <SelectContent>

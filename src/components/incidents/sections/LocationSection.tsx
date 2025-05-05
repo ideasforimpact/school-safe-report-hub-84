@@ -30,15 +30,15 @@ const LocationSection: React.FC<LocationSectionProps> = ({
 }) => {
   return (
     <>
-      <div className="space-y-2 text-left">
-        <label htmlFor="locationId" className="text-sm font-medium text-left block">
+      <div className="space-y-2 w-full">
+        <label htmlFor="locationId" className="text-sm font-medium block text-left">
           Location
         </label>
         <Select 
           value={locationId} 
           onValueChange={(value) => onSelectChange('locationId', value)}
         >
-          <SelectTrigger id="locationId">
+          <SelectTrigger id="locationId" className="w-full">
             <SelectValue placeholder="Select location" />
           </SelectTrigger>
           <SelectContent>
@@ -51,15 +51,15 @@ const LocationSection: React.FC<LocationSectionProps> = ({
         </Select>
       </div>
       
-      <div className="space-y-2 text-left">
-        <label htmlFor="facilityId" className="text-sm font-medium text-left block">
+      <div className="space-y-2 w-full">
+        <label htmlFor="facilityId" className="text-sm font-medium block text-left">
           Facility
         </label>
         <Select 
           value={facilityId} 
           onValueChange={(value) => onSelectChange('facilityId', value)}
         >
-          <SelectTrigger id="facilityId">
+          <SelectTrigger id="facilityId" className="w-full">
             <SelectValue placeholder="Select facility" />
           </SelectTrigger>
           <SelectContent>

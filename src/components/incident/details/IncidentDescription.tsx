@@ -11,17 +11,19 @@ const IncidentDescription: React.FC<IncidentDescriptionProps> = ({
   image
 }) => {
   return (
-    <div>
-      <h3 className="font-medium text-sm">Description</h3>
-      <p className="mt-1 whitespace-pre-wrap">{description}</p>
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <h3 className="font-medium text-sm text-gray-500">Description</h3>
+        <p className="whitespace-pre-wrap text-gray-800">{description}</p>
+      </div>
 
       {image && (
-        <div className="mt-4">
-          <h3 className="font-medium text-sm">Image</h3>
+        <div className="space-y-2">
+          <h3 className="font-medium text-sm text-gray-500">Image</h3>
           <img 
             src={image} 
             alt="Incident" 
-            className="mt-2 rounded-md border max-w-md" 
+            className="rounded-md border max-w-full h-auto" 
           />
         </div>
       )}

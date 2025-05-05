@@ -79,10 +79,10 @@ const IncidentDetails: React.FC<IncidentDetailsProps> = ({
   
   return (
     <>
-      <Card>
+      <Card className="overflow-hidden">
         <IncidentDetailsHeader />
         
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6 p-6">
           {/* Incident metadata section */}
           <IncidentMetadata
             incident={incident}

@@ -67,7 +67,7 @@ const IncidentDetailContent = ({
       />
       
       <Tabs defaultValue="details" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-3 mb-4">
           <TabsTrigger value="details">Details</TabsTrigger>
           <TabsTrigger value="comments">Comments</TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
@@ -75,7 +75,7 @@ const IncidentDetailContent = ({
         
         <TabsContent value="details" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-2 space-y-6">
               <IncidentDetails 
                 incident={incident} 
                 formatDate={formatDate} 

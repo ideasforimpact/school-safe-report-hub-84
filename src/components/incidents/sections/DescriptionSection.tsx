@@ -20,7 +20,7 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
   return (
     <>
       <div className="space-y-2 md:col-span-2">
-        <label htmlFor="description" className="text-sm font-medium">
+        <label htmlFor="description" className="text-sm font-medium block text-left">
           Description
         </label>
         <Textarea
@@ -30,19 +30,21 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
           value={description}
           onChange={onChange}
           rows={4}
+          className="w-full"
         />
       </div>
 
       <div className="space-y-2 md:col-span-2">
-        <label className="text-sm font-medium">
+        <label className="text-sm font-medium block text-left">
           Supporting Documents (Optional)
         </label>
         <MultipleFilesUpload
           onFilesChange={onFilesChange}
           initialFiles={supportingFiles}
           maxFiles={5}
+          className="w-full"
         />
-        <p className="text-xs text-gray-500 mt-1">
+        <p className="text-xs text-gray-500 mt-1 text-left">
           Upload up to 5 files (images, videos, documents) to support this incident report
         </p>
       </div>
