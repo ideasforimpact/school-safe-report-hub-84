@@ -52,8 +52,11 @@ const EducationalConfiguration = () => {
       const newCampus = contextAddCampus(name);
       console.log('New campus created:', newCampus); // Debug log
       
-      // Manually update the local state to ensure UI update
-      setCampuses(prev => [...prev, newCampus]);
+      // Check if newCampus is defined before updating state
+      if (newCampus) {
+        // Manually update the local state to ensure UI update
+        setCampuses(prev => [...prev, newCampus]);
+      }
       
       toast.success("Campus added successfully");
     } catch (error) {
