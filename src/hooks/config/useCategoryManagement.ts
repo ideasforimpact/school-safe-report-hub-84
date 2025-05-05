@@ -48,7 +48,7 @@ export function useCategoryManagement(
   }, [initialCategories, initialSubcategories]);
 
   // Categories management
-  const addCategory = (name: string) => {
+  const addCategory = (name: string): ConfigItem => {
     if (!name.trim()) {
       throw new Error("Category name cannot be empty");
     }
@@ -145,7 +145,7 @@ export function useCategoryManagement(
   };
 
   // Subcategories management
-  const addSubcategory = (categoryId: string, name: string) => {
+  const addSubcategory = (categoryId: string, name: string): SubcategoryItem => {
     if (!name.trim()) {
       throw new Error("Subcategory name cannot be empty");
     }

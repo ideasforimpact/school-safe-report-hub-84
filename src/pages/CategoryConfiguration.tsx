@@ -8,11 +8,16 @@ import { toast } from '@/components/ui/sonner';
 import { CategoryTab } from '@/components/configuration/CategoryTab';
 import { SubcategoryTab } from '@/components/configuration/SubcategoryTab';
 import { AlertTriangle } from 'lucide-react';
+import { ConfigItem } from '@/contexts/types';
 
 const CategoryConfiguration = () => {
   const [activeTab, setActiveTab] = useState('categories');
   const [isAddingDigitalSafety, setIsAddingDigitalSafety] = useState(false);
   const [digitalSafetyAdded, setDigitalSafetyAdded] = useState(false);
+  
+  // Local state to track categories and subcategories
+  const [localCategories, setLocalCategories] = useState<ConfigItem[]>([]);
+  const [localSubcategoryMappings, setLocalSubcategoryMappings] = useState<Record<string, any>>({});
 
   const { 
     categories,
@@ -25,16 +30,22 @@ const CategoryConfiguration = () => {
     deleteSubcategory
   } = useIncidents();
 
+  // Sync local state with context when it changes
+  useEffect(() => {
+    setLocalCategories(categories);
+    setLocalSubcategoryMappings(subcategoryMappings);
+  }, [categories, subcategoryMappings]);
+
   // Add Digital Safety category if it doesn't exist
   useEffect(() => {
     // Don't attempt to add Digital Safety if we're already trying to add it,
     // or if categories haven't loaded yet, or if we've already successfully added it
-    if (isAddingDigitalSafety || categories.length === 0 || digitalSafetyAdded) {
+    if (isAddingDigitalSafety || localCategories.length === 0 || digitalSafetyAdded) {
       return;
     }
     
     // Check if Digital Safety already exists
-    const digitalSafetyExists = categories.some(cat => 
+    const digitalSafetyExists = localCategories.some(cat => 
       cat.name.toLowerCase() === 'digital safety'
     );
     
@@ -45,7 +56,9 @@ const CategoryConfiguration = () => {
       setIsAddingDigitalSafety(true);
       
       try {
-        addCategory('Digital Safety');
+        const newCategory = addCategory('Digital Safety');
+        // Update local state immediately for the UI
+        setLocalCategories(prev => [...prev, newCategory]);
         toast.success("Digital Safety category added successfully");
         setDigitalSafetyAdded(true);
       } catch (error) {
@@ -64,7 +77,7 @@ const CategoryConfiguration = () => {
       // Mark as added if it already exists
       setDigitalSafetyAdded(true);
     }
-  }, [categories, addCategory, isAddingDigitalSafety, digitalSafetyAdded]);
+  }, [localCategories, addCategory, isAddingDigitalSafety, digitalSafetyAdded]);
 
   const handleAddCategory = (name: string) => {
     if (!name.trim()) {
@@ -74,6 +87,8 @@ const CategoryConfiguration = () => {
     
     try {
       const newCategory = addCategory(name);
+      // Update local state immediately
+      setLocalCategories(prev => [...prev, newCategory]);
       console.log("Category added successfully:", newCategory);
       toast.success("Category added successfully");
     } catch (error) {
@@ -85,6 +100,10 @@ const CategoryConfiguration = () => {
   const handleUpdateCategory = (id: string, name: string) => {
     try {
       updateCategory(id, name);
+      // Update local state immediately
+      setLocalCategories(prev => prev.map(cat => 
+        cat.id === id ? { ...cat, name } : cat
+      ));
       console.log("Category updated:", id, name);
       toast.success("Category updated successfully");
     } catch (error) {
@@ -96,6 +115,11 @@ const CategoryConfiguration = () => {
   const handleDeleteCategory = (id: string) => {
     try {
       deleteCategory(id);
+      // Update local state immediately
+      setLocalCategories(prev => prev.filter(cat => cat.id !== id));
+      // Also remove from subcategory mappings
+      const { [id]: _, ...rest } = localSubcategoryMappings;
+      setLocalSubcategoryMappings(rest);
       console.log("Category deleted:", id);
       toast.success("Category deleted successfully");
     } catch (error) {
@@ -106,7 +130,12 @@ const CategoryConfiguration = () => {
 
   const handleAddSubcategory = (categoryId: string, name: string) => {
     try {
-      addSubcategory(categoryId, name);
+      const newSubcategory = addSubcategory(categoryId, name);
+      // Update local state immediately
+      setLocalSubcategoryMappings(prev => ({
+        ...prev,
+        [categoryId]: [...(prev[categoryId] || []), newSubcategory]
+      }));
       toast.success("Subcategory added successfully");
     } catch (error) {
       console.error("Error adding subcategory:", error);
@@ -117,6 +146,13 @@ const CategoryConfiguration = () => {
   const handleUpdateSubcategory = (categoryId: string, id: string, name: string) => {
     try {
       updateSubcategory(categoryId, id, name);
+      // Update local state immediately
+      setLocalSubcategoryMappings(prev => ({
+        ...prev,
+        [categoryId]: (prev[categoryId] || []).map(sub => 
+          sub.id === id ? { ...sub, name } : sub
+        )
+      }));
       toast.success("Subcategory updated successfully");
     } catch (error) {
       console.error("Error updating subcategory:", error);
@@ -127,6 +163,11 @@ const CategoryConfiguration = () => {
   const handleDeleteSubcategory = (categoryId: string, id: string) => {
     try {
       deleteSubcategory(categoryId, id);
+      // Update local state immediately
+      setLocalSubcategoryMappings(prev => ({
+        ...prev,
+        [categoryId]: (prev[categoryId] || []).filter(sub => sub.id !== id)
+      }));
       toast.success("Subcategory deleted successfully");
     } catch (error) {
       console.error("Error deleting subcategory:", error);
@@ -160,7 +201,7 @@ const CategoryConfiguration = () => {
               
               <TabsContent value="categories">
                 <CategoryTab 
-                  categories={categories}
+                  categories={localCategories}
                   addCategory={handleAddCategory}
                   updateCategory={handleUpdateCategory}
                   deleteCategory={handleDeleteCategory}
@@ -169,8 +210,8 @@ const CategoryConfiguration = () => {
               
               <TabsContent value="subcategories">
                 <SubcategoryTab 
-                  categories={categories}
-                  subcategoryMappings={subcategoryMappings}
+                  categories={localCategories}
+                  subcategoryMappings={localSubcategoryMappings}
                   addSubcategory={handleAddSubcategory}
                   updateSubcategory={handleUpdateSubcategory}
                   deleteSubcategory={handleDeleteSubcategory}
