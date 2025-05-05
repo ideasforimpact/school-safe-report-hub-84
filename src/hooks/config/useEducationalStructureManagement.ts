@@ -19,6 +19,7 @@ export function useEducationalStructureManagement(
       name
     };
     setCampuses(prev => [...prev, newCampus]);
+    return newCampus; // Return the newly created campus
   };
 
   const updateCampus = (id: string, name: string) => {
@@ -41,6 +42,7 @@ export function useEducationalStructureManagement(
       campusId
     };
     setClasses(prev => [...prev, newClass]);
+    return newClass; // Return the newly created class
   };
 
   const updateClass = (id: string, campusId: string, name: string) => {
@@ -63,6 +65,7 @@ export function useEducationalStructureManagement(
       classId
     };
     setSections(prev => [...prev, newSection]);
+    return newSection; // Return the newly created section
   };
 
   const updateSection = (id: string, classId: string, name: string) => {

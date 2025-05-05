@@ -4,26 +4,39 @@ import { useSearchParams } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
 import { useIncidents } from '@/contexts/IncidentContext';
 import { EducationalStructureConfig } from './configuration/EducationalStructureConfig';
+import { toast } from '@/components/ui/sonner';
 
 const EducationalConfiguration = () => {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('campuses');
   
   const { 
-    campuses,
-    addCampus,
-    updateCampus,
-    deleteCampus,
-    classes,
-    addClass,
-    updateClass,
-    deleteClass,
-    sections,
-    addSection,
-    updateSection,
-    deleteSection
+    campuses: contextCampuses,
+    addCampus: contextAddCampus,
+    updateCampus: contextUpdateCampus,
+    deleteCampus: contextDeleteCampus,
+    classes: contextClasses,
+    addClass: contextAddClass,
+    updateClass: contextUpdateClass,
+    deleteClass: contextDeleteClass,
+    sections: contextSections,
+    addSection: contextAddSection,
+    updateSection: contextUpdateSection,
+    deleteSection: contextDeleteSection
   } = useIncidents();
 
+  // Local state to sync with context
+  const [campuses, setCampuses] = useState(contextCampuses);
+  const [classes, setClasses] = useState(contextClasses);
+  const [sections, setSections] = useState(contextSections);
+
+  // Update local state when context changes
+  useEffect(() => {
+    setCampuses(contextCampuses);
+    setClasses(contextClasses);
+    setSections(contextSections);
+  }, [contextCampuses, contextClasses, contextSections]);
+  
   // Set initial tab based on URL parameter when component mounts
   useEffect(() => {
     const tab = searchParams.get('tab');
@@ -33,39 +46,111 @@ const EducationalConfiguration = () => {
   }, [searchParams]);
 
   const handleAddCampus = (name: string) => {
-    addCampus(name);
+    try {
+      const newCampus = contextAddCampus(name);
+      // Ensure local state is updated immediately
+      setCampuses(prev => [...prev, newCampus]);
+      toast.success("Campus added successfully");
+    } catch (error) {
+      console.error("Error adding campus:", error);
+      toast.error("Failed to add campus");
+    }
   };
 
   const handleUpdateCampus = (id: string, name: string) => {
-    updateCampus(id, name);
+    try {
+      contextUpdateCampus(id, name);
+      // Update local state
+      setCampuses(prev => prev.map(c => c.id === id ? { ...c, name } : c));
+      toast.success("Campus updated successfully");
+    } catch (error) {
+      console.error("Error updating campus:", error);
+      toast.error("Failed to update campus");
+    }
   };
 
   const handleDeleteCampus = (id: string) => {
-    deleteCampus(id);
+    try {
+      contextDeleteCampus(id);
+      // Update local state
+      setCampuses(prev => prev.filter(c => c.id !== id));
+      toast.success("Campus deleted successfully");
+    } catch (error) {
+      console.error("Error deleting campus:", error);
+      toast.error("Failed to delete campus");
+    }
   };
 
   const handleAddClass = (campusId: string, name: string) => {
-    addClass(campusId, name);
+    try {
+      const newClass = contextAddClass(campusId, name);
+      // Update local state
+      setClasses(prev => [...prev, newClass]);
+      toast.success("Class added successfully");
+    } catch (error) {
+      console.error("Error adding class:", error);
+      toast.error("Failed to add class");
+    }
   };
 
   const handleUpdateClass = (id: string, campusId: string, name: string) => {
-    updateClass(id, campusId, name);
+    try {
+      contextUpdateClass(id, campusId, name);
+      // Update local state
+      setClasses(prev => prev.map(c => c.id === id ? { ...c, name, campusId } : c));
+      toast.success("Class updated successfully");
+    } catch (error) {
+      console.error("Error updating class:", error);
+      toast.error("Failed to update class");
+    }
   };
 
   const handleDeleteClass = (id: string) => {
-    deleteClass(id);
+    try {
+      contextDeleteClass(id);
+      // Update local state
+      setClasses(prev => prev.filter(c => c.id !== id));
+      toast.success("Class deleted successfully");
+    } catch (error) {
+      console.error("Error deleting class:", error);
+      toast.error("Failed to delete class");
+    }
   };
 
   const handleAddSection = (classId: string, name: string) => {
-    addSection(classId, name);
+    try {
+      const newSection = contextAddSection(classId, name);
+      // Update local state
+      setSections(prev => [...prev, newSection]);
+      toast.success("Section added successfully");
+    } catch (error) {
+      console.error("Error adding section:", error);
+      toast.error("Failed to add section");
+    }
   };
 
   const handleUpdateSection = (id: string, classId: string, name: string) => {
-    updateSection(id, classId, name);
+    try {
+      contextUpdateSection(id, classId, name);
+      // Update local state
+      setSections(prev => prev.map(s => s.id === id ? { ...s, name, classId } : s));
+      toast.success("Section updated successfully");
+    } catch (error) {
+      console.error("Error updating section:", error);
+      toast.error("Failed to update section");
+    }
   };
 
   const handleDeleteSection = (id: string) => {
-    deleteSection(id);
+    try {
+      contextDeleteSection(id);
+      // Update local state
+      setSections(prev => prev.filter(s => s.id !== id));
+      toast.success("Section deleted successfully");
+    } catch (error) {
+      console.error("Error deleting section:", error);
+      toast.error("Failed to delete section");
+    }
   };
 
   return (

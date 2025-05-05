@@ -14,7 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { CampusItem } from '@/contexts/types';
 import { EditDialog } from './EditDialog';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
 
 interface CampusTabProps {
   campuses: CampusItem[];
@@ -42,7 +42,6 @@ export const CampusTab = ({
     
     addCampus(newCampus.trim());
     setNewCampus('');
-    toast.success("Campus added successfully");
   };
 
   const handleCampusDelete = (id: string) => {
@@ -54,7 +53,6 @@ export const CampusTab = ({
     }
     
     deleteCampus(id);
-    toast.success("Campus deleted successfully");
   };
 
   const handleCampusUpdate = () => {
@@ -65,7 +63,6 @@ export const CampusTab = ({
     
     updateCampus(editingCampus.id, editingCampus.name.trim());
     setEditingCampus(null);
-    toast.success("Campus updated successfully");
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
