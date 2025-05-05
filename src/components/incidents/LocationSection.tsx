@@ -35,16 +35,23 @@ const LocationSection: React.FC<LocationSectionProps> = ({
   // Create a merged list of facilities
   const allFacilities = [...facilities];
   
-  // Add facilities from context if they don't already exist
+  // Add facilities from context if they don't already exist and aren't empty
   contextFacilities.forEach(facilityName => {
-    const exists = facilities.some(f => f.name === facilityName);
-    if (!exists) {
-      allFacilities.push({
-        id: `facility-${facilityName}`,
-        name: facilityName
-      });
+    if (facilityName && facilityName.trim() !== '') {
+      const exists = facilities.some(f => f.name === facilityName);
+      if (!exists) {
+        allFacilities.push({
+          id: `facility-${facilityName}`,
+          name: facilityName
+        });
+      }
     }
   });
+
+  // Filter out any facilities with empty names
+  const filteredFacilities = allFacilities.filter(
+    facility => facility.name && facility.name.trim() !== ''
+  );
 
   return (
     <>
@@ -83,11 +90,15 @@ const LocationSection: React.FC<LocationSectionProps> = ({
             <SelectValue placeholder="Select facility" />
           </SelectTrigger>
           <SelectContent>
-            {allFacilities.map(facility => (
-              <SelectItem key={facility.id} value={facility.id}>
-                {facility.name}
-              </SelectItem>
-            ))}
+            {filteredFacilities.length > 0 ? (
+              filteredFacilities.map((facility, index) => (
+                <SelectItem key={`${facility.id}-${index}`} value={facility.id}>
+                  {facility.name}
+                </SelectItem>
+              ))
+            ) : (
+              <div className="px-2 py-2 text-sm text-gray-500">No facilities available</div>
+            )}
           </SelectContent>
         </Select>
       </div>

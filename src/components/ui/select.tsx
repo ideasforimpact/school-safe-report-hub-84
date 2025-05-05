@@ -116,8 +116,8 @@ const SelectItem = React.forwardRef<
     inset?: boolean
   }
 >(({ className, children, value = "", ...props }, ref) => {
-  // Add a safeguard for empty string values
-  const safeValue = value === "" ? "default" : value;
+  // Ensure we never have empty values - use a generated unique value if value is empty
+  const safeValue = value ? value : `generated-${Math.random().toString(36).substring(2, 9)}`;
   
   return (
     <SelectPrimitive.Item
