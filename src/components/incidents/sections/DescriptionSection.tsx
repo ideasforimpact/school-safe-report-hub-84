@@ -18,7 +18,7 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
   onFilesChange,
 }) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:col-span-3 w-full">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
       <div className="space-y-2 text-left">
         <label htmlFor="description" className="text-sm font-medium text-left block">
           Description <span className="text-red-500">*</span>

@@ -53,48 +53,61 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
   users
 }) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       {/* Incident Type and Priority Section */}
-      <IncidentTypeSection
-        type={formData.type}
-        priority={formData.priority}
-        onSelectChange={onSelectChange}
-      />
+      <div className="space-y-6">
+        <IncidentTypeSection
+          type={formData.type}
+          priority={formData.priority}
+          onSelectChange={onSelectChange}
+        />
+      </div>
 
       {/* Category and Subcategory Section */}
-      <CategorySection
-        categoryId={formData.categoryId}
-        categories={categories}
-        subcategory={formData.subcategory}
-        availableSubcategories={availableSubcategories}
-        onSelectChange={onSelectChange}
-      />
+      <div className="space-y-6">
+        <CategorySection
+          categoryId={formData.categoryId}
+          categories={categories}
+          subcategory={formData.subcategory}
+          availableSubcategories={availableSubcategories}
+          onSelectChange={onSelectChange}
+        />
+      </div>
 
       {/* Location and Facility Section */}
-      <LocationSection
-        locationId={formData.locationId}
-        locations={locations}
-        facilityId={formData.facilityId}
-        facilities={facilities}
-        onSelectChange={onSelectChange}
-      />
+      <div className="space-y-6">
+        <LocationSection
+          locationId={formData.locationId}
+          locations={locations}
+          facilityId={formData.facilityId}
+          facilities={facilities}
+          onSelectChange={onSelectChange}
+        />
+      </div>
 
       {/* Date and Time Section */}
-      <DateTimeSection
-        date={formData.date}
-        time={formData.time}
-        onDateTimeChange={onDateTimeChange}
-      />
+      <div className="space-y-6">
+        <DateTimeSection
+          date={formData.date}
+          time={formData.time}
+          onDateTimeChange={onDateTimeChange}
+        />
+      </div>
 
       {/* Assignment Section */}
-      <AssignmentSection 
-        owner={formData.owner}
-        users={users}
-        onSelectChange={onSelectChange}
-      />
+      <div className="space-y-6">
+        <AssignmentSection 
+          owner={formData.owner}
+          users={users}
+          onSelectChange={onSelectChange}
+        />
+      </div>
 
-      {/* Description Section - now spans full width */}
-      <div className="md:col-span-3">
+      {/* Empty div to maintain grid alignment */}
+      <div></div>
+
+      {/* Description Section - spans full width */}
+      <div className="md:col-span-3 space-y-6">
         <DescriptionSection
           description={formData.description}
           supportingFiles={supportingFiles}
