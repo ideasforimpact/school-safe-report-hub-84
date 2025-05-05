@@ -56,7 +56,7 @@ export const getClientItems = (permissions: ModulePermissions) => [
   },
   {
     icon: PieChart,
-    label: 'Insights',
+    label: 'Incident\nInsights',  // Modified to have Incident on first line and Insights on second
     path: '/insights',
     allowed: permissions.insights,
   },

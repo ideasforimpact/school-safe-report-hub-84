@@ -13,6 +13,9 @@ interface SidebarMenuItemProps {
 const SidebarMenuItem = ({ icon: IconComponent, label, path, isActive }: SidebarMenuItemProps) => {
   const navigate = useNavigate();
   
+  // Split the label by newline character to handle multiline labels
+  const labelParts = label.split('\n');
+  
   return (
     <li>
       <button
@@ -25,9 +28,22 @@ const SidebarMenuItem = ({ icon: IconComponent, label, path, isActive }: Sidebar
         )}
       >
         <IconComponent className="h-6 w-6 mb-1" />
-        <span className="text-[11px] font-medium whitespace-normal text-center">
-          {label}
-        </span>
+        {labelParts.length > 1 ? (
+          <div className="flex flex-col">
+            {labelParts.map((part, index) => (
+              <span 
+                key={index} 
+                className="text-[11px] font-medium whitespace-normal text-center leading-tight"
+              >
+                {part}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <span className="text-[11px] font-medium whitespace-normal text-center">
+            {label}
+          </span>
+        )}
       </button>
     </li>
   );
