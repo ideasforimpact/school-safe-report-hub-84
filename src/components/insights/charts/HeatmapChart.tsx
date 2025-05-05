@@ -47,8 +47,8 @@ const HeatmapChart: React.FC<HeatmapChartProps> = ({
         <div className="overflow-x-auto">
           <div className="min-w-[600px]">
             {/* Day headers */}
-            <div className="grid grid-cols-8 mb-2">
-              <div className="font-medium text-sm text-gray-500"></div>
+            <div className="grid grid-cols-8 gap-1 mb-3">
+              <div className="font-medium text-sm text-gray-500 px-2"></div>
               {days.map(day => (
                 <div key={day} className="font-medium text-sm text-center">{day}</div>
               ))}
@@ -56,8 +56,8 @@ const HeatmapChart: React.FC<HeatmapChartProps> = ({
             
             {/* Heatmap data */}
             {data.map((location, idx) => (
-              <div key={idx} className="grid grid-cols-8 mb-2">
-                <div className="font-medium text-sm truncate pr-2">{location.name}</div>
+              <div key={idx} className="grid grid-cols-8 gap-1 mb-2">
+                <div className="font-medium text-sm truncate px-2">{location.name}</div>
                 
                 {days.map(day => {
                   const dayData = location.values.find(v => v.day === day);
@@ -66,7 +66,7 @@ const HeatmapChart: React.FC<HeatmapChartProps> = ({
                   return (
                     <div 
                       key={day}
-                      className="aspect-square rounded-sm flex items-center justify-center text-xs font-medium mx-0.5" 
+                      className="aspect-square rounded-sm flex items-center justify-center text-xs font-medium" 
                       style={{ 
                         backgroundColor: getColor(value),
                         color: value > 5 ? 'white' : 'black'
