@@ -7,6 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useFacilities } from '@/contexts/FacilityContext';
 
 interface ConfigItem {
   id: string;
@@ -28,6 +29,23 @@ const LocationSection: React.FC<LocationSectionProps> = ({
   facilities,
   onSelectChange,
 }) => {
+  // Get facilities from context to supplement the facilities from config management
+  const { facilities: contextFacilities } = useFacilities();
+
+  // Create a merged list of facilities
+  const allFacilities = [...facilities];
+  
+  // Add facilities from context if they don't already exist
+  contextFacilities.forEach(facilityName => {
+    const exists = facilities.some(f => f.name === facilityName);
+    if (!exists) {
+      allFacilities.push({
+        id: `facility-${facilityName}`,
+        name: facilityName
+      });
+    }
+  });
+
   return (
     <>
       <div className="space-y-2">
@@ -54,7 +72,7 @@ const LocationSection: React.FC<LocationSectionProps> = ({
 
       <div className="space-y-2">
         <label htmlFor="facilityId" className="text-sm font-medium">
-          School Facility <span className="text-red-500">*</span>
+          Incident <span className="text-red-500">*</span>
         </label>
         <Select 
           value={facilityId}
@@ -62,10 +80,10 @@ const LocationSection: React.FC<LocationSectionProps> = ({
           required
         >
           <SelectTrigger>
-            <SelectValue placeholder="Select facility" />
+            <SelectValue placeholder="Select incident" />
           </SelectTrigger>
           <SelectContent>
-            {facilities.map(facility => (
+            {allFacilities.map(facility => (
               <SelectItem key={facility.id} value={facility.id}>
                 {facility.name}
               </SelectItem>

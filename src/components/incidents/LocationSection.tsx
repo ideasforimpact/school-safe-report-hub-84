@@ -72,7 +72,7 @@ const LocationSection: React.FC<LocationSectionProps> = ({
 
       <div className="space-y-2">
         <label htmlFor="facilityId" className="text-sm font-medium">
-          School Facility <span className="text-red-500">*</span>
+          Incident <span className="text-red-500">*</span>
         </label>
         <Select 
           value={facilityId}
@@ -80,7 +80,7 @@ const LocationSection: React.FC<LocationSectionProps> = ({
           required
         >
           <SelectTrigger>
-            <SelectValue placeholder="Select facility" />
+            <SelectValue placeholder="Select incident" />
           </SelectTrigger>
           <SelectContent>
             {allFacilities.map(facility => (

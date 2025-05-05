@@ -8,6 +8,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useFacilities } from '@/contexts/FacilityContext';
+import { useIncidents } from '@/contexts/IncidentContext';
 
 interface LocationFacilitySectionProps {
   location: string;
@@ -20,8 +21,23 @@ const LocationFacilitySection: React.FC<LocationFacilitySectionProps> = ({
   facility,
   onSelectChange,
 }) => {
-  // Get facilities from FacilityContext
-  const { facilities } = useFacilities();
+  // Get facilities from contexts
+  const { facilities: contextFacilities } = useFacilities();
+  const { facilities: configFacilities } = useIncidents();
+  
+  // Create a merged list of facilities
+  const allFacilities = [...configFacilities];
+  
+  // Add facilities from context if they don't already exist
+  contextFacilities.forEach(facilityName => {
+    const exists = configFacilities.some(f => f.name === facilityName);
+    if (!exists) {
+      allFacilities.push({
+        id: `facility-${facilityName}`,
+        name: facilityName
+      });
+    }
+  });
 
   return (
     <>
@@ -48,7 +64,7 @@ const LocationFacilitySection: React.FC<LocationFacilitySectionProps> = ({
 
       <div className="space-y-2">
         <label htmlFor="facility" className="text-sm font-medium">
-          School Facility <span className="text-red-500">*</span>
+          Incident <span className="text-red-500">*</span>
         </label>
         <Select 
           value={facility}
@@ -56,12 +72,12 @@ const LocationFacilitySection: React.FC<LocationFacilitySectionProps> = ({
           required
         >
           <SelectTrigger>
-            <SelectValue placeholder="Select facility" />
+            <SelectValue placeholder="Select incident facility" />
           </SelectTrigger>
           <SelectContent>
-            {facilities.map((facility, index) => (
-              <SelectItem key={`facility-${index}`} value={facility}>
-                {facility}
+            {allFacilities.map((facility) => (
+              <SelectItem key={facility.id} value={facility.name}>
+                {facility.name}
               </SelectItem>
             ))}
           </SelectContent>
