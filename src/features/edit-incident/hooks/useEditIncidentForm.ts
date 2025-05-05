@@ -1,40 +1,43 @@
 
 import { useEffect, useState } from 'react';
-import { Person, FileItem } from '@/types/incident';
-import { subcategories, nearMissSubcategories, unsafeConditionSubcategories } from '@/contexts/IncidentContext';
-import { IncidentType } from '@/types/incident';
+import { Person, FileItem, IncidentType } from '@/types/incident';
 import { useIncidents } from '@/contexts/IncidentContext';
+import { ConfigItem } from '@/contexts/types';
 
-export const useEditIncidentForm = (
-  initialFormData: {
-    type: string;
-    category: string;
-    subcategory: string;
-    description: string;
-    rootCause: string;
-    date: string;
-    time: string;
-    location: string;
-    status: string;
-    owner: string;
-    facility: string;
-    image: string | undefined;
-  },
-  initialPeopleInvolved: Person[]
-) => {
-  const { users } = useIncidents();
+export const useEditIncidentForm = () => {
+  const { users, categories, locations, facilities } = useIncidents();
   
   // Form data state
-  const [formData, setFormData] = useState(initialFormData);
+  const [formData, setFormData] = useState({
+    id: '',
+    ticketId: '',
+    type: '',
+    status: '',
+    categoryId: '',
+    subcategory: '',
+    description: '',
+    date: new Date().toISOString().split('T')[0],
+    time: new Date().toTimeString().split(' ')[0].slice(0, 5),
+    locationId: '',
+    facilityId: '',
+    priority: 'Medium' as 'Low' | 'Medium' | 'High' | 'Critical',
+    owner: ''
+  });
+  
+  // Image state
+  const [image, setImage] = useState<string | undefined>(undefined);
   
   // People involved state
-  const [peopleInvolved, setPeopleInvolved] = useState<Person[]>(initialPeopleInvolved);
+  const [peopleInvolved, setPeopleInvolved] = useState<Person[]>([]);
   
-  // Supporting files state (empty by default as we don't have edit capability for files right now)
+  // Supporting files state
   const [supportingFiles, setSupportingFiles] = useState<FileItem[]>([]);
   
   // Subcategories state
-  const [availableSubcategories, setAvailableSubcategories] = useState<string[]>([]);
+  const [availableSubcategories, setAvailableSubcategories] = useState<{ id: string; name: string; }[]>([]);
+
+  // Submission state
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form event handlers
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -46,58 +49,74 @@ export const useEditIncidentForm = (
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleImageChange = (imageBase64: string | undefined) => {
-    setFormData(prev => ({ ...prev, image: imageBase64 }));
+  const handleDateTimeChange = (date: Date | undefined, timeString?: string) => {
+    if (date) {
+      setFormData(prev => ({ 
+        ...prev, 
+        date: date.toISOString().split('T')[0]
+      }));
+    }
+    if (timeString) {
+      setFormData(prev => ({ ...prev, time: timeString }));
+    }
+  };
+  
+  const onImageChange = (imageBase64: string | undefined) => {
+    setImage(imageBase64);
   };
   
   const handleFilesChange = (files: FileItem[]) => {
     setSupportingFiles(files);
   };
 
-  // Update available subcategories when type or category changes
-  useEffect(() => {
-    if (!formData.type || !formData.category) {
-      setAvailableSubcategories([]);
-      return;
-    }
+  // Mock submission handler for now
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    // Simulate API call
+    setTimeout(() => setIsSubmitting(false), 1000);
+  };
 
-    if (formData.type === 'Incident') {
-      setAvailableSubcategories(subcategories[formData.category as keyof typeof subcategories] || []);
-    } else if (formData.type === 'Near Miss') {
-      const nearMissCategory = formData.category;
-      const subcats = nearMissSubcategories[nearMissCategory as keyof typeof nearMissSubcategories] || [];
-      setAvailableSubcategories(subcats);
-    } else if (formData.type === 'Unsafe Condition') {
-      const unsafeCategory = formData.category;
-      const subcats = unsafeConditionSubcategories[unsafeCategory as keyof typeof unsafeConditionSubcategories] || [];
-      setAvailableSubcategories(subcats);
-    }
-  }, [formData.type, formData.category]);
+  // Helper functions to get data for form
+  const getCategories = (): ConfigItem[] => {
+    return categories;
+  };
 
-  // Get categories based on selected type
-  const getCategoriesForType = (type: IncidentType): string[] => {
-    if (type === 'Incident') {
-      return Object.keys(subcategories);
-    } else if (type === 'Near Miss') {
-      return Object.keys(nearMissSubcategories);
-    } else if (type === 'Unsafe Condition') {
-      return Object.keys(unsafeConditionSubcategories);
-    }
-    return [];
+  const getLocations = (): ConfigItem[] => {
+    return locations;
+  };
+
+  const getFacilities = (): ConfigItem[] => {
+    return facilities;
+  };
+
+  const getUsers = () => {
+    return users;
+  };
+
+  // Get categories for a specific incident type
+  const getCategoriesForType = (type: string): ConfigItem[] => {
+    // In a real app, you would filter categories based on type
+    return categories;
   };
 
   return {
     formData,
-    setFormData,
-    peopleInvolved,
-    setPeopleInvolved,
+    image,
     supportingFiles,
+    peopleInvolved,
     availableSubcategories,
-    setAvailableSubcategories,
     handleChange,
     handleSelectChange,
-    handleImageChange,
+    handleDateTimeChange,
     handleFilesChange,
+    onImageChange,
+    isSubmitting,
+    handleSubmit,
+    getCategories,
+    getLocations,
+    getFacilities,
+    getUsers,
     getCategoriesForType
   };
 };

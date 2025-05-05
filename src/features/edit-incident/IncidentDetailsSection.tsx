@@ -8,11 +8,7 @@ import DateTimeSection from './components/DateTimeSection';
 import DescriptionSection from './components/DescriptionSection';
 import PrioritySection from './components/PrioritySection';
 import AssignmentSection from './components/AssignmentSection';
-
-interface ConfigItem {
-  id: string;
-  name: string;
-}
+import { ConfigItem } from '@/contexts/types';
 
 interface IncidentDetailsProps {
   formData: {
@@ -87,9 +83,9 @@ const IncidentDetailsSection: React.FC<IncidentDetailsProps> = ({
 
       {/* Location and Facility Section */}
       <LocationFacilitySection
-        locationId={formData.locationId}
+        location={formData.locationId}
         locations={locations}
-        facilityId={formData.facilityId}
+        facility={formData.facilityId}
         facilities={facilities}
         onSelectChange={onSelectChange}
       />
@@ -98,7 +94,7 @@ const IncidentDetailsSection: React.FC<IncidentDetailsProps> = ({
       <DateTimeSection
         date={formData.date}
         time={formData.time}
-        onDateTimeChange={onDateTimeChange}
+        onChange={onDateTimeChange}
       />
 
       {/* Assignment Section */}

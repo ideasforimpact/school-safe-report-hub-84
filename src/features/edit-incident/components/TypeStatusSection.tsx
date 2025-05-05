@@ -13,7 +13,7 @@ interface TypeStatusSectionProps {
   type: string;
   status: string;
   onSelectChange: (name: string, value: string) => void;
-  getCategoriesForType: (type: IncidentType) => string[];
+  getCategoriesForType?: (type: IncidentType) => string[];
 }
 
 const TypeStatusSection: React.FC<TypeStatusSectionProps> = ({

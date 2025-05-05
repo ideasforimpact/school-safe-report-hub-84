@@ -52,13 +52,7 @@ const EditIncidentPage = () => {
           ticketId={incident.ticketId}
         />
 
-        <EditIncidentForm
-          initialFormData={formData}
-          initialPeopleInvolved={peopleInvolved}
-          isSubmitting={isSubmitting}
-          onSubmit={handleFormSubmit}
-          onCancel={() => navigate(`/incident/${id}`)}
-        />
+        <EditIncidentForm />
         
         <VoidIncidentDialog
           open={showVoidDialog}
