@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -22,6 +22,23 @@ const CategoryConfiguration = () => {
     updateSubcategory,
     deleteSubcategory
   } = useIncidents();
+
+  // Add Digital Safety category on component mount if it doesn't exist
+  useEffect(() => {
+    const digitalSafetyExists = categories.some(cat => 
+      cat.name.toLowerCase() === 'digital safety'
+    );
+    
+    if (!digitalSafetyExists) {
+      try {
+        const newCategory = addCategory('Digital Safety');
+        console.log("Digital Safety category added:", newCategory);
+        toast.success("Digital Safety category added successfully");
+      } catch (error) {
+        console.error("Error adding Digital Safety category:", error);
+      }
+    }
+  }, []);
 
   const handleAddCategory = (name: string) => {
     if (!name.trim()) {
