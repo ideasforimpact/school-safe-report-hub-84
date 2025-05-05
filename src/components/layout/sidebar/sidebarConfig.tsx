@@ -4,7 +4,6 @@ import {
   FileText, 
   PieChart,
   AlertTriangle,
-  List,
   Users,
   Building,
   BarChart,
@@ -50,8 +49,8 @@ export const getClientItems = (permissions: ModulePermissions) => [
   },
   // Removed the Report item from the sidebar
   {
-    icon: List,
-    label: 'All Incidents',
+    icon: FileText,
+    label: 'Incidents',
     path: '/incidents',
     allowed: permissions.allIncidents,
   },
@@ -68,4 +67,3 @@ export const getClientItems = (permissions: ModulePermissions) => [
     allowed: permissions.benchmarking,
   },
 ];
-
