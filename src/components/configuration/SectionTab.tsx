@@ -12,9 +12,9 @@ import {
 } from '@/components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
-import { ConfigItem, SectionItem } from '@/contexts/types';
+import { SectionItem, ClassItem } from '@/contexts/types';
 import { EditDialog } from './EditDialog';
-import { toast } from '@/components/ui/sonner';
+import { toast } from 'sonner';
 import {
   Select,
   SelectContent,
@@ -25,7 +25,7 @@ import {
 
 interface SectionTabProps {
   sections: SectionItem[];
-  classes: ConfigItem[];
+  classes: ClassItem[];
   addSection: (classId: string, name: string) => void;
   updateSection: (id: string, classId: string, name: string) => void;
   deleteSection: (id: string) => void;
@@ -42,7 +42,9 @@ export const SectionTab = ({
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [editingSection, setEditingSection] = useState<{id: string, name: string, classId: string} | null>(null);
 
-  const handleSectionAdd = () => {
+  const handleSectionAdd = (e: React.FormEvent) => {
+    e.preventDefault();
+    
     if (!newSection.trim()) {
       toast.error("Section name cannot be empty");
       return;
@@ -53,14 +55,13 @@ export const SectionTab = ({
       return;
     }
     
-    addSection(selectedClassId, newSection);
+    console.log("Adding section:", newSection, "to class:", selectedClassId);
+    addSection(selectedClassId, newSection.trim());
     setNewSection('');
-    toast.success("Section added successfully");
   };
 
   const handleSectionDelete = (id: string) => {
     deleteSection(id);
-    toast.success("Section deleted successfully");
   };
 
   const handleSectionUpdate = () => {
@@ -76,7 +77,6 @@ export const SectionTab = ({
     
     updateSection(editingSection.id, editingSection.classId, editingSection.name);
     setEditingSection(null);
-    toast.success("Section updated successfully");
   };
 
   const getClassName = (classId: string) => {
@@ -88,10 +88,10 @@ export const SectionTab = ({
     <Card>
       <CardHeader>
         <CardTitle>Section Management</CardTitle>
-        <CardDescription>Add, edit, or remove sections for classes</CardDescription>
+        <CardDescription>Add, edit, or remove sections</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex gap-4 mb-6 flex-col sm:flex-row">
+        <form onSubmit={handleSectionAdd} className="flex gap-4 mb-6 flex-col sm:flex-row">
           <div className="flex-1">
             <Select value={selectedClassId} onValueChange={setSelectedClassId}>
               <SelectTrigger className="w-full">
@@ -106,15 +106,15 @@ export const SectionTab = ({
           </div>
           <div className="flex-1">
             <Input
-              placeholder="New section name (e.g., Section D)"
+              placeholder="New section name (e.g., Section A)"
               value={newSection}
               onChange={(e) => setNewSection(e.target.value)}
             />
           </div>
-          <Button onClick={handleSectionAdd} className="whitespace-nowrap">
+          <Button type="submit" className="whitespace-nowrap">
             <Plus className="mr-2 h-4 w-4" /> Add Section
           </Button>
-        </div>
+        </form>
         
         <Table>
           <TableHeader>
@@ -125,59 +125,67 @@ export const SectionTab = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sections.map((section) => (
-              <TableRow key={section.id}>
-                <TableCell>{section.name}</TableCell>
-                <TableCell>{getClassName(section.classId)}</TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
-                    <EditDialog
-                      title="Edit Section"
-                      description="Update the section details below"
-                      fieldLabel="Section name"
-                      value={section.name}
-                      extraField={{
-                        type: "select",
-                        label: "Class",
-                        options: classes.map(cls => ({ value: cls.id, label: cls.name })),
-                        value: section.classId,
-                        onChange: (value) => setEditingSection(prev => 
-                          prev ? {...prev, classId: value} : null
-                        )
-                      }}
-                      onOpenChange={(open) => {
-                        if (open) {
-                          setEditingSection({
-                            id: section.id, 
-                            name: section.name, 
-                            classId: section.classId
-                          });
-                        } else {
-                          setEditingSection(null);
-                        }
-                      }}
-                      onChange={(value) => setEditingSection(prev => 
-                        prev ? {...prev, name: value} : null
-                      )}
-                      onSave={handleSectionUpdate}
-                      triggerButton={
-                        <Button variant="ghost" size="icon">
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                      }
-                    />
-                    
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => handleSectionDelete(section.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+            {sections.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={3} className="text-center py-4 text-muted-foreground">
+                  No sections available. Add your first section above.
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              sections.map((section) => (
+                <TableRow key={section.id}>
+                  <TableCell>{section.name}</TableCell>
+                  <TableCell>{getClassName(section.classId)}</TableCell>
+                  <TableCell>
+                    <div className="flex gap-2">
+                      <EditDialog
+                        title="Edit Section"
+                        description="Update the section details below"
+                        fieldLabel="Section name"
+                        value={section.name}
+                        extraField={{
+                          type: "select",
+                          label: "Class",
+                          options: classes.map(cls => ({ value: cls.id, label: cls.name })),
+                          value: section.classId,
+                          onChange: (value) => setEditingSection(prev => 
+                            prev ? {...prev, classId: value} : null
+                          )
+                        }}
+                        onOpenChange={(open) => {
+                          if (open) {
+                            setEditingSection({
+                              id: section.id, 
+                              name: section.name, 
+                              classId: section.classId
+                            });
+                          } else {
+                            setEditingSection(null);
+                          }
+                        }}
+                        onChange={(value) => setEditingSection(prev => 
+                          prev ? {...prev, name: value} : null
+                        )}
+                        onSave={handleSectionUpdate}
+                        triggerButton={
+                          <Button variant="ghost" size="icon">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        }
+                      />
+                      
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => handleSectionDelete(section.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </CardContent>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
@@ -86,8 +87,11 @@ const EducationalConfiguration = () => {
 
   const handleAddClass = (campusId: string, name: string) => {
     try {
+      console.log("EducationalConfiguration: Adding class:", name, "to campus:", campusId);
       contextAddClass(campusId, name);
-      // No need to check the return value - context will update and trigger useEffect
+      // Refresh classes from context (will be picked up by useEffect)
+      console.log('Class added, refreshing from context');
+      
       toast.success("Class added successfully");
     } catch (error) {
       console.error("Error adding class:", error);
@@ -121,8 +125,11 @@ const EducationalConfiguration = () => {
 
   const handleAddSection = (classId: string, name: string) => {
     try {
+      console.log("EducationalConfiguration: Adding section:", name, "to class:", classId);
       contextAddSection(classId, name);
-      // No need to check the return value - context will update and trigger useEffect
+      // Refresh sections from context (will be picked up by useEffect)
+      console.log('Section added, refreshing from context');
+      
       toast.success("Section added successfully");
     } catch (error) {
       console.error("Error adding section:", error);

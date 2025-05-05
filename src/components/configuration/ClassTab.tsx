@@ -42,7 +42,9 @@ export const ClassTab = ({
   const [selectedCampusId, setSelectedCampusId] = useState<string>('');
   const [editingClass, setEditingClass] = useState<{id: string, name: string, campusId: string} | null>(null);
 
-  const handleClassAdd = () => {
+  const handleClassAdd = (e: React.FormEvent) => {
+    e.preventDefault();
+    
     if (!newClass.trim()) {
       toast.error("Class name cannot be empty");
       return;
@@ -53,7 +55,8 @@ export const ClassTab = ({
       return;
     }
     
-    addClass(selectedCampusId, newClass);
+    console.log("Adding class:", newClass, "to campus:", selectedCampusId);
+    addClass(selectedCampusId, newClass.trim());
     setNewClass('');
     toast.success("Class added successfully");
   };
@@ -91,7 +94,7 @@ export const ClassTab = ({
         <CardDescription>Add, edit, or remove classes</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex gap-4 mb-6 flex-col sm:flex-row">
+        <form onSubmit={handleClassAdd} className="flex gap-4 mb-6 flex-col sm:flex-row">
           <div className="flex-1">
             <Select value={selectedCampusId} onValueChange={setSelectedCampusId}>
               <SelectTrigger className="w-full">
@@ -111,10 +114,10 @@ export const ClassTab = ({
               onChange={(e) => setNewClass(e.target.value)}
             />
           </div>
-          <Button onClick={handleClassAdd} className="whitespace-nowrap">
+          <Button type="submit" className="whitespace-nowrap">
             <Plus className="mr-2 h-4 w-4" /> Add Class
           </Button>
-        </div>
+        </form>
         
         <Table>
           <TableHeader>
