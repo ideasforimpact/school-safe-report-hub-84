@@ -4,7 +4,7 @@ import IncidentDetailContent from '@/components/incident/IncidentDetailContent';
 import { useIncidentDetailPage } from '@/hooks/useIncidentDetailPage';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, ArrowLeft } from 'lucide-react';
 
 const IncidentDetail = () => {
   const incidentDetailProps = useIncidentDetailPage();
@@ -23,9 +23,10 @@ const IncidentDetail = () => {
           
           <div className="flex justify-center mt-6">
             <Button 
-              className="mr-4"
+              className="mr-4 flex items-center"
               onClick={() => incidentDetailProps.navigate('/incidents')}
             >
+              <ArrowLeft className="h-4 w-4 mr-2" />
               Return to Incidents List
             </Button>
             <Button 
