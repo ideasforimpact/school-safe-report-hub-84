@@ -6,15 +6,22 @@ import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recha
 interface CategoryChartProps {
   data: Array<{name: string, value: number}>;
   colors: string[];
+  title?: string;
+  description?: string;
 }
 
-const CategoryChart: React.FC<CategoryChartProps> = ({ data, colors }) => {
+const CategoryChart: React.FC<CategoryChartProps> = ({ 
+  data, 
+  colors, 
+  title = "Incidents by Category", 
+  description = "Distribution of incidents across different categories" 
+}) => {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Incidents by Category</CardTitle>
+        <CardTitle>{title}</CardTitle>
         <CardDescription>
-          Distribution of incidents across different categories
+          {description}
         </CardDescription>
       </CardHeader>
       <CardContent className="h-64">

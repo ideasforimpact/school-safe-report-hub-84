@@ -398,6 +398,11 @@ const Insights = () => {
     downloadCSV(csvContent, `people-incident-report-${new Date().toISOString().slice(0, 10)}.csv`);
   };
 
+  // Handle date filter change - fixed type issue
+  const handleDateFilterChange = (value: string) => {
+    setDateFilter(value as DateRangeFilter);
+  };
+
   // Handle date range change
   const handleDateRangeChange = (range: DateRange | undefined) => {
     setDateRange(range);
@@ -432,10 +437,10 @@ const Insights = () => {
           </div>
         </div>
 
-        {/* Filter section */}
+        {/* Filter section - updated to use handleDateFilterChange */}
         <InsightsFilters
           dateFilter={dateFilter}
-          setDateFilter={setDateFilter}
+          setDateFilter={handleDateFilterChange}
           typeFilter={typeFilter}
           setTypeFilter={setTypeFilter}
           categoryFilter={categoryFilter}
