@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
@@ -49,14 +48,10 @@ const EducationalConfiguration = () => {
   const handleAddCampus = (name: string) => {
     try {
       console.log('EducationalConfiguration: Adding campus:', name); // Debug log
-      const newCampus = contextAddCampus(name);
-      console.log('New campus created:', newCampus); // Debug log
+      contextAddCampus(name);
       
-      // Check if newCampus is defined before updating state
-      if (newCampus) {
-        // Manually update the local state to ensure UI update
-        setCampuses(prev => [...prev, newCampus]);
-      }
+      // Refresh campuses from context (will be picked up by useEffect)
+      console.log('Campus added, refreshing from context');
       
       toast.success("Campus added successfully");
     } catch (error) {

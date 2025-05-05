@@ -35,7 +35,6 @@ export const CampusTab = ({
   const [editingCampus, setEditingCampus] = useState<{id: string, name: string} | null>(null);
 
   const handleCampusAdd = (e: React.FormEvent) => {
-    // Prevent form submission default behavior
     e.preventDefault();
     
     if (!newCampus.trim()) {
@@ -43,9 +42,9 @@ export const CampusTab = ({
       return;
     }
     
+    console.log("Adding campus:", newCampus.trim()); // Debug log
     addCampus(newCampus.trim());
     setNewCampus('');
-    console.log("Adding campus:", newCampus.trim()); // Debug log
   };
 
   const handleCampusDelete = (id: string) => {
@@ -69,13 +68,6 @@ export const CampusTab = ({
     setEditingCampus(null);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault(); // Prevent form submission on Enter key
-      handleCampusAdd(e as unknown as React.FormEvent);
-    }
-  };
-
   return (
     <Card>
       <CardHeader>
@@ -90,7 +82,6 @@ export const CampusTab = ({
                 placeholder="New campus name (e.g., Main Campus)"
                 value={newCampus}
                 onChange={(e) => setNewCampus(e.target.value)}
-                onKeyDown={handleKeyDown}
               />
             </div>
             <Button type="submit" className="whitespace-nowrap">

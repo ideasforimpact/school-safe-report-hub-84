@@ -13,13 +13,12 @@ export function useEducationalStructureManagement(
   const [sections, setSections] = useState<SectionItem[]>(initialSections);
 
   // Campus management
-  const addCampus = (name: string): CampusItem => {
+  const addCampus = (name: string): void => {
     const newCampus: CampusItem = {
       id: Date.now().toString(),
       name
     };
     setCampuses(prev => [...prev, newCampus]);
-    return newCampus; // Return the newly created campus
   };
 
   const updateCampus = (id: string, name: string): void => {
@@ -35,14 +34,13 @@ export function useEducationalStructureManagement(
   };
 
   // Classes management
-  const addClass = (campusId: string, name: string): ClassItem => {
+  const addClass = (campusId: string, name: string): void => {
     const newClass: ClassItem = {
       id: Date.now().toString(),
       name,
       campusId
     };
     setClasses(prev => [...prev, newClass]);
-    return newClass; // Return the newly created class
   };
 
   const updateClass = (id: string, campusId: string, name: string): void => {
@@ -58,14 +56,13 @@ export function useEducationalStructureManagement(
   };
 
   // Sections management
-  const addSection = (classId: string, name: string): SectionItem => {
+  const addSection = (classId: string, name: string): void => {
     const newSection: SectionItem = {
       id: Date.now().toString(),
       name,
       classId
     };
     setSections(prev => [...prev, newSection]);
-    return newSection; // Return the newly created section
   };
 
   const updateSection = (id: string, classId: string, name: string): void => {
