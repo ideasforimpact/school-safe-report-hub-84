@@ -57,8 +57,10 @@ const CategoryConfiguration = () => {
       
       try {
         const newCategory = addCategory('Digital Safety');
-        // Update local state immediately for the UI - ensure we only add valid objects
-        if (newCategory) {
+        console.log("Adding Digital Safety category result:", newCategory);
+        
+        // Only update state if we got a valid result back
+        if (typeof newCategory === 'object' && newCategory !== null) {
           setLocalCategories(prevCategories => [...prevCategories, newCategory as ConfigItem]);
           toast.success("Digital Safety category added successfully");
           setDigitalSafetyAdded(true);
@@ -89,8 +91,10 @@ const CategoryConfiguration = () => {
     
     try {
       const newCategory = addCategory(name);
-      // Update local state immediately - ensure we only add valid objects
-      if (newCategory) {
+      console.log("Category add result:", newCategory);
+      
+      // Only update state if we got a valid result back
+      if (typeof newCategory === 'object' && newCategory !== null) {
         setLocalCategories(prevCategories => [...prevCategories, newCategory as ConfigItem]);
         console.log("Category added successfully:", newCategory);
         toast.success("Category added successfully");
@@ -135,8 +139,10 @@ const CategoryConfiguration = () => {
   const handleAddSubcategory = (categoryId: string, name: string) => {
     try {
       const newSubcategory = addSubcategory(categoryId, name);
-      // Update local state immediately
-      if (newSubcategory) {
+      console.log("Subcategory add result:", newSubcategory);
+      
+      // Only update state if we got a valid result back
+      if (typeof newSubcategory === 'object' && newSubcategory !== null) {
         setLocalSubcategoryMappings(prev => ({
           ...prev,
           [categoryId]: [...(prev[categoryId] || []), newSubcategory]
