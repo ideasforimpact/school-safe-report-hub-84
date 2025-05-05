@@ -3,9 +3,20 @@ import { useEffect, useState } from 'react';
 import { Person, FileItem, IncidentType } from '@/types/incident';
 import { useIncidents } from '@/contexts/IncidentContext';
 import { ConfigItem } from '@/contexts/types';
+import { useParams } from 'react-router-dom';
+import { useSubcategories } from '@/hooks/useSubcategories';
+import { toast } from 'sonner';
 
 export const useEditIncidentForm = () => {
-  const { users, categories, locations, facilities } = useIncidents();
+  const { id } = useParams<{ id: string }>();
+  const { 
+    users, 
+    categories, 
+    locations, 
+    facilities, 
+    getIncident,
+    subcategoryMappings
+  } = useIncidents();
   
   // Form data state
   const [formData, setFormData] = useState({
@@ -33,11 +44,79 @@ export const useEditIncidentForm = () => {
   // Supporting files state
   const [supportingFiles, setSupportingFiles] = useState<FileItem[]>([]);
   
-  // Subcategories state
-  const [availableSubcategories, setAvailableSubcategories] = useState<{ id: string; name: string; }[]>([]);
-
   // Submission state
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Load incident data when component mounts
+  useEffect(() => {
+    if (!id) return;
+    
+    const incident = getIncident(id);
+    if (!incident) {
+      toast.error("Incident not found");
+      return;
+    }
+    
+    // Find category ID
+    const categoryId = categories.find(c => c.name === incident.category)?.id || '';
+    
+    // Find location ID
+    const locationId = locations.find(l => l.name === incident.location)?.id || '';
+    
+    // Find facility ID
+    const facilityId = facilities.find(f => f.name === incident.facility)?.id || '';
+    
+    // Extract time from date
+    const date = new Date(incident.date);
+    const formattedDate = date.toISOString().split('T')[0];
+    const formattedTime = date.toTimeString().split(' ')[0].slice(0, 5);
+    
+    setFormData({
+      id: incident.id,
+      ticketId: incident.ticketId,
+      type: incident.type,
+      status: incident.status,
+      categoryId,
+      subcategory: incident.subcategory || '',
+      description: incident.description,
+      date: formattedDate,
+      time: formattedTime,
+      locationId,
+      facilityId,
+      priority: incident.priority || 'Medium',
+      owner: incident.owner?.id || ''
+    });
+    
+    // Set image if available
+    if (incident.image) {
+      setImage(incident.image);
+    }
+    
+    // Set people involved
+    if (incident.peopleInvolved) {
+      setPeopleInvolved([...incident.peopleInvolved]);
+    }
+    
+    // Set supporting files if available
+    if (incident.documents) {
+      const files = incident.documents.map((doc, index) => ({
+        id: `doc-${index}`,
+        name: doc.name,
+        type: doc.type,
+        size: doc.data.length * 0.75, // Approximate size from base64
+        base64: doc.data
+      }));
+      setSupportingFiles(files);
+    }
+    
+  }, [id, getIncident, categories, locations, facilities]);
+
+  // Setup subcategory handling
+  const { availableSubcategories } = useSubcategories(
+    formData.categoryId,
+    subcategoryMappings,
+    setFormData
+  );
 
   // Form event handlers
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {

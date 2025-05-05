@@ -1,5 +1,5 @@
 
-import { useState, useRef, ChangeEvent } from 'react';
+import { useState, useRef, ChangeEvent, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Upload, X, Image as ImageIcon } from 'lucide-react';
 
@@ -12,13 +12,21 @@ interface ImageUploadProps {
 const ImageUpload = ({ initialImage, onImageChange, className = '' }: ImageUploadProps) => {
   const [previewImage, setPreviewImage] = useState<string | undefined>(initialImage);
   const [isUploading, setIsUploading] = useState(false);
+  const [imageError, setImageError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Update preview image when initialImage prop changes
+  useEffect(() => {
+    setPreviewImage(initialImage);
+    setImageError(false);
+  }, [initialImage]);
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setIsUploading(true);
+    setImageError(false);
     
     // Validate file is an image
     if (!file.type.startsWith('image/')) {
@@ -44,6 +52,7 @@ const ImageUpload = ({ initialImage, onImageChange, className = '' }: ImageUploa
     };
     reader.onerror = () => {
       setIsUploading(false);
+      setImageError(true);
       alert('Error reading file');
     };
     reader.readAsDataURL(file);
@@ -56,9 +65,15 @@ const ImageUpload = ({ initialImage, onImageChange, className = '' }: ImageUploa
   const clearImage = () => {
     setPreviewImage(undefined);
     onImageChange(undefined);
+    setImageError(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+  };
+
+  const handleImageError = () => {
+    console.error("Image failed to load:", previewImage);
+    setImageError(true);
   };
 
   return (
@@ -71,12 +86,13 @@ const ImageUpload = ({ initialImage, onImageChange, className = '' }: ImageUploa
         accept="image/*" 
       />
       
-      {previewImage ? (
+      {previewImage && !imageError ? (
         <div className="relative w-full">
           <img 
             src={previewImage} 
             alt="Preview" 
             className="w-full h-48 object-contain border rounded-md"
+            onError={handleImageError}
           />
           <Button 
             type="button" 
