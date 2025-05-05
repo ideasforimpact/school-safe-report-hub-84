@@ -14,7 +14,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { ConfigItem } from '@/contexts/types';
 import { EditDialog } from './EditDialog';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/sonner';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 interface CategoryTabProps {
   categories: ConfigItem[];
@@ -40,25 +41,40 @@ export const CategoryTab = ({
       return;
     }
     
-    addCategory(newCategory.trim());
-    setNewCategory('');
-    toast.success("Category added successfully");
+    try {
+      addCategory(newCategory.trim());
+      setNewCategory('');
+      toast.success("Category added successfully");
+    } catch (error) {
+      console.error("Error adding category:", error);
+      toast.error("Failed to add category");
+    }
   };
 
   const handleCategoryDelete = (id: string) => {
-    deleteCategory(id);
-    toast.success("Category deleted successfully");
+    try {
+      deleteCategory(id);
+      toast.success("Category deleted successfully");
+    } catch (error) {
+      console.error("Error deleting category:", error);
+      toast.error("Failed to delete category");
+    }
   };
 
-  const handleCategoryUpdate = () => {
-    if (!editingCategory || !editingCategory.name.trim()) {
+  const handleCategoryUpdate = (id: string, name: string) => {
+    if (!name.trim()) {
       toast.error("Category name cannot be empty");
       return;
     }
     
-    updateCategory(editingCategory.id, editingCategory.name.trim());
-    setEditingCategory(null);
-    toast.success("Category updated successfully");
+    try {
+      updateCategory(id, name.trim());
+      setEditingCategory(null);
+      toast.success("Category updated successfully");
+    } catch (error) {
+      console.error("Error updating category:", error);
+      toast.error("Failed to update category");
+    }
   };
 
   return (
@@ -73,6 +89,7 @@ export const CategoryTab = ({
             placeholder="New category name"
             value={newCategory}
             onChange={(e) => setNewCategory(e.target.value)}
+            className="flex-1"
           />
           <Button type="submit">
             <Plus className="mr-2 h-4 w-4" /> Add Category
@@ -107,12 +124,18 @@ export const CategoryTab = ({
                         onOpenChange={(open) => {
                           if (open) {
                             setEditingCategory({id: category.id, name: category.name});
-                          } else {
-                            setEditingCategory(null);
                           }
                         }}
-                        onChange={(value) => setEditingCategory(prev => prev ? {...prev, name: value} : null)}
-                        onSave={handleCategoryUpdate}
+                        onChange={(value) => {
+                          if (editingCategory) {
+                            setEditingCategory({...editingCategory, name: value});
+                          }
+                        }}
+                        onSave={() => {
+                          if (editingCategory) {
+                            handleCategoryUpdate(category.id, editingCategory.name);
+                          }
+                        }}
                         triggerButton={
                           <Button variant="ghost" size="icon">
                             <Pencil className="h-4 w-4" />
@@ -120,13 +143,30 @@ export const CategoryTab = ({
                         }
                       />
                       
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => handleCategoryDelete(category.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Category</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete this category? This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={() => handleCategoryDelete(category.id)}
+                              className="bg-red-600 hover:bg-red-700"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </TableCell>
                 </TableRow>
