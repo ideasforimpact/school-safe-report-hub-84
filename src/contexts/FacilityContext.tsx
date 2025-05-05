@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { toast } from "@/components/ui/sonner";
 import { SchoolFacility } from '@/contexts/IncidentContext';
@@ -5,6 +6,7 @@ import { SchoolFacility } from '@/contexts/IncidentContext';
 interface FacilityContextType {
   facilities: string[];
   addFacility: (facility: string) => void;
+  resetFacilities: () => void;
 }
 
 // Initial facilities from the IncidentContext SchoolFacility type
@@ -40,10 +42,16 @@ export const FacilityProvider = ({ children }: { children: ReactNode }) => {
     setFacilities(prev => [...prev, facility]);
   };
 
+  const resetFacilities = () => {
+    setFacilities([]);
+    localStorage.setItem('facilities', JSON.stringify([]));
+  };
+
   return (
     <FacilityContext.Provider value={{ 
       facilities, 
-      addFacility
+      addFacility,
+      resetFacilities
     }}>
       {children}
     </FacilityContext.Provider>

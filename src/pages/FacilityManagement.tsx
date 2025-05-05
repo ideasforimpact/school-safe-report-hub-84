@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/components/ui/sonner";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import Layout from "@/components/layout/Layout";
 import { useAuth } from "@/contexts/AuthContext";
 import { SchoolFacility } from "@/contexts/IncidentContext";
@@ -13,7 +14,7 @@ import { useFacilities } from "@/contexts/FacilityContext";
 const FacilityManagement = () => {
   const [newFacility, setNewFacility] = useState("");
   const { isAdmin } = useAuth();
-  const { facilities, addFacility } = useFacilities();
+  const { facilities, addFacility, resetFacilities } = useFacilities();
   const navigate = useNavigate();
 
   // Redirect non-admin users
@@ -43,11 +44,36 @@ const FacilityManagement = () => {
     toast.success("Facility added successfully");
   };
 
+  const handleResetFacilities = () => {
+    resetFacilities();
+    toast.success("All facilities have been removed");
+  };
+
   return (
     <Layout>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold tracking-tight">Facility Management</h1>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive">Clear All Facilities</Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete all 
+                  facilities from the system and reset your facilities list.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleResetFacilities}>
+                  Yes, delete all facilities
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -68,7 +94,7 @@ const FacilityManagement = () => {
                     maxLength={50}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Note: Once added, facilities cannot be edited or deleted
+                    Note: Once added, facilities cannot be edited or deleted individually
                   </p>
                 </div>
                 
