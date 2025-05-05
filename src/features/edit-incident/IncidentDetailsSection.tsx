@@ -1,107 +1,116 @@
 
 import React from 'react';
-import { IncidentType, FileItem } from '@/types/incident';
-import { useIncidents } from '@/contexts/IncidentContext';
-
-// Import our component sections
+import { FileItem } from '@/types/incident';
 import TypeStatusSection from './components/TypeStatusSection';
 import CategorySubcategorySection from './components/CategorySubcategorySection';
 import LocationFacilitySection from './components/LocationFacilitySection';
-import AssignmentSection from './components/AssignmentSection';
-import DescriptionSection from './components/DescriptionSection';
 import DateTimeSection from './components/DateTimeSection';
+import DescriptionSection from './components/DescriptionSection';
 import PrioritySection from './components/PrioritySection';
+import AssignmentSection from './components/AssignmentSection';
 
-interface IncidentDetailsSectionProps {
-  formData: {
-    type: string;
-    category: string;
-    subcategory: string;
-    description: string;
-    rootCause: string;
-    date: string;
-    time: string;
-    location: string;
-    status: string;
-    owner: string;
-    facility: string;
-    image: string | undefined;
-    priority?: 'Low' | 'Medium' | 'High' | 'Critical';
-  };
-  supportingFiles: FileItem[];
-  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
-  onSelectChange: (name: string, value: string) => void;
-  onImageChange: (imageBase64: string | undefined) => void;
-  onFilesChange: (files: FileItem[]) => void;
-  getCategoriesForType: (type: IncidentType) => string[];
-  availableSubcategories: string[];
+interface ConfigItem {
+  id: string;
+  name: string;
 }
 
-const IncidentDetailsSection: React.FC<IncidentDetailsSectionProps> = ({
+interface IncidentDetailsProps {
+  formData: {
+    id: string;
+    ticketId: string;
+    type: string;
+    status: string;
+    categoryId: string;
+    subcategory: string;
+    description: string;
+    date: string;
+    time: string;
+    locationId: string;
+    facilityId: string;
+    priority: 'Low' | 'Medium' | 'High' | 'Critical';
+    owner: string;
+  };
+  image?: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  onSelectChange: (name: string, value: string) => void;
+  onDateTimeChange: (date: Date | undefined, timeString?: string) => void;
+  supportingFiles: FileItem[];
+  onFilesChange: (files: FileItem[]) => void;
+  onImageChange: (imageBase64: string | undefined) => void;
+  categories: ConfigItem[];
+  availableSubcategories: {id: string, name: string}[];
+  locations: ConfigItem[];
+  facilities: ConfigItem[];
+  users: any[];
+}
+
+const IncidentDetailsSection: React.FC<IncidentDetailsProps> = ({
   formData,
-  supportingFiles,
+  image,
   onChange,
   onSelectChange,
-  onImageChange,
+  onDateTimeChange,
+  supportingFiles,
   onFilesChange,
-  getCategoriesForType,
-  availableSubcategories
+  onImageChange,
+  categories,
+  availableSubcategories,
+  locations,
+  facilities,
+  users
 }) => {
-  const { users } = useIncidents();
-  const categoriesForType = getCategoriesForType(formData.type as IncidentType);
-
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      {/* Report Type and Status */}
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+      {/* Type and Status Section */}
       <TypeStatusSection
         type={formData.type}
         status={formData.status}
         onSelectChange={onSelectChange}
-        getCategoriesForType={getCategoriesForType}
       />
 
-      {/* Priority */}
+      {/* Priority Section */}
       <PrioritySection
-        priority={formData.priority || 'Medium'}
+        priority={formData.priority}
         onSelectChange={onSelectChange}
       />
 
-      {/* Category and Subcategory */}
+      {/* Category and Subcategory Section */}
       <CategorySubcategorySection
-        category={formData.category}
+        categoryId={formData.categoryId}
+        categories={categories}
         subcategory={formData.subcategory}
         availableSubcategories={availableSubcategories}
         onSelectChange={onSelectChange}
-        categoriesForType={categoriesForType}
       />
-      
-      {/* Location and Facility */}
+
+      {/* Location and Facility Section */}
       <LocationFacilitySection
-        location={formData.location}
-        facility={formData.facility}
+        locationId={formData.locationId}
+        locations={locations}
+        facilityId={formData.facilityId}
+        facilities={facilities}
         onSelectChange={onSelectChange}
       />
 
-      {/* Assigned To */}
-      <AssignmentSection
+      {/* Date and Time Section */}
+      <DateTimeSection
+        date={formData.date}
+        time={formData.time}
+        onDateTimeChange={onDateTimeChange}
+      />
+
+      {/* Assignment Section */}
+      <AssignmentSection 
         owner={formData.owner}
         users={users}
         onSelectChange={onSelectChange}
       />
 
-      {/* Date and Time */}
-      <DateTimeSection
-        date={formData.date}
-        time={formData.time}
-        onChange={onChange}
-      />
-
-      {/* Description, Root Cause and Supporting Files */}
-      <div className="md:col-span-2">
+      {/* Description, Image, and Supporting Documents Section */}
+      <div className="md:col-span-3">
         <DescriptionSection
           description={formData.description}
-          rootCause={formData.rootCause}
-          image={formData.image}
+          image={image}
           supportingFiles={supportingFiles}
           onChange={onChange}
           onImageChange={onImageChange}

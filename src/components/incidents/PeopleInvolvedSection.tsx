@@ -9,7 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, X, Search } from 'lucide-react';
+import { Plus, X, Users } from 'lucide-react';
 import { Person } from '@/types/incident';
 
 interface PeopleInvolvedSectionProps {
@@ -25,97 +25,93 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   onAddPerson,
   onRemovePerson
 }) => {
-  // State for search inputs
-  const [searchQueries, setSearchQueries] = useState<Record<number, string>>({});
-
-  const handleSearch = (index: number, query: string) => {
-    setSearchQueries(prev => ({ ...prev, [index]: query }));
-    // In a real application, this would trigger an API search based on role
-    // For now, we'll just update the name field directly
-    onPersonChange(index, 'name', query);
-  };
-
-  const getPlaceholderText = (role: string) => {
-    switch(role) {
-      case 'Student': return 'Search by student name';
-      case 'Staff': return 'Search by staff name';
-      default: return 'Search by name';
-    }
-  };
-
   return (
     <div className="pt-4">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-md font-medium">People Involved</h3>
-        <Button type="button" variant="outline" size="sm" onClick={onAddPerson}>
-          <Plus className="h-4 w-4 mr-2" /> Add Person
+        <div className="flex items-center">
+          <Users className="h-5 w-5 mr-2 text-primary-600" />
+          <h3 className="text-md font-medium">People Involved</h3>
+        </div>
+        <Button 
+          type="button" 
+          variant="outline" 
+          size="sm" 
+          onClick={onAddPerson}
+          className="text-sm"
+        >
+          <Plus className="h-4 w-4 mr-1" /> Add Person
         </Button>
       </div>
 
       {peopleInvolved.map((person, index) => (
-        <div key={index} className="border rounded-md p-4 mb-4 bg-gray-50">
-          <div className="flex justify-between items-start mb-4">
-            <h4 className="font-medium text-sm">Person {index + 1}</h4>
+        <div 
+          key={index} 
+          className="mb-3 border-b pb-3 last:border-b-0 last:pb-0"
+        >
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-sm text-gray-500">Person {index + 1}</span>
             {index > 0 && (
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
                 onClick={() => onRemovePerson(index)}
+                className="h-7 w-7 p-0"
               >
-                <X className="h-4 w-4" />
+                <X className="h-4 w-4 text-gray-500" />
               </Button>
             )}
           </div>
 
-          {/* Role selection first */}
-          <div className="space-y-2 mb-4">
-            <label className="text-sm font-medium">Role</label>
-            <Select
-              value={person.role}
-              onValueChange={(value) => {
-                const typedRole = value as 'Student' | 'Staff' | 'Other';
-                onPersonChange(index, 'role', typedRole);
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Student">Student</SelectItem>
-                <SelectItem value="Staff">Staff</SelectItem>
-                <SelectItem value="Other">Other</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Search for person based on role */}
-          <div className="space-y-2 mb-4">
-            <label className="text-sm font-medium">Name</label>
-            <div className="flex space-x-2">
-              <div className="relative flex-1">
-                <Input
-                  value={searchQueries[index] || ''}
-                  onChange={(e) => handleSearch(index, e.target.value)}
-                  placeholder={getPlaceholderText(person.role)}
-                  className="pr-8"
-                />
-                <Search className="h-4 w-4 absolute right-3 top-3 text-gray-400" />
-              </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* Role selection */}
+            <div>
+              <Select
+                value={person.role}
+                onValueChange={(value) => {
+                  const typedRole = value as 'Student' | 'Staff' | 'Other';
+                  onPersonChange(index, 'role', typedRole);
+                }}
+              >
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Select role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Student">Student</SelectItem>
+                  <SelectItem value="Staff">Staff</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          </div>
 
-          {/* Notes field */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Notes (Optional)</label>
-            <Input
-              value={person.notes || ''}
-              onChange={(e) => onPersonChange(index, 'notes', e.target.value)}
-              placeholder="Additional details"
-            />
+            {/* Name input */}
+            <div>
+              <Input
+                value={person.name}
+                onChange={(e) => onPersonChange(index, 'name', e.target.value)}
+                placeholder="Name"
+                className="h-9"
+              />
+            </div>
+
+            {/* Notes field - full width */}
+            <div className="md:col-span-2">
+              <Input
+                value={person.notes || ''}
+                onChange={(e) => onPersonChange(index, 'notes', e.target.value)}
+                placeholder="Additional notes (optional)"
+                className="h-9"
+              />
+            </div>
           </div>
         </div>
       ))}
+      
+      {peopleInvolved.length === 0 && (
+        <div className="text-center p-4 border border-dashed rounded-md text-gray-500">
+          No people added yet
+        </div>
+      )}
     </div>
   );
 };
