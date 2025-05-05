@@ -10,7 +10,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Edit, Ticket, BanIcon, AlertCircle, ArrowUp, ArrowRight, ArrowDown } from 'lucide-react';
+import { Edit, Ticket, BanIcon, AlertCircle, ArrowUp, ArrowRight, ArrowDown, Calendar, Building2 } from 'lucide-react';
 
 interface IncidentsTableProps {
   incidents: Incident[];
@@ -102,9 +102,11 @@ const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
           <TableHeader>
             <TableRow>
               <TableHead>ID</TableHead>
-              <TableHead className="text-left">Category</TableHead>
-              <TableHead className="text-left">Location</TableHead>
               <TableHead className="text-left">Date</TableHead>
+              <TableHead className="text-left">Category</TableHead>
+              <TableHead className="text-left">Priority</TableHead>
+              <TableHead className="text-left">Location</TableHead>
+              <TableHead className="text-left">Facility</TableHead>
               <TableHead className="text-left">Status</TableHead>
               <TableHead className="text-left">Actions</TableHead>
             </TableRow>
@@ -119,16 +121,32 @@ const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
                 <TableCell className="font-medium">
                   <div className="flex items-center">
                     <Ticket className="h-4 w-4 mr-2 text-blue-600" />
-                    {getPriorityIcon(incident.priority)}
-                    <span className="ml-2">{getSimpleId(incident.ticketId)}</span>
+                    <span className="ml-1">{getSimpleId(incident.ticketId)}</span>
                     {incident.isVoided && (
                       <BanIcon className="h-4 w-4 ml-2 text-red-600" />
                     )}
                   </div>
                 </TableCell>
+                <TableCell className="text-left">
+                  <div className="flex items-center">
+                    <Calendar className="h-4 w-4 mr-2 text-gray-500" />
+                    {formatDate(incident.date)}
+                  </div>
+                </TableCell>
                 <TableCell className="text-left">{incident.category}</TableCell>
+                <TableCell className="text-left">
+                  <div className="flex items-center">
+                    {getPriorityIcon(incident.priority)}
+                    <span className="ml-2">{incident.priority || 'Medium'}</span>
+                  </div>
+                </TableCell>
                 <TableCell className="text-left">{incident.location}</TableCell>
-                <TableCell className="text-left">{formatDate(incident.date)}</TableCell>
+                <TableCell className="text-left">
+                  <div className="flex items-center">
+                    <Building2 className="h-4 w-4 mr-2 text-gray-500" />
+                    {incident.facility || 'Not specified'}
+                  </div>
+                </TableCell>
                 <TableCell className="text-left">
                   <span className={`px-2 py-1 rounded-full text-xs ${getStatusBadgeClass(incident.status, incident.isVoided)}`}>
                     {incident.isVoided ? 'Voided' : incident.status}
