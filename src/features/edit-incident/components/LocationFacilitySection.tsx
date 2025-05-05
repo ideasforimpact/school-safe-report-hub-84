@@ -10,17 +10,17 @@ import {
 import { ConfigItem } from '@/contexts/types';
 
 interface LocationFacilitySectionProps {
-  location: string;
+  locationId: string;
   locations: ConfigItem[];
-  facility: string;
+  facilityId: string;
   facilities: ConfigItem[];
   onSelectChange: (name: string, value: string) => void;
 }
 
 const LocationFacilitySection: React.FC<LocationFacilitySectionProps> = ({
-  location,
+  locationId,
   locations,
-  facility,
+  facilityId,
   facilities,
   onSelectChange,
 }) => {
@@ -31,7 +31,7 @@ const LocationFacilitySection: React.FC<LocationFacilitySectionProps> = ({
           Location <span className="text-red-500">*</span>
         </label>
         <Select 
-          value={location} 
+          value={locationId} 
           onValueChange={(value) => onSelectChange('locationId', value)}
           required
         >
@@ -53,7 +53,7 @@ const LocationFacilitySection: React.FC<LocationFacilitySectionProps> = ({
           Facility <span className="text-red-500">*</span>
         </label>
         <Select 
-          value={facility} 
+          value={facilityId} 
           onValueChange={(value) => onSelectChange('facilityId', value)}
           required
         >
