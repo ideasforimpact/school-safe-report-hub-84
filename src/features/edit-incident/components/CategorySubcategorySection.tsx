@@ -7,66 +7,68 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { ConfigItem } from '@/contexts/types';
 
 interface CategorySubcategorySectionProps {
-  category: string;
+  categoryId: string;
+  categories: ConfigItem[];
   subcategory: string;
-  availableSubcategories: string[];
+  availableSubcategories: {id: string, name: string}[];
   onSelectChange: (name: string, value: string) => void;
-  categoriesForType: string[];
 }
 
 const CategorySubcategorySection: React.FC<CategorySubcategorySectionProps> = ({
-  category,
+  categoryId,
+  categories,
   subcategory,
   availableSubcategories,
   onSelectChange,
-  categoriesForType,
 }) => {
   return (
-    <>
+    <div className="space-y-6">
       <div className="space-y-2">
-        <label htmlFor="category" className="text-sm font-medium">
+        <label htmlFor="categoryId" className="text-sm font-medium">
           Category <span className="text-red-500">*</span>
         </label>
         <Select 
-          value={category}
-          onValueChange={(value) => onSelectChange('category', value)}
+          value={categoryId}
+          onValueChange={(value) => onSelectChange('categoryId', value)}
           required
-          disabled={categoriesForType.length === 0}
         >
           <SelectTrigger>
             <SelectValue placeholder="Select category" />
           </SelectTrigger>
           <SelectContent>
-            {categoriesForType.map(category => (
-              <SelectItem key={category} value={category}>{category}</SelectItem>
+            {categories.map(category => (
+              <SelectItem key={category.id} value={category.id}>
+                {category.name}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
-      
+
       <div className="space-y-2">
         <label htmlFor="subcategory" className="text-sm font-medium">
-          Subcategory <span className="text-red-500">*</span>
+          Subcategory
         </label>
         <Select 
           value={subcategory}
           onValueChange={(value) => onSelectChange('subcategory', value)}
-          required
-          disabled={availableSubcategories.length === 0}
         >
           <SelectTrigger>
             <SelectValue placeholder="Select subcategory" />
           </SelectTrigger>
           <SelectContent>
-            {availableSubcategories.map(subcategory => (
-              <SelectItem key={subcategory} value={subcategory}>{subcategory}</SelectItem>
+            {availableSubcategories.map(sub => (
+              <SelectItem key={sub.id} value={sub.name}>
+                {sub.name}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
-    </>
+    </div>
   );
 };
 
