@@ -117,8 +117,8 @@ const ReportIncident = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="w-full">
-          <Card className="border-none shadow-card">
-            <CardContent className="space-y-6">
+          <Card className="border-none shadow-card pt-6">
+            <CardContent className="space-y-6 px-6">
               <IncidentDetailsForm
                 formData={formData}
                 onChange={handleChange}
