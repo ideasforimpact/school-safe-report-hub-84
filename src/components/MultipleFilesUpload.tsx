@@ -10,6 +10,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 
 interface FileItem {
@@ -194,10 +195,10 @@ const MultipleFilesUpload = ({
                         variant="ghost" 
                         size="sm" 
                         onClick={() => removeFile(file.id)}
-                        className="flex-shrink-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                        className="flex-shrink-0 hover:bg-red-50"
                         title="Delete file"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4 text-red-500 hover:text-red-700" />
                       </Button>
                     </div>
                   </div>
@@ -241,6 +242,9 @@ const MultipleFilesUpload = ({
         <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle className="text-lg">{previewFile?.name}</DialogTitle>
+            <DialogDescription>
+              {previewFile ? formatFileSize(previewFile.size) : ''}
+            </DialogDescription>
           </DialogHeader>
           <div className="flex justify-center items-center py-4">
             {previewFile?.type.startsWith('image/') && (
