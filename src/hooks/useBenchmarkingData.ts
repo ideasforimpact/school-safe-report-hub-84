@@ -139,7 +139,9 @@ export const useBenchmarkingData = () => {
 
     if (showSubcategories) {
       // Show detailed subcategory breakdown
-      const subcategories = selectedCategory ? Object.keys(cityData['Central City'][selectedCategory as keyof typeof cityData['Central City']]) : [];
+      const subcategories = selectedCategory ? 
+        Object.keys(cityData['Central City'][selectedCategory as keyof typeof cityData['Central City']] || {}) : 
+        [];
       
       return subcategories.map(subcategory => {
         const dataItem: Record<string, any> = { name: subcategory };
@@ -152,8 +154,14 @@ export const useBenchmarkingData = () => {
         
         // Add each selected city's data
         selectedCities.forEach(city => {
-          const citySubData = cityData[city as keyof typeof cityData][selectedCategory as keyof typeof cityData['Central City']];
-          dataItem[city] = citySubData[subcategory as keyof typeof citySubData] || 0;
+          if (cityData[city as keyof typeof cityData]) {
+            const cityCategory = cityData[city as keyof typeof cityData][selectedCategory as keyof typeof cityData['Central City']];
+            if (cityCategory) {
+              dataItem[city] = cityCategory[subcategory as keyof typeof cityCategory] || 0;
+            } else {
+              dataItem[city] = 0;
+            }
+          }
         });
         
         return dataItem;
@@ -161,8 +169,12 @@ export const useBenchmarkingData = () => {
     } else {
       // Show aggregate category-level data
       return selectedCities.map(city => {
-        const citySubcategoryData = cityData[city as keyof typeof cityData][selectedCategory as keyof typeof cityData['Central City']];
-        const totalCityIncidents = citySubcategoryData ? Object.values(citySubcategoryData).reduce((a: number, b: number) => a + b, 0) : 0;
+        const cityData_local = cityData[city as keyof typeof cityData];
+        const cityCategory = cityData_local ? cityData_local[selectedCategory as keyof typeof cityData_local] : undefined;
+        
+        const totalCityIncidents = cityCategory 
+          ? Object.values(cityCategory).reduce((a: number, b: number) => a + b, 0) 
+          : 0;
         
         // Count school incidents for this category - filtered by date range
         const schoolCategoryCount = filteredIncidents

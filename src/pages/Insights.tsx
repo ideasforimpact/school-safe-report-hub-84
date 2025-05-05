@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from 'react';
 import { useIncidents } from '@/contexts/IncidentContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -125,7 +124,7 @@ const Insights = () => {
       
       // Apply person filter
       if (personFilter !== 'all') {
-        const foundPerson = incident.peopleInvolved.some(p => p.name === personFilter);
+        const foundPerson = incident.peopleInvolved?.some(p => p.name === personFilter);
         if (!foundPerson) {
           return false;
         }
@@ -133,7 +132,7 @@ const Insights = () => {
       
       // Apply role filter
       if (roleFilter !== 'all') {
-        const foundRole = incident.peopleInvolved.some(p => p.role === roleFilter);
+        const foundRole = incident.peopleInvolved?.some(p => p.role === roleFilter);
         if (!foundRole) {
           return false;
         }
@@ -282,7 +281,7 @@ const Insights = () => {
         if (!peopleMap.has(key)) {
           peopleMap.set(key, {
             name: person.name,
-            id: person.id || 'Unknown', // Now safely accessing the optional id property
+            id: person.id || 'Unknown', 
             role: person.role,
             incidents: [],
             count: 0
@@ -357,7 +356,7 @@ const Insights = () => {
         incident.location,
         incident.status,
         `"${peopleInvolved}"`,
-        incident.reportedBy.name,
+        incident.reportedBy?.name || 'Unknown',
         incident.owner?.name || 'Unassigned',
         `"${actions}"`
       ].join(',');
@@ -457,6 +456,7 @@ const Insights = () => {
           </div>
         </div>
 
+        {/* Filter section */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-lg font-semibold mb-4">Filter Data</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -553,7 +553,7 @@ const Insights = () => {
               </div>
             )}
             
-            {/* Person filter - new */}
+            {/* Person filter */}
             <div>
               <label className="block text-sm font-medium mb-1">Person</label>
               <Select value={personFilter} onValueChange={setPersonFilter}>
@@ -571,7 +571,7 @@ const Insights = () => {
               </Select>
             </div>
             
-            {/* Role filter - new */}
+            {/* Role filter */}
             <div>
               <label className="block text-sm font-medium mb-1">Role</label>
               <Select value={roleFilter} onValueChange={setRoleFilter}>
@@ -592,12 +592,14 @@ const Insights = () => {
           </div>
         </div>
 
+        {/* Tabs content */}
         <Tabs defaultValue="charts" value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid grid-cols-2 w-[400px]">
             <TabsTrigger value="charts">Charts & Analytics</TabsTrigger>
             <TabsTrigger value="people">People Report</TabsTrigger>
           </TabsList>
           
+          {/* Charts tab content */}
           <TabsContent value="charts" className="mt-4">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <Card>
@@ -864,6 +866,7 @@ const Insights = () => {
             </Card>
           </TabsContent>
           
+          {/* People tab content */}
           <TabsContent value="people" className="mt-4">
             <div className="space-y-6">
               <Card>

@@ -14,7 +14,7 @@ export function useEducationalStructureManagement(
 
   // Campus management
   const addCampus = (name: string) => {
-    const newCampus = {
+    const newCampus: CampusItem = {
       id: Date.now().toString(),
       name
     };
@@ -35,7 +35,7 @@ export function useEducationalStructureManagement(
 
   // Classes management
   const addClass = (campusId: string, name: string) => {
-    const newClass = {
+    const newClass: ClassItem = {
       id: Date.now().toString(),
       name,
       campusId
@@ -57,7 +57,7 @@ export function useEducationalStructureManagement(
 
   // Sections management
   const addSection = (classId: string, name: string) => {
-    const newSection = {
+    const newSection: SectionItem = {
       id: Date.now().toString(),
       name,
       classId
