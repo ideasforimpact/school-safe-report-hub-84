@@ -1,7 +1,6 @@
-
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Settings, AlertTriangle, Building, LayoutGrid } from 'lucide-react';
 
 const AdminSettingsMenu = () => {
@@ -18,59 +17,23 @@ const AdminSettingsMenu = () => {
         <div className="px-2 py-2 text-sm font-medium text-gray-500">Settings</div>
         <DropdownMenuSeparator />
         
-        {/* Incident Related Configuration */}
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger className="cursor-pointer">
-            <AlertTriangle className="h-4 w-4 mr-2" />
-            <span>Incident Related</span>
-          </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent className="w-56 bg-white">
-            <DropdownMenuItem onClick={() => navigate('/incident-configuration?tab=categories')} className="cursor-pointer">
-              Categories
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate('/incident-configuration?tab=subcategories')} className="cursor-pointer">
-              Subcategories
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate('/incident-configuration?tab=locations')} className="cursor-pointer">
-              Locations
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate('/incident-configuration?tab=facilities')} className="cursor-pointer">
-              Facilities
-            </DropdownMenuItem>
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
+        {/* Incident Configuration */}
+        <DropdownMenuItem onClick={() => navigate('/incident-configuration')} className="cursor-pointer">
+          <AlertTriangle className="h-4 w-4 mr-2" />
+          <span>Incident Configuration</span>
+        </DropdownMenuItem>
         
         {/* Educational Structure */}
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger className="cursor-pointer">
-            <Building className="h-4 w-4 mr-2" />
-            <span>Educational Structure</span>
-          </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent className="w-56 bg-white">
-            <DropdownMenuItem onClick={() => navigate('/educational-configuration?tab=campuses')} className="cursor-pointer">
-              Campuses
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate('/educational-configuration?tab=classes')} className="cursor-pointer">
-              Classes
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate('/educational-configuration?tab=sections')} className="cursor-pointer">
-              Sections
-            </DropdownMenuItem>
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
+        <DropdownMenuItem onClick={() => navigate('/educational-configuration')} className="cursor-pointer">
+          <Building className="h-4 w-4 mr-2" />
+          <span>Educational Structure</span>
+        </DropdownMenuItem>
         
-        {/* Other Settings submenu */}
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger className="cursor-pointer">
-            <LayoutGrid className="h-4 w-4 mr-2" />
-            <span>Other Settings</span>
-          </DropdownMenuSubTrigger>
-          <DropdownMenuSubContent className="w-56 bg-white">
-            <DropdownMenuItem onClick={() => navigate('/other-configuration?tab=designations')} className="cursor-pointer">
-              Designations
-            </DropdownMenuItem>
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
+        {/* Other Settings */}
+        <DropdownMenuItem onClick={() => navigate('/other-configuration')} className="cursor-pointer">
+          <LayoutGrid className="h-4 w-4 mr-2" />
+          <span>Other Settings</span>
+        </DropdownMenuItem>
         
         <DropdownMenuSeparator />
         
