@@ -51,7 +51,7 @@ const ReportIncident = () => {
     try {
       // Combine date and time if both are provided
       const dateTime = formData.date && formData.time 
-        ? new Date(`${typeof formData.date === 'string' ? formData.date : formData.date.toISOString().split('T')[0]}T${formData.time}`) 
+        ? new Date(`${formData.date}T${formData.time}`) 
         : new Date();
       
       // Get the actual category, location and facility names if available

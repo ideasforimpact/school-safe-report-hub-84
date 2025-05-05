@@ -7,7 +7,7 @@ const initialFormData = {
   type: 'Incident',
   description: '',
   rootCause: '',
-  date: new Date(),
+  date: new Date().toISOString().split('T')[0], // Store as ISO string date
   time: new Date().toTimeString().split(' ')[0].slice(0, 5), // Add time field
   locationId: '',
   location: '',
@@ -39,7 +39,10 @@ export function useIncidentFormData(user: AuthUser | null) {
 
   const handleDateTimeChange = (date: Date | undefined, timeString?: string) => {
     if (date) {
-      setFormData(prev => ({ ...prev, date }));
+      setFormData(prev => ({ 
+        ...prev, 
+        date: date.toISOString().split('T')[0] // Convert Date to string
+      }));
     }
     if (timeString) {
       setFormData(prev => ({ ...prev, time: timeString }));

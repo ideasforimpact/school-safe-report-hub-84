@@ -11,7 +11,7 @@ export function useIncidentFormData() {
     categoryId: '',
     subcategory: '',
     description: '',
-    date: new Date().toISOString().split('T')[0],
+    date: new Date().toISOString().split('T')[0], // Use ISO string date format
     time: new Date().toTimeString().split(' ')[0].slice(0, 5),
     locationId: '',
     facilityId: '',
@@ -32,7 +32,7 @@ export function useIncidentFormData() {
     if (date) {
       setFormData(prev => ({ 
         ...prev, 
-        date: date.toISOString().split('T')[0]
+        date: date.toISOString().split('T')[0] // Convert Date to string
       }));
     }
     if (timeString) {
