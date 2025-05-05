@@ -1,17 +1,22 @@
 
-import { Incident, Comment as IncidentComment, Activity } from '@/types/incident';
-import { toast } from "@/components/ui/sonner";
+import { useState } from 'react';
+import { Incident, Comment, Activity, User } from '@/types/incident';
 
 export const useComments = (
   incidents: Incident[],
   setIncidents: React.Dispatch<React.SetStateAction<Incident[]>>,
-  addActivity: (activity: Activity) => void
+  activities: Activity[],
+  setActivities: React.Dispatch<React.SetStateAction<Activity[]>>,
+  users: User[]
 ) => {
+  const addActivity = (activity: Activity) => {
+    setActivities(prev => [activity, ...prev]);
+  };
 
-  const addComment = (incidentId: string, commentData: Omit<IncidentComment, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addComment = (incidentId: string, comment: Omit<Comment, 'id' | 'createdAt' | 'updatedAt'>) => {
     const now = new Date();
-    const newComment: IncidentComment = {
-      ...commentData,
+    const newComment = {
+      ...comment,
       id: Date.now().toString(),
       createdAt: now,
       updatedAt: now
@@ -19,145 +24,95 @@ export const useComments = (
     
     setIncidents(prev => 
       prev.map(incident => 
-        incident.id === incidentId 
-          ? { 
-              ...incident, 
-              comments: [...(incident.comments || []), newComment],
-              updatedAt: now 
-            } 
+        incident.id === incidentId
+          ? {
+              ...incident,
+              comments: [...(incident.comments || []), newComment]
+            }
           : incident
       )
     );
     
-    // Add to activity log with enhanced audit information
     const incident = incidents.find(inc => inc.id === incidentId);
     if (incident) {
       addActivity({
         type: 'comment',
         activity: 'create',
         entityId: newComment.id,
-        entityTitle: `Comment: ${newComment.description.substring(0, 30)}${newComment.description.length > 30 ? '...' : ''}`,
-        user: newComment.createdBy.name,
-        userId: newComment.createdBy.id,
+        entityTitle: `Comment on ${incident.type}: ${incident.category}`,
+        user: comment.createdBy.name,
+        userId: comment.createdBy.id,
         date: now,
-        details: `Comment created by ${newComment.createdBy.name} and assigned to ${newComment.assignedTo.name}`
+        details: `Comment added by ${comment.createdBy.name}`
       });
     }
     
-    toast.success("Comment added");
+    return newComment;
   };
-
-  const updateComment = (incidentId: string, commentId: string, updates: Partial<IncidentComment>) => {
+  
+  const updateComment = (incidentId: string, commentId: string, updates: Partial<Comment>) => {
+    const now = new Date();
+    
+    setIncidents(prev => 
+      prev.map(incident => 
+        incident.id === incidentId && incident.comments
+          ? {
+              ...incident,
+              comments: incident.comments.map(comment => 
+                comment.id === commentId
+                  ? { ...comment, ...updates, updatedAt: now }
+                  : comment
+              )
+            }
+          : incident
+      )
+    );
+    
+    const incident = incidents.find(inc => inc.id === incidentId);
+    const comment = incident?.comments?.find(c => c.id === commentId);
+    
+    if (incident && comment) {
+      addActivity({
+        type: 'comment',
+        activity: 'update',
+        entityId: commentId,
+        entityTitle: `Comment on ${incident.type}: ${incident.category}`,
+        user: updates.createdBy?.name || comment.createdBy.name,
+        userId: updates.createdBy?.id || comment.createdBy.id,
+        date: now,
+        details: `Comment updated by ${updates.createdBy?.name || comment.createdBy.name}`
+      });
+    }
+  };
+  
+  const deleteComment = (incidentId: string, commentId: string) => {
     const now = new Date();
     const incident = incidents.find(inc => inc.id === incidentId);
-    const currentComment = incident?.comments?.find(item => item.id === commentId);
-    
-    if (!incident || !currentComment) return;
+    const comment = incident?.comments?.find(c => c.id === commentId);
     
     setIncidents(prev => 
-      prev.map(incident => {
-        if (incident.id !== incidentId) return incident;
-        
-        const updatedComments = incident.comments?.map(item => 
-          item.id === commentId 
-            ? { ...item, ...updates, updatedAt: now } 
-            : item
-        ) || [];
-        
-        return { 
-          ...incident, 
-          comments: updatedComments,
-          updatedAt: now
-        };
-      })
+      prev.map(incident => 
+        incident.id === incidentId && incident.comments
+          ? {
+              ...incident,
+              comments: incident.comments.filter(comment => comment.id !== commentId)
+            }
+          : incident
+      )
     );
     
-    // Log status change specifically
-    if (updates.status && updates.status !== currentComment.status) {
-      const user = updates.createdBy?.name || currentComment.createdBy.name;
-      const userId = updates.createdBy?.id || currentComment.createdBy.id;
-      
+    if (incident && comment) {
       addActivity({
         type: 'comment',
-        activity: 'update',
+        activity: 'delete',
         entityId: commentId,
-        entityTitle: `Comment: ${currentComment.description.substring(0, 30)}${currentComment.description.length > 30 ? '...' : ''}`,
-        user,
-        userId,
+        entityTitle: `Comment on ${incident.type}: ${incident.category}`,
+        user: comment.createdBy.name,
+        userId: comment.createdBy.id,
         date: now,
-        details: `Comment status changed from ${currentComment.status} to ${updates.status} by ${user}`
-      });
-    } 
-    // Log assignee change
-    else if (updates.assignedTo && updates.assignedTo.id !== currentComment.assignedTo.id) {
-      const user = updates.createdBy?.name || currentComment.createdBy.name;
-      const userId = updates.createdBy?.id || currentComment.createdBy.id;
-      
-      addActivity({
-        type: 'comment',
-        activity: 'update',
-        entityId: commentId,
-        entityTitle: `Comment: ${currentComment.description.substring(0, 30)}${currentComment.description.length > 30 ? '...' : ''}`,
-        user,
-        userId,
-        date: now,
-        details: `Comment reassigned from ${currentComment.assignedTo.name} to ${updates.assignedTo.name} by ${user}`
+        details: `Comment deleted by ${comment.createdBy.name}`
       });
     }
-    // Log other updates
-    else if (Object.keys(updates).length > 0) {
-      const user = updates.createdBy?.name || currentComment.createdBy.name;
-      const userId = updates.createdBy?.id || currentComment.createdBy.id;
-      
-      addActivity({
-        type: 'comment',
-        activity: 'update',
-        entityId: commentId,
-        entityTitle: `Comment: ${currentComment.description.substring(0, 30)}${currentComment.description.length > 30 ? '...' : ''}`,
-        user,
-        userId,
-        date: now,
-        details: `Comment updated by ${user}`
-      });
-    }
-    
-    toast.success("Comment updated");
-  };
-
-  const deleteComment = (incidentId: string, commentId: string) => {
-    const incident = incidents.find(inc => inc.id === incidentId);
-    const comment = incident?.comments?.find(item => item.id === commentId);
-    
-    if (!incident || !comment) return;
-    
-    setIncidents(prev => 
-      prev.map(incident => {
-        if (incident.id !== incidentId) return incident;
-        
-        const filteredComments = incident.comments?.filter(item => 
-          item.id !== commentId
-        ) || [];
-        
-        return { 
-          ...incident, 
-          comments: filteredComments,
-          updatedAt: new Date()
-        };
-      })
-    );
-    
-    addActivity({
-      type: 'comment',
-      activity: 'delete',
-      entityId: commentId,
-      entityTitle: `Comment: ${comment.description.substring(0, 30)}${comment.description.length > 30 ? '...' : ''}`,
-      user: comment.createdBy.name,
-      userId: comment.createdBy.id,
-      date: new Date(),
-      details: `Comment deleted by ${comment.createdBy.name}`
-    });
-    
-    toast.success("Comment deleted");
   };
 
   return {
