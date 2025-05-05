@@ -57,7 +57,7 @@ const IncidentsCardView: React.FC<IncidentsCardViewProps> = ({ incidents }) => {
 
   if (incidents.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow p-8 text-center">
+      <div className="bg-white rounded-lg shadow p-8 text-left">
         <p className="text-gray-500">No incidents found matching your filters</p>
       </div>
     );
@@ -77,7 +77,7 @@ const IncidentsCardView: React.FC<IncidentsCardViewProps> = ({ incidents }) => {
       {incidents.map((incident) => (
         <Card 
           key={incident.id} 
-          className={`cursor-pointer hover:shadow-md transition-all ${incident.isVoided ? 'bg-red-50' : ''}`}
+          className={`cursor-pointer hover:shadow-md transition-all ${incident.isVoided ? 'bg-red-50' : ''} text-left`}
           onClick={() => handleCardClick(incident.id)}
         >
           <CardHeader className="pb-2">
@@ -111,7 +111,7 @@ const IncidentsCardView: React.FC<IncidentsCardViewProps> = ({ incidents }) => {
             </p>
           </CardContent>
           
-          <CardFooter className="pt-0 flex justify-end space-x-2 border-t">
+          <CardFooter className="pt-0 flex justify-start space-x-2 border-t">
             <Button 
               variant="ghost" 
               size="sm"
