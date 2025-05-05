@@ -1,6 +1,6 @@
 
 import { Incident } from '@/types/incident';
-import { generateDemoIncidents } from './generateDemoIncidents';
+import { generateDemoIncidents } from './demo-data/incidentGenerator';
 
 // Generate sample incidents for demo purposes
 export const generateSampleIncidents = (): Incident[] => {
