@@ -33,8 +33,8 @@ const CategoryChart: React.FC<CategoryChartProps> = ({
     [data]
   );
   
-  // Use pagination hook for more efficient pagination management
-  const itemsPerPage = 15; // Show 15 tags per page
+  // Use pagination hook with more items per page to avoid scrolling
+  const itemsPerPage = 10; // Show fewer tags per page to avoid need for scrolling
   const { 
     currentPage, 
     setCurrentPage, 
@@ -88,7 +88,7 @@ const CategoryChart: React.FC<CategoryChartProps> = ({
               </div>
             </div>
             
-            {/* Pagination controls - only show if we have multiple pages */}
+            {/* Pagination controls - show if we have any pages */}
             {totalPages > 1 && (
               <ChartPagination 
                 currentPage={currentPage}
