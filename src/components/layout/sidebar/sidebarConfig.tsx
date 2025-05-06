@@ -60,10 +60,5 @@ export const getClientItems = (permissions: ModulePermissions) => [
     path: '/insights',
     allowed: permissions.insights,
   },
-  {
-    icon: BarChart,
-    label: 'Benchmark',
-    path: '/benchmarking',
-    allowed: permissions.benchmarking,
-  },
+  // Removed the Benchmark item
 ];

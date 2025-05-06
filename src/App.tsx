@@ -27,7 +27,7 @@ import Blog from './pages/Blog';
 import Pricing from './pages/Pricing';
 import FacilityManagement from './pages/FacilityManagement';
 import ClientManagement from './pages/ClientManagement';
-import Benchmarking from './pages/Benchmarking';
+// Removed Benchmarking import
 import BackofficeAnalytics from './pages/backoffice/BackofficeAnalytics';
 import BackofficeSettings from './pages/backoffice/BackofficeSettings';
 
@@ -69,7 +69,7 @@ function App() {
                       <Route path="/users" element={<UserManagement />} />
                       <Route path="/students" element={<StudentManagement />} />
                       <Route path="/facilities" element={<FacilityManagement />} />
-                      <Route path="/benchmarking" element={<Benchmarking />} />
+                      {/* Removed benchmarking route */}
                     </Route>
                     
                     {/* Backoffice Routes - SaaS Owner Routes */}
