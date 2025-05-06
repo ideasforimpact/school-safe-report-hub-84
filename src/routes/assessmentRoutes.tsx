@@ -34,6 +34,9 @@ export const ResultsRoutes = () => (
   </Routes>
 );
 
+// The issue was here - ResponseRoutes was just returning a single Route without a Routes wrapper
 export const ResponseRoutes = () => (
-  <Route path="/:assignmentId/respond" element={<AssessmentResponseForm />} />
+  <Routes>
+    <Route path=":assignmentId/respond" element={<AssessmentResponseForm />} />
+  </Routes>
 );

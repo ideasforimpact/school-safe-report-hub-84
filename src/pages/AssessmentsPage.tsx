@@ -8,8 +8,8 @@ import AssessmentResponseForm from '@/components/assessments/responses/Assessmen
 import AssessmentsHeader from '@/components/assessments/header/AssessmentsHeader';
 import AssessmentTabs from '@/components/assessments/tabs/AssessmentTabs';
 import OverviewTab from '@/components/assessments/tabs/OverviewTab';
+import { TemplateRoutes, AssignmentRoutes, ResultsRoutes, ResponseRoutes } from '@/routes/assessmentRoutes';
 import { summaryData, assessmentTypes, recentAssessments } from '@/components/assessments/data/mockData';
-import { TemplateRoutes, AssignmentRoutes, ResultsRoutes } from '@/routes/assessmentRoutes';
 
 const AssessmentsPage = () => {
   const location = useLocation();
