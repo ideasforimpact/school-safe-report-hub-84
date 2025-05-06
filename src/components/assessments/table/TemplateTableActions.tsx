@@ -26,10 +26,8 @@ const TemplateTableActions = ({ template, onAssign, onActivate }: TemplateTableA
 
   const handleEditClick = () => {
     console.log(`Edit clicked for template: ${template.id}`);
-    // Add a small delay to ensure localStorage operations complete
-    setTimeout(() => {
-      navigate(`/assessment/${template.id}`);
-    }, 100);
+    // Navigate without delay, we'll handle any issues in the template detail page
+    navigate(`/assessment/${template.id}`);
   };
   
   const handleActivateClick = () => onActivate(template.id);

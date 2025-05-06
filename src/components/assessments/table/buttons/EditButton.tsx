@@ -18,6 +18,7 @@ const EditButton = ({ onClick, isComplete, templateId }: EditButtonProps) => {
       onClick();
     } else {
       console.log(`Navigating to template: /assessment/${templateId}`);
+      // Navigate directly to the template with the ID
       navigate(`/assessment/${templateId}`);
     }
   };

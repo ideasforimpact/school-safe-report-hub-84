@@ -20,52 +20,49 @@ export const useTemplateDetail = (id: string | undefined) => {
   } = useAssessments();
 
   // Template state
-  const [template, setTemplate] = useState(() => {
-    if (!id) {
-      console.error('No template ID provided');
-      return null;
-    }
-    const foundTemplate = getTemplateById(id);
-    if (!foundTemplate) {
-      console.error(`Template with id ${id} not found when initializing`);
-    }
-    return foundTemplate;
-  });
-
-  // Assignments state
-  const [assignments, setAssignments] = useState(() => id ? getAssignmentsByTemplate(id) : []);
+  const [template, setTemplate] = useState(null);
+  const [assignments, setAssignments] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   // UI state
   const [showAssignDialog, setShowAssignDialog] = useState(false);
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
 
   // Load template data
   useEffect(() => {
-    if (id) {
-      console.log(`Looking for template with id: ${id}`);
-      setLoading(true);
+    if (!id) {
+      console.error('No template ID provided');
+      setLoading(false);
+      return;
+    }
+    
+    console.log(`Looking for template with id: ${id}`);
+    setLoading(true);
+    
+    try {
+      const foundTemplate = getTemplateById(id);
       
-      // Add a small delay to ensure localStorage has been updated
-      setTimeout(() => {
-        const foundTemplate = getTemplateById(id);
-        
-        if (!foundTemplate) {
-          console.error(`Template with id ${id} not found in useEffect`);
-          toast({
-            title: "Template not found",
-            description: "The template you're looking for could not be found.",
-            variant: "destructive"
-          });
-          navigate('/assessments');
-          return;
-        }
-        
-        setTemplate(foundTemplate);
-        setAssignments(getAssignmentsByTemplate(id));
-        setLoading(false);
-      }, 100);
-    } else {
+      if (!foundTemplate) {
+        console.error(`Template with id ${id} not found in useEffect`);
+        toast({
+          title: "Template not found",
+          description: "The template you're looking for could not be found.",
+          variant: "destructive"
+        });
+        navigate('/assessments');
+        return;
+      }
+      
+      setTemplate(foundTemplate);
+      setAssignments(getAssignmentsByTemplate(id));
+    } catch (error) {
+      console.error('Error loading template:', error);
+      toast({
+        title: "Error loading template",
+        description: "There was a problem loading the template data.",
+        variant: "destructive"
+      });
+    } finally {
       setLoading(false);
     }
   }, [id, getTemplateById, navigate, getAssignmentsByTemplate, toast]);
