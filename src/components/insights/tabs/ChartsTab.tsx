@@ -37,60 +37,81 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
   return (
     <div className="mt-4">
       {/* First row: Incidents by Category chart only */}
-      <div className="mb-6">
-        <CategoryChart data={categoryData} colors={colors} />
+      <div className="mb-8">
+        <div className="h-[400px]">
+          <CategoryChart data={categoryData} colors={colors} />
+        </div>
+      </div>
+      
+      {/* Second row: Incidents by Type */}
+      <div className="mb-8">
+        <div className="h-[400px]">
+          <BarChartComponent 
+            title="Incidents by Type" 
+            description="Compare occurrence of incidents, near misses, and unsafe conditions"
+            data={typeData}
+          />
+        </div>
       </div>
       
       {/* Remaining charts in a grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <BarChartComponent 
-          title="Incidents by Type" 
-          description="Compare occurrence of incidents, near misses, and unsafe conditions"
-          data={typeData}
-        />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="h-[400px]">
+          <TimeSeriesAnalysis 
+            data={timeSeriesData} 
+            title="Incidents Over Time"
+            description="Monthly trend of incidents with statistical analysis"
+          />
+        </div>
         
-        <TimeSeriesAnalysis 
-          data={timeSeriesData} 
-          title="Incidents Over Time"
-          description="Monthly trend of incidents with statistical analysis"
-        />
+        <div className="h-[400px]">
+          <RiskAssessmentChart data={riskData} />
+        </div>
         
-        <RiskAssessmentChart data={riskData} />
-        
-        <BarChartComponent 
-          title="Incident Location" 
-          description="Distribution of incidents by location"
-          data={locationData}
-          color="#0ea5e9"
-          layout="vertical"
-        />
+        <div className="h-[400px]">
+          <BarChartComponent 
+            title="Incident Location" 
+            description="Distribution of incidents by location"
+            data={locationData}
+            color="#0ea5e9"
+            layout="vertical"
+          />
+        </div>
 
         {isAdmin && facilityData.length > 0 && (
-          <CategoryChart 
-            data={facilityData} 
-            colors={colors}
-            title="Incidents by Facility"
-            description="Distribution of incidents across different school facilities"
-          />
+          <div className="h-[400px]">
+            <CategoryChart 
+              data={facilityData} 
+              colors={colors}
+              title="Incidents by Facility"
+              description="Distribution of incidents across different school facilities"
+            />
+          </div>
         )}
 
-        <BarChartComponent 
-          title="Top 10 Subcategories" 
-          description="Most common specific types of incidents reported"
-          data={subcategoryData}
-          color="#8884d8"
-          layout="vertical"
-        />
+        <div className="h-[400px]">
+          <BarChartComponent 
+            title="Top 10 Subcategories" 
+            description="Most common specific types of incidents reported"
+            data={subcategoryData}
+            color="#8884d8"
+            layout="vertical"
+          />
+        </div>
         
-        <CategoryChart 
-          data={assigneeData} 
-          colors={colors}
-          title="Incident Ownership"
-          description="Distribution of incidents by assigned owner"
-        />
+        <div className="h-[400px]">
+          <CategoryChart 
+            data={assigneeData} 
+            colors={colors}
+            title="Incident Ownership"
+            description="Distribution of incidents by assigned owner"
+          />
+        </div>
       </div>
 
-      <StatusChart data={statusData} />
+      <div className="mt-8 h-[400px]">
+        <StatusChart data={statusData} />
+      </div>
     </div>
   );
 };

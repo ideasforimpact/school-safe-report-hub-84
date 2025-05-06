@@ -19,14 +19,14 @@ const BarChartComponent: React.FC<BarChartComponentProps> = ({
   layout = 'horizontal'
 }) => {
   return (
-    <Card>
+    <Card className="h-full">
       <CardHeader>
         <CardTitle>{title}</CardTitle>
         <CardDescription>
           {description}
         </CardDescription>
       </CardHeader>
-      <CardContent className="h-64">
+      <CardContent className="h-[calc(100%-90px)]">
         {data.length > 0 ? (
           <ResponsiveContainer width="100%" height="100%">
             {layout === 'horizontal' ? (
