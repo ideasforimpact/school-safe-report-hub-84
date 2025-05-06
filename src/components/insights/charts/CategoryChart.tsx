@@ -104,7 +104,7 @@ const CategoryChart: React.FC<CategoryChartProps> = ({
   }
 
   return (
-    <Card className="h-full overflow-hidden border-0 shadow-sm bg-white">
+    <Card className="w-full border-0 shadow-sm bg-white">
       <CardHeader className="bg-white/40 backdrop-blur-sm border-b border-gray-50">
         <div className="flex items-center gap-2">
           <Layers className="h-5 w-5 text-primary" />
@@ -119,12 +119,12 @@ const CategoryChart: React.FC<CategoryChartProps> = ({
           </CardDescription>
         )}
       </CardHeader>
-      <CardContent className="h-[calc(100%-90px)] pt-4">
+      <CardContent className="pt-4">
         {data.length > 0 ? (
-          <div className="flex flex-col h-full animate-fade-in">
+          <div className="flex flex-col animate-fade-in">
             <div className="grid grid-cols-1 gap-4">
               {/* Chart and tags layout */}
-              <div className="flex flex-col md:flex-row h-full">
+              <div className="flex flex-col md:flex-row">
                 {/* Left side - chart */}
                 <div className="w-full md:w-1/3 h-[260px] flex items-center justify-center">
                   <ResponsiveContainer width="100%" height={260}>

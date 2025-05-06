@@ -85,9 +85,9 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
         </div>
       </div>
 
-      {/* Facilities chart - give it extra height for larger datasets */}
+      {/* Facilities chart - changed to auto fit content height instead of fixed height */}
       {isAdmin && facilityData.length > 0 && (
-        <div className="h-[600px] shadow-sm rounded-xl overflow-hidden">
+        <div className="shadow-sm rounded-xl overflow-hidden">
           <CategoryChart 
             data={facilityData} 
             colors={colors}
