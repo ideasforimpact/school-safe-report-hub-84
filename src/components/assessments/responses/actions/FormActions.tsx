@@ -3,6 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Save, CheckCircle, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 
 interface FormActionsProps {
   isCompleted: boolean;
@@ -26,11 +27,18 @@ const FormActions = ({
   const navigate = useNavigate();
 
   return (
-    <div className="pt-4 border-t border-gray-200 flex justify-between items-center">
+    <motion.div 
+      className="pt-4 border-t border-gray-200 flex justify-between items-center"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, delay: 0.1 }}
+    >
       <Button
         type="button"
         variant="outline"
+        size="lg"
         onClick={() => navigate('/assessments/assignments')}
+        className="px-5"
       >
         Back to Assignments
       </Button>
@@ -41,20 +49,23 @@ const FormActions = ({
             <Button 
               type="button" 
               variant="outline" 
+              size="lg"
               onClick={onSave} 
               disabled={saving}
+              className="px-5"
             >
-              <Save className="h-4 w-4 mr-1" />
-              Save Draft
+              <Save className="h-4 w-4 mr-2" />
+              {saving ? 'Saving...' : 'Save Draft'}
             </Button>
             <Button 
               type="button" 
+              size="lg"
               onClick={onSubmit}
               disabled={submitting}
-              className="bg-green-600 hover:bg-green-700"
+              className="bg-green-600 hover:bg-green-700 text-white px-5"
             >
-              <CheckCircle className="h-4 w-4 mr-1" />
-              Submit Assessment
+              <CheckCircle className="h-4 w-4 mr-2" />
+              {submitting ? 'Submitting...' : 'Submit Assessment'}
             </Button>
           </>
         )}
@@ -62,15 +73,16 @@ const FormActions = ({
         {!isLastQuestion && !isCompleted && (
           <Button 
             type="button"
+            size="lg"
             onClick={onNextQuestion}
-            className="bg-primary-600 hover:bg-primary-700"
+            className="bg-primary hover:bg-primary/90 px-5"
           >
             Continue
-            <ArrowRight className="h-4 w-4 ml-1" />
+            <ArrowRight className="h-4 w-4 ml-2" />
           </Button>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 };
 
