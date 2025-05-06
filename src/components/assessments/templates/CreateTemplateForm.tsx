@@ -7,10 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { AlertTriangle } from 'lucide-react';
+import { Plus, AlertTriangle } from 'lucide-react';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import QuestionEditor from './QuestionEditor';
 import { AssessmentQuestion } from '@/types/assessment';
+import { toast } from 'sonner';
 
 const CreateTemplateForm = () => {
   const navigate = useNavigate();
@@ -84,6 +85,8 @@ const CreateTemplateForm = () => {
       addQuestion(templateId, question);
     });
     
+    toast.success('Template created successfully');
+    
     // Navigate to templates list
     navigate('/assessments/templates');
   };
@@ -139,13 +142,14 @@ const CreateTemplateForm = () => {
       
       <div className="border-t border-gray-200 pt-6">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-medium">Questions</h3>
+          <h3 className="text-lg font-medium">Questions (Yes/No)</h3>
           <Button 
             type="button" 
             onClick={handleAddQuestion}
             variant="outline"
             size="sm"
           >
+            <Plus className="h-4 w-4 mr-2" />
             Add Question
           </Button>
         </div>
@@ -160,6 +164,7 @@ const CreateTemplateForm = () => {
                 variant="secondary"
                 className="mt-2"
               >
+                <Plus className="h-4 w-4 mr-2" />
                 Add Your First Question
               </Button>
             </CardContent>
@@ -195,7 +200,7 @@ const CreateTemplateForm = () => {
           Cancel
         </Button>
         <Button type="submit">
-          Create Template
+          Save Template
         </Button>
       </div>
     </form>

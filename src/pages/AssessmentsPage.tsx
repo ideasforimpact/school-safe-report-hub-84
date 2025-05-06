@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
-import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { PlusCircle, CheckCircle, ClipboardList, AlertTriangle, BarChart } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
+import { PlusCircle, CheckCircle, ClipboardList, AlertTriangle } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -32,6 +32,11 @@ const AssessmentsPage = () => {
   };
   
   const [activeTab, setActiveTab] = useState(getActiveTab());
+  
+  // Update active tab when location changes
+  useEffect(() => {
+    setActiveTab(getActiveTab());
+  }, [location.pathname]);
   
   const handleTabChange = (value: string) => {
     setActiveTab(value);
@@ -151,28 +156,27 @@ const AssessmentsPage = () => {
             {/* Templates Tab */}
             <TabsContent value="templates" className="w-full">
               <Routes>
-                <Route path="/templates" element={<TemplatesList />} />
-                <Route path="/templates/new" element={<CreateTemplateForm />} />
-                <Route path="/templates/:templateId" element={<TemplateDetail />} />
-                <Route path="/templates/:templateId/edit" element={<CreateTemplateForm />} />
-                <Route path="/templates/:templateId/assign" element={<AssignTemplateForm />} />
-                <Route path="/templates/:templateId/bulk-assign" element={<BulkAssignForm />} />
+                <Route index element={<TemplatesList />} />
+                <Route path="new" element={<CreateTemplateForm />} />
+                <Route path=":templateId" element={<TemplateDetail />} />
+                <Route path=":templateId/edit" element={<CreateTemplateForm />} />
+                <Route path=":templateId/assign" element={<AssignTemplateForm />} />
+                <Route path=":templateId/bulk-assign" element={<BulkAssignForm />} />
               </Routes>
             </TabsContent>
             
             {/* Assignments Tab */}
             <TabsContent value="assignments" className="w-full">
               <Routes>
-                <Route path="/assignments" element={<AssignmentsList />} />
-                <Route path="/assignments/bulk-assign" element={<BulkAssignForm />} />
-                <Route path="/respond/:assignmentId" element={<AssessmentResponseForm />} />
+                <Route index element={<AssignmentsList />} />
+                <Route path="bulk-assign" element={<BulkAssignForm />} />
               </Routes>
             </TabsContent>
             
             {/* Results Tab */}
             <TabsContent value="results" className="w-full">
               <Routes>
-                <Route path="/results" element={<ResultsAnalytics />} />
+                <Route index element={<ResultsAnalytics />} />
               </Routes>
             </TabsContent>
           </Tabs>
