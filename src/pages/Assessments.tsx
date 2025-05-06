@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Layout from "@/components/layout/Layout";
@@ -21,16 +20,14 @@ const Assessments = () => {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   
   const handleCreateTemplate = (
-    templateData: Omit<AssessmentTemplate, 'id' | 'createdAt' | 'updatedAt'>, 
-    userIds: string[], 
-    dueDate?: Date
+    templateData: Omit<AssessmentTemplate, 'id' | 'createdAt' | 'updatedAt'>
   ) => {
-    const newTemplate = createTemplate(templateData, userIds, dueDate);
+    const newTemplate = createTemplate(templateData, [], undefined);
     setIsNewTemplateDialogOpen(false);
     
     toast({
       title: "Assessment Template Created",
-      description: `${newTemplate.name} has been created successfully${userIds.length > 0 ? ` and assigned to ${userIds.length} user(s)` : ''}.`,
+      description: `${newTemplate.name} has been created successfully.`,
     });
     
     // Ensure we're navigating to the correct path and the navigation happens after state updates
