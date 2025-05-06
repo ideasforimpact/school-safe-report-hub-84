@@ -47,6 +47,11 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
         <StatusBlocks data={statusData} />
       </div>
       
+      {/* Full-width Risk Assessment Matrix - moved out of grid and made prominent */}
+      <div className="h-[500px] shadow-sm rounded-xl overflow-hidden w-full bg-white">
+        <RiskAssessmentChart data={riskData} />
+      </div>
+      
       {/* Second row: Incidents by Type */}
       <div className="h-[400px] w-full">
         <BarChartComponent 
@@ -72,10 +77,6 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
             title="Incidents Over Time"
             description="Monthly trend of incidents with statistical analysis"
           />
-        </div>
-        
-        <div className="h-[400px]">
-          <RiskAssessmentChart data={riskData} />
         </div>
         
         <div className="h-[400px]">

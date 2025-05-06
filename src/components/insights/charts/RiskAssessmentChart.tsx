@@ -55,21 +55,21 @@ const CustomTooltip = ({ active, payload }: any) => {
 // Custom legend component that will be displayed inside the chart
 const CustomLegend = () => {
   return (
-    <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex justify-between px-4 py-2 bg-white/80 rounded-md border border-gray-100 shadow-sm text-xs">
-      <div className="text-green-500 font-medium flex items-center gap-1 mx-2">
-        <div className="w-3 h-3 rounded-full bg-green-500"></div>
+    <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex justify-center gap-6 px-6 py-3 bg-white/90 rounded-md border border-gray-100 shadow-sm text-sm">
+      <div className="text-green-500 font-medium flex items-center gap-2">
+        <div className="w-4 h-4 rounded-full bg-green-500"></div>
         Low Risk
       </div>
-      <div className="text-yellow-500 font-medium flex items-center gap-1 mx-2">
-        <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+      <div className="text-yellow-500 font-medium flex items-center gap-2">
+        <div className="w-4 h-4 rounded-full bg-yellow-500"></div>
         Medium Risk
       </div>
-      <div className="text-orange-500 font-medium flex items-center gap-1 mx-2">
-        <div className="w-3 h-3 rounded-full bg-orange-500"></div>
+      <div className="text-orange-500 font-medium flex items-center gap-2">
+        <div className="w-4 h-4 rounded-full bg-orange-500"></div>
         High Risk
       </div>
-      <div className="text-red-500 font-medium flex items-center gap-1 mx-2">
-        <div className="w-3 h-3 rounded-full bg-red-500"></div>
+      <div className="text-red-500 font-medium flex items-center gap-2">
+        <div className="w-4 h-4 rounded-full bg-red-500"></div>
         Critical Risk
       </div>
     </div>
@@ -97,18 +97,18 @@ const RiskAssessmentChart: React.FC<RiskAssessmentChartProps> = ({ data }) => {
   }, []);
 
   return (
-    <Card className="col-span-1">
+    <Card className="w-full h-full">
       <CardHeader>
-        <CardTitle>Risk Assessment Matrix</CardTitle>
-        <CardDescription>
-          Visualizes incident categories by frequency and severity to identify high-risk areas
+        <CardTitle className="text-xl">Risk Assessment Matrix</CardTitle>
+        <CardDescription className="text-sm">
+          Visualizes incident categories by frequency and severity to identify high-risk areas that require immediate attention
         </CardDescription>
       </CardHeader>
-      <CardContent className="h-[400px] relative">
+      <CardContent className="h-[calc(100%-90px)] relative">
         {data.length > 0 ? (
           <ResponsiveContainer width="100%" height="100%">
             <ScatterChart
-              margin={{ top: 20, right: 20, bottom: 70, left: 40 }}
+              margin={{ top: 20, right: 40, bottom: 70, left: 40 }}
             >
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis 
