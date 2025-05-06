@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { PlusCircle, CheckCircle, ClipboardList, AlertTriangle } from 'lucide-react';
@@ -105,6 +104,22 @@ const AssessmentsPage = () => {
     { id: 'A-2023-005', title: 'Environmental Risk Assessment', type: 'Risk', status: 'In Progress', date: '2023-11-10', score: null },
   ];
 
+  // Check if the current route is for responding to an assessment
+  const isResponseRoute = location.pathname.includes('/respond');
+  
+  // If it's a response route, render the response form directly
+  if (isResponseRoute) {
+    return (
+      <Layout>
+        <AssessmentProvider>
+          <Routes>
+            <Route path="/:assignmentId/respond" element={<AssessmentResponseForm />} />
+          </Routes>
+        </AssessmentProvider>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <AssessmentProvider>
@@ -179,11 +194,6 @@ const AssessmentsPage = () => {
                 <Route index element={<ResultsAnalytics />} />
               </Routes>
             </TabsContent>
-
-            {/* Response Form - Place outside of tabs but inside the AssessmentProvider */}
-            <Routes>
-              <Route path=":assignmentId/respond" element={<AssessmentResponseForm />} />
-            </Routes>
           </Tabs>
         </div>
       </AssessmentProvider>

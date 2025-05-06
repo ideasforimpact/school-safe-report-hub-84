@@ -66,10 +66,11 @@ function App() {
                         <Route path="/insights" element={<Insights />} />
                         
                         {/* Assessment Routes */}
-                        <Route path="/assessments/*" element={<AssessmentsPage />} />
+                        <Route path="/assessments" element={<AssessmentsPage />} />
                         <Route path="/assessments/templates/*" element={<AssessmentsPage />} />
                         <Route path="/assessments/assignments/*" element={<AssessmentsPage />} />
                         <Route path="/assessments/:assignmentId/respond" element={<AssessmentsPage />} />
+                        <Route path="/assessments/results/*" element={<AssessmentsPage />} />
                         
                         <Route path="/configuration" element={<ConfigurationManagement />} />
                         <Route path="/incident-configuration" element={<IncidentConfiguration />} />
