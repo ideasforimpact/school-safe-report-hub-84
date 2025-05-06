@@ -1,4 +1,4 @@
-
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,10 +10,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowUpDown, Edit, Play } from "lucide-react";
+import { ArrowUpDown, Edit, Play, Users } from "lucide-react";
 import { AssessmentTemplate } from "@/types/assessmentTypes";
 import { useAssessments } from "@/hooks/useAssessments";
 import { useToast } from "@/components/ui/use-toast";
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger
+} from "@/components/ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import InlineAssignTemplate from "./InlineAssignTemplate";
 
 interface AssessmentTemplatesTableProps {
   templates: AssessmentTemplate[];
@@ -29,8 +37,9 @@ const AssessmentTemplatesTable = ({
   onSort,
 }: AssessmentTemplatesTableProps) => {
   const navigate = useNavigate();
-  const { getAssignmentsByTemplate, updateTemplateStatus } = useAssessments();
+  const { getAssignmentsByTemplate, updateTemplateStatus, assignTemplate } = useAssessments();
   const { toast } = useToast();
+  const [assigningTemplateId, setAssigningTemplateId] = useState<string | null>(null);
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -72,6 +81,21 @@ const AssessmentTemplatesTable = ({
       title: "Template activated",
       description: "The template has been activated successfully."
     });
+  };
+  
+  const handleAssign = (templateId: string, userIds: string[], dueDate?: Date) => {
+    assignTemplate(templateId, userIds, dueDate);
+    
+    const template = templates.find(t => t.id === templateId);
+    const templateName = template ? template.name : 'Template';
+    
+    toast({
+      title: "Template assigned",
+      description: `${templateName} assigned to ${userIds.length} user(s).`
+    });
+    
+    // Close the assignment popover
+    setAssigningTemplateId(null);
   };
 
   return (
@@ -121,6 +145,40 @@ const AssessmentTemplatesTable = ({
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex justify-end space-x-2">
+                  {isComplete && (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Popover open={assigningTemplateId === template.id} onOpenChange={(open) => {
+                            if (!open) setAssigningTemplateId(null);
+                          }}>
+                            <PopoverTrigger asChild>
+                              <Button 
+                                size="sm" 
+                                variant="outline"
+                                onClick={() => setAssigningTemplateId(template.id)}
+                              >
+                                <Users className="h-4 w-4" />
+                                Assign
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="p-0" align="end">
+                              <InlineAssignTemplate
+                                templateId={template.id}
+                                templateName={template.name}
+                                onAssign={(userIds, dueDate) => handleAssign(template.id, userIds, dueDate)}
+                                onClose={() => setAssigningTemplateId(null)}
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          Assign to users
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                  
                   {isComplete && !isActive && (
                     <Button 
                       size="sm" 
@@ -131,6 +189,7 @@ const AssessmentTemplatesTable = ({
                       Activate
                     </Button>
                   )}
+                  
                   <Button 
                     size="sm" 
                     variant={isComplete ? "outline" : "default"}
