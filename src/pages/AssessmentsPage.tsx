@@ -1,16 +1,55 @@
 
-import React from 'react';
+import React, { useState } from 'react';
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { PlusCircle, CheckCircle, ClipboardList, AlertTriangle, BarChart } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 import AssessmentCard from '@/components/assessments/AssessmentCard';
 import AssessmentSummaryCards from '@/components/assessments/AssessmentSummaryCards';
 import RecentAssessmentsTable from '@/components/assessments/RecentAssessmentsTable';
+import { AssessmentProvider } from '@/contexts/AssessmentContext';
+import TemplatesList from '@/components/assessments/templates/TemplatesList';
+import CreateTemplateForm from '@/components/assessments/templates/CreateTemplateForm';
+import TemplateDetail from '@/components/assessments/templates/TemplateDetail';
+import AssignTemplateForm from '@/components/assessments/assignments/AssignTemplateForm';
+import AssignmentsList from '@/components/assessments/assignments/AssignmentsList';
+import AssessmentResponseForm from '@/components/assessments/responses/AssessmentResponseForm';
+import ResultsAnalytics from '@/components/assessments/results/ResultsAnalytics';
 
 const AssessmentsPage = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Determine active tab based on the URL path
+  const getActiveTab = () => {
+    if (location.pathname.includes('/templates')) return 'templates';
+    if (location.pathname.includes('/assignments')) return 'assignments';
+    if (location.pathname.includes('/results')) return 'results';
+    if (location.pathname.includes('/respond')) return 'assignments';
+    return 'overview';
+  };
+  
+  const [activeTab, setActiveTab] = useState(getActiveTab());
+  
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    
+    switch(value) {
+      case 'templates':
+        navigate('/assessments/templates');
+        break;
+      case 'assignments':
+        navigate('/assessments/assignments');
+        break;
+      case 'results':
+        navigate('/assessments/results');
+        break;
+      default:
+        navigate('/assessments');
+    }
+  };
+  
   // Mock data for demonstration
   const summaryData = {
     total: 24,
@@ -62,104 +101,79 @@ const AssessmentsPage = () => {
 
   return (
     <Layout>
-      <div className="space-y-6 md:space-y-8 w-full">
-        {/* Header Section */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 w-full">
-          <div className="text-left">
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Assessments</h1>
-            <p className="text-sm md:text-base text-gray-600 mt-1">
-              Create, manage, and review safety and compliance assessments
-            </p>
-          </div>
-          
-          <Button className="whitespace-nowrap">
-            <PlusCircle className="h-4 w-4 mr-2" />
-            New Assessment
-          </Button>
-        </div>
-
-        {/* Summary Cards */}
-        <AssessmentSummaryCards data={summaryData} />
-        
-        {/* Assessment Types Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-          {assessmentTypes.map(assessment => (
-            <AssessmentCard key={assessment.id} assessment={assessment} />
-          ))}
-        </div>
-        
-        {/* Tabbed Interface */}
-        <Tabs defaultValue="recent" className="w-full">
-          <TabsList className="grid grid-cols-4 max-w-md mb-6">
-            <TabsTrigger value="recent">Recent</TabsTrigger>
-            <TabsTrigger value="active">Active</TabsTrigger>
-            <TabsTrigger value="completed">Completed</TabsTrigger>
-            <TabsTrigger value="scheduled">Scheduled</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="recent" className="w-full">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg font-medium">Recent Assessments</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <RecentAssessmentsTable assessments={recentAssessments} />
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="active">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg font-medium">Active Assessments</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">Currently active assessments that need attention or are in progress.</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="completed">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg font-medium">Completed Assessments</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">Review previously completed assessments and their results.</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="scheduled">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg font-medium">Scheduled Assessments</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-gray-600">Upcoming assessments that have been scheduled for the future.</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-
-        {/* Analytics Preview */}
-        <Card className="border-none shadow-card">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg md:text-xl font-medium">Assessment Analytics</CardTitle>
-              <Button variant="outline" size="sm" className="text-xs">
-                <BarChart className="h-4 w-4 mr-1" />
-                View Full Report
+      <AssessmentProvider>
+        <div className="space-y-6 md:space-y-8 w-full">
+          {/* Header Section */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 w-full">
+            <div className="text-left">
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Assessments</h1>
+              <p className="text-sm md:text-base text-gray-600 mt-1">
+                Create, manage, and review safety and compliance assessments
+              </p>
+            </div>
+            
+            <div className="flex space-x-2">
+              <Button 
+                onClick={() => navigate('/assessments/templates/new')}
+                className="whitespace-nowrap"
+              >
+                <PlusCircle className="h-4 w-4 mr-2" />
+                Create Template
               </Button>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="bg-gray-50 border border-gray-100 rounded-lg h-64 flex items-center justify-center">
-              <p className="text-gray-500">Assessment trend data visualization will appear here</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+
+          {/* Main Tabs Navigation */}
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
+            <TabsList className="grid grid-cols-4 max-w-md mb-6">
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="templates">Templates</TabsTrigger>
+              <TabsTrigger value="assignments">Assignments</TabsTrigger>
+              <TabsTrigger value="results">Results</TabsTrigger>
+            </TabsList>
+            
+            {/* Overview Tab */}
+            <TabsContent value="overview" className="space-y-6">
+              <AssessmentSummaryCards data={summaryData} />
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+                {assessmentTypes.map(assessment => (
+                  <AssessmentCard key={assessment.id} assessment={assessment} />
+                ))}
+              </div>
+              
+              <div className="mt-6">
+                <RecentAssessmentsTable assessments={recentAssessments} />
+              </div>
+            </TabsContent>
+            
+            {/* Templates Tab */}
+            <TabsContent value="templates" className="w-full">
+              <Routes>
+                <Route path="/templates" element={<TemplatesList />} />
+                <Route path="/templates/new" element={<CreateTemplateForm />} />
+                <Route path="/templates/:templateId" element={<TemplateDetail />} />
+                <Route path="/templates/:templateId/assign" element={<AssignTemplateForm />} />
+              </Routes>
+            </TabsContent>
+            
+            {/* Assignments Tab */}
+            <TabsContent value="assignments" className="w-full">
+              <Routes>
+                <Route path="/assignments" element={<AssignmentsList />} />
+                <Route path="/:assignmentId/respond" element={<AssessmentResponseForm />} />
+              </Routes>
+            </TabsContent>
+            
+            {/* Results Tab */}
+            <TabsContent value="results" className="w-full">
+              <Routes>
+                <Route path="/results" element={<ResultsAnalytics />} />
+              </Routes>
+            </TabsContent>
+          </Tabs>
+        </div>
+      </AssessmentProvider>
     </Layout>
   );
 };
