@@ -3,21 +3,6 @@
 
 import { DateRange } from 'react-day-picker';
 
-export interface PersonData {
-  name: string;
-  id: string;
-  role: string;
-  incidents: Array<{
-    id: string;
-    date: string;
-    type: string;
-    category: string;
-    subcategory: string;
-    status: string;
-  }>;
-  count: number;
-}
-
 export const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d', '#ffc658'];
 
 export const prepareCSVContent = (headers: string[], rows: string[]): string => {
@@ -34,38 +19,6 @@ export const downloadCSV = (csvContent: string, filename: string): void => {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-};
-
-export const preparePeopleExport = (peopleData: PersonData[]): string => {
-  // Create headers for the CSV
-  const headers = [
-    'Name',
-    'ID',
-    'Role',
-    'Incident Count',
-    'Incident IDs',
-    'Incident Dates',
-    'Categories'
-  ];
-  
-  // Create rows for each person
-  const rows = peopleData.map(person => {
-    const incidentIds = person.incidents.map(i => i.id).join('; ');
-    const incidentDates = person.incidents.map(i => new Date(i.date).toLocaleDateString()).join('; ');
-    const categories = person.incidents.map(i => i.category).join('; ');
-    
-    return [
-      `"${person.name}"`,
-      person.id,
-      person.role,
-      person.count,
-      `"${incidentIds}"`,
-      `"${incidentDates}"`,
-      `"${categories}"`
-    ].join(',');
-  });
-  
-  return prepareCSVContent(headers, rows);
 };
 
 export const prepareIncidentsExport = (incidents: any[]): string => {

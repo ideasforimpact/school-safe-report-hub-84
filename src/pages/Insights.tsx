@@ -6,11 +6,9 @@ import Layout from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import InsightsFilters from '@/components/insights/InsightsFilters';
 import ChartsTab from '@/components/insights/tabs/ChartsTab';
-import PeopleTab from '@/components/insights/tabs/PeopleTab';
 import DashboardTab from '@/components/insights/tabs/DashboardTab';
 import { useInsightsData } from '@/hooks/useInsightsData';
-import { downloadCSV, prepareIncidentsExport, preparePeopleExport } from '@/utils/insightsUtils';
-import { PersonData } from '@/utils/insightsUtils';
+import { downloadCSV, prepareIncidentsExport } from '@/utils/insightsUtils';
 import { CHART_COLOR_ARRAY } from '@/utils/chartColorUtils';
 
 const Insights = () => {
@@ -26,7 +24,6 @@ const Insights = () => {
     availableSubcategories,
     peopleInvolved,
     chartData,
-    peopleData,
     roleDistributionData
   } = useInsightsData();
   
@@ -34,12 +31,6 @@ const Insights = () => {
   const exportToCSV = () => {
     const csvContent = prepareIncidentsExport(filteredIncidents);
     downloadCSV(csvContent, `incident-report-${new Date().toISOString().slice(0, 10)}.csv`);
-  };
-
-  // Export people report as CSV
-  const exportPeopleReportCSV = () => {
-    const csvContent = preparePeopleExport(peopleData as PersonData[]);
-    downloadCSV(csvContent, `people-incident-report-${new Date().toISOString().slice(0, 10)}.csv`);
   };
 
   return (
@@ -56,13 +47,6 @@ const Insights = () => {
               <Button onClick={exportToCSV} className="flex items-center gap-2">
                 <Download className="h-4 w-4" />
                 Export as CSV
-              </Button>
-            )}
-            
-            {activeTab === "people" && (
-              <Button onClick={exportPeopleReportCSV} className="flex items-center gap-2">
-                <Download className="h-4 w-4" />
-                Export People Report
               </Button>
             )}
           </div>
@@ -94,9 +78,8 @@ const Insights = () => {
 
         {/* Tabs content */}
         <Tabs defaultValue="charts" value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-3 w-[500px]">
+          <TabsList className="grid grid-cols-2 w-[400px]">
             <TabsTrigger value="charts">Charts & Analytics</TabsTrigger>
-            <TabsTrigger value="people">People Report</TabsTrigger>
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           </TabsList>
           
@@ -114,14 +97,6 @@ const Insights = () => {
               isAdmin={isAdmin}
               colors={CHART_COLOR_ARRAY}
               roleDistributionData={roleDistributionData}
-            />
-          </TabsContent>
-          
-          <TabsContent value="people" className="w-full">
-            <PeopleTab 
-              roleDistributionData={roleDistributionData}
-              peopleData={peopleData as PersonData[]}
-              colors={CHART_COLOR_ARRAY}
             />
           </TabsContent>
           

@@ -15,12 +15,10 @@ import {
   processLocationData,
   processFacilityData,
   processAssigneeData,
-  processPeopleData,
-  processRoleDistributionData,
   processHeatmapData,
   processRiskData,
-  extractUniqueValues,
-  PersonDataType
+  processRoleDistributionData,
+  extractUniqueValues
 } from '@/utils/insights/dataProcessors';
 
 export interface InsightsFiltersState {
@@ -92,15 +90,10 @@ export const useInsightsData = () => {
     };
   }, [filteredIncidents, isAdmin]);
   
-  // Prepare people report data
-  const peopleData = useMemo(
-    () => processPeopleData(filteredIncidents),
-    [filteredIncidents]
-  );
-  
+  // Calculate role distribution data for charts
   const roleDistributionData = useMemo(
-    () => processRoleDistributionData(peopleData),
-    [peopleData]
+    () => processRoleDistributionData(filteredIncidents),
+    [filteredIncidents]
   );
   
   // Handle filter changes
@@ -129,7 +122,6 @@ export const useInsightsData = () => {
     availableSubcategories,
     peopleInvolved,
     chartData,
-    peopleData,
     roleDistributionData
   };
 };
