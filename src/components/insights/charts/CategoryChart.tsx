@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface CategoryChartProps {
   data: Array<{name: string, value: number}>;
@@ -52,25 +52,50 @@ const CategoryChart: React.FC<CategoryChartProps> = ({
               </ResponsiveContainer>
             </div>
             
-            {/* Categories list on the right */}
+            {/* Categories list on the right - Improved styling */}
             <div className="w-full md:w-1/3 pl-0 md:pl-4 mt-4 md:mt-0">
-              <h4 className="text-sm font-medium mb-2">Categories</h4>
-              <ul className="space-y-2">
-                {data.map((item, index) => (
-                  <li key={`list-${index}`} className="flex items-center">
-                    <span 
-                      className="w-3 h-3 rounded-full mr-2" 
-                      style={{ backgroundColor: colors[index % colors.length] }}
-                    ></span>
-                    <span className="text-sm font-medium">
-                      {item.name} ({item.value})
-                    </span>
-                    <span className="text-xs text-gray-500 ml-1">
-                      ({((item.value / total) * 100).toFixed(1)}%)
-                    </span>
-                  </li>
-                ))}
-              </ul>
+              <h4 className="text-sm font-medium mb-3">Categories</h4>
+              <div className="bg-gray-50 dark:bg-gray-800/30 rounded-lg p-3">
+                <table className="w-full">
+                  <tbody>
+                    {data.map((item, index) => {
+                      // Format the percentage with consistent decimals
+                      const percentage = ((item.value / total) * 100).toFixed(1);
+                      // Format value with commas for thousands
+                      const formattedValue = item.value.toLocaleString();
+                      
+                      return (
+                        <tr 
+                          key={`list-${index}`} 
+                          className={`
+                            ${index !== data.length - 1 ? "border-b border-gray-200 dark:border-gray-700/50" : ""}
+                          `}
+                        >
+                          <td className="py-2">
+                            <div className="flex items-center">
+                              <div 
+                                className="w-3 h-3 rounded-sm mr-2" 
+                                style={{ backgroundColor: colors[index % colors.length] }}
+                              />
+                              <span className="text-sm font-medium truncate max-w-[120px]">
+                                {item.name}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="text-right py-2 whitespace-nowrap">
+                            <span className="text-sm font-medium">
+                              {formattedValue}
+                            </span>
+                            <span className="text-xs text-gray-500 ml-1">
+                              ({percentage}%)
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         ) : (
