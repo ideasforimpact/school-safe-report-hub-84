@@ -49,9 +49,12 @@ export const AssessmentProvider: React.FC<{children: React.ReactNode}> = ({ chil
     // that takes either a new state value or a function to update the state
     return (updater) => {
       if (typeof updater === 'function') {
-        updateTemplate(updater(templates));
+        const updatedTemplates = updater(templates);
+        // Fix: Pass the id and updates as separate arguments
+        updateTemplate(updatedTemplates.id, updatedTemplates);
       } else {
-        updateTemplate(updater);
+        // Fix: Pass the id and updates as separate arguments
+        updateTemplate(updater.id, updater);
       }
     };
   });
