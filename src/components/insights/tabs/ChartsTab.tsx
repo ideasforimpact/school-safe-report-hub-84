@@ -57,7 +57,7 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
         <StatusBlocks data={statusData} />
       </div>
       
-      {/* Role Distribution - with improved donut chart layout */}
+      {/* Role Distribution - with improved donut chart layout - now aligned to the left */}
       <Card className="w-full">
         <CardHeader>
           <CardTitle>Role Distribution</CardTitle>
@@ -68,8 +68,8 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
         <CardContent className="relative h-80">
           {roleDistributionData.length > 0 ? (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
-              {/* Donut chart visualization */}
-              <div className="lg:col-span-2 h-full">
+              {/* Donut chart visualization - aligned to the left */}
+              <div className="lg:col-span-1 h-full flex items-center justify-start relative">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -119,14 +119,14 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
                   </PieChart>
                 </ResponsiveContainer>
                 {/* Centered metrics */}
-                <div className="absolute top-1/2 left-1/3 transform -translate-x-1/2 -translate-y-1/2 text-center">
+                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
                   <p className="text-3xl font-bold">{totalRoleIncidents}</p>
                   <p className="text-sm text-muted-foreground">Total</p>
                 </div>
               </div>
               
-              {/* Data table with percentages */}
-              <div className="h-full overflow-y-auto">
+              {/* Data table with percentages - expanded to take more space */}
+              <div className="lg:col-span-2 h-full overflow-y-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
