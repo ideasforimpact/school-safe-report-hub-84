@@ -17,7 +17,7 @@ const AssigneeChart: React.FC<AssigneeChartProps> = ({ data, colors }) => {
           Distribution of incidents by assigned owner
         </CardDescription>
       </CardHeader>
-      <CardContent className="h-[400px]">
+      <CardContent className="h-[500px]">
         <CategoryChart 
           data={data} 
           colors={colors}

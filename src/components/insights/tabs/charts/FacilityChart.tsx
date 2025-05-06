@@ -17,7 +17,7 @@ const FacilityChart: React.FC<FacilityChartProps> = ({ data, colors }) => {
           Distribution of incidents across different facilities
         </CardDescription>
       </CardHeader>
-      <CardContent className="h-[400px]">
+      <CardContent className="h-[500px]">
         <CategoryChart 
           data={data} 
           colors={colors}
