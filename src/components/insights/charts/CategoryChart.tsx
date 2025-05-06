@@ -33,8 +33,8 @@ const CategoryChart: React.FC<CategoryChartProps> = ({
   };
 
   return (
-    <Card className="h-full overflow-hidden border-0 bg-gradient-to-br from-white to-gray-50 shadow-md">
-      <CardHeader className="bg-white/40 backdrop-blur-sm">
+    <Card className="h-full overflow-hidden border-0 shadow-sm bg-white">
+      <CardHeader className="bg-white/40 backdrop-blur-sm border-b border-gray-50">
         <div className="flex items-center gap-2">
           <Layers className="h-5 w-5 text-primary" />
           <CardTitle className="text-xl">{title}</CardTitle>
@@ -46,17 +46,17 @@ const CategoryChart: React.FC<CategoryChartProps> = ({
       <CardContent className="h-[calc(100%-90px)]">
         {data.length > 0 ? (
           <div className="flex flex-col md:flex-row h-full animate-fade-in">
-            {/* Donut chart on the left */}
-            <div className="w-full md:w-1/2 h-full relative flex items-center justify-start pl-0 md:pl-4">
-              <ResponsiveContainer width="100%" height="100%">
+            {/* Left side - chart */}
+            <div className="w-full md:w-5/12 h-full flex items-center justify-center">
+              <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie
                     data={data}
-                    cx="30%" 
+                    cx="50%"
                     cy="50%"
                     labelLine={false}
-                    innerRadius={80}
-                    outerRadius={140}
+                    innerRadius={70}
+                    outerRadius={100}
                     fill="#8884d8"
                     dataKey="value"
                     onMouseEnter={onPieEnter}
@@ -64,13 +64,14 @@ const CategoryChart: React.FC<CategoryChartProps> = ({
                     animationDuration={800}
                     animationBegin={0}
                     animationEasing="ease-out"
+                    paddingAngle={2}
                   >
                     {data.map((entry, index) => (
                       <Cell 
                         key={`cell-${index}`} 
                         fill={colors[index % colors.length]}
                         opacity={activeIndex === null || activeIndex === index ? 1 : 0.6}
-                        strokeWidth={activeIndex === index ? 2 : 1}
+                        strokeWidth={activeIndex === index ? 2 : 0}
                         stroke="#fff"
                       />
                     ))}
@@ -81,67 +82,62 @@ const CategoryChart: React.FC<CategoryChartProps> = ({
                   />
                 </PieChart>
               </ResponsiveContainer>
-              
-              {/* Center content showing total incidents */}
-              <div className="absolute left-[30%] top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center flex-col pointer-events-none">
-                <div className="text-3xl font-bold">{total}</div>
-                <div className="text-sm text-gray-500">Total Incidents</div>
-              </div>
             </div>
             
-            {/* Enhanced legend on the right */}
-            <div className="w-full md:w-1/2 pl-0 md:pl-4 mt-4 md:mt-0 overflow-y-auto max-h-[300px] md:max-h-full">
-              <h4 className="text-sm font-medium mb-3 text-gray-500 uppercase tracking-wider">Categories</h4>
-              <div className="space-y-3">
+            {/* Right side - elegant table */}
+            <div className="w-full md:w-7/12 overflow-y-auto pl-0 md:pl-6 mt-4 md:mt-0">
+              <div className="space-y-1">
                 {data.map((item, index) => {
                   // Format the percentage with consistent decimals
                   const percentage = ((item.value / total) * 100).toFixed(1);
-                  // Format value with commas for thousands
-                  const formattedValue = item.value.toLocaleString();
                   const color = colors[index % colors.length];
                   const isActive = activeIndex === index;
                   
                   return (
                     <div
                       key={`legend-${index}`}
-                      className={`p-2 rounded-lg transition-all duration-200 ${isActive ? 'bg-gray-100 shadow-sm' : 'hover:bg-gray-50'}`}
+                      className={`py-2 px-3 rounded-md transition-all duration-200 border-l-4 ${isActive ? 'bg-gray-50' : 'hover:bg-gray-50'}`}
+                      style={{ borderLeftColor: color }}
                       onMouseEnter={() => setActiveIndex(index)}
                       onMouseLeave={() => setActiveIndex(null)}
                     >
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center">
-                          <div 
-                            className="w-4 h-4 rounded-md mr-2" 
-                            style={{ backgroundColor: color }}
-                          />
-                          <span className="text-sm font-medium truncate max-w-[150px]">
+                        <div className="flex items-center space-x-3">
+                          <span className="text-sm font-medium text-gray-800">
                             {item.name}
                           </span>
                         </div>
-                        <span className="text-sm font-semibold whitespace-nowrap">
-                          {formattedValue}
-                        </span>
+                        <div className="flex items-center space-x-3">
+                          <span className="text-sm font-medium text-gray-600">
+                            {item.value}
+                          </span>
+                          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                            {percentage}%
+                          </span>
+                        </div>
                       </div>
                       
-                      {/* Progress bar showing percentage */}
-                      <div className="mt-1 w-full bg-gray-100 rounded-full h-1.5">
+                      {/* Thin elegant progress bar */}
+                      <div className="mt-1 w-full bg-gray-100 rounded-full h-1">
                         <div 
-                          className="h-1.5 rounded-full transition-all duration-500 ease-out"
+                          className="h-1 rounded-full transition-all duration-300 ease-out"
                           style={{ 
                             width: `${percentage}%`,
                             backgroundColor: color,
-                            boxShadow: isActive ? `0 0 8px ${color}` : 'none'
                           }}
                         />
-                      </div>
-                      <div className="flex justify-end mt-0.5">
-                        <span className="text-xs text-gray-500">
-                          {percentage}%
-                        </span>
                       </div>
                     </div>
                   );
                 })}
+              </div>
+              
+              {/* Total section */}
+              <div className="mt-6 pt-4 border-t border-gray-100">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-gray-700">Total Incidents</span>
+                  <span className="text-base font-semibold">{total}</span>
+                </div>
               </div>
             </div>
           </div>
