@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAssessment } from '@/contexts/assessment/AssessmentContext';
@@ -155,7 +156,7 @@ const AssignmentsList = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => navigate(`/assessments/${assignment.id}/respond`)}
+                        onClick={() => navigate(`/assessments/assignments/${assignment.id}/respond`)}
                       >
                         <Eye className="h-4 w-4 mr-1" />
                         {assignment.status === 'Completed' ? 'View' : 'Respond'}

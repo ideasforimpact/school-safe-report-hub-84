@@ -24,6 +24,8 @@ export const useAssessmentResponseForm = () => {
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [currentSection, setCurrentSection] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
   
   // Get assignment, template, and existing response data
   const assignment = assignmentId ? assignments.find(a => a.id === assignmentId) : null;
@@ -34,7 +36,11 @@ export const useAssessmentResponseForm = () => {
   
   // Initialize form with existing response data or empty values
   useEffect(() => {
+    setLoading(true);
+    
     if (template && assignment) {
+      setNotFound(false);
+      
       if (existingResponse) {
         // Use existing responses
         setQuestionResponses(existingResponse.responses);
@@ -42,26 +48,31 @@ export const useAssessmentResponseForm = () => {
         // Create empty responses for each question
         const emptyResponses = template.questions.map(question => ({
           questionId: question.id,
-          answer: false,
+          answer: undefined as any, // Initialize as undefined
           comment: null,
           attachments: null
         }));
         setQuestionResponses(emptyResponses);
       }
-    }
-  }, [template, assignment, existingResponse]);
-  
-  // If no assignment or template found, redirect to assignments list
-  useEffect(() => {
-    if (!assignmentId) {
-      navigate('/assessments/assignments');
-      return;
+    } else if (assignmentId && (!assignment || !template)) {
+      // Set not found flag if we have an assignmentId but can't find the data
+      setNotFound(true);
     }
     
-    if (assignmentId && (!assignment || !template)) {
-      navigate('/assessments/assignments');
+    setLoading(false);
+  }, [template, assignment, existingResponse, assignmentId]);
+  
+  // If no assignment or template found, redirect to assignments list after a delay
+  useEffect(() => {
+    if (notFound) {
+      const timer = setTimeout(() => {
+        toast.error("Assessment not found");
+        navigate('/assessments/assignments');
+      }, 2000);
+      
+      return () => clearTimeout(timer);
     }
-  }, [assignmentId, assignment, template, navigate]);
+  }, [notFound, navigate]);
   
   const handleResponseChange = (questionId: string, field: string, value: any) => {
     setQuestionResponses(prev => 
@@ -199,6 +210,8 @@ export const useAssessmentResponseForm = () => {
     progressPercentage,
     groupedQuestions,
     currentQuestions,
+    loading,
+    notFound,
     isCompleted: existingResponse?.status === 'Submitted',
     isOverdue: assignment ? new Date(assignment.dueDate) < new Date() && assignment.status !== 'Completed' : false,
     isFirstSection,
