@@ -30,6 +30,7 @@ import ClientManagement from './pages/ClientManagement';
 // Removed Benchmarking import
 import BackofficeAnalytics from './pages/backoffice/BackofficeAnalytics';
 import BackofficeSettings from './pages/backoffice/BackofficeSettings';
+import Assessments from './pages/Assessments';
 
 import './App.css';
 
@@ -62,6 +63,7 @@ function App() {
                       <Route path="/incident/:id/edit" element={<EditIncident />} />
                       <Route path="/report-incident" element={<ReportIncident />} />
                       <Route path="/insights" element={<Insights />} />
+                      <Route path="/assessments" element={<Assessments />} />
                       <Route path="/configuration" element={<ConfigurationManagement />} />
                       <Route path="/incident-configuration" element={<IncidentConfiguration />} />
                       <Route path="/educational-configuration" element={<EducationalConfiguration />} />
