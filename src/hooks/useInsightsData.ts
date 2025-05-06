@@ -91,10 +91,26 @@ export const useInsightsData = () => {
   }, [filteredIncidents, isAdmin]);
   
   // Calculate role distribution data for charts
-  const roleDistributionData = useMemo(
-    () => processRoleDistributionData(filteredIncidents),
-    [filteredIncidents]
-  );
+  // Fix: Create the people data first, then use it for role distribution
+  const roleDistributionData = useMemo(() => {
+    // Instead of directly passing filteredIncidents, we need to get the proper roles data
+    const roles = filteredIncidents.flatMap(incident => 
+      incident.peopleInvolved?.map(person => person.role) || []
+    );
+    
+    // Count the occurrences of each role
+    const roleCounts = roles.reduce((acc, role) => {
+      if (!role) return acc;
+      acc[role] = (acc[role] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    // Convert to the expected format
+    return Object.entries(roleCounts).map(([name, value]) => ({
+      name,
+      value
+    }));
+  }, [filteredIncidents]);
   
   // Handle filter changes
   const handleFilterChange = (name: string, value: any) => {
