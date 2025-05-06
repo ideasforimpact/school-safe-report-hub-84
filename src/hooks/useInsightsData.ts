@@ -51,8 +51,8 @@ export const useInsightsData = () => {
     dateRange: undefined
   });
   
-  // Active tab state
-  const [activeTab, setActiveTab] = useState("dashboard");
+  // Active tab state - changed the default from "dashboard" to "charts"
+  const [activeTab, setActiveTab] = useState("charts");
   
   // Apply filters to get filtered incidents
   const filteredIncidents = useMemo(() => {

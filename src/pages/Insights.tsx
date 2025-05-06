@@ -93,21 +93,12 @@ const Insights = () => {
         />
 
         {/* Tabs content */}
-        <Tabs defaultValue="dashboard" value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <Tabs defaultValue="charts" value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid grid-cols-3 w-[500px]">
-            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="charts">Charts & Analytics</TabsTrigger>
             <TabsTrigger value="people">People Report</TabsTrigger>
+            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           </TabsList>
-          
-          <TabsContent value="dashboard" className="w-full">
-            <DashboardTab
-              timeSeriesData={chartData.timeSeriesData}
-              riskData={chartData.riskData}
-              heatmapData={chartData.heatmapData}
-              recentIncidents={filteredIncidents.slice(0, 10)}
-            />
-          </TabsContent>
           
           <TabsContent value="charts" className="w-full">
             <ChartsTab 
@@ -130,6 +121,15 @@ const Insights = () => {
               roleDistributionData={roleDistributionData}
               peopleData={peopleData as PersonData[]}
               colors={CHART_COLOR_ARRAY}
+            />
+          </TabsContent>
+          
+          <TabsContent value="dashboard" className="w-full">
+            <DashboardTab
+              timeSeriesData={chartData.timeSeriesData}
+              riskData={chartData.riskData}
+              heatmapData={chartData.heatmapData}
+              recentIncidents={filteredIncidents.slice(0, 10)}
             />
           </TabsContent>
         </Tabs>
