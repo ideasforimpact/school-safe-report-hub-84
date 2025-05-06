@@ -1,4 +1,3 @@
-
 import React from 'react';
 import CategoryChart from '../charts/category-chart';
 import BarChartComponent from '../charts/BarChartComponent';
@@ -59,9 +58,9 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
       
       {/* Role Distribution - with improved donut chart layout - now aligned to the left */}
       <Card className="w-full">
-        <CardHeader>
-          <CardTitle>Role Distribution</CardTitle>
-          <CardDescription>
+        <CardHeader className="flex flex-col items-start">
+          <CardTitle className="text-left">Role Distribution</CardTitle>
+          <CardDescription className="text-left">
             Distribution of incidents by role of people involved
           </CardDescription>
         </CardHeader>
@@ -172,11 +171,27 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
       
       {/* Second row: Incidents by Type */}
       <div className="h-[400px] w-full">
-        <BarChartComponent 
-          title="Incidents by Type" 
-          description="Compare occurrence of incidents, near misses, and unsafe conditions"
-          data={typeData}
-        />
+        <Card className="h-full">
+          <CardHeader className="flex flex-col items-start">
+            <CardTitle className="text-left">Incidents by Type</CardTitle>
+            <CardDescription className="text-left">
+              Compare occurrence of incidents, near misses, and unsafe conditions
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="h-[calc(100%-90px)]">
+            {typeData.length > 0 ? (
+              <BarChartComponent 
+                title="" 
+                description=""
+                data={typeData}
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-500">
+                No data available for the selected filters
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
       
       {/* Full width subcategories chart */}
@@ -190,42 +205,90 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
       {/* Remaining charts in a grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full">
         <div className="h-[400px]">
-          <TimeSeriesAnalysis 
-            data={timeSeriesData} 
-            title="Incidents Over Time"
-            description="Monthly trend of incidents with statistical analysis"
-          />
+          <Card className="h-full">
+            <CardHeader className="flex flex-col items-start">
+              <CardTitle className="text-left">Incidents Over Time</CardTitle>
+              <CardDescription className="text-left">
+                Monthly trend of incidents with statistical analysis
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="h-[calc(100%-90px)]">
+              {timeSeriesData.length > 0 ? (
+                <TimeSeriesAnalysis 
+                  data={timeSeriesData} 
+                  title=""
+                  description=""
+                />
+              ) : (
+                <div className="flex items-center justify-center h-full text-gray-500">
+                  No data available for the selected filters
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
         
         <div className="h-[400px]">
-          <BarChartComponent 
-            title="Incident Location" 
-            description="Distribution of incidents by location"
-            data={locationData}
-            color="#0ea5e9"
-            layout="vertical"
-          />
+          <Card className="h-full">
+            <CardHeader className="flex flex-col items-start">
+              <CardTitle className="text-left">Incident Location</CardTitle>
+              <CardDescription className="text-left">
+                Distribution of incidents by location
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="h-[calc(100%-90px)]">
+              {locationData.length > 0 ? (
+                <BarChartComponent 
+                  title="" 
+                  description=""
+                  data={locationData}
+                  color="#0ea5e9"
+                  layout="vertical"
+                />
+              ) : (
+                <div className="flex items-center justify-center h-full text-gray-500">
+                  No data available for the selected filters
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
 
       {/* Facilities chart - auto fit content height instead of fixed height */}
       {isAdmin && facilityData.length > 0 && (
-        <div className="shadow-sm rounded-xl overflow-hidden w-full">
-          <CategoryChart 
-            data={facilityData} 
-            colors={colors}
-            title="Incidents by Facility"
-          />
-        </div>
+        <Card className="w-full">
+          <CardHeader className="flex flex-col items-start">
+            <CardTitle className="text-left">Incidents by Facility</CardTitle>
+            <CardDescription className="text-left">
+              Distribution of incidents across different facilities
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="h-[300px]">
+            <CategoryChart 
+              data={facilityData} 
+              colors={colors}
+              title=""
+            />
+          </CardContent>
+        </Card>
       )}
       
-      <div className="h-[400px] shadow-sm rounded-xl overflow-hidden w-full">
-        <CategoryChart 
-          data={assigneeData} 
-          colors={colors}
-          title="Incident Ownership"
-        />
-      </div>
+      <Card className="w-full">
+        <CardHeader className="flex flex-col items-start">
+          <CardTitle className="text-left">Incident Ownership</CardTitle>
+          <CardDescription className="text-left">
+            Distribution of incidents by assigned owner
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="h-[300px]">
+          <CategoryChart 
+            data={assigneeData} 
+            colors={colors}
+            title=""
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 };
