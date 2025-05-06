@@ -52,19 +52,22 @@ export function DatePicker({
   );
 }
 
+export interface DatePickerWithRangeProps {
+  date: DateRange | undefined;
+  onChange: (date: DateRange | undefined) => void;
+  className?: string;
+}
+
 export function DatePickerWithRange({
   date,
   onChange,
-}: {
-  date: DateRange | undefined;
-  onChange: (date: DateRange | undefined) => void;
-}) {
+  className,
+}: DatePickerWithRangeProps) {
   return (
-    <div className="grid gap-2">
+    <div className={cn("grid gap-2", className)}>
       <Popover>
         <PopoverTrigger asChild>
           <Button
-            id="date"
             variant={"outline"}
             className={cn(
               "w-full justify-start text-left font-normal",

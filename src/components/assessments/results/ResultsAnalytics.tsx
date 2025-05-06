@@ -25,7 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from '@/components/ui/label';
-import { DatePicker } from '@/components/ui/date-picker';
+import { DatePickerWithRange } from '@/components/ui/date-picker';
 import {
   Pagination,
   PaginationContent,
@@ -165,12 +165,11 @@ const ResultsAnalytics = () => {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <Label htmlFor="date-range">Date Range</Label>
+              <Label>Date Range</Label>
               <div className="mt-1">
-                <DatePicker 
-                  id="date-range"
-                  selected={dateRange} 
-                  onSelect={setDateRange}
+                <DatePickerWithRange
+                  date={dateRange}
+                  onChange={setDateRange}
                 />
               </div>
             </div>
@@ -322,15 +321,7 @@ const ResultsAnalytics = () => {
                         />
                       ))}
                     </Pie>
-                    <ChartTooltip 
-                      content={props => 
-                        <ChartTooltipContent 
-                          {...props} 
-                          indicator="dot"
-                          nameKey="name"  
-                        />
-                      } 
-                    />
+                    <RechartsTooltip />
                   </PieChart>
                 </ResponsiveContainer>
               </ChartContainer>
@@ -438,4 +429,3 @@ const ResultsAnalytics = () => {
 };
 
 export default ResultsAnalytics;
-

@@ -99,7 +99,7 @@ const BulkAssignForm: React.FC<BulkAssignFormProps> = ({ templateId }) => {
         createAssignment({
           templateId: selectedTemplateId,
           userId: user.id,
-          userName: `${user.firstName} ${user.lastName}`,
+          userName: user.name, // Use user.name instead of firstName/lastName
           dueDate: dueDate.toISOString()
         });
         assignedCount++;
@@ -150,9 +150,8 @@ const BulkAssignForm: React.FC<BulkAssignFormProps> = ({ templateId }) => {
             <div className="space-y-2">
               <Label htmlFor="due-date">Due Date</Label>
               <DatePicker
-                id="due-date"
-                selected={dueDate}
-                onSelect={setDueDate}
+                date={dueDate}
+                onChange={setDueDate}
               />
             </div>
             
@@ -189,7 +188,7 @@ const BulkAssignForm: React.FC<BulkAssignFormProps> = ({ templateId }) => {
                         htmlFor={`user-${user.id}`} 
                         className="flex-grow"
                       >
-                        {user.firstName} {user.lastName}
+                        {user.name} {/* Use user.name instead of firstName/lastName */}
                       </Label>
                     </div>
                   ))
