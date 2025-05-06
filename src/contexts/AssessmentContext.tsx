@@ -235,7 +235,7 @@ export const AssessmentProvider: React.FC<{children: React.ReactNode}> = ({ chil
     if (!response) return;
 
     // Calculate score based on yes answers (if needed)
-    const template = templates.find(t => t.templateId === response.templateId);
+    const template = templates.find(t => t.id === response.templateId);
     const totalQuestions = template ? template.questions.length : 0;
     const yesAnswers = response.responses.filter(r => r.answer === true).length;
     const score = totalQuestions > 0 ? Math.round((yesAnswers / totalQuestions) * 100) : null;
