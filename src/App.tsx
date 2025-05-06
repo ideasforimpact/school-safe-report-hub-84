@@ -14,7 +14,7 @@ import { ClientProvider } from './contexts/ClientContext';
 import { FacilityProvider } from './contexts/FacilityContext';
 import { IncidentProvider } from './contexts/IncidentContext';
 import { StudentProvider } from './contexts/StudentContext';
-import { AssessmentProvider } from './contexts/AssessmentContext';
+import { AssessmentProvider } from './contexts/assessment/AssessmentContext';
 import RouteGuard from './components/RouteGuard';
 import ModuleGuard from './components/ModuleGuard';
 import ConfigurationManagement from './pages/ConfigurationManagement';
