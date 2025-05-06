@@ -85,14 +85,13 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
         </div>
       </div>
 
-      {/* Full width charts - pulled out of the grid */}
+      {/* Facilities chart - give it extra height for larger datasets */}
       {isAdmin && facilityData.length > 0 && (
         <div className="h-[600px] shadow-sm rounded-xl overflow-hidden">
           <CategoryChart 
             data={facilityData} 
             colors={colors}
             title="Incidents by Facility"
-            description="Distribution of incidents across different school facilities"
           />
         </div>
       )}
@@ -102,7 +101,6 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
           data={assigneeData} 
           colors={colors}
           title="Incident Ownership"
-          description="Distribution of incidents by assigned owner"
         />
       </div>
 
