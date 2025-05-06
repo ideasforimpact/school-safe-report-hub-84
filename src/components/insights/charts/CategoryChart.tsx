@@ -49,7 +49,7 @@ const CategoryChart: React.FC<CategoryChartProps> = ({
           <div className="flex flex-col h-full animate-fade-in">
             <div className="grid grid-cols-1 gap-4">
               {/* Chart and tags layout */}
-              <div className="flex flex-col md:flex-row">
+              <div className="flex flex-col md:flex-row min-h-[300px]">
                 {/* Left side - chart - Making it larger */}
                 <div className="w-full md:w-1/3 h-[260px] flex items-center justify-center">
                   <ResponsiveContainer width="100%" height={260}>
@@ -89,8 +89,8 @@ const CategoryChart: React.FC<CategoryChartProps> = ({
                 </div>
                 
                 {/* Right side - category tags */}
-                <div className="w-full md:w-2/3 pl-0 md:pl-6">
-                  <div className="flex flex-wrap gap-2">
+                <div className="w-full md:w-2/3 pl-0 md:pl-6 flex flex-col">
+                  <div className="flex flex-wrap gap-2 mb-auto">
                     {data.map((item, index) => {
                       const percentage = ((item.value / total) * 100).toFixed(1);
                       const color = colors[index % colors.length];
