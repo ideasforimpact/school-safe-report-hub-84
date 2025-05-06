@@ -13,6 +13,7 @@ import TemplatesList from '@/components/assessments/templates/TemplatesList';
 import CreateTemplateForm from '@/components/assessments/templates/CreateTemplateForm';
 import TemplateDetail from '@/components/assessments/templates/TemplateDetail';
 import AssignTemplateForm from '@/components/assessments/assignments/AssignTemplateForm';
+import BulkAssignForm from '@/components/assessments/assignments/BulkAssignForm';
 import AssignmentsList from '@/components/assessments/assignments/AssignmentsList';
 import AssessmentResponseForm from '@/components/assessments/responses/AssessmentResponseForm';
 import ResultsAnalytics from '@/components/assessments/results/ResultsAnalytics';
@@ -153,7 +154,9 @@ const AssessmentsPage = () => {
                 <Route path="/templates" element={<TemplatesList />} />
                 <Route path="/templates/new" element={<CreateTemplateForm />} />
                 <Route path="/templates/:templateId" element={<TemplateDetail />} />
+                <Route path="/templates/:templateId/edit" element={<CreateTemplateForm />} />
                 <Route path="/templates/:templateId/assign" element={<AssignTemplateForm />} />
+                <Route path="/templates/:templateId/bulk-assign" element={<BulkAssignForm />} />
               </Routes>
             </TabsContent>
             
@@ -161,7 +164,8 @@ const AssessmentsPage = () => {
             <TabsContent value="assignments" className="w-full">
               <Routes>
                 <Route path="/assignments" element={<AssignmentsList />} />
-                <Route path="/:assignmentId/respond" element={<AssessmentResponseForm />} />
+                <Route path="/assignments/bulk-assign" element={<BulkAssignForm />} />
+                <Route path="/respond/:assignmentId" element={<AssessmentResponseForm />} />
               </Routes>
             </TabsContent>
             

@@ -1,172 +1,163 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAssessment } from '@/contexts/AssessmentContext';
-import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Edit, 
-  Users, 
-  ArrowLeft, 
-  Check, 
-  X,
-  Paperclip, 
-  MessageSquare 
-} from 'lucide-react';
+import { format } from 'date-fns';
+import { Edit, Users, Copy } from 'lucide-react';
+import DuplicateTemplateDialog from './DuplicateTemplateDialog';
 
 const TemplateDetail = () => {
+  const { templateId } = useParams();
   const navigate = useNavigate();
-  const { templateId } = useParams<{ templateId: string }>();
-  const { getTemplateById } = useAssessment();
-  const template = templateId ? getTemplateById(templateId) : null;
-
+  const { getTemplateById, deleteTemplate } = useAssessment();
+  
+  const [template, setTemplate] = useState(templateId ? getTemplateById(templateId) : undefined);
+  
+  useEffect(() => {
+    if (templateId) {
+      setTemplate(getTemplateById(templateId));
+    }
+  }, [templateId, getTemplateById]);
+  
   if (!template) {
     return (
-      <div className="text-center p-8">
-        <p className="text-gray-500">Template not found</p>
-        <Button 
-          variant="link" 
-          onClick={() => navigate('/assessments/templates')}
-          className="mt-2"
-        >
+      <div className="text-center py-8">
+        <h3 className="text-lg font-medium mb-2">Template Not Found</h3>
+        <p className="text-gray-600 mb-4">The requested template could not be found.</p>
+        <Button onClick={() => navigate('/assessments/templates')}>
           Back to Templates
         </Button>
       </div>
     );
   }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
+  
+  const handleDelete = () => {
+    if (confirm('Are you sure you want to delete this template?')) {
+      deleteTemplate(template.id);
+      navigate('/assessments/templates');
+    }
   };
-
+  
+  const formatDate = (dateString: string) => {
+    return format(new Date(dateString), 'MMMM d, yyyy');
+  };
+  
   return (
     <div className="space-y-6">
-      <div className="flex items-center mb-4">
-        <Button 
-          variant="ghost" 
-          onClick={() => navigate('/assessments/templates')}
-          className="mr-2"
-        >
-          <ArrowLeft className="h-4 w-4 mr-1" />
-          Back
-        </Button>
-      </div>
-
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex justify-between items-start">
         <div>
           <h2 className="text-2xl font-semibold">{template.title}</h2>
-          <div className="flex items-center gap-2 mt-1">
-            <Badge className="bg-blue-100 text-blue-800">{template.type}</Badge>
-            {template.isActive ? (
-              <Badge className="bg-green-100 text-green-800">Active</Badge>
-            ) : (
-              <Badge variant="outline" className="bg-gray-100 text-gray-800">Inactive</Badge>
-            )}
+          <div className="flex items-center mt-2 space-x-3">
+            <Badge variant="outline" className="bg-gray-100">
+              {template.type}
+            </Badge>
+            <span className="text-sm text-gray-600">
+              Created: {formatDate(template.createdAt)}
+            </span>
+            <Badge variant={template.isActive ? "default" : "secondary"}>
+              {template.isActive ? 'Active' : 'Inactive'}
+            </Badge>
           </div>
         </div>
         
-        <div className="flex gap-2">
+        <div className="flex space-x-3">
+          <DuplicateTemplateDialog 
+            template={template}
+            trigger={
+              <Button variant="outline">
+                <Copy className="h-4 w-4 mr-2" />
+                Duplicate
+              </Button>
+            }
+          />
+          
           <Button
             variant="outline"
-            onClick={() => navigate(`/assessments/templates/${template.id}/edit`)}
-          >
-            <Edit className="h-4 w-4 mr-2" />
-            Edit
-          </Button>
-          <Button
-            onClick={() => navigate(`/assessments/templates/${template.id}/assign`)}
+            onClick={() => navigate(`/assessments/templates/${templateId}/assign`)}
           >
             <Users className="h-4 w-4 mr-2" />
             Assign
           </Button>
+          
+          <Button
+            variant="outline"
+            onClick={() => navigate(`/assessments/templates/${templateId}/edit`)}
+          >
+            <Edit className="h-4 w-4 mr-2" />
+            Edit
+          </Button>
         </div>
       </div>
       
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Template Details</CardTitle>
+          <CardTitle>Description</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <div>
-              <h3 className="font-medium text-gray-700">Description</h3>
-              <p className="mt-1 text-gray-600">{template.description || 'No description provided'}</p>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <h3 className="font-medium text-gray-700">Created</h3>
-                <p className="mt-1 text-gray-600">{formatDate(template.createdAt)}</p>
-              </div>
-              <div>
-                <h3 className="font-medium text-gray-700">Questions</h3>
-                <p className="mt-1 text-gray-600">{template.questions.length} questions</p>
-              </div>
-              <div>
-                <h3 className="font-medium text-gray-700">Status</h3>
-                <p className="mt-1 text-gray-600">{template.isActive ? 'Active' : 'Inactive'}</p>
-              </div>
-            </div>
-          </div>
+          <p className="text-gray-700">{template.description}</p>
         </CardContent>
       </Card>
       
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Questions ({template.questions.length})</CardTitle>
+        <CardHeader className="border-b">
+          <CardTitle className="text-lg">Questions</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0 divide-y">
           {template.questions.length === 0 ? (
-            <p className="text-gray-500 text-center py-4">No questions in this template</p>
+            <div className="p-6 text-center">
+              <p className="text-gray-500">No questions added to this template yet.</p>
+            </div>
           ) : (
-            <div className="space-y-4">
-              {template.questions.map((question, index) => (
-                <div 
-                  key={question.id} 
-                  className="p-4 border border-gray-200 rounded-md hover:bg-gray-50"
-                >
-                  <div className="flex items-start">
-                    <span className="flex justify-center items-center w-6 h-6 rounded-full bg-gray-100 text-gray-600 text-sm mr-3 mt-0.5">
-                      {index + 1}
-                    </span>
-                    <div className="flex-1">
-                      <p className="font-medium">
-                        {question.text}
-                        {question.required && <span className="text-red-500 ml-1">*</span>}
-                      </p>
-                      
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        <Badge variant="outline" className="text-xs">
-                          {question.required ? (
-                            <><Check className="h-3 w-3 mr-1" /> Required</>
-                          ) : (
-                            <><X className="h-3 w-3 mr-1" /> Optional</>
-                          )}
+            template.questions.map((question, index) => (
+              <div key={question.id} className="p-4">
+                <div className="flex justify-between items-start">
+                  <div className="space-y-2 w-full">
+                    <h4 className="font-medium">Question {index + 1}</h4>
+                    <p className="text-gray-700">{question.text}</p>
+                    
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {question.required && (
+                        <Badge variant="outline" className="bg-red-50 text-red-800">
+                          Required
                         </Badge>
-                        
-                        {question.allowComments && (
-                          <Badge variant="outline" className="text-xs">
-                            <MessageSquare className="h-3 w-3 mr-1" />
-                            Comments
-                          </Badge>
-                        )}
-                        
-                        {question.allowAttachments && (
-                          <Badge variant="outline" className="text-xs">
-                            <Paperclip className="h-3 w-3 mr-1" />
-                            Attachments
-                          </Badge>
-                        )}
-                      </div>
+                      )}
+                      {question.allowComments && (
+                        <Badge variant="outline" className="bg-blue-50 text-blue-800">
+                          Comments Allowed
+                        </Badge>
+                      )}
+                      {question.allowAttachments && (
+                        <Badge variant="outline" className="bg-green-50 text-green-800">
+                          Attachments Allowed
+                        </Badge>
+                      )}
                     </div>
                   </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            ))
           )}
         </CardContent>
       </Card>
+      
+      <div className="pt-4 border-t mt-8 flex justify-between">
+        <Button
+          variant="outline"
+          onClick={() => navigate('/assessments/templates')}
+        >
+          Back to Templates
+        </Button>
+        
+        <Button
+          variant="destructive"
+          onClick={handleDelete}
+        >
+          Delete Template
+        </Button>
+      </div>
     </div>
   );
 };

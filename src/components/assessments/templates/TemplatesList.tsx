@@ -17,9 +17,11 @@ import {
   Edit, 
   Trash, 
   ClipboardList,
-  Users
+  Users,
+  Copy
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import DuplicateTemplateDialog from './DuplicateTemplateDialog';
 
 const TemplatesList = () => {
   const navigate = useNavigate();
@@ -106,6 +108,22 @@ const TemplatesList = () => {
                           <Users className="h-4 w-4 mr-1" />
                           Assign
                         </Button>
+                        
+                        <DuplicateTemplateDialog
+                          template={template}
+                          trigger={
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                              }}
+                            >
+                              <Copy className="h-4 w-4" />
+                            </Button>
+                          }
+                        />
+                        
                         <Button
                           variant="outline"
                           size="sm"
@@ -116,6 +134,7 @@ const TemplatesList = () => {
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
+                        
                         <Button
                           variant="outline"
                           size="sm"
