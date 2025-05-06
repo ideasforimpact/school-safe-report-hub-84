@@ -18,7 +18,16 @@ export const useAssignmentManagement = () => {
     try {
       const storedAssignments = localStorage.getItem(ASSIGNMENTS_KEY);
       if (storedAssignments) {
-        setAssignments(JSON.parse(storedAssignments));
+        const parsedAssignments = JSON.parse(storedAssignments);
+        
+        // Convert date strings back to Date objects
+        const assignmentsWithDates = parsedAssignments.map((assignment: any) => ({
+          ...assignment,
+          dueDate: assignment.dueDate ? new Date(assignment.dueDate) : undefined
+        }));
+        
+        setAssignments(assignmentsWithDates);
+        console.log('Loaded assignments with dates:', assignmentsWithDates);
       }
     } catch (error) {
       console.error('Error loading assessment assignments:', error);
@@ -30,7 +39,12 @@ export const useAssignmentManagement = () => {
   // Save assignments whenever they change
   useEffect(() => {
     if (!isLoading) {
-      localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(assignments));
+      try {
+        localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(assignments));
+        console.log('Saved assignments to localStorage:', assignments);
+      } catch (error) {
+        console.error('Error saving assignments to localStorage:', error);
+      }
     }
   }, [assignments, isLoading]);
 
@@ -45,6 +59,7 @@ export const useAssignmentManagement = () => {
     }));
     
     setAssignments(prev => [...prev, ...newAssignments]);
+    console.log('Created new assignments:', newAssignments);
     return newAssignments;
   };
 

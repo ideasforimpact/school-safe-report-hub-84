@@ -36,6 +36,7 @@ const InlineAssignTemplate = ({
       return;
     }
 
+    // Pass the Date object directly without any conversion
     onAssign(selectedUserIds, dueDate);
     onClose();
   };
