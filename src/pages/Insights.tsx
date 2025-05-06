@@ -1,15 +1,20 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Layout from '@/components/layout/Layout';
 import InsightsFilters from '@/components/insights/InsightsFilters';
-import ChartsTab from '@/components/insights/tabs/ChartsTab';
+import OverviewTab from '@/components/insights/tabs/OverviewTab';
+import PeopleTab from '@/components/insights/tabs/PeopleTab';
+import LocationTab from '@/components/insights/tabs/LocationTab';
+import RiskAnalysisTab from '@/components/insights/tabs/RiskAnalysisTab';
 import { useInsightsData } from '@/hooks/useInsightsData';
 import { downloadCSV, prepareIncidentsExport } from '@/utils/insightsUtils';
 import { CHART_COLOR_ARRAY } from '@/utils/chartColorUtils';
 
 const Insights = () => {
+  const [activeTab, setActiveTab] = useState('overview');
   const {
     facilities,
     isAdmin,
@@ -70,22 +75,53 @@ const Insights = () => {
           isAdmin={isAdmin}
         />
 
-        {/* Charts content */}
-        <ChartsTab 
-          categoryData={chartData.categoryData}
-          typeData={chartData.typeData}
-          subcategoryData={chartData.subcategoryData}
-          timeSeriesData={chartData.timeSeriesData}
-          locationData={chartData.locationData}
-          facilityData={chartData.facilityData}
-          assigneeData={chartData.assigneeData}
-          statusData={chartData.statusData}
-          riskData={chartData.riskData}
-          isAdmin={isAdmin}
-          colors={CHART_COLOR_ARRAY}
-          roleDistributionData={roleDistributionData}
-          heatmapData={chartData.heatmapData}
-        />
+        {/* Tabs for different chart categories */}
+        <div className="w-full">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid grid-cols-4 mb-8">
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="people">People & Roles</TabsTrigger>
+              <TabsTrigger value="location">Location & Facilities</TabsTrigger>
+              <TabsTrigger value="risk">Risk Analysis</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="overview" className="w-full">
+              <OverviewTab 
+                categoryData={chartData.categoryData}
+                typeData={chartData.typeData}
+                statusData={chartData.statusData}
+                timeSeriesData={chartData.timeSeriesData}
+                colors={CHART_COLOR_ARRAY}
+              />
+            </TabsContent>
+            
+            <TabsContent value="people" className="w-full">
+              <PeopleTab
+                roleDistributionData={roleDistributionData}
+                assigneeData={chartData.assigneeData}
+                colors={CHART_COLOR_ARRAY}
+              />
+            </TabsContent>
+            
+            <TabsContent value="location" className="w-full">
+              <LocationTab
+                locationData={chartData.locationData}
+                facilityData={chartData.facilityData}
+                heatmapData={chartData.heatmapData}
+                isAdmin={isAdmin}
+                colors={CHART_COLOR_ARRAY}
+              />
+            </TabsContent>
+            
+            <TabsContent value="risk" className="w-full">
+              <RiskAnalysisTab
+                subcategoryData={chartData.subcategoryData}
+                riskData={chartData.riskData}
+                colors={CHART_COLOR_ARRAY}
+              />
+            </TabsContent>
+          </Tabs>
+        </div>
       </div>
     </Layout>
   );
