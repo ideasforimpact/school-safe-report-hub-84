@@ -47,12 +47,12 @@ const CategoryChart: React.FC<CategoryChartProps> = ({
         {data.length > 0 ? (
           <div className="flex flex-col md:flex-row h-full animate-fade-in">
             {/* Donut chart on the left */}
-            <div className="w-full md:w-2/3 h-full relative">
+            <div className="w-full md:w-1/2 h-full relative flex items-center justify-start pl-0 md:pl-4">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={data}
-                    cx="50%"
+                    cx="30%" 
                     cy="50%"
                     labelLine={false}
                     innerRadius={80}
@@ -83,14 +83,14 @@ const CategoryChart: React.FC<CategoryChartProps> = ({
               </ResponsiveContainer>
               
               {/* Center content showing total incidents */}
-              <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
+              <div className="absolute left-[30%] top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center flex-col pointer-events-none">
                 <div className="text-3xl font-bold">{total}</div>
                 <div className="text-sm text-gray-500">Total Incidents</div>
               </div>
             </div>
             
             {/* Enhanced legend on the right */}
-            <div className="w-full md:w-1/3 pl-0 md:pl-4 mt-4 md:mt-0 overflow-y-auto max-h-[300px] md:max-h-full">
+            <div className="w-full md:w-1/2 pl-0 md:pl-4 mt-4 md:mt-0 overflow-y-auto max-h-[300px] md:max-h-full">
               <h4 className="text-sm font-medium mb-3 text-gray-500 uppercase tracking-wider">Categories</h4>
               <div className="space-y-3">
                 {data.map((item, index) => {
