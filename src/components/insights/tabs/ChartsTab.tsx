@@ -78,11 +78,11 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
       {/* Subcategories chart */}
       <SubcategoryChartWrapper data={subcategoryData} colors={colors} />
       
-      {/* Time series and Location charts in grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full">
-        <TimeSeriesChart data={timeSeriesData} />
-        <LocationChart data={locationData} />
-      </div>
+      {/* Time series chart - full width */}
+      <TimeSeriesChart data={timeSeriesData} />
+      
+      {/* Location chart - full width */}
+      <LocationChart data={locationData} />
 
       {/* Facilities chart - only shown for admins */}
       {isAdmin && facilityData.length > 0 && (
