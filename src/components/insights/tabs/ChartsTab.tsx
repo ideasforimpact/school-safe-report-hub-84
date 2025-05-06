@@ -75,7 +75,7 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
         </div>
 
         {isAdmin && facilityData.length > 0 && (
-          <div className="h-[400px]">
+          <div className="h-[400px] shadow-sm rounded-xl overflow-hidden">
             <CategoryChart 
               data={facilityData} 
               colors={colors}
@@ -95,7 +95,7 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
           />
         </div>
         
-        <div className="h-[400px]">
+        <div className="h-[400px] shadow-sm rounded-xl overflow-hidden">
           <CategoryChart 
             data={assigneeData} 
             colors={colors}
