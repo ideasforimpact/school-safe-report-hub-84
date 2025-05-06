@@ -31,6 +31,7 @@ import ClientManagement from './pages/ClientManagement';
 import BackofficeAnalytics from './pages/backoffice/BackofficeAnalytics';
 import BackofficeSettings from './pages/backoffice/BackofficeSettings';
 import Assessments from './pages/Assessments';
+import AssessmentTemplate from './pages/AssessmentTemplate';
 
 import './App.css';
 
@@ -64,6 +65,7 @@ function App() {
                       <Route path="/report-incident" element={<ReportIncident />} />
                       <Route path="/insights" element={<Insights />} />
                       <Route path="/assessments" element={<Assessments />} />
+                      <Route path="/assessment/:id" element={<AssessmentTemplate />} />
                       <Route path="/configuration" element={<ConfigurationManagement />} />
                       <Route path="/incident-configuration" element={<IncidentConfiguration />} />
                       <Route path="/educational-configuration" element={<EducationalConfiguration />} />
