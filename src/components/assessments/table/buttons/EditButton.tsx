@@ -4,9 +4,9 @@ import ActionButton from "./ActionButton";
 import { useNavigate } from "react-router-dom";
 
 interface EditButtonProps {
-  onClick: () => void;
+  onClick?: () => void;  // Make onClick optional
   isComplete: boolean;
-  templateId: string; // Add templateId prop
+  templateId: string;
 }
 
 const EditButton = ({ onClick, isComplete, templateId }: EditButtonProps) => {
@@ -17,6 +17,7 @@ const EditButton = ({ onClick, isComplete, templateId }: EditButtonProps) => {
     if (onClick) {
       onClick();
     } else {
+      console.log(`Navigating to template: /assessment/${templateId}`);
       navigate(`/assessment/${templateId}`);
     }
   };

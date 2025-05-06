@@ -22,8 +22,22 @@ const AssessmentTemplate = () => {
     handleDeleteQuestion,
     handleAssignTemplate,
     handleActivateTemplate,
-    setShowAssignDialog
+    setShowAssignDialog,
+    loading
   } = useTemplateDetail(id);
+
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex justify-center items-center h-[70vh]">
+          <div className="text-center">
+            <h2 className="text-xl font-bold mb-2">Loading template...</h2>
+            <p className="mb-4 text-muted-foreground">Please wait while we load the template data.</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   if (!template) {
     return (
@@ -32,6 +46,7 @@ const AssessmentTemplate = () => {
           <div className="text-center">
             <h2 className="text-xl font-bold mb-2">Template not found</h2>
             <p className="mb-4 text-muted-foreground">The template you're looking for could not be found.</p>
+            <p className="text-sm text-muted-foreground">Template ID: {id}</p>
           </div>
         </div>
       </Layout>

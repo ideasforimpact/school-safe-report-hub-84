@@ -24,7 +24,13 @@ const TemplateTableActions = ({ template, onAssign, onActivate }: TemplateTableA
     setAssigningTemplateId(null);
   };
 
-  const handleEditClick = () => navigate(`/assessment/${template.id}`);
+  const handleEditClick = () => {
+    console.log(`Edit clicked for template: ${template.id}`);
+    // Add a small delay to ensure localStorage operations complete
+    setTimeout(() => {
+      navigate(`/assessment/${template.id}`);
+    }, 100);
+  };
   
   const handleActivateClick = () => onActivate(template.id);
 
