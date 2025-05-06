@@ -45,6 +45,7 @@ const TemplateTableActions = ({ template, onAssign, onActivate }: TemplateTableA
       <EditButton 
         isComplete={isComplete}
         onClick={handleEditClick}
+        templateId={template.id}
       />
     </div>
   );
