@@ -48,7 +48,7 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
       </div>
       
       {/* Full-width Risk Assessment Matrix - moved out of grid and made prominent */}
-      <div className="h-[500px] shadow-sm rounded-xl overflow-hidden w-full bg-white">
+      <div className="h-[500px] shadow-sm rounded-xl overflow-hidden w-full">
         <RiskAssessmentChart data={riskData} />
       </div>
       
