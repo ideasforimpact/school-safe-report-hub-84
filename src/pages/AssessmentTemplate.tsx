@@ -29,23 +29,40 @@ const AssessmentTemplate = () => {
     assignTemplate
   } = useAssessments();
   
-  const [template, setTemplate] = useState(id ? getTemplateById(id) : null);
+  const [template, setTemplate] = useState(() => {
+    if (!id) return null;
+    const foundTemplate = getTemplateById(id);
+    if (!foundTemplate) {
+      console.error(`Template with id ${id} not found when initializing`);
+    }
+    return foundTemplate;
+  });
+  
   const [showQuestionForm, setShowQuestionForm] = useState(false);
   const [editingQuestionId, setEditingQuestionId] = useState<string | null>(null);
-  const [assignments, setAssignments] = useState(id ? getAssignmentsByTemplate(id) : []);
+  const [assignments, setAssignments] = useState(() => id ? getAssignmentsByTemplate(id) : []);
   const [showAssignDialog, setShowAssignDialog] = useState(false);
   
   useEffect(() => {
     if (id) {
+      console.log(`Looking for template with id: ${id}`);
       const foundTemplate = getTemplateById(id);
+      
       if (!foundTemplate) {
+        console.error(`Template with id ${id} not found in useEffect`);
+        toast({
+          title: "Template not found",
+          description: "The template you're looking for could not be found.",
+          variant: "destructive"
+        });
         navigate('/assessments');
         return;
       }
+      
       setTemplate(foundTemplate);
       setAssignments(getAssignmentsByTemplate(id));
     }
-  }, [id, getTemplateById, navigate, getAssignmentsByTemplate]);
+  }, [id, getTemplateById, navigate, getAssignmentsByTemplate, toast]);
 
   if (!template) {
     return (

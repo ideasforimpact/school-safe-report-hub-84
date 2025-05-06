@@ -39,7 +39,11 @@ export const useTemplateManagement = () => {
   // Save templates whenever they change
   useEffect(() => {
     if (!isLoading) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(templates));
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(templates));
+      } catch (error) {
+        console.error('Error saving templates to localStorage:', error);
+      }
     }
   }, [templates, isLoading]);
 
@@ -48,14 +52,20 @@ export const useTemplateManagement = () => {
     templateData: Omit<AssessmentTemplate, 'id' | 'createdAt' | 'updatedAt'>
   ) => {
     const now = new Date();
+    const newId = uuidv4();
+    
     const newTemplate: AssessmentTemplate = {
       ...templateData,
-      id: uuidv4(),
+      id: newId,
       createdAt: now,
       updatedAt: now
     };
     
     setTemplates(prev => [...prev, newTemplate]);
+    
+    // Log for debugging
+    console.log('Created new template with ID:', newId);
+    
     return newTemplate;
   };
 
@@ -82,7 +92,11 @@ export const useTemplateManagement = () => {
 
   // Get template by ID
   const getTemplateById = (id: string) => {
-    return templates.find(template => template.id === id);
+    const template = templates.find(template => template.id === id);
+    if (!template) {
+      console.error(`Template with id ${id} not found`);
+    }
+    return template;
   };
 
   return {
