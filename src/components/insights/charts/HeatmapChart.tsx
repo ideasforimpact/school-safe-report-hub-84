@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tooltip } from '@/components/ui/tooltip';
@@ -12,7 +11,6 @@ const getColor = (value: number) => {
   if (value <= 20) return '#1d4ed8'; // Dark blue
   return '#1e3a8a'; // Very dark blue
 };
-
 interface HeatmapChartProps {
   data: Array<{
     name: string;
@@ -24,24 +22,20 @@ interface HeatmapChartProps {
   title?: string;
   description?: string;
 }
-
-const HeatmapChart: React.FC<HeatmapChartProps> = ({ 
-  data, 
+const HeatmapChart: React.FC<HeatmapChartProps> = ({
+  data,
   title = "Incident Distribution",
   description = "Heatmap showing when and where incidents occur most often"
 }) => {
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  
   const maxValue = data.reduce((max, location) => {
     const locationMax = Math.max(...location.values.map(v => v.value));
     return Math.max(max, locationMax);
   }, 0);
-
-  return (
-    <Card className="overflow-hidden border shadow-md hover:shadow-lg transition-shadow duration-300">
+  return <Card className="overflow-hidden border shadow-md hover:shadow-lg transition-shadow duration-300">
       <CardHeader className="bg-gradient-to-r from-indigo-50 to-blue-50 border-b pb-4">
-        <CardTitle className="text-lg font-bold text-indigo-900">{title}</CardTitle>
-        <CardDescription className="text-indigo-700">{description}</CardDescription>
+        <CardTitle className="text-lg font-bold text-indigo-900 text-left">{title}</CardTitle>
+        <CardDescription className="text-indigo-700 text-left">{description}</CardDescription>
       </CardHeader>
       
       <CardContent className="p-4">
@@ -50,38 +44,26 @@ const HeatmapChart: React.FC<HeatmapChartProps> = ({
             {/* Day headers */}
             <div className="grid grid-cols-8 gap-1 mb-3">
               <div className="px-2 py-1 font-medium text-sm text-indigo-600"></div>
-              {days.map(day => (
-                <div key={day} className="px-1 py-1 font-medium text-sm text-center bg-indigo-50 rounded-t-md">{day}</div>
-              ))}
+              {days.map(day => <div key={day} className="px-1 py-1 font-medium text-sm text-center bg-indigo-50 rounded-t-md">{day}</div>)}
             </div>
             
             {/* Heatmap data */}
-            {data.map((location, idx) => (
-              <div key={idx} className="grid grid-cols-8 gap-1 mb-2 group">
+            {data.map((location, idx) => <div key={idx} className="grid grid-cols-8 gap-1 mb-2 group">
                 <div className="px-2 py-1 font-medium text-sm truncate bg-indigo-50 rounded-l-md flex items-center">
                   {location.name}
                 </div>
                 
                 {days.map(day => {
-                  const dayData = location.values.find(v => v.day === day);
-                  const value = dayData ? dayData.value : 0;
-                  
-                  return (
-                    <div 
-                      key={day}
-                      className="aspect-square rounded-md flex items-center justify-center text-xs font-medium transition-all duration-150 hover:scale-105 hover:shadow-md" 
-                      style={{ 
-                        backgroundColor: getColor(value),
-                        color: value > 5 ? 'white' : 'black'
-                      }}
-                      title={`${location.name} - ${day}: ${value} incidents`}
-                    >
+              const dayData = location.values.find(v => v.day === day);
+              const value = dayData ? dayData.value : 0;
+              return <div key={day} className="aspect-square rounded-md flex items-center justify-center text-xs font-medium transition-all duration-150 hover:scale-105 hover:shadow-md" style={{
+                backgroundColor: getColor(value),
+                color: value > 5 ? 'white' : 'black'
+              }} title={`${location.name} - ${day}: ${value} incidents`}>
                       {value > 0 ? value : ''}
-                    </div>
-                  );
-                })}
-              </div>
-            ))}
+                    </div>;
+            })}
+              </div>)}
           </div>
           
           {/* Legend */}
@@ -89,20 +71,14 @@ const HeatmapChart: React.FC<HeatmapChartProps> = ({
             <div className="text-xs text-gray-600 font-medium">Incidents:</div>
             <div className="flex items-center gap-1">
               <div className="text-xs text-gray-600">Fewer</div>
-              {[0, 2, 5, 10, 20].map((value, i) => (
-                <div 
-                  key={i} 
-                  className="h-4 w-4 rounded-sm border border-slate-200"
-                  style={{ backgroundColor: getColor(value) }}
-                ></div>
-              ))}
+              {[0, 2, 5, 10, 20].map((value, i) => <div key={i} className="h-4 w-4 rounded-sm border border-slate-200" style={{
+              backgroundColor: getColor(value)
+            }}></div>)}
               <div className="text-xs text-gray-600">More</div>
             </div>
           </div>
         </div>
       </CardContent>
-    </Card>
-  );
+    </Card>;
 };
-
 export default HeatmapChart;
