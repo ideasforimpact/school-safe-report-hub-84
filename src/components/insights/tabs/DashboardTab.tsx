@@ -1,7 +1,4 @@
-
 import React from 'react';
-import TimeSeriesAnalysis from '../charts/TimeSeriesAnalysis';
-import RiskAssessmentChart from '../charts/RiskAssessmentChart';
 import HeatmapChart from '../charts/HeatmapChart';
 import { Incident } from '@/types/incident';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -102,17 +99,8 @@ const DashboardTab: React.FC<DashboardTabProps> = ({
         percentResolved={percentResolved} 
       />
       
-      {/* Two-column layout for top charts */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        {/* Enhanced time series analysis */}
-        <TimeSeriesAnalysis data={timeSeriesData} />
-        
-        {/* Risk assessment matrix */}
-        <RiskAssessmentChart data={riskData} />
-      </div>
-      
       {/* Full-width container for heatmap */}
-      <div className="w-full">
+      <div className="w-full mt-6">
         {/* Heatmap showing when and where incidents occur */}
         <HeatmapChart 
           data={heatmapData} 
