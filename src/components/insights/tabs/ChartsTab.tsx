@@ -6,6 +6,7 @@ import TimeSeriesAnalysis from '../charts/TimeSeriesAnalysis';
 import StatusBlocks from '../charts/StatusBlocks';
 import HeatmapChart from '../charts/HeatmapChart';
 import RiskAssessmentChart from '../charts/RiskAssessmentChart';
+import SubcategoryChart from '../charts/SubcategoryChart';
 
 interface ChartsTabProps {
   categoryData: Array<{name: string, value: number}>;
@@ -55,6 +56,14 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
         />
       </div>
       
+      {/* Full width subcategories chart */}
+      <div className="h-[500px]">
+        <SubcategoryChart 
+          data={subcategoryData}
+          colors={colors}
+        />
+      </div>
+      
       {/* Remaining charts in a grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="h-[400px]">
@@ -75,16 +84,6 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
             description="Distribution of incidents by location"
             data={locationData}
             color="#0ea5e9"
-            layout="vertical"
-          />
-        </div>
-
-        <div className="h-[400px]">
-          <BarChartComponent 
-            title="Top 10 Subcategories" 
-            description="Most common specific types of incidents reported"
-            data={subcategoryData}
-            color="#8884d8"
             layout="vertical"
           />
         </div>
