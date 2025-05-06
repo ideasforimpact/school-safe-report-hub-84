@@ -6,7 +6,6 @@ import Layout from '@/components/layout/Layout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import InsightsFilters from '@/components/insights/InsightsFilters';
 import ChartsTab from '@/components/insights/tabs/ChartsTab';
-import DashboardTab from '@/components/insights/tabs/DashboardTab';
 import { useInsightsData } from '@/hooks/useInsightsData';
 import { downloadCSV, prepareIncidentsExport } from '@/utils/insightsUtils';
 import { CHART_COLOR_ARRAY } from '@/utils/chartColorUtils';
@@ -43,12 +42,10 @@ const Insights = () => {
           </div>
           
           <div className="flex space-x-2">
-            {activeTab === "charts" && (
-              <Button onClick={exportToCSV} className="flex items-center gap-2">
-                <Download className="h-4 w-4" />
-                Export as CSV
-              </Button>
-            )}
+            <Button onClick={exportToCSV} className="flex items-center gap-2">
+              <Download className="h-4 w-4" />
+              Export as CSV
+            </Button>
           </div>
         </div>
 
@@ -76,39 +73,22 @@ const Insights = () => {
           isAdmin={isAdmin}
         />
 
-        {/* Tabs content */}
-        <Tabs defaultValue="charts" value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-2 w-[400px]">
-            <TabsTrigger value="charts">Charts & Analytics</TabsTrigger>
-            <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="charts" className="w-full">
-            <ChartsTab 
-              categoryData={chartData.categoryData}
-              typeData={chartData.typeData}
-              subcategoryData={chartData.subcategoryData}
-              timeSeriesData={chartData.timeSeriesData}
-              locationData={chartData.locationData}
-              facilityData={chartData.facilityData}
-              assigneeData={chartData.assigneeData}
-              statusData={chartData.statusData}
-              riskData={chartData.riskData}
-              isAdmin={isAdmin}
-              colors={CHART_COLOR_ARRAY}
-              roleDistributionData={roleDistributionData}
-              heatmapData={chartData.heatmapData}
-            />
-          </TabsContent>
-          
-          <TabsContent value="dashboard" className="w-full">
-            <DashboardTab
-              timeSeriesData={chartData.timeSeriesData}
-              riskData={chartData.riskData}
-              recentIncidents={filteredIncidents.slice(0, 10)}
-            />
-          </TabsContent>
-        </Tabs>
+        {/* Charts content */}
+        <ChartsTab 
+          categoryData={chartData.categoryData}
+          typeData={chartData.typeData}
+          subcategoryData={chartData.subcategoryData}
+          timeSeriesData={chartData.timeSeriesData}
+          locationData={chartData.locationData}
+          facilityData={chartData.facilityData}
+          assigneeData={chartData.assigneeData}
+          statusData={chartData.statusData}
+          riskData={chartData.riskData}
+          isAdmin={isAdmin}
+          colors={CHART_COLOR_ARRAY}
+          roleDistributionData={roleDistributionData}
+          heatmapData={chartData.heatmapData}
+        />
       </div>
     </Layout>
   );

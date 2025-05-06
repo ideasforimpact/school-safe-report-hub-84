@@ -17,7 +17,6 @@ import {
   processAssigneeData,
   processHeatmapData,
   processRiskData,
-  processRoleDistributionData,
   extractUniqueValues
 } from '@/utils/insights/dataProcessors';
 
@@ -48,9 +47,6 @@ export const useInsightsData = () => {
     roleFilter: 'all',
     dateRange: undefined
   });
-  
-  // Active tab state - changed the default from "dashboard" to "charts"
-  const [activeTab, setActiveTab] = useState("charts");
   
   // Apply filters to get filtered incidents
   const filteredIncidents = useMemo(() => {
@@ -91,9 +87,8 @@ export const useInsightsData = () => {
   }, [filteredIncidents, isAdmin]);
   
   // Calculate role distribution data for charts
-  // Fix: Create the people data first, then use it for role distribution
   const roleDistributionData = useMemo(() => {
-    // Instead of directly passing filteredIncidents, we need to get the proper roles data
+    // Extract roles from people involved in filtered incidents
     const roles = filteredIncidents.flatMap(incident => 
       incident.peopleInvolved?.map(person => person.role) || []
     );
@@ -129,8 +124,6 @@ export const useInsightsData = () => {
   return {
     facilities,
     isAdmin,
-    activeTab,
-    setActiveTab,
     filters,
     handleFilterChange,
     handleDateRangeChange,
