@@ -31,11 +31,13 @@ const UserAssignmentSection = ({
   });
 
   const toggleUser = (userId: string) => {
-    setSelectedUserIds(prev => 
-      prev.includes(userId) 
-        ? prev.filter(id => id !== userId)
-        : [...prev, userId]
-    );
+    // Create a new array based on the current selectedUserIds
+    const newSelectedUserIds = selectedUserIds.includes(userId)
+      ? selectedUserIds.filter(id => id !== userId)
+      : [...selectedUserIds, userId];
+    
+    // Set the new array directly
+    setSelectedUserIds(newSelectedUserIds);
   };
   
   const handleSelectAll = () => {
