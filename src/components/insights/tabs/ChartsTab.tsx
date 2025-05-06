@@ -3,7 +3,7 @@ import React from 'react';
 import CategoryChart from '../charts/category-chart';
 import BarChartComponent from '../charts/BarChartComponent';
 import TimeSeriesAnalysis from '../charts/TimeSeriesAnalysis';
-import StatusChart from '../charts/StatusChart';
+import StatusBlocks from '../charts/StatusBlocks';
 import HeatmapChart from '../charts/HeatmapChart';
 import RiskAssessmentChart from '../charts/RiskAssessmentChart';
 
@@ -39,6 +39,11 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
       {/* First row: Featured Incidents by Category chart - Increased height to 400px */}
       <div className="h-[400px] shadow-sm rounded-xl overflow-hidden">
         <CategoryChart data={categoryData} colors={colors} />
+      </div>
+      
+      {/* Status Blocks - our new component */}
+      <div>
+        <StatusBlocks data={statusData} />
       </div>
       
       {/* Second row: Incidents by Type */}
@@ -102,10 +107,6 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
           colors={colors}
           title="Incident Ownership"
         />
-      </div>
-
-      <div className="h-[400px]">
-        <StatusChart data={statusData} />
       </div>
     </div>
   );
