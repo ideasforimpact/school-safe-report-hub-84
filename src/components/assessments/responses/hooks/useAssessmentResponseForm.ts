@@ -36,13 +36,18 @@ export const useAssessmentResponseForm = () => {
   // Navigation between sections
   const {
     currentSection,
-    setCurrentSection,
+    currentQuestionIndex,
+    setCurrentQuestionIndex,
     groupedQuestions,
     currentQuestions,
     isFirstSection,
     isLastSection,
+    isFirstQuestion,
+    isLastQuestion,
     goToNextSection,
-    goToPreviousSection
+    goToPreviousSection,
+    goToNextQuestion,
+    goToPreviousQuestion
   } = useSectionNavigation(template?.questions || []);
   
   // Calculate progress
@@ -71,6 +76,8 @@ export const useAssessmentResponseForm = () => {
     saving,
     submitting,
     currentSection,
+    currentQuestionIndex,
+    setCurrentQuestionIndex,
     progressPercentage,
     groupedQuestions,
     currentQuestions,
@@ -80,11 +87,14 @@ export const useAssessmentResponseForm = () => {
     isOverdue,
     isFirstSection,
     isLastSection,
+    isFirstQuestion,
+    isLastQuestion,
     handleResponseChange,
     handleSave,
     handleSubmit,
     goToNextSection,
     goToPreviousSection,
-    setCurrentSection
+    goToNextQuestion,
+    goToPreviousQuestion
   };
 };

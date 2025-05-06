@@ -6,22 +6,22 @@ import { useNavigate } from 'react-router-dom';
 
 interface FormActionsProps {
   isCompleted: boolean;
-  isLastSection: boolean;
+  isLastQuestion: boolean;
   saving: boolean;
   submitting: boolean;
   onSave: () => void;
   onSubmit: () => void;
-  onNextSection: () => void;
+  onNextQuestion: () => void;
 }
 
 const FormActions = ({
   isCompleted,
-  isLastSection,
+  isLastQuestion,
   saving,
   submitting,
   onSave,
   onSubmit,
-  onNextSection
+  onNextQuestion
 }: FormActionsProps) => {
   const navigate = useNavigate();
 
@@ -54,17 +54,18 @@ const FormActions = ({
               className="bg-green-600 hover:bg-green-700"
             >
               <CheckCircle className="h-4 w-4 mr-1" />
-              Submit
+              Submit Assessment
             </Button>
           </>
         )}
         
-        {!isLastSection && (
+        {!isLastQuestion && !isCompleted && (
           <Button 
             type="button"
-            onClick={onNextSection}
+            onClick={onNextQuestion}
+            className="bg-primary-600 hover:bg-primary-700"
           >
-            Next Section
+            Continue
             <ArrowRight className="h-4 w-4 ml-1" />
           </Button>
         )}
