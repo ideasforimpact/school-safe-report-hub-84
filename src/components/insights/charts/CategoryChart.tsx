@@ -39,6 +39,9 @@ const CategoryChart: React.FC<CategoryChartProps> = ({
         <div className="flex items-center gap-2">
           <Layers className="h-5 w-5 text-primary" />
           <CardTitle className="text-xl">{title}</CardTitle>
+          <Badge variant="outline" className="ml-2 bg-gray-50">
+            {total} incidents
+          </Badge>
         </div>
         <CardDescription>
           {description}
@@ -127,13 +130,7 @@ const CategoryChart: React.FC<CategoryChartProps> = ({
                     })}
                   </div>
                   
-                  {/* Total count badge */}
-                  <div className="mt-4 flex justify-start">
-                    <Badge className="bg-gray-100 hover:bg-gray-100 text-gray-700 border border-gray-200 py-1 px-3">
-                      <Tag className="h-3.5 w-3.5 mr-1.5 text-gray-500" />
-                      <span className="font-medium">Total: {total} incidents</span>
-                    </Badge>
-                  </div>
+                  {/* Total count badge - removed since we now display it in the header */}
                 </div>
               </div>
             </div>
