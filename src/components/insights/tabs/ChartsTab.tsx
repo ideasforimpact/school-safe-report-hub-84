@@ -1,6 +1,6 @@
 
 import React from 'react';
-import CategoryChart from '../charts/CategoryChart';
+import CategoryChart from '../charts/category-chart';
 import BarChartComponent from '../charts/BarChartComponent';
 import TimeSeriesAnalysis from '../charts/TimeSeriesAnalysis';
 import StatusChart from '../charts/StatusChart';
@@ -85,7 +85,7 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
         </div>
       </div>
 
-      {/* Facilities chart - changed to auto fit content height instead of fixed height */}
+      {/* Facilities chart - auto fit content height instead of fixed height */}
       {isAdmin && facilityData.length > 0 && (
         <div className="shadow-sm rounded-xl overflow-hidden">
           <CategoryChart 
