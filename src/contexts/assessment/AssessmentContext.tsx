@@ -39,12 +39,22 @@ export const AssessmentProvider: React.FC<{children: React.ReactNode}> = ({ chil
     setAssignments 
   } = useAssignmentManagement(user?.id);
 
-  // Set up question management
+  // Set up question management - fix the type issue here
   const { 
     addQuestion, 
     updateQuestion, 
     removeQuestion 
-  } = useQuestionManagement(templates, updateTemplate);
+  } = useQuestionManagement(templates, (templates) => {
+    // This wrapper ensures we're providing the expected setState function
+    // that takes either a new state value or a function to update the state
+    return (updater) => {
+      if (typeof updater === 'function') {
+        updateTemplate(updater(templates));
+      } else {
+        updateTemplate(updater);
+      }
+    };
+  });
   
   // Set up response management
   const { 
