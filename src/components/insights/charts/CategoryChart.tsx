@@ -50,17 +50,17 @@ const CategoryChart: React.FC<CategoryChartProps> = ({
             <div className="grid grid-cols-1 gap-4">
               {/* Chart and tags layout */}
               <div className="flex flex-col md:flex-row">
-                {/* Left side - chart */}
-                <div className="w-full md:w-1/3 h-[220px] flex items-center justify-center">
-                  <ResponsiveContainer width="100%" height={220}>
+                {/* Left side - chart - Making it larger */}
+                <div className="w-full md:w-1/3 h-[260px] flex items-center justify-center">
+                  <ResponsiveContainer width="100%" height={260}>
                     <PieChart>
                       <Pie
                         data={data}
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        innerRadius={50}
-                        outerRadius={80}
+                        innerRadius={60}
+                        outerRadius={100}
                         fill="#8884d8"
                         dataKey="value"
                         onMouseEnter={onPieEnter}

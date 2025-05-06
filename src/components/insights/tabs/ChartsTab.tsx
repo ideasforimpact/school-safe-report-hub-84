@@ -36,8 +36,8 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
 }) => {
   return (
     <div className="mt-4 space-y-8">
-      {/* First row: Featured Incidents by Category chart */}
-      <div className="h-[360px] shadow-sm rounded-xl overflow-hidden">
+      {/* First row: Featured Incidents by Category chart - Increased height to 400px */}
+      <div className="h-[400px] shadow-sm rounded-xl overflow-hidden">
         <CategoryChart data={categoryData} colors={colors} />
       </div>
       
