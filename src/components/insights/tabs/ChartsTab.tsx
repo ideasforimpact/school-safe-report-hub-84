@@ -35,23 +35,19 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
   colors
 }) => {
   return (
-    <div className="mt-4">
-      {/* First row: Incidents by Category chart only */}
-      <div className="mb-8">
-        <div className="h-[400px]">
-          <CategoryChart data={categoryData} colors={colors} />
-        </div>
+    <div className="mt-4 space-y-8">
+      {/* First row: Featured Incidents by Category chart */}
+      <div className="h-[450px] shadow-sm rounded-xl overflow-hidden">
+        <CategoryChart data={categoryData} colors={colors} />
       </div>
       
       {/* Second row: Incidents by Type */}
-      <div className="mb-8">
-        <div className="h-[400px]">
-          <BarChartComponent 
-            title="Incidents by Type" 
-            description="Compare occurrence of incidents, near misses, and unsafe conditions"
-            data={typeData}
-          />
-        </div>
+      <div className="h-[400px]">
+        <BarChartComponent 
+          title="Incidents by Type" 
+          description="Compare occurrence of incidents, near misses, and unsafe conditions"
+          data={typeData}
+        />
       </div>
       
       {/* Remaining charts in a grid */}
@@ -109,7 +105,7 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
         </div>
       </div>
 
-      <div className="mt-8 h-[400px]">
+      <div className="h-[400px]">
         <StatusChart data={statusData} />
       </div>
     </div>
