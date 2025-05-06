@@ -16,7 +16,7 @@ const CategoryChart: React.FC<CategoryChartProps> = ({
   data, 
   colors, 
   title = "Incidents by Category", 
-  description = "Distribution of incidents across different categories" 
+  description = "" // Set default to empty string instead of the lengthy description
 }) => {
   // Calculate total for percentage calculation and center display
   const total = data.reduce((acc, curr) => acc + curr.value, 0);
@@ -43,9 +43,11 @@ const CategoryChart: React.FC<CategoryChartProps> = ({
             {total} incidents
           </Badge>
         </div>
-        <CardDescription>
-          {description}
-        </CardDescription>
+        {description && (
+          <CardDescription>
+            {description}
+          </CardDescription>
+        )}
       </CardHeader>
       <CardContent className="h-[calc(100%-90px)]">
         {data.length > 0 ? (
