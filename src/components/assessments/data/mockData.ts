@@ -1,5 +1,5 @@
 
-import { AlertTriangle, CheckCircle, ClipboardList } from 'lucide-react';
+import { AlertTriangle, CheckCircle, ClipboardList, LucideIcon } from 'lucide-react';
 
 export const summaryData = {
   total: 24,
@@ -8,7 +8,16 @@ export const summaryData = {
   averageScore: 85,
 };
 
-export const assessmentTypes = [
+export const assessmentTypes: Array<{
+  id: number;
+  title: string;
+  description: string;
+  icon: LucideIcon;
+  color: string;
+  bgColor: string;
+  count: number;
+  progress: number;
+}> = [
   {
     id: 1,
     title: 'Safety Assessments',

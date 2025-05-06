@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { LucideIcon } from 'lucide-react';
 import AssessmentSummaryCards from '@/components/assessments/AssessmentSummaryCards';
 import AssessmentCard from '@/components/assessments/AssessmentCard';
 import RecentAssessmentsTable from '@/components/assessments/RecentAssessmentsTable';
@@ -15,7 +16,7 @@ interface OverviewTabProps {
     id: number;
     title: string;
     description: string;
-    icon: React.ComponentType<any>;
+    icon: LucideIcon;
     color: string;
     bgColor: string;
     count: number;
