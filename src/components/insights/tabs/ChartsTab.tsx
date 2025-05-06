@@ -74,17 +74,6 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
           />
         </div>
 
-        {isAdmin && facilityData.length > 0 && (
-          <div className="h-[400px] shadow-sm rounded-xl overflow-hidden">
-            <CategoryChart 
-              data={facilityData} 
-              colors={colors}
-              title="Incidents by Facility"
-              description="Distribution of incidents across different school facilities"
-            />
-          </div>
-        )}
-
         <div className="h-[400px]">
           <BarChartComponent 
             title="Top 10 Subcategories" 
@@ -94,15 +83,27 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
             layout="vertical"
           />
         </div>
-        
+      </div>
+
+      {/* Full width charts - pulled out of the grid */}
+      {isAdmin && facilityData.length > 0 && (
         <div className="h-[400px] shadow-sm rounded-xl overflow-hidden">
           <CategoryChart 
-            data={assigneeData} 
+            data={facilityData} 
             colors={colors}
-            title="Incident Ownership"
-            description="Distribution of incidents by assigned owner"
+            title="Incidents by Facility"
+            description="Distribution of incidents across different school facilities"
           />
         </div>
+      )}
+      
+      <div className="h-[400px] shadow-sm rounded-xl overflow-hidden">
+        <CategoryChart 
+          data={assigneeData} 
+          colors={colors}
+          title="Incident Ownership"
+          description="Distribution of incidents by assigned owner"
+        />
       </div>
 
       <div className="h-[400px]">
