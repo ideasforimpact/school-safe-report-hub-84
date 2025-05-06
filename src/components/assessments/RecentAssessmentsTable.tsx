@@ -65,23 +65,23 @@ const RecentAssessmentsTable: React.FC<RecentAssessmentsTableProps> = ({ assessm
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>ID</TableHead>
-            <TableHead>Title</TableHead>
-            <TableHead>Type</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Date</TableHead>
-            <TableHead>Score</TableHead>
+            <TableHead className="text-left">ID</TableHead>
+            <TableHead className="text-left">Title</TableHead>
+            <TableHead className="text-left">Type</TableHead>
+            <TableHead className="text-left">Status</TableHead>
+            <TableHead className="text-left">Date</TableHead>
+            <TableHead className="text-left">Score</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {assessments.map((assessment) => (
             <TableRow key={assessment.id} className="cursor-pointer hover:bg-gray-50">
-              <TableCell className="font-medium">{assessment.id}</TableCell>
-              <TableCell>{assessment.title}</TableCell>
-              <TableCell>{assessment.type}</TableCell>
-              <TableCell>{renderStatusBadge(assessment.status)}</TableCell>
-              <TableCell>{formatDate(assessment.date)}</TableCell>
-              <TableCell>
+              <TableCell className="font-medium text-left">{assessment.id}</TableCell>
+              <TableCell className="text-left">{assessment.title}</TableCell>
+              <TableCell className="text-left">{assessment.type}</TableCell>
+              <TableCell className="text-left">{renderStatusBadge(assessment.status)}</TableCell>
+              <TableCell className="text-left">{formatDate(assessment.date)}</TableCell>
+              <TableCell className="text-left">
                 {assessment.score !== null ? `${assessment.score}%` : '-'}
               </TableCell>
             </TableRow>
