@@ -36,9 +36,13 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
 }) => {
   return (
     <div className="mt-4">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* First row: Incidents by Category chart only */}
+      <div className="mb-6">
         <CategoryChart data={categoryData} colors={colors} />
-        
+      </div>
+      
+      {/* Remaining charts in a grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <BarChartComponent 
           title="Incidents by Type" 
           description="Compare occurrence of incidents, near misses, and unsafe conditions"
