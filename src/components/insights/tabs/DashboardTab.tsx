@@ -32,7 +32,7 @@ const DashboardTab: React.FC<DashboardTabProps> = ({
               {recentIncidents.length > 0 ? (
                 <div className="space-y-1 p-1">
                   {recentIncidents.map((incident) => (
-                    <IncidentDetailsCard key={incident.id} incident={incident} />
+                    <IncidentDetailsCard key={incident.id} incidents={[incident]} />
                   ))}
                 </div>
               ) : (
