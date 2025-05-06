@@ -50,22 +50,30 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
   heatmapData = []
 }) => {
   return (
-    <div className="mt-4 space-y-8 w-full">
+    <div className="mt-4 flex flex-col gap-12 w-full">
       {/* Featured Incidents by Category chart */}
-      <CategoryChartWrapper data={categoryData} colors={colors} />
+      <div className="chart-container">
+        <CategoryChartWrapper data={categoryData} colors={colors} />
+      </div>
       
       {/* Status Blocks */}
-      <StatusBlocksWrapper data={statusData} />
+      <div className="chart-container">
+        <StatusBlocksWrapper data={statusData} />
+      </div>
       
       {/* Role Distribution */}
-      <RoleDistributionChart data={roleDistributionData} colors={colors} />
+      <div className="chart-container">
+        <RoleDistributionChart data={roleDistributionData} colors={colors} />
+      </div>
       
       {/* Risk Assessment Matrix */}
-      <RiskAssessmentChartWrapper data={riskData} />
+      <div className="chart-container">
+        <RiskAssessmentChartWrapper data={riskData} />
+      </div>
       
       {/* Incident Hotspot (Heatmap) Chart */}
       {heatmapData.length > 0 && (
-        <div className="mb-8">
+        <div className="chart-container">
           <HeatmapChart 
             data={heatmapData} 
             title="Incident Hotspots" 
@@ -75,34 +83,34 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
       )}
       
       {/* Incidents by Type */}
-      <div className="mb-8">
+      <div className="chart-container">
         <IncidentTypeChart data={typeData} />
       </div>
       
       {/* Subcategories chart */}
-      <div className="mb-8">
+      <div className="chart-container">
         <SubcategoryChartWrapper data={subcategoryData} colors={colors} />
       </div>
       
       {/* Time series chart - full width */}
-      <div className="mb-8">
+      <div className="chart-container">
         <TimeSeriesChart data={timeSeriesData} />
       </div>
       
       {/* Location chart - full width */}
-      <div className="mb-8">
+      <div className="chart-container">
         <LocationChart data={locationData} />
       </div>
 
       {/* Facilities chart - only shown for admins */}
       {isAdmin && facilityData.length > 0 && (
-        <div className="mb-8">
+        <div className="chart-container">
           <FacilityChart data={facilityData} colors={colors} />
         </div>
       )}
       
       {/* Assignee chart */}
-      <div className="mb-8">
+      <div className="chart-container">
         <AssigneeChart data={assigneeData} colors={colors} />
       </div>
     </div>
