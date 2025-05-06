@@ -113,6 +113,7 @@ const Insights = () => {
               riskData={chartData.riskData}
               isAdmin={isAdmin}
               colors={CHART_COLOR_ARRAY}
+              roleDistributionData={roleDistributionData}
             />
           </TabsContent>
           

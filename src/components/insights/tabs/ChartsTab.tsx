@@ -7,6 +7,8 @@ import StatusBlocks from '../charts/StatusBlocks';
 import HeatmapChart from '../charts/HeatmapChart';
 import RiskAssessmentChart from '../charts/RiskAssessmentChart';
 import SubcategoryChart from '../charts/SubcategoryChart';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface ChartsTabProps {
   categoryData: Array<{name: string, value: number}>;
@@ -20,6 +22,7 @@ interface ChartsTabProps {
   riskData: Array<{name: string, frequency: number, severity: number, count: number}>;
   isAdmin: boolean;
   colors: string[];
+  roleDistributionData?: Array<{name: string, value: number}>; // Added this prop
 }
 
 const ChartsTab: React.FC<ChartsTabProps> = ({
@@ -33,7 +36,8 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
   statusData,
   riskData,
   isAdmin,
-  colors
+  colors,
+  roleDistributionData = [] // Provide default empty array
 }) => {
   return (
     <div className="mt-4 space-y-8 w-full">
@@ -46,6 +50,44 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
       <div className="w-full">
         <StatusBlocks data={statusData} />
       </div>
+      
+      {/* Role Distribution - moved from PeopleTab */}
+      <Card className="w-full">
+        <CardHeader>
+          <CardTitle>Role Distribution</CardTitle>
+          <CardDescription>
+            Distribution of incidents by role of people involved
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="h-64">
+          {roleDistributionData.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={roleDistributionData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {roleDistributionData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-full text-gray-500">
+              No data available for the selected filters
+            </div>
+          )}
+        </CardContent>
+      </Card>
       
       {/* Full-width Risk Assessment Matrix - moved out of grid and made prominent */}
       <div className="h-[500px] shadow-sm rounded-xl overflow-hidden w-full">
