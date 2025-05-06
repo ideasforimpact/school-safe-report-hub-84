@@ -3,7 +3,6 @@ import React from 'react';
 import { Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Layout from '@/components/layout/Layout';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import InsightsFilters from '@/components/insights/InsightsFilters';
 import ChartsTab from '@/components/insights/tabs/ChartsTab';
 import { useInsightsData } from '@/hooks/useInsightsData';
@@ -14,8 +13,6 @@ const Insights = () => {
   const {
     facilities,
     isAdmin,
-    activeTab,
-    setActiveTab,
     filters,
     handleFilterChange,
     handleDateRangeChange,
