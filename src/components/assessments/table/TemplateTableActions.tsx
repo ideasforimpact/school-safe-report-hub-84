@@ -1,17 +1,10 @@
 
-import { Button } from "@/components/ui/button";
-import { Edit, Play, Users } from "lucide-react";
 import { AssessmentTemplate } from "@/types/assessmentTypes";
 import { useNavigate } from "react-router-dom";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger
-} from "@/components/ui/tooltip";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import InlineAssignTemplate from "../InlineAssignTemplate";
 import { useState } from "react";
+import AssignButton from "./buttons/AssignButton";
+import ActivateButton from "./buttons/ActivateButton";
+import EditButton from "./buttons/EditButton";
 
 interface TemplateTableActionsProps {
   template: AssessmentTemplate;
@@ -31,69 +24,28 @@ const TemplateTableActions = ({ template, onAssign, onActivate }: TemplateTableA
     setAssigningTemplateId(null);
   };
 
+  const handleEditClick = () => navigate(`/assessment/${template.id}`);
+  
+  const handleActivateClick = () => onActivate(template.id);
+
   return (
     <div className="flex justify-end space-x-2">
       {isComplete && (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Popover open={assigningTemplateId === template.id} onOpenChange={(open) => {
-                if (!open) setAssigningTemplateId(null);
-              }}>
-                <PopoverTrigger asChild>
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={() => setAssigningTemplateId(template.id)}
-                  >
-                    <Users className="h-4 w-4" />
-                    Assign
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="p-0" align="end">
-                  <InlineAssignTemplate
-                    templateId={template.id}
-                    templateName={template.name}
-                    onAssign={handleAssign}
-                    onClose={() => setAssigningTemplateId(null)}
-                  />
-                </PopoverContent>
-              </Popover>
-            </TooltipTrigger>
-            <TooltipContent>
-              Assign to users
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+        <AssignButton 
+          templateId={template.id} 
+          templateName={template.name}
+          onAssign={handleAssign}
+        />
       )}
       
       {isComplete && !isActive && (
-        <Button 
-          size="sm" 
-          className="bg-green-500 hover:bg-green-600"
-          onClick={() => onActivate(template.id)}
-        >
-          <Play className="h-4 w-4 mr-1" />
-          Activate
-        </Button>
+        <ActivateButton onActivate={handleActivateClick} />
       )}
       
-      <Button 
-        size="sm" 
-        variant={isComplete ? "outline" : "default"}
-        onClick={() => navigate(`/assessment/${template.id}`)}
-      >
-        {isComplete ? (
-          <>
-            <Edit className="h-4 w-4 mr-1" />
-            Edit
-          </>
-        ) : (
-          <>
-            Add Questions
-          </>
-        )}
-      </Button>
+      <EditButton 
+        isComplete={isComplete}
+        onClick={handleEditClick}
+      />
     </div>
   );
 };
