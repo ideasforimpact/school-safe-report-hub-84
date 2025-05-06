@@ -214,7 +214,6 @@ const CategoryChart: React.FC<CategoryChartProps> = ({
                           <PaginationItem>
                             <PaginationLink
                               onClick={() => currentPage > 1 && handlePageChange(currentPage - 1)}
-                              disabled={currentPage === 1}
                               aria-disabled={currentPage === 1}
                               className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
                             >
@@ -243,7 +242,6 @@ const CategoryChart: React.FC<CategoryChartProps> = ({
                           <PaginationItem>
                             <PaginationLink
                               onClick={() => currentPage < totalPages && handlePageChange(currentPage + 1)}
-                              disabled={currentPage === totalPages}
                               aria-disabled={currentPage === totalPages}
                               className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
                             >
