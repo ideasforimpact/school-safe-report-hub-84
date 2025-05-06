@@ -10,6 +10,7 @@ import TimeSeriesChart from './charts/TimeSeriesChart';
 import LocationChart from './charts/LocationChart';
 import FacilityChart from './charts/FacilityChart';
 import AssigneeChart from './charts/AssigneeChart';
+import HeatmapChart from '@/components/insights/charts/HeatmapChart';
 
 interface ChartsTabProps {
   categoryData: Array<{name: string, value: number}>;
@@ -24,6 +25,13 @@ interface ChartsTabProps {
   isAdmin: boolean;
   colors: string[];
   roleDistributionData?: Array<{name: string, value: number}>;
+  heatmapData?: Array<{
+    name: string;
+    values: Array<{
+      day: string;
+      value: number;
+    }>;
+  }>;
 }
 
 const ChartsTab: React.FC<ChartsTabProps> = ({
@@ -38,7 +46,8 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
   riskData,
   isAdmin,
   colors,
-  roleDistributionData = []
+  roleDistributionData = [],
+  heatmapData = []
 }) => {
   return (
     <div className="mt-4 space-y-8 w-full">
@@ -53,6 +62,15 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
       
       {/* Risk Assessment Matrix */}
       <RiskAssessmentChartWrapper data={riskData} />
+      
+      {/* Incident Hotspot (Heatmap) Chart */}
+      {heatmapData.length > 0 && (
+        <HeatmapChart 
+          data={heatmapData} 
+          title="Incident Hotspots" 
+          description="Heatmap showing when and where incidents occur most frequently" 
+        />
+      )}
       
       {/* Incidents by Type */}
       <IncidentTypeChart data={typeData} />

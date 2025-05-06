@@ -97,6 +97,7 @@ const Insights = () => {
               isAdmin={isAdmin}
               colors={CHART_COLOR_ARRAY}
               roleDistributionData={roleDistributionData}
+              heatmapData={chartData.heatmapData}
             />
           </TabsContent>
           
@@ -104,7 +105,6 @@ const Insights = () => {
             <DashboardTab
               timeSeriesData={chartData.timeSeriesData}
               riskData={chartData.riskData}
-              heatmapData={chartData.heatmapData}
               recentIncidents={filteredIncidents.slice(0, 10)}
             />
           </TabsContent>
