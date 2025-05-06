@@ -10,8 +10,16 @@ interface RiskDataPoint {
   count: number;
 }
 
+interface RiskZonePoint {
+  name: string;
+  frequency: number;
+  severity: number;
+  count: number;
+  color?: string;
+}
+
 interface RiskScatterPlotProps {
-  data: RiskDataPoint[];
+  data: RiskDataPoint[] | RiskZonePoint[];
   isZone?: boolean;
 }
 
@@ -27,7 +35,7 @@ const RiskScatterPlot: React.FC<RiskScatterPlotProps> = ({ data, isZone = false 
       {data.map((entry, index) => (
         <Cell
           key={`cell-${index}`}
-          fill={isZone ? entry.color : getRiskColor(entry.frequency, entry.severity)}
+          fill={isZone && 'color' in entry ? entry.color : getRiskColor(entry.frequency, entry.severity)}
         />
       ))}
     </Scatter>
