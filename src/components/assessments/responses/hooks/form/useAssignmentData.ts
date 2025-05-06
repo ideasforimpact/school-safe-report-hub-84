@@ -19,19 +19,37 @@ export const useAssignmentData = () => {
     ? responses.find(r => r.assignmentId === assignment.id && r.userId === user?.id)
     : null;
   
-  // Check if assignment exists
   useEffect(() => {
+    // Log useful debugging information
+    console.log("Current assignmentId from URL:", assignmentId);
+    console.log("Available assignments:", assignments);
+    console.log("Found assignment:", assignment);
+    console.log("Found template:", template);
+    
     setLoading(true);
     
-    if (template && assignment) {
-      setNotFound(false);
-    } else if (assignmentId && (!assignment || !template)) {
-      // Set not found flag if we have an assignmentId but can't find the data
-      setNotFound(true);
-    }
+    // Short delay to allow data to load
+    const timer = setTimeout(() => {
+      if (assignmentId) {
+        if (!assignment) {
+          console.log(`Assignment with ID ${assignmentId} not found`);
+          setNotFound(true);
+        } else if (!template) {
+          console.log(`Template for assignment ${assignmentId} not found`);
+          setNotFound(true);
+        } else {
+          setNotFound(false);
+        }
+      } else {
+        console.log("No assignmentId parameter found in URL");
+        setNotFound(true);
+      }
+      
+      setLoading(false);
+    }, 500);
     
-    setLoading(false);
-  }, [template, assignment, assignmentId]);
+    return () => clearTimeout(timer);
+  }, [assignmentId, assignment, template, assignments]);
   
   return {
     assignment,

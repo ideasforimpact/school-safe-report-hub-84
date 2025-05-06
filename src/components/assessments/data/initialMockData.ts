@@ -63,7 +63,7 @@ const createMockTemplates = (): AssessmentTemplate[] => {
   ];
 };
 
-// Create mock assignments
+// Create mock assignments - use a specific ID for demo purposes
 const createMockAssignments = (templateId: string): AssessmentAssignment[] => {
   const today = new Date();
   
@@ -71,12 +71,24 @@ const createMockAssignments = (templateId: string): AssessmentAssignment[] => {
   const dueDate = new Date();
   dueDate.setDate(today.getDate() + 7);
   
+  // Use a specific ID for the first assignment to make it easily accessible
+  // This ID will be predictable for demo purposes: c689a45d-9111-4d77-9d74-416fbd7ca233
   return [
     {
-      id: uuidv4(),
+      id: "c689a45d-9111-4d77-9d74-416fbd7ca233",
       templateId,
       userId: 'user1',
       userName: 'John Doe',
+      dueDate: dueDate.toISOString(),
+      assignedDate: today.toISOString(),
+      assignedBy: 'admin',
+      status: 'Pending'
+    },
+    {
+      id: uuidv4(),
+      templateId,
+      userId: 'user2',
+      userName: 'Jane Smith',
       dueDate: dueDate.toISOString(),
       assignedDate: today.toISOString(),
       assignedBy: 'admin',
@@ -87,24 +99,23 @@ const createMockAssignments = (templateId: string): AssessmentAssignment[] => {
 
 // Initialize mock data if none exists
 export const initializeMockData = () => {
-  // Check if templates already exist in localStorage
-  const storedTemplates = localStorage.getItem('assessmentTemplates');
-  const storedAssignments = localStorage.getItem('assessmentAssignments');
+  // Clear existing mock data for development purposes to ensure consistent IDs
+  localStorage.removeItem('assessmentTemplates');
+  localStorage.removeItem('assessmentAssignments');
+  localStorage.removeItem('assessmentResponses');
+
+  // Create new templates
+  const templates = createMockTemplates();
+  localStorage.setItem('assessmentTemplates', JSON.stringify(templates));
   
-  // Only initialize if data doesn't exist yet
-  if (!storedTemplates || JSON.parse(storedTemplates).length === 0) {
-    const templates = createMockTemplates();
-    localStorage.setItem('assessmentTemplates', JSON.stringify(templates));
-    
-    // Create assignments based on the template
-    if (templates.length > 0) {
-      const assignments = createMockAssignments(templates[0].id);
-      localStorage.setItem('assessmentAssignments', JSON.stringify(assignments));
-    }
+  // Create assignments based on the template
+  if (templates.length > 0) {
+    const assignments = createMockAssignments(templates[0].id);
+    localStorage.setItem('assessmentAssignments', JSON.stringify(assignments));
   }
   
-  // Initialize empty responses array if none exists
-  if (!localStorage.getItem('assessmentResponses')) {
-    localStorage.setItem('assessmentResponses', JSON.stringify([]));
-  }
+  // Initialize empty responses array
+  localStorage.setItem('assessmentResponses', JSON.stringify([]));
+  
+  console.log('Mock assessment data initialized with predictable IDs for demo');
 };

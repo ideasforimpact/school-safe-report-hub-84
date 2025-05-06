@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Route, Routes, useLocation } from 'react-router-dom';
+import { Route, Routes, useLocation, useParams } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
 import { TabsContent } from '@/components/ui/tabs';
 import { AssessmentProvider } from '@/contexts/assessment/AssessmentContext';
@@ -8,7 +8,7 @@ import AssessmentResponseForm from '@/components/assessments/responses/Assessmen
 import AssessmentsHeader from '@/components/assessments/header/AssessmentsHeader';
 import AssessmentTabs from '@/components/assessments/tabs/AssessmentTabs';
 import OverviewTab from '@/components/assessments/tabs/OverviewTab';
-import { TemplateRoutes, AssignmentRoutes, ResultsRoutes, ResponseRoutes } from '@/routes/assessmentRoutes';
+import { TemplateRoutes, AssignmentRoutes, ResultsRoutes } from '@/routes/assessmentRoutes';
 import { summaryData, assessmentTypes, recentAssessments } from '@/components/assessments/data/mockData';
 
 const AssessmentsPage = () => {
@@ -22,9 +22,7 @@ const AssessmentsPage = () => {
     return (
       <Layout>
         <AssessmentProvider>
-          <Routes>
-            <Route path="/:assignmentId/respond" element={<AssessmentResponseForm />} />
-          </Routes>
+          <AssessmentResponseForm />
         </AssessmentProvider>
       </Layout>
     );

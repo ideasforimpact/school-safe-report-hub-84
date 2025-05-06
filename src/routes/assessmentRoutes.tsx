@@ -7,7 +7,6 @@ import TemplateDetail from '@/components/assessments/templates/TemplateDetail';
 import AssignTemplateForm from '@/components/assessments/assignments/AssignTemplateForm';
 import BulkAssignForm from '@/components/assessments/assignments/BulkAssignForm';
 import AssignmentsList from '@/components/assessments/assignments/AssignmentsList';
-import AssessmentResponseForm from '@/components/assessments/responses/AssessmentResponseForm';
 import ResultsAnalytics from '@/components/assessments/results/ResultsAnalytics';
 
 export const TemplateRoutes = () => (
@@ -31,12 +30,5 @@ export const AssignmentRoutes = () => (
 export const ResultsRoutes = () => (
   <Routes>
     <Route index element={<ResultsAnalytics />} />
-  </Routes>
-);
-
-// The issue was here - ResponseRoutes was just returning a single Route without a Routes wrapper
-export const ResponseRoutes = () => (
-  <Routes>
-    <Route path=":assignmentId/respond" element={<AssessmentResponseForm />} />
   </Routes>
 );
