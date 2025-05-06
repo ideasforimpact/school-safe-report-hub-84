@@ -11,8 +11,9 @@ import QuestionCard from '@/components/assessments/QuestionCard';
 import QuestionForm from '@/components/assessments/QuestionForm';
 import AssignTemplateDialog from '@/components/assessments/AssignTemplateDialog';
 import { useAuth } from '@/contexts/auth/AuthContext';
-import { ArrowLeft, Plus, FileUp, Users } from 'lucide-react';
+import { ArrowLeft, Plus, FileUp, Users, Play, Edit, Check } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const AssessmentTemplate = () => {
   const { id } = useParams<{ id: string }>();
@@ -26,7 +27,8 @@ const AssessmentTemplate = () => {
     updateQuestion,
     removeQuestion,
     getAssignmentsByTemplate,
-    assignTemplate
+    assignTemplate,
+    updateTemplateStatus
   } = useAssessments();
   
   const [template, setTemplate] = useState(() => {
@@ -125,6 +127,25 @@ const AssessmentTemplate = () => {
     setAssignments(getAssignmentsByTemplate(template.id));
   };
 
+  const handleActivateTemplate = () => {
+    if (template.questions.length === 0) {
+      toast({
+        title: "Cannot activate",
+        description: "You need to add at least one question before activating this template.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    updateTemplateStatus(template.id, 'active');
+    setTemplate(getTemplateById(template.id)!);
+    
+    toast({
+      title: "Template activated",
+      description: "Your assessment template is now active and can be assigned to users."
+    });
+  };
+
   const getStatusBadge = () => {
     switch (template.status) {
       case 'active':
@@ -138,29 +159,44 @@ const AssessmentTemplate = () => {
     }
   };
   
+  const isCompleted = template.questions.length > 0;
+  const isActive = template.status === 'active';
+  
   return (
     <Layout>
       <div className="py-6">
-        <div className="flex items-center mb-6">
-          <Button 
-            variant="ghost" 
-            className="mr-4"
-            onClick={() => navigate('/assessments')}
-          >
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            Back
-          </Button>
-          
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold flex items-center gap-2">
-              {template.name} {getStatusBadge()}
-            </h1>
-            <p className="text-muted-foreground">
-              {template.description || "No description provided"}
-            </p>
+        <div className="flex items-center mb-6 justify-between">
+          <div className="flex items-center">
+            <Button 
+              variant="ghost" 
+              className="mr-4"
+              onClick={() => navigate('/assessments')}
+            >
+              <ArrowLeft className="h-4 w-4 mr-1" />
+              Back
+            </Button>
+            
+            <div>
+              <h1 className="text-2xl font-bold flex items-center gap-2">
+                {template.name} {getStatusBadge()}
+              </h1>
+              <p className="text-muted-foreground">
+                {template.description || "No description provided"}
+              </p>
+            </div>
           </div>
           
           <div className="flex gap-2">
+            {!isActive && isCompleted && (
+              <Button 
+                onClick={handleActivateTemplate}
+                className="flex items-center gap-2 bg-green-500 hover:bg-green-600"
+              >
+                <Play className="h-4 w-4" />
+                Activate Template
+              </Button>
+            )}
+            
             <Button 
               variant="outline"
               onClick={() => setShowAssignDialog(true)}
@@ -172,6 +208,24 @@ const AssessmentTemplate = () => {
             </Button>
           </div>
         </div>
+        
+        {template.questions.length === 0 && (
+          <Alert className="mb-6 border-amber-300 bg-amber-50">
+            <FileUp className="h-4 w-4 text-amber-500" />
+            <AlertDescription className="text-amber-800">
+              This template is incomplete. Add questions below to complete it.
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {isActive && (
+          <Alert className="mb-6 border-green-300 bg-green-50">
+            <Check className="h-4 w-4 text-green-500" />
+            <AlertDescription className="text-green-800">
+              This assessment template is active and ready for use.
+            </AlertDescription>
+          </Alert>
+        )}
         
         <div className="mb-6">
           <Card>

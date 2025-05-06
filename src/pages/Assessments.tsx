@@ -30,13 +30,13 @@ const Assessments = () => {
     
     toast({
       title: "Assessment Template Created",
-      description: `${newTemplate.name} has been created successfully${userIds.length > 0 ? ` and assigned to ${userIds.length} user(s)` : ''}.`
+      description: `${newTemplate.name} has been created successfully${userIds.length > 0 ? ` and assigned to ${userIds.length} user(s)` : ''}.`,
     });
     
     // Ensure we're navigating to the correct path and the navigation happens after state updates
     setTimeout(() => {
       navigate(`/assessment/${newTemplate.id}`);
-    }, 0);
+    }, 100);
   };
   
   const handleSort = (field: 'name' | 'createdAt') => {
