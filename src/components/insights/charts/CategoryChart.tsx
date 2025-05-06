@@ -107,7 +107,8 @@ const CategoryChart: React.FC<CategoryChartProps> = ({
                             backgroundColor: `${color}15`, 
                             color: color,
                             borderColor: color,
-                            ringColor: color
+                            // Fix: Replace ringColor with ring-color as it's not a valid CSS property
+                            // We'll handle the ring color via Tailwind's ring classes instead
                           }}
                           variant="outline"
                           onMouseEnter={() => setActiveIndex(index)}
