@@ -2,7 +2,6 @@
 import { 
   Home, 
   FileText, 
-  PieChart,
   AlertTriangle,
   Users,
   Building,
@@ -54,11 +53,6 @@ export const getClientItems = (permissions: ModulePermissions) => [
     path: '/incidents',
     allowed: permissions.allIncidents,
   },
-  {
-    icon: PieChart,
-    label: 'Incident\nInsights',  // Modified to have Incident on first line and Insights on second
-    path: '/insights',
-    allowed: permissions.insights,
-  },
-  // Removed the Benchmark item
+  // Removed the Incident Insights item from the sidebar
 ];
+

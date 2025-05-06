@@ -1,6 +1,6 @@
 
 import { Button } from '@/components/ui/button';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, PieChart } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const IncidentsHeader = () => {
@@ -15,10 +15,20 @@ const IncidentsHeader = () => {
         </p>
       </div>
       
-      <Button onClick={() => navigate('/report-incident')}>
-        <AlertTriangle className="h-4 w-4 mr-2" />
-        Report New
-      </Button>
+      <div className="flex gap-3">
+        <Button 
+          variant="outline"
+          onClick={() => navigate('/insights')}
+        >
+          <PieChart className="h-4 w-4 mr-2" />
+          Insights
+        </Button>
+        
+        <Button onClick={() => navigate('/report-incident')}>
+          <AlertTriangle className="h-4 w-4 mr-2" />
+          Report New
+        </Button>
+      </div>
     </div>
   );
 };
