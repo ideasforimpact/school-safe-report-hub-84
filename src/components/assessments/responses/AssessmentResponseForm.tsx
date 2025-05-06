@@ -1,20 +1,23 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useAssessment } from '@/contexts/AssessmentContext';
+import { useAssessment } from '@/contexts/assessment/AssessmentContext';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { 
   AlertTriangle, 
   Save, 
   CheckCircle,
   Clock,
-  AlertCircle
+  AlertCircle,
+  ArrowRight
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import QuestionResponseItem from './QuestionResponseItem';
 import { QuestionResponse } from '@/types/assessment';
+import { toast } from "sonner";
+import { Progress } from '@/components/ui/progress';
 
 const AssessmentResponseForm = () => {
   const navigate = useNavigate();
@@ -33,6 +36,7 @@ const AssessmentResponseForm = () => {
   const [questionResponses, setQuestionResponses] = useState<QuestionResponse[]>([]);
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [currentSection, setCurrentSection] = useState(0);
   
   // Get assignment, template, and existing response data
   const assignment = assignmentId ? assignments.find(a => a.id === assignmentId) : null;
@@ -89,7 +93,7 @@ const AssessmentResponseForm = () => {
     const requiredQuestions = template.questions.filter(q => q.required);
     const unansweredRequired = requiredQuestions.some(requiredQ => {
       const response = questionResponses.find(r => r.questionId === requiredQ.id);
-      return !response; // No response found for this required question
+      return response?.answer === undefined; // No answer for this required question
     });
     
     if (unansweredRequired) {
@@ -112,6 +116,7 @@ const AssessmentResponseForm = () => {
         updateResponse(existingResponse.id, {
           responses: questionResponses
         });
+        toast.success("Progress saved successfully");
       } else {
         // Create new response
         createResponse({
@@ -120,9 +125,8 @@ const AssessmentResponseForm = () => {
           userId: user.id,
           responses: questionResponses
         });
+        toast.success("Response created and saved");
       }
-      
-      // Show success message or toast
     } finally {
       setSaving(false);
     }
@@ -130,7 +134,10 @@ const AssessmentResponseForm = () => {
   
   const handleSubmit = async () => {
     if (!template || !assignment || !user) return;
-    if (!validateResponses()) return;
+    if (!validateResponses()) {
+      toast.error("Please complete all required questions before submitting");
+      return;
+    }
     
     setSubmitting(true);
     
@@ -156,7 +163,10 @@ const AssessmentResponseForm = () => {
         submitResponse(responseId);
       }
       
-      // Navigate to assignments list with success message
+      // Show success message
+      toast.success("Assessment submitted successfully!");
+      
+      // Navigate to assignments list
       navigate('/assessments/assignments');
     } finally {
       setSubmitting(false);
@@ -169,43 +179,90 @@ const AssessmentResponseForm = () => {
   
   const isCompleted = existingResponse?.status === 'Submitted';
   const isOverdue = new Date(assignment.dueDate) < new Date() && assignment.status !== 'Completed';
+
+  // Calculate progress
+  const totalQuestions = template.questions.length;
+  const answeredQuestions = questionResponses.filter(r => r.answer !== undefined).length;
+  const progressPercentage = totalQuestions > 0 ? Math.round((answeredQuestions / totalQuestions) * 100) : 0;
   
+  // Group questions into sections of 5 for easier navigation
+  const QUESTIONS_PER_PAGE = 5;
+  const groupedQuestions = [];
+  for (let i = 0; i < template.questions.length; i += QUESTIONS_PER_PAGE) {
+    groupedQuestions.push(template.questions.slice(i, i + QUESTIONS_PER_PAGE));
+  }
+  
+  const currentQuestions = groupedQuestions[currentSection] || [];
+  const isFirstSection = currentSection === 0;
+  const isLastSection = currentSection === groupedQuestions.length - 1;
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+    <div className="space-y-6 max-w-4xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
         <div>
           <h2 className="text-xl font-semibold">{template.title}</h2>
           <p className="text-gray-500">{template.description}</p>
         </div>
         
-        <div className="flex items-center space-x-3">
-          {isCompleted ? (
-            <Badge className="bg-green-100 text-green-800">
-              <CheckCircle className="h-3 w-3 mr-1" />
-              Completed
-            </Badge>
-          ) : isOverdue ? (
-            <Badge className="bg-red-100 text-red-800">
-              <AlertCircle className="h-3 w-3 mr-1" />
-              Overdue
-            </Badge>
-          ) : (
-            <Badge className="bg-blue-100 text-blue-800">
-              <Clock className="h-3 w-3 mr-1" />
-              Due {new Date(assignment.dueDate).toLocaleDateString()}
-            </Badge>
+        <div className="flex flex-col items-end space-y-2">
+          <Badge className={isCompleted ? "bg-green-100 text-green-800" : 
+                            isOverdue ? "bg-red-100 text-red-800" : 
+                            "bg-blue-100 text-blue-800"}>
+            {isCompleted ? (
+              <><CheckCircle className="h-3 w-3 mr-1" /> Completed</>
+            ) : isOverdue ? (
+              <><AlertCircle className="h-3 w-3 mr-1" /> Overdue</>
+            ) : (
+              <><Clock className="h-3 w-3 mr-1" /> Due {new Date(assignment.dueDate).toLocaleDateString()}</>
+            )}
+          </Badge>
+          
+          {!isCompleted && (
+            <div className="w-full sm:w-36">
+              <div className="flex justify-between text-xs mb-1">
+                <span>Progress</span>
+                <span>{progressPercentage}%</span>
+              </div>
+              <Progress value={progressPercentage} className="h-2" />
+            </div>
           )}
         </div>
       </div>
       
+      {groupedQuestions.length > 1 && (
+        <div className="flex justify-between items-center bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+          <div className="text-sm text-gray-500">
+            Section {currentSection + 1} of {groupedQuestions.length}
+          </div>
+          <div className="flex space-x-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setCurrentSection(prev => Math.max(0, prev - 1))}
+              disabled={isFirstSection}
+            >
+              Previous
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setCurrentSection(prev => Math.min(groupedQuestions.length - 1, prev + 1))}
+              disabled={isLastSection}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
+      
       {/* Assessment Questions */}
       <div className="space-y-4">
-        {template.questions.map((question, index) => (
+        {currentQuestions.map((question, index) => (
           <QuestionResponseItem
             key={question.id}
             question={question}
             response={questionResponses.find(r => r.questionId === question.id)}
-            index={index}
+            index={index + (currentSection * QUESTIONS_PER_PAGE)}
             onChange={handleResponseChange}
             readOnly={isCompleted}
           />
@@ -219,48 +276,51 @@ const AssessmentResponseForm = () => {
         </div>
       )}
       
-      {!isCompleted && (
-        <div className="flex justify-between pt-4 border-t border-gray-200">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => navigate('/assessments/assignments')}
-          >
-            Back to Assignments
-          </Button>
+      <div className="pt-4 border-t border-gray-200 flex justify-between items-center">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => navigate('/assessments/assignments')}
+        >
+          Back to Assignments
+        </Button>
+        
+        <div className="flex space-x-3">
+          {!isCompleted && (
+            <>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={handleSave} 
+                disabled={saving}
+              >
+                <Save className="h-4 w-4 mr-1" />
+                Save Draft
+              </Button>
+              <Button 
+                type="button" 
+                onClick={handleSubmit}
+                disabled={submitting}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                <CheckCircle className="h-4 w-4 mr-1" />
+                Submit
+              </Button>
+            </>
+          )}
           
-          <div className="space-x-3">
+          {!isLastSection && (
             <Button 
-              type="button" 
-              variant="outline" 
-              onClick={handleSave} 
-              disabled={saving}
+              type="button"
+              onClick={() => setCurrentSection(prev => Math.min(groupedQuestions.length - 1, prev + 1))}
+              disabled={isLastSection}
             >
-              <Save className="h-4 w-4 mr-1" />
-              Save Draft
+              Next Section
+              <ArrowRight className="h-4 w-4 ml-1" />
             </Button>
-            <Button 
-              type="button" 
-              onClick={handleSubmit}
-              disabled={submitting}
-            >
-              <CheckCircle className="h-4 w-4 mr-1" />
-              Submit
-            </Button>
-          </div>
+          )}
         </div>
-      )}
-      
-      {isCompleted && (
-        <div className="flex justify-end pt-4 border-t border-gray-200">
-          <Button
-            type="button"
-            onClick={() => navigate('/assessments/assignments')}
-          >
-            Back to Assignments
-          </Button>
-        </div>
-      )}
+      </div>
     </div>
   );
 };

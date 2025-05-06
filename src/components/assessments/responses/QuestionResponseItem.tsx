@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Paperclip, X, Plus, File } from 'lucide-react';
+import { Paperclip, X, File, Check } from 'lucide-react';
 import { AssessmentQuestion, QuestionResponse, FileAttachment } from '@/types/assessment';
+import { cn } from '@/lib/utils';
 
 interface QuestionResponseItemProps {
   question: AssessmentQuestion;
@@ -36,7 +37,6 @@ const QuestionResponseItem: React.FC<QuestionResponseItemProps> = ({
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     // In a real app, you would handle file upload to a server
-    // For now, we'll just create mock file attachments
     if (e.target.files) {
       const newFiles: FileAttachment[] = Array.from(e.target.files).map(file => ({
         id: `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -58,12 +58,26 @@ const QuestionResponseItem: React.FC<QuestionResponseItemProps> = ({
     onChange(question.id, 'attachments', updatedFiles.length > 0 ? updatedFiles : null);
   };
 
+  const isAnswered = response?.answer !== undefined;
+
   return (
-    <Card className="shadow-sm">
+    <Card className={cn(
+      "shadow-sm border-l-4 transition-all",
+      isAnswered 
+        ? "border-l-green-500" 
+        : question.required 
+          ? "border-l-amber-400" 
+          : "border-l-gray-200"
+    )}>
       <CardContent className="p-4">
         <div className="flex items-start mb-3">
-          <span className="flex justify-center items-center w-6 h-6 rounded-full bg-gray-100 text-gray-600 text-sm mr-2 mt-0.5">
-            {index + 1}
+          <span className={cn(
+            "flex justify-center items-center w-6 h-6 rounded-full text-sm mr-2 mt-0.5",
+            isAnswered 
+              ? "bg-green-100 text-green-700" 
+              : "bg-gray-100 text-gray-600"
+          )}>
+            {isAnswered ? <Check className="h-3 w-3" /> : index + 1}
           </span>
           <div className="flex-1">
             <p className="font-medium">
@@ -73,20 +87,30 @@ const QuestionResponseItem: React.FC<QuestionResponseItemProps> = ({
           </div>
         </div>
 
-        <div className="ml-8">
+        <div className="ml-8 space-y-3">
           <RadioGroup
-            value={response?.answer ? 'yes' : 'no'}
+            value={response?.answer !== undefined ? (response.answer ? 'yes' : 'no') : undefined}
             onValueChange={handleAnswer}
-            className="flex space-x-4 mb-3"
+            className="flex space-x-6 my-2"
             disabled={readOnly}
           >
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="yes" id={`yes-${question.id}`} />
-              <Label htmlFor={`yes-${question.id}`}>Yes</Label>
+              <Label 
+                htmlFor={`yes-${question.id}`}
+                className={response?.answer ? "font-medium text-green-700" : ""}
+              >
+                Yes
+              </Label>
             </div>
             <div className="flex items-center space-x-2">
               <RadioGroupItem value="no" id={`no-${question.id}`} />
-              <Label htmlFor={`no-${question.id}`}>No</Label>
+              <Label 
+                htmlFor={`no-${question.id}`}
+                className={response?.answer === false ? "font-medium text-red-700" : ""}
+              >
+                No
+              </Label>
             </div>
           </RadioGroup>
 
@@ -102,7 +126,7 @@ const QuestionResponseItem: React.FC<QuestionResponseItemProps> = ({
                     value={response?.comment || ''}
                     onChange={handleCommentChange}
                     placeholder="Add your comments here..."
-                    className="h-20"
+                    className="h-20 resize-none focus:border-blue-400"
                     disabled={readOnly}
                   />
                 </div>
@@ -112,7 +136,7 @@ const QuestionResponseItem: React.FC<QuestionResponseItemProps> = ({
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowComments(true)}
-                  className="text-gray-500 hover:text-gray-700 p-0 h-auto font-normal"
+                  className="text-blue-500 hover:text-blue-700 p-0 h-auto font-normal"
                 >
                   + Add comment
                 </Button>
@@ -163,7 +187,7 @@ const QuestionResponseItem: React.FC<QuestionResponseItemProps> = ({
                   />
                   <Label
                     htmlFor={`file-${question.id}`}
-                    className="inline-flex items-center text-sm text-gray-600 hover:text-gray-700 cursor-pointer"
+                    className="inline-flex items-center text-sm text-blue-600 hover:text-blue-700 cursor-pointer"
                   >
                     <Paperclip className="h-4 w-4 mr-1" />
                     Attach files

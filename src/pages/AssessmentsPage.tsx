@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AssessmentCard from '@/components/assessments/AssessmentCard';
 import AssessmentSummaryCards from '@/components/assessments/AssessmentSummaryCards';
 import RecentAssessmentsTable from '@/components/assessments/RecentAssessmentsTable';
-import { AssessmentProvider } from '@/contexts/AssessmentContext';
+import { AssessmentProvider } from '@/contexts/assessment/AssessmentContext';
 import TemplatesList from '@/components/assessments/templates/TemplatesList';
 import CreateTemplateForm from '@/components/assessments/templates/CreateTemplateForm';
 import TemplateDetail from '@/components/assessments/templates/TemplateDetail';
@@ -27,7 +27,7 @@ const AssessmentsPage = () => {
     if (location.pathname.includes('/templates')) return 'templates';
     if (location.pathname.includes('/assignments')) return 'assignments';
     if (location.pathname.includes('/results')) return 'results';
-    if (location.pathname.includes('/respond')) return 'assignments';
+    if (location.pathname.includes('/respond')) return 'assignments'; // This ensures respond still shows assignments tab as active
     return 'overview';
   };
   
@@ -179,6 +179,11 @@ const AssessmentsPage = () => {
                 <Route index element={<ResultsAnalytics />} />
               </Routes>
             </TabsContent>
+
+            {/* Response Form - Place outside of tabs but inside the AssessmentProvider */}
+            <Routes>
+              <Route path=":assignmentId/respond" element={<AssessmentResponseForm />} />
+            </Routes>
           </Tabs>
         </div>
       </AssessmentProvider>
