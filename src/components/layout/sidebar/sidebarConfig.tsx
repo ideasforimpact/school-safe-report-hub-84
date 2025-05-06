@@ -6,7 +6,8 @@ import {
   Users,
   Building,
   BarChart,
-  Settings
+  Settings,
+  ClipboardList // Added icon for Assessments
 } from 'lucide-react';
 import { ModulePermissions } from '@/contexts/AuthContext';
 
@@ -22,6 +23,12 @@ export const getSaasOwnerItems = () => [
     icon: Building,
     label: 'Clients',
     path: '/backoffice/clients',
+    allowed: true,
+  },
+  {
+    icon: ClipboardList,
+    label: 'Assessments',
+    path: '/assessments',
     allowed: true,
   },
   {
@@ -51,6 +58,12 @@ export const getClientItems = (permissions: ModulePermissions) => [
     label: 'Incidents',
     path: '/incidents',
     allowed: permissions.allIncidents,
+  },
+  {
+    icon: ClipboardList,
+    label: 'Assessments',
+    path: '/assessments',
+    allowed: true,
   },
   // Removed Assessments menu item
 ];
