@@ -6,8 +6,7 @@ import {
   Users,
   Building,
   BarChart,
-  Settings,
-  Award
+  Settings
 } from 'lucide-react';
 import { ModulePermissions } from '@/contexts/AuthContext';
 
@@ -23,12 +22,6 @@ export const getSaasOwnerItems = () => [
     icon: Building,
     label: 'Clients',
     path: '/backoffice/clients',
-    allowed: true,
-  },
-  {
-    icon: Award,
-    label: 'Assessments',
-    path: '/assessments',
     allowed: true,
   },
   {
@@ -53,18 +46,12 @@ export const getClientItems = (permissions: ModulePermissions) => [
     path: '/dashboard',
     allowed: true,
   },
-  // Removed the Report item from the sidebar
   {
     icon: FileText,
     label: 'Incidents',
     path: '/incidents',
     allowed: permissions.allIncidents,
   },
-  {
-    icon: Award,
-    label: 'Assessments',
-    path: '/assessments',
-    allowed: true,
-  },
+  // Removed Assessments menu item
 ];
 
