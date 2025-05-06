@@ -5,6 +5,7 @@ import BarChartComponent from '../charts/BarChartComponent';
 import TimeSeriesAnalysis from '../charts/TimeSeriesAnalysis';
 import StatusChart from '../charts/StatusChart';
 import HeatmapChart from '../charts/HeatmapChart';
+import RiskAssessmentChart from '../charts/RiskAssessmentChart';
 
 interface ChartsTabProps {
   categoryData: Array<{name: string, value: number}>;
@@ -15,6 +16,7 @@ interface ChartsTabProps {
   facilityData: Array<{name: string, value: number}>;
   assigneeData: Array<{name: string, value: number}>;
   statusData: Array<{name: string, value: number}>;
+  riskData: Array<{name: string, frequency: number, severity: number, count: number}>;
   isAdmin: boolean;
   colors: string[];
 }
@@ -28,6 +30,7 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
   facilityData,
   assigneeData,
   statusData,
+  riskData,
   isAdmin,
   colors
 }) => {
@@ -47,6 +50,8 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
           title="Incidents Over Time"
           description="Monthly trend of incidents with statistical analysis"
         />
+        
+        <RiskAssessmentChart data={riskData} />
         
         <BarChartComponent 
           title="Incident Location" 

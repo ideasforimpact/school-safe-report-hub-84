@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -119,6 +118,7 @@ const Insights = () => {
               facilityData={chartData.facilityData}
               assigneeData={chartData.assigneeData}
               statusData={chartData.statusData}
+              riskData={chartData.riskData}
               isAdmin={isAdmin}
               colors={CHART_COLOR_ARRAY}
             />
