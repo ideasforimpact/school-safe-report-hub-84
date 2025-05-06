@@ -1,11 +1,12 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import CategoryCardHeader from './CategoryCardHeader';
 import ChartPieView from './ChartPieView';
 import CategoryTags from './CategoryTags';
 import ChartPagination from './ChartPagination';
 import NoDataDisplay from './NoDataDisplay';
+import { usePagination } from '@/hooks/usePagination';
 
 interface CategoryChartProps {
   data: Array<{name: string, value: number}>;
@@ -21,41 +22,42 @@ const CategoryChart: React.FC<CategoryChartProps> = ({
   description = "" 
 }) => {
   // Calculate total for percentage calculation and center display
-  const total = data.reduce((acc, curr) => acc + curr.value, 0);
+  const total = useMemo(() => data.reduce((acc, curr) => acc + curr.value, 0), [data]);
   
   // State to track the hovered segment
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 15; // Show 15 tags per page
-  const totalPages = Math.ceil(data.length / itemsPerPage);
-
   // Sort data by value (descending) for better visualization
-  const sortedData = [...data].sort((a, b) => b.value - a.value);
-  
-  // Get current page data
-  const currentData = sortedData.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+  const sortedData = useMemo(() => 
+    [...data].sort((a, b) => b.value - a.value),
+    [data]
   );
+  
+  // Use pagination hook for more efficient pagination management
+  const itemsPerPage = 15; // Show 15 tags per page
+  const { 
+    currentPage, 
+    setCurrentPage, 
+    totalPages, 
+    paginatedItems: currentData 
+  } = usePagination(sortedData, itemsPerPage);
 
-  // Handle page change
-  const handlePageChange = (page: number) => {
+  // Handle page change with memoized callback
+  const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
     setActiveIndex(null);
-  };
+  }, [setCurrentPage]);
 
   // Handle mouse events for hover effects
-  const onPieEnter = (_: any, index: number) => {
+  const onPieEnter = useCallback((_: any, index: number) => {
     // Find the actual index in the original data array
     const actualIndex = sortedData.findIndex(item => item === data[index]);
     setActiveIndex(actualIndex);
-  };
+  }, [sortedData, data]);
 
-  const onPieLeave = () => {
+  const onPieLeave = useCallback(() => {
     setActiveIndex(null);
-  };
+  }, []);
 
   return (
     <Card className="w-full border-0 shadow-sm bg-white">
