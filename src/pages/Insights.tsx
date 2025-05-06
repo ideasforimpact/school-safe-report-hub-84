@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -43,8 +44,8 @@ const Insights = () => {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+      <div className="space-y-6 w-full">
+        <div className="flex flex-col sm:flex-row justify-between items-start gap-4 w-full">
           <div>
             <h1 className="text-2xl font-bold">Insights & Reports</h1>
             <p className="text-gray-600 mt-1">Analyze incident data and trends</p>
@@ -99,7 +100,7 @@ const Insights = () => {
             <TabsTrigger value="people">People Report</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="dashboard">
+          <TabsContent value="dashboard" className="w-full">
             <DashboardTab
               timeSeriesData={chartData.timeSeriesData}
               riskData={chartData.riskData}
@@ -108,7 +109,7 @@ const Insights = () => {
             />
           </TabsContent>
           
-          <TabsContent value="charts">
+          <TabsContent value="charts" className="w-full">
             <ChartsTab 
               categoryData={chartData.categoryData}
               typeData={chartData.typeData}
@@ -124,7 +125,7 @@ const Insights = () => {
             />
           </TabsContent>
           
-          <TabsContent value="people">
+          <TabsContent value="people" className="w-full">
             <PeopleTab 
               roleDistributionData={roleDistributionData}
               peopleData={peopleData as PersonData[]}

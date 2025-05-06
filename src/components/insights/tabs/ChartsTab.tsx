@@ -36,19 +36,19 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
   colors
 }) => {
   return (
-    <div className="mt-4 space-y-8">
+    <div className="mt-4 space-y-8 w-full">
       {/* First row: Featured Incidents by Category chart - Increased height to 400px */}
-      <div className="h-[400px] shadow-sm rounded-xl overflow-hidden">
+      <div className="h-[400px] shadow-sm rounded-xl overflow-hidden w-full">
         <CategoryChart data={categoryData} colors={colors} />
       </div>
       
       {/* Status Blocks - our new component */}
-      <div>
+      <div className="w-full">
         <StatusBlocks data={statusData} />
       </div>
       
       {/* Second row: Incidents by Type */}
-      <div className="h-[400px]">
+      <div className="h-[400px] w-full">
         <BarChartComponent 
           title="Incidents by Type" 
           description="Compare occurrence of incidents, near misses, and unsafe conditions"
@@ -57,7 +57,7 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
       </div>
       
       {/* Full width subcategories chart */}
-      <div className="h-[500px]">
+      <div className="h-[500px] w-full">
         <SubcategoryChart 
           data={subcategoryData}
           colors={colors}
@@ -65,7 +65,7 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
       </div>
       
       {/* Remaining charts in a grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full">
         <div className="h-[400px]">
           <TimeSeriesAnalysis 
             data={timeSeriesData} 
@@ -91,7 +91,7 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
 
       {/* Facilities chart - auto fit content height instead of fixed height */}
       {isAdmin && facilityData.length > 0 && (
-        <div className="shadow-sm rounded-xl overflow-hidden">
+        <div className="shadow-sm rounded-xl overflow-hidden w-full">
           <CategoryChart 
             data={facilityData} 
             colors={colors}
@@ -100,7 +100,7 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
         </div>
       )}
       
-      <div className="h-[400px] shadow-sm rounded-xl overflow-hidden">
+      <div className="h-[400px] shadow-sm rounded-xl overflow-hidden w-full">
         <CategoryChart 
           data={assigneeData} 
           colors={colors}
