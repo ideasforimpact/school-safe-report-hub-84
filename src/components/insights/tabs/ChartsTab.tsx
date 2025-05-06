@@ -87,7 +87,7 @@ const ChartsTab: React.FC<ChartsTabProps> = ({
 
       {/* Full width charts - pulled out of the grid */}
       {isAdmin && facilityData.length > 0 && (
-        <div className="h-[400px] shadow-sm rounded-xl overflow-hidden">
+        <div className="h-[500px] shadow-sm rounded-xl overflow-hidden">
           <CategoryChart 
             data={facilityData} 
             colors={colors}
