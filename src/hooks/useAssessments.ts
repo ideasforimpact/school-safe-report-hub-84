@@ -63,8 +63,12 @@ export const useAssessments = () => {
     }
   }, [assignments, isLoading]);
 
-  // Create a new template
-  const createTemplate = (templateData: Omit<AssessmentTemplate, 'id' | 'createdAt' | 'updatedAt'>) => {
+  // Create a new template and optionally assign it to users immediately
+  const createTemplate = (
+    templateData: Omit<AssessmentTemplate, 'id' | 'createdAt' | 'updatedAt'>,
+    userIds: string[] = [],
+    dueDate?: Date
+  ) => {
     const now = new Date();
     const newTemplate: AssessmentTemplate = {
       ...templateData,
@@ -74,6 +78,12 @@ export const useAssessments = () => {
     };
     
     setTemplates(prev => [...prev, newTemplate]);
+    
+    // If userIds are provided, assign the template to those users
+    if (userIds.length > 0) {
+      assignTemplate(newTemplate.id, userIds, dueDate);
+    }
+    
     return newTemplate;
   };
 

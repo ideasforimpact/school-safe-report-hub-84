@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Layout from "@/components/layout/Layout";
-import { Award, CheckSquare, FileText, PlusCircle, Users, ListFilter, ArrowUpDown } from "lucide-react";
+import { Award, CheckSquare, FileText, PlusCircle, Users, ListFilter, ArrowUpDown, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -16,18 +16,30 @@ import {
 import { Badge } from "@/components/ui/badge";
 import NewTemplateDialog from "@/components/assessments/NewTemplateDialog";
 import { useAssessments } from "@/hooks/useAssessments";
+import { useToast } from "@/components/ui/use-toast";
 import { AssessmentTemplate } from "@/types/assessmentTypes";
 
 const Assessments = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const { templates, createTemplate, updateTemplateStatus } = useAssessments();
   const [isNewTemplateDialogOpen, setIsNewTemplateDialogOpen] = useState(false);
   const [sortField, setSortField] = useState<'name' | 'createdAt'>('createdAt');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   
-  const handleCreateTemplate = (templateData: Omit<AssessmentTemplate, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const newTemplate = createTemplate(templateData);
+  const handleCreateTemplate = (
+    templateData: Omit<AssessmentTemplate, 'id' | 'createdAt' | 'updatedAt'>, 
+    userIds: string[], 
+    dueDate?: Date
+  ) => {
+    const newTemplate = createTemplate(templateData, userIds, dueDate);
     setIsNewTemplateDialogOpen(false);
+    
+    toast({
+      title: "Assessment Template Created",
+      description: `${newTemplate.name} has been created successfully${userIds.length > 0 ? ` and assigned to ${userIds.length} user(s)` : ''}.`
+    });
+    
     navigate(`/assessment/${newTemplate.id}`);
   };
   
@@ -64,6 +76,20 @@ const Assessments = () => {
         return null;
     }
   };
+  
+  const getDueDateFormat = (assignments: any[]) => {
+    if (assignments.length === 0) return "—";
+    
+    const dueDates = assignments
+      .filter(a => a.dueDate)
+      .map(a => new Date(a.dueDate));
+    
+    if (dueDates.length === 0) return "No due date";
+    
+    // Get the earliest due date
+    const earliestDueDate = new Date(Math.min(...dueDates.map(d => d.getTime())));
+    return earliestDueDate.toLocaleDateString();
+  };
 
   return (
     <Layout>
@@ -96,7 +122,7 @@ const Assessments = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[400px] cursor-pointer" onClick={() => handleSort('name')}>
+                    <TableHead className="w-[300px] cursor-pointer" onClick={() => handleSort('name')}>
                       <div className="flex items-center">
                         Template Name
                         {sortField === 'name' && (
@@ -106,6 +132,8 @@ const Assessments = () => {
                     </TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Questions</TableHead>
+                    <TableHead>Assigned To</TableHead>
+                    <TableHead>Due Date</TableHead>
                     <TableHead className="cursor-pointer" onClick={() => handleSort('createdAt')}>
                       <div className="flex items-center">
                         Created
@@ -118,25 +146,30 @@ const Assessments = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {sortedTemplates.map((template) => (
-                    <TableRow key={template.id}>
-                      <TableCell className="font-medium">{template.name}</TableCell>
-                      <TableCell>{getStatusBadge(template.status)}</TableCell>
-                      <TableCell>{template.questions.length}</TableCell>
-                      <TableCell>
-                        {new Date(template.createdAt).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell className="text-right space-x-2">
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => navigate(`/assessment/${template.id}`)}
-                        >
-                          View
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {sortedTemplates.map((template) => {
+                    const templateAssignments = useAssessments().getAssignmentsByTemplate(template.id);
+                    return (
+                      <TableRow key={template.id}>
+                        <TableCell className="font-medium">{template.name}</TableCell>
+                        <TableCell>{getStatusBadge(template.status)}</TableCell>
+                        <TableCell>{template.questions.length}</TableCell>
+                        <TableCell>{templateAssignments.length} user(s)</TableCell>
+                        <TableCell>{getDueDateFormat(templateAssignments)}</TableCell>
+                        <TableCell>
+                          {new Date(template.createdAt).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell className="text-right space-x-2">
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => navigate(`/assessment/${template.id}`)}
+                          >
+                            View
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </CardContent>
