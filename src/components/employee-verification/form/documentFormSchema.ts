@@ -3,12 +3,16 @@ import { z } from 'zod';
 import { VerificationDocumentType } from '@/types/employeeVerification';
 
 export const documentFormSchema = z.object({
-  documentNumber: z.string().superRefine((value, context) => {
+  documentNumber: z.string().superRefine((value, ctx) => {
     // Make the document number optional only for 'other' document types
-    if (context.path.length > 1) {
-      // Access the document type from the parent object
-      const formData = context.parent as { documentType?: VerificationDocumentType };
-      const documentType = formData.documentType;
+    if (ctx.path.length > 1) {
+      // Access the parent object that contains the document type
+      const parentObj = ctx.path.reduce((obj, key, i) => {
+        if (i === 0) return ctx.parent?.data;
+        return obj?.[key];
+      }, undefined as any);
+      
+      const documentType = parentObj?.documentType as VerificationDocumentType | undefined;
       
       if (documentType === 'other') {
         return; // Always valid for 'other' type (no error)
@@ -16,7 +20,7 @@ export const documentFormSchema = z.object({
       
       if (value.length === 0) {
         // Only add an error if it's not an 'other' document type and the value is empty
-        context.addIssue({
+        ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: 'Document number is required',
         });
