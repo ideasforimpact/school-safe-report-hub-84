@@ -10,6 +10,7 @@ export interface Employee {
   joiningDate: string;
   department: string;
   position: string;
+  employeeType: 'permanent' | 'contract' | 'temporary'; // Added this field
   status: 'pending' | 'verified' | 'failed';
   createdAt: string;
   updatedAt: string;

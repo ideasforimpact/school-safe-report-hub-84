@@ -13,6 +13,13 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Employee } from '@/types/employeeVerification';
 
 const employeeSchema = z.object({
@@ -25,6 +32,9 @@ const employeeSchema = z.object({
   joiningDate: z.string().min(1, 'Joining date is required'),
   department: z.string().min(1, 'Department is required'),
   position: z.string().min(1, 'Position is required'),
+  employeeType: z.enum(['permanent', 'contract', 'temporary'], {
+    required_error: 'Employee type is required',
+  }),
 });
 
 type EmployeeFormData = z.infer<typeof employeeSchema>;
@@ -52,6 +62,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({
       joiningDate: initialData?.joiningDate ? initialData.joiningDate.split('T')[0] : '',
       department: initialData?.department || '',
       position: initialData?.position || '',
+      employeeType: initialData?.employeeType || 'permanent',
     },
   });
 
@@ -159,6 +170,28 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({
                 <FormControl>
                   <Input placeholder="Software Developer" {...field} />
                 </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="employeeType"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Employee Type</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select employee type" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="permanent">Permanent</SelectItem>
+                    <SelectItem value="contract">Contract</SelectItem>
+                    <SelectItem value="temporary">Temporary</SelectItem>
+                  </SelectContent>
+                </Select>
                 <FormMessage />
               </FormItem>
             )}

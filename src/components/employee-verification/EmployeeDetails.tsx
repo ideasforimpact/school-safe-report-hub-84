@@ -21,6 +21,12 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee }) => {
     }
   };
 
+  const getEmployeeTypeDisplay = (type?: string) => {
+    if (!type) return 'Not Specified';
+    
+    return type.charAt(0).toUpperCase() + type.slice(1);
+  };
+
   return (
     <Card>
       <CardContent className="pt-6 text-left">
@@ -60,6 +66,10 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee }) => {
           <div>
             <p className="text-sm text-gray-500 text-left">Position</p>
             <p className="font-medium text-left">{employee.position}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500 text-left">Employee Type</p>
+            <p className="font-medium text-left">{getEmployeeTypeDisplay(employee.employeeType)}</p>
           </div>
           <div>
             <p className="text-sm text-gray-500 text-left">Verification Status</p>
