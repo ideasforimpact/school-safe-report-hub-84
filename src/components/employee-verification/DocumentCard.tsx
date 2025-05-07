@@ -18,34 +18,34 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, showVerifyButton 
   // Different card styles based on verification status
   const getCardStyle = () => {
     if (document.verificationStatus === 'verified') {
-      return 'border-green-200 ring-1 ring-green-100 bg-gradient-to-br from-white to-green-50';
+      return 'border-green-100 shadow-sm hover:shadow-md';
     } else if (document.verificationStatus === 'failed') {
-      return 'border-red-200 ring-1 ring-red-100 bg-gradient-to-br from-white to-red-50';
+      return 'border-red-100 shadow-sm hover:shadow-md';
     } else {
-      return 'border-yellow-100 hover:border-yellow-200 transition-all bg-gradient-to-br from-white to-yellow-50';
+      return 'border-yellow-100 shadow-sm hover:shadow-md';
     }
   };
 
   return (
-    <Card className={`h-full shadow-sm ${getCardStyle()}`}>
-      <CardContent className="pt-6">
-        <div className="flex justify-between items-start mb-4">
-          <DocumentMetadata 
-            documentType={document.documentType}
-            documentNumber={document.documentNumber}
-            createdAt={document.createdAt}
-            verificationStatus={document.verificationStatus}
-            verificationDate={document.verificationDate}
-            verificationNotes={document.verificationNotes}
-            verificationMethod={document.verificationMethod}
-          />
-          <VerificationStatusBadge status={document.verificationStatus} />
-        </div>
-        
+    <Card className={`h-full transition-all duration-200 ${getCardStyle()}`}>
+      <div className="absolute top-3 right-3 z-10">
+        <VerificationStatusBadge status={document.verificationStatus} />
+      </div>
+      
+      <CardContent className="p-4 pt-6">
         <DocumentImagePreview documentImage={document.documentImage} />
+        <DocumentMetadata 
+          documentType={document.documentType}
+          documentNumber={document.documentNumber}
+          createdAt={document.createdAt}
+          verificationStatus={document.verificationStatus}
+          verificationDate={document.verificationDate}
+          verificationNotes={document.verificationNotes}
+          verificationMethod={document.verificationMethod}
+        />
       </CardContent>
       
-      <CardFooter className="border-t pt-4 flex justify-between">
+      <CardFooter className="border-t p-4 bg-gray-50 flex justify-between">
         {document.verificationStatus === 'pending' && showVerifyButton ? (
           <DocumentActions document={document} showVerifyButton={showVerifyButton} />
         ) : (

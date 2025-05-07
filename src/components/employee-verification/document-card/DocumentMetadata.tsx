@@ -25,7 +25,7 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
   const formatDate = (dateString?: string) => {
     if (!dateString) return 'Not verified yet';
     try {
-      return format(new Date(dateString), 'MMM d, yyyy h:mm a');
+      return format(new Date(dateString), 'MMM d, yyyy');
     } catch (error) {
       return dateString;
     }
@@ -51,16 +51,16 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
     }
 
     return (
-      <div className="flex items-center mt-1 text-xs font-medium">
+      <div className="inline-flex items-center mt-1 text-xs font-medium px-2 py-1 rounded-full bg-blue-50">
         {verificationMethod === 'api' ? (
           <div className="flex items-center text-blue-600">
-            <ShieldCheck className="h-3.5 w-3.5 mr-1" />
+            <ShieldCheck className="h-3 w-3 mr-1" />
             <span>Auto-verified</span>
           </div>
         ) : (
           <div className="flex items-center text-purple-600">
-            <ShieldX className="h-3.5 w-3.5 mr-1" />
-            <span>Manually verified</span>
+            <ShieldX className="h-3 w-3 mr-1" />
+            <span>Manual</span>
           </div>
         )}
       </div>
@@ -68,44 +68,45 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
   };
 
   return (
-    <>
-      <div className="flex flex-col">
+    <div className="space-y-2">
+      <div>
         <h3 className="text-lg font-medium">{getDocumentTypeLabel(documentType)}</h3>
         <p className="text-sm text-gray-500">
           {documentType === 'other' ? 
             (documentNumber || 'No reference number') : 
-            `Document #${documentNumber}`}
+            `#${documentNumber || 'N/A'}`}
         </p>
         {renderVerificationMethod()}
       </div>
       
-      <div className="space-y-2 text-sm">
-        <div className="p-2 rounded-md bg-gray-50 border border-gray-100">
-          <span className="font-medium">Uploaded on:</span>{' '}
-          <span className="text-gray-600">{formatDate(createdAt)}</span>
+      <div className="flex flex-wrap gap-2 text-xs">
+        <div className="px-2 py-1 rounded-md bg-gray-50 border border-gray-100">
+          <span className="text-gray-600">Uploaded: {formatDate(createdAt)}</span>
         </div>
         
-        <div className="p-2 rounded-md bg-gray-50 border border-gray-100">
-          <span className="font-medium">Status:</span>{' '}
-          {verificationStatus === 'pending' ? (
-            <span className="text-yellow-600">Pending verification</span>
-          ) : (
-            <>
-              <span className={verificationStatus === 'verified' ? 'text-green-600' : 'text-red-600'}>
-                {verificationStatus === 'verified' ? 'Verified' : 'Failed'}
-              </span> on {formatDate(verificationDate)}
-            </>
-          )}
+        <div className={`px-2 py-1 rounded-md ${
+          verificationStatus === 'pending' ? 'bg-yellow-50 border border-yellow-100' : 
+          verificationStatus === 'verified' ? 'bg-green-50 border border-green-100' : 
+          'bg-red-50 border border-red-100'
+        }`}>
+          <span className={
+            verificationStatus === 'pending' ? 'text-yellow-600' : 
+            verificationStatus === 'verified' ? 'text-green-600' : 
+            'text-red-600'
+          }>
+            {verificationStatus === 'pending' ? 'Pending' : 
+             verificationStatus === 'verified' ? `Verified ${formatDate(verificationDate)}` : 
+             `Failed ${formatDate(verificationDate)}`}
+          </span>
         </div>
-        
-        {verificationNotes && (
-          <div className="p-2 rounded-md bg-gray-50 border border-gray-100">
-            <span className="font-medium">Notes:</span>{' '}
-            <span className="text-gray-600">{verificationNotes}</span>
-          </div>
-        )}
       </div>
-    </>
+      
+      {verificationNotes && (
+        <div className="text-xs italic text-gray-500 border-l-2 border-gray-200 pl-2">
+          "{verificationNotes}"
+        </div>
+      )}
+    </div>
   );
 };
 

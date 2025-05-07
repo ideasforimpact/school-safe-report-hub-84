@@ -36,9 +36,9 @@ const EmployeeDetailPage = () => {
 
   return (
     <Layout>
-      <div className="container mx-auto py-6 max-w-7xl">
-        <div className="flex justify-between items-center mb-8 bg-gradient-to-r from-blue-50 to-transparent p-4 rounded-lg border border-blue-100">
-          <div className="flex items-center">
+      <div className="container mx-auto py-6 px-4 sm:px-6 max-w-6xl">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
+          <div className="flex items-center mb-4 sm:mb-0">
             <Button 
               variant="ghost" 
               size="sm" 
@@ -48,19 +48,16 @@ const EmployeeDetailPage = () => {
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
-            <div className="flex items-center">
-              <FileCheck className="h-6 w-6 mr-3 text-primary" />
-              <div>
-                <h1 className="text-2xl font-bold text-left">{employee.name}</h1>
-                <p className="text-gray-500 text-left">{employee.position} • {employee.employeeId}</p>
-              </div>
+            <div>
+              <h1 className="text-2xl font-bold">{employee.name}</h1>
+              <p className="text-gray-500">{employee.position} • {employee.employeeId}</p>
             </div>
           </div>
 
           {activeTab === 'documents' && !showAddDocumentForm && (
             <Button 
               onClick={() => setShowAddDocumentForm(true)} 
-              className="bg-gradient-to-r from-primary to-primary-600 hover:from-primary-600 hover:to-primary-700 transition-all duration-300 shadow-md hover:shadow-lg"
+              className="shadow-md"
             >
               <Upload className="h-4 w-4 mr-2" />
               Upload Document
@@ -74,34 +71,38 @@ const EmployeeDetailPage = () => {
           )}
         </div>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="text-left">
-          <TabsList className="mb-6 bg-gray-100 p-1">
-            <TabsTrigger value="details" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
-              Employee Details
-            </TabsTrigger>
-            <TabsTrigger value="documents" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
-              Documents
-            </TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="details" className="animate-fade-in">
-            <EmployeeDetails employee={employee} />
-          </TabsContent>
-          
-          <TabsContent value="documents" className="animate-fade-in">
-            {showAddDocumentForm ? (
-              <AddDocumentForm 
-                employeeId={employee.id} 
-                onSuccess={() => setShowAddDocumentForm(false)} 
-              />
-            ) : (
-              <DocumentsList 
-                employeeId={employee.id} 
-                onAddDocument={() => setShowAddDocumentForm(true)} 
-              />
-            )}
-          </TabsContent>
-        </Tabs>
+        <div className="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="text-left">
+            <TabsList className="bg-gray-50 p-0 border-b border-gray-100 w-full rounded-none">
+              <TabsTrigger value="details" className="rounded-none py-3 px-6 data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-primary">
+                Employee Details
+              </TabsTrigger>
+              <TabsTrigger value="documents" className="rounded-none py-3 px-6 data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-primary">
+                Documents
+              </TabsTrigger>
+            </TabsList>
+            
+            <div className="p-6">
+              <TabsContent value="details" className="mt-0">
+                <EmployeeDetails employee={employee} />
+              </TabsContent>
+              
+              <TabsContent value="documents" className="mt-0">
+                {showAddDocumentForm ? (
+                  <AddDocumentForm 
+                    employeeId={employee.id} 
+                    onSuccess={() => setShowAddDocumentForm(false)} 
+                  />
+                ) : (
+                  <DocumentsList 
+                    employeeId={employee.id} 
+                    onAddDocument={() => setShowAddDocumentForm(true)} 
+                  />
+                )}
+              </TabsContent>
+            </div>
+          </Tabs>
+        </div>
       </div>
     </Layout>
   );

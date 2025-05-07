@@ -7,12 +7,12 @@ export const documentFormSchema = z.object({
     // Make the document number optional only for 'other' document types
     if (ctx.path.length > 1) {
       // Access the parent object that contains the document type
-      const parentObj = ctx.path.reduce((obj, key, i) => {
-        if (i === 0) return ctx.parent?.data;
-        return obj?.[key];
-      }, undefined as any);
+      // Use type assertion to avoid the TypeScript error
+      const formData = ctx.path.length > 0 
+        ? (ctx as any).parent?.data 
+        : undefined;
       
-      const documentType = parentObj?.documentType as VerificationDocumentType | undefined;
+      const documentType = formData?.documentType as VerificationDocumentType | undefined;
       
       if (documentType === 'other') {
         return; // Always valid for 'other' type (no error)
