@@ -6,9 +6,8 @@ export const documentFormSchema = z.object({
   documentNumber: z.string().superRefine((value, context) => {
     // Make the document number optional only for 'other' document types
     if (context.path.length > 1) {
-      // Instead of accessing parent directly, we need to get the data object
-      // and check documentType from the form data
-      const formData = context.getData();
+      // Access the parent form data through the correct method
+      const formData = context.data;
       const documentType = formData?.documentType;
       
       if (documentType === 'other') {
