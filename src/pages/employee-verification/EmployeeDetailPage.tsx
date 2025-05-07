@@ -62,7 +62,7 @@ const EmployeeDetailPage = () => {
         <div className="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden">
           <div className="p-6">
             <div className="flex items-center mb-6">
-              <h2 className="text-xl font-semibold">Documents & Verification</h2>
+              <h2 className="font-semibold text-xl">Documents & Verification</h2>
               <Separator className="flex-grow ml-4" />
             </div>
             
