@@ -7,7 +7,9 @@ import VerificationTrends from '@/components/employee-verification/dashboard/Ver
 import VerificationPerformance from '@/components/employee-verification/dashboard/VerificationPerformance';
 import DocumentExpiryAlerts from '@/components/employee-verification/dashboard/DocumentExpiryAlerts';
 import RecentVerifications from '@/components/employee-verification/dashboard/RecentVerifications';
-import { FileCheck, BarChart2, Clock, AlertTriangle, Activity } from 'lucide-react';
+import { FileCheck, BarChart2, Clock, AlertTriangle, Activity, ArrowLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Link } from 'react-router-dom';
 
 const VerificationDashboardPage = () => {
   return (
@@ -21,6 +23,12 @@ const VerificationDashboardPage = () => {
               <p className="text-gray-500 text-sm">Monitor verification activities and compliance</p>
             </div>
           </div>
+          <Button asChild variant="outline" className="flex items-center gap-2">
+            <Link to="/employee-verification">
+              <ArrowLeft className="h-4 w-4" />
+              <span>Back to Employees</span>
+            </Link>
+          </Button>
         </div>
 
         <VerificationOverview />
