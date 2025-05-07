@@ -63,35 +63,42 @@ const VerificationTrends = () => {
   ];
   
   return (
-    <div className="space-y-6">
-      {/* Monthly verification trends */}
-      <TimeSeriesAnalysis 
-        data={monthlyVerificationData}
-        title="Verification Trends"
-        description="Monthly trend of document verifications"
-      />
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Document types breakdown */}
-        <BarChartComponent 
-          title="Document Types" 
-          description="Breakdown of document types in the system"
-          data={documentTypeData}
-          color={CHART_COLORS.blue}
-          layout="vertical"
-        />
-        
-        {/* Employee types breakdown */}
-        <BarChartComponent 
-          title="Employee Types" 
-          description="Distribution of employees by employment type"
-          data={employeeTypeData}
-          color={CHART_COLORS.purple}
+    <div className="space-y-8">
+      {/* Monthly verification trends - full width */}
+      <div className="w-full h-96">
+        <TimeSeriesAnalysis 
+          data={monthlyVerificationData}
+          title="Verification Trends"
+          description="Monthly trend of document verifications"
         />
       </div>
       
-      {/* Verification methods */}
-      <Card>
+      {/* Two charts side by side with equal height */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {/* Document types breakdown */}
+        <div className="h-80">
+          <BarChartComponent 
+            title="Document Types" 
+            description="Breakdown of document types in the system"
+            data={documentTypeData}
+            color={CHART_COLORS.blue}
+            layout="vertical"
+          />
+        </div>
+        
+        {/* Employee types breakdown */}
+        <div className="h-80">
+          <BarChartComponent 
+            title="Employee Types" 
+            description="Distribution of employees by employment type"
+            data={employeeTypeData}
+            color={CHART_COLORS.purple}
+          />
+        </div>
+      </div>
+      
+      {/* Verification methods - full width */}
+      <Card className="w-full">
         <CardHeader>
           <CardTitle>Verification Methods</CardTitle>
         </CardHeader>
@@ -100,16 +107,16 @@ const VerificationTrends = () => {
             {verificationMethodData.map(item => (
               <div 
                 key={item.name} 
-                className={`p-4 rounded-lg ${
+                className={`p-6 rounded-lg ${
                   item.name === 'API' ? 'bg-blue-50 border-blue-200' : 
                   item.name === 'Manual' ? 'bg-green-50 border-green-200' :
                   item.name === 'Pending' ? 'bg-yellow-50 border-yellow-200' :
                   'bg-red-50 border-red-200'
-                } border`}
+                } border shadow-sm`}
               >
                 <p className="text-sm text-gray-500">{item.name}</p>
-                <p className="text-2xl font-bold mt-1">{item.value}</p>
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-2xl font-bold mt-2">{item.value}</p>
+                <p className="text-sm text-gray-500 mt-2">
                   {Math.round((item.value / documents.length) * 100)}% of total
                 </p>
               </div>
