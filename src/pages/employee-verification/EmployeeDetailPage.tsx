@@ -1,12 +1,11 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import EmployeeDetails from '@/components/employee-verification/EmployeeDetails';
 import DocumentsList from '@/components/employee-verification/DocumentsList';
-import AddDocumentForm from '@/components/employee-verification/AddDocumentForm';
 import Layout from '@/components/layout/Layout';
 import { Separator } from '@/components/ui/separator';
 
@@ -14,7 +13,6 @@ const EmployeeDetailPage = () => {
   const { employeeId } = useParams<{ employeeId: string }>();
   const navigate = useNavigate();
   const { getEmployee } = useEmployeeVerification();
-  const [showAddDocumentForm, setShowAddDocumentForm] = useState(false);
 
   const employee = getEmployee(employeeId || '');
 
@@ -32,6 +30,10 @@ const EmployeeDetailPage = () => {
       </Layout>
     );
   }
+
+  const handleAddDocument = () => {
+    navigate(`/employee-verification/${employeeId}/upload-document`);
+  };
 
   return (
     <Layout>
@@ -53,21 +55,13 @@ const EmployeeDetailPage = () => {
             </div>
           </div>
 
-          {!showAddDocumentForm && (
-            <Button 
-              onClick={() => setShowAddDocumentForm(true)} 
-              className="shadow-md"
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              Upload Document
-            </Button>
-          )}
-          
-          {showAddDocumentForm && (
-            <Button variant="outline" onClick={() => setShowAddDocumentForm(false)}>
-              Cancel
-            </Button>
-          )}
+          <Button 
+            onClick={handleAddDocument} 
+            className="shadow-md"
+          >
+            <Upload className="h-4 w-4 mr-2" />
+            Upload Document
+          </Button>
         </div>
 
         <div className="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden mb-8">
@@ -83,17 +77,10 @@ const EmployeeDetailPage = () => {
               <Separator className="flex-grow ml-4" />
             </div>
             
-            {showAddDocumentForm ? (
-              <AddDocumentForm 
-                employeeId={employee.id} 
-                onSuccess={() => setShowAddDocumentForm(false)} 
-              />
-            ) : (
-              <DocumentsList 
-                employeeId={employee.id} 
-                onAddDocument={() => setShowAddDocumentForm(true)} 
-              />
-            )}
+            <DocumentsList 
+              employeeId={employee.id} 
+              onAddDocument={handleAddDocument} 
+            />
           </div>
         </div>
       </div>

@@ -32,6 +32,7 @@ import ClientManagement from './pages/ClientManagement';
 import AssessmentsPage from './pages/AssessmentsPage';
 import EmployeeVerificationPage from './pages/employee-verification/EmployeeVerificationPage';
 import EmployeeDetailPage from './pages/employee-verification/EmployeeDetailPage';
+import UploadDocumentPage from './pages/employee-verification/UploadDocumentPage';
 import BackofficeAnalytics from './pages/backoffice/BackofficeAnalytics';
 import BackofficeSettings from './pages/backoffice/BackofficeSettings';
 
@@ -79,6 +80,7 @@ function App() {
                           {/* Employee Verification Routes */}
                           <Route path="/employee-verification" element={<EmployeeVerificationPage />} />
                           <Route path="/employee-verification/:employeeId" element={<EmployeeDetailPage />} />
+                          <Route path="/employee-verification/:employeeId/upload-document" element={<UploadDocumentPage />} />
                           
                           <Route path="/configuration" element={<ConfigurationManagement />} />
                           <Route path="/incident-configuration" element={<IncidentConfiguration />} />
