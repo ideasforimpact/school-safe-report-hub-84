@@ -5,7 +5,7 @@ import { ArrowLeft, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import EmployeeDetails from '@/components/employee-verification/EmployeeDetails';
-import DocumentsList from '@/components/employee-verification/DocumentsList';
+import DocumentsList from '@/components/employee-verification/documents-list';
 import Layout from '@/components/layout/Layout';
 import { Separator } from '@/components/ui/separator';
 
