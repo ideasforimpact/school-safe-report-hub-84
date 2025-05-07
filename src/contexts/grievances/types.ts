@@ -11,7 +11,6 @@ export interface FormResponse {
 // Form submission
 export interface FormSubmission {
   id: string;
-  formId?: string; // Optional for backward compatibility
   submitterName: string;
   submitterEmail: string;
   responses: FormResponse[];

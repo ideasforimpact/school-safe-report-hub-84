@@ -21,16 +21,14 @@ interface FormResponse {
 }
 
 interface GrievanceSubmissionFormProps {
-  formId?: string;
   schoolName?: string;
 }
 
 const GrievanceSubmissionForm: React.FC<GrievanceSubmissionFormProps> = ({ 
-  formId, 
   schoolName = "School Grievance Portal" 
 }) => {
   const navigate = useNavigate();
-  const { forms, addSubmission } = useGrievance();
+  const { addSubmission } = useGrievance();
   const { errors, validateForm } = useGrievanceFormValidation();
   
   const [name, setName] = useState('');
@@ -42,9 +40,6 @@ const GrievanceSubmissionForm: React.FC<GrievanceSubmissionFormProps> = ({
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
-
-  // Use the default form if formId is not provided
-  const form = formId ? forms.find(f => f.id === formId) : forms[0];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,33 +66,30 @@ const GrievanceSubmissionForm: React.FC<GrievanceSubmissionFormProps> = ({
     ];
     
     // Add submission
-    if (form) {
-      addSubmission({
-        id: `sub_${Date.now()}`,
-        formId: form.id,
-        formTitle: form.title,
-        submitterName: name,
-        submitterEmail: contactInfo,
-        responses: formattedResponses,
-        status: 'new',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      });
-      
-      // Show success
-      toast({
-        title: "Success",
-        description: "Your grievance has been submitted. Thank you."
-      });
-      
-      setIsSubmitting(false);
-      setIsSubmitted(true);
-      
-      // Wait briefly to show success message before redirecting
-      setTimeout(() => {
-        navigate('/grievances/thank-you');
-      }, 2000);
-    }
+    addSubmission({
+      id: `sub_${Date.now()}`,
+      submitterName: name,
+      submitterEmail: contactInfo,
+      responses: formattedResponses,
+      status: 'new',
+      needsFollowup: preferContact === 'Yes',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    });
+    
+    // Show success
+    toast({
+      title: "Success",
+      description: "Your grievance has been submitted. Thank you."
+    });
+    
+    setIsSubmitting(false);
+    setIsSubmitted(true);
+    
+    // Wait briefly to show success message before redirecting
+    setTimeout(() => {
+      navigate('/grievances/thank-you');
+    }, 2000);
   };
 
   if (isSubmitted) {
