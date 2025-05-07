@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, FileCheck, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useEmployeeVerification } from '@/contexts/EmployeeVerificationContext';
+import { useEmployeeVerification } from '@/contexts/employee-verification';
 import EmployeeDetails from '@/components/employee-verification/EmployeeDetails';
 import DocumentsList from '@/components/employee-verification/DocumentsList';
 import AddDocumentForm from '@/components/employee-verification/AddDocumentForm';

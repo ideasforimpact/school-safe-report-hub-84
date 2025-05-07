@@ -6,8 +6,9 @@ export const documentFormSchema = z.object({
   documentNumber: z.string().superRefine((value, context) => {
     // Make the document number optional only for 'other' document types
     if (context.path.length > 1) {
-      // Access the document type from the input object
-      const documentType = context.input?.documentType as VerificationDocumentType;
+      // Access the document type from the parent object
+      const formData = context.parent as { documentType?: VerificationDocumentType };
+      const documentType = formData.documentType;
       
       if (documentType === 'other') {
         return; // Always valid for 'other' type (no error)
