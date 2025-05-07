@@ -36,8 +36,6 @@ import UploadDocumentPage from './pages/employee-verification/UploadDocumentPage
 import BackofficeAnalytics from './pages/backoffice/BackofficeAnalytics';
 import BackofficeSettings from './pages/backoffice/BackofficeSettings';
 import VerificationDashboardPage from './pages/employee-verification/VerificationDashboardPage';
-import FeedbackPage from './pages/feedback/FeedbackPage';
-import FormResponsePage from './pages/feedback/FormResponsePage';
 
 import './App.css';
 
@@ -58,9 +56,6 @@ function App() {
                       <Route path="/blog" element={<Blog />} />
                       <Route path="/pricing" element={<Pricing />} />
                       <Route path="/support" element={<Support />} />
-                      
-                      {/* Public Form Response Page */}
-                      <Route path="/feedback/respond/:formId" element={<FormResponsePage />} />
                       
                       {/* Redirect from /report to /report-incident */}
                       <Route path="/report" element={<Navigate to="/report-incident" replace />} />
@@ -88,9 +83,6 @@ function App() {
                           <Route path="/employee-verification/dashboard" element={<VerificationDashboardPage />} />
                           <Route path="/employee-verification/:employeeId" element={<EmployeeDetailPage />} />
                           <Route path="/employee-verification/:employeeId/upload-document" element={<UploadDocumentPage />} />
-                          
-                          {/* Feedback & Grievances Routes */}
-                          <Route path="/feedback" element={<FeedbackPage />} />
                           
                           <Route path="/configuration" element={<ConfigurationManagement />} />
                           <Route path="/incident-configuration" element={<IncidentConfiguration />} />
