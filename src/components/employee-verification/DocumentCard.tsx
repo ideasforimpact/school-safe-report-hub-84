@@ -35,6 +35,7 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document }) => {
       case 'driving_license': return 'Driving License';
       case 'passport': return 'Passport';
       case 'bank_account': return 'Bank Account';
+      case 'voter_id': return 'Voter ID';
       default: return type;
     }
   };
@@ -85,8 +86,19 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document }) => {
     }
   };
 
+  // Different card styles based on verification status
+  const getCardStyle = () => {
+    if (document.verificationStatus === 'verified') {
+      return 'border-green-200 ring-1 ring-green-100 bg-gradient-to-br from-white to-green-50';
+    } else if (document.verificationStatus === 'failed') {
+      return 'border-red-200 ring-1 ring-red-100 bg-gradient-to-br from-white to-red-50';
+    } else {
+      return 'border-yellow-100 hover:border-yellow-200 transition-all bg-gradient-to-br from-white to-yellow-50';
+    }
+  };
+
   return (
-    <Card className="h-full">
+    <Card className={`h-full shadow-sm ${getCardStyle()}`}>
       <CardContent className="pt-6">
         <div className="flex justify-between items-start mb-4">
           <div className="flex flex-col">
@@ -102,28 +114,30 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document }) => {
         </div>
         
         <div className="space-y-2 text-sm">
-          <div>
-            <span className="font-medium">Verification Status:</span>{' '}
+          <div className="p-2 rounded-md bg-gray-50 border border-gray-100">
+            <span className="font-medium">Uploaded on:</span>{' '}
+            <span className="text-gray-600">{formatDate(document.createdAt)}</span>
+          </div>
+          
+          <div className="p-2 rounded-md bg-gray-50 border border-gray-100">
+            <span className="font-medium">Status:</span>{' '}
             {document.verificationStatus === 'pending' ? (
-              'Pending verification'
+              <span className="text-yellow-600">Pending verification</span>
             ) : (
               <>
-                {document.verificationStatus === 'verified' ? 'Verified' : 'Failed'} on {formatDate(document.verificationDate)}
+                <span className={document.verificationStatus === 'verified' ? 'text-green-600' : 'text-red-600'}>
+                  {document.verificationStatus === 'verified' ? 'Verified' : 'Failed'}
+                </span> on {formatDate(document.verificationDate)}
               </>
             )}
           </div>
           
           {document.verificationNotes && (
-            <div>
+            <div className="p-2 rounded-md bg-gray-50 border border-gray-100">
               <span className="font-medium">Notes:</span>{' '}
               <span className="text-gray-600">{document.verificationNotes}</span>
             </div>
           )}
-          
-          <div>
-            <span className="font-medium">Added on:</span>{' '}
-            <span className="text-gray-600">{formatDate(document.createdAt)}</span>
-          </div>
         </div>
       </CardContent>
       

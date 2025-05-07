@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, FileCheck } from 'lucide-react';
+import { ArrowLeft, Plus, FileCheck, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useEmployeeVerification } from '@/contexts/EmployeeVerificationContext';
@@ -58,9 +58,12 @@ const EmployeeDetailPage = () => {
           </div>
 
           {activeTab === 'documents' && !showAddDocumentForm && (
-            <Button onClick={() => setShowAddDocumentForm(true)} className="bg-gradient-to-r from-primary to-primary-600 hover:from-primary-600 hover:to-primary-700 transition-all duration-300 shadow-md hover:shadow-lg">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Document
+            <Button 
+              onClick={() => setShowAddDocumentForm(true)} 
+              className="bg-gradient-to-r from-primary to-primary-600 hover:from-primary-600 hover:to-primary-700 transition-all duration-300 shadow-md hover:shadow-lg"
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Upload Document
             </Button>
           )}
           
@@ -92,7 +95,10 @@ const EmployeeDetailPage = () => {
                 onSuccess={() => setShowAddDocumentForm(false)} 
               />
             ) : (
-              <DocumentsList employeeId={employee.id} />
+              <DocumentsList 
+                employeeId={employee.id} 
+                onAddDocument={() => setShowAddDocumentForm(true)} 
+              />
             )}
           </TabsContent>
         </Tabs>

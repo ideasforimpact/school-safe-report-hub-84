@@ -2,12 +2,15 @@
 import React from 'react';
 import { useEmployeeVerification } from '@/contexts/EmployeeVerificationContext';
 import DocumentCard from './DocumentCard';
-import { FileX, CheckCircle, AlertCircle, Clock } from 'lucide-react';
+import { FileX, CheckCircle, AlertCircle, Clock, Upload } from 'lucide-react';
 import VerificationStatusBadge from './VerificationStatusBadge';
 import { VerificationDocumentType } from '@/types/employeeVerification';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface DocumentsListProps {
   employeeId: string;
+  onAddDocument: () => void;
 }
 
 // Helper function to get document type display name
@@ -23,7 +26,7 @@ const getDocumentTypeLabel = (type: VerificationDocumentType) => {
   }
 };
 
-const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId }) => {
+const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument }) => {
   const { getEmployeeDocuments } = useEmployeeVerification();
   const documents = getEmployeeDocuments(employeeId);
 
@@ -51,6 +54,11 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId }) => {
     });
   });
 
+  // Count documents by status
+  const pendingCount = documents.filter(doc => doc.verificationStatus === 'pending').length;
+  const verifiedCount = documents.filter(doc => doc.verificationStatus === 'verified').length;
+  const failedCount = documents.filter(doc => doc.verificationStatus === 'failed').length;
+
   if (documents.length === 0) {
     return (
       <div className="bg-gradient-to-br from-gray-50 to-gray-100 border border-gray-200 rounded-lg p-8 text-left">
@@ -61,9 +69,15 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId }) => {
           <div>
             <h3 className="text-lg font-medium text-gray-700 mb-1">No Documents Found</h3>
             <p className="text-gray-500">
-              No verification documents have been added for this employee yet. 
-              Click the "Add Document" button to upload the first document.
+              No verification documents have been added for this employee yet.
             </p>
+            <Button 
+              className="mt-4 bg-gradient-to-r from-primary to-primary-600 hover:from-primary-600 hover:to-primary-700"
+              onClick={onAddDocument}
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Upload First Document
+            </Button>
           </div>
         </div>
       </div>
@@ -74,6 +88,20 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId }) => {
     <div className="space-y-6 text-left">
       <div className="bg-gradient-to-br from-blue-50 to-transparent p-4 rounded-lg border border-blue-100">
         <h3 className="text-lg font-medium text-gray-800 mb-3">Verification Status Overview</h3>
+        <div className="flex flex-wrap gap-3 mb-4">
+          <div className="bg-blue-50 text-blue-700 border border-blue-200 rounded-md px-3 py-1 text-sm">
+            Total: {documents.length}
+          </div>
+          <div className="bg-yellow-50 text-yellow-700 border border-yellow-200 rounded-md px-3 py-1 text-sm">
+            Pending: {pendingCount}
+          </div>
+          <div className="bg-green-50 text-green-700 border border-green-200 rounded-md px-3 py-1 text-sm">
+            Verified: {verifiedCount}
+          </div>
+          <div className="bg-red-50 text-red-700 border border-red-200 rounded-md px-3 py-1 text-sm">
+            Failed: {failedCount}
+          </div>
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           {Array.from(documentStatusMap.entries()).map(([type, { status }]) => (
             <div 
@@ -101,11 +129,55 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId }) => {
         </div>
       </div>
       
-      <h3 className="text-lg font-medium text-gray-800 mb-2">Document Details</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {documents.map((document) => (
-          <DocumentCard key={document.id} document={document} />
-        ))}
+      <Tabs defaultValue="all" className="w-full">
+        <TabsList className="mb-4 bg-gray-100 p-1 w-full justify-start">
+          <TabsTrigger value="all">All Documents ({documents.length})</TabsTrigger>
+          <TabsTrigger value="pending">Pending ({pendingCount})</TabsTrigger>
+          <TabsTrigger value="verified">Verified ({verifiedCount})</TabsTrigger>
+          <TabsTrigger value="failed">Failed ({failedCount})</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="all" className="animate-in fade-in mt-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {documents.map((document) => (
+              <DocumentCard key={document.id} document={document} />
+            ))}
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="pending" className="animate-in fade-in mt-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {documents.filter(doc => doc.verificationStatus === 'pending').map((document) => (
+              <DocumentCard key={document.id} document={document} />
+            ))}
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="verified" className="animate-in fade-in mt-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {documents.filter(doc => doc.verificationStatus === 'verified').map((document) => (
+              <DocumentCard key={document.id} document={document} />
+            ))}
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="failed" className="animate-in fade-in mt-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {documents.filter(doc => doc.verificationStatus === 'failed').map((document) => (
+              <DocumentCard key={document.id} document={document} />
+            ))}
+          </div>
+        </TabsContent>
+      </Tabs>
+
+      <div className="flex justify-center mt-8">
+        <Button 
+          onClick={onAddDocument}
+          className="bg-gradient-to-r from-primary to-primary-600 hover:from-primary-600 hover:to-primary-700"
+        >
+          <Upload className="h-4 w-4 mr-2" />
+          Upload New Document
+        </Button>
       </div>
     </div>
   );
