@@ -7,7 +7,8 @@ import {
   BarChart,
   Settings,
   ClipboardList,
-  FileCheck 
+  FileCheck,
+  MessageSquare
 } from 'lucide-react';
 import { ModulePermissions } from '@/contexts/AuthContext';
 
@@ -35,6 +36,12 @@ export const getSaasOwnerItems = () => [
     icon: FileCheck,
     label: 'Employee\nVerification',
     path: '/employee-verification',
+    allowed: true,
+  },
+  {
+    icon: MessageSquare,
+    label: 'Feedback &\nGrievances',
+    path: '/feedback',
     allowed: true,
   },
   {
@@ -75,6 +82,12 @@ export const getClientItems = (permissions: ModulePermissions) => [
     icon: FileCheck,
     label: 'Employee\nVerification',
     path: '/employee-verification',
+    allowed: true,
+  },
+  {
+    icon: MessageSquare,
+    label: 'Feedback &\nGrievances',
+    path: '/feedback',
     allowed: true,
   },
 ];
