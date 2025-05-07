@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useGrievance } from '@/contexts/grievances/GrievanceContext';
 import { toast } from '@/hooks/use-toast';
+import { SubmissionStatus } from '@/contexts/grievances/types';
 
 interface GrievanceDetailDialogProps {
   submissionId: string;
@@ -24,7 +25,7 @@ const GrievanceDetailDialog: React.FC<GrievanceDetailDialogProps> = ({ submissio
   const { submissions, updateSubmissionStatus } = useGrievance();
   
   const submission = submissions.find(s => s.id === submissionId);
-  const [status, setStatus] = useState(submission?.status || 'new');
+  const [status, setStatus] = useState<SubmissionStatus>(submission?.status || 'new');
   const [internalNote, setInternalNote] = useState('');
   
   if (!submission) return null;
@@ -61,6 +62,11 @@ const GrievanceDetailDialog: React.FC<GrievanceDetailDialogProps> = ({ submissio
       });
       setInternalNote('');
     }
+  };
+
+  // Fixed the status handling to ensure type compatibility
+  const handleStatusChange = (value: string) => {
+    setStatus(value as SubmissionStatus);
   };
 
   return (
@@ -169,7 +175,7 @@ const GrievanceDetailDialog: React.FC<GrievanceDetailDialogProps> = ({ submissio
             <h3 className="font-medium mb-2">Update Status</h3>
             <div className="flex items-center gap-4">
               <div className="w-64">
-                <Select value={status} onValueChange={setStatus}>
+                <Select value={status} onValueChange={handleStatusChange}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>

@@ -4,7 +4,7 @@ import { useGrievance } from '@/contexts/grievances/GrievanceContext';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Eye, Filter } from 'lucide-react';
+import { Eye, Filter, MessageSquare } from 'lucide-react';
 import GrievanceDetailDialog from './GrievanceDetailDialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
