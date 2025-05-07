@@ -1,14 +1,13 @@
 
 import { 
   Home, 
-  FileText, 
   AlertTriangle,
   Users,
   Building,
   BarChart,
   Settings,
   ClipboardList,
-  FileCheck // Added icon for Employee Verification
+  FileCheck 
 } from 'lucide-react';
 import { ModulePermissions } from '@/contexts/AuthContext';
 
@@ -17,7 +16,7 @@ export const getSaasOwnerItems = () => [
   {
     icon: Home,
     label: 'Dashboard',
-    path: '/dashboard', // Changed from /backoffice to /dashboard
+    path: '/dashboard',
     allowed: true,
   },
   {
@@ -61,7 +60,7 @@ export const getClientItems = (permissions: ModulePermissions) => [
     allowed: true,
   },
   {
-    icon: FileText,
+    icon: AlertTriangle,
     label: 'Incidents',
     path: '/incidents',
     allowed: permissions.allIncidents,
@@ -79,4 +78,3 @@ export const getClientItems = (permissions: ModulePermissions) => [
     allowed: true,
   },
 ];
-
