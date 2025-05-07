@@ -1,50 +1,29 @@
 
-export type FormQuestionType = 'text' | 'checkbox' | 'radio';
+// Submission statuses
+export type SubmissionStatus = 'new' | 'in_progress' | 'resolved' | 'closed';
 
-export interface FormQuestion {
-  id: string;
-  text: string;
-  type: FormQuestionType;
-  required: boolean;
-  options: string[];
-}
-
-export interface GrievanceForm {
-  id: string;
-  title: string;
-  description: string;
-  questions: FormQuestion[];
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-  submissions: number;
-}
-
+// Response to a form question
 export interface FormResponse {
   question: string;
   answer: string;
 }
 
-export type SubmissionStatus = 'new' | 'in_progress' | 'resolved' | 'closed';
-
+// Form submission
 export interface FormSubmission {
   id: string;
-  formId: string;
-  formTitle: string;
+  formId?: string; // Optional for backward compatibility
   submitterName: string;
-  submitterEmail?: string;
+  submitterEmail: string;
   responses: FormResponse[];
   status: SubmissionStatus;
+  needsFollowup: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
+// Context type
 export interface GrievanceContextType {
-  forms: GrievanceForm[];
   submissions: FormSubmission[];
-  addForm: (form: GrievanceForm) => void;
-  updateForm: (form: GrievanceForm) => void;
-  deleteForm: (formId: string) => void;
   addSubmission: (submission: FormSubmission) => void;
   updateSubmissionStatus: (submissionId: string, status: SubmissionStatus) => void;
 }

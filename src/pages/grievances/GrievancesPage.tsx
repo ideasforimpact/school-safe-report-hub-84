@@ -1,10 +1,8 @@
 
 import React from 'react';
-import { MessageSquare, BarChart2, Share2, UserPlus } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { MessageSquare, BarChart2 } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import GrievancesList from '@/components/grievances/GrievancesList';
-import GrievanceFormList from '@/components/grievances/GrievanceFormList';
 import { GrievanceProvider } from '@/contexts/grievances/GrievanceContext';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
@@ -29,41 +27,13 @@ const GrievancesPage = () => {
                   <span>Dashboard</span>
                 </Link>
               </Button>
-              <Button asChild variant="outline" className="flex items-center gap-2">
-                <Link to="/grievances/share">
-                  <Share2 className="h-4 w-4" />
-                  <span>Share Form</span>
-                </Link>
-              </Button>
             </div>
           </div>
 
-          <Tabs defaultValue="submissions" className="mt-8">
-            <TabsList className="mb-6 bg-gray-100 p-1">
-              <TabsTrigger value="submissions" className="data-[state=active]:bg-white data-[state=active]:shadow-sm flex items-center gap-2">
-                <MessageSquare className="h-4 w-4" />
-                <span>Submissions</span>
-              </TabsTrigger>
-              <TabsTrigger value="forms" className="data-[state=active]:bg-white data-[state=active]:shadow-sm flex items-center gap-2">
-                <UserPlus className="h-4 w-4" />
-                <span>Forms</span>
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="submissions" className="animate-fade-in">
-              <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
-                <h2 className="text-lg font-medium mb-4 text-left">Grievance Submissions</h2>
-                <GrievancesList />
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="forms" className="animate-fade-in">
-              <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
-                <h2 className="text-lg font-medium mb-4 text-left">Grievance Forms</h2>
-                <GrievanceFormList />
-              </div>
-            </TabsContent>
-          </Tabs>
+          <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
+            <h2 className="text-lg font-medium mb-4 text-left">Grievance Submissions</h2>
+            <GrievancesList />
+          </div>
         </div>
       </GrievanceProvider>
     </Layout>
