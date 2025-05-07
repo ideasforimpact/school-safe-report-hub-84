@@ -5,7 +5,9 @@ import Layout from '@/components/layout/Layout';
 import AddEmployeeDialog from '@/components/employee-verification/AddEmployeeDialog';
 import EmployeesList from '@/components/employee-verification/EmployeesList';
 import VerificationSummary from '@/components/employee-verification/VerificationSummary';
-import { FileCheck, FileText } from 'lucide-react';
+import { FileCheck, FileText, BarChart2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Link } from 'react-router-dom';
 
 const EmployeeVerificationPage = () => {
   return (
@@ -19,7 +21,15 @@ const EmployeeVerificationPage = () => {
               <p className="text-gray-500 text-sm text-left">Manage and verify employee documents</p>
             </div>
           </div>
-          <AddEmployeeDialog />
+          <div className="flex items-center gap-2">
+            <Button asChild variant="outline" className="flex items-center gap-2">
+              <Link to="/employee-verification/dashboard">
+                <BarChart2 className="h-4 w-4" />
+                <span>Dashboard</span>
+              </Link>
+            </Button>
+            <AddEmployeeDialog />
+          </div>
         </div>
 
         <Tabs defaultValue="employees" className="text-left">

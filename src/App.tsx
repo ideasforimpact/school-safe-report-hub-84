@@ -1,4 +1,3 @@
-
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Home from './pages/Home';
 import Login from './pages/Login';
@@ -31,10 +30,11 @@ import FacilityManagement from './pages/FacilityManagement';
 import ClientManagement from './pages/ClientManagement';
 import AssessmentsPage from './pages/AssessmentsPage';
 import EmployeeVerificationPage from './pages/employee-verification/EmployeeVerificationPage';
-import EmployeeDetailPage from './pages/employee-verification/EmployeeDetailPage';
+import EmployeeDetailsPage from './pages/employee-verification/EmployeeDetailsPage';
 import UploadDocumentPage from './pages/employee-verification/UploadDocumentPage';
 import BackofficeAnalytics from './pages/backoffice/BackofficeAnalytics';
 import BackofficeSettings from './pages/backoffice/BackofficeSettings';
+import VerificationDashboardPage from './pages/employee-verification/VerificationDashboardPage';
 
 import './App.css';
 
@@ -79,7 +79,8 @@ function App() {
                           
                           {/* Employee Verification Routes */}
                           <Route path="/employee-verification" element={<EmployeeVerificationPage />} />
-                          <Route path="/employee-verification/:employeeId" element={<EmployeeDetailPage />} />
+                          <Route path="/employee-verification/dashboard" element={<VerificationDashboardPage />} />
+                          <Route path="/employee-verification/employee/:id" element={<EmployeeDetailsPage />} />
                           <Route path="/employee-verification/:employeeId/upload-document" element={<UploadDocumentPage />} />
                           
                           <Route path="/configuration" element={<ConfigurationManagement />} />
