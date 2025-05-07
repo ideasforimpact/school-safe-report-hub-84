@@ -31,20 +31,14 @@ const DocumentImagePreview: React.FC<DocumentImagePreviewProps> = ({ documentIma
       <AspectRatio ratio={16 / 9}>
         {isImageUrl ? (
           <>
-            <img 
-              src={documentImage} 
-              alt="Document preview" 
-              className={cn(
-                "h-full w-full object-cover transition-all",
-                "filter blur-[2px] hover:blur-0"
-              )}
-              loading="lazy"
-            />
-            <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/20">
+            <div className="h-full w-full bg-gray-100 flex items-center justify-center">
+              <FileCheck className="h-10 w-10 text-gray-400 mb-2" />
+            </div>
+            <div className="absolute inset-0 flex items-center justify-center gap-3">
               <Button 
                 variant="secondary" 
                 size="sm" 
-                className="bg-white/90 hover:bg-white"
+                className="bg-white hover:bg-gray-100 shadow-sm"
                 onClick={handleViewDocument}
               >
                 <Eye className="h-4 w-4 mr-1.5" />
@@ -53,7 +47,7 @@ const DocumentImagePreview: React.FC<DocumentImagePreviewProps> = ({ documentIma
               <Button 
                 variant="secondary" 
                 size="sm" 
-                className="bg-white/90 hover:bg-white"
+                className="bg-white hover:bg-gray-100 shadow-sm"
                 onClick={handleDownloadDocument}
               >
                 <Download className="h-4 w-4 mr-1.5" />
