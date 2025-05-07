@@ -1,18 +1,38 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import AddDocumentForm from '@/components/employee-verification/AddDocumentForm';
 import Layout from '@/components/layout/Layout';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 const UploadDocumentPage = () => {
   const { employeeId } = useParams<{ employeeId: string }>();
   const navigate = useNavigate();
   const { getEmployee } = useEmployeeVerification();
+  const [dialogOpen, setDialogOpen] = useState(true);
 
   const employee = getEmployee(employeeId || '');
+
+  // Handle dialog close
+  const handleDialogOpenChange = (open: boolean) => {
+    setDialogOpen(open);
+    if (!open) {
+      navigate(`/employee-verification/${employeeId}`);
+    }
+  };
+
+  const handleSuccess = () => {
+    setDialogOpen(false);
+    navigate(`/employee-verification/${employeeId}`);
+  };
 
   if (!employee) {
     return (
@@ -28,10 +48,6 @@ const UploadDocumentPage = () => {
       </Layout>
     );
   }
-
-  const handleSuccess = () => {
-    navigate(`/employee-verification/${employeeId}`);
-  };
 
   return (
     <Layout>
@@ -52,14 +68,31 @@ const UploadDocumentPage = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden">
-          <div className="p-6">
+        {/* Dialog for document upload form */}
+        <Dialog open={dialogOpen} onOpenChange={handleDialogOpenChange}>
+          <DialogContent className="sm:max-w-xl">
+            <DialogHeader>
+              <DialogTitle>Upload Document for {employee.name}</DialogTitle>
+            </DialogHeader>
             <AddDocumentForm 
               employeeId={employee.id} 
               onSuccess={handleSuccess} 
             />
+          </DialogContent>
+        </Dialog>
+        
+        {/* Message when dialog is closed but user is still on page */}
+        {!dialogOpen && (
+          <div className="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden p-6 text-center">
+            <p className="text-gray-500">Upload completed or canceled.</p>
+            <Button 
+              onClick={() => setDialogOpen(true)} 
+              className="mt-4"
+            >
+              Upload Another Document
+            </Button>
           </div>
-        </div>
+        )}
       </div>
     </Layout>
   );
