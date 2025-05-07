@@ -40,7 +40,7 @@ export const getSaasOwnerItems = () => [
   },
   {
     icon: MessageSquare,
-    label: 'Feedback &\nGrievances',
+    label: 'Grievances',
     path: '/feedback',
     allowed: true,
   },
@@ -86,7 +86,7 @@ export const getClientItems = (permissions: ModulePermissions) => [
   },
   {
     icon: MessageSquare,
-    label: 'Feedback &\nGrievances',
+    label: 'Grievances',
     path: '/feedback',
     allowed: true,
   },
