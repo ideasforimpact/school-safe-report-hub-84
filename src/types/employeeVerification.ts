@@ -18,7 +18,7 @@ export interface Employee {
 export interface VerificationDocument {
   id: string;
   employeeId: string;
-  documentType: 'aadhar' | 'pan' | 'driving_license' | 'passport' | 'bank_account' | 'voter_id';
+  documentType: VerificationDocumentType;
   documentNumber: string;
   documentImage: string;
   verificationStatus: 'pending' | 'verified' | 'failed';
@@ -28,7 +28,7 @@ export interface VerificationDocument {
   updatedAt: string;
 }
 
-export type VerificationDocumentType = 'aadhar' | 'pan' | 'driving_license' | 'passport' | 'bank_account' | 'voter_id';
+export type VerificationDocumentType = 'aadhar' | 'pan' | 'driving_license' | 'passport' | 'bank_account' | 'voter_id' | 'other';
 
 export interface VerificationResult {
   success: boolean;

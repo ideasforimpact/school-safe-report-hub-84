@@ -12,6 +12,7 @@ export const getDocumentTypeLabel = (type: VerificationDocumentType): string => 
     case 'passport': return 'Passport';
     case 'voter_id': return 'Voter ID';
     case 'bank_account': return 'Bank Account';
+    case 'other': return 'Other Document';
     default: return type;
   }
 };
@@ -26,6 +27,7 @@ export const getDocumentPlaceholder = (type: VerificationDocumentType): string =
     case 'driving_license': return 'DL98765432109876';
     case 'passport': return 'A1234567';
     case 'voter_id': return 'XYZ1234567';
+    case 'other': return 'Document Reference Number';
     default: return 'XXXX1234';
   }
 };

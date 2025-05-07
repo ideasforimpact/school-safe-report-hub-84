@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Upload } from 'lucide-react';
@@ -9,6 +10,7 @@ import { FileItem } from '@/types/fileTypes';
 import DocumentFileUploader from './form/DocumentFileUploader';
 import DocumentForm from './form/DocumentForm';
 import { DocumentFormValues } from './form/documentFormSchema';
+import { getDocumentTypeLabel } from './utils/documentUtils';
 
 interface AddDocumentFormProps {
   employeeId: string;
@@ -49,7 +51,7 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
       });
       toast({
         title: 'Document Added',
-        description: 'The document has been uploaded successfully and is pending verification.',
+        description: `The ${getDocumentTypeLabel(selectedType)} has been uploaded successfully and is pending verification.`,
       });
       // Reset form
       setSelectedType(null);
@@ -95,9 +97,7 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
               <DocumentFileUploader 
                 files={files}
                 setFiles={setFiles}
-                onFileUploaded={(base64) => {
-                  // This is where we update the document image in the form
-                }}
+                onFileUploaded={handleFileUploaded}
               />
             </DocumentForm>
           )}

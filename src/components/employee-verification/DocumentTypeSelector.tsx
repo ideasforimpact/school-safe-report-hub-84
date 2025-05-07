@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Check, CreditCard, FileText, Fingerprint, Wallet } from 'lucide-react';
+import { Check, CreditCard, FileText, Fingerprint, Wallet, File } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { VerificationDocumentType } from '@/types/employeeVerification';
 
@@ -54,6 +54,13 @@ const documentTypes: DocumentTypeOption[] = [
     description: 'Verify bank account details for salary transfers',
     icon: Wallet,
     bgColor: 'from-teal-50 to-teal-100',
+  },
+  {
+    id: 'other',
+    name: 'Other Documents',
+    description: 'Upload additional documents like Salary Slip, CV, etc.',
+    icon: File,
+    bgColor: 'from-gray-50 to-gray-100',
   },
 ];
 
