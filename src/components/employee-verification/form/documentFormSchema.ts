@@ -6,11 +6,12 @@ export const documentFormSchema = z.object({
   documentNumber: z.string().superRefine((value, ctx) => {
     // Make the document number optional only for 'other' document types
     if (ctx.path.length > 1) {
-      // Safely access parent data using reduce
-      const formData = ctx.path.reduce((obj, path, i) => {
-        if (i === 0) return { data: obj };
-        return obj.data;
-      }, ctx.parent as any);
+      // We need to access the form data differently
+      // The form data is available in the parent object but we need to cast it
+      const formData = ctx.path.reduce((obj: any, path, i) => {
+        if (i === 0) return obj;
+        return obj[path];
+      }, ctx as any);
       
       const documentType = formData?.documentType as VerificationDocumentType | undefined;
       
