@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Edit2 } from 'lucide-react';
 import EmployeeForm from './EmployeeForm';
-import { useEmployeeVerification } from '@/contexts/EmployeeVerificationContext';
+import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { Employee } from '@/types/employeeVerification';
 import { useToast } from '@/hooks/use-toast';
 

@@ -15,7 +15,7 @@ import { FacilityProvider } from './contexts/FacilityContext';
 import { IncidentProvider } from './contexts/IncidentContext';
 import { StudentProvider } from './contexts/StudentContext';
 import { AssessmentProvider } from './contexts/assessment/AssessmentContext';
-import { EmployeeVerificationProvider } from './contexts/EmployeeVerificationContext';
+import { EmployeeVerificationProvider } from './contexts/employee-verification';
 import RouteGuard from './components/RouteGuard';
 import ModuleGuard from './components/ModuleGuard';
 import ConfigurationManagement from './pages/ConfigurationManagement';

@@ -5,7 +5,7 @@ import { Upload } from 'lucide-react';
 import { VerificationDocumentType } from '@/types/employeeVerification';
 import DocumentTypeSelector from './DocumentTypeSelector';
 import { useToast } from '@/hooks/use-toast';
-import { useEmployeeVerification } from '@/contexts/EmployeeVerificationContext';
+import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { FileItem } from '@/types/fileTypes';
 import DocumentFileUploader from './form/DocumentFileUploader';
 import DocumentForm from './form/DocumentForm';

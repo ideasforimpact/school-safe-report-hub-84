@@ -10,7 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 import EmployeeForm from './EmployeeForm';
-import { useEmployeeVerification } from '@/contexts/EmployeeVerificationContext';
+import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { useToast } from '@/hooks/use-toast';
 
 const AddEmployeeDialog = () => {

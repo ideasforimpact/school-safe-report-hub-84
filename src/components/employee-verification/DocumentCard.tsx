@@ -6,7 +6,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { CheckCircle, XCircle, Trash2, FileCheck, AlertTriangle, Shield, ShieldCheck, ShieldX } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { VerificationDocument } from '@/types/employeeVerification';
-import { useEmployeeVerification } from '@/contexts/EmployeeVerificationContext';
+import { useEmployeeVerification } from '@/contexts/employee-verification';
 import VerificationStatusBadge from './VerificationStatusBadge';
 import { format } from 'date-fns';
 
