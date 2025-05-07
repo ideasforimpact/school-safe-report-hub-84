@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Check, CreditCard, FileText, Fingerprint, Passport, Wallet } from 'lucide-react';
+import { Check, CreditCard, FileText, Fingerprint, Wallet } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { VerificationDocumentType } from '@/types/employeeVerification';
 
@@ -34,7 +34,7 @@ const documentTypes: DocumentTypeOption[] = [
     id: 'passport',
     name: 'Passport',
     description: 'Official travel document issued by a government',
-    icon: Passport,
+    icon: FileText, // Changed from Passport to FileText since Passport icon doesn't exist
   },
   {
     id: 'bank_account',
