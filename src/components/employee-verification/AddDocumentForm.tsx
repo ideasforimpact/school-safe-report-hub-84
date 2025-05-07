@@ -75,13 +75,13 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
           <Upload className="h-5 w-5 mr-2 text-primary" />
           <h3 className="text-lg font-medium">Upload Document for Verification</h3>
         </div>
-        <p className="text-sm text-gray-500 mb-6">
-          Upload employee documents for verification. Documents will be verified by the HR team.
-        </p>
-        <div className="space-y-6">
+        
+        <div className="space-y-6 w-full">
           <div>
             <h4 className="text-sm font-medium mb-3">Select Document Type</h4>
-            <DocumentTypeSelector selectedType={selectedType} onChange={setSelectedType} />
+            <div className="w-full">
+              <DocumentTypeSelector selectedType={selectedType} onChange={setSelectedType} />
+            </div>
             {!selectedType && <p className="text-xs text-red-500 mt-2">Please select a document type</p>}
           </div>
 

@@ -35,7 +35,7 @@ const UploadDocumentPage = () => {
 
   return (
     <Layout>
-      <div className="container mx-auto py-6 px-4 sm:px-6 max-w-3xl">
+      <div className="container mx-auto py-6 px-4 sm:px-6">
         <div className="flex items-center mb-8">
           <Button 
             variant="ghost" 
