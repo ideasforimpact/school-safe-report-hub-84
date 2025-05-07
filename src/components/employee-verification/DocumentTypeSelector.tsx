@@ -20,16 +20,17 @@ type DocumentTypeOption = {
   value: VerificationDocumentType;
   label: string;
   icon: React.ElementType;
+  bgColor: string;
 };
 
 const documentTypes: DocumentTypeOption[] = [
-  { value: 'aadhar', label: 'Aadhar', icon: CreditCard },
-  { value: 'pan', label: 'PAN', icon: FileText },
-  { value: 'bank_account', label: 'Bank', icon: Building },
-  { value: 'driving_license', label: 'License', icon: Car },
-  { value: 'passport', label: 'Passport', icon: Globe },
-  { value: 'voter_id', label: 'Voter ID', icon: Users },
-  { value: 'other', label: 'Other', icon: Wallet },
+  { value: 'aadhar', label: 'Aadhar', icon: CreditCard, bgColor: 'bg-blue-50' },
+  { value: 'pan', label: 'PAN', icon: FileText, bgColor: 'bg-yellow-50' },
+  { value: 'bank_account', label: 'Bank', icon: Building, bgColor: 'bg-green-50' },
+  { value: 'driving_license', label: 'License', icon: Car, bgColor: 'bg-purple-50' },
+  { value: 'passport', label: 'Passport', icon: Globe, bgColor: 'bg-cyan-50' },
+  { value: 'voter_id', label: 'Voter ID', icon: Users, bgColor: 'bg-pink-50' },
+  { value: 'other', label: 'Other', icon: Wallet, bgColor: 'bg-orange-50' },
 ];
 
 const DocumentTypeSelector: React.FC<DocumentTypeSelectorProps> = ({ selectedType, onChange }) => {
@@ -45,8 +46,8 @@ const DocumentTypeSelector: React.FC<DocumentTypeSelectorProps> = ({ selectedTyp
             className={`
               flex flex-col items-center justify-center p-3 rounded-lg cursor-pointer border transition-colors
               ${isSelected 
-                ? 'border-primary bg-primary-50 text-primary' 
-                : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                ? `${type.bgColor} border-primary text-primary` 
+                : `${type.bgColor} border-transparent hover:border-gray-300`
               }
             `}
             onClick={() => onChange(type.value)}
