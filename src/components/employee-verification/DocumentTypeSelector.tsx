@@ -34,7 +34,13 @@ const documentTypes: DocumentTypeOption[] = [
     id: 'passport',
     name: 'Passport',
     description: 'Official travel document issued by a government',
-    icon: FileText, // Changed from Passport to FileText since Passport icon doesn't exist
+    icon: FileText, // Using FileText for Passport
+  },
+  {
+    id: 'voter_id',
+    name: 'Voter ID',
+    description: 'Electoral photo identity card issued by Election Commission',
+    icon: FileText, // Using FileText for Voter ID
   },
   {
     id: 'bank_account',
