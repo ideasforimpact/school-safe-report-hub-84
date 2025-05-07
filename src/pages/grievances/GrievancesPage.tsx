@@ -1,13 +1,39 @@
 
 import React from 'react';
-import { MessageSquare, BarChart2 } from 'lucide-react';
+import { MessageSquare, BarChart2, Share2 } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import GrievancesList from '@/components/grievances/GrievancesList';
 import { GrievanceProvider } from '@/contexts/grievances/GrievanceContext';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
+import { toast } from '@/hooks/use-toast';
 
 const GrievancesPage = () => {
+  const shareFormLink = () => {
+    const shareUrl = `${window.location.origin}/grievances/submit`;
+    
+    if (navigator.share) {
+      navigator.share({
+        title: 'Grievance Submission Form',
+        text: 'Submit your grievance using this form',
+        url: shareUrl,
+      }).catch(error => {
+        copyToClipboard(shareUrl);
+      });
+    } else {
+      copyToClipboard(shareUrl);
+    }
+  };
+  
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      toast({
+        title: "Link copied!",
+        description: "Form link copied to clipboard"
+      });
+    });
+  };
+
   return (
     <Layout>
       <GrievanceProvider>
@@ -21,6 +47,10 @@ const GrievancesPage = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Button onClick={shareFormLink} variant="outline" className="flex items-center gap-2">
+                <Share2 className="h-4 w-4" />
+                <span>Share Form</span>
+              </Button>
               <Button asChild variant="outline" className="flex items-center gap-2">
                 <Link to="/grievances/dashboard">
                   <BarChart2 className="h-4 w-4" />
