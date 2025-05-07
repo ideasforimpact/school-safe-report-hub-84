@@ -12,15 +12,9 @@ const GrievancesList = () => {
   const { submissions } = useGrievance();
   const [selectedSubmission, setSelectedSubmission] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [typeFilter, setTypeFilter] = useState<string>('all');
 
   const filteredSubmissions = submissions.filter(submission => {
-    const matchesStatus = statusFilter === 'all' || submission.status === statusFilter;
-    const matchesType = typeFilter === 'all' || 
-      submission.responses.some(r => 
-        r.question === 'Grievance Type' && r.answer.includes(typeFilter)
-      );
-    return matchesStatus && matchesType;
+    return statusFilter === 'all' || submission.status === statusFilter;
   });
 
   const getStatusBadgeVariant = (status: string) => {
@@ -46,14 +40,6 @@ const GrievancesList = () => {
     return response ? response.answer : '';
   };
 
-  const uniqueTypes = Array.from(new Set(
-    submissions.flatMap(s => 
-      s.responses
-        .filter(r => r.question === 'Grievance Type')
-        .map(r => r.answer)
-    )
-  ));
-
   const handleViewSubmission = (submissionId: string) => {
     setSelectedSubmission(submissionId);
   };
@@ -78,22 +64,6 @@ const GrievancesList = () => {
             </SelectContent>
           </Select>
         </div>
-        
-        <div className="flex items-center">
-          <Filter className="h-4 w-4 mr-2 text-gray-500" />
-          <span className="text-sm font-medium mr-2">Type:</span>
-          <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Filter by type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              {uniqueTypes.map(type => (
-                <SelectItem key={type} value={type}>{type}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
       </div>
       
       {filteredSubmissions.length === 0 ? (
@@ -113,7 +83,7 @@ const GrievancesList = () => {
               <TableRow>
                 <TableHead>Date</TableHead>
                 <TableHead>Name</TableHead>
-                <TableHead>Type</TableHead>
+                <TableHead>Heading</TableHead>
                 <TableHead>Brief Description</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -129,7 +99,7 @@ const GrievancesList = () => {
                     {submission.submitterName}
                   </TableCell>
                   <TableCell>
-                    {getResponseValue(submission.id, 'Grievance Type')}
+                    {getResponseValue(submission.id, 'Grievance Heading')}
                   </TableCell>
                   <TableCell className="max-w-xs truncate">
                     {getResponseValue(submission.id, 'Description of Grievance').substring(0, 50)}...

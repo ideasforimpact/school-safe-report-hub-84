@@ -91,21 +91,13 @@ const GrievanceDetailDialog: React.FC<GrievanceDetailDialogProps> = ({ submissio
                   <p>{submission.submitterName}</p>
                 </div>
                 <div>
-                  <span className="text-gray-500 text-sm">Email:</span>
-                  <p>{submission.submitterEmail}</p>
+                  <span className="text-gray-500 text-sm">Contact Information:</span>
+                  <p>{submission.responses.find(r => r.question === 'Contact Information')?.answer || 'Not provided'}</p>
                 </div>
-                {submission.responses.find(r => r.question === 'Role') && (
-                  <div>
-                    <span className="text-gray-500 text-sm">Role:</span>
-                    <p>{submission.responses.find(r => r.question === 'Role')?.answer}</p>
-                  </div>
-                )}
-                {submission.responses.find(r => r.question === 'Phone')?.answer && (
-                  <div>
-                    <span className="text-gray-500 text-sm">Phone:</span>
-                    <p>{submission.responses.find(r => r.question === 'Phone')?.answer}</p>
-                  </div>
-                )}
+                <div>
+                  <span className="text-gray-500 text-sm">Follow-up Requested:</span>
+                  <p>{submission.responses.find(r => r.question === 'Contact for Follow-up')?.answer || 'No'}</p>
+                </div>
               </div>
             </div>
             
@@ -117,19 +109,9 @@ const GrievanceDetailDialog: React.FC<GrievanceDetailDialogProps> = ({ submissio
                   <p>{new Date(submission.createdAt).toLocaleString()}</p>
                 </div>
                 <div>
-                  <span className="text-gray-500 text-sm">Grievance Type:</span>
-                  <p>{submission.responses.find(r => r.question === 'Grievance Type')?.answer || 'N/A'}</p>
+                  <span className="text-gray-500 text-sm">Grievance Heading:</span>
+                  <p>{submission.responses.find(r => r.question === 'Grievance Heading')?.answer || 'N/A'}</p>
                 </div>
-                <div>
-                  <span className="text-gray-500 text-sm">Incident Date:</span>
-                  <p>{submission.responses.find(r => r.question === 'Date of Incident')?.answer || 'N/A'}</p>
-                </div>
-                {submission.responses.find(r => r.question === 'Location')?.answer && (
-                  <div>
-                    <span className="text-gray-500 text-sm">Location:</span>
-                    <p>{submission.responses.find(r => r.question === 'Location')?.answer}</p>
-                  </div>
-                )}
               </div>
             </div>
           </div>
@@ -141,34 +123,11 @@ const GrievanceDetailDialog: React.FC<GrievanceDetailDialogProps> = ({ submissio
             </p>
           </div>
           
-          {submission.responses.find(r => r.question === 'Previously Reported')?.answer && (
-            <div>
-              <h3 className="font-medium mb-2">Previously Reported</h3>
-              <p>{submission.responses.find(r => r.question === 'Previously Reported')?.answer}</p>
-            </div>
-          )}
-          
-          {submission.responses.find(r => r.question === 'Desired Outcome')?.answer && (
-            <div>
-              <h3 className="font-medium mb-2">Desired Outcome</h3>
-              <p className="whitespace-pre-wrap bg-gray-50 p-4 rounded-md border">
-                {submission.responses.find(r => r.question === 'Desired Outcome')?.answer}
-              </p>
-            </div>
-          )}
-          
           <div className="border-t pt-4">
-            <h3 className="font-medium mb-2">Contact Preferences</h3>
-            <div className="space-y-2">
-              <div>
-                <span className="text-gray-500 text-sm">Preferred Contact Method:</span>
-                <p>{submission.responses.find(r => r.question === 'Preferred Contact')?.answer || 'Not specified'}</p>
-              </div>
-              <div>
-                <span className="text-gray-500 text-sm">Confidentiality Requested:</span>
-                <p>{submission.responses.find(r => r.question === 'Keep Confidential')?.answer || 'No'}</p>
-              </div>
-            </div>
+            <h3 className="font-medium mb-2">Desired Resolution</h3>
+            <p className="whitespace-pre-wrap bg-gray-50 p-4 rounded-md border">
+              {submission.responses.find(r => r.question === 'Desired Resolution')?.answer || 'No specific resolution requested.'}
+            </p>
           </div>
           
           <div className="border-t pt-4">
