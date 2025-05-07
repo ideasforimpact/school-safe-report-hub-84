@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -82,7 +81,6 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
         name: file.name,
         size: file.size,
         type: file.type,
-        lastModified: file.lastModified,
         base64: base64,
       };
       
