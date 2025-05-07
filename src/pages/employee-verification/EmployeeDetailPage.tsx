@@ -1,20 +1,19 @@
 
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, FileCheck, Upload } from 'lucide-react';
+import { ArrowLeft, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import EmployeeDetails from '@/components/employee-verification/EmployeeDetails';
 import DocumentsList from '@/components/employee-verification/DocumentsList';
 import AddDocumentForm from '@/components/employee-verification/AddDocumentForm';
 import Layout from '@/components/layout/Layout';
+import { Separator } from '@/components/ui/separator';
 
 const EmployeeDetailPage = () => {
   const { employeeId } = useParams<{ employeeId: string }>();
   const navigate = useNavigate();
   const { getEmployee } = useEmployeeVerification();
-  const [activeTab, setActiveTab] = useState('details');
   const [showAddDocumentForm, setShowAddDocumentForm] = useState(false);
 
   const employee = getEmployee(employeeId || '');
@@ -54,7 +53,7 @@ const EmployeeDetailPage = () => {
             </div>
           </div>
 
-          {activeTab === 'documents' && !showAddDocumentForm && (
+          {!showAddDocumentForm && (
             <Button 
               onClick={() => setShowAddDocumentForm(true)} 
               className="shadow-md"
@@ -71,37 +70,31 @@ const EmployeeDetailPage = () => {
           )}
         </div>
 
+        <div className="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden mb-8">
+          <div className="p-6">
+            <EmployeeDetails employee={employee} />
+          </div>
+        </div>
+        
         <div className="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="text-left">
-            <TabsList className="bg-gray-50 p-0 border-b border-gray-100 w-full rounded-none">
-              <TabsTrigger value="details" className="rounded-none py-3 px-6 data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-primary">
-                Employee Details
-              </TabsTrigger>
-              <TabsTrigger value="documents" className="rounded-none py-3 px-6 data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-primary">
-                Documents
-              </TabsTrigger>
-            </TabsList>
-            
-            <div className="p-6">
-              <TabsContent value="details" className="mt-0">
-                <EmployeeDetails employee={employee} />
-              </TabsContent>
-              
-              <TabsContent value="documents" className="mt-0">
-                {showAddDocumentForm ? (
-                  <AddDocumentForm 
-                    employeeId={employee.id} 
-                    onSuccess={() => setShowAddDocumentForm(false)} 
-                  />
-                ) : (
-                  <DocumentsList 
-                    employeeId={employee.id} 
-                    onAddDocument={() => setShowAddDocumentForm(true)} 
-                  />
-                )}
-              </TabsContent>
+          <div className="p-6">
+            <div className="flex items-center mb-6">
+              <h2 className="text-xl font-semibold">Documents & Verification</h2>
+              <Separator className="flex-grow ml-4" />
             </div>
-          </Tabs>
+            
+            {showAddDocumentForm ? (
+              <AddDocumentForm 
+                employeeId={employee.id} 
+                onSuccess={() => setShowAddDocumentForm(false)} 
+              />
+            ) : (
+              <DocumentsList 
+                employeeId={employee.id} 
+                onAddDocument={() => setShowAddDocumentForm(true)} 
+              />
+            )}
+          </div>
         </div>
       </div>
     </Layout>
