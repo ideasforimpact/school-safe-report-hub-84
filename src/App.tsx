@@ -72,6 +72,9 @@ function App() {
                         <Route path="/assessments/assignments/:assignmentId/respond/*" element={<AssessmentsPage />} />
                         <Route path="/assessments/results/*" element={<AssessmentsPage />} />
                         
+                        {/* Employee Verification Routes */}
+                        <Route path="/employee-verification" element={<NotFound />} /> {/* Temporarily using NotFound until we create the actual page */}
+                        
                         <Route path="/configuration" element={<ConfigurationManagement />} />
                         <Route path="/incident-configuration" element={<IncidentConfiguration />} />
                         <Route path="/educational-configuration" element={<EducationalConfiguration />} />

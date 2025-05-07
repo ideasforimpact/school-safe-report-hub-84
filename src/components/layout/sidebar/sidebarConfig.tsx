@@ -7,7 +7,8 @@ import {
   Building,
   BarChart,
   Settings,
-  ClipboardList // Added icon for Assessments
+  ClipboardList,
+  FileCheck // Added icon for Employee Verification
 } from 'lucide-react';
 import { ModulePermissions } from '@/contexts/AuthContext';
 
@@ -29,6 +30,12 @@ export const getSaasOwnerItems = () => [
     icon: ClipboardList,
     label: 'Assessments',
     path: '/assessments',
+    allowed: true,
+  },
+  {
+    icon: FileCheck,
+    label: 'Employee\nVerification',
+    path: '/employee-verification',
     allowed: true,
   },
   {
@@ -65,6 +72,11 @@ export const getClientItems = (permissions: ModulePermissions) => [
     path: '/assessments',
     allowed: true,
   },
-  // Removed Assessments menu item
+  {
+    icon: FileCheck,
+    label: 'Employee\nVerification',
+    path: '/employee-verification',
+    allowed: true,
+  },
 ];
 
