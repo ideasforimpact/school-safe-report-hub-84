@@ -45,6 +45,11 @@ import GrievancesDashboardPage from './pages/grievances/GrievancesDashboardPage'
 import ThankYouPage from './pages/grievances/ThankYouPage';
 import GrievanceSubmitPage from './pages/grievances/GrievanceSubmitPage';
 
+// Configuration pages
+import EducationalConfiguration from './pages/EducationalConfiguration';
+import IncidentConfiguration from './pages/IncidentConfiguration';
+import OtherConfiguration from './pages/OtherConfiguration';
+
 import './App.css';
 
 function App() {
@@ -64,9 +69,9 @@ function App() {
       
       {/* Configuration Routes */}
       <Route path="/configuration" element={<ConfigurationManagement />} />
-      <Route path="/configuration/educational" element={<EducationalStructureConfig />} />
-      <Route path="/configuration/incident" element={<IncidentRelatedConfig />} />
-      <Route path="/configuration/other" element={<OtherSettingsConfig />} />
+      <Route path="/educational-configuration" element={<EducationalConfiguration />} />
+      <Route path="/incident-configuration" element={<IncidentConfiguration />} />
+      <Route path="/other-configuration" element={<OtherConfiguration />} />
       
       {/* Management Routes */}
       <Route path="/users" element={<UserManagement />} />
