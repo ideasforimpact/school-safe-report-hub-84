@@ -36,6 +36,10 @@ import UploadDocumentPage from './pages/employee-verification/UploadDocumentPage
 import BackofficeAnalytics from './pages/backoffice/BackofficeAnalytics';
 import BackofficeSettings from './pages/backoffice/BackofficeSettings';
 import VerificationDashboardPage from './pages/employee-verification/VerificationDashboardPage';
+import GrievancesPage from './pages/grievances/GrievancesPage';
+import PublicGrievanceForm from './pages/grievances/PublicGrievanceForm';
+import ThankYouPage from './pages/grievances/ThankYouPage';
+import GrievancesDashboardPage from './pages/grievances/GrievancesDashboardPage';
 
 import './App.css';
 
@@ -56,6 +60,10 @@ function App() {
                       <Route path="/blog" element={<Blog />} />
                       <Route path="/pricing" element={<Pricing />} />
                       <Route path="/support" element={<Support />} />
+                      
+                      {/* Public Grievance Form Routes */}
+                      <Route path="/grievances/form/:formId" element={<PublicGrievanceForm />} />
+                      <Route path="/grievances/thank-you" element={<ThankYouPage />} />
                       
                       {/* Redirect from /report to /report-incident */}
                       <Route path="/report" element={<Navigate to="/report-incident" replace />} />
@@ -83,6 +91,10 @@ function App() {
                           <Route path="/employee-verification/dashboard" element={<VerificationDashboardPage />} />
                           <Route path="/employee-verification/:employeeId" element={<EmployeeDetailPage />} />
                           <Route path="/employee-verification/:employeeId/upload-document" element={<UploadDocumentPage />} />
+                          
+                          {/* Grievances Routes */}
+                          <Route path="/grievances" element={<GrievancesPage />} />
+                          <Route path="/grievances/dashboard" element={<GrievancesDashboardPage />} />
                           
                           <Route path="/configuration" element={<ConfigurationManagement />} />
                           <Route path="/incident-configuration" element={<IncidentConfiguration />} />
