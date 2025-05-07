@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Upload } from 'lucide-react';
@@ -7,6 +8,7 @@ import EmployeeDetails from '@/components/employee-verification/EmployeeDetails'
 import DocumentsList from '@/components/employee-verification/DocumentsList';
 import Layout from '@/components/layout/Layout';
 import { Separator } from '@/components/ui/separator';
+
 const EmployeeDetailPage = () => {
   const {
     employeeId
@@ -18,6 +20,7 @@ const EmployeeDetailPage = () => {
     getEmployee
   } = useEmployeeVerification();
   const employee = getEmployee(employeeId || '');
+
   if (!employee) {
     return <Layout>
         <div className="p-8 text-left">
@@ -30,9 +33,11 @@ const EmployeeDetailPage = () => {
         </div>
       </Layout>;
   }
+
   const handleAddDocument = () => {
     navigate(`/employee-verification/${employeeId}/upload-document`);
   };
+
   return <Layout>
       <div className="container mx-auto py-6 px-4 sm:px-6 max-w-6xl">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
@@ -62,7 +67,7 @@ const EmployeeDetailPage = () => {
         <div className="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden">
           <div className="p-6">
             <div className="flex items-center mb-6">
-              <h2 className="font-semibold text-xl">Documents & Verification</h2>
+              <h2 className="font-semibold text-xl whitespace-nowrap">Documents & Verification</h2>
               <Separator className="flex-grow ml-4" />
             </div>
             
@@ -72,4 +77,5 @@ const EmployeeDetailPage = () => {
       </div>
     </Layout>;
 };
+
 export default EmployeeDetailPage;
