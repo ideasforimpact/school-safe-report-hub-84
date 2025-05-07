@@ -24,6 +24,7 @@ export interface VerificationDocument {
   verificationStatus: 'pending' | 'verified' | 'failed';
   verificationDate?: string;
   verificationNotes?: string;
+  verificationMethod?: 'api' | 'manual';
   createdAt: string;
   updatedAt: string;
 }

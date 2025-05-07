@@ -1,12 +1,13 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useEmployeeVerification } from '@/contexts/EmployeeVerificationContext';
 import DocumentCard from './DocumentCard';
-import { FileX, CheckCircle, AlertCircle, Clock, Upload } from 'lucide-react';
+import { FileX, CheckCircle, AlertCircle, Clock, Upload, ShieldCheck, ShieldX } from 'lucide-react';
 import VerificationStatusBadge from './VerificationStatusBadge';
 import { VerificationDocumentType } from '@/types/employeeVerification';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
 
 interface DocumentsListProps {
   employeeId: string;
@@ -22,6 +23,7 @@ const getDocumentTypeLabel = (type: VerificationDocumentType) => {
     case 'passport': return 'Passport';
     case 'voter_id': return 'Voter ID';
     case 'bank_account': return 'Bank Account';
+    case 'other': return 'Other Document';
     default: return type;
   }
 };
@@ -29,10 +31,11 @@ const getDocumentTypeLabel = (type: VerificationDocumentType) => {
 const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument }) => {
   const { getEmployeeDocuments } = useEmployeeVerification();
   const documents = getEmployeeDocuments(employeeId);
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
 
   // All possible document types
   const allDocumentTypes: VerificationDocumentType[] = [
-    'aadhar', 'pan', 'driving_license', 'passport', 'voter_id', 'bank_account'
+    'aadhar', 'pan', 'driving_license', 'passport', 'voter_id', 'bank_account', 'other'
   ];
 
   // Create a map of document types to their verification status
@@ -58,6 +61,14 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument
   const pendingCount = documents.filter(doc => doc.verificationStatus === 'pending').length;
   const verifiedCount = documents.filter(doc => doc.verificationStatus === 'verified').length;
   const failedCount = documents.filter(doc => doc.verificationStatus === 'failed').length;
+  
+  // Count by verification method
+  const apiVerifiedCount = documents.filter(doc => 
+    doc.verificationStatus === 'verified' && doc.verificationMethod === 'api'
+  ).length;
+  const manualVerifiedCount = documents.filter(doc => 
+    doc.verificationStatus === 'verified' && doc.verificationMethod === 'manual'
+  ).length;
 
   if (documents.length === 0) {
     return (
@@ -95,13 +106,28 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument
           <div className="bg-yellow-50 text-yellow-700 border border-yellow-200 rounded-md px-3 py-1 text-sm">
             Pending: {pendingCount}
           </div>
-          <div className="bg-green-50 text-green-700 border border-green-200 rounded-md px-3 py-1 text-sm">
+          <div className="bg-green-50 text-green-700 border border-green-200 rounded-md px-3 py-1 text-sm flex items-center gap-1">
+            <CheckCircle className="h-3.5 w-3.5" />
             Verified: {verifiedCount}
           </div>
           <div className="bg-red-50 text-red-700 border border-red-200 rounded-md px-3 py-1 text-sm">
             Failed: {failedCount}
           </div>
         </div>
+
+        {verifiedCount > 0 && (
+          <div className="flex flex-wrap gap-3 mb-4">
+            <div className="bg-blue-50 text-blue-700 border border-blue-200 rounded-md px-3 py-1 text-sm flex items-center gap-1">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              Auto-verified: {apiVerifiedCount}
+            </div>
+            <div className="bg-purple-50 text-purple-700 border border-purple-200 rounded-md px-3 py-1 text-sm flex items-center gap-1">
+              <ShieldX className="h-3.5 w-3.5" />
+              Manually verified: {manualVerifiedCount}
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           {Array.from(documentStatusMap.entries()).map(([type, { status }]) => (
             <div 
@@ -129,6 +155,25 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument
         </div>
       </div>
       
+      <div className="flex justify-between items-center">
+        <div className="flex space-x-2">
+          <Button 
+            variant={viewMode === 'cards' ? 'default' : 'outline'} 
+            size="sm" 
+            onClick={() => setViewMode('cards')}
+          >
+            Card View
+          </Button>
+          <Button 
+            variant={viewMode === 'table' ? 'default' : 'outline'} 
+            size="sm" 
+            onClick={() => setViewMode('table')}
+          >
+            Table View
+          </Button>
+        </div>
+      </div>
+      
       <Tabs defaultValue="all" className="w-full">
         <TabsList className="mb-4 bg-gray-100 p-1 w-full justify-start">
           <TabsTrigger value="all">All Documents ({documents.length})</TabsTrigger>
@@ -137,37 +182,59 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument
           <TabsTrigger value="failed">Failed ({failedCount})</TabsTrigger>
         </TabsList>
         
-        <TabsContent value="all" className="animate-in fade-in mt-0">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {documents.map((document) => (
-              <DocumentCard key={document.id} document={document} />
-            ))}
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="pending" className="animate-in fade-in mt-0">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {documents.filter(doc => doc.verificationStatus === 'pending').map((document) => (
-              <DocumentCard key={document.id} document={document} />
-            ))}
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="verified" className="animate-in fade-in mt-0">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {documents.filter(doc => doc.verificationStatus === 'verified').map((document) => (
-              <DocumentCard key={document.id} document={document} />
-            ))}
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="failed" className="animate-in fade-in mt-0">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {documents.filter(doc => doc.verificationStatus === 'failed').map((document) => (
-              <DocumentCard key={document.id} document={document} />
-            ))}
-          </div>
-        </TabsContent>
+        {viewMode === 'cards' ? (
+          <>
+            <TabsContent value="all" className="animate-in fade-in mt-0">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {documents.map((document) => (
+                  <DocumentCard key={document.id} document={document} />
+                ))}
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="pending" className="animate-in fade-in mt-0">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {documents.filter(doc => doc.verificationStatus === 'pending').map((document) => (
+                  <DocumentCard key={document.id} document={document} />
+                ))}
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="verified" className="animate-in fade-in mt-0">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {documents.filter(doc => doc.verificationStatus === 'verified').map((document) => (
+                  <DocumentCard key={document.id} document={document} />
+                ))}
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="failed" className="animate-in fade-in mt-0">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {documents.filter(doc => doc.verificationStatus === 'failed').map((document) => (
+                  <DocumentCard key={document.id} document={document} />
+                ))}
+              </div>
+            </TabsContent>
+          </>
+        ) : (
+          <>
+            <TabsContent value="all" className="animate-in fade-in mt-0">
+              <DocumentsTable documents={documents} />
+            </TabsContent>
+            
+            <TabsContent value="pending" className="animate-in fade-in mt-0">
+              <DocumentsTable documents={documents.filter(doc => doc.verificationStatus === 'pending')} />
+            </TabsContent>
+            
+            <TabsContent value="verified" className="animate-in fade-in mt-0">
+              <DocumentsTable documents={documents.filter(doc => doc.verificationStatus === 'verified')} />
+            </TabsContent>
+            
+            <TabsContent value="failed" className="animate-in fade-in mt-0">
+              <DocumentsTable documents={documents.filter(doc => doc.verificationStatus === 'failed')} />
+            </TabsContent>
+          </>
+        )}
       </Tabs>
 
       <div className="flex justify-center mt-8">
@@ -179,6 +246,55 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument
           Upload New Document
         </Button>
       </div>
+    </div>
+  );
+};
+
+const DocumentsTable: React.FC<{ documents: any[] }> = ({ documents }) => {
+  return (
+    <div className="border rounded-lg overflow-hidden">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Document Type</TableHead>
+            <TableHead>Document Number</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Verification Method</TableHead>
+            <TableHead>Date</TableHead>
+            <TableHead>Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {documents.map(doc => (
+            <TableRow key={doc.id}>
+              <TableCell className="font-medium">{getDocumentTypeLabel(doc.documentType)}</TableCell>
+              <TableCell>{doc.documentNumber || '-'}</TableCell>
+              <TableCell><VerificationStatusBadge status={doc.verificationStatus} /></TableCell>
+              <TableCell>
+                {doc.verificationStatus === 'verified' && doc.verificationMethod ? (
+                  doc.verificationMethod === 'api' ? (
+                    <div className="flex items-center text-blue-600">
+                      <ShieldCheck className="h-3.5 w-3.5 mr-1" />
+                      <span>Auto</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center text-purple-600">
+                      <ShieldX className="h-3.5 w-3.5 mr-1" />
+                      <span>Manual</span>
+                    </div>
+                  )
+                ) : (
+                  '-'
+                )}
+              </TableCell>
+              <TableCell>{doc.verificationDate ? new Date(doc.verificationDate).toLocaleDateString() : '-'}</TableCell>
+              <TableCell>
+                <Button variant="ghost" size="sm">View</Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
     </div>
   );
 };

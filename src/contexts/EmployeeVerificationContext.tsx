@@ -62,6 +62,7 @@ const initialDocuments: VerificationDocument[] = [
     verificationStatus: 'verified',
     verificationDate: '2023-01-15T14:20:00Z',
     verificationNotes: 'Document verified successfully',
+    verificationMethod: 'api',
     createdAt: '2023-01-10T10:30:00Z',
     updatedAt: '2023-01-15T14:20:00Z'
   },
@@ -74,6 +75,7 @@ const initialDocuments: VerificationDocument[] = [
     verificationStatus: 'verified',
     verificationDate: '2023-01-16T11:30:00Z',
     verificationNotes: 'PAN card details match with records',
+    verificationMethod: 'manual',
     createdAt: '2023-01-11T09:45:00Z',
     updatedAt: '2023-01-16T11:30:00Z'
   },
@@ -108,7 +110,7 @@ interface EmployeeVerificationContextType {
   updateEmployee: (id: string, updates: Partial<Employee>) => void;
   deleteEmployee: (id: string) => void;
   addDocument: (document: Omit<VerificationDocument, 'id' | 'createdAt' | 'updatedAt'>) => void;
-  verifyDocument: (id: string, status: 'verified' | 'failed', notes?: string) => void;
+  verifyDocument: (id: string, status: 'verified' | 'failed', notes?: string, method?: 'api' | 'manual') => void;
   deleteDocument: (id: string) => void;
   getEmployeeDocuments: (employeeId: string) => VerificationDocument[];
   getEmployee: (id: string) => Employee | undefined;
@@ -167,7 +169,7 @@ export const EmployeeVerificationProvider: React.FC<EmployeeVerificationProvider
     setDocuments([...documents, newDocument]);
   };
 
-  const verifyDocument = (id: string, status: 'verified' | 'failed', notes?: string) => {
+  const verifyDocument = (id: string, status: 'verified' | 'failed', notes?: string, method: 'api' | 'manual' = 'manual') => {
     const now = new Date().toISOString();
     setDocuments(documents.map(doc => 
       doc.id === id ? { 
@@ -175,6 +177,7 @@ export const EmployeeVerificationProvider: React.FC<EmployeeVerificationProvider
         verificationStatus: status, 
         verificationDate: now,
         verificationNotes: notes || doc.verificationNotes,
+        verificationMethod: status === 'verified' ? method : undefined,
         updatedAt: now
       } : doc
     ));
