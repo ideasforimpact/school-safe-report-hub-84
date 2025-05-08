@@ -12,7 +12,6 @@ export const useVehicleFilters = (vehicles: Vehicle[]) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [documentTypeFilter, setDocumentTypeFilter] = useState('all');
   const [documentStatusFilters, setDocumentStatusFilters] = useState<DocumentStatusFilters>({
     valid: false,
@@ -112,8 +111,6 @@ export const useVehicleFilters = (vehicles: Vehicle[]) => {
     setStatusFilter,
     typeFilter,
     setTypeFilter,
-    showAdvancedFilters,
-    setShowAdvancedFilters,
     documentTypeFilter,
     setDocumentTypeFilter,
     documentStatusFilters,

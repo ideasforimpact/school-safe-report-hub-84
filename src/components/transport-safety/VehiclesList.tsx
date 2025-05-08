@@ -4,7 +4,6 @@ import { useTransportSafety } from '@/contexts/transport-safety/TransportSafetyC
 import VehiclesListView from './VehiclesListView';
 import VehicleSearchBar from './filters/VehicleSearchBar';
 import VehicleBasicFilters from './filters/VehicleBasicFilters';
-import VehicleAdvancedFilters from './filters/VehicleAdvancedFilters';
 import EmptyVehiclesState from './EmptyVehiclesState';
 import { useVehicleFilters } from './filters/useVehicleFilters';
 
@@ -23,8 +22,6 @@ const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddV
     setStatusFilter,
     typeFilter,
     setTypeFilter,
-    showAdvancedFilters,
-    setShowAdvancedFilters,
     documentTypeFilter,
     setDocumentTypeFilter,
     documentStatusFilters,
@@ -42,30 +39,22 @@ const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddV
   return (
     <div>
       {/* Filters section */}
-      <div className="mb-6 flex flex-col space-y-4 md:space-y-0 md:space-x-4 items-end">
-        <div className="w-full flex flex-col space-y-4">
-          <div className="flex flex-col md:flex-row md:items-center md:space-x-4 space-y-4 md:space-y-0 w-full">
-            <div className="flex-grow">
-              <VehicleSearchBar
-                searchQuery={searchQuery}
-                setSearchQuery={setSearchQuery}
-              />
-            </div>
-            
-            {/* Basic Filters */}
-            <VehicleBasicFilters
-              statusFilter={statusFilter}
-              setStatusFilter={setStatusFilter}
-              typeFilter={typeFilter}
-              setTypeFilter={setTypeFilter}
-              vehicleTypes={vehicleTypes}
+      <div className="mb-6 flex flex-col space-y-4 bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center md:space-x-4 space-y-4 md:space-y-0 w-full">
+          <div className="flex-grow">
+            <VehicleSearchBar
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
             />
           </div>
-
-          {/* Advanced Filters */}
-          <VehicleAdvancedFilters
-            showAdvancedFilters={showAdvancedFilters}
-            setShowAdvancedFilters={setShowAdvancedFilters}
+          
+          {/* Basic Filters and Advanced Filters Combined */}
+          <VehicleBasicFilters
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
+            typeFilter={typeFilter}
+            setTypeFilter={setTypeFilter}
+            vehicleTypes={vehicleTypes}
             documentTypeFilter={documentTypeFilter}
             setDocumentTypeFilter={setDocumentTypeFilter}
             documentStatusFilters={documentStatusFilters}
