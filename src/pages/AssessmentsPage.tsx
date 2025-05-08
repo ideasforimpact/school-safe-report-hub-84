@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Route, Routes, useLocation, useParams } from 'react-router-dom';
+import { Route, Routes, useLocation } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
 import { TabsContent } from '@/components/ui/tabs';
 import { AssessmentProvider } from '@/contexts/assessment/AssessmentContext';
@@ -13,9 +13,13 @@ import { summaryData, assessmentTypes, recentAssessments } from '@/components/as
 
 const AssessmentsPage = () => {
   const location = useLocation();
+  console.log("Current location:", location.pathname);
   
   // Check if the current route is for responding to an assessment
   const isResponseRoute = location.pathname.includes('/respond');
+  
+  // Check if the current route is for creating a template
+  const isCreateTemplateRoute = location.pathname.includes('/templates/new');
   
   // If it's a response route, render the response form directly
   if (isResponseRoute) {
@@ -36,7 +40,7 @@ const AssessmentsPage = () => {
           <AssessmentsHeader />
           
           {/* Main Tabs Navigation */}
-          <AssessmentTabs>
+          <AssessmentTabs defaultValue={isCreateTemplateRoute ? "templates" : "overview"}>
             {/* Overview Tab */}
             <TabsContent value="overview" className="space-y-6">
               <OverviewTab 

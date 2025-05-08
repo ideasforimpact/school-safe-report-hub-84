@@ -1,11 +1,17 @@
 
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 
 const AssessmentsHeader: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const handleCreateTemplate = () => {
+    console.log("Create template button clicked, navigating to /assessments/templates/new");
+    navigate('/assessments/templates/new');
+  };
 
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 w-full">
@@ -18,7 +24,7 @@ const AssessmentsHeader: React.FC = () => {
       
       <div className="flex space-x-2">
         <Button 
-          onClick={() => navigate('/assessments/templates/new')}
+          onClick={handleCreateTemplate}
           className="whitespace-nowrap"
         >
           <PlusCircle className="h-4 w-4 mr-2" />
