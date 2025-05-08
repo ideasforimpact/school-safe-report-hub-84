@@ -87,7 +87,7 @@ const TemplateDetail = () => {
           
           <Button
             variant="outline"
-            onClick={() => navigate(`/assessments/templates/${templateId}/assign`)}
+            onClick={() => navigate(`/assessments/templates/${template.id}/assign`)}
           >
             <Users className="h-4 w-4 mr-2" />
             Assign
@@ -95,7 +95,7 @@ const TemplateDetail = () => {
           
           <Button
             variant="outline"
-            onClick={() => navigate(`/assessments/templates/${templateId}/edit`)}
+            onClick={() => navigate(`/assessments/templates/${template.id}/edit`)}
           >
             <Edit className="h-4 w-4 mr-2" />
             Edit

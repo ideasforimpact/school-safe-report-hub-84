@@ -32,16 +32,17 @@ const AssignTemplateForm = () => {
   const [template, setTemplate] = useState(templateId ? getTemplateById(templateId) : null);
   
   useEffect(() => {
-    if (templateId) {
-      const foundTemplate = getTemplateById(templateId);
-      setTemplate(foundTemplate);
-      
-      if (!foundTemplate) {
-        toast.error('Template not found');
-        navigate('/assessments/templates');
-      }
-    } else {
-      toast.error('No template selected');
+    if (!templateId) {
+      toast.error('No template ID provided');
+      navigate('/assessments/templates');
+      return;
+    }
+    
+    const foundTemplate = getTemplateById(templateId);
+    setTemplate(foundTemplate);
+    
+    if (!foundTemplate) {
+      toast.error('Template not found');
       navigate('/assessments/templates');
     }
   }, [templateId, getTemplateById, navigate]);
@@ -176,7 +177,7 @@ const AssignTemplateForm = () => {
         <Button 
           type="button" 
           variant="outline" 
-          onClick={() => navigate('/assessments/templates')}
+          onClick={() => navigate(`/assessments/templates/${templateId}`)}
         >
           Cancel
         </Button>
