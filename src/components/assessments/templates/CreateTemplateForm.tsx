@@ -1,46 +1,113 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Loader } from 'lucide-react';
 import TemplateBasicInfo from './TemplateBasicInfo';
 import QuestionsSection from './QuestionsSection';
 import FormError from './FormError';
-import { useCreateTemplate } from '@/hooks/useCreateTemplate';
+import { useAssessment } from '@/contexts/assessment/AssessmentContext';
 import { toast } from 'sonner';
+import { AssessmentQuestion } from '@/types/assessment';
 
 const CreateTemplateForm = () => {
   const navigate = useNavigate();
-  const {
-    title,
-    setTitle,
-    description,
-    setDescription,
-    type,
-    setType,
-    questions,
-    formError,
-    isSubmitting,
-    handleAddQuestion,
-    handleUpdateQuestion,
-    handleRemoveQuestion,
-    handleSubmit
-  } = useCreateTemplate();
+  const { createTemplate, addQuestion } = useAssessment();
+  
+  // Form state
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [type, setType] = useState('Safety');
+  const [questions, setQuestions] = useState<Omit<AssessmentQuestion, 'id'>[]>([]);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Question management
+  const handleAddQuestion = () => {
+    setQuestions([
+      ...questions,
+      {
+        text: '',
+        allowComments: false,
+        allowAttachments: false,
+        required: true
+      }
+    ]);
+  };
+
+  const handleUpdateQuestion = (index: number, updatedQuestion: Omit<AssessmentQuestion, 'id'>) => {
+    const newQuestions = [...questions];
+    newQuestions[index] = updatedQuestion;
+    setQuestions(newQuestions);
+  };
+
+  const handleRemoveQuestion = (index: number) => {
+    setQuestions(questions.filter((_, i) => i !== index));
+  };
+
+  // Form validation
+  const validateForm = () => {
+    if (!title.trim()) {
+      setFormError('Template title is required');
+      return false;
+    }
+    
+    if (questions.length === 0) {
+      setFormError('At least one question is required');
+      return false;
+    }
+    
+    for (let i = 0; i < questions.length; i++) {
+      if (!questions[i].text.trim()) {
+        setFormError(`Question ${i + 1} text is required`);
+        return false;
+      }
+    }
+    
+    setFormError(null);
+    return true;
+  };
 
   const onFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log('Form submission triggered');
     console.log('Form data:', { title, description, type, questions });
     
+    if (!validateForm()) {
+      return;
+    }
+    
     try {
-      const success = await handleSubmit(e);
-      if (success) {
-        toast.success('Template created successfully');
-        navigate('/assessments/templates');
+      setIsSubmitting(true);
+      
+      // Step 1: Create template
+      console.log('Creating template with data:', { title, description, type });
+      const templateId = createTemplate({
+        title,
+        description,
+        type,
+        questions: []
+      });
+      
+      console.log('Template created with ID:', templateId);
+      
+      // Step 2: Add questions to template
+      for (const question of questions) {
+        console.log('Adding question:', question);
+        const questionId = addQuestion(templateId, question);
+        console.log('Added question with ID:', questionId);
       }
+      
+      // Step 3: Display success message and redirect
+      toast.success('Template created successfully');
+      console.log('Redirecting to templates list');
+      navigate('/assessments/templates');
     } catch (error) {
       console.error('Form submission failed:', error);
+      setFormError('Failed to create template. Please try again.');
       toast.error('Failed to create template');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
