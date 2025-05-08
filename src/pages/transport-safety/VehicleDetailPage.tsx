@@ -125,12 +125,14 @@ const VehicleDetailContent = () => {
                 </Button>
               </div>
               
-              {lastCheckTime && (
-                <div className="mt-3 flex items-center text-sm text-gray-500">
-                  <Calendar className="h-3.5 w-3.5 mr-1.5" />
-                  <span>Last updated: {formatDate(lastCheckTime)} at {lastCheckTime.toLocaleTimeString()}</span>
-                </div>
-              )}
+              <div className="mt-3 flex items-center text-sm text-gray-500">
+                <Calendar className="h-3.5 w-3.5 mr-1.5" />
+                <span>
+                  {lastCheckTime 
+                    ? `Last updated: ${formatDate(lastCheckTime)} at ${lastCheckTime.toLocaleTimeString()}`
+                    : "No safety checks have been run yet"}
+                </span>
+              </div>
             </CardContent>
           </Card>
         </div>
