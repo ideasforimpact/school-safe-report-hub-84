@@ -43,12 +43,12 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({ vehicles }) => {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[80px]">Type</TableHead>
-              <TableHead>Vehicle Details</TableHead>
-              <TableHead className="w-[160px]">Registration</TableHead>
-              <TableHead className="w-[140px]">Status</TableHead>
-              <TableHead>Documents</TableHead>
-              <TableHead className="w-[180px] text-right">Actions</TableHead>
+              <TableHead className="w-[80px] text-left">Type</TableHead>
+              <TableHead className="text-left">Vehicle Details</TableHead>
+              <TableHead className="w-[160px] text-left">Registration</TableHead>
+              <TableHead className="w-[140px] text-left">Status</TableHead>
+              <TableHead className="text-left">Documents</TableHead>
+              <TableHead className="w-[180px] text-left">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -79,8 +79,8 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({ vehicles }) => {
                 <TableCell>
                   {getDocumentStatusIndicator(vehicle)}
                 </TableCell>
-                <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
+                <TableCell>
+                  <div className="flex justify-start gap-2">
                     <Button asChild variant="ghost" size="sm">
                       <Link to={`/transport-safety/${vehicle.id}`}>
                         <Eye className="h-4 w-4 mr-1" />
