@@ -32,7 +32,7 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const navigate = useNavigate();
   
-  const { id: vehicleId, registrationNumber, make, model, type, status, year, capacity, documents } = vehicle;
+  const { id: vehicleId, registrationNumber, make, model, type, status, year, documents } = vehicle;
 
   const runSafetyCheck = () => {
     setIsChecking(true);
@@ -80,7 +80,7 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
         <VehicleStatusBadge status={status} />
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6 text-left">
+        <div className="grid grid-cols-2 gap-4 mb-6 text-left">
           <div className="text-left">
             <div className="text-sm font-medium text-gray-500">Type</div>
             <div className="text-left">{type.charAt(0).toUpperCase() + type.slice(1)}</div>
@@ -88,10 +88,6 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
           <div className="text-left">
             <div className="text-sm font-medium text-gray-500">Year</div>
             <div className="text-left">{year}</div>
-          </div>
-          <div className="text-left">
-            <div className="text-sm font-medium text-gray-500">Capacity</div>
-            <div className="text-left">{capacity} passengers</div>
           </div>
         </div>
         

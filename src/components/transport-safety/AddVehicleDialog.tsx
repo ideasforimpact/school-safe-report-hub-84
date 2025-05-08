@@ -25,7 +25,6 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose }) =>
       make: '',
       model: '',
       year: new Date().getFullYear(),
-      capacity: 0,
       status: 'active'
     }
   });
@@ -33,8 +32,7 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose }) =>
   const onSubmit: SubmitHandler<VehicleFormData> = (data) => {
     addVehicle({
       ...data,
-      year: Number(data.year),
-      capacity: Number(data.capacity)
+      year: Number(data.year)
     });
     reset();
     onClose();
@@ -119,39 +117,21 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose }) =>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="year">Year*</Label>
-                <Input 
-                  id="year" 
-                  type="number"
-                  {...register('year', { 
-                    required: "Year is required",
-                    min: { value: 1980, message: "Year must be after 1980" },
-                    max: { value: new Date().getFullYear() + 1, message: `Year must be before ${new Date().getFullYear() + 1}` }
-                  })}
-                  placeholder="e.g., 2023"
-                />
-                {errors.year && 
-                  <p className="text-red-500 text-sm">{errors.year.message}</p>
-                }
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="capacity">Capacity*</Label>
-                <Input 
-                  id="capacity" 
-                  type="number"
-                  {...register('capacity', { 
-                    required: "Capacity is required",
-                    min: { value: 1, message: "Capacity must be at least 1" }
-                  })}
-                  placeholder="e.g., 45"
-                />
-                {errors.capacity && 
-                  <p className="text-red-500 text-sm">{errors.capacity.message}</p>
-                }
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="year">Year*</Label>
+              <Input 
+                id="year" 
+                type="number"
+                {...register('year', { 
+                  required: "Year is required",
+                  min: { value: 1980, message: "Year must be after 1980" },
+                  max: { value: new Date().getFullYear() + 1, message: `Year must be before ${new Date().getFullYear() + 1}` }
+                })}
+                placeholder="e.g., 2023"
+              />
+              {errors.year && 
+                <p className="text-red-500 text-sm">{errors.year.message}</p>
+              }
             </div>
           </div>
 

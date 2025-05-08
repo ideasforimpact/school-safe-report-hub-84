@@ -96,7 +96,6 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                     <div className="flex items-center text-left">
                       <div className="text-left">
                         <div className="font-medium text-left">{vehicle.make} {vehicle.model}</div>
-                        <div className="text-xs text-gray-500 text-left">Capacity: {vehicle.capacity}</div>
                       </div>
                     </div>
                   </TableCell>

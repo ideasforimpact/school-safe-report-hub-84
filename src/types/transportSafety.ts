@@ -21,7 +21,6 @@ export interface Vehicle {
   make: string;
   model: string;
   year: number;
-  capacity: number;
   driver?: string;
   route?: string;
   documents: VehicleDocument[];
