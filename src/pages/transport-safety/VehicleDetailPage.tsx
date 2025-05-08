@@ -32,7 +32,7 @@ const VehicleDetailContent = () => {
     );
   }
 
-  const { registrationNumber, make, model, type, status, year, capacity, driver, route, documents } = vehicle;
+  const { registrationNumber, make, model, type, status, year, capacity, documents } = vehicle;
   
   return (
     <div className="container mx-auto py-6 max-w-7xl">
@@ -73,14 +73,6 @@ const VehicleDetailContent = () => {
                 <div className="text-left">
                   <div className="text-sm font-medium text-gray-500">Capacity</div>
                   <div className="text-left">{capacity} passengers</div>
-                </div>
-                <div className="text-left">
-                  <div className="text-sm font-medium text-gray-500">Driver</div>
-                  <div className="text-left">{driver || 'Not assigned'}</div>
-                </div>
-                <div className="text-left">
-                  <div className="text-sm font-medium text-gray-500">Route</div>
-                  <div className="text-left">{route || 'Not assigned'}</div>
                 </div>
               </div>
               
