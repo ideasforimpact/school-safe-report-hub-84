@@ -10,6 +10,9 @@ const IncidentDetail = () => {
   const incidentDetailProps = useIncidentDetailPage();
   
   if (!incidentDetailProps.incident) {
+    // Add console log for debugging
+    console.error('Incident not found with ID:', incidentDetailProps.incidentId);
+    
     return (
       <Layout>
         <div className="container max-w-6xl py-6">
@@ -17,7 +20,7 @@ const IncidentDetail = () => {
             <AlertTriangle className="h-5 w-5" />
             <AlertTitle className="ml-2">Incident not found</AlertTitle>
             <AlertDescription className="ml-2">
-              The incident you're looking for doesn't exist or has been removed.
+              The incident with ID "{incidentDetailProps.incidentId}" doesn't exist or has been removed.
             </AlertDescription>
           </Alert>
           

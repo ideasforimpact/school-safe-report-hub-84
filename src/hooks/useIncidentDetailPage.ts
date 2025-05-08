@@ -9,14 +9,15 @@ import { toast } from "sonner";
 import { compressImageData } from '@/utils/imageCompression';
 
 export const useIncidentDetailPage = () => {
-  const { id } = useParams<{ id: string }>();
+  const { incidentId } = useParams<{ incidentId: string }>();
   const navigate = useNavigate();
   const { getIncident, updateIncident, addComment, updateComment, deleteComment, getIncidentActivities } = useIncidents();
   const { user, isAdmin } = useAuth();
   const { formatDate, formatDateTime, getStatusColor, getCommentStatusColor, useStatusUpdate } = useIncidentDetail();
 
   // Get the incident and check if it exists
-  const incident = id ? getIncident(id) : null;
+  // Fix: Use the incidentId from params instead of 'id'
+  const incident = incidentId ? getIncident(incidentId) : null;
   const incidentActivities = incident ? getIncidentActivities(incident.id) : [];
 
   const { statusUpdate, setStatusUpdate } = useStatusUpdate(incident?.status || 'Open');
@@ -91,7 +92,7 @@ export const useIncidentDetailPage = () => {
   };
 
   return {
-    id,
+    incidentId, // Return incidentId instead of id
     navigate,
     incident,
     incidentActivities,

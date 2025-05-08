@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { toast } from "@/components/ui/sonner";
+import { toast } from "sonner";
 import { Incident, ActionItem, Activity, User } from '@/types/incident';
 import { generateTicketId } from '@/utils/incidentUtils';
 
@@ -165,7 +165,13 @@ export const useIncidentActions = (
   };
 
   const getIncident = (id: string) => {
-    return incidents.find(incident => incident.id === id);
+    // Improved incident lookup with debugging
+    const foundIncident = incidents.find(incident => incident.id === id);
+    if (!foundIncident) {
+      console.log(`Could not find incident with ID: ${id}`);
+      console.log(`Available incident IDs:`, incidents.map(inc => inc.id));
+    }
+    return foundIncident;
   };
 
   return {

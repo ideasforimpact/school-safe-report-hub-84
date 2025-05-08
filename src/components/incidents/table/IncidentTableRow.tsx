@@ -23,10 +23,14 @@ export const IncidentTableRow: React.FC<IncidentTableRowProps> = ({
   onViewClick, 
   onEditClick 
 }) => {
+  // Add debug logging to check incident ID
+  console.log(`Rendering row for incident: ${incident.id}, ticketId: ${incident.ticketId}`);
+  
   return (
     <TableRow 
       className={`cursor-pointer transition-colors hover:bg-gray-50 ${incident.isVoided ? 'bg-red-50' : ''}`}
       onClick={() => onRowClick(incident.id)}
+      data-incident-id={incident.id}
     >
       <TableCell className="font-medium">
         <div className="flex items-center">
