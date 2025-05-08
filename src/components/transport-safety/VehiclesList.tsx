@@ -4,9 +4,8 @@ import { useTransportSafety } from '@/contexts/transport-safety/TransportSafetyC
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search, Filter, Bus, List, LayoutGrid } from 'lucide-react';
+import { Plus, Search, Filter, Bus } from 'lucide-react';
 import { Vehicle } from '@/types/transportSafety';
-import VehicleCard from './VehicleCard';
 import VehiclesListView from './VehiclesListView';
 import AddVehicleDialog from './AddVehicleDialog';
 
@@ -16,7 +15,6 @@ const VehiclesList: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
   const [showAddVehicle, setShowAddVehicle] = useState(false);
-  const [viewMode, setViewMode] = useState<'card' | 'list'>('list'); // Default to list view
 
   const filteredVehicles = vehicles.filter(vehicle => {
     const matchesSearch = searchQuery 
@@ -82,28 +80,6 @@ const VehiclesList: React.FC = () => {
             </Select>
           </div>
           
-          {/* View toggle */}
-          <div className="flex items-center border rounded-md overflow-hidden">
-            <Button 
-              variant={viewMode === 'list' ? 'default' : 'ghost'} 
-              size="sm"
-              className="rounded-none border-0"
-              onClick={() => setViewMode('list')}
-            >
-              <List className="h-4 w-4 mr-1" />
-              List
-            </Button>
-            <Button 
-              variant={viewMode === 'card' ? 'default' : 'ghost'} 
-              size="sm"
-              className="rounded-none border-0"
-              onClick={() => setViewMode('card')}
-            >
-              <LayoutGrid className="h-4 w-4 mr-1" />
-              Cards
-            </Button>
-          </div>
-          
           <Button onClick={() => setShowAddVehicle(true)} className="ml-auto">
             <Plus className="h-4 w-4 mr-2" />
             Add Vehicle
@@ -127,17 +103,7 @@ const VehiclesList: React.FC = () => {
           </Button>
         </div>
       ) : (
-        <>
-          {viewMode === 'card' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredVehicles.map(vehicle => (
-                <VehicleCard key={vehicle.id} vehicle={vehicle} />
-              ))}
-            </div>
-          ) : (
-            <VehiclesListView vehicles={filteredVehicles} />
-          )}
-        </>
+        <VehiclesListView vehicles={filteredVehicles} />
       )}
 
       {/* Add Vehicle Dialog */}
