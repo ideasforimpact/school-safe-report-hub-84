@@ -5,12 +5,15 @@ import App from './App.tsx'
 import './index.css'
 import { AuthProvider } from './contexts/auth/AuthContext'
 import { ClientProvider } from './contexts/ClientContext'
+import { IncidentProvider } from './contexts/incident/IncidentContext'
 
 createRoot(document.getElementById("root")!).render(
   <BrowserRouter>
     <ClientProvider>
       <AuthProvider>
-        <App />
+        <IncidentProvider>
+          <App />
+        </IncidentProvider>
       </AuthProvider>
     </ClientProvider>
   </BrowserRouter>
