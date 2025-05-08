@@ -92,10 +92,10 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center">
+                    <div className="flex items-center text-left">
                       <div className="text-left">
-                        <div className="font-medium">{vehicle.make} {vehicle.model}</div>
-                        <div className="text-xs text-gray-500">Capacity: {vehicle.capacity}</div>
+                        <div className="font-medium text-left">{vehicle.make} {vehicle.model}</div>
+                        <div className="text-xs text-gray-500 text-left">Capacity: {vehicle.capacity}</div>
                       </div>
                       {vehicleHasChallan && (
                         <div className="ml-2" title="Police Challan">
@@ -104,13 +104,13 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                       )}
                     </div>
                   </TableCell>
-                  <TableCell>
-                    <div className="text-sm font-medium text-gray-700">{vehicle.registrationNumber}</div>
+                  <TableCell className="text-left">
+                    <div className="text-sm font-medium text-gray-700 text-left">{vehicle.registrationNumber}</div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="text-left">
                     <VehicleStatusBadge status={vehicle.status} />
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="text-left">
                     <div className="flex gap-1">
                       <Badge variant="outline" className={cn("text-xs flex items-center gap-1 px-2 py-1", getDocumentStatusColor(insuranceStatus))}>
                         {getDocumentIcon(insuranceStatus)}
@@ -130,7 +130,7 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                       </Badge>
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="text-left">
                     <div className="flex justify-start">
                       <Button asChild variant="ghost" size="icon">
                         <Link to={`/transport-safety/${vehicle.id}`}>
