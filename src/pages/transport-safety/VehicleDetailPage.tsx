@@ -124,7 +124,6 @@ const VehicleDetailContent = () => {
       <Tabs defaultValue="documents">
         <TabsList className="mb-4">
           <TabsTrigger value="documents">Documents</TabsTrigger>
-          <TabsTrigger value="maintenance">Maintenance</TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
         
@@ -134,11 +133,6 @@ const VehicleDetailContent = () => {
             For detailed document management, including verification and updates, please visit the 
             <Link to={`/transport-safety/${vehicleId}/documents`} className="text-primary ml-1">Document Management</Link> page.
           </p>
-        </TabsContent>
-        
-        <TabsContent value="maintenance" className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
-          <h2 className="text-lg font-medium mb-4 text-left">Maintenance Records</h2>
-          <p className="text-gray-500 text-left">Maintenance records will be available in future updates.</p>
         </TabsContent>
         
         <TabsContent value="history" className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
