@@ -25,19 +25,6 @@ interface VehiclesListViewProps {
 const VehiclesListView: React.FC<VehiclesListViewProps> = ({ vehicles }) => {
   const { paginatedItems, currentPage, setCurrentPage, totalPages } = usePagination(vehicles, 10);
 
-  const getDocumentStatusBadge = (status: string) => {
-    switch (status) {
-      case 'valid':
-        return <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">Valid</Badge>;
-      case 'expired':
-        return <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200">Expired</Badge>;
-      case 'expiring_soon':
-        return <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200">Expiring</Badge>;
-      default:
-        return <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-200">Missing</Badge>;
-    }
-  };
-
   const getDocumentStatus = (vehicle: Vehicle, docType: string) => {
     const document = vehicle.documents.find(doc => doc.type === docType);
     return document ? document.status : 'missing';
@@ -46,13 +33,26 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({ vehicles }) => {
   const getDocumentIcon = (status: string) => {
     switch (status) {
       case 'valid':
-        return <FileCheck className="h-3 w-3 text-green-600" />;
+        return <FileCheck className="h-4 w-4 text-green-600" />;
       case 'expired':
-        return <FileX className="h-3 w-3 text-red-600" />;
+        return <FileX className="h-4 w-4 text-red-600" />;
       case 'expiring_soon':
-        return <ShieldAlert className="h-3 w-3 text-yellow-600" />;
+        return <ShieldAlert className="h-4 w-4 text-yellow-600" />;
       default:
-        return <FileX className="h-3 w-3 text-gray-400" />;
+        return <FileX className="h-4 w-4 text-gray-400" />;
+    }
+  };
+
+  const getDocumentStatusColor = (status: string) => {
+    switch (status) {
+      case 'valid':
+        return 'bg-green-100 border-green-200 text-green-800';
+      case 'expired':
+        return 'bg-red-100 border-red-200 text-red-800';
+      case 'expiring_soon':
+        return 'bg-yellow-100 border-yellow-200 text-yellow-800';
+      default:
+        return 'bg-gray-100 border-gray-200 text-gray-800';
     }
   };
 
@@ -65,12 +65,9 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({ vehicles }) => {
               <TableHead className="w-[80px] text-left">Type</TableHead>
               <TableHead className="text-left">Vehicle Details</TableHead>
               <TableHead className="w-[160px] text-left">Registration</TableHead>
-              <TableHead className="w-[140px] text-left">Status</TableHead>
-              <TableHead className="text-left">Insurance</TableHead>
-              <TableHead className="text-left">FC</TableHead>
-              <TableHead className="text-left">Pollution</TableHead>
-              <TableHead className="text-left">Challan</TableHead>
-              <TableHead className="w-[180px] text-left">Actions</TableHead>
+              <TableHead className="w-[100px] text-left">Status</TableHead>
+              <TableHead className="w-[180px] text-left">Documents</TableHead>
+              <TableHead className="w-[100px] text-left">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -105,27 +102,23 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({ vehicles }) => {
                     <VehicleStatusBadge status={vehicle.status} />
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center">
-                      {getDocumentIcon(insuranceStatus)}
-                      <span className="ml-2">{getDocumentStatusBadge(insuranceStatus)}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center">
-                      {getDocumentIcon(fcStatus)}
-                      <span className="ml-2">{getDocumentStatusBadge(fcStatus)}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center">
-                      {getDocumentIcon(pollutionStatus)}
-                      <span className="ml-2">{getDocumentStatusBadge(pollutionStatus)}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center">
-                      {getDocumentIcon(challanStatus)}
-                      <span className="ml-2">{getDocumentStatusBadge(challanStatus)}</span>
+                    <div className="flex gap-1">
+                      <Badge variant="outline" className={cn("text-xs flex items-center gap-1 px-2 py-1", getDocumentStatusColor(insuranceStatus))}>
+                        {getDocumentIcon(insuranceStatus)}
+                        <span>Ins</span>
+                      </Badge>
+                      <Badge variant="outline" className={cn("text-xs flex items-center gap-1 px-2 py-1", getDocumentStatusColor(fcStatus))}>
+                        {getDocumentIcon(fcStatus)}
+                        <span>FC</span>
+                      </Badge>
+                      <Badge variant="outline" className={cn("text-xs flex items-center gap-1 px-2 py-1", getDocumentStatusColor(pollutionStatus))}>
+                        {getDocumentIcon(pollutionStatus)}
+                        <span>PUC</span>
+                      </Badge>
+                      <Badge variant="outline" className={cn("text-xs flex items-center gap-1 px-2 py-1", getDocumentStatusColor(challanStatus))}>
+                        {getDocumentIcon(challanStatus)}
+                        <span>RC</span>
+                      </Badge>
                     </div>
                   </TableCell>
                   <TableCell>
@@ -134,12 +127,6 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({ vehicles }) => {
                         <Link to={`/transport-safety/${vehicle.id}`}>
                           <Eye className="h-4 w-4 mr-1" />
                           View
-                        </Link>
-                      </Button>
-                      <Button asChild variant="outline" size="sm">
-                        <Link to={`/transport-safety/${vehicle.id}/documents`}>
-                          <FileCog className="h-4 w-4 mr-1" />
-                          Docs
                         </Link>
                       </Button>
                     </div>
