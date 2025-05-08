@@ -9,7 +9,7 @@ const VehicleHeader: React.FC = () => {
     <div className="flex items-center mb-8">
       <Button asChild variant="ghost" className="mr-4">
         <Link to="/transport-safety">
-          <ArrowLeft className="h-4 w-4 mr-2" />
+          <ArrowLeft className="h-4 w-4 mr-2" data-testid="arrow-left-icon" />
           Back to Vehicles
         </Link>
       </Button>
