@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, FileText, FileUp, Plus, AlertCircle, File } from 'lucide-react';
@@ -148,7 +147,7 @@ const DocumentPageContent = () => {
 
   return (
     <div className="container mx-auto py-6 max-w-7xl">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center mb-8">
         <div className="flex items-center">
           <Button asChild variant="ghost" className="mr-4">
             <Link to={`/transport-safety/${vehicleId}`}>
@@ -157,11 +156,6 @@ const DocumentPageContent = () => {
             </Link>
           </Button>
         </div>
-
-        <Button onClick={() => setShowAddDocument(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Document
-        </Button>
       </div>
 
       <h1 className="text-2xl font-bold mb-2">Documents for {make} {model}</h1>
@@ -172,12 +166,8 @@ const DocumentPageContent = () => {
           <File className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-700 mb-2">No Documents Found</h3>
           <p className="text-gray-500 max-w-md mx-auto mb-6">
-            This vehicle doesn't have any documents yet. Add documents to start managing compliance.
+            This vehicle doesn't have any documents yet.
           </p>
-          <Button onClick={() => setShowAddDocument(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add First Document
-          </Button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
