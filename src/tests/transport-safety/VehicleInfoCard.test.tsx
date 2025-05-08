@@ -5,6 +5,7 @@ import { renderWithRouter } from './test-utils';
 import VehicleInfoCard from '@/components/transport-safety/vehicle-detail/VehicleInfoCard';
 import { mockVehicle, mockTransportSafetyContext } from './mocks';
 import { toast } from '@/hooks/use-toast';
+import '@testing-library/jest-dom';
 
 jest.mock('@/hooks/use-toast', () => ({
   toast: jest.fn()

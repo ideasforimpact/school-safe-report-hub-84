@@ -3,6 +3,7 @@ import React from 'react';
 import { screen, fireEvent } from '@testing-library/react';
 import { renderWithRouter } from './test-utils';
 import VehicleTabs from '@/components/transport-safety/vehicle-detail/VehicleTabs';
+import '@testing-library/jest-dom';
 
 describe('VehicleTabs', () => {
   const vehicleId = 'test-vehicle-id';

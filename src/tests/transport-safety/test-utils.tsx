@@ -6,6 +6,9 @@ import { TransportSafetyContext } from '@/contexts/transport-safety/TransportSaf
 import { TransportSafetyContextType } from '@/contexts/transport-safety/types';
 import { mockTransportSafetyContext } from './mocks';
 
+// Import Jest DOM to extend expect with DOM matchers
+import '@testing-library/jest-dom';
+
 export const renderWithRouter = (
   ui: React.ReactElement,
   { 

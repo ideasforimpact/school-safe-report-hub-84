@@ -3,6 +3,7 @@ import React from 'react';
 import { screen } from '@testing-library/react';
 import { renderWithRouter } from './test-utils';
 import VehicleNotFound from '@/components/transport-safety/vehicle-detail/VehicleNotFound';
+import '@testing-library/jest-dom';
 
 describe('VehicleNotFound', () => {
   it('renders not found message', () => {

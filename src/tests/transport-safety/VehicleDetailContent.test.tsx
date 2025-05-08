@@ -4,6 +4,7 @@ import { screen } from '@testing-library/react';
 import { renderWithRouter } from './test-utils';
 import VehicleDetailContent from '@/components/transport-safety/vehicle-detail/VehicleDetailContent';
 import { mockTransportSafetyContext } from './mocks';
+import '@testing-library/jest-dom';
 
 // Mock the useParams hook
 jest.mock('react-router-dom', () => ({

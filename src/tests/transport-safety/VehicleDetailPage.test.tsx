@@ -3,6 +3,7 @@ import React from 'react';
 import { screen } from '@testing-library/react';
 import { renderWithRouter } from './test-utils';
 import VehicleDetailPage from '@/pages/transport-safety/VehicleDetailPage';
+import '@testing-library/jest-dom';
 
 // Mock the Layout component
 jest.mock('@/components/layout/Layout', () => ({

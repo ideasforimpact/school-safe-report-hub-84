@@ -3,6 +3,7 @@ import React from 'react';
 import { screen } from '@testing-library/react';
 import { renderWithRouter } from './test-utils';
 import VehicleHeader from '@/components/transport-safety/vehicle-detail/VehicleHeader';
+import '@testing-library/jest-dom';
 
 describe('VehicleHeader', () => {
   it('renders back button correctly', () => {

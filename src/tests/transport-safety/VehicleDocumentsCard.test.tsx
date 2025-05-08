@@ -4,6 +4,7 @@ import { screen } from '@testing-library/react';
 import { renderWithRouter } from './test-utils';
 import VehicleDocumentsCard from '@/components/transport-safety/vehicle-detail/VehicleDocumentsCard';
 import { mockVehicle } from './mocks';
+import '@testing-library/jest-dom';
 
 describe('VehicleDocumentsCard', () => {
   it('renders document status card header', () => {
