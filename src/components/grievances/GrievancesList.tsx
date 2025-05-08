@@ -6,15 +6,18 @@ import { Button } from '@/components/ui/button';
 import { Eye, Filter, MessageSquare } from 'lucide-react';
 import GrievanceDetailDialog from './GrievanceDetailDialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
 const GrievancesList = () => {
   const {
     submissions
   } = useGrievance();
   const [selectedSubmission, setSelectedSubmission] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  
   const filteredSubmissions = submissions.filter(submission => {
     return statusFilter === 'all' || submission.status === statusFilter;
   });
+  
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
       case 'new':
@@ -29,12 +32,14 @@ const GrievancesList = () => {
         return 'default';
     }
   };
+  
   const getResponseValue = (submissionId: string, questionText: string) => {
     const submission = submissions.find(s => s.id === submissionId);
     if (!submission) return '';
     const response = submission.responses.find(r => r.question === questionText);
     return response ? response.answer : '';
   };
+  
   const handleViewSubmission = (submissionId: string) => {
     setSelectedSubmission(submissionId);
   };
@@ -44,6 +49,7 @@ const GrievancesList = () => {
     // Replace underscores with spaces and capitalize each word
     return status.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   };
+  
   return <div>
       {/* Filters */}
       <div className="flex flex-wrap gap-4 mb-6">
@@ -77,29 +83,29 @@ const GrievancesList = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>No</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Grievance</TableHead>
-                <TableHead>Followup Required</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead className="text-left">No</TableHead>
+                <TableHead className="text-left">Name</TableHead>
+                <TableHead className="text-left">Grievance</TableHead>
+                <TableHead className="text-left">Followup Required</TableHead>
+                <TableHead className="text-left">Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredSubmissions.map((submission, index) => <TableRow key={submission.id}>
-                  <TableCell className="font-medium">
+                  <TableCell className="font-medium text-left">
                     {index + 1}
                   </TableCell>
-                  <TableCell className="align to the left">
+                  <TableCell className="text-left">
                     {submission.submitterName}
                   </TableCell>
-                  <TableCell className="max-w-xs truncate">
+                  <TableCell className="max-w-xs truncate text-left">
                     {getResponseValue(submission.id, 'Grievance Heading') || getResponseValue(submission.id, 'Description of Grievance').substring(0, 50) + '...'}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="text-left">
                     {submission.needsFollowup ? 'Yes' : 'No'}
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="text-left">
                     <Badge variant={getStatusBadgeVariant(submission.status) as any}>
                       {capitalizeStatus(submission.status)}
                     </Badge>
@@ -118,4 +124,5 @@ const GrievancesList = () => {
       {selectedSubmission && <GrievanceDetailDialog submissionId={selectedSubmission} onClose={() => setSelectedSubmission(null)} />}
     </div>;
 };
+
 export default GrievancesList;
