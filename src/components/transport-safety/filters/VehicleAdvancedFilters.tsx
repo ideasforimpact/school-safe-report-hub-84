@@ -39,7 +39,7 @@ const VehicleAdvancedFilters: React.FC<VehicleAdvancedFiltersProps> = ({
     <Collapsible 
       open={showAdvancedFilters} 
       onOpenChange={setShowAdvancedFilters}
-      className="border rounded-md p-4 bg-gray-50"
+      className="border rounded-md p-2 bg-gray-50"
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center">
@@ -62,7 +62,7 @@ const VehicleAdvancedFilters: React.FC<VehicleAdvancedFiltersProps> = ({
             </Button>
           )}
           <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="sm">
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
               {showAdvancedFilters ? (
                 <ChevronUp className="h-4 w-4" />
               ) : (
@@ -73,13 +73,13 @@ const VehicleAdvancedFilters: React.FC<VehicleAdvancedFiltersProps> = ({
         </div>
       </div>
       
-      <CollapsibleContent className="mt-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <CollapsibleContent className="mt-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {/* Document Type Filter */}
           <div>
-            <Label className="block mb-2">Document Type</Label>
+            <Label className="text-xs mb-1 block">Document Type</Label>
             <Select value={documentTypeFilter} onValueChange={setDocumentTypeFilter}>
-              <SelectTrigger>
+              <SelectTrigger className="h-8 text-sm">
                 <SelectValue placeholder="Filter by document type" />
               </SelectTrigger>
               <SelectContent>
@@ -94,40 +94,43 @@ const VehicleAdvancedFilters: React.FC<VehicleAdvancedFiltersProps> = ({
           
           {/* Document Status Filters */}
           <div>
-            <Label className="block mb-2">Document Status</Label>
-            <div className="flex flex-wrap gap-4">
-              <div className="flex items-center space-x-2">
+            <Label className="text-xs mb-1 block">Document Status</Label>
+            <div className="flex flex-wrap gap-2">
+              <div className="flex items-center space-x-1">
                 <Checkbox 
                   id="valid-status" 
                   checked={documentStatusFilters.valid}
                   onCheckedChange={() => toggleDocumentStatusFilter('valid')}
+                  className="h-3.5 w-3.5"
                 />
-                <Label htmlFor="valid-status" className="flex items-center cursor-pointer">
-                  <FileCheck className="h-4 w-4 mr-1 text-green-600" />
+                <Label htmlFor="valid-status" className="flex items-center cursor-pointer text-xs">
+                  <FileCheck className="h-3 w-3 mr-1 text-green-600" />
                   <span>Valid</span>
                 </Label>
               </div>
               
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-1">
                 <Checkbox 
                   id="expired-status" 
                   checked={documentStatusFilters.expired}
                   onCheckedChange={() => toggleDocumentStatusFilter('expired')}
+                  className="h-3.5 w-3.5"
                 />
-                <Label htmlFor="expired-status" className="flex items-center cursor-pointer">
-                  <FileX className="h-4 w-4 mr-1 text-red-600" />
+                <Label htmlFor="expired-status" className="flex items-center cursor-pointer text-xs">
+                  <FileX className="h-3 w-3 mr-1 text-red-600" />
                   <span>Expired</span>
                 </Label>
               </div>
               
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-1">
                 <Checkbox 
                   id="expiring-status" 
                   checked={documentStatusFilters.expiring_soon}
                   onCheckedChange={() => toggleDocumentStatusFilter('expiring_soon')}
+                  className="h-3.5 w-3.5"
                 />
-                <Label htmlFor="expiring-status" className="flex items-center cursor-pointer">
-                  <FileWarning className="h-4 w-4 mr-1 text-yellow-600" />
+                <Label htmlFor="expiring-status" className="flex items-center cursor-pointer text-xs">
+                  <FileWarning className="h-3 w-3 mr-1 text-yellow-600" />
                   <span>Expiring Soon</span>
                 </Label>
               </div>
