@@ -4,7 +4,7 @@ import { useGrievance } from '@/contexts/grievances/GrievanceContext';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Eye, Filter, MessageSquare } from 'lucide-react';
+import { Eye, Filter } from 'lucide-react';
 import GrievanceDetailDialog from './GrievanceDetailDialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -81,28 +81,29 @@ const GrievancesList = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Date</TableHead>
+                <TableHead>No</TableHead>
                 <TableHead>Name</TableHead>
-                <TableHead>Heading</TableHead>
-                <TableHead>Brief Description</TableHead>
+                <TableHead>Grievance</TableHead>
+                <TableHead>Followup Required</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredSubmissions.map(submission => (
+              {filteredSubmissions.map((submission, index) => (
                 <TableRow key={submission.id}>
-                  <TableCell className="whitespace-nowrap">
-                    {new Date(submission.createdAt).toLocaleDateString()}
-                  </TableCell>
                   <TableCell className="font-medium">
-                    {submission.submitterName}
+                    {index + 1}
                   </TableCell>
                   <TableCell>
-                    {getResponseValue(submission.id, 'Grievance Heading')}
+                    {submission.submitterName}
                   </TableCell>
                   <TableCell className="max-w-xs truncate">
-                    {getResponseValue(submission.id, 'Description of Grievance').substring(0, 50)}...
+                    {getResponseValue(submission.id, 'Grievance Heading') || 
+                    getResponseValue(submission.id, 'Description of Grievance').substring(0, 50) + '...'}
+                  </TableCell>
+                  <TableCell>
+                    {submission.needsFollowup ? 'Yes' : 'No'}
                   </TableCell>
                   <TableCell>
                     <Badge variant={getStatusBadgeVariant(submission.status) as any}>
