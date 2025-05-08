@@ -13,7 +13,7 @@ const VehicleSearchBar: React.FC<VehicleSearchBarProps> = ({
   setSearchQuery 
 }) => {
   return (
-    <div className="relative">
+    <div className="relative w-full md:w-[280px] lg:w-[320px]">
       <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
       <Input
         placeholder="Search vehicles by registration or model..."

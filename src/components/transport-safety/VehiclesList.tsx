@@ -41,27 +41,26 @@ const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddV
       {/* Filters section */}
       <div className="mb-6 flex flex-col space-y-4 bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center md:space-x-4 space-y-4 md:space-y-0 w-full">
-          <div className="flex-grow">
-            <VehicleSearchBar
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
+          <VehicleSearchBar
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+          />
+          
+          <div className="flex flex-wrap gap-2">
+            <VehicleBasicFilters
+              statusFilter={statusFilter}
+              setStatusFilter={setStatusFilter}
+              typeFilter={typeFilter}
+              setTypeFilter={setTypeFilter}
+              vehicleTypes={vehicleTypes}
+              documentTypeFilter={documentTypeFilter}
+              setDocumentTypeFilter={setDocumentTypeFilter}
+              documentStatusFilters={documentStatusFilters}
+              toggleDocumentStatusFilter={toggleDocumentStatusFilter}
+              activeFiltersCount={activeFiltersCount}
+              clearAllFilters={clearAllFilters}
             />
           </div>
-          
-          {/* Basic Filters and Advanced Filters Combined */}
-          <VehicleBasicFilters
-            statusFilter={statusFilter}
-            setStatusFilter={setStatusFilter}
-            typeFilter={typeFilter}
-            setTypeFilter={setTypeFilter}
-            vehicleTypes={vehicleTypes}
-            documentTypeFilter={documentTypeFilter}
-            setDocumentTypeFilter={setDocumentTypeFilter}
-            documentStatusFilters={documentStatusFilters}
-            toggleDocumentStatusFilter={toggleDocumentStatusFilter}
-            activeFiltersCount={activeFiltersCount}
-            clearAllFilters={clearAllFilters}
-          />
         </div>
       </div>
 

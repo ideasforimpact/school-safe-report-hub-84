@@ -19,6 +19,7 @@ export const useVehicleFilters = (vehicles: Vehicle[]) => {
     expiring_soon: false,
   });
 
+  // Use the exact type values from the Vehicle type
   const vehicleTypes = useMemo(() => {
     return [...new Set(vehicles.map(vehicle => vehicle.type))];
   }, [vehicles]);
@@ -84,7 +85,13 @@ export const useVehicleFilters = (vehicles: Vehicle[]) => {
         
         // Check document statuses if any status filters are active
         if (hasActiveDocumentStatusFilters) {
-          matchesDocumentStatus = relevantDocuments.some(doc => documentStatusFilters[doc.status]);
+          matchesDocumentStatus = relevantDocuments.some(doc => {
+            // Type safe check
+            if (doc.status === 'valid' && documentStatusFilters.valid) return true;
+            if (doc.status === 'expired' && documentStatusFilters.expired) return true;
+            if (doc.status === 'expiring_soon' && documentStatusFilters.expiring_soon) return true;
+            return false;
+          });
         }
       }
       
