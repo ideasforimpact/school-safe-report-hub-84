@@ -9,7 +9,8 @@ import {
   ClipboardList,
   FileCheck,
   MessageSquare,
-  Bus
+  Bus,
+  FileText
 } from 'lucide-react';
 import { ModulePermissions } from '@/contexts/AuthContext';
 
@@ -49,6 +50,12 @@ export const getSaasOwnerItems = () => [
     icon: Bus,
     label: 'Transport\nSafety',
     path: '/transport-safety',
+    allowed: true,
+  },
+  {
+    icon: FileText,
+    label: 'EduSafe\nResources',
+    path: '/edusafe-resources',
     allowed: true,
   },
   {
@@ -101,6 +108,12 @@ export const getClientItems = (permissions: ModulePermissions) => [
     icon: Bus,
     label: 'Transport\nSafety',
     path: '/transport-safety',
+    allowed: true,
+  },
+  {
+    icon: FileText,
+    label: 'EduSafe\nResources',
+    path: '/edusafe-resources',
     allowed: true,
   },
 ];

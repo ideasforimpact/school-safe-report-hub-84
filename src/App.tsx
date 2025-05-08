@@ -51,6 +51,11 @@ import VehicleDetailPage from './pages/transport-safety/VehicleDetailPage';
 import DocumentsPage from './pages/transport-safety/DocumentsPage';
 import DashboardPage from './pages/transport-safety/DashboardPage';
 
+// EduSafe Resources routes
+import EduSafeResourcesPage from './pages/edusafe/EduSafeResourcesPage';
+import UploadResourcePage from './pages/edusafe/UploadResourcePage';
+import EditResourcePage from './pages/edusafe/EditResourcePage';
+
 // Configuration pages
 import EducationalConfiguration from './pages/EducationalConfiguration';
 import IncidentConfiguration from './pages/IncidentConfiguration';
@@ -118,6 +123,11 @@ function App() {
       <Route path="/transport-safety/:vehicleId" element={<VehicleDetailPage />} />
       <Route path="/transport-safety/:vehicleId/documents" element={<DocumentsPage />} />
       <Route path="/transport-safety/dashboard" element={<DashboardPage />} />
+      
+      {/* EduSafe Resources Routes */}
+      <Route path="/edusafe-resources" element={<EduSafeResourcesPage />} />
+      <Route path="/edusafe-resources/upload" element={<UploadResourcePage />} />
+      <Route path="/edusafe-resources/edit/:resourceId" element={<EditResourcePage />} />
       
       {/* Public Routes */}
       <Route path="/support" element={<Support />} />
