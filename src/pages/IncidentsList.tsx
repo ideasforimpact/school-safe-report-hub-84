@@ -6,9 +6,12 @@ import { useIncidentFilters } from '@/hooks/useIncidentFilters';
 import IncidentsHeader from '@/components/incidents/IncidentsHeader';
 import IncidentFilters from '@/components/incidents/IncidentFilters';
 import IncidentsTable from '@/components/incidents/IncidentsTable';
+import { Card, CardContent } from '@/components/ui/card';
+import { Loader2 } from 'lucide-react';
 
 const IncidentsList = () => {
   const { incidents } = useIncidents();
+  const [isLoading, setIsLoading] = useState(false);
   
   const {
     filters,
@@ -38,32 +41,44 @@ const IncidentsList = () => {
 
   return (
     <Layout>
-      <div className="space-y-4 md:space-y-6 w-full overflow-x-hidden">
+      <div className="space-y-6 md:space-y-8 w-full">
         <IncidentsHeader />
         
-        <div className="flex justify-between items-center">
-          {activeFilterCount > 0 && (
-            <span className="text-sm font-medium mr-2 text-blue-600">
-              {activeFilterCount} filters applied
-            </span>
-          )}
-        </div>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Incident Management</h2>
+              {activeFilterCount > 0 && (
+                <span className="text-sm font-medium py-1 px-3 rounded-full bg-blue-100 text-blue-700">
+                  {activeFilterCount} filters applied
+                </span>
+              )}
+            </div>
 
-        <IncidentFilters 
-          filters={filters}
-          onFilterChange={handleFilterChange}
-          onClearFilters={clearFilters}
-          toggleAdvancedFilters={toggleAdvancedFilters}
-          availableCategories={availableCategories}
-          availableSubcategories={availableSubcategories}
-          availableLocations={availableLocations}
-          availableFacilities={availableFacilities}
-          availableOwners={availableOwners}
-        />
+            <IncidentFilters 
+              filters={filters}
+              onFilterChange={handleFilterChange}
+              onClearFilters={clearFilters}
+              toggleAdvancedFilters={toggleAdvancedFilters}
+              availableCategories={availableCategories}
+              availableSubcategories={availableSubcategories}
+              availableLocations={availableLocations}
+              availableFacilities={availableFacilities}
+              availableOwners={availableOwners}
+            />
 
-        <div className="overflow-x-auto w-full">
-          <IncidentsTable incidents={filteredIncidents} />
-        </div>
+            {isLoading ? (
+              <div className="flex justify-center items-center py-20">
+                <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                <span className="ml-2 text-gray-500">Loading incidents...</span>
+              </div>
+            ) : (
+              <div className="mt-6">
+                <IncidentsTable incidents={filteredIncidents} />
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </Layout>
   );

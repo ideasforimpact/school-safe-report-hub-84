@@ -2,12 +2,13 @@
 import React from 'react';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Ticket, BanIcon, Calendar, Building2, Edit } from 'lucide-react';
+import { Ticket, BanIcon, Calendar, Building2, Edit, Eye, User, MapPin } from 'lucide-react';
 import { Incident } from '@/contexts/IncidentContext';
 import { getPriorityIcon } from '@/utils/priorityIcons';
 import { getStatusBadgeClass } from '@/utils/statusUtils';
 import { getSimpleId } from '@/utils/ticketUtils';
 import { formatDate } from '@/utils/dateUtils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface IncidentTableRowProps {
   incident: Incident;
@@ -24,7 +25,7 @@ export const IncidentTableRow: React.FC<IncidentTableRowProps> = ({
 }) => {
   return (
     <TableRow 
-      className={`cursor-pointer hover:bg-gray-50 ${incident.isVoided ? 'bg-red-50' : ''}`}
+      className={`cursor-pointer transition-colors hover:bg-gray-50 ${incident.isVoided ? 'bg-red-50' : ''}`}
       onClick={() => onRowClick(incident.id)}
     >
       <TableCell className="font-medium">
@@ -32,19 +33,33 @@ export const IncidentTableRow: React.FC<IncidentTableRowProps> = ({
           <Ticket className="h-4 w-4 mr-2 text-blue-600" />
           <span className="ml-1">{getSimpleId(incident.ticketId)}</span>
           {incident.isVoided && (
-            <BanIcon className="h-4 w-4 ml-2 text-red-600" />
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <BanIcon className="h-4 w-4 ml-2 text-red-600" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>This incident has been voided</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
         </div>
       </TableCell>
       
       <TableCell className="text-left">
-        <div className="flex items-center">
+        <div className="flex items-center text-sm">
           <Calendar className="h-4 w-4 mr-2 text-gray-500" />
           {formatDate(incident.date)}
         </div>
       </TableCell>
       
-      <TableCell className="text-left">{incident.category}</TableCell>
+      <TableCell className="text-left">
+        <div className="flex flex-col">
+          <span className="font-medium">{incident.category}</span>
+          <span className="text-xs text-gray-500">{incident.subcategory}</span>
+        </div>
+      </TableCell>
       
       <TableCell className="text-left">
         <div className="flex items-center">
@@ -53,37 +68,55 @@ export const IncidentTableRow: React.FC<IncidentTableRowProps> = ({
         </div>
       </TableCell>
       
-      <TableCell className="text-left">{incident.location}</TableCell>
+      <TableCell className="text-left">
+        <div className="flex items-center text-sm">
+          <MapPin className="h-4 w-4 mr-2 text-gray-500" />
+          {incident.location}
+        </div>
+      </TableCell>
       
       <TableCell className="text-left">
-        <div className="flex items-center">
+        <div className="flex items-center text-sm">
           <Building2 className="h-4 w-4 mr-2 text-gray-500" />
           {incident.facility || 'Not specified'}
         </div>
       </TableCell>
       
       <TableCell className="text-left">
-        <span className={`px-2 py-1 rounded-full text-xs ${getStatusBadgeClass(incident.status, incident.isVoided)}`}>
-          {incident.isVoided ? 'Voided' : incident.status}
-        </span>
+        <div className="flex items-center">
+          <span className={`px-2 py-1 rounded-full text-xs ${getStatusBadgeClass(incident.status, incident.isVoided)}`}>
+            {incident.isVoided ? 'Voided' : incident.status}
+          </span>
+        </div>
       </TableCell>
       
       <TableCell className="text-left">
-        <div className="flex space-x-2">
+        <div className="flex items-center text-sm">
+          <User className="h-4 w-4 mr-2 text-gray-500" />
+          {incident.owner?.name || 'Unassigned'}
+        </div>
+      </TableCell>
+      
+      <TableCell className="text-right">
+        <div className="flex space-x-2 justify-end">
           <Button 
             variant="ghost" 
             size="sm"
+            className="h-8 w-8 p-0"
             onClick={(e) => onViewClick(e, incident.id)}
           >
-            View
+            <Eye className="h-4 w-4" />
+            <span className="sr-only">View</span>
           </Button>
           <Button 
             variant="ghost" 
             size="sm"
+            className="h-8 w-8 p-0"
             onClick={(e) => onEditClick(e, incident.id)}
             disabled={incident.isVoided}
           >
             <Edit className="h-4 w-4" />
+            <span className="sr-only">Edit</span>
           </Button>
         </div>
       </TableCell>
