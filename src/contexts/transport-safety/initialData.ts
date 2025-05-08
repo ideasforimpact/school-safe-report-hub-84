@@ -1,178 +1,156 @@
 
-export const vehiclesData = [
+import { v4 as uuidv4 } from 'uuid';
+import { Vehicle, VehicleType } from '@/types/transportSafety';
+
+// Helper function to ensure the vehicle type is valid
+const getValidVehicleType = (type: string): VehicleType => {
+  const validTypes: VehicleType[] = ['bus', 'van', 'car', 'truck', 'other'];
+  return validTypes.includes(type as VehicleType) ? type as VehicleType : 'other';
+};
+
+export const initialVehicles: Vehicle[] = [
   {
-    id: "v1",
-    registrationNumber: "KA-01-AA-1234",
-    type: "bus",
-    make: "Ashok Leyland",
-    model: "Falcon School Bus",
+    id: uuidv4(),
+    registrationNumber: 'KA-01-HH-1234',
+    type: getValidVehicleType('bus'),
+    make: 'Volvo',
+    model: 'B9R',
     year: 2020,
-    driver: "John D.",
-    route: "North Campus Route",
+    driver: 'John Doe',
+    route: 'Main Campus - Downtown',
+    capacity: 45, // Added capacity for bus
     documents: [
       {
-        id: "doc1",
-        type: "insurance",
-        number: "INS12345",
-        issuedDate: "2022-01-01",
-        expiryDate: "2024-01-01",
-        provider: "United India Insurance",
-        status: "valid",
-        verificationDate: "2023-01-15",
-        verificationMethod: "api",
-        verificationStatus: "verified",
-        notes: "Comprehensive coverage",
-        fileUrls: ["url1", "url2"]
+        id: uuidv4(),
+        type: 'Registration',
+        number: 'REG123456',
+        issuedDate: '2020-01-15',
+        expiryDate: '2023-01-15',
+        issuedBy: 'Regional Transport Office',
+        status: 'valid',
+        notes: 'Original registration',
+        lastUpdated: '2020-01-15',
+        fileUrls: ['/documents/registration.pdf']
       },
       {
-        id: "doc2",
-        type: "fitness",
-        number: "FIT67890",
-        issuedDate: "2023-01-01",
-        expiryDate: "2024-01-01",
-        provider: "RTO",
-        status: "valid",
-        verificationDate: "2023-01-15",
-        verificationMethod: "manual",
-        verificationStatus: "verified",
-        notes: "Good condition",
-        fileUrls: ["url3", "url4"]
+        id: uuidv4(),
+        type: 'Insurance',
+        number: 'INS789012',
+        issuedDate: '2022-03-10',
+        expiryDate: '2023-03-10',
+        issuedBy: 'Safety Insurance Co.',
+        status: 'valid',
+        notes: 'Comprehensive coverage',
+        lastUpdated: '2022-03-10',
+        fileUrls: ['/documents/insurance.pdf']
+      },
+      {
+        id: uuidv4(),
+        type: 'Pollution Certificate',
+        number: 'POL345678',
+        issuedDate: '2022-09-05',
+        expiryDate: '2022-12-05',
+        issuedBy: 'Environmental Protection Agency',
+        status: 'expired',
+        notes: 'Needs renewal',
+        lastUpdated: '2022-09-05',
+        fileUrls: ['/documents/pollution.pdf']
       }
     ],
-    status: "active",
-    createdAt: "2023-01-15T10:30:00Z",
-    updatedAt: "2023-04-10T14:22:30Z"
+    status: 'active',
+    createdAt: '2022-01-01T12:00:00Z',
+    updatedAt: '2022-09-10T15:30:00Z'
   },
   {
-    id: "v2",
-    registrationNumber: "KA-01-BB-5678",
-    type: "van",
-    make: "Maruti Suzuki",
-    model: "Eeco School Van",
+    id: uuidv4(),
+    registrationNumber: 'MH-02-AB-5678',
+    type: getValidVehicleType('van'),
+    make: 'Toyota',
+    model: 'Hiace',
     year: 2021,
-    driver: "Sam T.",
-    route: "East Campus Route",
+    driver: 'Jane Smith',
+    route: 'Campus A - Campus B',
+    capacity: 12, // Added capacity for van
     documents: [
       {
-        id: "doc3",
-        type: "pollution",
-        number: "POL11223",
-        issuedDate: "2023-03-01",
-        expiryDate: "2023-09-01",
-        provider: "RTO",
-        status: "expired",
-        verificationDate: "2023-03-10",
-        verificationMethod: "manual",
-        verificationStatus: "verified",
-        notes: "Needs renewal",
-        fileUrls: ["url5", "url6"]
+        id: uuidv4(),
+        type: 'Registration',
+        number: 'REG567890',
+        issuedDate: '2021-05-20',
+        expiryDate: '2026-05-20',
+        issuedBy: 'Regional Transport Office',
+        status: 'valid',
+        notes: 'Original registration',
+        lastUpdated: '2021-05-20',
+        fileUrls: ['/documents/registration-van.pdf']
       },
       {
-        id: "doc4",
-        type: "registration",
-        number: "REG44556",
-        issuedDate: "2021-02-20",
-        expiryDate: "2036-02-20",
-        provider: "RTO",
-        status: "valid",
-        verificationDate: "2023-02-28",
-        verificationMethod: "manual",
-        verificationStatus: "verified",
-        notes: "Original RC available",
-        fileUrls: ["url7", "url8"]
+        id: uuidv4(),
+        type: 'Insurance',
+        number: 'INS123456',
+        issuedDate: '2022-01-15',
+        expiryDate: '2023-02-01',
+        issuedBy: 'Education Insurance Ltd.',
+        status: 'expiring_soon',
+        notes: 'Needs renewal soon',
+        lastUpdated: '2022-01-15',
+        fileUrls: ['/documents/insurance-van.pdf']
       }
     ],
-    status: "active",
-    createdAt: "2023-02-20T09:15:00Z",
-    updatedAt: "2023-05-12T11:45:20Z"
+    status: 'maintenance',
+    createdAt: '2021-06-01T10:15:00Z',
+    updatedAt: '2023-01-05T09:45:00Z'
   },
   {
-    id: "v3",
-    registrationNumber: "KA-01-CC-9012",
-    type: "bus",
-    make: "Tata Motors",
-    model: "Starbus Ultra School",
-    year: 2019,
-    driver: "Mike R.",
-    route: "South Campus Route",
-    documents: [
-      {
-        id: "doc5",
-        type: "insurance",
-        number: "INS67890",
-        issuedDate: "2022-04-01",
-        expiryDate: "2023-04-01",
-        provider: "New India Assurance",
-        status: "expiring_soon",
-        verificationDate: "2023-04-10",
-        verificationMethod: "api",
-        verificationStatus: "verified",
-        notes: "Renew before April",
-        fileUrls: ["url9", "url10"]
-      },
-      {
-        id: "doc6",
-        type: "fitness",
-        number: "FIT22334",
-        issuedDate: "2022-03-15",
-        expiryDate: "2023-03-15",
-        provider: "RTO",
-        status: "expired",
-        verificationDate: "2023-03-20",
-        verificationMethod: "manual",
-        verificationStatus: "verified",
-        notes: "Fitness overdue",
-        fileUrls: ["url11", "url12"]
-      }
-    ],
-    status: "maintenance",
-    createdAt: "2023-03-10T08:45:00Z",
-    updatedAt: "2023-06-15T16:30:10Z"
-  },
-  {
-    id: "v4",
-    registrationNumber: "KA-01-DD-3456",
-    type: "car",
-    make: "Toyota",
-    model: "Innova",
+    id: uuidv4(),
+    registrationNumber: 'DL-03-CD-9012',
+    type: getValidVehicleType('car'),
+    make: 'Honda',
+    model: 'Civic',
     year: 2022,
-    driver: "Lisa M.",
-    route: "Administrative Use",
+    driver: 'Robert Johnson',
+    route: 'Director Transit',
+    capacity: 5, // Added capacity for car
     documents: [
       {
-        id: "doc7",
-        type: "pollution",
-        number: "POL55667",
-        issuedDate: "2023-06-01",
-        expiryDate: "2023-12-01",
-        provider: "RTO",
-        status: "valid",
-        verificationDate: "2023-06-10",
-        verificationMethod: "manual",
-        verificationStatus: "verified",
-        notes: "Valid until December",
-        fileUrls: ["url13", "url14"]
+        id: uuidv4(),
+        type: 'Registration',
+        number: 'REG901234',
+        issuedDate: '2022-02-10',
+        expiryDate: '2027-02-10',
+        issuedBy: 'Regional Transport Office',
+        status: 'valid',
+        notes: 'Original registration',
+        lastUpdated: '2022-02-10',
+        fileUrls: ['/documents/registration-car.pdf']
       },
       {
-        id: "doc8",
-        type: "registration",
-        number: "REG77889",
-        issuedDate: "2022-05-20",
-        expiryDate: "2037-05-20",
-        provider: "RTO",
-        status: "valid",
-        verificationDate: "2023-05-28",
-        verificationMethod: "manual",
-        verificationStatus: "verified",
-        notes: "Permanent registration",
-        fileUrls: ["url15", "url16"]
+        id: uuidv4(),
+        type: 'Insurance',
+        number: 'INS456789',
+        issuedDate: '2022-02-15',
+        expiryDate: '2023-02-15',
+        issuedBy: 'Premium Auto Insurance',
+        status: 'valid',
+        notes: 'Full coverage',
+        lastUpdated: '2022-02-15',
+        fileUrls: ['/documents/insurance-car.pdf']
+      },
+      {
+        id: uuidv4(),
+        type: 'Fitness Certificate',
+        number: 'FIT123456',
+        issuedDate: '2022-03-01',
+        expiryDate: '2022-11-01',
+        issuedBy: 'Vehicle Testing Center',
+        status: 'expired',
+        notes: 'Needs renewal',
+        lastUpdated: '2022-03-01',
+        fileUrls: ['/documents/fitness.pdf']
       }
     ],
-    status: "active",
-    createdAt: "2023-04-05T14:20:00Z",
-    updatedAt: "2023-07-01T09:10:40Z"
+    status: 'active',
+    createdAt: '2022-02-20T14:30:00Z',
+    updatedAt: '2022-10-05T16:20:00Z'
   }
 ];
-
-// Export vehiclesData as initialVehicles to fix the import error
-export const initialVehicles = vehiclesData;
