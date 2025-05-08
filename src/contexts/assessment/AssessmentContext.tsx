@@ -7,7 +7,6 @@ import { useQuestionManagement } from './hooks/useQuestionManagement';
 import { useAssignmentManagement } from './hooks/useAssignmentManagement';
 import { useResponseManagement } from './hooks/useResponseManagement';
 import { initializeMockData } from '@/components/assessments/data/initialMockData';
-import { toast } from 'sonner';
 
 const AssessmentContext = createContext<AssessmentContextType | undefined>(undefined);
 
@@ -43,8 +42,7 @@ export const AssessmentProvider: React.FC<{children: React.ReactNode}> = ({ chil
     createAssignment, 
     updateAssignment, 
     deleteAssignment, 
-    getUserAssignments, 
-    setAssignments 
+    getUserAssignments
   } = useAssignmentManagement(user?.id);
 
   // Set up question management with the setTemplates function

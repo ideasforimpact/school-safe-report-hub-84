@@ -7,7 +7,6 @@ import TemplateBasicInfo from './TemplateBasicInfo';
 import QuestionsSection from './QuestionsSection';
 import FormError from './FormError';
 import { useCreateTemplate } from '@/hooks/useCreateTemplate';
-import { toast } from 'sonner';
 
 const CreateTemplateForm = () => {
   const navigate = useNavigate();
@@ -33,11 +32,8 @@ const CreateTemplateForm = () => {
     
     try {
       await handleSubmit(e);
-      toast.success('Template created successfully');
-      navigate('/assessments/templates');
     } catch (error) {
       console.error('Form submission failed:', error);
-      toast.error('Failed to create template. Please try again.');
     }
   };
 
