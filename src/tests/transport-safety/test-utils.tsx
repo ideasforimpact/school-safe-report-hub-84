@@ -2,7 +2,7 @@
 import React, { ReactNode } from 'react';
 import { render } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
-import { TransportSafetyContext } from '@/contexts/transport-safety/TransportSafetyContext';
+import { useTransportSafety, TransportSafetyProvider } from '@/contexts/transport-safety/TransportSafetyContext';
 import { TransportSafetyContextType } from '@/contexts/transport-safety/types';
 import { mockTransportSafetyContext } from './mocks';
 
@@ -18,13 +18,18 @@ export const renderWithRouter = (
   } = {}
 ) => {
   return render(
-    <TransportSafetyContext.Provider value={transportSafetyContext as TransportSafetyContextType}>
-      <MemoryRouter initialEntries={[route]}>
-        <Routes>
-          <Route path={path} element={ui} />
-        </Routes>
-      </MemoryRouter>
-    </TransportSafetyContext.Provider>
+    <MemoryRouter initialEntries={[route]}>
+      <Routes>
+        <Route 
+          path={path} 
+          element={
+            <TransportSafetyProvider>
+              {React.cloneElement(ui, { transportSafetyContext })}
+            </TransportSafetyProvider>
+          } 
+        />
+      </Routes>
+    </MemoryRouter>
   );
 };
 
@@ -33,8 +38,8 @@ export const renderWithProviders = (
   { transportSafetyContext = mockTransportSafetyContext } = {}
 ) => {
   return render(
-    <TransportSafetyContext.Provider value={transportSafetyContext as TransportSafetyContextType}>
-      {ui}
-    </TransportSafetyContext.Provider>
+    <TransportSafetyProvider>
+      {React.cloneElement(ui, { transportSafetyContext })}
+    </TransportSafetyProvider>
   );
 };
