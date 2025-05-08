@@ -29,8 +29,8 @@ const EnhancedGrievanceHeadingSection: React.FC<EnhancedGrievanceHeadingSectionP
                 className="bg-gray-50 transition-colors focus:bg-white"
               />
             </FormControl>
-            <FormDescription className="text-xs text-gray-500 flex items-center gap-1 mt-1">
-              <span className="text-amber-500">•</span> Required field. Provide a concise title for your grievance.
+            <FormDescription className="text-xs text-gray-500 mt-1">
+              Optional. Provide a concise title for your grievance.
             </FormDescription>
             <FormMessage />
           </FormItem>

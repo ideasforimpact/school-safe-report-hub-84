@@ -10,13 +10,9 @@ import { FormResponse } from '@/contexts/grievances/types';
 
 // Form schema for validation
 export const formSchema = z.object({
-  name: z.string().min(2, {
-    message: "Name must be at least 2 characters.",
-  }),
+  name: z.string().optional(), // Changed from required to optional
   contactInfo: z.string().optional(),
-  heading: z.string().min(5, {
-    message: "Heading must be at least 5 characters.",
-  }),
+  heading: z.string().optional(), // Changed from required to optional
   description: z.string().min(10, {
     message: "Description must be at least 10 characters.",
   }),
@@ -49,9 +45,9 @@ export function useEnhancedGrievanceForm(schoolName: string) {
     
     // Format responses for submission
     const formattedResponses: FormResponse[] = [
-      { question: 'Name', answer: values.name },
+      { question: 'Name', answer: values.name || 'Anonymous' },
       { question: 'Contact Information', answer: values.contactInfo || 'Not provided' },
-      { question: 'Grievance Heading', answer: values.heading },
+      { question: 'Grievance Heading', answer: values.heading || 'No heading provided' },
       { question: 'Description of Grievance', answer: values.description },
       { question: 'Desired Resolution', answer: values.resolution || 'Not specified' },
       { question: 'Contact for Follow-up', answer: values.preferContact }
@@ -60,7 +56,7 @@ export function useEnhancedGrievanceForm(schoolName: string) {
     // Add submission
     addSubmission({
       id: `sub_${Date.now()}`,
-      submitterName: values.name,
+      submitterName: values.name || 'Anonymous',
       submitterEmail: values.contactInfo || '',
       responses: formattedResponses,
       status: 'new',

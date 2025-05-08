@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { User, Phone } from 'lucide-react';
+import { User } from 'lucide-react';
 import { FormField, FormItem, FormLabel, FormControl, FormDescription, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { UseFormReturn } from 'react-hook-form';
@@ -24,13 +24,13 @@ const EnhancedSubmitterInfoSection: React.FC<EnhancedSubmitterInfoSectionProps> 
             </div>
             <FormControl>
               <Input
-                placeholder="Your name will be kept highly confidential"
+                placeholder="You may submit anonymously"
                 {...field}
                 className="bg-gray-50 transition-colors focus:bg-white"
               />
             </FormControl>
-            <FormDescription className="text-xs text-gray-500 flex items-center gap-1 mt-1">
-              <span className="text-amber-500">•</span> Required field. Your identity will be protected.
+            <FormDescription className="text-xs text-gray-500 mt-1">
+              Optional. Your identity will be protected if provided.
             </FormDescription>
             <FormMessage />
           </FormItem>
