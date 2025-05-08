@@ -7,6 +7,8 @@ import { AuthProvider } from './contexts/auth/AuthContext'
 import { ClientProvider } from './contexts/ClientContext'
 import { IncidentProvider } from './contexts/incident/IncidentContext'
 import { EmployeeVerificationProvider } from './contexts/employee-verification/EmployeeVerificationContext'
+import { FeedbackProvider } from './contexts/feedback/FeedbackContext'
+import { GrievanceProvider } from './contexts/grievances/GrievanceContext'
 
 createRoot(document.getElementById("root")!).render(
   <BrowserRouter>
@@ -14,7 +16,11 @@ createRoot(document.getElementById("root")!).render(
       <AuthProvider>
         <IncidentProvider>
           <EmployeeVerificationProvider>
-            <App />
+            <FeedbackProvider>
+              <GrievanceProvider>
+                <App />
+              </GrievanceProvider>
+            </FeedbackProvider>
           </EmployeeVerificationProvider>
         </IncidentProvider>
       </AuthProvider>

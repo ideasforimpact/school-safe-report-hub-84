@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { MessageSquare, BarChart2, Share2 } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import GrievancesList from '@/components/grievances/GrievancesList';
@@ -10,7 +10,7 @@ import { toast } from '@/hooks/use-toast';
 
 const GrievancesPage = () => {
   const shareFormLink = () => {
-    const shareUrl = `${window.location.origin}/grievances/submit`;
+    const shareUrl = `${window.location.origin}/grievances/form`;
     
     if (navigator.share) {
       navigator.share({
