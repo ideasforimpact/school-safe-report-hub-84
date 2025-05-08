@@ -9,9 +9,11 @@ import VehicleStatusBadge from './VehicleStatusBadge';
 import VehicleTypeIcon from './VehicleTypeIcon';
 import { usePagination } from '@/hooks/usePagination';
 import { cn } from '@/lib/utils';
+
 interface VehiclesListViewProps {
   vehicles: Vehicle[];
 }
+
 const VehiclesListView: React.FC<VehiclesListViewProps> = ({
   vehicles
 }) => {
@@ -21,10 +23,12 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
     setCurrentPage,
     totalPages
   } = usePagination(vehicles, 10);
+
   const getDocumentStatus = (vehicle: Vehicle, docType: string) => {
     const document = vehicle.documents.find(doc => doc.type === docType);
     return document ? document.status : 'missing';
   };
+
   const getDocumentIcon = (status: string) => {
     switch (status) {
       case 'valid':
@@ -37,6 +41,7 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
         return <FileX className="h-4 w-4 text-gray-400" />;
     }
   };
+
   const getDocumentStatusColor = (status: string) => {
     switch (status) {
       case 'valid':
@@ -49,6 +54,7 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
         return 'bg-gray-100 border-gray-200 text-gray-800';
     }
   };
+
   return <div className="w-full">
       <div className="rounded-md border">
         <Table>
@@ -59,7 +65,7 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
               <TableHead className="w-[160px] text-left">Registration</TableHead>
               <TableHead className="w-[100px] text-left">Status</TableHead>
               <TableHead className="w-[180px] text-left">Documents</TableHead>
-              <TableHead className="w-[100px] text-left">Actions</TableHead>
+              <TableHead className="w-[80px] text-left">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -68,6 +74,7 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
             const fcStatus = getDocumentStatus(vehicle, 'fitness');
             const pollutionStatus = getDocumentStatus(vehicle, 'pollution');
             const challanStatus = getDocumentStatus(vehicle, 'registration');
+
             return <TableRow key={vehicle.id} className={cn("hover:bg-muted/50", vehicle.documents.some(doc => doc.status === 'expired') ? "bg-red-50" : vehicle.documents.some(doc => doc.status === 'expiring_soon') ? "bg-yellow-50" : "")}>
                   <TableCell>
                     <div className="bg-gray-100 p-2 rounded-lg inline-flex">
@@ -105,11 +112,10 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="flex justify-start gap-2">
-                      <Button asChild variant="ghost" size="sm">
+                    <div className="flex justify-start">
+                      <Button asChild variant="ghost" size="icon">
                         <Link to={`/transport-safety/${vehicle.id}`}>
-                          <Eye className="h-4 w-4 mr-1" />
-                          View
+                          <Eye className="h-4 w-4" />
                         </Link>
                       </Button>
                     </div>
@@ -134,4 +140,5 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
         </div>}
     </div>;
 };
+
 export default VehiclesListView;
