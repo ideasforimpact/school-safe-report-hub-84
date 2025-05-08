@@ -29,9 +29,11 @@ const AssignTemplateForm = () => {
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [dueDate, setDueDate] = useState<string>('');
   const [formError, setFormError] = useState<string | null>(null);
-  const [template, setTemplate] = useState(templateId ? getTemplateById(templateId) : null);
+  const [template, setTemplate] = useState<any>(null);
   
   useEffect(() => {
+    console.log("templateId in AssignTemplateForm:", templateId);
+    
     if (!templateId) {
       toast.error('No template ID provided');
       navigate('/assessments/templates');
@@ -39,6 +41,7 @@ const AssignTemplateForm = () => {
     }
     
     const foundTemplate = getTemplateById(templateId);
+    console.log("Found template:", foundTemplate);
     setTemplate(foundTemplate);
     
     if (!foundTemplate) {
