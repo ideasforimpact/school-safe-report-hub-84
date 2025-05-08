@@ -8,6 +8,8 @@ import { usePagination } from '@/hooks/usePagination';
 import { IncidentTableHeader } from './table/IncidentTableHeader';
 import { IncidentTableRow } from './table/IncidentTableRow';
 import { TablePagination } from './table/TablePagination';
+import { FileX } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface IncidentsTableProps {
   incidents: Incident[];
@@ -39,9 +41,21 @@ const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
 
   if (incidents.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-8 text-center">
-          <p className="text-gray-500">No incidents found matching your filters</p>
+      <div className="bg-white rounded-lg shadow p-8">
+        <div className="text-center py-12">
+          <FileX className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-xl font-medium text-gray-700 mb-3">No incidents found</h3>
+          <p className="text-gray-500 max-w-md mx-auto mb-6">
+            There are no incidents matching your current filters or no incidents have been reported yet.
+          </p>
+          <div className="flex justify-center gap-4">
+            <Button onClick={() => navigate('/report-incident')}>
+              Report New Incident
+            </Button>
+            <Button variant="outline" onClick={() => window.location.reload()}>
+              Refresh Page
+            </Button>
+          </div>
         </div>
       </div>
     );
