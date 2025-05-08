@@ -4,7 +4,7 @@ import { useIncidents } from '@/contexts/IncidentContext';
 import { useAuth } from '@/contexts/AuthContext';
 import Layout from '@/components/layout/Layout';
 import SummaryCards from '@/components/dashboard/SummaryCards';
-import IncidentStatusSection from '@/components/dashboard/IncidentStatusSection';
+import IntegratedDashboardSection from '@/components/dashboard/IntegratedDashboardSection';
 import SafetyResources from '@/components/dashboard/SafetyResources';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle } from 'lucide-react';
@@ -54,36 +54,24 @@ const Dashboard = () => {
           </Button>
         </div>
 
-        {/* Summary Cards Section */}
-        <SummaryCards 
-          openIncidents={openIncidents}
-          totalIncidents={incidents.length}
-          incidentsThisMonth={incidentsThisMonth}
-          mostCommonCategory={mostCommonCategory}
-          categoryCounts={categoryCounts}
-          totalPeopleInvolved={totalPeopleInvolved}
-        />
+        {/* Integrated Dashboard Section with combined metrics */}
+        <IntegratedDashboardSection />
         
-        {/* Insights Grid - Replace QuickActions and RecentActivities with more insights */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-          {/* Incident Status Chart */}
-          <div>
-            <IncidentStatusSection />
-          </div>
-          
-          {/* Category Distribution */}
-          <div>
-            <IncidentStatusSection title="Category Distribution" />
-          </div>
-          
-          {/* Monthly Trend */}
-          <div>
-            <IncidentStatusSection title="Monthly Trend" />
-          </div>
+        {/* Traditional SummaryCards as a fallback or additional view */}
+        <div className="border-t border-gray-200 pt-6">
+          <h2 className="text-xl font-semibold mb-4">Incident Metrics</h2>
+          <SummaryCards 
+            openIncidents={openIncidents}
+            totalIncidents={incidents.length}
+            incidentsThisMonth={incidentsThisMonth}
+            mostCommonCategory={mostCommonCategory}
+            categoryCounts={categoryCounts}
+            totalPeopleInvolved={totalPeopleInvolved}
+          />
         </div>
 
         {/* Safety Resources Section */}
-        <div className="col-span-full">
+        <div>
           <SafetyResources />
         </div>
       </div>
