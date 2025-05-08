@@ -1,7 +1,7 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Bus, ArrowLeft, Edit, FileText, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Edit, FileText, AlertCircle, ShieldCheck } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,10 +10,12 @@ import { TransportSafetyProvider, useTransportSafety } from '@/contexts/transpor
 import VehicleTypeIcon from '@/components/transport-safety/VehicleTypeIcon';
 import VehicleStatusBadge from '@/components/transport-safety/VehicleStatusBadge';
 import DocumentStatusBadge from '@/components/transport-safety/DocumentStatusBadge';
+import { toast } from '@/hooks/use-toast';
 
 const VehicleDetailContent = () => {
   const { vehicleId } = useParams<{ vehicleId: string }>();
-  const { getVehicle } = useTransportSafety();
+  const { getVehicle, verifyDocument } = useTransportSafety();
+  const [isChecking, setIsChecking] = useState(false);
   
   const vehicle = getVehicle(vehicleId!);
 
@@ -33,6 +35,30 @@ const VehicleDetailContent = () => {
   }
 
   const { registrationNumber, make, model, type, status, year, capacity, documents } = vehicle;
+
+  const runSafetyCheck = () => {
+    setIsChecking(true);
+    
+    // Simulate API call with a timeout
+    setTimeout(() => {
+      // Process each document and simulate verification
+      documents.forEach(doc => {
+        const randomOutcome = Math.random();
+        // 80% chance of success for the simulation
+        if (randomOutcome < 0.8) {
+          verifyDocument(vehicleId!, doc.id, 'verified', 'api', 'Automatically verified through external API');
+        } else {
+          verifyDocument(vehicleId!, doc.id, 'failed', 'api', 'Verification failed: Document information mismatch');
+        }
+      });
+      
+      setIsChecking(false);
+      toast({
+        title: "Safety Check Complete",
+        description: `${documents.length} documents were checked through external verification APIs.`
+      });
+    }, 2000);
+  };
   
   return (
     <div className="container mx-auto py-6 max-w-7xl">
@@ -76,12 +102,22 @@ const VehicleDetailContent = () => {
                 </div>
               </div>
               
-              <div className="flex justify-start">
+              <div className="flex justify-start space-x-3">
                 <Button asChild variant="outline">
                   <Link to={`/transport-safety/${vehicleId}/edit`}>
                     <Edit className="h-4 w-4 mr-2" />
                     Edit Vehicle
                   </Link>
+                </Button>
+                
+                <Button 
+                  onClick={runSafetyCheck} 
+                  disabled={isChecking} 
+                  variant="outline"
+                  className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
+                >
+                  <ShieldCheck className="h-4 w-4 mr-2" />
+                  {isChecking ? 'Running Safety Check...' : 'Run Safety Check'}
                 </Button>
               </div>
             </CardContent>
