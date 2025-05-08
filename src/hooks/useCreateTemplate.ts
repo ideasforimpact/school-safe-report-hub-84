@@ -80,14 +80,15 @@ export function useCreateTemplate() {
       console.log('Template created with ID:', templateId);
       
       // Add questions to template
-      questions.forEach((question, index) => {
+      for (let i = 0; i < questions.length; i++) {
         try {
-          const questionId = addQuestion(templateId, question);
-          console.log(`Added question ${index + 1} with ID:`, questionId);
+          const questionId = addQuestion(templateId, questions[i]);
+          console.log(`Added question ${i + 1} with ID:`, questionId);
         } catch (err) {
-          console.error(`Failed to add question ${index + 1}:`, err);
+          console.error(`Failed to add question ${i + 1}:`, err);
+          throw new Error(`Failed to add question ${i + 1}`);
         }
-      });
+      }
       
       toast.success('Template created successfully');
       
@@ -97,6 +98,7 @@ export function useCreateTemplate() {
       console.error('Failed to create template:', error);
       setFormError('Failed to create template. Please try again.');
       toast.error('Failed to create template');
+      throw error; // Re-throw to allow the calling component to handle it
     } finally {
       setIsSubmitting(false);
     }

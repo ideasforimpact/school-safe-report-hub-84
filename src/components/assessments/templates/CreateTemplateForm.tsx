@@ -7,6 +7,7 @@ import TemplateBasicInfo from './TemplateBasicInfo';
 import QuestionsSection from './QuestionsSection';
 import FormError from './FormError';
 import { useCreateTemplate } from '@/hooks/useCreateTemplate';
+import { toast } from 'sonner';
 
 const CreateTemplateForm = () => {
   const navigate = useNavigate();
@@ -26,8 +27,20 @@ const CreateTemplateForm = () => {
     handleSubmit
   } = useCreateTemplate();
 
+  const onFormSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log('Form submission triggered');
+    
+    try {
+      await handleSubmit(e);
+    } catch (error) {
+      console.error('Form submission failed:', error);
+      toast.error('Failed to create template. Please try again.');
+    }
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={onFormSubmit} className="space-y-6">
       <TemplateBasicInfo
         title={title}
         setTitle={setTitle}
