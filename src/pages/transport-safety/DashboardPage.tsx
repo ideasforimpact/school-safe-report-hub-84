@@ -1,11 +1,12 @@
-
 import React from 'react';
-import { ArrowLeft, AlertCircle, Clock, CheckCircle2, FileText, Car, Bus, Truck } from 'lucide-react';
+import { ArrowLeft, AlertCircle, Clock, CheckCircle2, FileText, Car, Bus, Truck, CircleDot } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { TransportSafetyProvider, useTransportSafety } from '@/contexts/transport-safety/TransportSafetyContext';
+import VehicleTypeIcon from '@/components/transport-safety/VehicleTypeIcon';
+import { cn } from '@/lib/utils';
 
 const DashboardContent = () => {
   const { vehicles } = useTransportSafety();
@@ -302,7 +303,7 @@ const DashboardContent = () => {
                             </div>
                           </div>
                           <div className="flex items-center">
-                            <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-200 mr-2">
+                            <Badge variant="outline" className={cn("bg-yellow-100 text-yellow-800 border-yellow-200 mr-2")}>
                               {vehicle.documents.filter(d => d.status === 'expiring_soon').length} expiring soon
                             </Badge>
                             <FileText className="h-4 w-4 text-gray-400" />

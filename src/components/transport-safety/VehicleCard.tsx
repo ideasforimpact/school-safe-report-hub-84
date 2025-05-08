@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import VehicleStatusBadge from './VehicleStatusBadge';
 import DocumentStatusSummary from './DocumentStatusSummary';
 import VehicleTypeIcon from './VehicleTypeIcon';
+import { cn } from '@/lib/utils';
 
 interface VehicleCardProps {
   vehicle: Vehicle;
