@@ -33,7 +33,11 @@ const CreateTemplateForm = () => {
     console.log('Form data:', { title, description, type, questions });
     
     try {
-      await handleSubmit(e);
+      const success = await handleSubmit(e);
+      if (success) {
+        toast.success('Template created successfully');
+        navigate('/assessments/templates');
+      }
     } catch (error) {
       console.error('Form submission failed:', error);
       toast.error('Failed to create template');

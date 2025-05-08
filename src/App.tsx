@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import './App.css';
@@ -39,7 +40,6 @@ import UploadResourcePage from './pages/edusafe/UploadResourcePage';
 import EditResourcePage from './pages/edusafe/EditResourcePage';
 import FeedbackPage from './pages/feedback/FeedbackPage';
 import FormResponsePage from './pages/feedback/FormResponsePage';
-import { Toaster } from 'sonner';
 import Support from './pages/Support';
 import Blog from './pages/Blog';
 import Pricing from './pages/Pricing';
@@ -48,7 +48,6 @@ import NewsPage from './pages/NewsPage';
 function App() {
   return (
     <>
-      <Toaster position="top-right" closeButton />
       <Routes>
         {/* Public routes */}
         <Route path="/" element={<Home />} />

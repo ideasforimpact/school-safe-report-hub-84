@@ -1,12 +1,10 @@
 
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useAssessment } from '@/contexts/assessment/AssessmentContext';
 import { AssessmentQuestion } from '@/types/assessment';
 import { toast } from 'sonner';
 
 export function useCreateTemplate() {
-  const navigate = useNavigate();
   const { createTemplate, addQuestion } = useAssessment();
   
   const [title, setTitle] = useState('');
@@ -63,13 +61,14 @@ export function useCreateTemplate() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateForm()) return;
+    // Step 1: Validate form
+    if (!validateForm()) return false;
     
     try {
       setIsSubmitting(true);
       console.log('Creating template with data:', { title, description, type, questions });
       
-      // Create template
+      // Step 2: Create template
       const templateId = createTemplate({
         title,
         description,
@@ -79,24 +78,22 @@ export function useCreateTemplate() {
       
       console.log('Template created with ID:', templateId);
       
-      // Add questions to template
-      for (let i = 0; i < questions.length; i++) {
+      // Step 3: Add questions to template
+      for (const question of questions) {
         try {
-          const questionId = addQuestion(templateId, questions[i]);
-          console.log(`Added question ${i + 1} with ID:`, questionId);
+          const questionId = addQuestion(templateId, question);
+          console.log('Added question with ID:', questionId);
         } catch (err) {
-          console.error(`Failed to add question ${i + 1}:`, err);
+          console.error('Failed to add question:', err);
         }
       }
       
-      toast.success('Template created successfully');
-      
-      // Navigate to templates list
-      navigate('/assessments/templates');
+      return true;
     } catch (error) {
       console.error('Failed to create template:', error);
       setFormError('Failed to create template. Please try again.');
       toast.error('Failed to create template');
+      return false;
     } finally {
       setIsSubmitting(false);
     }
