@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Edit, ShieldCheck, Calendar } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ShieldCheck, Calendar, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import VehicleTypeIcon from '@/components/transport-safety/VehicleTypeIcon';
@@ -10,15 +10,27 @@ import { toast } from '@/hooks/use-toast';
 import { Vehicle } from '@/types/transportSafety';
 import { formatDate } from '@/utils/dateUtils';
 import { useTransportSafety } from '@/contexts/transport-safety/TransportSafetyContext';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface VehicleInfoCardProps {
   vehicle: Vehicle;
 }
 
 const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
-  const { verifyDocument } = useTransportSafety();
+  const { verifyDocument, deleteVehicle } = useTransportSafety();
   const [isChecking, setIsChecking] = useState(false);
   const [lastCheckTime, setLastCheckTime] = useState<Date | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const navigate = useNavigate();
   
   const { id: vehicleId, registrationNumber, make, model, type, status, year, capacity, documents } = vehicle;
 
@@ -46,6 +58,11 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
         description: `${documents.length} documents were checked through external verification APIs.`
       });
     }, 2000);
+  };
+
+  const handleDeleteVehicle = () => {
+    deleteVehicle(vehicleId);
+    navigate('/transport-safety');
   };
 
   return (
@@ -79,11 +96,13 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
         </div>
         
         <div className="flex justify-start space-x-3">
-          <Button asChild variant="outline">
-            <Link to={`/transport-safety/${vehicleId}/edit`}>
-              <Edit className="h-4 w-4 mr-2" />
-              Edit Vehicle
-            </Link>
+          <Button 
+            onClick={() => setShowDeleteConfirm(true)} 
+            variant="outline"
+            className="bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Delete Vehicle
           </Button>
           
           <Button 
@@ -106,6 +125,24 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
           </span>
         </div>
       </CardContent>
+
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the vehicle {make} {model} ({registrationNumber}) 
+              and all of its associated documents.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteVehicle} className="bg-red-600 hover:bg-red-700">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 };
