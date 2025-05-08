@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Incident } from '@/contexts/IncidentContext';
@@ -27,17 +26,20 @@ const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
 
   // Navigation handlers
   const handleRowClick = (incidentId: string) => {
-    navigate(`/incident/${incidentId}`);
+    // Update: Use consistent route pattern /incidents/:id
+    navigate(`/incidents/${incidentId}`);
   };
 
   const handleViewClick = (e: React.MouseEvent, incidentId: string) => {
     e.stopPropagation();
-    navigate(`/incident/${incidentId}`);
+    // Update: Use consistent route pattern /incidents/:id
+    navigate(`/incidents/${incidentId}`);
   };
 
   const handleEditClick = (e: React.MouseEvent, incidentId: string) => {
     e.stopPropagation();
-    navigate(`/incident/${incidentId}/edit`);
+    // Update: Use consistent route pattern /incidents/:id/edit
+    navigate(`/incidents/${incidentId}/edit`);
   };
 
   if (incidents.length === 0) {

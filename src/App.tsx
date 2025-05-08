@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import './App.css';
@@ -68,6 +67,8 @@ function App() {
           <Route path="/incidents" element={<IncidentsList />} />
           <Route path="/incidents/:incidentId" element={<IncidentDetail />} />
           <Route path="/incidents/:incidentId/edit" element={<EditIncident />} />
+          <Route path="/incident/:incidentId" element={<IncidentDetail />} />
+          <Route path="/incident/:incidentId/edit" element={<EditIncident />} />
           <Route path="/insights" element={<Insights />} />
           <Route path="/benchmarking" element={<Benchmarking />} />
           <Route path="/users" element={<UserManagement />} />
