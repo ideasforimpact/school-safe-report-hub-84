@@ -60,13 +60,13 @@ const AssessmentsPage = () => {
       return <CreateTemplateForm templateId={templateId} onCancel={handleCancelCreate} />;
     } else if (location.pathname.match(/\/templates\/[^/]+\/assign$/)) {
       const templateId = location.pathname.split('/')[3];
-      return <AssignTemplateForm templateId={templateId} />;
+      return <AssignTemplateForm />;
     } else if (location.pathname.match(/\/templates\/[^/]+\/bulk-assign$/)) {
       const templateId = location.pathname.split('/')[3];
-      return <BulkAssignForm templateId={templateId} />;
+      return <BulkAssignForm />;
     } else if (location.pathname.match(/\/templates\/[^/]+$/)) {
       const templateId = location.pathname.split('/')[3];
-      return <TemplateDetail templateId={templateId} />;
+      return <TemplateDetail />;
     } else {
       return <TemplatesList onCreateTemplate={handleCreateTemplate} />;
     }
