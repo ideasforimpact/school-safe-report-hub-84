@@ -1,8 +1,9 @@
+
 import React from 'react';
 import { Vehicle } from '@/types/transportSafety';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Eye, FileCog, FileCheck, FileX, ShieldAlert } from 'lucide-react';
+import { Eye, FileCog, FileCheck, FileX, ShieldAlert, FileWarning } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import VehicleStatusBadge from './VehicleStatusBadge';
@@ -27,6 +28,10 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
   const getDocumentStatus = (vehicle: Vehicle, docType: string) => {
     const document = vehicle.documents.find(doc => doc.type === docType);
     return document ? document.status : 'missing';
+  };
+
+  const hasChallan = (vehicle: Vehicle) => {
+    return vehicle.documents.some(doc => doc.type === 'challan');
   };
 
   const getDocumentIcon = (status: string) => {
@@ -74,6 +79,7 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
             const fcStatus = getDocumentStatus(vehicle, 'fitness');
             const pollutionStatus = getDocumentStatus(vehicle, 'pollution');
             const challanStatus = getDocumentStatus(vehicle, 'registration');
+            const vehicleHasChallan = hasChallan(vehicle);
 
             return <TableRow key={vehicle.id} className={cn("hover:bg-muted/50", vehicle.documents.some(doc => doc.status === 'expired') ? "bg-red-50" : vehicle.documents.some(doc => doc.status === 'expiring_soon') ? "bg-yellow-50" : "")}>
                   <TableCell>
@@ -82,8 +88,17 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                     </div>
                   </TableCell>
                   <TableCell className="align text to the left">
-                    <div className="font-medium">{vehicle.make} {vehicle.model}</div>
-                    <div className="text-xs text-gray-500">Capacity: {vehicle.capacity}</div>
+                    <div className="flex items-center">
+                      <div>
+                        <div className="font-medium">{vehicle.make} {vehicle.model}</div>
+                        <div className="text-xs text-gray-500">Capacity: {vehicle.capacity}</div>
+                      </div>
+                      {vehicleHasChallan && (
+                        <div className="ml-2" title="Police Challan">
+                          <FileWarning className="h-5 w-5 text-orange-600" />
+                        </div>
+                      )}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="text-sm font-medium text-gray-700">{vehicle.registrationNumber}</div>
