@@ -80,30 +80,32 @@ const CreateTemplateForm = () => {
     try {
       setIsSubmitting(true);
       
-      // Step 1: Create template
-      console.log('Creating template with data:', { title, description, type });
-      const templateId = createTemplate({
+      // Create the template first
+      const templateData = {
         title,
         description,
         type,
-        questions: []
-      });
+        questions: [] // Questions will be added separately
+      };
       
+      console.log('Creating template with data:', templateData);
+      const templateId = createTemplate(templateData);
       console.log('Template created with ID:', templateId);
       
-      // Step 2: Add questions to template
-      for (const question of questions) {
-        console.log('Adding question:', question);
-        const questionId = addQuestion(templateId, question);
-        console.log('Added question with ID:', questionId);
+      // Then add questions to the template
+      if (templateId) {
+        for (const question of questions) {
+          console.log('Adding question to template:', question);
+          addQuestion(templateId, question);
+        }
+        
+        toast.success('Template created successfully');
+        navigate('/assessments/templates');
+      } else {
+        throw new Error('Failed to create template: No template ID returned');
       }
-      
-      // Step 3: Display success message and redirect
-      toast.success('Template created successfully');
-      console.log('Redirecting to templates list');
-      navigate('/assessments/templates');
     } catch (error) {
-      console.error('Form submission failed:', error);
+      console.error('Error creating template:', error);
       setFormError('Failed to create template. Please try again.');
       toast.error('Failed to create template');
     } finally {
