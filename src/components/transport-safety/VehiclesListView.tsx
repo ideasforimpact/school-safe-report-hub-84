@@ -3,7 +3,7 @@ import React from 'react';
 import { Vehicle } from '@/types/transportSafety';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Eye, FileCog, FileCheck, FileX, ShieldAlert, FileWarning } from 'lucide-react';
+import { Eye, FileCog, FileCheck, FileX, ShieldAlert, FileWarning, Flag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import VehicleStatusBadge from './VehicleStatusBadge';
@@ -74,6 +74,7 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
               <TableHead className="w-[160px] text-left">Registration</TableHead>
               <TableHead className="w-[100px] text-left">Status</TableHead>
               <TableHead className="w-[180px] text-left">Documents</TableHead>
+              <TableHead className="w-[80px] text-left">Challan</TableHead>
               <TableHead className="w-[60px] text-left">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -97,11 +98,6 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                         <div className="font-medium text-left">{vehicle.make} {vehicle.model}</div>
                         <div className="text-xs text-gray-500 text-left">Capacity: {vehicle.capacity}</div>
                       </div>
-                      {vehicleHasChallan && (
-                        <div className="ml-2" title="Police Challan">
-                          <FileWarning className="h-5 w-5 text-orange-600" />
-                        </div>
-                      )}
                     </div>
                   </TableCell>
                   <TableCell className="text-left">
@@ -129,6 +125,16 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                         <span>RC</span>
                       </Badge>
                     </div>
+                  </TableCell>
+                  <TableCell className="text-left">
+                    {vehicleHasChallan ? (
+                      <Badge variant="outline" className="bg-orange-100 border-orange-200 text-orange-800 text-xs flex items-center gap-1">
+                        <Flag className="h-4 w-4 text-orange-600" />
+                        <span>Yes</span>
+                      </Badge>
+                    ) : (
+                      <span className="text-gray-500 text-xs">-</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-left">
                     <div className="flex justify-start">
