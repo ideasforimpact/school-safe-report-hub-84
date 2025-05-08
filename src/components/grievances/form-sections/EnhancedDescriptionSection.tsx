@@ -20,7 +20,7 @@ const EnhancedDescriptionSection: React.FC<EnhancedDescriptionSectionProps> = ({
           <FormItem>
             <div className="flex items-center gap-2 mb-2">
               <FileText className="h-5 w-5 text-primary" />
-              <FormLabel className="text-lg font-medium">Description of your grievance</FormLabel>
+              <FormLabel className="text-sm font-medium">Description of your grievance</FormLabel>
             </div>
             <FormControl>
               <Textarea

@@ -20,7 +20,7 @@ const EnhancedResolutionSection: React.FC<EnhancedResolutionSectionProps> = ({ f
           <FormItem>
             <div className="flex items-center gap-2 mb-2">
               <HelpCircle className="h-5 w-5 text-primary" />
-              <FormLabel className="text-lg font-medium">What action or resolution do you expect?</FormLabel>
+              <FormLabel className="text-sm font-medium">What action or resolution do you expect?</FormLabel>
             </div>
             <FormControl>
               <Textarea

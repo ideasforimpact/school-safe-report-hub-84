@@ -20,7 +20,7 @@ const EnhancedGrievanceHeadingSection: React.FC<EnhancedGrievanceHeadingSectionP
           <FormItem>
             <div className="flex items-center gap-2 mb-2">
               <MessageSquare className="h-5 w-5 text-primary" />
-              <FormLabel className="text-lg font-medium">Grievance Heading</FormLabel>
+              <FormLabel className="text-sm font-medium">Grievance Heading</FormLabel>
             </div>
             <FormControl>
               <Input

@@ -20,7 +20,7 @@ const EnhancedSubmitterInfoSection: React.FC<EnhancedSubmitterInfoSectionProps> 
           <FormItem>
             <div className="flex items-center gap-2 mb-2">
               <User className="h-5 w-5 text-primary" />
-              <FormLabel className="text-lg font-medium">Name of the Person Raising the Complaint</FormLabel>
+              <FormLabel className="text-sm font-medium">Name of the Person Raising the Complaint</FormLabel>
             </div>
             <FormControl>
               <Input
