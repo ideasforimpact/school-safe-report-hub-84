@@ -61,30 +61,30 @@ const VehicleDetailContent = () => {
               <VehicleStatusBadge status={status} />
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
-                <div>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6 text-left">
+                <div className="text-left">
                   <div className="text-sm font-medium text-gray-500">Type</div>
-                  <div>{type.charAt(0).toUpperCase() + type.slice(1)}</div>
+                  <div className="text-left">{type.charAt(0).toUpperCase() + type.slice(1)}</div>
                 </div>
-                <div>
+                <div className="text-left">
                   <div className="text-sm font-medium text-gray-500">Year</div>
-                  <div>{year}</div>
+                  <div className="text-left">{year}</div>
                 </div>
-                <div>
+                <div className="text-left">
                   <div className="text-sm font-medium text-gray-500">Capacity</div>
-                  <div>{capacity} passengers</div>
+                  <div className="text-left">{capacity} passengers</div>
                 </div>
-                <div>
+                <div className="text-left">
                   <div className="text-sm font-medium text-gray-500">Driver</div>
-                  <div>{driver || 'Not assigned'}</div>
+                  <div className="text-left">{driver || 'Not assigned'}</div>
                 </div>
-                <div>
+                <div className="text-left">
                   <div className="text-sm font-medium text-gray-500">Route</div>
-                  <div>{route || 'Not assigned'}</div>
+                  <div className="text-left">{route || 'Not assigned'}</div>
                 </div>
               </div>
               
-              <div className="flex justify-end">
+              <div className="flex justify-start">
                 <Button asChild variant="outline">
                   <Link to={`/transport-safety/${vehicleId}/edit`}>
                     <Edit className="h-4 w-4 mr-2" />
@@ -99,17 +99,17 @@ const VehicleDetailContent = () => {
         <div className="w-full md:w-1/3">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Document Status</CardTitle>
+              <CardTitle className="text-base text-left">Document Status</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 {documents.map(document => (
                   <div key={document.id} className="flex justify-between items-center">
-                    <div>
-                      <div className="font-medium">
+                    <div className="text-left">
+                      <div className="font-medium text-left">
                         {document.type.charAt(0).toUpperCase() + document.type.slice(1)}
                       </div>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-gray-500 text-left">
                         Expires: {new Date(document.expiryDate).toLocaleDateString()}
                       </div>
                     </div>
@@ -137,21 +137,21 @@ const VehicleDetailContent = () => {
         </TabsList>
         
         <TabsContent value="documents" className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
-          <h2 className="text-lg font-medium mb-4">Vehicle Documents</h2>
-          <p className="text-gray-500">
+          <h2 className="text-lg font-medium mb-4 text-left">Vehicle Documents</h2>
+          <p className="text-gray-500 text-left">
             For detailed document management, including verification and updates, please visit the 
             <Link to={`/transport-safety/${vehicleId}/documents`} className="text-primary ml-1">Document Management</Link> page.
           </p>
         </TabsContent>
         
         <TabsContent value="maintenance" className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
-          <h2 className="text-lg font-medium mb-4">Maintenance Records</h2>
-          <p className="text-gray-500">Maintenance records will be available in future updates.</p>
+          <h2 className="text-lg font-medium mb-4 text-left">Maintenance Records</h2>
+          <p className="text-gray-500 text-left">Maintenance records will be available in future updates.</p>
         </TabsContent>
         
         <TabsContent value="history" className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
-          <h2 className="text-lg font-medium mb-4">History</h2>
-          <p className="text-gray-500">Vehicle history records will be available in future updates.</p>
+          <h2 className="text-lg font-medium mb-4 text-left">History</h2>
+          <p className="text-gray-500 text-left">Vehicle history records will be available in future updates.</p>
         </TabsContent>
       </Tabs>
     </div>
