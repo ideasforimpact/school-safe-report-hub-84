@@ -45,6 +45,7 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({ vehicles }) => {
             <TableRow>
               <TableHead className="w-[80px]">Type</TableHead>
               <TableHead>Vehicle Details</TableHead>
+              <TableHead className="w-[160px]">Registration</TableHead>
               <TableHead className="w-[140px]">Status</TableHead>
               <TableHead>Documents</TableHead>
               <TableHead className="w-[180px] text-right">Actions</TableHead>
@@ -67,8 +68,10 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({ vehicles }) => {
                 </TableCell>
                 <TableCell>
                   <div className="font-medium">{vehicle.make} {vehicle.model}</div>
-                  <div className="text-sm font-medium text-gray-700">{vehicle.registrationNumber}</div>
                   <div className="text-xs text-gray-500">Capacity: {vehicle.capacity}</div>
+                </TableCell>
+                <TableCell>
+                  <div className="text-sm font-medium text-gray-700">{vehicle.registrationNumber}</div>
                 </TableCell>
                 <TableCell>
                   <VehicleStatusBadge status={vehicle.status} />
