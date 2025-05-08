@@ -63,7 +63,7 @@ const createPollutionDocument = (vehicleId: string, status: 'valid' | 'expired' 
 };
 
 // Mock registration document
-const createRegistrationDocument = (vehicleId: string, registrationNumber: string): VehicleDocument => {
+const createRegistrationDocument = (vehicleId: string, registrationNumber: string, hasChallan: boolean = false): VehicleDocument => {
   return {
     id: uuidv4(),
     type: 'registration',
@@ -74,7 +74,25 @@ const createRegistrationDocument = (vehicleId: string, registrationNumber: strin
     status: 'valid',
     verificationStatus: 'verified',
     verificationDate: getDateString(-1),
-    verificationMethod: 'api'
+    verificationMethod: 'api',
+    notes: hasChallan ? 'Vehicle has pending police challan from last month.' : undefined
+  };
+};
+
+// Create challan document
+const createChallanDocument = (vehicleId: string): VehicleDocument => {
+  return {
+    id: uuidv4(),
+    type: 'registration',
+    number: `CH-${Math.floor(10000 + Math.random() * 90000)}`,
+    issuedDate: getDateString(-1),
+    expiryDate: getDateString(1),
+    provider: 'Traffic Police Department',
+    status: 'valid',
+    verificationStatus: 'verified',
+    verificationDate: getDateString(-0.5),
+    verificationMethod: 'api',
+    notes: 'Challan issued for traffic rule violation - Speeding'
   };
 };
 
@@ -144,16 +162,17 @@ export const initialVehicles: Vehicle[] = [
 
 // Add documents to vehicles
 initialVehicles.forEach(vehicle => {
-  // First vehicle with all valid documents
+  // First vehicle with all valid documents and a challan
   if (vehicle.registrationNumber === 'KA-01-JK-1234') {
     vehicle.documents.push(
       createInsuranceDocument(vehicle.id),
       createFitnessDocument(vehicle.id),
       createPollutionDocument(vehicle.id),
-      createRegistrationDocument(vehicle.id, vehicle.registrationNumber)
+      createRegistrationDocument(vehicle.id, vehicle.registrationNumber),
+      createChallanDocument(vehicle.id)  // Add challan to this vehicle
     );
   }
-  // Second vehicle with expiring insurance
+  // Second vehicle with expiring insurance and no challan
   else if (vehicle.registrationNumber === 'KA-01-MG-5678') {
     vehicle.documents.push(
       createInsuranceDocument(vehicle.id, 'expiring_soon'),
@@ -162,16 +181,16 @@ initialVehicles.forEach(vehicle => {
       createRegistrationDocument(vehicle.id, vehicle.registrationNumber)
     );
   }
-  // Third vehicle with expired fitness
+  // Third vehicle with expired fitness and a challan
   else if (vehicle.registrationNumber === 'KA-02-PQ-9012') {
     vehicle.documents.push(
       createInsuranceDocument(vehicle.id),
       createFitnessDocument(vehicle.id, 'expired'),
       createPollutionDocument(vehicle.id),
-      createRegistrationDocument(vehicle.id, vehicle.registrationNumber)
+      createRegistrationDocument(vehicle.id, vehicle.registrationNumber, true)  // Add challan note to registration
     );
   }
-  // Fourth vehicle with expired pollution
+  // Fourth vehicle with expired pollution and no challan
   else if (vehicle.registrationNumber === 'KA-03-RS-3456') {
     vehicle.documents.push(
       createInsuranceDocument(vehicle.id),
