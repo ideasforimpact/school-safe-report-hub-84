@@ -1,202 +1,174 @@
-
-import { Vehicle, VehicleDocument } from '@/types/transportSafety';
-import { v4 as uuidv4 } from 'uuid';
-
-const currentDate = new Date();
-
-// Helper function to get date strings
-const getDateString = (months: number): string => {
-  const date = new Date(currentDate);
-  date.setMonth(date.getMonth() + months);
-  return date.toISOString();
-};
-
-// Mock insurance document
-const createInsuranceDocument = (vehicleId: string, status: 'valid' | 'expired' | 'expiring_soon' = 'valid'): VehicleDocument => {
-  const expiryMonths = status === 'valid' ? 10 : status === 'expiring_soon' ? 1 : -1;
-  return {
-    id: uuidv4(),
-    type: 'insurance',
-    number: `INS-${Math.floor(100000 + Math.random() * 900000)}`,
-    issuedDate: getDateString(-12),
-    expiryDate: getDateString(expiryMonths),
-    provider: 'Safe Drive Insurance',
-    status,
-    verificationStatus: 'verified',
-    verificationDate: getDateString(-1),
-    verificationMethod: 'api'
-  };
-};
-
-// Mock fitness certificate document
-const createFitnessDocument = (vehicleId: string, status: 'valid' | 'expired' | 'expiring_soon' = 'valid'): VehicleDocument => {
-  const expiryMonths = status === 'valid' ? 8 : status === 'expiring_soon' ? 1 : -2;
-  return {
-    id: uuidv4(),
-    type: 'fitness',
-    number: `FC-${Math.floor(10000 + Math.random() * 90000)}`,
-    issuedDate: getDateString(-6),
-    expiryDate: getDateString(expiryMonths),
-    provider: 'Regional Transport Office',
-    status,
-    verificationStatus: 'verified',
-    verificationDate: getDateString(-1),
-    verificationMethod: 'api'
-  };
-};
-
-// Mock pollution certificate document
-const createPollutionDocument = (vehicleId: string, status: 'valid' | 'expired' | 'expiring_soon' = 'valid'): VehicleDocument => {
-  const expiryMonths = status === 'valid' ? 5 : status === 'expiring_soon' ? 0.5 : -1;
-  return {
-    id: uuidv4(),
-    type: 'pollution',
-    number: `PUC-${Math.floor(10000 + Math.random() * 90000)}`,
-    issuedDate: getDateString(-1),
-    expiryDate: getDateString(expiryMonths),
-    provider: 'Pollution Control Board',
-    status,
-    verificationStatus: 'verified',
-    verificationDate: getDateString(-0.5),
-    verificationMethod: 'api'
-  };
-};
-
-// Mock registration document
-const createRegistrationDocument = (vehicleId: string, registrationNumber: string, hasChallan: boolean = false): VehicleDocument => {
-  return {
-    id: uuidv4(),
-    type: 'registration',
-    number: registrationNumber,
-    issuedDate: getDateString(-24),
-    expiryDate: getDateString(36),
-    provider: 'Regional Transport Office',
-    status: 'valid',
-    verificationStatus: 'verified',
-    verificationDate: getDateString(-1),
-    verificationMethod: 'api',
-    notes: hasChallan ? 'Vehicle has pending police challan from last month.' : undefined
-  };
-};
-
-// Create challan document
-const createChallanDocument = (vehicleId: string): VehicleDocument => {
-  return {
-    id: uuidv4(),
-    type: 'registration',
-    number: `CH-${Math.floor(10000 + Math.random() * 90000)}`,
-    issuedDate: getDateString(-1),
-    expiryDate: getDateString(1),
-    provider: 'Traffic Police Department',
-    status: 'valid',
-    verificationStatus: 'verified',
-    verificationDate: getDateString(-0.5),
-    verificationMethod: 'api',
-    notes: 'Challan issued for traffic rule violation - Speeding'
-  };
-};
-
-// Create initial vehicles
-export const initialVehicles: Vehicle[] = [
+export const vehiclesData = [
   {
-    id: uuidv4(),
-    registrationNumber: 'KA-01-JK-1234',
-    type: 'bus',
-    make: 'Ashok Leyland',
-    model: 'Viking',
+    id: "v1",
+    registrationNumber: "KA-01-AA-1234",
+    type: "bus",
+    make: "Ashok Leyland",
+    model: "Falcon School Bus",
     year: 2020,
-    capacity: 52,
-    driver: 'John Smith',
-    route: 'North Campus Route',
-    status: 'active',
-    documents: [] as VehicleDocument[],
-    createdAt: getDateString(-6),
-    updatedAt: getDateString(0)
+    driver: "John D.",
+    route: "North Campus Route",
+    documents: [
+      {
+        id: "doc1",
+        type: "insurance",
+        number: "INS12345",
+        issuedDate: "2022-01-01",
+        expiryDate: "2024-01-01",
+        provider: "United India Insurance",
+        status: "valid",
+        verificationDate: "2023-01-15",
+        verificationMethod: "api",
+        verificationStatus: "verified",
+        notes: "Comprehensive coverage",
+        fileUrls: ["url1", "url2"]
+      },
+      {
+        id: "doc2",
+        type: "fitness",
+        number: "FIT67890",
+        issuedDate: "2023-01-01",
+        expiryDate: "2024-01-01",
+        provider: "RTO",
+        status: "valid",
+        verificationDate: "2023-01-15",
+        verificationMethod: "manual",
+        verificationStatus: "verified",
+        notes: "Good condition",
+        fileUrls: ["url3", "url4"]
+      }
+    ],
+    status: "active",
+    createdAt: "2023-01-15T10:30:00Z",
+    updatedAt: "2023-04-10T14:22:30Z"
   },
   {
-    id: uuidv4(),
-    registrationNumber: 'KA-01-MG-5678',
-    type: 'van',
-    make: 'Maruti Suzuki',
-    model: 'Eeco',
+    id: "v2",
+    registrationNumber: "KA-01-BB-5678",
+    type: "van",
+    make: "Maruti Suzuki",
+    model: "Eeco School Van",
     year: 2021,
-    capacity: 8,
-    driver: 'Emily Davis',
-    route: 'East Campus Route',
-    status: 'active',
-    documents: [] as VehicleDocument[],
-    createdAt: getDateString(-5),
-    updatedAt: getDateString(0)
+    driver: "Sam T.",
+    route: "East Campus Route",
+    documents: [
+      {
+        id: "doc3",
+        type: "pollution",
+        number: "POL11223",
+        issuedDate: "2023-03-01",
+        expiryDate: "2023-09-01",
+        provider: "RTO",
+        status: "expired",
+        verificationDate: "2023-03-10",
+        verificationMethod: "manual",
+        verificationStatus: "verified",
+        notes: "Needs renewal",
+        fileUrls: ["url5", "url6"]
+      },
+      {
+        id: "doc4",
+        type: "registration",
+        number: "REG44556",
+        issuedDate: "2021-02-20",
+        expiryDate: "2036-02-20",
+        provider: "RTO",
+        status: "valid",
+        verificationDate: "2023-02-28",
+        verificationMethod: "manual",
+        verificationStatus: "verified",
+        notes: "Original RC available",
+        fileUrls: ["url7", "url8"]
+      }
+    ],
+    status: "active",
+    createdAt: "2023-02-20T09:15:00Z",
+    updatedAt: "2023-05-12T11:45:20Z"
   },
   {
-    id: uuidv4(),
-    registrationNumber: 'KA-02-PQ-9012',
-    type: 'car',
-    make: 'Toyota',
-    model: 'Innova',
-    year: 2022,
-    capacity: 7,
-    driver: 'Michael Johnson',
-    route: 'Administrative Use',
-    status: 'active',
-    documents: [] as VehicleDocument[],
-    createdAt: getDateString(-3),
-    updatedAt: getDateString(0)
-  },
-  {
-    id: uuidv4(),
-    registrationNumber: 'KA-03-RS-3456',
-    type: 'bus',
-    make: 'TATA',
-    model: 'Starbus',
+    id: "v3",
+    registrationNumber: "KA-01-CC-9012",
+    type: "bus",
+    make: "Tata Motors",
+    model: "Starbus Ultra School",
     year: 2019,
-    capacity: 45,
-    driver: 'Robert Wilson',
-    route: 'South Campus Route',
-    status: 'maintenance',
-    documents: [] as VehicleDocument[],
-    createdAt: getDateString(-12),
-    updatedAt: getDateString(-0.1)
+    driver: "Mike R.",
+    route: "South Campus Route",
+    documents: [
+      {
+        id: "doc5",
+        type: "insurance",
+        number: "INS67890",
+        issuedDate: "2022-04-01",
+        expiryDate: "2023-04-01",
+        provider: "New India Assurance",
+        status: "expiring_soon",
+        verificationDate: "2023-04-10",
+        verificationMethod: "api",
+        verificationStatus: "verified",
+        notes: "Renew before April",
+        fileUrls: ["url9", "url10"]
+      },
+      {
+        id: "doc6",
+        type: "fitness",
+        number: "FIT22334",
+        issuedDate: "2022-03-15",
+        expiryDate: "2023-03-15",
+        provider: "RTO",
+        status: "expired",
+        verificationDate: "2023-03-20",
+        verificationMethod: "manual",
+        verificationStatus: "verified",
+        notes: "Fitness overdue",
+        fileUrls: ["url11", "url12"]
+      }
+    ],
+    status: "maintenance",
+    createdAt: "2023-03-10T08:45:00Z",
+    updatedAt: "2023-06-15T16:30:10Z"
+  },
+  {
+    id: "v4",
+    registrationNumber: "KA-01-DD-3456",
+    type: "car",
+    make: "Toyota",
+    model: "Innova",
+    year: 2022,
+    driver: "Lisa M.",
+    route: "Administrative Use",
+    documents: [
+      {
+        id: "doc7",
+        type: "pollution",
+        number: "POL55667",
+        issuedDate: "2023-06-01",
+        expiryDate: "2023-12-01",
+        provider: "RTO",
+        status: "valid",
+        verificationDate: "2023-06-10",
+        verificationMethod: "manual",
+        verificationStatus: "verified",
+        notes: "Valid until December",
+        fileUrls: ["url13", "url14"]
+      },
+      {
+        id: "doc8",
+        type: "registration",
+        number: "REG77889",
+        issuedDate: "2022-05-20",
+        expiryDate: "2037-05-20",
+        provider: "RTO",
+        status: "valid",
+        verificationDate: "2023-05-28",
+        verificationMethod: "manual",
+        verificationStatus: "verified",
+        notes: "Permanent registration",
+        fileUrls: ["url15", "url16"]
+      }
+    ],
+    status: "active",
+    createdAt: "2023-04-05T14:20:00Z",
+    updatedAt: "2023-07-01T09:10:40Z"
   }
 ];
-
-// Add documents to vehicles
-initialVehicles.forEach(vehicle => {
-  // First vehicle with all valid documents and a challan
-  if (vehicle.registrationNumber === 'KA-01-JK-1234') {
-    vehicle.documents.push(
-      createInsuranceDocument(vehicle.id),
-      createFitnessDocument(vehicle.id),
-      createPollutionDocument(vehicle.id),
-      createRegistrationDocument(vehicle.id, vehicle.registrationNumber),
-      createChallanDocument(vehicle.id)  // Add challan to this vehicle
-    );
-  }
-  // Second vehicle with expiring insurance and no challan
-  else if (vehicle.registrationNumber === 'KA-01-MG-5678') {
-    vehicle.documents.push(
-      createInsuranceDocument(vehicle.id, 'expiring_soon'),
-      createFitnessDocument(vehicle.id),
-      createPollutionDocument(vehicle.id),
-      createRegistrationDocument(vehicle.id, vehicle.registrationNumber)
-    );
-  }
-  // Third vehicle with expired fitness and a challan
-  else if (vehicle.registrationNumber === 'KA-02-PQ-9012') {
-    vehicle.documents.push(
-      createInsuranceDocument(vehicle.id),
-      createFitnessDocument(vehicle.id, 'expired'),
-      createPollutionDocument(vehicle.id),
-      createRegistrationDocument(vehicle.id, vehicle.registrationNumber, true)  // Add challan note to registration
-    );
-  }
-  // Fourth vehicle with expired pollution and no challan
-  else if (vehicle.registrationNumber === 'KA-03-RS-3456') {
-    vehicle.documents.push(
-      createInsuranceDocument(vehicle.id),
-      createFitnessDocument(vehicle.id),
-      createPollutionDocument(vehicle.id, 'expired'),
-      createRegistrationDocument(vehicle.id, vehicle.registrationNumber)
-    );
-  }
-});

@@ -1,37 +1,18 @@
-
 import { Vehicle } from '@/types/transportSafety';
 
-export const mockVehicle: Vehicle = {
-  id: 'test-vehicle-id',
-  registrationNumber: 'ABC123',
-  type: 'bus',
-  make: 'Toyota',
-  model: 'Coaster',
-  year: 2022,
-  capacity: 30,
-  documents: [
-    {
-      id: 'doc1',
-      type: 'insurance',
-      number: 'INS-12345',
-      issuedDate: '2023-01-01',
-      expiryDate: '2024-01-01',
-      provider: 'Safety Insurance Co.',
-      status: 'valid'
-    },
-    {
-      id: 'doc2',
-      type: 'fitness',
-      number: 'FIT-54321',
-      issuedDate: '2023-02-15',
-      expiryDate: '2024-02-15',
-      provider: 'Transport Authority',
-      status: 'expiring_soon'
-    }
-  ],
-  status: 'active',
-  createdAt: '2023-01-01T00:00:00.000Z',
-  updatedAt: '2023-06-01T00:00:00.000Z'
+export const mockVehicle = {
+  id: "v1",
+  registrationNumber: "KA-01-AA-1234",
+  type: "bus",
+  make: "Ashok Leyland",
+  model: "Falcon School Bus",
+  year: 2020,
+  driver: "John D.",
+  route: "North Campus Route",
+  documents: [],
+  status: "active",
+  createdAt: "2023-01-15T10:30:00Z",
+  updatedAt: "2023-04-10T14:22:30Z"
 };
 
 export const mockTransportSafetyContext = {

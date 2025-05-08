@@ -22,6 +22,7 @@ import Pricing from './pages/Pricing';
 import ClientManagement from './pages/ClientManagement';
 import AssessmentsPage from './pages/AssessmentsPage';
 import Benchmarking from './pages/Benchmarking';
+import NewsPage from './pages/NewsPage';
 
 // Backoffice routes
 import BackofficeDashboard from './pages/backoffice/BackofficeDashboard';
@@ -69,6 +70,7 @@ function App() {
       <Route path="/" element={<Home />} />
       <Route path="/home" element={<Home />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/news" element={<NewsPage />} />
       
       {/* Protected Routes */}
       <Route path="/dashboard" element={<Dashboard />} />

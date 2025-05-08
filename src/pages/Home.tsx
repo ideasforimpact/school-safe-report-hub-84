@@ -1,12 +1,42 @@
-
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { AlertTriangle, ShieldCheck, Users, ChartPie, CheckCircle, School, Home as HomeIcon, FileText, CreditCard, HelpCircle } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { AlertTriangle, ShieldCheck, Users, ChartPie, CheckCircle, School, Home as HomeIcon, FileText, CreditCard, HelpCircle, Newspaper } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const Home = () => {
   const navigate = useNavigate();
+
+  // Sample news and announcements data
+  const newsAndAnnouncements = [
+    {
+      id: 1,
+      title: "New Safety Guidelines for School Transport",
+      source: "National School Safety Council",
+      date: "May 3, 2025",
+      summary: "Updated guidelines on vehicle safety standards and driver requirements for school transport vehicles.",
+      category: "transport",
+      isNew: true,
+    },
+    {
+      id: 2,
+      title: "Mandatory Safety Drills Schedule Released",
+      source: "Department of Education",
+      date: "April 28, 2025",
+      summary: "Schools must conduct quarterly safety drills following the new schedule released by the Department of Education.",
+      category: "policy",
+      isNew: false,
+    },
+    {
+      id: 3,
+      title: "Fire Safety Certificate Requirements Updated",
+      source: "Fire Safety Authority",
+      date: "April 15, 2025",
+      summary: "New requirements for obtaining and renewing fire safety certificates for educational institutions.",
+      category: "compliance",
+      isNew: false,
+    }
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-indigo-100">
@@ -153,6 +183,54 @@ const Home = () => {
                 </p>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* News & Announcements Section */}
+      <section className="bg-white py-12 mb-6">
+        <div className="container mx-auto px-6">
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-3xl font-bold">
+              <Newspaper className="h-6 w-6 inline mr-2 text-primary" />
+              Safety News & Announcements
+            </h2>
+            <Button variant="outline" size="sm" onClick={() => navigate('/news')}>
+              View All
+            </Button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {newsAndAnnouncements.map(news => (
+              <Card key={news.id} className="hover:shadow-md transition-shadow">
+                <CardHeader className="pb-2">
+                  <div className="flex justify-between items-start">
+                    <CardTitle className="text-lg font-semibold">{news.title}</CardTitle>
+                    {news.isNew && (
+                      <span className="bg-primary text-white text-xs px-2 py-1 rounded-full">New</span>
+                    )}
+                  </div>
+                  <div className="text-sm text-gray-500 mt-1">{news.source} • {news.date}</div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-gray-700">{news.summary}</p>
+                  <div className="mt-4">
+                    <span className={`inline-block text-xs px-2 py-1 rounded-full ${
+                      news.category === 'transport' 
+                        ? 'bg-blue-100 text-blue-800' 
+                        : news.category === 'policy' 
+                        ? 'bg-purple-100 text-purple-800' 
+                        : 'bg-green-100 text-green-800'
+                    }`}>
+                      {news.category.charAt(0).toUpperCase() + news.category.slice(1)}
+                    </span>
+                    <Button variant="link" size="sm" className="ml-auto text-primary p-0 h-auto">
+                      Read more
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </div>
       </section>
