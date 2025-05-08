@@ -2,6 +2,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Loader } from 'lucide-react';
 import TemplateBasicInfo from './TemplateBasicInfo';
 import QuestionsSection from './QuestionsSection';
 import FormError from './FormError';
@@ -18,6 +19,7 @@ const CreateTemplateForm = () => {
     setType,
     questions,
     formError,
+    isSubmitting,
     handleAddQuestion,
     handleUpdateQuestion,
     handleRemoveQuestion,
@@ -42,18 +44,28 @@ const CreateTemplateForm = () => {
         onRemoveQuestion={handleRemoveQuestion}
       />
       
-      <FormError error={formError} />
+      {formError && <FormError error={formError} />}
       
       <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
         <Button 
           type="button" 
           variant="outline" 
           onClick={() => navigate('/assessments/templates')}
+          disabled={isSubmitting}
         >
           Cancel
         </Button>
-        <Button type="submit">
-          Save Template
+        <Button 
+          type="submit" 
+          disabled={isSubmitting}
+          className="min-w-[100px]"
+        >
+          {isSubmitting ? (
+            <>
+              <Loader className="h-4 w-4 mr-2 animate-spin" />
+              Saving...
+            </>
+          ) : 'Save Template'}
         </Button>
       </div>
     </form>
