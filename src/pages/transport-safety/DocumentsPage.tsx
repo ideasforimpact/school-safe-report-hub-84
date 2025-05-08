@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, FileText, FileUp, Plus, AlertCircle, File } from 'lucide-react';
@@ -26,8 +27,12 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ vehicleId, onClose })
       number: '',
       issuedDate: new Date().toISOString().split('T')[0],
       expiryDate: '',
-      provider: '',
-      status: 'valid'
+      issuedBy: '',
+      status: 'valid',
+      notes: null,
+      lastUpdated: new Date().toISOString(),
+      fileUrls: [],
+      provider: ''
     }
   });
 
@@ -98,7 +103,19 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ vehicleId, onClose })
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="provider">Provider/Issuer*</Label>
+        <Label htmlFor="issuedBy">Issuer*</Label>
+        <Input 
+          id="issuedBy" 
+          {...register('issuedBy', { required: "Issuer is required" })}
+          placeholder="Enter issuer name"
+        />
+        {errors.issuedBy && 
+          <p className="text-red-500 text-sm">{errors.issuedBy.message}</p>
+        }
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="provider">Provider*</Label>
         <Input 
           id="provider" 
           {...register('provider', { required: "Provider is required" })}
@@ -189,7 +206,7 @@ const DocumentPageContent = () => {
                 <div className="p-4">
                   <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                     <div>
-                      <span className="text-gray-500">Provider:</span> {document.provider}
+                      <span className="text-gray-500">Provider:</span> {document.provider || document.issuedBy}
                     </div>
                     <div>
                       <span className="text-gray-500">Verification:</span> {document.verificationStatus || 'Unverified'}

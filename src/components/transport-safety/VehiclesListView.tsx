@@ -34,6 +34,7 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
     // Check for any specific notes or properties that indicate a challan
     return vehicle.documents.some(doc => 
       doc.notes?.toLowerCase().includes('challan') || 
+      doc.issuedBy?.toLowerCase().includes('police') ||
       doc.provider?.toLowerCase().includes('police')
     );
   };

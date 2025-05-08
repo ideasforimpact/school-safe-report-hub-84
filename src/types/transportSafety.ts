@@ -12,6 +12,9 @@ export interface VehicleDocument {
   notes: string | null;
   lastUpdated: string;
   fileUrls: string[];
+  // Add missing fields that are being used in the code
+  provider?: string;
+  verificationStatus?: string;
 }
 
 export interface Vehicle {
@@ -23,9 +26,9 @@ export interface Vehicle {
   year: number;
   driver: string;
   route: string;
-  capacity?: number; // Added capacity as optional property
+  capacity?: number;
   documents: VehicleDocument[];
-  status: string;
+  status: 'active' | 'maintenance' | 'inactive';
   createdAt: string;
   updatedAt: string;
 }

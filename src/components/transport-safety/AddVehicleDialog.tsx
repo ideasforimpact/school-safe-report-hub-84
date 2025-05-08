@@ -14,7 +14,7 @@ interface AddVehicleDialogProps {
   onClose: () => void;
 }
 
-type VehicleFormData = Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt' | 'documents' | 'driver' | 'route'>;
+type VehicleFormData = Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt' | 'documents'>;
 
 const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose }) => {
   const { addVehicle } = useTransportSafety();
@@ -25,7 +25,10 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose }) =>
       make: '',
       model: '',
       year: new Date().getFullYear(),
-      status: 'active'
+      status: 'active',
+      driver: '',
+      route: '',
+      capacity: undefined
     }
   });
 
@@ -131,6 +134,47 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose }) =>
               />
               {errors.year && 
                 <p className="text-red-500 text-sm">{errors.year.message}</p>
+              }
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="driver">Driver*</Label>
+                <Input 
+                  id="driver" 
+                  {...register('driver', { required: "Driver name is required" })}
+                  placeholder="e.g., John Doe"
+                />
+                {errors.driver && 
+                  <p className="text-red-500 text-sm">{errors.driver.message}</p>
+                }
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="route">Route*</Label>
+                <Input 
+                  id="route" 
+                  {...register('route', { required: "Route is required" })}
+                  placeholder="e.g., Main Campus"
+                />
+                {errors.route && 
+                  <p className="text-red-500 text-sm">{errors.route.message}</p>
+                }
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="capacity">Capacity (optional)</Label>
+              <Input 
+                id="capacity" 
+                type="number"
+                {...register('capacity', { 
+                  min: { value: 1, message: "Capacity must be at least 1" }
+                })}
+                placeholder="e.g., 45"
+              />
+              {errors.capacity && 
+                <p className="text-red-500 text-sm">{errors.capacity.message}</p>
               }
             </div>
           </div>
