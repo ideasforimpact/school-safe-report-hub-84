@@ -10,21 +10,24 @@ import { EmployeeVerificationProvider } from './contexts/employee-verification/E
 import { FeedbackProvider } from './contexts/feedback/FeedbackContext'
 import { GrievanceProvider } from './contexts/grievances/GrievanceContext'
 import { TransportSafetyProvider } from './contexts/transport-safety/TransportSafetyContext'
+import { FacilityProvider } from './contexts/FacilityContext'
 
 createRoot(document.getElementById("root")!).render(
   <BrowserRouter>
     <ClientProvider>
       <AuthProvider>
         <IncidentProvider>
-          <EmployeeVerificationProvider>
-            <FeedbackProvider>
-              <GrievanceProvider>
-                <TransportSafetyProvider>
-                  <App />
-                </TransportSafetyProvider>
-              </GrievanceProvider>
-            </FeedbackProvider>
-          </EmployeeVerificationProvider>
+          <FacilityProvider>
+            <EmployeeVerificationProvider>
+              <FeedbackProvider>
+                <GrievanceProvider>
+                  <TransportSafetyProvider>
+                    <App />
+                  </TransportSafetyProvider>
+                </GrievanceProvider>
+              </FeedbackProvider>
+            </EmployeeVerificationProvider>
+          </FacilityProvider>
         </IncidentProvider>
       </AuthProvider>
     </ClientProvider>
