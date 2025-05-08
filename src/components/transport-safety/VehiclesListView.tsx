@@ -31,7 +31,11 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
   };
 
   const hasChallan = (vehicle: Vehicle) => {
-    return vehicle.documents.some(doc => doc.type === 'challan');
+    // Check for any specific notes or properties that indicate a challan
+    return vehicle.documents.some(doc => 
+      doc.notes?.toLowerCase().includes('challan') || 
+      doc.provider?.toLowerCase().includes('police')
+    );
   };
 
   const getDocumentIcon = (status: string) => {
@@ -70,7 +74,7 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
               <TableHead className="w-[160px] text-left">Registration</TableHead>
               <TableHead className="w-[100px] text-left">Status</TableHead>
               <TableHead className="w-[180px] text-left">Documents</TableHead>
-              <TableHead className="w-[80px] text-left">Actions</TableHead>
+              <TableHead className="w-[60px] text-left">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
