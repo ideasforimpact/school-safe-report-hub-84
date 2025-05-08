@@ -10,7 +10,12 @@ import { useAssessment } from '@/contexts/assessment/AssessmentContext';
 import { toast } from 'sonner';
 import { AssessmentQuestion } from '@/types/assessment';
 
-const CreateTemplateForm = () => {
+interface CreateTemplateFormProps {
+  templateId?: string;
+  onCancel?: () => void;
+}
+
+const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({ templateId, onCancel }) => {
   const navigate = useNavigate();
   const { createTemplate, addQuestion } = useAssessment();
   
@@ -100,7 +105,13 @@ const CreateTemplateForm = () => {
         }
         
         toast.success('Template created successfully');
-        navigate('/assessments/templates');
+        
+        // Reset form if onCancel is provided, otherwise navigate
+        if (onCancel) {
+          onCancel();
+        } else {
+          navigate('/assessments/templates');
+        }
       } else {
         throw new Error('Failed to create template: No template ID returned');
       }
@@ -110,6 +121,14 @@ const CreateTemplateForm = () => {
       toast.error('Failed to create template');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleCancel = () => {
+    if (onCancel) {
+      onCancel();
+    } else {
+      navigate('/assessments/templates');
     }
   };
 
@@ -145,7 +164,7 @@ const CreateTemplateForm = () => {
           <Button 
             type="button" 
             variant="outline" 
-            onClick={() => navigate('/assessments/templates')}
+            onClick={handleCancel}
             disabled={isSubmitting}
           >
             Cancel

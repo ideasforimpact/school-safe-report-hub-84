@@ -1,16 +1,21 @@
 
 import React from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 
-const AssessmentsHeader: React.FC = () => {
-  const navigate = useNavigate();
+interface AssessmentsHeaderProps {
+  onCreateTemplate?: () => void;
+}
+
+const AssessmentsHeader: React.FC<AssessmentsHeaderProps> = ({ onCreateTemplate }) => {
   const location = useLocation();
 
   const handleCreateTemplate = () => {
-    console.log("Create template button clicked, navigating to /assessments/templates/new");
-    navigate('/assessments/templates/new');
+    console.log("Create template button clicked");
+    if (onCreateTemplate) {
+      onCreateTemplate();
+    }
   };
 
   return (
