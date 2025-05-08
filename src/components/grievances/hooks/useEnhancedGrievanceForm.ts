@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGrievance } from '@/contexts/grievances/GrievanceContext';
@@ -10,14 +9,23 @@ import { FormResponse } from '@/contexts/grievances/types';
 
 // Form schema for validation
 export const formSchema = z.object({
-  name: z.string().optional(), // Changed from required to optional
+  name: z.string().optional(),
   contactInfo: z.string().optional(),
-  heading: z.string().optional(), // Changed from required to optional
+  heading: z.string().optional(),
   description: z.string().min(10, {
     message: "Description must be at least 10 characters.",
   }),
   resolution: z.string().optional(),
   preferContact: z.enum(["Yes", "No"]),
+}).refine(data => {
+  // If preferContact is Yes, contactInfo is required
+  if (data.preferContact === "Yes" && (!data.contactInfo || data.contactInfo.trim() === '')) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Contact information is required when you select 'Yes' for follow-up",
+  path: ["contactInfo"],
 });
 
 export type EnhancedGrievanceFormValues = z.infer<typeof formSchema>;
