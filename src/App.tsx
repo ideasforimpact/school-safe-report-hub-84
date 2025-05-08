@@ -92,8 +92,8 @@ function App() {
           {/* Employee Verification Routes */}
           <Route path="/employee-verification" element={<EmployeeVerificationPage />} />
           <Route path="/employee-verification/dashboard" element={<VerificationDashboardPage />} />
-          <Route path="/employee-verification/employee/:employeeId" element={<EmployeeDetailPage />} />
-          <Route path="/employee-verification/upload/:employeeId" element={<UploadDocumentPage />} />
+          <Route path="/employee-verification/:employeeId" element={<EmployeeDetailPage />} />
+          <Route path="/employee-verification/:employeeId/upload-document" element={<UploadDocumentPage />} />
           
           {/* Transport Safety Routes */}
           <Route path="/transport-safety" element={<TransportSafetyPage />} />
