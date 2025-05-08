@@ -5,9 +5,17 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { GrievanceProvider } from '@/contexts/grievances/GrievanceContext';
 import PublicLayout from '@/components/layout/PublicLayout';
 import EnhancedGrievanceForm from '@/components/grievances/EnhancedGrievanceForm';
+import ShareOptions from '@/components/grievances/ShareOptions';
+import { useNavigate } from 'react-router-dom';
 
 const GrievanceSubmitPage = () => {
+  const navigate = useNavigate();
   const schoolName = "Safe School District"; // School name can be configured here or passed as a prop
+  const formUrl = window.location.href;
+  
+  const handleBack = () => {
+    navigate('/grievances');
+  };
   
   return (
     <PublicLayout>
@@ -16,6 +24,10 @@ const GrievanceSubmitPage = () => {
           <div className="flex items-center justify-center mb-6">
             <MessageSquare className="h-8 w-8 text-primary mr-2" />
             <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary-500 bg-clip-text text-transparent">{schoolName} - Grievance Form</h1>
+          </div>
+          
+          <div className="mb-6">
+            <ShareOptions formUrl={formUrl} onBack={handleBack} />
           </div>
           
           <Card className="shadow-md border-t-4 border-t-primary transition-all hover:shadow-lg">

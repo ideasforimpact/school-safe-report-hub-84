@@ -4,17 +4,29 @@ import { MessageSquare } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { GrievanceProvider } from '@/contexts/grievances/GrievanceContext';
 import GrievanceSubmissionForm from '@/components/grievances/GrievanceSubmissionForm';
+import ShareOptions from '@/components/grievances/ShareOptions';
+import { useNavigate } from 'react-router-dom';
 
 const PublicGrievanceForm = () => {
+  const navigate = useNavigate();
   const schoolName = "Safe School District"; // School name can be configured here or passed as a prop
+  const formUrl = window.location.href;
+  
+  const handleBack = () => {
+    navigate('/grievances');
+  };
   
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
       <GrievanceProvider>
         <div className="max-w-3xl mx-auto">
-          <div className="flex items-center justify-center mb-8">
+          <div className="flex items-center justify-center mb-4">
             <MessageSquare className="h-8 w-8 text-primary mr-2" />
             <h1 className="text-2xl font-bold">{schoolName} - Grievance Form</h1>
+          </div>
+          
+          <div className="mb-6">
+            <ShareOptions formUrl={formUrl} onBack={handleBack} />
           </div>
           
           <Card>

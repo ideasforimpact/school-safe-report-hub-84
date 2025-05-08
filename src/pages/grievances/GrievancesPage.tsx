@@ -5,10 +5,12 @@ import Layout from '@/components/layout/Layout';
 import GrievancesList from '@/components/grievances/GrievancesList';
 import { GrievanceProvider } from '@/contexts/grievances/GrievanceContext';
 import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
 
 const GrievancesPage = () => {
+  const navigate = useNavigate();
+  
   const shareFormLink = () => {
     const shareUrl = `${window.location.origin}/grievances/form`;
     
@@ -34,6 +36,10 @@ const GrievancesPage = () => {
     });
   };
 
+  const viewForm = () => {
+    navigate('/grievances/form');
+  };
+
   return (
     <Layout>
       <GrievanceProvider>
@@ -47,9 +53,9 @@ const GrievancesPage = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button onClick={shareFormLink} variant="outline" className="flex items-center gap-2">
+              <Button onClick={viewForm} variant="default" className="flex items-center gap-2">
                 <Share2 className="h-4 w-4" />
-                <span>Share Form</span>
+                <span>View & Share Form</span>
               </Button>
               <Button asChild variant="outline" className="flex items-center gap-2">
                 <Link to="/grievances/dashboard">
