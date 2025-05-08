@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Edit, FileText, AlertCircle, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Edit, FileText, AlertCircle, ShieldCheck, Calendar } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,11 +11,13 @@ import VehicleTypeIcon from '@/components/transport-safety/VehicleTypeIcon';
 import VehicleStatusBadge from '@/components/transport-safety/VehicleStatusBadge';
 import DocumentStatusBadge from '@/components/transport-safety/DocumentStatusBadge';
 import { toast } from '@/hooks/use-toast';
+import { formatDate } from '@/utils/dateUtils';
 
 const VehicleDetailContent = () => {
   const { vehicleId } = useParams<{ vehicleId: string }>();
   const { getVehicle, verifyDocument } = useTransportSafety();
   const [isChecking, setIsChecking] = useState(false);
+  const [lastCheckTime, setLastCheckTime] = useState<Date | null>(null);
   
   const vehicle = getVehicle(vehicleId!);
 
@@ -52,6 +54,8 @@ const VehicleDetailContent = () => {
         }
       });
       
+      const now = new Date();
+      setLastCheckTime(now);
       setIsChecking(false);
       toast({
         title: "Safety Check Complete",
@@ -120,6 +124,13 @@ const VehicleDetailContent = () => {
                   {isChecking ? 'Running Safety Check...' : 'Run Safety Check'}
                 </Button>
               </div>
+              
+              {lastCheckTime && (
+                <div className="mt-3 flex items-center text-sm text-gray-500">
+                  <Calendar className="h-3.5 w-3.5 mr-1.5" />
+                  <span>Last updated: {formatDate(lastCheckTime)} at {lastCheckTime.toLocaleTimeString()}</span>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
