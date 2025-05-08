@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 
 export function useCreateTemplate() {
   const navigate = useNavigate();
-  const { createTemplate } = useAssessment();
+  const { createTemplate, addQuestion } = useAssessment();
   
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -80,13 +80,12 @@ export function useCreateTemplate() {
       console.log('Template created with ID:', templateId);
       
       // Add questions to template
-      for (const question of questions) {
+      for (let i = 0; i < questions.length; i++) {
         try {
-          const questionData = { ...question };
-          // Use the addQuestion method from the context
-          // This will be handled in the context directly now
+          const questionId = addQuestion(templateId, questions[i]);
+          console.log(`Added question ${i + 1} with ID:`, questionId);
         } catch (err) {
-          console.error(`Failed to add question:`, err);
+          console.error(`Failed to add question ${i + 1}:`, err);
         }
       }
       
