@@ -1,6 +1,7 @@
+
 import { Vehicle } from '@/types/transportSafety';
 
-export const mockVehicle = {
+export const mockVehicle: Vehicle = {
   id: "v1",
   registrationNumber: "KA-01-AA-1234",
   type: "bus",

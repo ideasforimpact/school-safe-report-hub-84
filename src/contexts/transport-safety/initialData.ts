@@ -1,3 +1,4 @@
+
 export const vehiclesData = [
   {
     id: "v1",
@@ -172,3 +173,6 @@ export const vehiclesData = [
     updatedAt: "2023-07-01T09:10:40Z"
   }
 ];
+
+// Export vehiclesData as initialVehicles to fix the import error
+export const initialVehicles = vehiclesData;
