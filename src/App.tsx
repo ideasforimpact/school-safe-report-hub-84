@@ -45,6 +45,12 @@ import GrievancesDashboardPage from './pages/grievances/GrievancesDashboardPage'
 import ThankYouPage from './pages/grievances/ThankYouPage';
 import GrievanceSubmitPage from './pages/grievances/GrievanceSubmitPage';
 
+// Transport Safety routes
+import TransportSafetyPage from './pages/transport-safety/TransportSafetyPage';
+import VehicleDetailPage from './pages/transport-safety/VehicleDetailPage';
+import DocumentsPage from './pages/transport-safety/DocumentsPage';
+import DashboardPage from './pages/transport-safety/DashboardPage';
+
 // Configuration pages
 import EducationalConfiguration from './pages/EducationalConfiguration';
 import IncidentConfiguration from './pages/IncidentConfiguration';
@@ -106,6 +112,12 @@ function App() {
       <Route path="/grievances/submit" element={<GrievanceSubmitPage />} />
       <Route path="/grievances/dashboard" element={<GrievancesDashboardPage />} />
       <Route path="/grievances/thank-you" element={<ThankYouPage />} />
+      
+      {/* Transport Safety Routes */}
+      <Route path="/transport-safety" element={<TransportSafetyPage />} />
+      <Route path="/transport-safety/:vehicleId" element={<VehicleDetailPage />} />
+      <Route path="/transport-safety/:vehicleId/documents" element={<DocumentsPage />} />
+      <Route path="/transport-safety/dashboard" element={<DashboardPage />} />
       
       {/* Public Routes */}
       <Route path="/support" element={<Support />} />

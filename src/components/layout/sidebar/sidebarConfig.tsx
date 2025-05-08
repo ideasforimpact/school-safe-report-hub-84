@@ -8,7 +8,8 @@ import {
   Settings,
   ClipboardList,
   FileCheck,
-  MessageSquare
+  MessageSquare,
+  Bus
 } from 'lucide-react';
 import { ModulePermissions } from '@/contexts/AuthContext';
 
@@ -42,6 +43,12 @@ export const getSaasOwnerItems = () => [
     icon: MessageSquare,
     label: 'Grievances',
     path: '/grievances',
+    allowed: true,
+  },
+  {
+    icon: Bus,
+    label: 'Transport\nSafety',
+    path: '/transport-safety',
     allowed: true,
   },
   {
@@ -88,6 +95,12 @@ export const getClientItems = (permissions: ModulePermissions) => [
     icon: MessageSquare,
     label: 'Grievances',
     path: '/grievances',
+    allowed: true,
+  },
+  {
+    icon: Bus,
+    label: 'Transport\nSafety',
+    path: '/transport-safety',
     allowed: true,
   },
 ];

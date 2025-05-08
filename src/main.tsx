@@ -9,6 +9,7 @@ import { IncidentProvider } from './contexts/incident/IncidentContext'
 import { EmployeeVerificationProvider } from './contexts/employee-verification/EmployeeVerificationContext'
 import { FeedbackProvider } from './contexts/feedback/FeedbackContext'
 import { GrievanceProvider } from './contexts/grievances/GrievanceContext'
+import { TransportSafetyProvider } from './contexts/transport-safety/TransportSafetyContext'
 
 createRoot(document.getElementById("root")!).render(
   <BrowserRouter>
@@ -18,7 +19,9 @@ createRoot(document.getElementById("root")!).render(
           <EmployeeVerificationProvider>
             <FeedbackProvider>
               <GrievanceProvider>
-                <App />
+                <TransportSafetyProvider>
+                  <App />
+                </TransportSafetyProvider>
               </GrievanceProvider>
             </FeedbackProvider>
           </EmployeeVerificationProvider>
