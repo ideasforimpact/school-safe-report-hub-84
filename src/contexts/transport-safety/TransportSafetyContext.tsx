@@ -95,6 +95,11 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
       }
       return vehicle;
     }));
+    
+    toast({
+      title: "Document Updated",
+      description: `${updates.type ? updates.type.charAt(0).toUpperCase() + updates.type.slice(1) : 'Document'} has been updated successfully`
+    });
   };
 
   const deleteDocument = (vehicleId: string, documentId: string) => {

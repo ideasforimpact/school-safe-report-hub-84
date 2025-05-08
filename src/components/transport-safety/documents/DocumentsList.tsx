@@ -1,14 +1,25 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { File } from 'lucide-react';
 import { VehicleDocument } from '@/types/transportSafety';
 import DocumentCard from './DocumentCard';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import EditDocumentForm from './EditDocumentForm';
 
 interface DocumentsListProps {
   documents: VehicleDocument[];
+  vehicleId: string;
 }
 
-const DocumentsList: React.FC<DocumentsListProps> = ({ documents }) => {
+const DocumentsList: React.FC<DocumentsListProps> = ({ documents, vehicleId }) => {
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [documentToEdit, setDocumentToEdit] = useState<VehicleDocument | null>(null);
+
+  const handleEditDocument = (document: VehicleDocument) => {
+    setDocumentToEdit(document);
+    setEditDialogOpen(true);
+  };
+
   if (documents.length === 0) {
     return (
       <div className="text-center py-12 bg-gray-50 rounded-lg">
@@ -22,11 +33,36 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ documents }) => {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {documents.map(document => (
-        <DocumentCard key={document.id} document={document} />
-      ))}
-    </div>
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {documents.map(document => (
+          <DocumentCard key={document.id} document={document} onEdit={handleEditDocument} />
+        ))}
+      </div>
+
+      <Dialog 
+        open={editDialogOpen} 
+        onOpenChange={(isOpen) => { 
+          if (!isOpen) {
+            setEditDialogOpen(false);
+            setDocumentToEdit(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Document</DialogTitle>
+          </DialogHeader>
+          {documentToEdit && (
+            <EditDocumentForm 
+              vehicleId={vehicleId} 
+              document={documentToEdit} 
+              onClose={() => setEditDialogOpen(false)} 
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 

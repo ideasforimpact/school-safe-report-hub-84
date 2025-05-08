@@ -46,7 +46,7 @@ const DocumentsPageContent: React.FC = () => {
       <h1 className="text-2xl font-bold mb-2">Documents for {make} {model}</h1>
       <p className="text-gray-500 mb-6">Registration Number: {registrationNumber}</p>
 
-      <DocumentsList documents={documents} />
+      <DocumentsList documents={documents} vehicleId={vehicleId!} />
 
       <Dialog open={showAddDocument} onOpenChange={(isOpen) => { if (!isOpen) setShowAddDocument(false); }}>
         <DialogContent className="max-w-md">

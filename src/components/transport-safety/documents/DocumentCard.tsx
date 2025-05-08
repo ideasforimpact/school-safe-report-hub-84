@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { FileText, FileUp } from 'lucide-react';
+import { FileText, FileUp, Pencil } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { VehicleDocument } from '@/types/transportSafety';
@@ -8,9 +8,10 @@ import DocumentStatusBadge from '@/components/transport-safety/DocumentStatusBad
 
 interface DocumentCardProps {
   document: VehicleDocument;
+  onEdit: (document: VehicleDocument) => void;
 }
 
-const DocumentCard: React.FC<DocumentCardProps> = ({ document }) => {
+const DocumentCard: React.FC<DocumentCardProps> = ({ document, onEdit }) => {
   return (
     <Card className="overflow-hidden">
       <CardContent className="p-0">
@@ -42,7 +43,11 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document }) => {
             </div>
           </div>
 
-          <div className="mt-4 flex justify-end">
+          <div className="mt-4 flex justify-end space-x-2">
+            <Button variant="outline" size="sm" className="flex items-center" onClick={() => onEdit(document)}>
+              <Pencil className="h-4 w-4 mr-2" />
+              Edit
+            </Button>
             <Button variant="outline" size="sm" className="flex items-center">
               <FileUp className="h-4 w-4 mr-2" />
               Upload Copy
