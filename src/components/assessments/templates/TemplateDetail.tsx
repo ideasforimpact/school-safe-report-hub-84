@@ -8,9 +8,10 @@ import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import { Edit, Users, Copy } from 'lucide-react';
 import DuplicateTemplateDialog from './DuplicateTemplateDialog';
+import { toast } from 'sonner';
 
 const TemplateDetail = () => {
-  const { templateId } = useParams();
+  const { templateId } = useParams<{ templateId: string }>();
   const navigate = useNavigate();
   const { getTemplateById, deleteTemplate } = useAssessment();
   
@@ -18,9 +19,18 @@ const TemplateDetail = () => {
   
   useEffect(() => {
     if (templateId) {
-      setTemplate(getTemplateById(templateId));
+      const foundTemplate = getTemplateById(templateId);
+      setTemplate(foundTemplate);
+      
+      if (!foundTemplate) {
+        toast.error('Template not found');
+        navigate('/assessments/templates');
+      }
+    } else {
+      toast.error('No template selected');
+      navigate('/assessments/templates');
     }
-  }, [templateId, getTemplateById]);
+  }, [templateId, getTemplateById, navigate]);
   
   if (!template) {
     return (
@@ -37,6 +47,7 @@ const TemplateDetail = () => {
   const handleDelete = () => {
     if (confirm('Are you sure you want to delete this template?')) {
       deleteTemplate(template.id);
+      toast.success('Template deleted successfully');
       navigate('/assessments/templates');
     }
   };

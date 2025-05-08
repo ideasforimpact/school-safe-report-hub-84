@@ -9,11 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertTriangle, Users, Calendar } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
-
-interface User {
-  id: string;
-  name: string;
-}
+import { toast } from 'sonner';
 
 const AssignTemplateForm = () => {
   const navigate = useNavigate();
@@ -41,9 +37,11 @@ const AssignTemplateForm = () => {
       setTemplate(foundTemplate);
       
       if (!foundTemplate) {
+        toast.error('Template not found');
         navigate('/assessments/templates');
       }
     } else {
+      toast.error('No template selected');
       navigate('/assessments/templates');
     }
   }, [templateId, getTemplateById, navigate]);
@@ -89,6 +87,9 @@ const AssignTemplateForm = () => {
         dueDate: new Date(dueDate).toISOString()
       });
     });
+    
+    // Show success message
+    toast.success(`Assessment assigned to ${selectedUsers.length} user(s)`);
     
     // Navigate to assignments list
     navigate('/assessments/assignments');
@@ -186,5 +187,10 @@ const AssignTemplateForm = () => {
     </form>
   );
 };
+
+interface User {
+  id: string;
+  name: string;
+}
 
 export default AssignTemplateForm;
