@@ -44,6 +44,15 @@ const GrievancesList = () => {
     setSelectedSubmission(submissionId);
   };
 
+  // Helper function to capitalize the first letter of status
+  const capitalizeStatus = (status: string): string => {
+    // Replace underscores with spaces and capitalize each word
+    return status
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
   return (
     <div>
       {/* Filters */}
@@ -107,7 +116,7 @@ const GrievancesList = () => {
                   </TableCell>
                   <TableCell>
                     <Badge variant={getStatusBadgeVariant(submission.status) as any}>
-                      {submission.status.replace('_', ' ')}
+                      {capitalizeStatus(submission.status)}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">

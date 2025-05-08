@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import {
   Dialog,
@@ -45,11 +44,19 @@ const GrievanceDetailDialog: React.FC<GrievanceDetailDialogProps> = ({ submissio
     }
   };
 
+  // Helper function to capitalize the first letter of each word in status
+  const capitalizeStatus = (status: string): string => {
+    return status
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
   const handleUpdateStatus = () => {
     updateSubmissionStatus(submissionId, status);
     toast({
       title: "Status Updated",
-      description: `Grievance status updated to ${status.replace('_', ' ')}`
+      description: `Grievance status updated to ${capitalizeStatus(status)}`
     });
   };
 
@@ -76,7 +83,7 @@ const GrievanceDetailDialog: React.FC<GrievanceDetailDialogProps> = ({ submissio
           <DialogTitle className="flex justify-between items-center">
             <span>Grievance Details</span>
             <Badge variant={getStatusBadgeVariant(submission.status) as any}>
-              {submission.status.replace('_', ' ')}
+              {capitalizeStatus(submission.status)}
             </Badge>
           </DialogTitle>
         </DialogHeader>
