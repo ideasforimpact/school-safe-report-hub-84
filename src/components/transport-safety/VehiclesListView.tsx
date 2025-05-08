@@ -91,7 +91,7 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                       <VehicleTypeIcon type={vehicle.type} />
                     </div>
                   </TableCell>
-                  <TableCell className="align text to the left">
+                  <TableCell>
                     <div className="flex items-center">
                       <div>
                         <div className="font-medium">{vehicle.make} {vehicle.model}</div>
