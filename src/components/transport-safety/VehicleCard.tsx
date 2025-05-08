@@ -15,7 +15,7 @@ interface VehicleCardProps {
 }
 
 const VehicleCard: React.FC<VehicleCardProps> = ({ vehicle }) => {
-  const { id, registrationNumber, make, model, type, status, documents, driver, route } = vehicle;
+  const { id, registrationNumber, make, model, type, status, documents } = vehicle;
 
   const hasExpiredDocs = documents.some(doc => doc.status === 'expired');
   const hasExpiringDocs = !hasExpiredDocs && documents.some(doc => doc.status === 'expiring_soon');
@@ -38,14 +38,6 @@ const VehicleCard: React.FC<VehicleCardProps> = ({ vehicle }) => {
               <VehicleStatusBadge status={status} />
             </div>
             <p className="text-gray-700 font-medium mt-1">{registrationNumber}</p>
-            <div className="grid grid-cols-2 gap-2 mt-2 text-sm">
-              <div>
-                <span className="text-gray-500">Driver:</span> {driver || 'Not assigned'}
-              </div>
-              <div>
-                <span className="text-gray-500">Route:</span> {route || 'Not assigned'}
-              </div>
-            </div>
           </div>
         </div>
         

@@ -14,7 +14,7 @@ interface AddVehicleDialogProps {
   onClose: () => void;
 }
 
-type VehicleFormData = Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt' | 'documents'>;
+type VehicleFormData = Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt' | 'documents' | 'driver' | 'route'>;
 
 const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose }) => {
   const { addVehicle } = useTransportSafety();
@@ -26,8 +26,6 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose }) =>
       model: '',
       year: new Date().getFullYear(),
       capacity: 0,
-      driver: '',
-      route: '',
       status: 'active'
     }
   });
@@ -154,24 +152,6 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose }) =>
                   <p className="text-red-500 text-sm">{errors.capacity.message}</p>
                 }
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="driver">Driver (Optional)</Label>
-              <Input 
-                id="driver" 
-                {...register('driver')}
-                placeholder="e.g., John Smith"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="route">Route (Optional)</Label>
-              <Input 
-                id="route" 
-                {...register('route')}
-                placeholder="e.g., North Campus Route"
-              />
             </div>
           </div>
 

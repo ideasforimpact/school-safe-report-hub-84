@@ -46,7 +46,6 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({ vehicles }) => {
               <TableHead className="w-[80px]">Type</TableHead>
               <TableHead>Vehicle Details</TableHead>
               <TableHead className="w-[140px]">Status</TableHead>
-              <TableHead>Assignment</TableHead>
               <TableHead>Documents</TableHead>
               <TableHead className="w-[180px] text-right">Actions</TableHead>
             </TableRow>
@@ -73,12 +72,6 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({ vehicles }) => {
                 </TableCell>
                 <TableCell>
                   <VehicleStatusBadge status={vehicle.status} />
-                </TableCell>
-                <TableCell>
-                  <div className="text-sm">
-                    <div>{vehicle.driver || "—"}</div>
-                    <div className="text-xs text-gray-500">{vehicle.route || "No route assigned"}</div>
-                  </div>
                 </TableCell>
                 <TableCell>
                   {getDocumentStatusIndicator(vehicle)}

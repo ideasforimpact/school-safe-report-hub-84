@@ -21,8 +21,7 @@ const VehiclesList: React.FC = () => {
   const filteredVehicles = vehicles.filter(vehicle => {
     const matchesSearch = searchQuery 
       ? vehicle.registrationNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        `${vehicle.make} ${vehicle.model}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (vehicle.driver && vehicle.driver.toLowerCase().includes(searchQuery.toLowerCase()))
+        `${vehicle.make} ${vehicle.model}`.toLowerCase().includes(searchQuery.toLowerCase())
       : true;
     
     const matchesStatus = statusFilter === 'all' ? true : vehicle.status === statusFilter;
@@ -42,7 +41,7 @@ const VehiclesList: React.FC = () => {
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
             <Input
-              placeholder="Search vehicles by registration, model, or driver..."
+              placeholder="Search vehicles by registration or model..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-8"
