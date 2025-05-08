@@ -1,13 +1,16 @@
 
-import React from 'react';
-import { Bus, BarChart2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Bus, BarChart2, Plus } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { TransportSafetyProvider } from '@/contexts/transport-safety/TransportSafetyContext';
 import VehiclesList from '@/components/transport-safety/VehiclesList';
+import AddVehicleDialog from '@/components/transport-safety/AddVehicleDialog';
 
 const TransportSafetyPage = () => {
+  const [showAddVehicle, setShowAddVehicle] = useState(false);
+  
   return (
     <Layout>
       <TransportSafetyProvider>
@@ -21,6 +24,13 @@ const TransportSafetyPage = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                onClick={() => setShowAddVehicle(true)}
+                className="flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Add Vehicle</span>
+              </Button>
               <Button asChild variant="outline" className="flex items-center gap-2">
                 <Link to="/transport-safety/dashboard">
                   <BarChart2 className="h-4 w-4" />
@@ -32,9 +42,15 @@ const TransportSafetyPage = () => {
 
           <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
             <h2 className="text-lg font-medium mb-4 text-left">Vehicle Fleet</h2>
-            <VehiclesList />
+            <VehiclesList showAddVehicle={showAddVehicle} setShowAddVehicle={setShowAddVehicle} />
           </div>
         </div>
+        
+        {/* Add Vehicle Dialog */}
+        <AddVehicleDialog 
+          open={showAddVehicle} 
+          onClose={() => setShowAddVehicle(false)} 
+        />
       </TransportSafetyProvider>
     </Layout>
   );

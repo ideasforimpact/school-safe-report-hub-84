@@ -1,24 +1,26 @@
-
 import React, { useState } from 'react';
 import { useTransportSafety } from '@/contexts/transport-safety/TransportSafetyContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Search, Filter, Bus, FileCheck, FileX, FileWarning, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search, Filter, Bus, FileCheck, FileX, FileWarning, ChevronDown, ChevronUp } from 'lucide-react';
 import { Vehicle } from '@/types/transportSafety';
 import VehiclesListView from './VehiclesListView';
-import AddVehicleDialog from './AddVehicleDialog';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 
-const VehiclesList: React.FC = () => {
+interface VehiclesListProps {
+  showAddVehicle: boolean;
+  setShowAddVehicle: (show: boolean) => void;
+}
+
+const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddVehicle }) => {
   const { vehicles } = useTransportSafety();
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
-  const [showAddVehicle, setShowAddVehicle] = useState(false);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   
   // Document filters
@@ -149,11 +151,6 @@ const VehiclesList: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
-              
-              <Button onClick={() => setShowAddVehicle(true)} className="ml-auto">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Vehicle
-              </Button>
             </div>
           </div>
 
@@ -279,12 +276,6 @@ const VehiclesList: React.FC = () => {
       ) : (
         <VehiclesListView vehicles={filteredVehicles} />
       )}
-
-      {/* Add Vehicle Dialog */}
-      <AddVehicleDialog 
-        open={showAddVehicle} 
-        onClose={() => setShowAddVehicle(false)} 
-      />
     </div>
   );
 };
