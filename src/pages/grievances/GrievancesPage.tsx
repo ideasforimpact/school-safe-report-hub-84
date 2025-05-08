@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { MessageSquare, BarChart2, Share2 } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
@@ -7,18 +6,15 @@ import { GrievanceProvider } from '@/contexts/grievances/GrievanceContext';
 import { Button } from '@/components/ui/button';
 import { Link, useNavigate } from 'react-router-dom';
 import { toast } from '@/hooks/use-toast';
-
 const GrievancesPage = () => {
   const navigate = useNavigate();
-  
   const shareFormLink = () => {
     const shareUrl = `${window.location.origin}/grievances/form`;
-    
     if (navigator.share) {
       navigator.share({
         title: 'Grievance Submission Form',
         text: 'Submit your grievance using this form',
-        url: shareUrl,
+        url: shareUrl
       }).catch(error => {
         copyToClipboard(shareUrl);
       });
@@ -26,7 +22,6 @@ const GrievancesPage = () => {
       copyToClipboard(shareUrl);
     }
   };
-  
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text).then(() => {
       toast({
@@ -35,20 +30,17 @@ const GrievancesPage = () => {
       });
     });
   };
-
   const viewForm = () => {
     navigate('/grievances/form');
   };
-
-  return (
-    <Layout>
+  return <Layout>
       <GrievanceProvider>
         <div className="container mx-auto py-6 max-w-7xl">
           <div className="flex justify-between items-center mb-8 bg-gradient-to-r from-blue-50 to-transparent p-4 rounded-lg border border-blue-100">
             <div className="flex items-center space-x-4">
               <MessageSquare className="h-8 w-8 text-primary" />
               <div>
-                <h1 className="text-2xl font-bold">Grievances</h1>
+                <h1 className="text-2xl font-bold text-left">Grievances</h1>
                 <p className="text-gray-500 text-sm">Manage and respond to grievances from students and staff</p>
               </div>
             </div>
@@ -72,8 +64,6 @@ const GrievancesPage = () => {
           </div>
         </div>
       </GrievanceProvider>
-    </Layout>
-  );
+    </Layout>;
 };
-
 export default GrievancesPage;
