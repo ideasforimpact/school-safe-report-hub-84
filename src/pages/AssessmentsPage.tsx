@@ -3,7 +3,6 @@ import React from 'react';
 import { Route, Routes, useLocation } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
 import { TabsContent } from '@/components/ui/tabs';
-import { AssessmentProvider } from '@/contexts/assessment/AssessmentContext';
 import AssessmentResponseForm from '@/components/assessments/responses/AssessmentResponseForm';
 import AssessmentsHeader from '@/components/assessments/header/AssessmentsHeader';
 import AssessmentTabs from '@/components/assessments/tabs/AssessmentTabs';
@@ -25,48 +24,44 @@ const AssessmentsPage = () => {
   if (isResponseRoute) {
     return (
       <Layout>
-        <AssessmentProvider>
-          <AssessmentResponseForm />
-        </AssessmentProvider>
+        <AssessmentResponseForm />
       </Layout>
     );
   }
 
   return (
     <Layout>
-      <AssessmentProvider>
-        <div className="space-y-6 md:space-y-8 w-full">
-          {/* Header Section */}
-          <AssessmentsHeader />
+      <div className="space-y-6 md:space-y-8 w-full">
+        {/* Header Section */}
+        <AssessmentsHeader />
+        
+        {/* Main Tabs Navigation */}
+        <AssessmentTabs defaultValue={isCreateTemplateRoute ? "templates" : "overview"}>
+          {/* Overview Tab */}
+          <TabsContent value="overview" className="space-y-6">
+            <OverviewTab 
+              summaryData={summaryData}
+              assessmentTypes={assessmentTypes}
+              recentAssessments={recentAssessments}
+            />
+          </TabsContent>
           
-          {/* Main Tabs Navigation */}
-          <AssessmentTabs defaultValue={isCreateTemplateRoute ? "templates" : "overview"}>
-            {/* Overview Tab */}
-            <TabsContent value="overview" className="space-y-6">
-              <OverviewTab 
-                summaryData={summaryData}
-                assessmentTypes={assessmentTypes}
-                recentAssessments={recentAssessments}
-              />
-            </TabsContent>
-            
-            {/* Templates Tab */}
-            <TabsContent value="templates" className="w-full">
-              <TemplateRoutes />
-            </TabsContent>
-            
-            {/* Assignments Tab */}
-            <TabsContent value="assignments" className="w-full">
-              <AssignmentRoutes />
-            </TabsContent>
-            
-            {/* Results Tab */}
-            <TabsContent value="results" className="w-full">
-              <ResultsRoutes />
-            </TabsContent>
-          </AssessmentTabs>
-        </div>
-      </AssessmentProvider>
+          {/* Templates Tab */}
+          <TabsContent value="templates" className="w-full">
+            <TemplateRoutes />
+          </TabsContent>
+          
+          {/* Assignments Tab */}
+          <TabsContent value="assignments" className="w-full">
+            <AssignmentRoutes />
+          </TabsContent>
+          
+          {/* Results Tab */}
+          <TabsContent value="results" className="w-full">
+            <ResultsRoutes />
+          </TabsContent>
+        </AssessmentTabs>
+      </div>
     </Layout>
   );
 };
