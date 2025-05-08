@@ -57,7 +57,7 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
           </div>
           <div>
             <CardTitle>{make} {model}</CardTitle>
-            <div className="text-gray-500">{registrationNumber}</div>
+            <div className="text-gray-500 text-left">{registrationNumber}</div>
           </div>
         </div>
         <VehicleStatusBadge status={status} />
@@ -97,7 +97,7 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
           </Button>
         </div>
         
-        <div className="mt-3 flex items-center text-sm text-gray-500">
+        <div className="mt-3 flex items-center text-sm text-gray-500 text-left">
           <Calendar className="h-3.5 w-3.5 mr-1.5" />
           <span>
             {lastCheckTime 
