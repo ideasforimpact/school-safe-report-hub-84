@@ -65,7 +65,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                       : 'bg-purple-50 text-purple-800'
                   }`}>
                     {document.verificationMethod === 'api' ? (
-                      <><ShieldCheck className="h-3.5 w-3.5 mr-1" /> API</>
+                      <><ShieldCheck className="h-3.5 w-3.5 mr-1" /> Govt. Verified</>
                     ) : (
                       <><Shield className="h-3.5 w-3.5 mr-1" /> Manual</>
                     )}
