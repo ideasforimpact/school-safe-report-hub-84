@@ -12,6 +12,7 @@ import { GrievanceProvider } from './contexts/grievances/GrievanceContext'
 import { TransportSafetyProvider } from './contexts/transport-safety/TransportSafetyContext'
 import { FacilityProvider } from './contexts/FacilityContext'
 import { AssessmentProvider } from './contexts/assessment/AssessmentContext'
+import { StudentProvider } from './contexts/StudentContext'
 import { Toaster } from 'sonner'
 
 createRoot(document.getElementById("root")!).render(
@@ -25,8 +26,10 @@ createRoot(document.getElementById("root")!).render(
                 <FeedbackProvider>
                   <GrievanceProvider>
                     <TransportSafetyProvider>
-                      <Toaster position="top-right" closeButton />
-                      <App />
+                      <StudentProvider>
+                        <Toaster position="top-right" closeButton />
+                        <App />
+                      </StudentProvider>
                     </TransportSafetyProvider>
                   </GrievanceProvider>
                 </FeedbackProvider>
