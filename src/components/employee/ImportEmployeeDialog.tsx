@@ -128,10 +128,7 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees }: ImportEm
     try {
       setIsUploading(true);
       await onImportEmployees(file);
-      setFile(null);
-      setIsVerified(false);
-      setValidationErrors([]);
-      setParsedData([]);
+      resetDialogState();
       setIsOpen(false);
     } catch (error) {
       console.error('Error importing employees:', error);
@@ -140,15 +137,21 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees }: ImportEm
       setIsUploading(false);
     }
   };
+  
+  // Clear all dialog state when closing or canceling
+  const resetDialogState = () => {
+    setFile(null);
+    setIsVerified(false);
+    setValidationErrors([]);
+    setParsedData([]);
+    setIsDragging(false);
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
       setIsOpen(open);
       if (!open) {
-        setFile(null);
-        setIsVerified(false);
-        setValidationErrors([]);
-        setParsedData([]);
+        resetDialogState();
       }
     }}>
       <DialogContent className="sm:max-w-md">
@@ -156,7 +159,7 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees }: ImportEm
           <DialogTitle>Import Employees</DialogTitle>
           <DialogDescription>
             Upload an Excel file (.xlsx, .xls) containing employee data. 
-            Existing employees will be updated if they match by employee ID or email.
+            Existing employees will be updated if they match by employee ID.
           </DialogDescription>
         </DialogHeader>
         
@@ -199,7 +202,7 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees }: ImportEm
             <p>Update/Insert Behavior</p>
           </div>
           <p className="mt-1 pl-6">
-            Employees with matching ID or email will be updated. New employees will be added.
+            Employees with matching ID will be updated. New employees will be added.
           </p>
         </div>
         
@@ -251,7 +254,10 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees }: ImportEm
           </Button>
           <Button 
             variant="outline" 
-            onClick={() => setIsOpen(false)}
+            onClick={() => {
+              resetDialogState();
+              setIsOpen(false);
+            }}
             className="w-full sm:w-auto"
           >
             Cancel
