@@ -9,7 +9,101 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      client_modules: {
+        Row: {
+          client_id: string
+          enabled: boolean
+          id: string
+          module_key: string
+        }
+        Insert: {
+          client_id: string
+          enabled?: boolean
+          id?: string
+          module_key: string
+        }
+        Update: {
+          client_id?: string
+          enabled?: boolean
+          id?: string
+          module_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_modules_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clients: {
+        Row: {
+          active: boolean
+          allowed_domains: string | null
+          auth_providers: string | null
+          contact_person: string | null
+          creation_date: string
+          email: string | null
+          id: string
+          institution_type: string | null
+          logo: string | null
+          name: string
+          phone: string | null
+        }
+        Insert: {
+          active?: boolean
+          allowed_domains?: string | null
+          auth_providers?: string | null
+          contact_person?: string | null
+          creation_date?: string
+          email?: string | null
+          id?: string
+          institution_type?: string | null
+          logo?: string | null
+          name: string
+          phone?: string | null
+        }
+        Update: {
+          active?: boolean
+          allowed_domains?: string | null
+          auth_providers?: string | null
+          contact_person?: string | null
+          creation_date?: string
+          email?: string | null
+          id?: string
+          institution_type?: string | null
+          logo?: string | null
+          name?: string
+          phone?: string | null
+        }
+        Relationships: []
+      }
+      modules: {
+        Row: {
+          active: boolean
+          description: string | null
+          id: string
+          key: string
+          name: string
+        }
+        Insert: {
+          active?: boolean
+          description?: string | null
+          id?: string
+          key: string
+          name: string
+        }
+        Update: {
+          active?: boolean
+          description?: string | null
+          id?: string
+          key?: string
+          name?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Client, useClient, InstitutionType } from '@/contexts/ClientContext';
 import { OAuthProviderName } from '@/utils/authProviders';
@@ -46,7 +47,7 @@ const initialFormData: ClientFormData = {
 };
 
 export const useClientManagement = () => {
-  const { clients, addClient, updateClient, deleteClient } = useClient();
+  const { clients, loading, addClient, updateClient, deleteClient } = useClient();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [currentClient, setCurrentClient] = useState<Client | null>(null);
@@ -57,8 +58,8 @@ export const useClientManagement = () => {
     setCurrentClient(null);
   };
 
-  const handleAddClient = () => {
-    addClient(formData);
+  const handleAddClient = async () => {
+    await addClient(formData);
     setIsAddDialogOpen(false);
     resetForm();
   };
@@ -94,22 +95,23 @@ export const useClientManagement = () => {
     setIsEditDialogOpen(true);
   };
 
-  const handleUpdateClient = () => {
+  const handleUpdateClient = async () => {
     if (currentClient) {
-      updateClient(currentClient.id, formData);
+      await updateClient(currentClient.id, formData);
       setIsEditDialogOpen(false);
       resetForm();
     }
   };
 
-  const handleDeleteClient = (id: string) => {
+  const handleDeleteClient = async (id: string) => {
     if (confirm('Are you sure you want to delete this client?')) {
-      deleteClient(id);
+      await deleteClient(id);
     }
   };
 
   return {
     clients,
+    loading,
     formData,
     setFormData,
     isAddDialogOpen,
