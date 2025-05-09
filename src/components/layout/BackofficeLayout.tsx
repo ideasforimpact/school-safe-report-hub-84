@@ -44,7 +44,7 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="flex flex-col min-h-screen bg-gray-100">
       {/* Top nav */}
       <div className="bg-white shadow-sm border-b border-gray-200">
         <div className="container mx-auto py-4 px-6">
@@ -100,10 +100,12 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
         </div>
       </div>
       
-      {/* Main content */}
-      <main className="container mx-auto py-8 px-6">
-        {children}
-      </main>
+      {/* Main content - Using flex-col for vertical layout */}
+      <div className="flex-grow">
+        <main className="container mx-auto py-8 px-6">
+          {children}
+        </main>
+      </div>
     </div>
   );
 };

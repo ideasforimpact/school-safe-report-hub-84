@@ -21,10 +21,10 @@ const AssessmentTemplatesManagementPage: React.FC = () => {
 
   return (
     <BackofficeLayout>
-      <div className="container mx-auto py-6">
+      <div className="flex flex-col w-full">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center">
-            <Button variant="ghost" size="sm" onClick={() => navigate('/backoffice')} className="mr-2">
+            <Button variant="ghost" size="sm" onClick={() => navigate('/dashboard')} className="mr-2">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
             </Button>
