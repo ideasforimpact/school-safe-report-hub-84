@@ -24,26 +24,6 @@ interface ModulePermissions {
   eduSafeResourceAccess: boolean;
 }
 
-interface EmployeeApplicationFields {
-  // Personal details
-  emergencyContact?: string;
-  emergencyPhone?: string;
-  bloodGroup?: string;
-  maritalStatus?: string;
-  
-  // Employment details
-  position?: string;
-  grade?: string;
-  reportingManager?: string;
-  workLocation?: string;
-  
-  // System access and Module permissions
-  modulePermissions?: ModulePermissions;
-  
-  // Additional fields
-  customFields?: Record<string, any>;
-}
-
 interface Employee {
   id?: string;
   userId?: string;
@@ -51,12 +31,10 @@ interface Employee {
   firstName: string;
   lastName: string;
   email: string;
-  phone?: string;
   employeeType: string;
   department: string;
   joiningDate: string;
   status: string;
-  applicationFields?: EmployeeApplicationFields;
 }
 
 serve(async (req) => {
@@ -130,7 +108,7 @@ serve(async (req) => {
         const { data: existingEmployee, error: checkError } = await supabase
           .from('employees')
           .select('id')
-          .or(`email.eq.${employeeData.email},employeeId.eq.${employeeData.employeeId}`)
+          .or(`email.eq.${employeeData.email},employee_id.eq.${employeeData.employeeId}`)
           .maybeSingle();
 
         if (checkError) throw checkError;
@@ -144,13 +122,23 @@ serve(async (req) => {
 
         // Set timestamps
         const now = new Date().toISOString();
-        employeeData.createdAt = now;
-        employeeData.updatedAt = now;
 
-        // Insert employee
+        // Insert employee - database structure updated, adapted fields
         const { data, error } = await supabase
           .from('employees')
-          .insert([employeeData])
+          .insert([{
+            employee_id: employeeData.employeeId,
+            first_name: employeeData.firstName,
+            last_name: employeeData.lastName,
+            email: employeeData.email,
+            employee_type: employeeData.employeeType,
+            department: employeeData.department,
+            joining_date: employeeData.joiningDate,
+            status: employeeData.status,
+            user_id: employeeData.userId,
+            created_at: now,
+            updated_at: now
+          }])
           .select()
           .single();
 
@@ -189,7 +177,7 @@ serve(async (req) => {
         if (updates.email || updates.employeeId) {
           const orConditions = [];
           if (updates.email) orConditions.push(`email.eq.${updates.email}`);
-          if (updates.employeeId) orConditions.push(`employeeId.eq.${updates.employeeId}`);
+          if (updates.employeeId) orConditions.push(`employee_id.eq.${updates.employeeId}`);
           
           if (orConditions.length > 0) {
             const { data: duplicateCheck, error: dupError } = await supabase
@@ -210,13 +198,24 @@ serve(async (req) => {
           }
         }
 
-        // Update timestamp
-        updates.updatedAt = new Date().toISOString();
+        // Update timestamp and adapt field names for database schema
+        const dbUpdates: Record<string, any> = { updated_at: new Date().toISOString() };
+        
+        // Map camelCase properties to snake_case for database
+        if (updates.firstName !== undefined) dbUpdates.first_name = updates.firstName;
+        if (updates.lastName !== undefined) dbUpdates.last_name = updates.lastName;
+        if (updates.email !== undefined) dbUpdates.email = updates.email;
+        if (updates.employeeId !== undefined) dbUpdates.employee_id = updates.employeeId;
+        if (updates.employeeType !== undefined) dbUpdates.employee_type = updates.employeeType;
+        if (updates.department !== undefined) dbUpdates.department = updates.department;
+        if (updates.joiningDate !== undefined) dbUpdates.joining_date = updates.joiningDate;
+        if (updates.status !== undefined) dbUpdates.status = updates.status;
+        if (updates.userId !== undefined) dbUpdates.user_id = updates.userId;
 
-        // Update employee
+        // Update employee with adapted field names
         const { data, error } = await supabase
           .from('employees')
-          .update(updates)
+          .update(dbUpdates)
           .eq('id', id)
           .select()
           .single();
@@ -238,6 +237,16 @@ serve(async (req) => {
           });
         }
 
+        // First remove all module permissions
+        const { error: moduleError } = await supabase
+          .from('employee_modules')
+          .delete()
+          .eq('employee_id', id);
+          
+        if (moduleError) {
+          console.error("Error deleting employee module permissions:", moduleError);
+        }
+
         // Delete employee
         const { error } = await supabase
           .from('employees')
@@ -252,63 +261,62 @@ serve(async (req) => {
         });
       } else if (operation === 'update-permissions') {
         // Update module permissions
-        const { id, modulePermissions } = requestData;
+        const { employeeId, modulePermissions } = requestData;
 
-        if (!id) {
+        if (!employeeId) {
           return new Response(JSON.stringify({ error: 'Employee ID is required' }), {
             headers: { 'Content-Type': 'application/json', ...corsHeaders },
             status: 400,
           });
         }
 
-        // Get existing employee data
-        const { data: employee, error: fetchError } = await supabase
-          .from('employees')
-          .select('*')
-          .eq('id', id)
-          .single();
+        // First get all available modules to map permission keys to module IDs
+        const { data: modules, error: modulesError } = await supabase
+          .from('modules')
+          .select('id, key');
 
-        if (fetchError) {
-          return new Response(JSON.stringify({ error: 'Employee not found' }), {
+        if (modulesError) throw modulesError;
+
+        // Create a map of module keys to IDs
+        const moduleKeyToId: Record<string, string> = {};
+        modules.forEach((module: any) => {
+          moduleKeyToId[module.key] = module.id;
+        });
+
+        // Delete existing module permissions
+        const { error: deleteError } = await supabase
+          .from('employee_modules')
+          .delete()
+          .eq('employee_id', employeeId);
+
+        if (deleteError) throw deleteError;
+
+        // Add new module permissions
+        const modulesToAdd = [];
+        for (const [key, value] of Object.entries(modulePermissions)) {
+          if (value && moduleKeyToId[key]) {
+            modulesToAdd.push({
+              employee_id: employeeId,
+              module_id: moduleKeyToId[key]
+            });
+          }
+        }
+
+        if (modulesToAdd.length > 0) {
+          const { data, error: insertError } = await supabase
+            .from('employee_modules')
+            .insert(modulesToAdd)
+            .select();
+
+          if (insertError) throw insertError;
+
+          return new Response(JSON.stringify({ permissions: data }), {
             headers: { 'Content-Type': 'application/json', ...corsHeaders },
-            status: 404,
+            status: 200,
           });
         }
 
-        // Update application fields with new module permissions
-        const applicationFields = employee.applicationFields || {};
-        const updatedApplicationFields = {
-          ...applicationFields,
-          modulePermissions: {
-            ...applicationFields.modulePermissions || {
-              superAdmin: false,
-              incidentReporting: false,
-              incidentAdmin: false,
-              assessmentUser: false,
-              assessmentsAdmin: false,
-              employeeVerificationAdmin: false,
-              grievancesAdmin: false,
-              transportSafetyAdmin: false,
-              eduSafeResourceAccess: false
-            },
-            ...modulePermissions
-          }
-        };
-
-        // Update employee
-        const { data, error } = await supabase
-          .from('employees')
-          .update({
-            applicationFields: updatedApplicationFields,
-            updatedAt: new Date().toISOString()
-          })
-          .eq('id', id)
-          .select()
-          .single();
-
-        if (error) throw error;
-
-        return new Response(JSON.stringify({ employee: data }), {
+        return new Response(JSON.stringify({ permissions: [] }), {
           headers: { 'Content-Type': 'application/json', ...corsHeaders },
           status: 200,
         });

@@ -33,7 +33,7 @@ export interface EmployeeApplicationFields {
     year: string;
   }[];
   
-  // System access and Module permissions
+  // System access and Module permissions (now moved to employee_modules table)
   modulePermissions?: ModulePermissions;
   
   // Benefits & Compensation
@@ -75,7 +75,6 @@ export interface Employee {
   firstName: string;
   lastName: string;
   email: string;
-  phone?: string;
   
   // Key employee information
   employeeType: EmployeeType;
@@ -83,7 +82,7 @@ export interface Employee {
   joiningDate: string;
   status: EmploymentStatus;
   
-  // Application fields for flexible storage
+  // Application fields for flexible storage (now stored separately)
   applicationFields?: EmployeeApplicationFields;
   
   // Timestamps

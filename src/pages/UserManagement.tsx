@@ -28,6 +28,7 @@ import {
 import { processEmployeeExcel } from '@/services/employee/importEmployeeService';
 import { supabase } from '@/integrations/supabase/client';
 import { getAllEmployeesFromApi } from '@/services/employee/employeeRetrievalService';
+import { getEmployeeModulePermissions, updateEmployeeModulePermissions } from '@/services/employee/employeeModuleService';
 
 // Helper function to convert employee type to auth type
 const convertEmployeeType = (employeeType: EmployeeContextType): AuthEmployeeType => {
@@ -104,34 +105,29 @@ const UserManagement = () => {
         const employeeData = await getAllEmployeesFromApi();
         
         if (employeeData && employeeData.length > 0) {
-          // Map employee data to User format for display in UserList
-          const mappedUsers: User[] = employeeData.map(employee => ({
-            id: employee.id,
-            firstName: employee.firstName,
-            lastName: employee.lastName,
-            email: employee.email,
-            employeeId: employee.employeeId,
-            employeeType: convertEmployeeType(employee.employeeType),
-            department: convertDepartmentType(employee.department),
-            joiningDate: employee.joiningDate,
-            role: employee.applicationFields?.modulePermissions?.superAdmin ? 'admin' : 'reporter' as UserRole,
-            modulePermissions: employee.applicationFields?.modulePermissions || {
-              superAdmin: false,
-              incidentReporting: true,
-              incidentAdmin: false,
-              assessmentUser: false,
-              assessmentsAdmin: false,
-              employeeVerificationAdmin: false,
-              grievancesAdmin: false,
-              transportSafetyAdmin: false,
-              eduSafeResourceAccess: false
-            },
-            isActive: employee.status === 'active',
-            createdAt: employee.createdAt || new Date().toISOString(),
+          // Process each employee to get their module permissions
+          const processedUsers = await Promise.all(employeeData.map(async employee => {
+            // Fetch module permissions for this employee
+            const modulePermissions = await getEmployeeModulePermissions(employee.id);
+            
+            return {
+              id: employee.id,
+              firstName: employee.firstName,
+              lastName: employee.lastName,
+              email: employee.email,
+              employeeId: employee.employeeId,
+              employeeType: convertEmployeeType(employee.employeeType),
+              department: convertDepartmentType(employee.department),
+              joiningDate: employee.joiningDate,
+              role: modulePermissions.superAdmin ? 'admin' : 'reporter' as UserRole,
+              modulePermissions: modulePermissions,
+              isActive: employee.status === 'active',
+              createdAt: employee.createdAt || new Date().toISOString(),
+            };
           }));
 
-          setEmployeeUsers(mappedUsers);
-          console.log("Fetched employees:", mappedUsers);
+          setEmployeeUsers(processedUsers);
+          console.log("Fetched employees:", processedUsers);
         } else {
           console.log("No employees found or error fetching employees");
           setEmployeeUsers([]);
@@ -175,9 +171,6 @@ const UserManagement = () => {
               department: formData.department,
               joiningDate: formData.joiningDate,
               status: 'active' as EmploymentStatus, // Explicitly cast to EmploymentStatus
-              applicationFields: {
-                modulePermissions: formData.modulePermissions
-              }
             };
             
             // First try the edge function
@@ -194,6 +187,12 @@ const UserManagement = () => {
                 console.error("Edge function error:", error);
                 throw error;
               }
+              
+              // After employee is created, update their module permissions
+              if (data && data.employee && data.employee.id) {
+                await updateEmployeeModulePermissions(data.employee.id, formData.modulePermissions);
+              }
+              
               console.log("Employee created via edge function:", data);
               toast.success("Employee record created successfully");
             } catch (edgeFuncError) {
@@ -230,33 +229,28 @@ const UserManagement = () => {
       const employeeData = await getAllEmployeesFromApi();
       
       if (employeeData && employeeData.length > 0) {
-        const mappedUsers: User[] = employeeData.map(employee => ({
-          id: employee.id,
-          firstName: employee.firstName,
-          lastName: employee.lastName,
-          email: employee.email,
-          employeeId: employee.employeeId,
-          employeeType: convertEmployeeType(employee.employeeType),
-          department: convertDepartmentType(employee.department),
-          joiningDate: employee.joiningDate,
-          role: employee.applicationFields?.modulePermissions?.superAdmin ? 'admin' : 'reporter' as UserRole,
-          modulePermissions: employee.applicationFields?.modulePermissions || {
-            superAdmin: false,
-            incidentReporting: true,
-            incidentAdmin: false,
-            assessmentUser: false,
-            assessmentsAdmin: false,
-            employeeVerificationAdmin: false,
-            grievancesAdmin: false,
-            transportSafetyAdmin: false,
-            eduSafeResourceAccess: false
-          },
-          isActive: employee.status === 'active',
-          createdAt: employee.createdAt || new Date().toISOString(),
+        const processedUsers = await Promise.all(employeeData.map(async employee => {
+          // Fetch module permissions for this employee
+          const modulePermissions = await getEmployeeModulePermissions(employee.id);
+          
+          return {
+            id: employee.id,
+            firstName: employee.firstName,
+            lastName: employee.lastName,
+            email: employee.email,
+            employeeId: employee.employeeId,
+            employeeType: convertEmployeeType(employee.employeeType),
+            department: convertDepartmentType(employee.department),
+            joiningDate: employee.joiningDate,
+            role: modulePermissions.superAdmin ? 'admin' : 'reporter' as UserRole,
+            modulePermissions: modulePermissions,
+            isActive: employee.status === 'active',
+            createdAt: employee.createdAt || new Date().toISOString(),
+          };
         }));
 
-        setEmployeeUsers(mappedUsers);
-        console.log("Refreshed employees list:", mappedUsers);
+        setEmployeeUsers(processedUsers);
+        console.log("Refreshed employees list:", processedUsers);
       }
     } catch (error) {
       console.error("Error refreshing employees:", error);
@@ -286,9 +280,6 @@ const UserManagement = () => {
               email: formData.email,
               employeeType: formData.employeeType,
               department: formData.department,
-              applicationFields: {
-                modulePermissions: formData.modulePermissions
-              }
             };
             
             // Try to update via edge function first
@@ -304,6 +295,10 @@ const UserManagement = () => {
               });
               
               if (error) throw error;
+              
+              // Update module permissions separately
+              await updateEmployeeModulePermissions(currentUser.id, formData.modulePermissions);
+              
               console.log("Employee updated via edge function:", data);
             } catch (edgeFuncError) {
               console.error("Edge function update error:", edgeFuncError);
@@ -319,7 +314,7 @@ const UserManagement = () => {
         toast.success("User updated successfully");
         resetForm();
         setIsEditDialogOpen(false);
-        window.location.reload(); // Refresh to see the updated user
+        await refreshEmployeesList(); // Refresh to see the updated user
       }
     } catch (error) {
       console.error("Error updating user:", error);
@@ -427,8 +422,31 @@ const UserManagement = () => {
   };
 
   // Handle edit user click
-  const handleEditClick = (user: User) => {
+  const handleEditClick = async (user: User) => {
     setCurrentUser(user);
+    
+    // If we're editing an existing user, fetch their current module permissions
+    let modulePermissions = user.modulePermissions || {
+      superAdmin: false,
+      incidentReporting: true,
+      incidentAdmin: false,
+      assessmentUser: false,
+      assessmentsAdmin: false,
+      employeeVerificationAdmin: false,
+      grievancesAdmin: false,
+      transportSafetyAdmin: false,
+      eduSafeResourceAccess: false
+    };
+    
+    // If module permissions don't exist in the user object, fetch them from the database
+    if (!user.modulePermissions) {
+      try {
+        modulePermissions = await getEmployeeModulePermissions(user.id);
+      } catch (error) {
+        console.error("Error fetching module permissions:", error);
+      }
+    }
+    
     setFormData({
       firstName: user.firstName,
       lastName: user.lastName,
@@ -438,18 +456,9 @@ const UserManagement = () => {
       department: user.department,
       joiningDate: user.joiningDate,
       role: user.role,
-      modulePermissions: user.modulePermissions || {
-        superAdmin: false,
-        incidentReporting: true,
-        incidentAdmin: false,
-        assessmentUser: false,
-        assessmentsAdmin: false,
-        employeeVerificationAdmin: false,
-        grievancesAdmin: false,
-        transportSafetyAdmin: false,
-        eduSafeResourceAccess: false
-      }
+      modulePermissions: modulePermissions
     });
+    
     setIsEditDialogOpen(true);
   };
 

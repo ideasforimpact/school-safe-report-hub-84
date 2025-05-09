@@ -121,7 +121,6 @@ export type Database = {
       }
       employees: {
         Row: {
-          application_fields: Json | null
           created_at: string
           department: string
           email: string
@@ -131,13 +130,11 @@ export type Database = {
           id: string
           joining_date: string
           last_name: string
-          phone: string | null
           status: string
           updated_at: string
           user_id: string | null
         }
         Insert: {
-          application_fields?: Json | null
           created_at?: string
           department: string
           email: string
@@ -147,13 +144,11 @@ export type Database = {
           id?: string
           joining_date: string
           last_name: string
-          phone?: string | null
           status: string
           updated_at?: string
           user_id?: string | null
         }
         Update: {
-          application_fields?: Json | null
           created_at?: string
           department?: string
           email?: string
@@ -163,7 +158,6 @@ export type Database = {
           id?: string
           joining_date?: string
           last_name?: string
-          phone?: string | null
           status?: string
           updated_at?: string
           user_id?: string | null

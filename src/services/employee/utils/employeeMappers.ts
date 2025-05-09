@@ -1,6 +1,5 @@
 
-import { Employee, EmployeeApplicationFields, EmployeeType, DepartmentType, EmploymentStatus } from '@/contexts/employee/types';
-import { Json } from '@/integrations/supabase/types';
+import { Employee, EmployeeType, DepartmentType, EmploymentStatus } from '@/contexts/employee/types';
 
 // Helper function to map database records to our Employee type format
 export const mapDbRecordToEmployee = (record: any): Employee => {
@@ -11,12 +10,11 @@ export const mapDbRecordToEmployee = (record: any): Employee => {
     firstName: record.first_name,
     lastName: record.last_name,
     email: record.email,
-    phone: record.phone,
     employeeType: record.employee_type as EmployeeType,
     department: record.department as DepartmentType,
     joiningDate: record.joining_date,
     status: record.status as EmploymentStatus,
-    applicationFields: record.application_fields as EmployeeApplicationFields,
+    applicationFields: {}, // Default empty object as we no longer store this in DB
     createdAt: record.created_at,
     updatedAt: record.updated_at
   };
@@ -31,12 +29,10 @@ export const mapEmployeeToDbRecord = (employeeData: Partial<Employee>): Record<s
   if (employeeData.firstName !== undefined) dbEmployee.first_name = employeeData.firstName;
   if (employeeData.lastName !== undefined) dbEmployee.last_name = employeeData.lastName;
   if (employeeData.email !== undefined) dbEmployee.email = employeeData.email;
-  if (employeeData.phone !== undefined) dbEmployee.phone = employeeData.phone;
   if (employeeData.employeeType !== undefined) dbEmployee.employee_type = employeeData.employeeType;
   if (employeeData.department !== undefined) dbEmployee.department = employeeData.department;
   if (employeeData.joiningDate !== undefined) dbEmployee.joining_date = employeeData.joiningDate;
   if (employeeData.status !== undefined) dbEmployee.status = employeeData.status;
-  if (employeeData.applicationFields !== undefined) dbEmployee.application_fields = employeeData.applicationFields as unknown as Json;
-
+  
   return dbEmployee;
 };

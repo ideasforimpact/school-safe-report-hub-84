@@ -2,7 +2,25 @@
 import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
 import { Employee } from '@/contexts/employee/types';
-import { mapDbRecordToEmployee } from './utils/employeeMappers';
+
+// Updated mapping function that no longer needs to handle application_fields
+const mapDbRecordToEmployee = (record: any): Employee => {
+  return {
+    id: record.id,
+    userId: record.user_id,
+    employeeId: record.employee_id,
+    firstName: record.first_name,
+    lastName: record.last_name,
+    email: record.email,
+    employeeType: record.employee_type,
+    department: record.department,
+    joiningDate: record.joining_date,
+    status: record.status,
+    applicationFields: {}, // Default empty object as we no longer store this in DB
+    createdAt: record.created_at,
+    updatedAt: record.updated_at
+  };
+};
 
 // API service for retrieving employees using Supabase
 export const getAllEmployeesFromApi = async (): Promise<Employee[]> => {
