@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { UserPlus, FileUp } from 'lucide-react';
-import { User, UserRole, ModulePermissions } from '@/contexts/auth/types';
+import { User, UserRole, ModulePermissions, EmployeeType, DepartmentType } from '@/contexts/auth/types';
 import { EmploymentStatus, EmployeeType as EmployeeContextType, DepartmentType as EmployeeContextDepartmentType } from '@/contexts/employee/types';
 import { toast } from "sonner";
 import { 
@@ -27,28 +27,28 @@ import {
 import { processEmployeeExcel } from '@/services/employee/importEmployeeService';
 import { supabase } from '@/integrations/supabase/client';
 import { getAllEmployeesFromApi } from '@/services/employee/employeeRetrievalService';
-import { getEmployeeModulePermissions } from '@/services/employee/employeeModuleService';
+import { getEmployeeModulePermissions, updateEmployeeModulePermissions } from '@/services/employee/employeeModuleService';
 
 // Helper function to convert employee type and department type
-const convertEmployeeType = (employeeType: EmployeeContextType): AuthEmployeeType => {
+const convertEmployeeType = (employeeType: EmployeeContextType): EmployeeType => {
   // Handle 'intern' which is in employee types but not in auth types
   if (employeeType === 'intern') {
-    return 'consultant' as AuthEmployeeType; // Map intern to consultant as fallback
+    return 'consultant' as EmployeeType; // Map intern to consultant as fallback
   }
-  return employeeType as AuthEmployeeType;
+  return employeeType as EmployeeType;
 };
 
 // Helper function to convert department type
-const convertDepartmentType = (department: EmployeeContextDepartmentType): AuthDepartmentType => {
+const convertDepartmentType = (department: EmployeeContextDepartmentType): DepartmentType => {
   // Handle departments in employee context that don't exist in auth context
-  const authDepartments: AuthDepartmentType[] = ['admin', 'teaching', 'security', 'maintenance', 'transport', 'management'];
+  const authDepartments: DepartmentType[] = ['admin', 'teaching', 'security', 'maintenance', 'transport', 'management'];
   
-  if (authDepartments.includes(department as AuthDepartmentType)) {
-    return department as AuthDepartmentType;
+  if (authDepartments.includes(department as DepartmentType)) {
+    return department as DepartmentType;
   }
   
   // Map departments that don't exist in auth types to a default value
-  const departmentMapping: Record<string, AuthDepartmentType> = {
+  const departmentMapping: Record<string, DepartmentType> = {
     'it': 'admin',
     'hr': 'admin',
     'finance': 'admin'
@@ -73,8 +73,8 @@ const UserManagement = () => {
     lastName: string;
     email: string;
     employeeId?: string;
-    employeeType?: AuthEmployeeType;
-    department?: AuthDepartmentType;
+    employeeType?: EmployeeType;
+    department?: DepartmentType;
     joiningDate?: string;
     role: UserRole;
     modulePermissions: ModulePermissions;
