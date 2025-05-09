@@ -18,9 +18,7 @@ export const getAllEmployeesFromApi = async (): Promise<Employee[]> => {
     }
 
     // Map the database records to our Employee model
-    return data.map(record => ({
-      ...mapDbRecordToEmployee(record),
-    }));
+    return data.map(record => mapDbRecordToEmployee(record));
   } catch (error) {
     console.error("Error in getAllEmployeesFromApi:", error);
     toast.error("Failed to fetch employees");

@@ -2,86 +2,55 @@
 import { Employee, EmploymentStatus } from '@/contexts/employee/types';
 import { v4 as uuidv4 } from 'uuid';
 
-// Define the types locally since they are not exported from contexts/employee/types
-type EmployeeType = 'permanent' | 'contract' | 'part_time' | 'consultant' | 'intern';
-type DepartmentType = 'admin' | 'teaching' | 'security' | 'maintenance' | 'transport' | 'management' | 'it' | 'hr' | 'finance';
+// Local storage keys
+const EMPLOYEES_STORAGE_KEY = 'employees';
 
-// Mock employees data for local storage (for when Supabase is not available/offline)
-const DEFAULT_EMPLOYEES: Employee[] = [
-  {
-    id: '1',
-    employeeId: 'EMP001',
-    firstName: 'John',
-    lastName: 'Doe',
-    email: 'john.doe@example.com',
-    employeeType: 'permanent',
-    department: 'teaching',
-    joiningDate: '2023-01-15',
-    status: 'active',
-    createdAt: '2023-01-15T08:00:00Z',
-    updatedAt: '2023-01-15T08:00:00Z'
-  },
-  {
-    id: '2',
-    employeeId: 'EMP002',
-    firstName: 'Jane',
-    lastName: 'Smith',
-    email: 'jane.smith@example.com',
-    employeeType: 'contract',
-    department: 'admin',
-    joiningDate: '2023-02-01',
-    status: 'active',
-    createdAt: '2023-02-01T08:00:00Z',
-    updatedAt: '2023-02-01T08:00:00Z'
-  }
-];
-
-// Local storage key for employees
-const EMPLOYEES_STORAGE_KEY = 'eduSafe_employees';
-
-// Utility functions
-
-/**
- * Get all employees from local storage
- */
+// Helper function to get employees from localStorage
 export const getEmployeesFromStorage = (): Employee[] => {
-  try {
-    const employeesJSON = localStorage.getItem(EMPLOYEES_STORAGE_KEY);
-    return employeesJSON ? JSON.parse(employeesJSON) : DEFAULT_EMPLOYEES;
-  } catch (error) {
-    console.error("Error getting employees from storage:", error);
-    return DEFAULT_EMPLOYEES;
+  const employeesJson = localStorage.getItem(EMPLOYEES_STORAGE_KEY);
+  if (employeesJson) {
+    try {
+      return JSON.parse(employeesJson);
+    } catch (e) {
+      console.error("Error parsing employees JSON:", e);
+      return [];
+    }
   }
+  return [];
 };
 
-/**
- * Save employees to local storage
- */
+// Helper function to save employees to localStorage
 export const saveEmployeesToStorage = (employees: Employee[]): void => {
-  try {
-    localStorage.setItem(EMPLOYEES_STORAGE_KEY, JSON.stringify(employees));
-  } catch (error) {
-    console.error("Error saving employees to storage:", error);
-  }
+  localStorage.setItem(EMPLOYEES_STORAGE_KEY, JSON.stringify(employees));
 };
 
-/**
- * Add a new employee
- */
+// Get all employees (for when API is not available)
+export const getAllEmployees = (): Employee[] => {
+  return getEmployeesFromStorage();
+};
+
+// Add a new employee
 export const addEmployee = async (
   employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>
 ): Promise<Employee> => {
   const employees = getEmployeesFromStorage();
   
-  // Check for duplicate employeeId or email
-  const isDuplicate = employees.some(
-    emp => emp.employeeId === employeeData.employeeId || emp.email === employeeData.email
+  // Check if an employee with the same employeeId or email already exists
+  const existingEmployeeWithId = employees.find(e => 
+    e.employeeId === employeeData.employeeId
   );
-  
-  if (isDuplicate) {
-    throw new Error("An employee with this ID or email already exists");
+  if (existingEmployeeWithId) {
+    throw new Error(`An employee with ID ${employeeData.employeeId} already exists.`);
   }
   
+  const existingEmployeeWithEmail = employees.find(e => 
+    e.email.toLowerCase() === employeeData.email.toLowerCase()
+  );
+  if (existingEmployeeWithEmail) {
+    throw new Error(`An employee with email ${employeeData.email} already exists.`);
+  }
+  
+  // Create new employee with ID and timestamps
   const now = new Date().toISOString();
   const newEmployee: Employee = {
     ...employeeData,
@@ -90,40 +59,58 @@ export const addEmployee = async (
     updatedAt: now
   };
   
+  // Add to localStorage
   employees.push(newEmployee);
   saveEmployeesToStorage(employees);
   
   return newEmployee;
 };
 
-/**
- * Update an existing employee
- */
+// Get employee by ID
+export const getEmployeeById = (id: string): Employee | undefined => {
+  const employees = getEmployeesFromStorage();
+  return employees.find(employee => employee.id === id);
+};
+
+// Get employee by user ID
+export const getEmployeeByUserId = (userId: string): Employee | undefined => {
+  const employees = getEmployeesFromStorage();
+  return employees.find(employee => employee.userId === userId);
+};
+
+// Update an existing employee
 export const updateEmployee = async (
   id: string,
   updates: Partial<Employee>
 ): Promise<Employee> => {
   const employees = getEmployeesFromStorage();
-  const employeeIndex = employees.findIndex(emp => emp.id === id);
   
+  // Find the employee to update
+  const employeeIndex = employees.findIndex(employee => employee.id === id);
   if (employeeIndex === -1) {
-    throw new Error("Employee not found");
+    throw new Error(`Employee with ID ${id} not found.`);
   }
   
-  // Check for duplicate employeeId or email
-  if (updates.employeeId || updates.email) {
-    const isDuplicate = employees.some(
-      emp => emp.id !== id && (
-        (updates.employeeId && emp.employeeId === updates.employeeId) || 
-        (updates.email && emp.email === updates.email)
-      )
+  // If updating email or employeeId, check for duplicates
+  if (updates.email) {
+    const existingWithEmail = employees.find(e => 
+      e.email.toLowerCase() === updates.email!.toLowerCase() && e.id !== id
     );
-    
-    if (isDuplicate) {
-      throw new Error("Another employee with this ID or email already exists");
+    if (existingWithEmail) {
+      throw new Error(`An employee with email ${updates.email} already exists.`);
     }
   }
   
+  if (updates.employeeId) {
+    const existingWithId = employees.find(e => 
+      e.employeeId === updates.employeeId && e.id !== id
+    );
+    if (existingWithId) {
+      throw new Error(`An employee with ID ${updates.employeeId} already exists.`);
+    }
+  }
+  
+  // Update the employee
   const updatedEmployee: Employee = {
     ...employees[employeeIndex],
     ...updates,
@@ -136,128 +123,84 @@ export const updateEmployee = async (
   return updatedEmployee;
 };
 
-/**
- * Delete an employee
- */
+// Delete an employee
 export const deleteEmployee = async (id: string): Promise<void> => {
-  const employees = getEmployeesFromStorage();
-  const filteredEmployees = employees.filter(emp => emp.id !== id);
+  let employees = getEmployeesFromStorage();
   
-  if (filteredEmployees.length === employees.length) {
-    throw new Error("Employee not found");
+  const employeeIndex = employees.findIndex(employee => employee.id === id);
+  if (employeeIndex === -1) {
+    throw new Error(`Employee with ID ${id} not found.`);
   }
   
-  saveEmployeesToStorage(filteredEmployees);
+  employees = employees.filter(employee => employee.id !== id);
+  saveEmployeesToStorage(employees);
 };
 
-/**
- * Get employee by ID
- */
-export const getEmployeeById = (id: string): Employee | undefined => {
-  const employees = getEmployeesFromStorage();
-  return employees.find(emp => emp.id === id);
+// Helper function to convert employee type string to enum
+export const employeeTypeFromString = (typeStr: string): string => {
+  const validTypes = ['permanent', 'contract', 'part_time', 'consultant', 'intern'];
+  return validTypes.includes(typeStr) ? typeStr : 'permanent';
 };
 
-/**
- * Get employee by user ID
- */
-export const getEmployeeByUserId = (userId: string): Employee | undefined => {
-  const employees = getEmployeesFromStorage();
-  return employees.find(emp => emp.userId === userId);
+// Helper function to convert department string to enum
+export const departmentTypeFromString = (deptStr: string): string => {
+  const validDepts = ['admin', 'teaching', 'security', 'maintenance', 'transport', 'management', 'it', 'hr', 'finance'];
+  return validDepts.includes(deptStr) ? deptStr : 'admin';
 };
 
-/**
- * Get all employees
- */
-export const getAllEmployees = (): Employee[] => {
-  return getEmployeesFromStorage();
+// Helper function to convert employment status string to enum
+export const employmentStatusFromString = (statusStr: string): EmploymentStatus => {
+  const validStatus = ['active', 'on_leave', 'resigned', 'terminated', 'retired', 'inactive'];
+  return (validStatus.includes(statusStr) ? statusStr : 'inactive') as EmploymentStatus;
 };
 
-/**
- * Process bulk employee import from Excel/CSV
- */
-export const processBulkEmployeeImport = (
-  employeesData: Array<{
-    employeeId: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    employeeType: string;
-    department: string;
-    joiningDate: string;
-    status: string;
-  }>
-): { success: Employee[], failures: { data: any, error: string }[] } => {
-  const employees = getEmployeesFromStorage();
-  const result: { success: Employee[], failures: { data: any, error: string }[] } = {
-    success: [],
-    failures: []
-  };
+// Import employees from Excel
+export const importEmployeesFromExcel = async (employees: Partial<Employee>[]): Promise<Employee[]> => {
+  const existingEmployees = getEmployeesFromStorage();
+  const now = new Date().toISOString();
   
-  for (const data of employeesData) {
-    try {
-      // Basic validation
-      if (!data.employeeId || !data.firstName || !data.lastName || !data.email) {
-        throw new Error("Missing required fields");
-      }
-      
-      // Check for duplicate employeeId or email
-      const isDuplicate = employees.some(
-        emp => emp.employeeId === data.employeeId || emp.email === data.email
-      ) || result.success.some(
-        emp => emp.employeeId === data.employeeId || emp.email === data.email
-      );
-      
-      if (isDuplicate) {
-        throw new Error("Duplicate employeeId or email");
-      }
-      
-      // Validate types
-      const employeeType = data.employeeType as EmployeeType;
-      const department = data.department as DepartmentType;
-      const status = (data.status || 'active') as EmploymentStatus;
-      
-      // Check if the employee type is valid
-      const validEmployeeTypes: EmployeeType[] = ['permanent', 'contract', 'part_time', 'consultant', 'intern'];
-      if (!validEmployeeTypes.includes(employeeType as EmployeeType)) {
-        throw new Error(`Invalid employee type: ${data.employeeType}`);
-      }
-      
-      // Check if the department is valid
-      const validDepartments: DepartmentType[] = ['admin', 'teaching', 'security', 'maintenance', 'transport', 'management', 'it', 'hr', 'finance'];
-      if (!validDepartments.includes(department as DepartmentType)) {
-        throw new Error(`Invalid department: ${data.department}`);
-      }
-      
-      // Create new employee
-      const now = new Date().toISOString();
-      const newEmployee: Employee = {
-        id: uuidv4(),
-        employeeId: data.employeeId,
-        firstName: data.firstName,
-        lastName: data.lastName,
-        email: data.email,
-        employeeType,
-        department,
-        joiningDate: data.joiningDate || now.split('T')[0],
-        status,
-        createdAt: now,
-        updatedAt: now
-      };
-      
-      result.success.push(newEmployee);
-    } catch (error) {
-      result.failures.push({
-        data,
-        error: error.message
-      });
+  const addedEmployees: Employee[] = [];
+  
+  for (const employeeData of employees) {
+    // Skip if missing required fields
+    if (!employeeData.employeeId || !employeeData.firstName || !employeeData.lastName || !employeeData.email || !employeeData.department || !employeeData.employeeType) {
+      console.warn('Skipping employee import due to missing required fields', employeeData);
+      continue;
     }
+    
+    // Check for duplicates
+    const existingWithId = existingEmployees.find(e => e.employeeId === employeeData.employeeId);
+    const existingWithEmail = existingEmployees.find(e => e.email.toLowerCase() === employeeData.email!.toLowerCase());
+    
+    if (existingWithId || existingWithEmail) {
+      console.warn('Skipping duplicate employee', employeeData);
+      continue;
+    }
+    
+    // Create new employee with required fields
+    const newEmployee: Employee = {
+      id: uuidv4(),
+      employeeId: employeeData.employeeId,
+      firstName: employeeData.firstName,
+      lastName: employeeData.lastName,
+      email: employeeData.email,
+      employeeType: employeeData.employeeType,
+      department: employeeData.department,
+      joiningDate: employeeData.joiningDate || now.substring(0, 10),
+      status: employeeData.status || 'active',
+      userId: employeeData.userId,
+      modulePermissions: employeeData.modulePermissions,
+      createdAt: now,
+      updatedAt: now
+    };
+    
+    // Add to the list
+    existingEmployees.push(newEmployee);
+    addedEmployees.push(newEmployee);
   }
   
-  // Only update storage if there were successful imports
-  if (result.success.length > 0) {
-    saveEmployeesToStorage([...employees, ...result.success]);
-  }
+  // Save updated list
+  saveEmployeesToStorage(existingEmployees);
   
-  return result;
+  return addedEmployees;
 };

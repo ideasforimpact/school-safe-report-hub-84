@@ -54,7 +54,7 @@ const EmployeesList = () => {
             ) : (
               employees.map((employee) => {
                 // Determine if employee is inactive (for verification system)
-                const isInactive = employee.status === 'failed'; // Use 'failed' for verification system
+                const isInactive = employee.status === 'failed'; // Specific to verification system
                 
                 return (
                   <TableRow key={employee.id} className={isInactive ? "bg-gray-100" : ""}>

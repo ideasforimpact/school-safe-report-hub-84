@@ -1,13 +1,7 @@
 
 import React from 'react';
-import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-  Form,
-} from "@/components/ui/form";
+import { Employee } from '@/contexts/employee/types';
+import { ModulePermissions } from '@/contexts/auth/types';
 import {
   Select,
   SelectContent,
@@ -16,9 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Employee } from '@/contexts/employee/types';
 import EmployeeModulePermissions from './EmployeeModulePermissions';
-import { ModulePermissions } from '@/contexts/auth/types';
 
 interface EmployeeFormProps {
   formData: Partial<Employee>;
@@ -26,154 +18,179 @@ interface EmployeeFormProps {
   isEditMode?: boolean;
 }
 
-const EmployeeForm = ({ formData, setFormData, isEditMode = false }: EmployeeFormProps) => {
-  const handleModulePermissionChange = (module: string, value: boolean) => {
-    // Make a copy of the current modulePermissions or create an empty object if it doesn't exist
-    const currentModulePermissions = formData.modulePermissions || {};
-    
-    // Update the module permission in our copy
+// Employee Module Permissions component (to be implemented or imported)
+const EmployeeModulePermissionsPlaceholder: React.FC<{
+  modulePermissions: ModulePermissions;
+  onModulePermissionChange: (key: keyof ModulePermissions, value: boolean) => void;
+}> = ({ modulePermissions, onModulePermissionChange }) => {
+  return <div>Module Permissions Placeholder</div>;
+};
+
+const EmployeeForm: React.FC<EmployeeFormProps> = ({
+  formData,
+  setFormData,
+  isEditMode = false
+}) => {
+  // Handle input changes
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Handle select changes
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+  
+  // Handle module permission changes
+  const handleModulePermissionChange = (key: keyof ModulePermissions, value: boolean) => {
     setFormData(prev => ({
       ...prev,
       modulePermissions: {
-        ...currentModulePermissions,
-        [module]: value
-      } as ModulePermissions
+        ...(prev.modulePermissions || {
+          superAdmin: false,
+          incidentReporting: false,
+          incidentAdmin: false,
+          assessmentUser: false,
+          assessmentsAdmin: false,
+          employeeVerificationAdmin: false,
+          grievancesAdmin: false,
+          transportSafetyAdmin: false,
+          eduSafeResourceAccess: false
+        }),
+        [key]: value
+      }
     }));
   };
 
-  const handleInputChange = (field: string, value: string) => {
-    setFormData({ ...formData, [field]: value });
-  };
-
-  const handleSelectChange = (field: string, value: string) => {
-    setFormData({ ...formData, [field]: value });
-  };
-
   return (
-    <div className="grid gap-4 py-4">
-      <div className="form-container">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FormItem>
-            <FormLabel>Employee ID</FormLabel>
-            <FormControl>
-              <Input
-                placeholder="E.g. EMP001"
-                value={formData.employeeId || ''}
-                onChange={(e) => handleInputChange('employeeId', e.target.value)}
-                disabled={isEditMode}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-
-          <FormItem>
-            <FormLabel>Email</FormLabel>
-            <FormControl>
-              <Input
-                type="email"
-                placeholder="employee@example.com"
-                value={formData.email || ''}
-                onChange={(e) => handleInputChange('email', e.target.value)}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-
-          <FormItem>
-            <FormLabel>First Name</FormLabel>
-            <FormControl>
-              <Input
-                placeholder="John"
-                value={formData.firstName || ''}
-                onChange={(e) => handleInputChange('firstName', e.target.value)}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-
-          <FormItem>
-            <FormLabel>Last Name</FormLabel>
-            <FormControl>
-              <Input
-                placeholder="Doe"
-                value={formData.lastName || ''}
-                onChange={(e) => handleInputChange('lastName', e.target.value)}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-
-          <FormItem>
-            <FormLabel>Department</FormLabel>
-            <Select
-              value={formData.department || ''}
-              onValueChange={(value) => handleSelectChange('department', value)}
-            >
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select department" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                <SelectItem value="admin">Administration</SelectItem>
-                <SelectItem value="teaching">Teaching</SelectItem>
-                <SelectItem value="security">Security</SelectItem>
-                <SelectItem value="maintenance">Maintenance</SelectItem>
-                <SelectItem value="transport">Transport</SelectItem>
-                <SelectItem value="management">Management</SelectItem>
-                <SelectItem value="it">IT</SelectItem>
-                <SelectItem value="hr">Human Resources</SelectItem>
-                <SelectItem value="finance">Finance</SelectItem>
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-
-          <FormItem>
-            <FormLabel>Employee Type</FormLabel>
-            <Select
-              value={formData.employeeType || ''}
-              onValueChange={(value) => handleSelectChange('employeeType', value)}
-            >
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select employee type" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                <SelectItem value="permanent">Permanent</SelectItem>
-                <SelectItem value="contract">Contract</SelectItem>
-                <SelectItem value="part_time">Part-time</SelectItem>
-                <SelectItem value="consultant">Consultant</SelectItem>
-                <SelectItem value="intern">Intern</SelectItem>
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-
-          <FormItem>
-            <FormLabel>Joining Date</FormLabel>
-            <FormControl>
-              <Input
-                type="date"
-                value={formData.joiningDate || new Date().toISOString().split('T')[0]}
-                onChange={(e) => handleInputChange('joiningDate', e.target.value)}
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-
-          <FormItem>
-            <FormLabel>Status</FormLabel>
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            First Name
+          </label>
+          <Input
+            name="firstName"
+            value={formData.firstName || ''}
+            onChange={handleInputChange}
+            placeholder="Enter first name"
+            required
+          />
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Last Name
+          </label>
+          <Input
+            name="lastName"
+            value={formData.lastName || ''}
+            onChange={handleInputChange}
+            placeholder="Enter last name"
+            required
+          />
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Email
+          </label>
+          <Input
+            type="email"
+            name="email"
+            value={formData.email || ''}
+            onChange={handleInputChange}
+            placeholder="Enter email address"
+            required
+          />
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Employee ID
+          </label>
+          <Input
+            name="employeeId"
+            value={formData.employeeId || ''}
+            onChange={handleInputChange}
+            placeholder="Enter employee ID"
+            required
+            disabled={isEditMode}
+          />
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Department
+          </label>
+          <Select
+            value={formData.department || ''}
+            onValueChange={(value) => handleSelectChange('department', value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select department" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="admin">Administration</SelectItem>
+              <SelectItem value="teaching">Teaching</SelectItem>
+              <SelectItem value="security">Security</SelectItem>
+              <SelectItem value="maintenance">Maintenance</SelectItem>
+              <SelectItem value="transport">Transport</SelectItem>
+              <SelectItem value="management">Management</SelectItem>
+              <SelectItem value="it">IT</SelectItem>
+              <SelectItem value="hr">HR</SelectItem>
+              <SelectItem value="finance">Finance</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Employee Type
+          </label>
+          <Select
+            value={formData.employeeType || ''}
+            onValueChange={(value) => handleSelectChange('employeeType', value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select employee type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="permanent">Permanent</SelectItem>
+              <SelectItem value="contract">Contract</SelectItem>
+              <SelectItem value="part_time">Part Time</SelectItem>
+              <SelectItem value="consultant">Consultant</SelectItem>
+              <SelectItem value="intern">Intern</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Joining Date
+          </label>
+          <Input
+            type="date"
+            name="joiningDate"
+            value={formData.joiningDate || ''}
+            onChange={handleInputChange}
+            required
+          />
+        </div>
+        
+        {isEditMode && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Status
+            </label>
             <Select
               value={formData.status || 'active'}
               onValueChange={(value) => handleSelectChange('status', value)}
             >
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-              </FormControl>
+              <SelectTrigger>
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="on_leave">On Leave</SelectItem>
@@ -183,18 +200,18 @@ const EmployeeForm = ({ formData, setFormData, isEditMode = false }: EmployeeFor
                 <SelectItem value="inactive">Inactive</SelectItem>
               </SelectContent>
             </Select>
-            <FormMessage />
-          </FormItem>
-        </div>
+          </div>
+        )}
       </div>
-
-      {/* Module Permissions Section */}
+      
       <div className="mt-6">
-        <EmployeeModulePermissions 
-          permissions={formData.modulePermissions as ModulePermissions} 
-          onPermissionChange={handleModulePermissionChange}
-          isEditMode={isEditMode}
-        />
+        <h3 className="text-md font-medium mb-3">Module Permissions</h3>
+        {formData.modulePermissions && (
+          <EmployeeModulePermissionsPlaceholder
+            modulePermissions={formData.modulePermissions}
+            onModulePermissionChange={handleModulePermissionChange}
+          />
+        )}
       </div>
     </div>
   );

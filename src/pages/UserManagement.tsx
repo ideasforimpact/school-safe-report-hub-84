@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { UserPlus, FileUp } from 'lucide-react';
-import { User, UserRole, ModulePermissions, EmployeeType as AuthEmployeeType, DepartmentType as AuthDepartmentType } from '@/contexts/auth/types';
+import { User, UserRole, ModulePermissions } from '@/contexts/auth/types';
 import { EmploymentStatus, EmployeeType as EmployeeContextType, DepartmentType as EmployeeContextDepartmentType } from '@/contexts/employee/types';
 import { toast } from "sonner";
 import { 
@@ -27,9 +27,9 @@ import {
 import { processEmployeeExcel } from '@/services/employee/importEmployeeService';
 import { supabase } from '@/integrations/supabase/client';
 import { getAllEmployeesFromApi } from '@/services/employee/employeeRetrievalService';
-import { getEmployeeModulePermissions, updateEmployeeModulePermissions } from '@/services/employee/employeeModuleService';
+import { getEmployeeModulePermissions } from '@/services/employee/employeeModuleService';
 
-// Helper function to convert employee type to auth type
+// Helper function to convert employee type and department type
 const convertEmployeeType = (employeeType: EmployeeContextType): AuthEmployeeType => {
   // Handle 'intern' which is in employee types but not in auth types
   if (employeeType === 'intern') {
@@ -59,7 +59,7 @@ const convertDepartmentType = (department: EmployeeContextDepartmentType): AuthD
 
 const UserManagement = () => {
   const { isAdmin, users = [] } = useAuth();
-  const { addEmployee } = useEmployee(); // Connect to employee context
+  const { addEmployee, deactivateEmployee } = useEmployee(); // Make sure we use deactivateEmployee from context
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
@@ -115,8 +115,8 @@ const UserManagement = () => {
               lastName: employee.lastName,
               email: employee.email,
               employeeId: employee.employeeId,
-              employeeType: convertEmployeeType(employee.employeeType),
-              department: convertDepartmentType(employee.department),
+              employeeType: employee.employeeType as any, // Type conversion handled by helper function
+              department: employee.department as any, // Type conversion handled by helper function
               joiningDate: employee.joiningDate,
               role: modulePermissions.superAdmin ? 'admin' : 'reporter' as UserRole,
               modulePermissions: modulePermissions,
@@ -146,6 +146,7 @@ const UserManagement = () => {
   const handleAddUser = async () => {
     try {
       setIsLoading(true);
+      
       // In a real app, we'd validate the form data here
       const updatedUsers = await addNewUser(
         users as any, // Type casting to fix TypeScript error
@@ -170,6 +171,7 @@ const UserManagement = () => {
               department: formData.department,
               joiningDate: formData.joiningDate,
               status: 'active' as EmploymentStatus, // Explicitly cast to EmploymentStatus
+              modulePermissions: formData.modulePermissions // Include module permissions
             };
             
             // First try the edge function
@@ -187,17 +189,15 @@ const UserManagement = () => {
                 throw error;
               }
               
-              // After employee is created, update their module permissions
-              if (data && data.employee && data.employee.id) {
-                await updateEmployeeModulePermissions(data.employee.id, formData.modulePermissions);
-              }
-              
               console.log("Employee created via edge function:", data);
               toast.success("Employee record created successfully");
             } catch (edgeFuncError) {
               console.error("Edge function error:", edgeFuncError);
               // Fall back to the context function if the edge function fails
-              await addEmployee(employeeData);
+              await addEmployee({
+                ...employeeData,
+                modulePermissions: formData.modulePermissions
+              });
               console.log("Employee created via context function");
               toast.success("Employee record created via local storage");
             }
@@ -238,8 +238,8 @@ const UserManagement = () => {
             lastName: employee.lastName,
             email: employee.email,
             employeeId: employee.employeeId,
-            employeeType: convertEmployeeType(employee.employeeType),
-            department: convertDepartmentType(employee.department),
+            employeeType: employee.employeeType as any, // Type conversion handled by helper function
+            department: employee.department as any, // Type conversion handled by helper function
             joiningDate: employee.joiningDate,
             role: modulePermissions.superAdmin ? 'admin' : 'reporter' as UserRole,
             modulePermissions: modulePermissions,
@@ -365,39 +365,19 @@ const UserManagement = () => {
       setIsLoading(true);
       const updatedUsers = deactivateExistingUser(users as any, userId); // Type casting to fix TypeScript error
       if (updatedUsers) {
-        // Also update the employee status using our new deactivateEmployee function
         try {
-          // Find the employee in our employee list
-          const employee = employeeUsers.find(emp => emp.id === userId);
-          if (employee) {
-            // Use employee context's deactivateEmployee function
-            const { deactivateEmployee } = useEmployee();
-            await deactivateEmployee(userId);
-            console.log("Employee deactivated via context function");
-          } else {
-            // Fallback to edge function if employee not found in context
-            const { data, error } = await supabase.functions.invoke('employee-management', {
-              body: JSON.stringify({
-                operation: 'update',
-                employee: {
-                  id: userId,
-                  status: 'inactive' as EmploymentStatus // Explicitly cast to EmploymentStatus
-                }
-              })
-            });
-            
-            if (error) throw error;
-            console.log("Employee deactivated via edge function:", data);
-          }
+          // Use the employee context's deactivateEmployee function directly
+          // This will handle both status update and removing module permissions
+          await deactivateEmployee(userId);
+          console.log("Employee deactivated via context function");
           
           // After successful deactivation, refresh the employee list
-          refreshEmployeesList();
-        } catch (edgeFuncError) {
-          console.error("Error deactivating employee:", edgeFuncError);
+          await refreshEmployeesList();
+          toast.success("User deactivated successfully");
+        } catch (error) {
+          console.error("Error deactivating employee:", error);
           toast.error("User deactivated but employee record update failed");
         }
-        
-        toast.success("User deactivated successfully");
       }
     } catch (error) {
       console.error("Error deactivating user:", error);

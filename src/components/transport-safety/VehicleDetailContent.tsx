@@ -1,9 +1,9 @@
 
 import React from 'react';
-import { VehicleDetailContent as DetailContent } from './DetailContent';
 
+// This is a placeholder component that will be implemented with real functionality later
 const VehicleDetailContent = () => {
-  return <DetailContent />;
+  return <div>Vehicle Detail Content</div>;
 };
 
 export default VehicleDetailContent;

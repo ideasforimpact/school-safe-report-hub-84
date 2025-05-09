@@ -19,8 +19,10 @@ import {
   updateEmployeeInApi,
   deactivateEmployeeInApi,
   deleteEmployeeFromApi,
-  updateModulePermissionsInApi
 } from '@/services/employee/employeeApiService';
+
+// Import module permission service
+import { updateModulePermissionsInApi } from '@/services/employee/employeeModulePermissionsService';
 
 const EmployeeContext = createContext<EmployeeContextType | undefined>(undefined);
 
@@ -70,6 +72,14 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
       // Try to add employee to API first
       try {
         const newEmployee = await addEmployeeToApi(employeeData);
+        
+        // If the employee has modulePermissions, update them in the database
+        if (employeeData.modulePermissions) {
+          await updateModulePermissionsInApi(newEmployee.id, employeeData.modulePermissions);
+          // Make sure the returned employee has the module permissions
+          newEmployee.modulePermissions = employeeData.modulePermissions;
+        }
+        
         setEmployees(prev => [...prev, newEmployee]);
         return;
       } catch (apiError) {
@@ -93,6 +103,14 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
       // Try to update employee in API first
       try {
         const updatedEmployee = await updateEmployeeInApi(id, updates);
+        
+        // If modulePermissions are being updated, update them in the database
+        if (updates.modulePermissions) {
+          await updateModulePermissionsInApi(id, updates.modulePermissions);
+          // Make sure the returned employee has the updated module permissions
+          updatedEmployee.modulePermissions = updates.modulePermissions;
+        }
+        
         setEmployees(prev => prev.map(emp => emp.id === id ? updatedEmployee : emp));
         return;
       } catch (apiError) {
@@ -115,15 +133,46 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
       
       // Try to deactivate employee in API first
       try {
+        // This should set status to inactive AND clear module permissions
         const deactivatedEmployee = await deactivateEmployeeInApi(id);
+        
+        // Update local state with deactivated employee (status will be 'inactive' and modulePermissions will be cleared)
         setEmployees(prev => prev.map(emp => emp.id === id ? deactivatedEmployee : emp));
         return;
       } catch (apiError) {
         console.error("API error in deactivateEmployee, falling back to local:", apiError);
         
         // If API fails, fallback to local storage
-        await updateEmployeeService(id, { status: 'inactive' });
-        setEmployees(prev => prev.map(emp => emp.id === id ? { ...emp, status: 'inactive' } : emp));
+        await updateEmployeeService(id, { 
+          status: 'inactive', 
+          modulePermissions: {
+            superAdmin: false,
+            incidentReporting: false,
+            incidentAdmin: false,
+            assessmentUser: false,
+            assessmentsAdmin: false,
+            employeeVerificationAdmin: false,
+            grievancesAdmin: false,
+            transportSafetyAdmin: false,
+            eduSafeResourceAccess: false
+          }
+        });
+        
+        setEmployees(prev => prev.map(emp => emp.id === id ? { 
+          ...emp, 
+          status: 'inactive',
+          modulePermissions: {
+            superAdmin: false,
+            incidentReporting: false,
+            incidentAdmin: false,
+            assessmentUser: false,
+            assessmentsAdmin: false,
+            employeeVerificationAdmin: false,
+            grievancesAdmin: false,
+            transportSafetyAdmin: false,
+            eduSafeResourceAccess: false
+          }
+        } : emp));
       }
     } catch (error) {
       console.error("Error in deactivateEmployee:", error);
