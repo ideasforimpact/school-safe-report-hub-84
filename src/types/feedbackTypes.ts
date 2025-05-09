@@ -18,8 +18,8 @@ export interface FormResponse {
   formTitle: string;
   submitterName: string;
   submitterEmail?: string;
-  anonymousSubmission?: boolean;
-  answers: ResponseItem[];
+  responses: ResponseItem[];
   status: SubmissionStatus;
-  submittedAt: string;
+  createdAt: string;
+  updatedAt: string;
 }

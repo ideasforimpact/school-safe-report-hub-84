@@ -1,8 +1,8 @@
 
 import React, { createContext, useContext, useState } from 'react';
-import { FeedbackForm, FormResponse } from '@/types/feedbackTypes';
+import { FeedbackForm } from '@/types/feedbackTypes';
 import { mockFeedbackForms, mockFormResponses } from '@/data/mockFeedbackData';
-import { FeedbackContextType, FormSubmission, SubmissionStatus } from '@/contexts/feedback/types';
+import { FeedbackContextType, FormSubmission, SubmissionStatus, FormResponse } from '@/contexts/feedback/types';
 
 const FeedbackContext = createContext<FeedbackContextType | undefined>(undefined);
 
@@ -26,7 +26,7 @@ export const FeedbackProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return submissions.find(response => response.id === id);
   };
 
-  const submitFormResponse = (response: Omit<FormSubmission, 'id' | 'submittedAt'>) => {
+  const submitFormResponse = (response: Omit<FormSubmission, 'id' | 'createdAt' | 'updatedAt'>) => {
     const newResponse: FormSubmission = {
       ...response,
       id: `response_${Date.now()}`,

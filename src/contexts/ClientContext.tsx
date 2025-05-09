@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import {
   addClient as addClientService,
@@ -33,6 +34,7 @@ export interface Client {
 
 interface ClientContextType {
   clients: Client[];
+  currentClient?: Client; // Add currentClient property
   addClient: (clientData: Omit<Client, 'id' | 'creationDate'>) => void;
   updateClient: (id: string, updates: Partial<Client>) => void;
   deleteClient: (id: string) => void;
@@ -44,6 +46,9 @@ const ClientContext = createContext<ClientContextType | undefined>(undefined);
 
 export const ClientProvider = ({ children }: { children: ReactNode }) => {
   const [clients, setClients] = useState<Client[]>(() => getClientsFromStorage());
+  const [currentClient, setCurrentClient] = useState<Client | undefined>(
+    clients.length > 0 ? clients[0] : undefined
+  );
 
   // Save clients to localStorage whenever they change
   useEffect(() => {
@@ -75,6 +80,7 @@ export const ClientProvider = ({ children }: { children: ReactNode }) => {
   return (
     <ClientContext.Provider value={{ 
       clients, 
+      currentClient,  // Add currentClient to the context value
       addClient, 
       updateClient, 
       deleteClient,

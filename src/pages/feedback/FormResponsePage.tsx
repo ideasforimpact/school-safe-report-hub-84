@@ -29,9 +29,7 @@ const FormResponsePage = () => {
     );
   }
   
-  const submitterName = response.anonymousSubmission 
-    ? "Anonymous User" 
-    : user ? formatUserFullName(user) : response.submitterName || "Unknown User";
+  const submitterName = response.submitterName || "Unknown User";
 
   return (
     <div className="space-y-6">
@@ -47,7 +45,7 @@ const FormResponsePage = () => {
           <CardTitle className="flex justify-between items-center">
             <span>Feedback Response #{response.id.substring(response.id.length - 5)}</span>
             <span className="text-sm font-normal text-muted-foreground">
-              Submitted on {formatDate(response.submittedAt)}
+              Submitted on {formatDate(response.createdAt)}
             </span>
           </CardTitle>
           <CardDescription>
@@ -55,7 +53,7 @@ const FormResponsePage = () => {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {response.answers.map((answer, index) => (
+          {response.responses.map((answer, index) => (
             <div key={index} className="border-b pb-4 last:border-0">
               <h3 className="font-medium text-gray-700">{answer.question}</h3>
               <p className="mt-1">{answer.answer}</p>

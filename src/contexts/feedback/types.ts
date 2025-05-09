@@ -49,5 +49,5 @@ export interface FeedbackContextType {
   deleteForm: (formId: string) => void;
   addSubmission: (submission: FormSubmission) => void;
   updateSubmissionStatus: (submissionId: string, status: SubmissionStatus) => void;
-  submitFormResponse: (response: Omit<FormSubmission, 'id' | 'submittedAt'>) => void;
+  submitFormResponse: (response: Omit<FormSubmission, 'id' | 'createdAt' | 'updatedAt'>) => void;
 }

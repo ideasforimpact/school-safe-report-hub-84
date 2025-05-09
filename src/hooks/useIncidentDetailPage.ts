@@ -5,7 +5,7 @@ import { useIncidents } from '@/contexts/incident/IncidentContext';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { toast } from 'sonner';
 import { formatUserFullName } from '@/utils/userUtils';
-import { IncidentStatus } from '@/contexts/incident/types';
+import { IncidentStatus } from '@/types/incident';
 
 export function useIncidentDetailPage(id: string) {
   const { incidents, updateIncident, addComment } = useIncidents();
@@ -45,7 +45,7 @@ export function useIncidentDetailPage(id: string) {
     setIsLoading(true);
     
     try {
-      // Update the incident status
+      // Update the incident status - Cast to IncidentStatus
       await updateIncident(incident.id, { status: newStatus as IncidentStatus });
       
       // Auto-generate a comment about the status change

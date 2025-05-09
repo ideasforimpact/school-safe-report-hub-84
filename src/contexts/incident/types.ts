@@ -62,8 +62,5 @@ export interface IncidentContextType {
   deleteDesignation: (id: string) => void;
 }
 
-// Add these exports to your existing types
-
-export type IncidentStatus = 'Open' | 'In Progress' | 'Resolved' | 'Closed';
-export type IncidentType = 'Bullying' | 'Vandalism' | 'Fighting' | 'Theft' | 'Other';
-export type IncidentLocation = string;
+// Use the IncidentStatus type from types/incident.ts
+export type { IncidentStatus, IncidentType, IncidentLocation } from '@/types/incident';

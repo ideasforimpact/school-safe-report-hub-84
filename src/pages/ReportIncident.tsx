@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIncidents } from '@/contexts/incident/IncidentContext';
@@ -13,9 +14,8 @@ import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { formatUserFullName } from '@/utils/userUtils';
-import { IncidentType, IncidentStatus } from '@/contexts/incident/types';
+import { IncidentType } from '@/types/incident';
 import {
-  Form,
   FormControl,
   FormDescription,
   FormField,
@@ -112,7 +112,7 @@ const ReportIncident = () => {
             <p className="text-gray-500">Please fill out the form below to report an incident.</p>
           </CardHeader>
           <CardContent>
-            <Form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit}>
               <div className="grid gap-4">
                 {/* Incident Type */}
                 <div>
@@ -283,7 +283,7 @@ const ReportIncident = () => {
                   />
                 </div>
               </div>
-            </Form>
+            </form>
           </CardContent>
           <CardFooter className="flex justify-end">
             <Button onClick={handleSubmit} disabled={isSubmitting}>
