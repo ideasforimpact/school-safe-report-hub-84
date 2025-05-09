@@ -4,9 +4,26 @@ import { OAuthProviderName } from '@/utils/authProviders';
 import { ModulePermissions } from '@/contexts/auth/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Client, mapDbClientToClient, prepareClientForDb } from '@/types/clientTypes';
+import { mapDbClientToClient, prepareClientForDb } from '@/types/clientTypes';
 
 export type InstitutionType = 'CBSE' | 'IB' | 'IGCSE' | 'ICSE' | 'Matric' | 'Combined Campus' | 'Other';
+
+export interface Client {
+  id: string;
+  name: string;
+  email: string;
+  contactPerson: string;
+  phone: string;
+  creationDate: string;
+  active: boolean;
+  logo?: string;
+  institutionType?: string;
+  moduleAccess?: Partial<ModulePermissions>;
+  allowedDomains?: string[];
+  authProviders?: {
+    [key in OAuthProviderName]?: boolean;
+  };
+}
 
 export interface ClientContextType {
   client: Client | null;
@@ -18,7 +35,7 @@ export interface ClientContextType {
   deleteClient: (id: string) => Promise<void>;
 }
 
-// Re-export Client type for use in other files - using the proper syntax for isolated modules
+// Re-export Client type for use in other files
 export type { Client };
 
 const ClientContext = createContext<ClientContextType | undefined>(undefined);
@@ -65,10 +82,10 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           const clientModules = modulesByClient[dbClient.id] || [];
           const moduleAccess = mapModulesToPermissions(clientModules);
           
-          return mapDbClientToClient({
-            ...dbClient,
+          return {
+            ...mapDbClientToClient(dbClient),
             moduleAccess
-          });
+          };
         });
 
         setClients(mappedClients);
@@ -181,10 +198,10 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         }
 
         // Add the new client to state
-        const newClient = mapDbClientToClient({
-          ...data,
+        const newClient = {
+          ...mapDbClientToClient(data),
           moduleAccess: clientData.moduleAccess
-        });
+        };
         
         setClients(prev => [...prev, newClient]);
         toast.success('Client added successfully');

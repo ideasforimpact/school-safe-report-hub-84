@@ -1,35 +1,15 @@
 
 import { Database } from '@/integrations/supabase/types';
+import { OAuthProviderName } from '@/utils/authProviders';
+import { ModulePermissions } from '@/contexts/auth/types';
 
 // Use the Supabase generated types as a reference
 export type ClientRecord = Database['public']['Tables']['clients']['Row'];
 export type ModuleRecord = Database['public']['Tables']['modules']['Row'];
 export type ClientModuleRecord = Database['public']['Tables']['client_modules']['Row'];
 
-// Import necessary types
-import { OAuthProviderName } from '@/utils/authProviders';
-import { ModulePermissions } from '@/contexts/auth/types';
-
-// Client type for the application
-export interface Client {
-  id: string;
-  name: string;
-  email: string;
-  contactPerson: string;
-  phone: string;
-  creationDate: string;
-  active: boolean;
-  logo?: string;
-  institutionType?: string;
-  moduleAccess?: Partial<ModulePermissions>;
-  allowedDomains?: string[];
-  authProviders?: {
-    [key in OAuthProviderName]?: boolean;
-  };
-}
-
 // Helper functions to convert between Supabase and application types
-export const mapDbClientToClient = (dbClient: ClientRecord): Client => {
+export const mapDbClientToClient = (dbClient: ClientRecord) => {
   return {
     id: dbClient.id,
     name: dbClient.name,
@@ -54,7 +34,7 @@ const parseAuthProviders = (authProviders: string): { [key in OAuthProviderName]
   };
 };
 
-export const prepareClientForDb = (client: Client): Omit<ClientRecord, 'id' | 'creation_date'> => {
+export const prepareClientForDb = (client: any): Omit<ClientRecord, 'id' | 'creation_date'> => {
   return {
     name: client.name,
     email: client.email,

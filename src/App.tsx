@@ -47,6 +47,9 @@ import Blog from './pages/Blog';
 import Pricing from './pages/Pricing';
 import NewsPage from './pages/NewsPage';
 import AssessmentResponsePage from './pages/AssessmentResponsePage';
+import EducationalConfiguration from './pages/EducationalConfiguration';
+import IncidentConfiguration from './pages/IncidentConfiguration';
+import OtherConfiguration from './pages/OtherConfiguration';
 
 function App() {
   return (
@@ -79,7 +82,12 @@ function App() {
           <Route path="/students" element={<StudentManagement />} />
           <Route path="/clients" element={<ClientManagement />} />
           <Route path="/facilities" element={<FacilityManagement />} />
-          <Route path="/configuration/*" element={<ConfigurationManagement />} />
+          
+          {/* Configuration Routes */}
+          <Route path="/configuration" element={<ConfigurationManagement />} />
+          <Route path="/educational-configuration" element={<EducationalConfiguration />} />
+          <Route path="/incident-configuration" element={<IncidentConfiguration />} />
+          <Route path="/other-configuration" element={<OtherConfiguration />} />
           
           {/* Assessment Routes */}
           <Route path="/assessments/*" element={<AssessmentsPage />} />
