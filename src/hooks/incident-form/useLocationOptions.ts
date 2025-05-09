@@ -1,10 +1,16 @@
 
 import { useState, useEffect } from 'react';
 import { useIncidents } from '@/contexts/incident/IncidentContext';
+import { ConfigItem } from '@/contexts/types';
 
 interface LocationOption {
   value: string;
   label: string;
+}
+
+// Extend the ConfigItem interface to include the locationId property
+interface FacilityItem extends ConfigItem {
+  locationId?: string;
 }
 
 export function useLocationOptions(locationId: string) {
@@ -29,9 +35,13 @@ export function useLocationOptions(locationId: string) {
       return;
     }
 
-    const filteredFacilities = facilities.filter(
-      facility => facility.locationId === locationId
-    );
+    // Since the ConfigItem type doesn't include locationId,
+    // we need to use a more appropriate filter method
+    // that doesn't assume all facilities have a locationId
+    const filteredFacilities = facilities.filter((facility: any) => {
+      // Check if the facility has a locationId property
+      return facility.locationId === locationId;
+    });
 
     const options = filteredFacilities.map(facility => ({
       value: facility.id,
