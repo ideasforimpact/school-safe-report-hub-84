@@ -19,7 +19,7 @@ const IncidentTypeSection: React.FC<IncidentTypeSectionProps> = ({
 }) => {
   return (
     <div className="space-y-2">
-      <label htmlFor="type" className="text-sm font-medium block">
+      <label className="text-sm font-medium block">
         Report Type
       </label>
       <Select 

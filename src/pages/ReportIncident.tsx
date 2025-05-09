@@ -11,25 +11,18 @@ import { useIncidentFormValidation } from '@/hooks/incident-form/useIncidentForm
 import { useCategoryOptions } from '@/hooks/incident-form/useCategoryOptions';
 import { useLocationOptions } from '@/hooks/incident-form/useLocationOptions';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { Loader2, CalendarIcon } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { formatUserFullName } from '@/utils/userUtils';
 import { IncidentType, IncidentCategory, IncidentLocation } from '@/types/incident';
-import {
-  FormLabel,
-} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { CalendarIcon } from "lucide-react";
 import { format } from 'date-fns';
+import { useForm } from "react-hook-form";
 
 const ReportIncident = () => {
   const navigate = useNavigate();
@@ -76,7 +69,7 @@ const ReportIncident = () => {
         location: formData.location as IncidentLocation,
         locationId: formData.locationId,
         facilityId: formData.facilityId,
-        category: categoryLabel as IncidentCategory, // Cast to IncidentCategory
+        category: categoryLabel as IncidentCategory, 
         categoryId: formData.categoryId,
         subcategory: formData.subcategory,
         priority: formData.priority,
@@ -114,7 +107,9 @@ const ReportIncident = () => {
               <div className="grid gap-4">
                 {/* Incident Type */}
                 <div>
-                  <FormLabel>Incident Type</FormLabel>
+                  <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    Incident Type
+                  </label>
                   <Select onValueChange={(value) => handleSelectChange('type', value)} defaultValue={formData.type}>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select an incident type" />
@@ -130,7 +125,9 @@ const ReportIncident = () => {
 
                 {/* Description */}
                 <div>
-                  <FormLabel>Description</FormLabel>
+                  <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    Description
+                  </label>
                   <Textarea
                     placeholder="Detailed description of the incident"
                     value={formData.description}
@@ -142,7 +139,9 @@ const ReportIncident = () => {
                 {/* Date and Time */}
                 <div className="flex gap-4">
                   <div className="w-1/2">
-                    <FormLabel>Date</FormLabel>
+                    <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                      Date
+                    </label>
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button
@@ -173,7 +172,9 @@ const ReportIncident = () => {
                     {errors.date && <p className="text-red-500 text-sm">{errors.date}</p>}
                   </div>
                   <div className="w-1/2">
-                    <FormLabel>Time</FormLabel>
+                    <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                      Time
+                    </label>
                     <Input
                       type="time"
                       value={formData.time}
@@ -186,7 +187,9 @@ const ReportIncident = () => {
                 {/* Category and Subcategory */}
                 <div className="flex gap-4">
                   <div className="w-1/2">
-                    <FormLabel>Category</FormLabel>
+                    <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                      Category
+                    </label>
                     <Select onValueChange={(value) => handleSelectChange('categoryId', value)} defaultValue={formData.categoryId}>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select a category" />
@@ -202,7 +205,9 @@ const ReportIncident = () => {
                     {errors.categoryId && <p className="text-red-500 text-sm">{errors.categoryId}</p>}
                   </div>
                   <div className="w-1/2">
-                    <FormLabel>Subcategory</FormLabel>
+                    <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                      Subcategory
+                    </label>
                     <Select onValueChange={(value) => handleSelectChange('subcategory', value)} defaultValue={formData.subcategory} disabled={!formData.categoryId}>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select a subcategory" />
@@ -222,7 +227,9 @@ const ReportIncident = () => {
                 {/* Location and Facility */}
                 <div className="flex gap-4">
                   <div className="w-1/2">
-                    <FormLabel>Location</FormLabel>
+                    <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                      Location
+                    </label>
                     <Select onValueChange={(value) => handleSelectChange('locationId', value)} defaultValue={formData.locationId}>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select a location" />
@@ -238,7 +245,9 @@ const ReportIncident = () => {
                     {errors.locationId && <p className="text-red-500 text-sm">{errors.locationId}</p>}
                   </div>
                   <div className="w-1/2">
-                    <FormLabel>Facility</FormLabel>
+                    <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                      Facility
+                    </label>
                     <Select onValueChange={(value) => handleSelectChange('facilityId', value)} defaultValue={formData.facilityId} disabled={!formData.locationId}>
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Select a facility" />
@@ -256,7 +265,9 @@ const ReportIncident = () => {
 
                 {/* Priority */}
                 <div>
-                  <FormLabel>Priority</FormLabel>
+                  <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    Priority
+                  </label>
                   <Select onValueChange={(value) => handleSelectChange('priority', value)} defaultValue={formData.priority}>
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Select priority" />
@@ -272,7 +283,9 @@ const ReportIncident = () => {
 
                 {/* Root Cause */}
                 <div>
-                  <FormLabel>Root Cause (Optional)</FormLabel>
+                  <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    Root Cause (Optional)
+                  </label>
                   <Textarea
                     placeholder="Enter the root cause of the incident"
                     value={formData.rootCause}

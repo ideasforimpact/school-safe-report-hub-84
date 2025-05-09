@@ -21,7 +21,7 @@ const IncidentPrioritySection: React.FC<IncidentPrioritySectionProps> = ({
 }) => {
   return (
     <div className="space-y-2">
-      <label htmlFor="priority" className="text-sm font-medium block">
+      <label className="text-sm font-medium block">
         Priority
       </label>
       <Select 
