@@ -1,42 +1,43 @@
-
 import { User, UserWithPassword, UserRole, ModulePermissions, EmployeeType, DepartmentType } from '@/contexts/auth/types';
+import { v4 as uuidv4 } from 'uuid';
 import { validateUserEmail, validateAdminDeletion } from '@/contexts/auth/utils';
 import { toast } from "@/components/ui/sonner";
 
 export const addNewUser = (
-  users: UserWithPassword[],
-  userData: { 
+  currentUsers: UserWithPassword[],
+  userData: {
     firstName: string;
     lastName: string;
-    email: string; 
-    password: string; 
-    role: UserRole; 
+    email: string;
+    password: string;
+    role: UserRole;
     modulePermissions: ModulePermissions;
     clientId?: string;
+    isActive: boolean;
     employeeId?: string;
     employeeType?: EmployeeType;
     department?: DepartmentType;
     joiningDate?: string;
-    isActive: boolean;
   },
   isEmailDomainAllowed?: (email: string, clientId: string) => boolean
 ): UserWithPassword[] | null => {
-  // Check if email already exists
-  if (!validateUserEmail(users, userData.email)) {
+  // Check if user with this email already exists
+  const userExists = currentUsers.find(user => user.email === userData.email);
+  if (userExists) {
+    console.error("User with this email already exists");
     return null;
   }
-
-  // If the user is being added with a client ID, validate the email domain
-  if (userData.clientId && userData.role !== 'saas_owner' && isEmailDomainAllowed) {
-    const isAllowed = isEmailDomainAllowed(userData.email, userData.clientId);
-    if (!isAllowed) {
-      toast.error(`The email domain isn't allowed for this client. Please use an approved domain.`);
+  
+  // If this is a client user, validate against the allowed email domains
+  if (userData.clientId && userData.email && isEmailDomainAllowed) {
+    if (!isEmailDomainAllowed(userData.email, userData.clientId)) {
+      console.error("Email domain not allowed for this client");
       return null;
     }
   }
 
   const newUser: UserWithPassword = {
-    id: Date.now().toString(),
+    id: uuidv4(),
     firstName: userData.firstName,
     lastName: userData.lastName,
     email: userData.email,
@@ -48,25 +49,24 @@ export const addNewUser = (
     employeeType: userData.employeeType,
     department: userData.department,
     joiningDate: userData.joiningDate,
-    isActive: userData.isActive
+    isActive: userData.isActive,
+    createdAt: new Date().toISOString(),
   };
 
-  const updatedUsers = [...users, newUser];
-  toast.success("User added successfully");
-  return updatedUsers;
+  return [...currentUsers, newUser];
 };
 
 export const updateExistingUser = (
-  users: UserWithPassword[],
+  currentUsers: UserWithPassword[],
   id: string,
   updates: Partial<User & { password?: string }>
 ): UserWithPassword[] | null => {
   // Check if email already exists and it's not the current user
-  if (updates.email && !validateUserEmail(users, updates.email, id)) {
+  if (updates.email && !validateUserEmail(currentUsers, updates.email, id)) {
     return null;
   }
 
-  const updatedUsers = users.map(u => {
+  const updatedUsers = currentUsers.map(u => {
     if (u.id === id) {
       return { ...u, ...updates };
     }
@@ -78,29 +78,29 @@ export const updateExistingUser = (
 };
 
 export const deleteExistingUser = (
-  users: UserWithPassword[],
+  currentUsers: UserWithPassword[],
   id: string,
-  currentUserId: string | undefined
+  currentUserId?: string
 ): UserWithPassword[] | null => {
-  if (!validateAdminDeletion(users, id, currentUserId)) {
+  if (!validateAdminDeletion(currentUsers, id, currentUserId)) {
     return null;
   }
 
-  const updatedUsers = users.filter(u => u.id !== id);
+  const updatedUsers = currentUsers.filter(u => u.id !== id);
   toast.success("User deleted successfully");
   return updatedUsers;
 };
 
 export const deactivateExistingUser = (
-  users: UserWithPassword[],
+  currentUsers: UserWithPassword[],
   id: string,
-  currentUserId: string | undefined
+  currentUserId?: string
 ): UserWithPassword[] | null => {
-  if (!validateAdminDeletion(users, id, currentUserId)) {
+  if (!validateAdminDeletion(currentUsers, id, currentUserId)) {
     return null;
   }
 
-  const updatedUsers = users.map(u => {
+  const updatedUsers = currentUsers.map(u => {
     if (u.id === id) {
       return { ...u, isActive: false };
     }

@@ -1,6 +1,4 @@
 
-import { User, UserRole, ModulePermissions, EmployeeType, DepartmentType } from './types';
-
 // Define the user with password separately for internal use
 export interface UserWithPassword extends User {
   password: string;

@@ -1,4 +1,3 @@
-
 import { 
   Home, 
   AlertTriangle,
@@ -40,30 +39,6 @@ export const getSaasOwnerItems = () => [
     icon: FileText,
     label: 'EduSafe\nResources',
     path: '/backoffice/edusafe-resources',
-    allowed: true,
-  },
-  {
-    icon: FileCheck,
-    label: 'Employee\nVerification',
-    path: '/employee-verification',
-    allowed: true,
-  },
-  {
-    icon: MessageSquare,
-    label: 'Grievances',
-    path: '/grievances',
-    allowed: true,
-  },
-  {
-    icon: Bus,
-    label: 'Transport\nSafety',
-    path: '/transport-safety',
-    allowed: true,
-  },
-  {
-    icon: Database,
-    label: 'EduSafe\nResources',
-    path: '/edusafe-resources',
     allowed: true,
   },
   {

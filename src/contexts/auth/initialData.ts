@@ -40,7 +40,8 @@ export const INITIAL_MOCK_USERS: UserWithPassword[] = [
     employeeId: 'EMP001',
     employeeType: 'permanent' as EmployeeType,
     department: 'admin' as DepartmentType,
-    joiningDate: '2023-01-01'
+    joiningDate: '2023-01-01',
+    createdAt: '2023-01-01T00:00:00.000Z'
   },
   {
     id: '2',
@@ -55,7 +56,8 @@ export const INITIAL_MOCK_USERS: UserWithPassword[] = [
     employeeId: 'EMP002',
     employeeType: 'permanent' as EmployeeType,
     department: 'academics' as DepartmentType,
-    joiningDate: '2023-02-15'
+    joiningDate: '2023-02-15',
+    createdAt: '2023-02-15T00:00:00.000Z'
   },
   {
     id: '3',
@@ -70,6 +72,7 @@ export const INITIAL_MOCK_USERS: UserWithPassword[] = [
     employeeId: 'EMP003',
     employeeType: 'contract' as EmployeeType,
     department: 'operations' as DepartmentType,
-    joiningDate: '2023-03-20'
+    joiningDate: '2023-03-20',
+    createdAt: '2023-03-20T00:00:00.000Z'
   }
 ];
