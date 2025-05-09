@@ -19,7 +19,7 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Fetch students from Supabase on component mount
+  // Fetch students using the edge function on component mount
   useEffect(() => {
     fetchStudents();
   }, []);
@@ -27,25 +27,17 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
   const fetchStudents = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('students')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const { data, error } = await supabase.functions.invoke('student-management', {
+        body: {},
+        method: 'GET',
+        path: 'list'
+      });
 
       if (error) {
         throw error;
       }
 
-      // Transform database response to match Student type
-      const transformedData = data.map(item => ({
-        ...item,
-        id: item.id,
-        studentId: item.student_id,
-        createdAt: new Date(item.created_at),
-        updatedAt: new Date(item.updated_at)
-      }));
-
-      setStudents(transformedData);
+      setStudents(data);
     } catch (error) {
       console.error('Error fetching students:', error);
       toast.error('Failed to load students');
@@ -56,33 +48,18 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
 
   const addStudent = async (student: Omit<Student, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
-      const { data, error } = await supabase
-        .from('students')
-        .insert([{
-          student_id: student.studentId,
-          name: student.name,
-          grade: student.grade,
-          section: student.section,
-          campus: student.campus
-        }])
-        .select();
+      const { data, error } = await supabase.functions.invoke('student-management', {
+        body: student,
+        method: 'POST',
+        path: 'create'
+      });
 
       if (error) {
         throw error;
       }
 
-      if (data && data.length > 0) {
-        // Transform the returned data to match Student type
-        const newStudent = {
-          ...data[0],
-          id: data[0].id,
-          studentId: data[0].student_id,
-          createdAt: new Date(data[0].created_at),
-          updatedAt: new Date(data[0].updated_at)
-        };
-
-        setStudents(prev => [newStudent, ...prev]);
-      }
+      setStudents(prev => [data, ...prev]);
+      return data;
     } catch (error) {
       console.error('Error adding student:', error);
       throw error;
@@ -91,40 +68,22 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
 
   const updateStudent = async (id: string, updates: Partial<Student>) => {
     try {
-      // Transform updates to match database column names
-      const dbUpdates: Record<string, any> = {};
-      if (updates.studentId) dbUpdates.student_id = updates.studentId;
-      if (updates.name) dbUpdates.name = updates.name;
-      if (updates.grade) dbUpdates.grade = updates.grade;
-      if (updates.section) dbUpdates.section = updates.section;
-      if (updates.campus) dbUpdates.campus = updates.campus;
-
-      const { data, error } = await supabase
-        .from('students')
-        .update(dbUpdates)
-        .eq('id', id)
-        .select();
+      const { data, error } = await supabase.functions.invoke('student-management', {
+        body: updates,
+        method: 'PUT',
+        path: `update?id=${id}`
+      });
 
       if (error) {
         throw error;
       }
 
-      if (data && data.length > 0) {
-        // Transform the returned data to match Student type
-        const updatedStudent = {
-          ...data[0],
-          id: data[0].id,
-          studentId: data[0].student_id,
-          createdAt: new Date(data[0].created_at),
-          updatedAt: new Date(data[0].updated_at)
-        };
-
-        setStudents(prev => 
-          prev.map(student => 
-            student.id === id ? updatedStudent : student
-          )
-        );
-      }
+      setStudents(prev => 
+        prev.map(student => 
+          student.id === id ? data : student
+        )
+      );
+      return data;
     } catch (error) {
       console.error('Error updating student:', error);
       throw error;
@@ -133,10 +92,11 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
 
   const deleteStudent = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('students')
-        .delete()
-        .eq('id', id);
+      const { error } = await supabase.functions.invoke('student-management', {
+        body: {},
+        method: 'DELETE',
+        path: `delete?id=${id}`
+      });
 
       if (error) {
         throw error;
