@@ -1,25 +1,19 @@
 
-import React, { createContext, useContext, useState } from 'react';
-import { v4 as uuidv4 } from 'uuid';
-import { FileItem } from '@/types/fileTypes';
-import { EduSafeResource, ResourceCategory } from '@/types/eduSafeTypes';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { initialResources } from './initialData';
+import { EducationalResource } from '@/types/eduSafeTypes';
 import { useAuth } from '@/contexts/auth/AuthContext';
-import { toast } from '@/components/ui/sonner';
+import { formatUserFullName } from '@/utils/userUtils';
 
 interface EduSafeContextType {
-  resources: EduSafeResource[];
-  addResource: (resource: Omit<EduSafeResource, 'id' | 'uploadDate' | 'uploaderId' | 'uploaderName' | 'ownerType'>, file: FileItem) => void;
-  updateResource: (id: string, updates: Partial<Omit<EduSafeResource, 'id' | 'uploaderId' | 'uploaderName' | 'ownerType'>>) => void;
+  resources: EducationalResource[];
+  addResource: (resource: Omit<EducationalResource, 'id' | 'uploadedAt' | 'uploadedBy'>) => void;
+  updateResource: (id: string, updatedResource: Partial<EducationalResource>) => void;
   deleteResource: (id: string) => void;
-  getResourceById: (id: string) => EduSafeResource | undefined;
-  getResourcesByCategory: (category: ResourceCategory) => EduSafeResource[];
-  getMyResources: () => EduSafeResource[];
-  getSaasResources: () => EduSafeResource[];
-  downloadResource: (resource: EduSafeResource) => void;
+  getResourceById: (id: string) => EducationalResource | undefined;
 }
 
-const EduSafeContext = createContext<EduSafeContextType | null>(null);
+const EduSafeContext = createContext<EduSafeContextType | undefined>(undefined);
 
 export const useEduSafe = () => {
   const context = useContext(EduSafeContext);
@@ -30,131 +24,47 @@ export const useEduSafe = () => {
 };
 
 export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [resources, setResources] = useState<EduSafeResource[]>(initialResources);
+  const [resources, setResources] = useState<EducationalResource[]>(initialResources);
   const { user } = useAuth();
 
-  const addResource = (
-    resourceData: Omit<EduSafeResource, 'id' | 'uploadDate' | 'uploaderId' | 'uploaderName' | 'ownerType'>, 
-    file: FileItem
-  ) => {
-    if (!user) {
-      toast.error('You must be logged in to add resources');
-      return;
+  useEffect(() => {
+    // Load resources from localStorage if available
+    const storedResources = localStorage.getItem('edusafe_resources');
+    if (storedResources) {
+      setResources(JSON.parse(storedResources));
     }
+  }, []);
 
-    const ownerType = user.role === 'saas_owner' ? 'saas' : 'school';
-    
-    const newResource: EduSafeResource = {
-      ...resourceData,
-      id: uuidv4(),
-      file,
-      uploadDate: new Date().toISOString(),
-      uploaderId: user.id,
-      uploaderName: user.name,
-      ownerType,
-      clientId: user.clientId
+  useEffect(() => {
+    // Save resources to localStorage when they change
+    localStorage.setItem('edusafe_resources', JSON.stringify(resources));
+  }, [resources]);
+
+  const addResource = (resource: Omit<EducationalResource, 'id' | 'uploadedAt' | 'uploadedBy'>) => {
+    const newResource: EducationalResource = {
+      ...resource,
+      id: `resource_${Date.now()}`,
+      uploadedAt: new Date().toISOString(),
+      uploadedBy: user ? formatUserFullName(user) : 'Unknown User',
     };
 
-    setResources([...resources, newResource]);
-    toast.success('Resource added successfully');
+    setResources(prev => [...prev, newResource]);
   };
 
-  const updateResource = (id: string, updates: Partial<Omit<EduSafeResource, 'id' | 'uploaderId' | 'uploaderName' | 'ownerType'>>) => {
-    if (!user) {
-      toast.error('You must be logged in to update resources');
-      return;
-    }
-
-    const resource = resources.find(r => r.id === id);
-    if (!resource) {
-      toast.error('Resource not found');
-      return;
-    }
-
-    // Check permissions - only owner or SaaS admin can update
-    if (resource.uploaderId !== user.id && user.role !== 'saas_owner') {
-      toast.error('You do not have permission to update this resource');
-      return;
-    }
-
-    const updatedResources = resources.map(resource => 
-      resource.id === id ? { ...resource, ...updates } : resource
+  const updateResource = (id: string, updatedResource: Partial<EducationalResource>) => {
+    setResources(prev => 
+      prev.map(resource => 
+        resource.id === id ? { ...resource, ...updatedResource } : resource
+      )
     );
-    
-    setResources(updatedResources);
-    toast.success('Resource updated successfully');
   };
 
   const deleteResource = (id: string) => {
-    if (!user) {
-      toast.error('You must be logged in to delete resources');
-      return;
-    }
-
-    const resource = resources.find(r => r.id === id);
-    if (!resource) {
-      toast.error('Resource not found');
-      return;
-    }
-
-    // Check permissions - only owner or SaaS admin can delete
-    if (resource.uploaderId !== user.id && user.role !== 'saas_owner') {
-      toast.error('You do not have permission to delete this resource');
-      return;
-    }
-
-    const updatedResources = resources.filter(resource => resource.id !== id);
-    setResources(updatedResources);
-    toast.success('Resource deleted successfully');
+    setResources(prev => prev.filter(resource => resource.id !== id));
   };
 
   const getResourceById = (id: string) => {
     return resources.find(resource => resource.id === id);
-  };
-
-  const getResourcesByCategory = (category: ResourceCategory) => {
-    return resources.filter(resource => {
-      // If user is a client, only show their resources or SaaS resources
-      if (user?.role !== 'saas_owner' && user?.clientId) {
-        return (resource.category === category) && 
-               (resource.ownerType === 'saas' || resource.clientId === user.clientId);
-      }
-      
-      return resource.category === category;
-    });
-  };
-
-  const getMyResources = () => {
-    if (!user) return [];
-    
-    return resources.filter(resource => {
-      if (user.role === 'saas_owner') {
-        return resource.ownerType === 'saas';
-      } else {
-        return resource.clientId === user.clientId && resource.ownerType === 'school';
-      }
-    });
-  };
-
-  const getSaasResources = () => {
-    return resources.filter(resource => resource.ownerType === 'saas');
-  };
-
-  const downloadResource = (resource: EduSafeResource) => {
-    try {
-      // Create a link element to trigger download
-      const link = document.createElement('a');
-      link.href = resource.file.base64;
-      link.download = resource.file.name;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      toast.success(`Downloading ${resource.title}`);
-    } catch (error) {
-      console.error('Download error:', error);
-      toast.error('Failed to download the resource');
-    }
   };
 
   const value = {
@@ -162,11 +72,7 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
     addResource,
     updateResource,
     deleteResource,
-    getResourceById,
-    getResourcesByCategory,
-    getMyResources,
-    getSaasResources,
-    downloadResource
+    getResourceById
   };
 
   return (

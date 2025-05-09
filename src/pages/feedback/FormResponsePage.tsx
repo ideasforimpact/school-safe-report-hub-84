@@ -2,7 +2,7 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useFeedback } from '@/contexts/feedback/FeedbackContext';
-import { useAuth } from '@/contexts/auth/types';
+import { useAuth } from '@/contexts/auth/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
