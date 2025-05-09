@@ -97,7 +97,10 @@ export const validateDepartment = (value: string): DepartmentType | null => {
     maintenance: 'admin',
     security: 'admin',
     safety: 'admin',
-    guard: 'admin'
+    guard: 'admin',
+    // Add the contract as a department mapping to a proper department
+    contract: 'admin',
+    contracts: 'admin'
   };
   
   return departmentMap[normalizedValue] || null;
@@ -112,7 +115,7 @@ export const validateEmploymentStatus = (value: string): EmploymentStatus | null
   const normalizedValue = value.toLowerCase().trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
   
   // Check if it's already a valid EmploymentStatus
-  const validStatuses: EmploymentStatus[] = ['active', 'on_leave', 'resigned', 'terminated', 'retired'];
+  const validStatuses: EmploymentStatus[] = ['active', 'on_leave', 'resigned', 'terminated', 'retired', 'inactive'];
   if (validStatuses.includes(normalizedValue as EmploymentStatus)) {
     return normalizedValue as EmploymentStatus;
   }
@@ -133,7 +136,11 @@ export const validateEmploymentStatus = (value: string): EmploymentStatus | null
     fired: 'terminated',
     dismissed: 'terminated',
     retired: 'retired',
-    pension: 'retired'
+    pension: 'retired',
+    inactive: 'inactive',
+    'not active': 'inactive',
+    disabled: 'inactive',
+    suspended: 'inactive'
   };
   
   return statusMap[normalizedValue] || null;
