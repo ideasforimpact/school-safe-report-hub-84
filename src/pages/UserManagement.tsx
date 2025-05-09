@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import UserList from '@/components/users/UserList';
 import AddUserDialog from '@/components/users/AddUserDialog';
 import EditUserDialog from '@/components/users/EditUserDialog';
+import ImportEmployeeDialog from '@/components/employee/ImportEmployeeDialog';
 import {
   Card,
   CardContent,
@@ -13,7 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
-import { UserPlus, Users } from 'lucide-react';
+import { UserPlus, Users, FileUp } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { User, UserRole, ModulePermissions, EmployeeType, DepartmentType } from '@/contexts/auth/types';
 import { toast } from "sonner";
@@ -23,11 +24,13 @@ import {
   deleteExistingUser, 
   deactivateExistingUser
 } from '@/services/auth/userManagementService';
+import { processEmployeeExcel } from '@/services/employee/importEmployeeService';
 
 const UserManagement = () => {
-  const { isAdmin, users = [], setUsers } = useAuth();
+  const { isAdmin, users = [] } = useAuth();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   
   // Default form data for the user forms
@@ -73,10 +76,11 @@ const UserManagement = () => {
       );
       
       if (updatedUsers) {
-        setUsers(updatedUsers);
+        // Since we don't have setUsers in this context, we'll redirect to refresh
+        toast.success("User added successfully");
         resetForm();
         setIsAddDialogOpen(false);
-        toast.success("User added successfully");
+        window.location.reload(); // Refresh to see the new user
       }
     } catch (error) {
       console.error("Error adding user:", error);
@@ -96,9 +100,10 @@ const UserManagement = () => {
       );
       
       if (updatedUsers) {
-        setUsers(updatedUsers);
+        toast.success("User updated successfully");
         resetForm();
         setIsEditDialogOpen(false);
+        window.location.reload(); // Refresh to see the updated user
       }
     } catch (error) {
       console.error("Error updating user:", error);
@@ -111,7 +116,8 @@ const UserManagement = () => {
     try {
       const updatedUsers = deleteExistingUser(users, userId);
       if (updatedUsers) {
-        setUsers(updatedUsers);
+        toast.success("User deleted successfully");
+        window.location.reload(); // Refresh to see the changes
       }
     } catch (error) {
       console.error("Error deleting user:", error);
@@ -124,7 +130,8 @@ const UserManagement = () => {
     try {
       const updatedUsers = deactivateExistingUser(users, userId);
       if (updatedUsers) {
-        setUsers(updatedUsers);
+        toast.success("User deactivated successfully");
+        window.location.reload(); // Refresh to see the changes
       }
     } catch (error) {
       console.error("Error deactivating user:", error);
@@ -181,6 +188,18 @@ const UserManagement = () => {
     setIsEditDialogOpen(true);
   };
 
+  // Handle import employees
+  const handleImportEmployees = async (file: File) => {
+    try {
+      await processEmployeeExcel(file);
+      toast.success("Employees imported successfully");
+      window.location.reload(); // Refresh to see the imported employees
+    } catch (error) {
+      console.error("Import process failed:", error);
+      toast.error("Failed to process employee import");
+    }
+  };
+
   if (!isAdmin) {
     return (
       <Layout>
@@ -209,6 +228,14 @@ const UserManagement = () => {
                 <Users className="h-4 w-4" />
                 <span>Go to Employee Management</span>
               </Link>
+            </Button>
+            <Button 
+              onClick={() => setIsImportDialogOpen(true)}
+              className="flex items-center gap-2"
+              variant="secondary"
+            >
+              <FileUp className="h-4 w-4" />
+              <span>Import Employees</span>
             </Button>
             <Button onClick={() => setIsAddDialogOpen(true)}>
               <UserPlus className="h-4 w-4 mr-2" />
@@ -254,9 +281,15 @@ const UserManagement = () => {
         onSubmit={handleUpdateUser}
         resetForm={resetForm}
       />
+
+      {/* Import Employees Dialog */}
+      <ImportEmployeeDialog
+        isOpen={isImportDialogOpen}
+        setIsOpen={setIsImportDialogOpen}
+        onImportEmployees={handleImportEmployees}
+      />
     </Layout>
   );
 };
 
 export default UserManagement;
-
