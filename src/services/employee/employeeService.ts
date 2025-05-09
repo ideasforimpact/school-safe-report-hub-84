@@ -1,5 +1,5 @@
-
 import { Employee, EmployeeApplicationFields } from '@/contexts/employee/types';
+import { ModulePermissions } from '@/contexts/auth/types';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
@@ -189,7 +189,7 @@ export const getAllEmployees = (): Employee[] => {
 
 export const updateModulePermissions = async (
   id: string, 
-  modulePermissions: Record<string, boolean>
+  modulePermissions: Partial<ModulePermissions>
 ): Promise<Employee | null> => {
   try {
     const employee = employees.find(emp => emp.id === id);
@@ -198,11 +198,22 @@ export const updateModulePermissions = async (
     }
     
     const appFields: EmployeeApplicationFields = employee.applicationFields || {};
+    const currentPermissions = appFields.modulePermissions || {
+      superAdmin: false,
+      incidentReporting: false,
+      incidentAdmin: false,
+      assessmentUser: false,
+      assessmentsAdmin: false,
+      employeeVerificationAdmin: false,
+      grievancesAdmin: false,
+      transportSafetyAdmin: false,
+      eduSafeResourceAccess: false
+    };
     
     const updatedApplicationFields = {
       ...appFields,
       modulePermissions: {
-        ...(appFields.modulePermissions || {}),
+        ...currentPermissions,
         ...modulePermissions
       }
     };

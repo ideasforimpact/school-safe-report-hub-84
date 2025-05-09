@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -10,6 +9,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Employee, EmployeeType, DepartmentType, EmploymentStatus } from '@/contexts/employee/types';
+import { ModulePermissions } from '@/contexts/auth/types';
 import EmployeeModulePermissions from './EmployeeModulePermissions';
 
 interface EmployeeFormProps {
@@ -33,14 +33,30 @@ const EmployeeForm = ({ formData, setFormData, isEditMode = false }: EmployeeFor
   };
   
   const handleModulePermissionChange = (module: string, value: boolean) => {
+    // Create default modulePermissions if none exist
+    const currentPermissions = formData.applicationFields?.modulePermissions || {
+      superAdmin: false,
+      incidentReporting: false,
+      incidentAdmin: false,
+      assessmentUser: false,
+      assessmentsAdmin: false,
+      employeeVerificationAdmin: false,
+      grievancesAdmin: false,
+      transportSafetyAdmin: false,
+      eduSafeResourceAccess: false
+    };
+    
+    // Update the specified permission
+    const updatedPermissions = {
+      ...currentPermissions,
+      [module]: value
+    } as ModulePermissions;
+    
     setFormData({
       ...formData,
       applicationFields: {
         ...(formData.applicationFields || {}),
-        modulePermissions: {
-          ...(formData.applicationFields?.modulePermissions || {}),
-          [module]: value
-        }
+        modulePermissions: updatedPermissions
       }
     });
   };

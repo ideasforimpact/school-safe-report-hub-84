@@ -1,16 +1,25 @@
-
 import React from 'react';
 import { ModulePermissions } from '@/contexts/auth/types';
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface EmployeeModulePermissionsProps {
-  permissions?: Partial<ModulePermissions>;
+  permissions?: ModulePermissions;
   onPermissionChange: (module: string, value: boolean) => void;
   isEditMode?: boolean;
 }
 
 const EmployeeModulePermissions = ({ 
-  permissions = {}, 
+  permissions = {
+    superAdmin: false,
+    incidentReporting: false,
+    incidentAdmin: false,
+    assessmentUser: false,
+    assessmentsAdmin: false,
+    employeeVerificationAdmin: false,
+    grievancesAdmin: false,
+    transportSafetyAdmin: false,
+    eduSafeResourceAccess: false
+  }, 
   onPermissionChange,
   isEditMode = false 
 }: EmployeeModulePermissionsProps) => {
@@ -22,7 +31,7 @@ const EmployeeModulePermissions = ({
         <div className="flex items-center space-x-2">
           <Checkbox 
             id={isEditMode ? "edit-super-admin" : "super-admin"}
-            checked={permissions.superAdmin || false}
+            checked={permissions.superAdmin}
             onCheckedChange={(checked) => 
               onPermissionChange('superAdmin', checked === true)
             }
