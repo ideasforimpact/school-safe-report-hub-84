@@ -15,7 +15,7 @@ import AddUserDialog from '@/components/users/AddUserDialog';
 import EditUserDialog from '@/components/users/EditUserDialog';
 
 const UserManagement = () => {
-  const { users, addUser, updateUser, deleteUser, deactivateUser, isAdmin } = useAuth();
+  const { users, addUser, updateUser, deleteUser, deactivateUser, reactivateUser, isAdmin } = useAuth();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -128,6 +128,10 @@ const UserManagement = () => {
     deactivateUser(id);
   };
 
+  const handleReactivateUser = (id: string) => {
+    reactivateUser(id);
+  };
+
   if (!isAdmin) {
     return (
       <Layout>
@@ -174,6 +178,7 @@ const UserManagement = () => {
               onEditClick={handleEditClick}
               onDeleteUser={handleDeleteUser}
               onDeactivateUser={handleDeactivateUser}
+              onReactivateUser={handleReactivateUser}
             />
           </CardContent>
         </Card>

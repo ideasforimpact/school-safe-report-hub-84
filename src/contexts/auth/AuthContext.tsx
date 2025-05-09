@@ -14,7 +14,8 @@ import {
   addNewUser,
   updateExistingUser,
   deleteExistingUser,
-  deactivateExistingUser
+  deactivateExistingUser,
+  reactivateExistingUser
 } from '@/services/auth/userManagementService';
 
 // Helper functions to exclude password from user objects
@@ -127,6 +128,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     }
   };
+  
+  const reactivateUser = (id: string) => {
+    const updatedUsers = reactivateExistingUser(users, id);
+    if (updatedUsers) {
+      setUsers(updatedUsers);
+    }
+  };
 
   const changePassword = async (currentPassword: string, newPassword: string): Promise<boolean> => {
     if (!user) {
@@ -160,6 +168,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       updateUser,
       deleteUser,
       deactivateUser,
+      reactivateUser,
       changePassword
     }}>
       {children}

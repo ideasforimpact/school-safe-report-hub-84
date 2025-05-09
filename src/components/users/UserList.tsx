@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Edit, Trash2, UserX } from 'lucide-react';
+import { Edit, Trash2, UserX, UserCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 interface UserListProps {
@@ -19,9 +19,10 @@ interface UserListProps {
   onEditClick: (user: User) => void;
   onDeleteUser: (id: string) => void;
   onDeactivateUser: (id: string) => void;
+  onReactivateUser: (id: string) => void;
 }
 
-const UserList = ({ users, onEditClick, onDeleteUser, onDeactivateUser }: UserListProps) => {
+const UserList = ({ users, onEditClick, onDeleteUser, onDeactivateUser, onReactivateUser }: UserListProps) => {
   return (
     <Table>
       <TableHeader>
@@ -75,7 +76,7 @@ const UserList = ({ users, onEditClick, onDeleteUser, onDeactivateUser }: UserLi
                   <Edit className="h-4 w-4" />
                 </Button>
                 
-                {user.isActive && (
+                {user.isActive ? (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="ghost" size="icon">
@@ -96,6 +97,31 @@ const UserList = ({ users, onEditClick, onDeleteUser, onDeactivateUser }: UserLi
                           onClick={() => onDeactivateUser(user.id)}
                         >
                           Deactivate
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                ) : (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <UserCheck className="h-4 w-4 text-green-600" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Reactivate User</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Do you want to reactivate this user? They will be able to log in to the system again.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction 
+                          className="bg-green-600 hover:bg-green-700"
+                          onClick={() => onReactivateUser(user.id)}
+                        >
+                          Reactivate
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>

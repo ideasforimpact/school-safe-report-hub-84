@@ -57,5 +57,6 @@ export interface AuthContextType {
   updateUser: (id: string, updates: Partial<User & { password?: string }>) => void;
   deleteUser: (id: string) => void;
   deactivateUser: (id: string) => void;
+  reactivateUser: (id: string) => void;
   changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
 }
