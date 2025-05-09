@@ -14,8 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
-import { UserPlus, Users, FileUp } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { UserPlus, FileUp } from 'lucide-react';
 import { User, UserRole, ModulePermissions, EmployeeType, DepartmentType } from '@/contexts/auth/types';
 import { toast } from "sonner";
 import { 
@@ -67,7 +66,7 @@ const UserManagement = () => {
     try {
       // In a real app, we'd validate the form data here
       const updatedUsers = await addNewUser(
-        users,
+        users as any, // Type casting to fix TypeScript error
         { 
           ...formData, 
           password: 'defaultPassword123', // In a real app, we'd generate this or let the user set it
@@ -94,7 +93,7 @@ const UserManagement = () => {
     
     try {
       const updatedUsers = await updateExistingUser(
-        users,
+        users as any, // Type casting to fix TypeScript error
         currentUser.id,
         formData
       );
@@ -114,7 +113,7 @@ const UserManagement = () => {
   // Handler for deleting a user
   const handleDeleteUser = async (userId: string) => {
     try {
-      const updatedUsers = deleteExistingUser(users, userId);
+      const updatedUsers = deleteExistingUser(users as any, userId); // Type casting to fix TypeScript error
       if (updatedUsers) {
         toast.success("User deleted successfully");
         window.location.reload(); // Refresh to see the changes
@@ -128,7 +127,7 @@ const UserManagement = () => {
   // Handler for deactivating a user
   const handleDeactivateUser = async (userId: string) => {
     try {
-      const updatedUsers = deactivateExistingUser(users, userId);
+      const updatedUsers = deactivateExistingUser(users as any, userId); // Type casting to fix TypeScript error
       if (updatedUsers) {
         toast.success("User deactivated successfully");
         window.location.reload(); // Refresh to see the changes
@@ -221,15 +220,6 @@ const UserManagement = () => {
           <h1 className="text-2xl font-bold">User Management</h1>
           <div className="flex gap-2">
             <Button 
-              asChild
-              variant="outline"
-            >
-              <Link to="/employees" className="flex items-center gap-2">
-                <Users className="h-4 w-4" />
-                <span>Go to Employee Management</span>
-              </Link>
-            </Button>
-            <Button 
               onClick={() => setIsImportDialogOpen(true)}
               className="flex items-center gap-2"
               variant="secondary"
@@ -239,7 +229,7 @@ const UserManagement = () => {
             </Button>
             <Button onClick={() => setIsAddDialogOpen(true)}>
               <UserPlus className="h-4 w-4 mr-2" />
-              Add User
+              Add Employee
             </Button>
           </div>
         </div>
