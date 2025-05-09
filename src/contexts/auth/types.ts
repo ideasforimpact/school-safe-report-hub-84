@@ -1,14 +1,9 @@
 
 export interface ModulePermissions {
-  superAdmin: boolean;
   incidentReporting: boolean;
-  incidentAdmin: boolean;
-  assessmentUser: boolean;
-  assessmentsAdmin: boolean;
-  employeeVerificationAdmin: boolean;
-  grievancesAdmin: boolean;
-  transportSafetyAdmin: boolean;
-  eduSafeResourceAccess: boolean;
+  allIncidents: boolean;
+  insights: boolean;
+  benchmarking: boolean;
 }
 
 export type UserRole = 'admin' | 'user' | 'saas_owner' | 'reporter';
@@ -57,6 +52,5 @@ export interface AuthContextType {
   updateUser: (id: string, updates: Partial<User & { password?: string }>) => void;
   deleteUser: (id: string) => void;
   deactivateUser: (id: string) => void;
-  reactivateUser: (id: string) => void;
   changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
 }

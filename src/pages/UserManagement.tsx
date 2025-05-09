@@ -1,61 +1,187 @@
 
-import React from 'react';
+import { useState } from 'react';
 import Layout from '@/components/layout/Layout';
-import { useUserManagement } from '@/features/user-management/hooks/useUserManagement';
-import UserManagementHeader from '@/features/user-management/components/UserManagementHeader';
-import UserManagementContent from '@/features/user-management/components/UserManagementContent';
-import AccessDeniedCard from '@/features/user-management/components/AccessDeniedCard';
-import UserDialogs from '@/features/user-management/components/UserDialogs';
+import { useAuth, User, UserRole, ModulePermissions, EmployeeType, DepartmentType } from '@/contexts/AuthContext';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from '@/components/ui/button';
+import { UserPlus } from 'lucide-react';
+import UserList from '@/components/users/UserList';
+import AddUserDialog from '@/components/users/AddUserDialog';
+import EditUserDialog from '@/components/users/EditUserDialog';
 
 const UserManagement = () => {
-  const {
-    users,
-    isAdmin,
-    formData,
-    setFormData,
-    isAddDialogOpen,
-    setIsAddDialogOpen,
-    isEditDialogOpen,
-    setIsEditDialogOpen,
-    handleAddUser,
-    handleEditClick,
-    handleUpdateUser,
-    handleDeleteUser,
-    handleDeactivateUser,
-    handleReactivateUser,
-    resetForm
-  } = useUserManagement();
+  const { users, addUser, updateUser, deleteUser, deactivateUser, isAdmin } = useAuth();
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    password: '',
+    employeeId: '',
+    employeeType: 'permanent' as EmployeeType,
+    department: 'admin' as DepartmentType,
+    joiningDate: '',
+    role: 'reporter' as UserRole,
+    modulePermissions: {
+      incidentReporting: true,
+      allIncidents: true,
+      insights: true,
+      benchmarking: false
+    }
+  });
+
+  const resetForm = () => {
+    setFormData({
+      firstName: '',
+      lastName: '',
+      email: '',
+      password: '',
+      employeeId: '',
+      employeeType: 'permanent' as EmployeeType,
+      department: 'admin' as DepartmentType,
+      joiningDate: '',
+      role: 'reporter',
+      modulePermissions: {
+        incidentReporting: true,
+        allIncidents: true,
+        insights: true,
+        benchmarking: false
+      }
+    });
+    setCurrentUser(null);
+  };
+
+  const handleAddUser = () => {
+    addUser(formData);
+    setIsAddDialogOpen(false);
+    resetForm();
+  };
+
+  const handleEditClick = (user: User) => {
+    setCurrentUser(user);
+    setFormData({
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      password: '',
+      employeeId: user.employeeId || '',
+      employeeType: user.employeeType || 'permanent',
+      department: user.department || 'admin',
+      joiningDate: user.joiningDate || '',
+      role: user.role,
+      modulePermissions: {
+        incidentReporting: user.modulePermissions?.incidentReporting ?? true,
+        allIncidents: user.modulePermissions?.allIncidents ?? true,
+        insights: user.modulePermissions?.insights ?? true,
+        benchmarking: user.modulePermissions?.benchmarking ?? false
+      }
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateUser = () => {
+    if (currentUser) {
+      updateUser(currentUser.id, {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        employeeId: formData.employeeId,
+        employeeType: formData.employeeType,
+        department: formData.department,
+        joiningDate: formData.joiningDate,
+        role: formData.role,
+        modulePermissions: formData.modulePermissions,
+        ...(formData.password ? { password: formData.password } : {})
+      });
+      setIsEditDialogOpen(false);
+      resetForm();
+    }
+  };
+
+  const handleDeleteUser = (id: string) => {
+    deleteUser(id);
+  };
+
+  const handleDeactivateUser = (id: string) => {
+    deactivateUser(id);
+  };
 
   if (!isAdmin) {
     return (
       <Layout>
-        <AccessDeniedCard />
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center">
+              <p>You don't have permission to access this page.</p>
+            </div>
+          </CardContent>
+        </Card>
       </Layout>
     );
   }
 
+  // Filter active users to the top
+  const sortedUsers = [...users].sort((a, b) => {
+    if (a.isActive === b.isActive) {
+      return 0;
+    }
+    return a.isActive ? -1 : 1;
+  });
+
   return (
     <Layout>
       <div className="space-y-6">
-        <UserManagementHeader onAddUser={() => setIsAddDialogOpen(true)} />
-        <UserManagementContent 
-          users={users}
-          onEditClick={handleEditClick}
-          onDeleteUser={handleDeleteUser}
-          onDeactivateUser={handleDeactivateUser}
-          onReactivateUser={handleReactivateUser}
-        />
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-bold">Employee Management</h1>
+          <Button onClick={() => setIsAddDialogOpen(true)}>
+            <UserPlus className="h-4 w-4 mr-2" />
+            Add Employee
+          </Button>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Employees</CardTitle>
+            <CardDescription>
+              Manage system employees and their roles
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <UserList 
+              users={sortedUsers}
+              onEditClick={handleEditClick}
+              onDeleteUser={handleDeleteUser}
+              onDeactivateUser={handleDeactivateUser}
+            />
+          </CardContent>
+        </Card>
       </div>
 
-      <UserDialogs 
-        isAddDialogOpen={isAddDialogOpen}
-        setIsAddDialogOpen={setIsAddDialogOpen}
-        isEditDialogOpen={isEditDialogOpen}
-        setIsEditDialogOpen={setIsEditDialogOpen}
+      {/* Add User Dialog */}
+      <AddUserDialog 
+        isOpen={isAddDialogOpen}
+        setIsOpen={setIsAddDialogOpen}
         formData={formData}
         setFormData={setFormData}
-        onAddSubmit={handleAddUser}
-        onEditSubmit={handleUpdateUser}
+        onSubmit={handleAddUser}
+        resetForm={resetForm}
+      />
+
+      {/* Edit User Dialog */}
+      <EditUserDialog 
+        isOpen={isEditDialogOpen}
+        setIsOpen={setIsEditDialogOpen}
+        formData={formData}
+        setFormData={setFormData}
+        onSubmit={handleUpdateUser}
         resetForm={resetForm}
       />
     </Layout>

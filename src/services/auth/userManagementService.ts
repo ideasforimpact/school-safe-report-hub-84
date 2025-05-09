@@ -1,3 +1,4 @@
+
 import { User, UserWithPassword, UserRole, ModulePermissions, EmployeeType, DepartmentType } from '@/contexts/auth/types';
 import { validateUserEmail, validateAdminDeletion } from '@/contexts/auth/utils';
 import { toast } from "@/components/ui/sonner";
@@ -107,20 +108,5 @@ export const deactivateExistingUser = (
   });
 
   toast.success("User deactivated successfully");
-  return updatedUsers;
-};
-
-export const reactivateExistingUser = (
-  users: UserWithPassword[],
-  id: string
-): UserWithPassword[] | null => {
-  const updatedUsers = users.map(u => {
-    if (u.id === id) {
-      return { ...u, isActive: true };
-    }
-    return u;
-  });
-
-  toast.success("User reactivated successfully");
   return updatedUsers;
 };

@@ -5,15 +5,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 interface ModuleAccessTabProps {
   formData: {
     moduleAccess: {
-      superAdmin: boolean;
       incidentReporting: boolean;
-      incidentAdmin: boolean;
-      assessmentUser: boolean;
-      assessmentsAdmin: boolean;
-      employeeVerificationAdmin: boolean;
-      grievancesAdmin: boolean;
-      transportSafetyAdmin: boolean;
-      eduSafeResourceAccess: boolean;
+      allIncidents: boolean;
+      insights: boolean;
+      benchmarking: boolean;
     };
   };
   handleModuleAccessChange: (module: string, value: boolean) => void;
@@ -24,23 +19,7 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
     <div className="space-y-4">
       <div className="space-y-2">
         <label className="font-medium">Module Access</label>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-2">
-          <div className="flex items-center space-x-2">
-            <Checkbox 
-              id="super-admin"
-              checked={formData.moduleAccess.superAdmin}
-              onCheckedChange={(checked) => 
-                handleModuleAccessChange('superAdmin', checked === true)
-              }
-            />
-            <label 
-              htmlFor="super-admin"
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-            >
-              Super Admin
-            </label>
-          </div>
-          
+        <div className="grid grid-cols-1 gap-2 pt-2">
           <div className="flex items-center space-x-2">
             <Checkbox 
               id="incident-reporting"
@@ -59,113 +38,49 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
           
           <div className="flex items-center space-x-2">
             <Checkbox 
-              id="incident-admin"
-              checked={formData.moduleAccess.incidentAdmin}
+              id="all-incidents"
+              checked={formData.moduleAccess.allIncidents}
               onCheckedChange={(checked) => 
-                handleModuleAccessChange('incidentAdmin', checked === true)
+                handleModuleAccessChange('allIncidents', checked === true)
               }
             />
             <label 
-              htmlFor="incident-admin"
+              htmlFor="all-incidents"
               className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
             >
-              Incident Admin
+              All Incidents
+            </label>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <Checkbox 
+              id="insights"
+              checked={formData.moduleAccess.insights}
+              onCheckedChange={(checked) => 
+                handleModuleAccessChange('insights', checked === true)
+              }
+            />
+            <label 
+              htmlFor="insights"
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
+              Insights
             </label>
           </div>
 
           <div className="flex items-center space-x-2">
             <Checkbox 
-              id="assessment-user"
-              checked={formData.moduleAccess.assessmentUser}
+              id="benchmarking"
+              checked={formData.moduleAccess.benchmarking}
               onCheckedChange={(checked) => 
-                handleModuleAccessChange('assessmentUser', checked === true)
+                handleModuleAccessChange('benchmarking', checked === true)
               }
             />
             <label 
-              htmlFor="assessment-user"
+              htmlFor="benchmarking"
               className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
             >
-              Assessment User
-            </label>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Checkbox 
-              id="assessments-admin"
-              checked={formData.moduleAccess.assessmentsAdmin}
-              onCheckedChange={(checked) => 
-                handleModuleAccessChange('assessmentsAdmin', checked === true)
-              }
-            />
-            <label 
-              htmlFor="assessments-admin"
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-            >
-              Assessments Admin
-            </label>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Checkbox 
-              id="employee-verification-admin"
-              checked={formData.moduleAccess.employeeVerificationAdmin}
-              onCheckedChange={(checked) => 
-                handleModuleAccessChange('employeeVerificationAdmin', checked === true)
-              }
-            />
-            <label 
-              htmlFor="employee-verification-admin"
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-            >
-              Employee Verification Admin
-            </label>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Checkbox 
-              id="grievances-admin"
-              checked={formData.moduleAccess.grievancesAdmin}
-              onCheckedChange={(checked) => 
-                handleModuleAccessChange('grievancesAdmin', checked === true)
-              }
-            />
-            <label 
-              htmlFor="grievances-admin"
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-            >
-              Grievances Admin
-            </label>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Checkbox 
-              id="transport-safety-admin"
-              checked={formData.moduleAccess.transportSafetyAdmin}
-              onCheckedChange={(checked) => 
-                handleModuleAccessChange('transportSafetyAdmin', checked === true)
-              }
-            />
-            <label 
-              htmlFor="transport-safety-admin"
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-            >
-              Transport Safety Admin
-            </label>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Checkbox 
-              id="edusafe-resource-access"
-              checked={formData.moduleAccess.eduSafeResourceAccess}
-              onCheckedChange={(checked) => 
-                handleModuleAccessChange('eduSafeResourceAccess', checked === true)
-              }
-            />
-            <label 
-              htmlFor="edusafe-resource-access"
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-            >
-              EduSafe Resource Access
+              Benchmarking
             </label>
           </div>
         </div>

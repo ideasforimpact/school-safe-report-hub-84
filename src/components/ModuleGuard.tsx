@@ -12,8 +12,8 @@ interface ModuleGuardProps {
 const ModuleGuard = ({ moduleType, children }: ModuleGuardProps) => {
   const { user } = useAuth();
   
-  // Check if user has permission for this module or is a super admin
-  const hasPermission = user?.modulePermissions?.[moduleType] || user?.modulePermissions?.superAdmin || false;
+  // Check if user has permission for this module
+  const hasPermission = user?.modulePermissions?.[moduleType] || false;
 
   if (!hasPermission) {
     return (
