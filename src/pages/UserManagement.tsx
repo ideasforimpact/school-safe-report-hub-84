@@ -17,6 +17,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { UserPlus, FileUp } from 'lucide-react';
 import { User, UserRole, ModulePermissions, EmployeeType, DepartmentType } from '@/contexts/auth/types';
+import { EmploymentStatus } from '@/contexts/employee/types';
 import { toast } from "sonner";
 import { 
   addNewUser, 
@@ -92,7 +93,7 @@ const UserManagement = () => {
               employeeType: formData.employeeType,
               department: formData.department,
               joiningDate: formData.joiningDate,
-              status: 'active',
+              status: 'active' as EmploymentStatus, // Explicitly cast to EmploymentStatus
               applicationFields: {
                 modulePermissions: formData.modulePermissions
               }
@@ -249,7 +250,7 @@ const UserManagement = () => {
               operation: 'update',
               employee: {
                 id: userId,
-                status: 'inactive'
+                status: 'inactive' as EmploymentStatus // Explicitly cast to EmploymentStatus
               }
             })
           });
