@@ -45,6 +45,7 @@ export const loginUser = (
   console.log("Attempting login with:", email, password);
   console.log("Available users:", currentUsers);
   
+  // Fix: Ensure we're checking the correct properties
   const user = currentUsers.find(
     (u) => u.email === email && u.password === password && u.isActive
   );
