@@ -222,6 +222,21 @@ serve(async (req) => {
 
         if (error) throw error;
 
+        // If the employee is being deactivated, remove all module permissions
+        if (updates.status === 'inactive') {
+          console.log("Employee deactivated, removing all module permissions");
+          const { error: moduleError } = await supabase
+            .from('employee_modules')
+            .delete()
+            .eq('employee_id', id);
+          
+          if (moduleError) {
+            console.error("Error removing module permissions for deactivated employee:", moduleError);
+          } else {
+            console.log("Successfully removed all module permissions for deactivated employee");
+          }
+        }
+
         return new Response(JSON.stringify({ employee: data }), {
           headers: { 'Content-Type': 'application/json', ...corsHeaders },
           status: 200,
@@ -265,6 +280,27 @@ serve(async (req) => {
 
         if (!employeeId) {
           return new Response(JSON.stringify({ error: 'Employee ID is required' }), {
+            headers: { 'Content-Type': 'application/json', ...corsHeaders },
+            status: 400,
+          });
+        }
+
+        // Check if employee is active before allowing permission changes
+        const { data: employeeData, error: employeeCheckError } = await supabase
+          .from('employees')
+          .select('status')
+          .eq('id', employeeId)
+          .single();
+          
+        if (employeeCheckError) {
+          return new Response(JSON.stringify({ error: 'Failed to verify employee status' }), {
+            headers: { 'Content-Type': 'application/json', ...corsHeaders },
+            status: 500,
+          });
+        }
+        
+        if (employeeData.status !== 'active') {
+          return new Response(JSON.stringify({ error: 'Cannot modify permissions for inactive employees' }), {
             headers: { 'Content-Type': 'application/json', ...corsHeaders },
             status: 400,
           });
@@ -317,6 +353,41 @@ serve(async (req) => {
         }
 
         return new Response(JSON.stringify({ permissions: [] }), {
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+          status: 200,
+        });
+      } else if (operation === 'deactivate') {
+        // Deactivate an employee (special endpoint for this specific operation)
+        const { id } = requestData;
+
+        if (!id) {
+          return new Response(JSON.stringify({ error: 'Employee ID is required' }), {
+            headers: { 'Content-Type': 'application/json', ...corsHeaders },
+            status: 400,
+          });
+        }
+
+        // Update the employee status to inactive
+        const { data, error } = await supabase
+          .from('employees')
+          .update({ status: 'inactive', updated_at: new Date().toISOString() })
+          .eq('id', id)
+          .select('*')
+          .single();
+
+        if (error) throw error;
+
+        // Remove all module permissions for deactivated employee
+        const { error: moduleError } = await supabase
+          .from('employee_modules')
+          .delete()
+          .eq('employee_id', id);
+          
+        if (moduleError) {
+          console.error("Error removing module permissions for deactivated employee:", moduleError);
+        }
+
+        return new Response(JSON.stringify({ employee: data }), {
           headers: { 'Content-Type': 'application/json', ...corsHeaders },
           status: 200,
         });

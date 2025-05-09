@@ -1,206 +1,255 @@
 
-import { Employee } from '@/contexts/employee/types';
-import { ModulePermissions } from '@/contexts/auth/types';
+import { Employee, EmploymentStatus, EmployeeType, DepartmentType } from '@/contexts/employee/types';
 import { v4 as uuidv4 } from 'uuid';
-import { toast } from "sonner";
-import { supabase } from '@/integrations/supabase/client';
 
-// Mock storage for demo purposes
-let employees: Employee[] = [];
+// Mock employees data for local storage (for when Supabase is not available/offline)
+const DEFAULT_EMPLOYEES: Employee[] = [
+  {
+    id: '1',
+    employeeId: 'EMP001',
+    firstName: 'John',
+    lastName: 'Doe',
+    email: 'john.doe@example.com',
+    employeeType: 'permanent',
+    department: 'teaching',
+    joiningDate: '2023-01-15',
+    status: 'active',
+    createdAt: '2023-01-15T08:00:00Z',
+    updatedAt: '2023-01-15T08:00:00Z'
+  },
+  {
+    id: '2',
+    employeeId: 'EMP002',
+    firstName: 'Jane',
+    lastName: 'Smith',
+    email: 'jane.smith@example.com',
+    employeeType: 'contract',
+    department: 'admin',
+    joiningDate: '2023-02-01',
+    status: 'active',
+    createdAt: '2023-02-01T08:00:00Z',
+    updatedAt: '2023-02-01T08:00:00Z'
+  }
+];
 
-// Storage helper functions
+// Local storage key for employees
+const EMPLOYEES_STORAGE_KEY = 'eduSafe_employees';
+
+// Utility functions
+
+/**
+ * Get all employees from local storage
+ */
 export const getEmployeesFromStorage = (): Employee[] => {
-  const storedEmployees = localStorage.getItem('employees');
-  if (!storedEmployees) return [];
   try {
-    return JSON.parse(storedEmployees);
+    const employeesJSON = localStorage.getItem(EMPLOYEES_STORAGE_KEY);
+    return employeesJSON ? JSON.parse(employeesJSON) : DEFAULT_EMPLOYEES;
   } catch (error) {
-    return [];
+    console.error("Error getting employees from storage:", error);
+    return DEFAULT_EMPLOYEES;
   }
 };
 
+/**
+ * Save employees to local storage
+ */
 export const saveEmployeesToStorage = (employees: Employee[]): void => {
-  localStorage.setItem('employees', JSON.stringify(employees));
+  try {
+    localStorage.setItem(EMPLOYEES_STORAGE_KEY, JSON.stringify(employees));
+  } catch (error) {
+    console.error("Error saving employees to storage:", error);
+  }
 };
 
-// Initialize employees from storage
-employees = getEmployeesFromStorage();
-
-// CRUD operations for employees
+/**
+ * Add a new employee
+ */
 export const addEmployee = async (
   employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>
 ): Promise<Employee> => {
-  // Check if employee with this employee ID already exists
-  if (employees.some(emp => emp.employeeId === employeeData.employeeId)) {
-    toast.error("Employee with this ID already exists");
-    throw new Error("Employee with this ID already exists");
+  const employees = getEmployeesFromStorage();
+  
+  // Check for duplicate employeeId or email
+  const isDuplicate = employees.some(
+    emp => emp.employeeId === employeeData.employeeId || emp.email === employeeData.email
+  );
+  
+  if (isDuplicate) {
+    throw new Error("An employee with this ID or email already exists");
   }
   
-  // Check if employee with this email already exists
-  if (employees.some(emp => emp.email === employeeData.email)) {
-    toast.error("Employee with this email already exists");
-    throw new Error("Employee with this email already exists");
-  }
-
-  try {
-    // In a real implementation with Supabase, we would store the employee data
-    // const { data, error } = await supabase
-    //   .from('employees')
-    //   .insert([{
-    //     employee_id: employeeData.employeeId,
-    //     first_name: employeeData.firstName,
-    //     last_name: employeeData.lastName,
-    //     email: employeeData.email,
-    //     employee_type: employeeData.employeeType,
-    //     department: employeeData.department,
-    //     joining_date: employeeData.joiningDate,
-    //     status: employeeData.status,
-    //     user_id: employeeData.userId
-    //   }])
-    //   .select()
-    //   .single();
-    
-    // if (error) throw error;
-    
-    const now = new Date().toISOString();
-    
-    const newEmployee: Employee = {
-      id: uuidv4(),
-      ...employeeData,
-      createdAt: now,
-      updatedAt: now
-    };
-
-    // Add to local storage
-    employees = [...employees, newEmployee];
-    saveEmployeesToStorage(employees);
-    
-    toast.success("Employee added successfully");
-    return newEmployee;
-  } catch (error) {
-    console.error("Error adding employee:", error);
-    toast.error("Failed to add employee");
-    throw error;
-  }
+  const now = new Date().toISOString();
+  const newEmployee: Employee = {
+    ...employeeData,
+    id: uuidv4(),
+    createdAt: now,
+    updatedAt: now
+  };
+  
+  employees.push(newEmployee);
+  saveEmployeesToStorage(employees);
+  
+  return newEmployee;
 };
 
+/**
+ * Update an existing employee
+ */
 export const updateEmployee = async (
   id: string,
   updates: Partial<Employee>
 ): Promise<Employee> => {
-  // Find the employee
-  const employee = employees.find(emp => emp.id === id);
-  if (!employee) {
-    toast.error("Employee not found");
+  const employees = getEmployeesFromStorage();
+  const employeeIndex = employees.findIndex(emp => emp.id === id);
+  
+  if (employeeIndex === -1) {
     throw new Error("Employee not found");
   }
   
-  // Check if updating email to one that already exists
-  if (updates.email && updates.email !== employee.email) {
-    if (employees.some(emp => emp.email === updates.email && emp.id !== id)) {
-      toast.error("Another employee with this email already exists");
-      throw new Error("Another employee with this email already exists");
+  // Check for duplicate employeeId or email
+  if (updates.employeeId || updates.email) {
+    const isDuplicate = employees.some(
+      emp => emp.id !== id && (
+        (updates.employeeId && emp.employeeId === updates.employeeId) || 
+        (updates.email && emp.email === updates.email)
+      )
+    );
+    
+    if (isDuplicate) {
+      throw new Error("Another employee with this ID or email already exists");
     }
   }
   
-  // Check if updating employee ID to one that already exists
-  if (updates.employeeId && updates.employeeId !== employee.employeeId) {
-    if (employees.some(emp => emp.employeeId === updates.employeeId && emp.id !== id)) {
-      toast.error("Another employee with this ID already exists");
-      throw new Error("Another employee with this ID already exists");
-    }
-  }
-
-  try {
-    // In a real implementation with Supabase, we would update the employee data
-    // const { data, error } = await supabase
-    //   .from('employees')
-    //   .update({
-    //     employee_id: updates.employeeId,
-    //     first_name: updates.firstName,
-    //     last_name: updates.lastName,
-    //     email: updates.email,
-    //     employee_type: updates.employeeType,
-    //     department: updates.department,
-    //     joining_date: updates.joiningDate,
-    //     status: updates.status
-    //   })
-    //   .eq('id', id)
-    //   .select()
-    //   .single();
-    
-    // if (error) throw error;
-    
-    const updatedEmployee = {
-      ...employee,
-      ...updates,
-      updatedAt: new Date().toISOString()
-    };
-    
-    // Update local storage
-    employees = employees.map(emp => emp.id === id ? updatedEmployee : emp);
-    saveEmployeesToStorage(employees);
-    
-    toast.success("Employee updated successfully");
-    return updatedEmployee;
-  } catch (error) {
-    console.error("Error updating employee:", error);
-    toast.error("Failed to update employee");
-    throw error;
-  }
+  const updatedEmployee: Employee = {
+    ...employees[employeeIndex],
+    ...updates,
+    updatedAt: new Date().toISOString()
+  };
+  
+  employees[employeeIndex] = updatedEmployee;
+  saveEmployeesToStorage(employees);
+  
+  return updatedEmployee;
 };
 
+/**
+ * Delete an employee
+ */
 export const deleteEmployee = async (id: string): Promise<void> => {
-  try {
-    // In a real implementation with Supabase, we would delete the employee data
-    // const { error } = await supabase
-    //   .from('employees')
-    //   .delete()
-    //   .eq('id', id);
-    
-    // if (error) throw error;
-    
-    // Update local storage
-    employees = employees.filter(emp => emp.id !== id);
-    saveEmployeesToStorage(employees);
-    
-    toast.success("Employee deleted successfully");
-  } catch (error) {
-    console.error("Error deleting employee:", error);
-    toast.error("Failed to delete employee");
-    throw error;
+  const employees = getEmployeesFromStorage();
+  const filteredEmployees = employees.filter(emp => emp.id !== id);
+  
+  if (filteredEmployees.length === employees.length) {
+    throw new Error("Employee not found");
   }
+  
+  saveEmployeesToStorage(filteredEmployees);
 };
 
+/**
+ * Get employee by ID
+ */
 export const getEmployeeById = (id: string): Employee | undefined => {
+  const employees = getEmployeesFromStorage();
   return employees.find(emp => emp.id === id);
 };
 
+/**
+ * Get employee by user ID
+ */
 export const getEmployeeByUserId = (userId: string): Employee | undefined => {
+  const employees = getEmployeesFromStorage();
   return employees.find(emp => emp.userId === userId);
 };
 
+/**
+ * Get all employees
+ */
 export const getAllEmployees = (): Employee[] => {
-  return [...employees];
+  return getEmployeesFromStorage();
 };
 
-// We'll use the employee_modules table for module permissions now
-export const updateModulePermissions = async (
-  id: string, 
-  modulePermissions: Partial<ModulePermissions>
-): Promise<Employee | null> => {
-  try {
-    const employee = employees.find(emp => emp.id === id);
-    if (!employee) {
-      throw new Error("Employee not found");
+/**
+ * Process bulk employee import from Excel/CSV
+ */
+export const processBulkEmployeeImport = (
+  employeesData: Array<{
+    employeeId: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    employeeType: string;
+    department: string;
+    joiningDate: string;
+    status: string;
+  }>
+): { success: Employee[], failures: { data: any, error: string }[] } => {
+  const employees = getEmployeesFromStorage();
+  const result: { success: Employee[], failures: { data: any, error: string }[] } = {
+    success: [],
+    failures: []
+  };
+  
+  for (const data of employeesData) {
+    try {
+      // Basic validation
+      if (!data.employeeId || !data.firstName || !data.lastName || !data.email) {
+        throw new Error("Missing required fields");
+      }
+      
+      // Check for duplicate employeeId or email
+      const isDuplicate = employees.some(
+        emp => emp.employeeId === data.employeeId || emp.email === data.email
+      ) || result.success.some(
+        emp => emp.employeeId === data.employeeId || emp.email === data.email
+      );
+      
+      if (isDuplicate) {
+        throw new Error("Duplicate employeeId or email");
+      }
+      
+      // Validate types
+      const employeeType = data.employeeType as EmployeeType;
+      const department = data.department as DepartmentType;
+      const status = (data.status || 'active') as EmploymentStatus;
+      
+      if (!Object.values(EmployeeType).includes(employeeType as any)) {
+        throw new Error(`Invalid employee type: ${data.employeeType}`);
+      }
+      
+      if (!Object.values(DepartmentType).includes(department as any)) {
+        throw new Error(`Invalid department: ${data.department}`);
+      }
+      
+      // Create new employee
+      const now = new Date().toISOString();
+      const newEmployee: Employee = {
+        id: uuidv4(),
+        employeeId: data.employeeId,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        employeeType,
+        department,
+        joiningDate: data.joiningDate || now.split('T')[0],
+        status,
+        createdAt: now,
+        updatedAt: now
+      };
+      
+      result.success.push(newEmployee);
+    } catch (error) {
+      result.failures.push({
+        data,
+        error: error.message
+      });
     }
-    
-    // This function should now update the employee_modules table
-    // We'll just update the employee in local storage for now
-    return await updateEmployee(id, {});
-  } catch (error) {
-    console.error("Error updating module permissions:", error);
-    toast.error("Failed to update module permissions");
-    return null;
   }
+  
+  // Only update storage if there were successful imports
+  if (result.success.length > 0) {
+    saveEmployeesToStorage([...employees, ...result.success]);
+  }
+  
+  return result;
 };

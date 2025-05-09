@@ -1,17 +1,24 @@
 
-import React, { useState } from 'react';
-import { Input } from '@/components/ui/input';
-import { DatePicker } from '@/components/ui/date-picker';
+import React from 'react';
+import {
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  Form,
+} from "@/components/ui/form";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import { Employee, EmployeeType, DepartmentType, EmploymentStatus } from '@/contexts/employee/types';
-import { ModulePermissions } from '@/contexts/auth/types';
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Employee } from '@/contexts/employee/types';
 import EmployeeModulePermissions from './EmployeeModulePermissions';
+import { ModulePermissions } from '@/contexts/auth/types';
 
 interface EmployeeFormProps {
   formData: Partial<Employee>;
@@ -20,158 +27,211 @@ interface EmployeeFormProps {
 }
 
 const EmployeeForm = ({ formData, setFormData, isEditMode = false }: EmployeeFormProps) => {
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(
-    formData.joiningDate ? new Date(formData.joiningDate) : undefined
-  );
-
-  const handleDateChange = (date: Date | undefined) => {
-    setSelectedDate(date);
-    if (date) {
-      setFormData({ ...formData, joiningDate: date.toISOString().split('T')[0] });
-    } else {
-      setFormData({ ...formData, joiningDate: undefined });
-    }
-  };
-  
   const handleModulePermissionChange = (module: string, value: boolean) => {
-    // This function now only needs to update the form state
-    // Module permissions are managed separately through the employee_modules table
-    setFormData({
-      ...formData,
-    });
+    setFormData(prev => ({
+      ...prev,
+      modulePermissions: {
+        ...prev.modulePermissions || {},
+        [module]: value
+      }
+    }));
+  };
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData({ ...formData, [field]: value });
+  };
+
+  const handleSelectChange = (field: string, value: string) => {
+    setFormData({ ...formData, [field]: value });
   };
 
   return (
-    <div className="space-y-4 py-4">
-      {/* Basic Info Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <label htmlFor="employeeId">Employee ID</label>
-          <Input
-            id="employeeId"
-            value={formData.employeeId || ''}
-            onChange={(e) => setFormData({...formData, employeeId: e.target.value})}
-            placeholder="Enter employee ID"
-            disabled={isEditMode} // Employee ID should not be editable after creation
+    <div className="grid gap-4 py-4">
+      <Form>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField
+            name="employeeId"
+            render={() => (
+              <FormItem>
+                <FormLabel>Employee ID</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="E.g. EMP001"
+                    value={formData.employeeId || ''}
+                    onChange={(e) => handleInputChange('employeeId', e.target.value)}
+                    disabled={isEditMode}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
           />
-        </div>
-        
-        <div className="space-y-2">
-          <label htmlFor="email">Email</label>
-          <Input
-            id="email"
-            type="email"
-            value={formData.email || ''}
-            onChange={(e) => setFormData({...formData, email: e.target.value})}
-            placeholder="Enter email address"
-          />
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <label htmlFor="firstName">First Name</label>
-          <Input
-            id="firstName"
-            value={formData.firstName || ''}
-            onChange={(e) => setFormData({...formData, firstName: e.target.value})}
-            placeholder="Enter first name"
+          <FormField
+            name="email"
+            render={() => (
+              <FormItem>
+                <FormLabel>Email</FormLabel>
+                <FormControl>
+                  <Input
+                    type="email"
+                    placeholder="employee@example.com"
+                    value={formData.email || ''}
+                    onChange={(e) => handleInputChange('email', e.target.value)}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            name="firstName"
+            render={() => (
+              <FormItem>
+                <FormLabel>First Name</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="John"
+                    value={formData.firstName || ''}
+                    onChange={(e) => handleInputChange('firstName', e.target.value)}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            name="lastName"
+            render={() => (
+              <FormItem>
+                <FormLabel>Last Name</FormLabel>
+                <FormControl>
+                  <Input
+                    placeholder="Doe"
+                    value={formData.lastName || ''}
+                    onChange={(e) => handleInputChange('lastName', e.target.value)}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            name="department"
+            render={() => (
+              <FormItem>
+                <FormLabel>Department</FormLabel>
+                <Select
+                  value={formData.department || ''}
+                  onValueChange={(value) => handleSelectChange('department', value)}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select department" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="admin">Administration</SelectItem>
+                    <SelectItem value="teaching">Teaching</SelectItem>
+                    <SelectItem value="security">Security</SelectItem>
+                    <SelectItem value="maintenance">Maintenance</SelectItem>
+                    <SelectItem value="transport">Transport</SelectItem>
+                    <SelectItem value="management">Management</SelectItem>
+                    <SelectItem value="it">IT</SelectItem>
+                    <SelectItem value="hr">Human Resources</SelectItem>
+                    <SelectItem value="finance">Finance</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            name="employeeType"
+            render={() => (
+              <FormItem>
+                <FormLabel>Employee Type</FormLabel>
+                <Select
+                  value={formData.employeeType || ''}
+                  onValueChange={(value) => handleSelectChange('employeeType', value)}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select employee type" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="permanent">Permanent</SelectItem>
+                    <SelectItem value="contract">Contract</SelectItem>
+                    <SelectItem value="part_time">Part-time</SelectItem>
+                    <SelectItem value="consultant">Consultant</SelectItem>
+                    <SelectItem value="intern">Intern</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            name="joiningDate"
+            render={() => (
+              <FormItem>
+                <FormLabel>Joining Date</FormLabel>
+                <FormControl>
+                  <Input
+                    type="date"
+                    value={formData.joiningDate || new Date().toISOString().split('T')[0]}
+                    onChange={(e) => handleInputChange('joiningDate', e.target.value)}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            name="status"
+            render={() => (
+              <FormItem>
+                <FormLabel>Status</FormLabel>
+                <Select
+                  value={formData.status || 'active'}
+                  onValueChange={(value) => handleSelectChange('status', value)}
+                >
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="on_leave">On Leave</SelectItem>
+                    <SelectItem value="resigned">Resigned</SelectItem>
+                    <SelectItem value="terminated">Terminated</SelectItem>
+                    <SelectItem value="retired">Retired</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
           />
         </div>
-        
-        <div className="space-y-2">
-          <label htmlFor="lastName">Last Name</label>
-          <Input
-            id="lastName"
-            value={formData.lastName || ''}
-            onChange={(e) => setFormData({...formData, lastName: e.target.value})}
-            placeholder="Enter last name"
-          />
-        </div>
-      </div>
-        
-      {/* Employment Details Section */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <label htmlFor="employeeType">Employee Type</label>
-          <Select 
-            value={formData.employeeType || ''} 
-            onValueChange={(value: EmployeeType) => setFormData({...formData, employeeType: value})}
-          >
-            <SelectTrigger id="employeeType">
-              <SelectValue placeholder="Select employee type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="permanent">Permanent</SelectItem>
-              <SelectItem value="contract">Contract</SelectItem>
-              <SelectItem value="part_time">Part Time</SelectItem>
-              <SelectItem value="consultant">Consultant</SelectItem>
-              <SelectItem value="intern">Intern</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <label htmlFor="department">Department</label>
-          <Select 
-            value={formData.department || ''} 
-            onValueChange={(value: DepartmentType) => setFormData({...formData, department: value})}
-          >
-            <SelectTrigger id="department">
-              <SelectValue placeholder="Select department" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="admin">Admin</SelectItem>
-              <SelectItem value="teaching">Teaching</SelectItem>
-              <SelectItem value="security">Security</SelectItem>
-              <SelectItem value="maintenance">Maintenance</SelectItem>
-              <SelectItem value="transport">Transport</SelectItem>
-              <SelectItem value="management">Management</SelectItem>
-              <SelectItem value="it">IT</SelectItem>
-              <SelectItem value="hr">HR</SelectItem>
-              <SelectItem value="finance">Finance</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <label>Date of Joining</label>
-          <DatePicker 
-            date={selectedDate}
-            onChange={handleDateChange}
-            className="w-full"
-            placeholderText="Select date of joining"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <label htmlFor="status">Employment Status</label>
-          <Select 
-            value={formData.status || ''} 
-            onValueChange={(value: EmploymentStatus) => setFormData({...formData, status: value})}
-          >
-            <SelectTrigger id="status">
-              <SelectValue placeholder="Select status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="on_leave">On Leave</SelectItem>
-              <SelectItem value="resigned">Resigned</SelectItem>
-              <SelectItem value="terminated">Terminated</SelectItem>
-              <SelectItem value="retired">Retired</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      </Form>
 
       {/* Module Permissions Section */}
-      <EmployeeModulePermissions 
-        permissions={formData.modulePermissions} 
-        onPermissionChange={handleModulePermissionChange}
-        isEditMode={isEditMode}
-      />
+      <div className="mt-6">
+        <EmployeeModulePermissions 
+          permissions={formData.modulePermissions as ModulePermissions} 
+          onPermissionChange={handleModulePermissionChange}
+          isEditMode={isEditMode}
+        />
+      </div>
     </div>
   );
 };

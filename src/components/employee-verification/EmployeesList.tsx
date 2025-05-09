@@ -40,7 +40,7 @@ const EmployeesList = () => {
               <TableHead>Department</TableHead>
               <TableHead>Position</TableHead>
               <TableHead>Join Date</TableHead>
-              <TableHead>Verification Status</TableHead>
+              <TableHead>Status</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -53,7 +53,7 @@ const EmployeesList = () => {
               </TableRow>
             ) : (
               employees.map((employee) => (
-                <TableRow key={employee.id}>
+                <TableRow key={employee.id} className={employee.status === 'inactive' ? "bg-gray-100" : ""}>
                   <TableCell>{employee.employeeId}</TableCell>
                   <TableCell>{employee.name}</TableCell>
                   <TableCell>{employee.department}</TableCell>
@@ -68,11 +68,15 @@ const EmployeesList = () => {
                         variant="outline" 
                         size="sm" 
                         onClick={() => navigate(`/employee-verification/${employee.id}`)}
+                        disabled={employee.status === 'inactive'}
                       >
                         <Eye className="h-4 w-4 mr-1" />
                         View
                       </Button>
-                      <EditEmployeeDialog employee={employee} />
+                      <EditEmployeeDialog 
+                        employee={employee}
+                        disabled={employee.status === 'inactive'} 
+                      />
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">

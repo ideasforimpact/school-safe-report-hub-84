@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import EmployeeForm from './EmployeeForm';
-import { Employee, EmployeeType, DepartmentType, EmploymentStatus } from '@/contexts/employee/types';
+import { Employee } from '@/contexts/employee/types';
 
 interface AddEmployeeDialogProps {
   isOpen: boolean;
@@ -24,11 +24,21 @@ const AddEmployeeDialog = ({ isOpen, setIsOpen, onAddEmployee }: AddEmployeeDial
     firstName: '',
     lastName: '',
     email: '',
-    employeeType: 'permanent' as EmployeeType,
-    department: 'admin' as DepartmentType,
+    employeeType: 'permanent',
+    department: 'admin',
     joiningDate: new Date().toISOString().split('T')[0],
-    status: 'active' as EmploymentStatus,
+    status: 'active'
   });
+
+  const handleSubmit = async () => {
+    try {
+      await onAddEmployee(formData);
+      resetForm();
+      setIsOpen(false);
+    } catch (error) {
+      console.error("Error adding employee:", error);
+    }
+  };
 
   const resetForm = () => {
     setFormData({
@@ -39,31 +49,25 @@ const AddEmployeeDialog = ({ isOpen, setIsOpen, onAddEmployee }: AddEmployeeDial
       employeeType: 'permanent',
       department: 'admin',
       joiningDate: new Date().toISOString().split('T')[0],
-      status: 'active',
+      status: 'active'
     });
   };
 
-  const handleSubmit = async () => {
-    await onAddEmployee(formData);
-    setIsOpen(false);
-    resetForm();
-  };
-
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      setIsOpen(open);
+      if (!open) resetForm();
+    }}>
       <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add New Employee</DialogTitle>
+          <DialogTitle>Add Employee</DialogTitle>
           <DialogDescription>
             Add a new employee to the system
           </DialogDescription>
         </DialogHeader>
         <EmployeeForm formData={formData} setFormData={setFormData} />
         <DialogFooter>
-          <Button variant="outline" onClick={() => {
-            setIsOpen(false);
-            resetForm();
-          }}>
+          <Button variant="outline" onClick={() => setIsOpen(false)}>
             Cancel
           </Button>
           <Button onClick={handleSubmit}>Add Employee</Button>

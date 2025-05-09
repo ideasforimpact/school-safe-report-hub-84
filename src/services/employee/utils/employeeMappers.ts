@@ -1,7 +1,7 @@
 
-import { Employee, EmployeeType, DepartmentType, EmploymentStatus } from '@/contexts/employee/types';
+import { Employee } from '@/contexts/employee/types';
 
-// Helper function to map database records to our Employee type format
+// Map a database employee record to our Employee model
 export const mapDbRecordToEmployee = (record: any): Employee => {
   return {
     id: record.id,
@@ -10,28 +10,28 @@ export const mapDbRecordToEmployee = (record: any): Employee => {
     firstName: record.first_name,
     lastName: record.last_name,
     email: record.email,
-    employeeType: record.employee_type as EmployeeType,
-    department: record.department as DepartmentType,
+    employeeType: record.employee_type,
+    department: record.department,
     joiningDate: record.joining_date,
-    status: record.status as EmploymentStatus,
+    status: record.status,
     createdAt: record.created_at,
-    updatedAt: record.updated_at
+    updatedAt: record.updated_at,
   };
 };
 
-// Convert Employee object to database schema format
-export const mapEmployeeToDbRecord = (employeeData: Partial<Employee>): Record<string, any> => {
-  const dbEmployee: Record<string, any> = {};
+// Map our Employee model to a database record format
+export const mapEmployeeToDbRecord = (employee: Partial<Employee>): Record<string, any> => {
+  const dbRecord: Record<string, any> = {};
   
-  if (employeeData.userId !== undefined) dbEmployee.user_id = employeeData.userId;
-  if (employeeData.employeeId !== undefined) dbEmployee.employee_id = employeeData.employeeId;
-  if (employeeData.firstName !== undefined) dbEmployee.first_name = employeeData.firstName;
-  if (employeeData.lastName !== undefined) dbEmployee.last_name = employeeData.lastName;
-  if (employeeData.email !== undefined) dbEmployee.email = employeeData.email;
-  if (employeeData.employeeType !== undefined) dbEmployee.employee_type = employeeData.employeeType;
-  if (employeeData.department !== undefined) dbEmployee.department = employeeData.department;
-  if (employeeData.joiningDate !== undefined) dbEmployee.joining_date = employeeData.joiningDate;
-  if (employeeData.status !== undefined) dbEmployee.status = employeeData.status;
+  if (employee.userId !== undefined) dbRecord.user_id = employee.userId;
+  if (employee.employeeId !== undefined) dbRecord.employee_id = employee.employeeId;
+  if (employee.firstName !== undefined) dbRecord.first_name = employee.firstName;
+  if (employee.lastName !== undefined) dbRecord.last_name = employee.lastName;
+  if (employee.email !== undefined) dbRecord.email = employee.email;
+  if (employee.employeeType !== undefined) dbRecord.employee_type = employee.employeeType;
+  if (employee.department !== undefined) dbRecord.department = employee.department;
+  if (employee.joiningDate !== undefined) dbRecord.joining_date = employee.joiningDate;
+  if (employee.status !== undefined) dbRecord.status = employee.status;
   
-  return dbEmployee;
+  return dbRecord;
 };

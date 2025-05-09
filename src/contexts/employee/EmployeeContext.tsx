@@ -17,6 +17,7 @@ import {
   getAllEmployeesFromApi,
   addEmployeeToApi,
   updateEmployeeInApi,
+  deactivateEmployeeInApi,
   deleteEmployeeFromApi,
   updateModulePermissionsInApi
 } from '@/services/employee/employeeApiService';
@@ -108,6 +109,29 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
     }
   };
 
+  const deactivateEmployee = async (id: string) => {
+    try {
+      setLoading(true);
+      
+      // Try to deactivate employee in API first
+      try {
+        const deactivatedEmployee = await deactivateEmployeeInApi(id);
+        setEmployees(prev => prev.map(emp => emp.id === id ? deactivatedEmployee : emp));
+        return;
+      } catch (apiError) {
+        console.error("API error in deactivateEmployee, falling back to local:", apiError);
+        
+        // If API fails, fallback to local storage
+        await updateEmployeeService(id, { status: 'inactive' });
+        setEmployees(prev => prev.map(emp => emp.id === id ? { ...emp, status: 'inactive' } : emp));
+      }
+    } catch (error) {
+      console.error("Error in deactivateEmployee:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const deleteEmployee = async (id: string) => {
     try {
       setLoading(true);
@@ -145,6 +169,7 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
       loading,
       addEmployee,
       updateEmployee,
+      deactivateEmployee,
       deleteEmployee,
       getEmployeeById,
       getEmployeeByUserId

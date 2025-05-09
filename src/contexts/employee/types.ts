@@ -2,7 +2,7 @@
 import { ModulePermissions } from '../auth/types';
 
 // Custom employee-specific types
-export type EmploymentStatus = 'active' | 'on_leave' | 'resigned' | 'terminated' | 'retired';
+export type EmploymentStatus = 'active' | 'on_leave' | 'resigned' | 'terminated' | 'retired' | 'inactive';
 export type EmployeeGrade = 'junior' | 'mid' | 'senior' | 'lead' | 'manager' | 'director' | 'executive';
 export type EmployeeType = 'permanent' | 'contract' | 'part_time' | 'consultant' | 'intern';
 export type DepartmentType = 'admin' | 'teaching' | 'security' | 'maintenance' | 'transport' | 'management' | 'it' | 'hr' | 'finance';
@@ -34,6 +34,7 @@ export interface EmployeeContextType {
   loading: boolean;
   addEmployee: (employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   updateEmployee: (id: string, updates: Partial<Employee>) => Promise<void>;
+  deactivateEmployee: (id: string) => Promise<void>;
   deleteEmployee: (id: string) => Promise<void>;
   getEmployeeById: (id: string) => Employee | undefined;
   getEmployeeByUserId: (userId: string) => Employee | undefined;

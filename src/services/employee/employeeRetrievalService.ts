@@ -2,28 +2,11 @@
 import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
 import { Employee } from '@/contexts/employee/types';
+import { mapDbRecordToEmployee } from './utils/employeeMappers';
 
-// Updated mapping function that no longer needs to handle application_fields
-const mapDbRecordToEmployee = (record: any): Employee => {
-  return {
-    id: record.id,
-    userId: record.user_id,
-    employeeId: record.employee_id,
-    firstName: record.first_name,
-    lastName: record.last_name,
-    email: record.email,
-    employeeType: record.employee_type,
-    department: record.department,
-    joiningDate: record.joining_date,
-    status: record.status,
-    createdAt: record.created_at,
-    updatedAt: record.updated_at
-  };
-};
-
-// API service for retrieving employees using Supabase
 export const getAllEmployeesFromApi = async (): Promise<Employee[]> => {
   try {
+    // Fetch all employees from the database
     const { data, error } = await supabase
       .from('employees')
       .select('*');
@@ -34,9 +17,10 @@ export const getAllEmployeesFromApi = async (): Promise<Employee[]> => {
       throw error;
     }
 
-    // Convert the database records to our Employee type format
-    const employees = data.map(mapDbRecordToEmployee);
-    return employees || [];
+    // Map the database records to our Employee model
+    return data.map(record => ({
+      ...mapDbRecordToEmployee(record),
+    }));
   } catch (error) {
     console.error("Error in getAllEmployeesFromApi:", error);
     toast.error("Failed to fetch employees");
@@ -44,26 +28,50 @@ export const getAllEmployeesFromApi = async (): Promise<Employee[]> => {
   }
 };
 
-export const getEmployeeByIdFromApi = async (id: string): Promise<Employee | null> => {
+export const getEmployeeByIdFromApi = async (id: string): Promise<Employee> => {
   try {
+    // Fetch a single employee by ID
     const { data, error } = await supabase
       .from('employees')
       .select('*')
       .eq('id', id)
-      .maybeSingle();
+      .single();
 
     if (error) {
       console.error("Error fetching employee:", error);
-      toast.error("Failed to fetch employee details");
+      toast.error("Failed to fetch employee");
       throw error;
     }
 
-    if (!data) return null;
-
+    // Convert the response to our Employee type
     return mapDbRecordToEmployee(data);
   } catch (error) {
     console.error("Error in getEmployeeByIdFromApi:", error);
-    toast.error("Failed to fetch employee details");
+    toast.error("Failed to fetch employee");
+    throw error;
+  }
+};
+
+export const getEmployeeByUserIdFromApi = async (userId: string): Promise<Employee> => {
+  try {
+    // Fetch a single employee by user ID
+    const { data, error } = await supabase
+      .from('employees')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    if (error) {
+      console.error("Error fetching employee by user ID:", error);
+      toast.error("Failed to fetch employee");
+      throw error;
+    }
+
+    // Convert the response to our Employee type
+    return mapDbRecordToEmployee(data);
+  } catch (error) {
+    console.error("Error in getEmployeeByUserIdFromApi:", error);
+    toast.error("Failed to fetch employee");
     throw error;
   }
 };

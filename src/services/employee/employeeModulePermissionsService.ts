@@ -36,6 +36,26 @@ export const addModulePermissionToApi = async (
   moduleId: string
 ): Promise<{id: string, employeeId: string, moduleId: string}> => {
   try {
+    // Check if employee is active before allowing permission changes
+    const { data: employeeData, error: employeeCheckError } = await supabase
+      .from('employees')
+      .select('status')
+      .eq('id', employeeId)
+      .single();
+      
+    if (employeeCheckError) {
+      console.error("Error checking employee status:", employeeCheckError);
+      toast.error("Failed to verify employee status");
+      throw employeeCheckError;
+    }
+    
+    if (employeeData.status !== 'active') {
+      const error = new Error('Cannot modify permissions for inactive employees');
+      console.error(error);
+      toast.error(error.message);
+      throw error;
+    }
+
     const { data, error } = await supabase
       .from('employee_modules')
       .insert({
@@ -108,6 +128,14 @@ export const updateModulePermissionsInApi = async (
       console.error("Error fetching employee:", fetchError);
       toast.error("Failed to update module permissions");
       throw fetchError;
+    }
+    
+    // Check if employee is active before allowing permission changes
+    if (employee.status !== 'active') {
+      const error = new Error('Cannot modify permissions for inactive employees');
+      console.error(error);
+      toast.error(error.message);
+      throw error;
     }
 
     // Convert the employee to our application model

@@ -77,6 +77,46 @@ export const updateEmployeeInApi = async (
   }
 };
 
+export const deactivateEmployeeInApi = async (id: string): Promise<Employee> => {
+  try {
+    // Update the employee status to 'inactive'
+    const { data, error } = await supabase
+      .from('employees')
+      .update({ status: 'inactive' })
+      .eq('id', id)
+      .select('*')
+      .single();
+
+    if (error) {
+      console.error("Error deactivating employee:", error);
+      toast.error("Failed to deactivate employee");
+      throw error;
+    }
+
+    // Clear all module permissions for deactivated employee
+    const { error: moduleError } = await supabase
+      .from('employee_modules')
+      .delete()
+      .eq('employee_id', id);
+
+    if (moduleError) {
+      console.error("Error removing module permissions:", moduleError);
+      toast.warning("Employee deactivated but there was an issue updating permissions");
+    } else {
+      console.log("Successfully removed all module permissions for deactivated employee");
+    }
+
+    toast.success("Employee deactivated successfully");
+    
+    // Convert the response back to our Employee type
+    return mapDbRecordToEmployee(data);
+  } catch (error) {
+    console.error("Error in deactivateEmployeeInApi:", error);
+    toast.error("Failed to deactivate employee");
+    throw error;
+  }
+};
+
 export const deleteEmployeeFromApi = async (id: string): Promise<void> => {
   try {
     // First, delete all module permissions for this employee

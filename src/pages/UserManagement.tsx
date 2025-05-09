@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -366,27 +365,36 @@ const UserManagement = () => {
       setIsLoading(true);
       const updatedUsers = deactivateExistingUser(users as any, userId); // Type casting to fix TypeScript error
       if (updatedUsers) {
-        // Also update the employee status if it exists
+        // Also update the employee status using our new deactivateEmployee function
         try {
-          // Try to update via edge function
-          const { data, error } = await supabase.functions.invoke('employee-management', {
-            body: JSON.stringify({
-              operation: 'update',
-              employee: {
-                id: userId,
-                status: 'inactive' as EmploymentStatus // Explicitly cast to EmploymentStatus
-              }
-            })
-          });
-          
-          if (error) throw error;
-          console.log("Employee deactivated via edge function:", data);
+          // Find the employee in our employee list
+          const employee = employeeUsers.find(emp => emp.id === userId);
+          if (employee) {
+            // Use employee context's deactivateEmployee function
+            const { deactivateEmployee } = useEmployee();
+            await deactivateEmployee(userId);
+            console.log("Employee deactivated via context function");
+          } else {
+            // Fallback to edge function if employee not found in context
+            const { data, error } = await supabase.functions.invoke('employee-management', {
+              body: JSON.stringify({
+                operation: 'update',
+                employee: {
+                  id: userId,
+                  status: 'inactive' as EmploymentStatus // Explicitly cast to EmploymentStatus
+                }
+              })
+            });
+            
+            if (error) throw error;
+            console.log("Employee deactivated via edge function:", data);
+          }
           
           // After successful deactivation, refresh the employee list
           refreshEmployeesList();
         } catch (edgeFuncError) {
-          console.error("Edge function deactivate error:", edgeFuncError);
-          // No direct fallback for deactivation
+          console.error("Error deactivating employee:", edgeFuncError);
+          toast.error("User deactivated but employee record update failed");
         }
         
         toast.success("User deactivated successfully");
