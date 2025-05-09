@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,7 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
-import { UserPlus, FileImport } from 'lucide-react';
+import { UserPlus, FileUp } from 'lucide-react';
 import EmployeeList from '@/components/employee/EmployeeList';
 import AddEmployeeDialog from '@/components/employee/AddEmployeeDialog';
 import EditEmployeeDialog from '@/components/employee/EditEmployeeDialog';
@@ -75,7 +74,7 @@ const EmployeeManagement = () => {
               onClick={() => setIsImportDialogOpen(true)}
               className="gap-2"
             >
-              <FileImport className="h-4 w-4" />
+              <FileUp className="h-4 w-4" />
               Import Employees
             </Button>
             <Button onClick={() => setIsAddDialogOpen(true)}>
