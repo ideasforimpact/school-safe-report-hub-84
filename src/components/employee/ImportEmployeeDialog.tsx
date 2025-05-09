@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Upload, FileText } from 'lucide-react';
+import { FileImport, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ImportEmployeeDialogProps {
@@ -104,7 +104,7 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees }: ImportEm
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
-          <FileText className="h-12 w-12 text-gray-400 mb-4" />
+          <FileImport className="h-12 w-12 text-gray-400 mb-4" />
           <p className="text-sm text-gray-500 mb-2">
             Drag & drop your Excel file here, or
           </p>
