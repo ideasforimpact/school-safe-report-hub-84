@@ -19,7 +19,6 @@ interface AddUserDialogProps {
     firstName: string;
     lastName: string;
     email: string;
-    password: string;
     employeeId?: string;
     employeeType?: EmployeeType;
     department?: DepartmentType;
@@ -31,7 +30,6 @@ interface AddUserDialogProps {
     firstName: string;
     lastName: string;
     email: string;
-    password: string;
     employeeId?: string;
     employeeType?: EmployeeType;
     department?: DepartmentType;

@@ -8,7 +8,6 @@ interface UserFormProps {
     firstName: string;
     lastName: string;
     email: string;
-    password: string;
     employeeId?: string;
     employeeType?: EmployeeType;
     department?: DepartmentType;
@@ -20,7 +19,6 @@ interface UserFormProps {
     firstName: string;
     lastName: string;
     email: string;
-    password: string;
     employeeId?: string;
     employeeType?: EmployeeType;
     department?: DepartmentType;

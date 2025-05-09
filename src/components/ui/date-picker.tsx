@@ -17,12 +17,14 @@ export interface DatePickerProps {
   date: Date | undefined;
   onChange: (date: Date | undefined) => void;
   className?: string;
+  placeholderText?: string;
 }
 
 export function DatePicker({
   date,
   onChange,
   className,
+  placeholderText = "Select date of joining"
 }: DatePickerProps) {
   return (
     <Popover>
@@ -36,7 +38,7 @@ export function DatePicker({
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
-          {date ? format(date, "PPP") : <span>Select due date</span>}
+          {date ? format(date, "PPP") : <span>{placeholderText}</span>}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">

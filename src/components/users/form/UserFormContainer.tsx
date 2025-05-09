@@ -2,7 +2,6 @@
 import React from 'react';
 import { UserRole, ModulePermissions, EmployeeType, DepartmentType } from '@/contexts/auth/types';
 import UserBasicInfoFields from './UserBasicInfoFields';
-import UserRoleSelector from './UserRoleSelector';
 import UserPermissionsFields from './UserPermissionsFields';
 
 interface UserFormContainerProps {
@@ -10,7 +9,6 @@ interface UserFormContainerProps {
     firstName: string;
     lastName: string;
     email: string;
-    password: string;
     employeeId?: string;
     employeeType?: EmployeeType;
     department?: DepartmentType;
@@ -22,7 +20,6 @@ interface UserFormContainerProps {
     firstName: string;
     lastName: string;
     email: string;
-    password: string;
     employeeId?: string;
     employeeType?: EmployeeType;
     department?: DepartmentType;
@@ -49,11 +46,6 @@ const UserFormContainer = ({ formData, setFormData, isEditMode = false }: UserFo
       <UserBasicInfoFields 
         formData={formData}
         setFormData={setFormData}
-        isEditMode={isEditMode}
-      />
-      <UserRoleSelector
-        role={formData.role}
-        onRoleChange={(role) => setFormData({...formData, role})}
         isEditMode={isEditMode}
       />
       <UserPermissionsFields

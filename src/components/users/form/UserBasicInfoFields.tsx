@@ -17,7 +17,6 @@ interface UserBasicInfoFieldsProps {
     firstName: string;
     lastName: string;
     email: string;
-    password: string;
     employeeId?: string;
     employeeType?: EmployeeType;
     department?: DepartmentType;
@@ -27,7 +26,6 @@ interface UserBasicInfoFieldsProps {
     firstName: string;
     lastName: string;
     email: string;
-    password: string;
     employeeId?: string;
     employeeType?: EmployeeType;
     department?: DepartmentType;
@@ -135,21 +133,7 @@ const UserBasicInfoFields = ({ formData, setFormData, isEditMode = false }: User
           date={selectedDate}
           onChange={handleDateChange}
           className="w-full"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <label htmlFor={isEditMode ? "edit-password" : "password"}>
-          {isEditMode ? 
-            <span className="text-sm text-gray-500">Password (leave empty to keep current)</span> : 
-            "Password"}
-        </label>
-        <Input
-          id={isEditMode ? "edit-password" : "password"}
-          type="password"
-          value={formData.password}
-          onChange={(e) => setFormData({...formData, password: e.target.value})}
-          placeholder={isEditMode ? "Leave empty to keep current password" : "Enter password"}
+          placeholderText="Select date of joining"
         />
       </div>
     </>
