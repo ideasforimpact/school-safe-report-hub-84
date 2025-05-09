@@ -11,9 +11,22 @@ export const addEmployeeToApi = async (
     // Convert the Employee object to match the database schema
     const dbEmployee = mapEmployeeToDbRecord(employeeData);
 
+    // Explicitly define required fields for Supabase insert to prevent type error
     const { data, error } = await supabase
       .from('employees')
-      .insert(dbEmployee)
+      .insert({
+        employee_id: dbEmployee.employee_id,
+        first_name: dbEmployee.first_name,
+        last_name: dbEmployee.last_name,
+        email: dbEmployee.email,
+        phone: dbEmployee.phone,
+        employee_type: dbEmployee.employee_type,
+        department: dbEmployee.department,
+        joining_date: dbEmployee.joining_date,
+        status: dbEmployee.status,
+        user_id: dbEmployee.user_id,
+        application_fields: dbEmployee.application_fields
+      })
       .select('*')
       .single();
 
