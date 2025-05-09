@@ -16,7 +16,7 @@ export const processEmployeeData = async (rawData: RawEmployeeData[]): Promise<I
     successCount: 0,
     errorCount: 0,
     errors: [],
-    updatedCount: 0 // New counter for tracking updated employees
+    updatedCount: 0 // Counter for tracking updated employees
   };
 
   console.log("Processing employee data:", rawData);
@@ -77,35 +77,26 @@ export const processEmployeeData = async (rawData: RawEmployeeData[]): Promise<I
         applicationFields: {}
       };
       
-      // Check if employee already exists by employeeId
+      // Check if employee already exists by employeeId only
       const { data: existingEmployeeById, error: idError } = await supabase
         .from('employees')
         .select('id')
         .eq('employee_id', employeeData.employeeId)
         .maybeSingle();
         
-      // If not found by employeeId, check by email
-      let existingEmployeeByEmail = null;
-      if (!existingEmployeeById && !idError) {
-        const { data: empByEmail, error: emailError } = await supabase
-          .from('employees')
-          .select('id')
-          .ilike('email', employeeData.email)
-          .maybeSingle();
-          
-        if (!emailError) {
-          existingEmployeeByEmail = empByEmail;
-        }
+      if (idError) {
+        console.error(`Error checking for existing employee by ID: ${idError.message}`);
+        result.errors.push(`Row ${index + 2}: Database error: ${idError.message}`);
+        result.errorCount++;
+        continue;
       }
       
-      const existingEmployee = existingEmployeeById || existingEmployeeByEmail;
+      console.log(`Row ${index + 2}: Employee ${employeeData.employeeId} exists:`, !!existingEmployeeById);
       
-      console.log(`Row ${index + 2}: Employee ${employeeData.employeeId} exists:`, !!existingEmployee);
-      
-      if (existingEmployee) {
+      if (existingEmployeeById) {
         // Update existing employee
         try {
-          const updatedEmployee = await updateEmployeeInApi(existingEmployee.id, employeeData);
+          const updatedEmployee = await updateEmployeeInApi(existingEmployeeById.id, employeeData);
           result.addedEmployees.push(updatedEmployee);
           result.updatedCount++;
           console.log(`Row ${index + 2}: Updated employee:`, updatedEmployee.id);
