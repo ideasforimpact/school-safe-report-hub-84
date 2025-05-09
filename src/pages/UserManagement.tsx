@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmployee } from '@/contexts/employee/EmployeeContext';
@@ -27,6 +27,7 @@ import {
 } from '@/services/auth/userManagementService';
 import { processEmployeeExcel } from '@/services/employee/importEmployeeService';
 import { supabase } from '@/integrations/supabase/client';
+import { getAllEmployeesFromApi } from '@/services/employee/employeeRetrievalService';
 
 const UserManagement = () => {
   const { isAdmin, users = [] } = useAuth();
@@ -36,6 +37,7 @@ const UserManagement = () => {
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [employeeUsers, setEmployeeUsers] = useState<User[]>([]);
   
   // Default form data for the user forms
   const [formData, setFormData] = useState<{
@@ -65,6 +67,56 @@ const UserManagement = () => {
       eduSafeResourceAccess: false
     }
   });
+
+  // Fetch employees from Supabase and map them to User format
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      try {
+        setIsLoading(true);
+        const employeeData = await getAllEmployeesFromApi();
+        
+        if (employeeData && employeeData.length > 0) {
+          // Map employee data to User format for display in UserList
+          const mappedUsers = employeeData.map(employee => ({
+            id: employee.id,
+            firstName: employee.firstName,
+            lastName: employee.lastName,
+            email: employee.email,
+            employeeId: employee.employeeId,
+            employeeType: employee.employeeType,
+            department: employee.department,
+            joiningDate: employee.joiningDate,
+            role: employee.applicationFields?.modulePermissions?.superAdmin ? 'admin' : 'reporter' as UserRole,
+            modulePermissions: employee.applicationFields?.modulePermissions || {
+              superAdmin: false,
+              incidentReporting: true,
+              incidentAdmin: false,
+              assessmentUser: false,
+              assessmentsAdmin: false,
+              employeeVerificationAdmin: false,
+              grievancesAdmin: false,
+              transportSafetyAdmin: false,
+              eduSafeResourceAccess: false
+            },
+            isActive: employee.status === 'active',
+          }));
+
+          setEmployeeUsers(mappedUsers);
+          console.log("Fetched employees:", mappedUsers);
+        } else {
+          console.log("No employees found or error fetching employees");
+          setEmployeeUsers([]);
+        }
+      } catch (error) {
+        console.error("Error fetching employees:", error);
+        toast.error("Failed to fetch employee data");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchEmployees();
+  }, []);
 
   // Handler for adding a new user
   const handleAddUser = async () => {
@@ -122,6 +174,9 @@ const UserManagement = () => {
               console.log("Employee created via context function");
               toast.success("Employee record created via local storage");
             }
+            
+            // After successful employee creation, refresh the employee list
+            refreshEmployeesList();
           } catch (empError) {
             console.error("Error adding employee record:", empError);
             toast.error("User added but employee record creation failed");
@@ -131,13 +186,50 @@ const UserManagement = () => {
         toast.success("User added successfully");
         resetForm();
         setIsAddDialogOpen(false);
-        window.location.reload(); // Refresh to see the new user
       }
     } catch (error) {
       console.error("Error adding user:", error);
       toast.error("Failed to add user");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Function to refresh the employees list after changes
+  const refreshEmployeesList = async () => {
+    try {
+      const employeeData = await getAllEmployeesFromApi();
+      
+      if (employeeData && employeeData.length > 0) {
+        const mappedUsers = employeeData.map(employee => ({
+          id: employee.id,
+          firstName: employee.firstName,
+          lastName: employee.lastName,
+          email: employee.email,
+          employeeId: employee.employeeId,
+          employeeType: employee.employeeType,
+          department: employee.department,
+          joiningDate: employee.joiningDate,
+          role: employee.applicationFields?.modulePermissions?.superAdmin ? 'admin' : 'reporter' as UserRole,
+          modulePermissions: employee.applicationFields?.modulePermissions || {
+            superAdmin: false,
+            incidentReporting: true,
+            incidentAdmin: false,
+            assessmentUser: false,
+            assessmentsAdmin: false,
+            employeeVerificationAdmin: false,
+            grievancesAdmin: false,
+            transportSafetyAdmin: false,
+            eduSafeResourceAccess: false
+          },
+          isActive: employee.status === 'active',
+        }));
+
+        setEmployeeUsers(mappedUsers);
+        console.log("Refreshed employees list:", mappedUsers);
+      }
+    } catch (error) {
+      console.error("Error refreshing employees:", error);
     }
   };
 
@@ -225,13 +317,15 @@ const UserManagement = () => {
           
           if (error) throw error;
           console.log("Employee deleted via edge function:", data);
+          
+          // After successful deletion, refresh the employee list
+          refreshEmployeesList();
         } catch (edgeFuncError) {
           console.error("Edge function delete error:", edgeFuncError);
           // No fallback for deletion since we don't have a direct method in context
         }
         
         toast.success("User deleted successfully");
-        window.location.reload(); // Refresh to see the changes
       }
     } catch (error) {
       console.error("Error deleting user:", error);
@@ -262,13 +356,15 @@ const UserManagement = () => {
           
           if (error) throw error;
           console.log("Employee deactivated via edge function:", data);
+          
+          // After successful deactivation, refresh the employee list
+          refreshEmployeesList();
         } catch (edgeFuncError) {
           console.error("Edge function deactivate error:", edgeFuncError);
           // No direct fallback for deactivation
         }
         
         toast.success("User deactivated successfully");
-        window.location.reload(); // Refresh to see the changes
       }
     } catch (error) {
       console.error("Error deactivating user:", error);
@@ -333,7 +429,8 @@ const UserManagement = () => {
       setIsLoading(true);
       await processEmployeeExcel(file);
       toast.success("Employees imported successfully");
-      window.location.reload(); // Refresh to see the imported employees
+      // Refresh employees list after import
+      await refreshEmployeesList();
     } catch (error) {
       console.error("Import process failed:", error);
       toast.error("Failed to process employee import");
@@ -389,12 +486,18 @@ const UserManagement = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <UserList 
-              users={users}
-              onEditClick={handleEditClick}
-              onDeleteUser={handleDeleteUser}
-              onDeactivateUser={handleDeactivateUser}
-            />
+            {isLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
+              </div>
+            ) : (
+              <UserList 
+                users={employeeUsers.length > 0 ? employeeUsers : users}
+                onEditClick={handleEditClick}
+                onDeleteUser={handleDeleteUser}
+                onDeactivateUser={handleDeactivateUser}
+              />
+            )}
           </CardContent>
         </Card>
       </div>
