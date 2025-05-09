@@ -1,158 +1,175 @@
 
-import { useState } from 'react';
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useIncidents } from '@/contexts/IncidentContext';
-import { useAuth } from '@/contexts/auth/AuthContext';
-import Layout from '@/components/layout/Layout';
+import { useIncident } from '@/contexts/IncidentContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useClient } from '@/contexts/ClientContext';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { toast } from '@/components/ui/sonner';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
-import { useIncidentForm } from '@/hooks/useIncidentForm';
-import IncidentDetailsForm from '@/components/incidents/IncidentDetailsForm';
-import PeopleInvolvedSection from '@/components/incidents/PeopleInvolvedSection';
-import { IncidentType } from '@/types/incident';
+import { useIncidentFormData } from '@/hooks/incident-form/useIncidentFormData';
+import { useIncidentFormValidation } from '@/hooks/incident-form/useIncidentFormValidation';
+import { useCategoryOptions } from '@/hooks/incident-form/useCategoryOptions';
+import { useLocationOptions } from '@/hooks/incident-form/useLocationOptions';
+import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { Loader2 } from 'lucide-react';
+import Layout from '@/components/layout/Layout';
+import { formatUserFullName } from '@/utils/userUtils';
 
-const ReportIncident = () => {
-  const { addIncident, users } = useIncidents();
-  const { user } = useAuth();
+// Form sections
+import IncidentFormHeader from '@/components/incidents/form-sections/IncidentFormHeader';
+import IncidentTypeSection from '@/components/incidents/form-sections/IncidentTypeSection';
+import IncidentDescriptionSection from '@/components/incidents/form-sections/IncidentDescriptionSection';
+import IncidentDateTimeSection from '@/components/incidents/form-sections/IncidentDateTimeSection';
+import IncidentCategorySection from '@/components/incidents/form-sections/IncidentCategorySection';
+import IncidentLocationSection from '@/components/incidents/form-sections/IncidentLocationSection';
+import IncidentPrioritySection from '@/components/incidents/form-sections/IncidentPrioritySection';
+
+const ReportIncident: React.FC = () => {
   const navigate = useNavigate();
+  const { addIncident } = useIncident();
+  const { user } = useAuth();
+  const { currentClient } = useClient();
+  const { formData, setFormData, handleChange, handleSelectChange, handleDateTimeChange } = useIncidentFormData(user);
+  const { categoryOptions, subcategoryOptions } = useCategoryOptions();
+  const { locationOptions, facilityOptions } = useLocationOptions(formData.locationId);
+  const { errors, validateForm } = useIncidentFormValidation();
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
   
-  const {
-    nextTicketId,
-    formData,
-    supportingFiles,
-    availableSubcategories,
-    peopleInvolved,
-    isSubmitting,
-    setIsSubmitting,
-    handleChange,
-    handleSelectChange,
-    handleDateTimeChange,
-    handlePersonChange,
-    addPerson,
-    removePerson,
-    handleFilesChange,
-    getSelectedCategory,
-    getSelectedLocation,
-    getSelectedFacility,
-    categories,
-    locations,
-    facilities,
-    users: incidentUsers
-  } = useIncidentForm();
-
-  const handleSubmit = (e: React.FormEvent) => {
+  // Effect to check if user is authenticated
+  useEffect(() => {
+    if (!user) {
+      toast.error("You must be logged in to report an incident");
+      navigate('/login');
+    }
+  }, [user, navigate]);
+  
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
-    // Removed mandatory field validation to allow proceeding with any data
+    // Validate form
+    if (!validateForm(formData)) {
+      return;
+    }
     
     setIsSubmitting(true);
     
     try {
-      // Combine date and time if both are provided
-      const dateTime = formData.date && formData.time 
-        ? new Date(`${formData.date}T${formData.time}`) 
-        : new Date();
+      // Format data for submission
+      const incident = {
+        id: `incident_${Date.now()}`,
+        title: `${formData.type}: ${formData.description.substring(0, 50)}${formData.description.length > 50 ? '...' : ''}`,
+        description: formData.description,
+        rootCause: formData.rootCause,
+        type: formData.type,
+        date: formData.date,
+        time: formData.time,
+        dateReported: new Date().toISOString(),
+        location: formData.location,
+        locationId: formData.locationId,
+        facilityId: formData.facilityId, 
+        category: categoryOptions.find(cat => cat.value === formData.categoryId)?.label || '',
+        categoryId: formData.categoryId,
+        subcategory: formData.subcategory,
+        priority: formData.priority,
+        status: 'Open',
+        reportedById: user?.id || '',
+        reportedBy: formatUserFullName(user),
+        assignedTo: '',
+        clientId: currentClient?.id || '',
+        attachments: [],
+        comments: []
+      };
       
-      // Get the actual category, location and facility names if available
-      const categoryName = formData.categoryId ? getSelectedCategory() : '';
-      const locationName = formData.locationId ? getSelectedLocation() : '';
-      const facilityName = formData.facilityId ? getSelectedFacility() : '';
+      await addIncident(incident);
       
-      // Filter out empty people
-      const validPeople = peopleInvolved.filter(p => p.name.trim() !== '');
-      
-      // Process supporting documents
-      const documents = supportingFiles.map(file => ({
-        name: file.name,
-        type: file.type,
-        data: file.base64
-      }));
-      
-      // Get selected owner if any
-      const selectedOwner = formData.owner 
-        ? users.find(u => u.id === formData.owner) 
-        : undefined;
-        
-      const owner = selectedOwner 
-        ? { id: selectedOwner.id, name: selectedOwner.name } 
-        : undefined;
-      
-      addIncident({
-        type: (formData.type || 'Incident') as IncidentType,
-        category: categoryName as any,
-        subcategory: formData.subcategory || '',
-        description: formData.description || '',
-        date: dateTime,
-        location: locationName as any,
-        peopleInvolved: validPeople,
-        facility: facilityName || '',
-        priority: formData.priority || 'Medium' as 'Low' | 'Medium' | 'High' | 'Critical',
-        documents: documents,
-        reportedBy: {
-          id: user?.id || '',
-          name: user?.name || ''
-        },
-        owner: owner
-      });
-      
+      toast.success("Incident reported successfully");
       navigate('/incidents');
     } catch (error) {
-      console.error('Error submitting form:', error);
-      toast.error("An error occurred while submitting the report");
+      toast.error("Failed to report incident");
+      console.error("Error reporting incident:", error);
     } finally {
       setIsSubmitting(false);
     }
   };
-
+  
   return (
     <Layout>
-      <div className="space-y-4 md:space-y-6 w-full overflow-x-hidden">
-        <div className="text-left">
-          <h1 className="text-2xl md:text-3xl font-bold">Report New Incident</h1>
-          <p className="text-gray-600 mt-1">
-            Document safety incidents, near misses, or unsafe conditions
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="w-full">
-          <Card className="border-none shadow-card pt-6">
-            <CardContent className="space-y-6 px-6">
-              <IncidentDetailsForm
-                formData={formData}
-                onChange={handleChange}
-                onSelectChange={handleSelectChange}
-                onDateTimeChange={handleDateTimeChange}
-                supportingFiles={supportingFiles}
-                onFilesChange={handleFilesChange}
-                categories={categories}
-                availableSubcategories={availableSubcategories}
-                locations={locations}
-                facilities={facilities}
-                users={users}
+      <div className="max-w-4xl mx-auto">
+        <Card>
+          <CardHeader>
+            <IncidentFormHeader />
+          </CardHeader>
+          <form onSubmit={handleSubmit}>
+            <CardContent className="space-y-6">
+              <IncidentTypeSection 
+                type={formData.type} 
+                onChange={(value) => handleSelectChange('type', value)} 
               />
-
-              <PeopleInvolvedSection
-                peopleInvolved={peopleInvolved}
-                onPersonChange={handlePersonChange}
-                onAddPerson={addPerson}
-                onRemovePerson={removePerson}
+              
+              <IncidentDescriptionSection 
+                description={formData.description}
+                rootCause={formData.rootCause}
+                onChange={handleChange}
+                errors={errors}
+              />
+              
+              <IncidentDateTimeSection
+                date={formData.date ? new Date(formData.date) : new Date()}
+                time={formData.time}
+                onChange={handleDateTimeChange}
+                errors={errors}
+              />
+              
+              <IncidentCategorySection
+                categoryId={formData.categoryId}
+                subcategory={formData.subcategory}
+                categoryOptions={categoryOptions}
+                subcategoryOptions={subcategoryOptions}
+                onCategoryChange={(value) => handleSelectChange('categoryId', value)}
+                onSubcategoryChange={(value) => handleSelectChange('subcategory', value)}
+                errors={errors}
+              />
+              
+              <IncidentLocationSection
+                locationId={formData.locationId}
+                location={formData.location}
+                facilityId={formData.facilityId}
+                locationOptions={locationOptions}
+                facilityOptions={facilityOptions}
+                onLocationIdChange={(value) => handleSelectChange('locationId', value)}
+                onLocationChange={(value) => setFormData(prev => ({ ...prev, location: value }))}
+                onFacilityChange={(value) => handleSelectChange('facilityId', value)}
+                errors={errors}
+              />
+              
+              <IncidentPrioritySection
+                priority={formData.priority}
+                onChange={(value) => handleSelectChange('priority', value)}
+                errors={errors}
               />
             </CardContent>
             <CardFooter className="flex justify-between">
-              <Button 
-                type="button" 
+              <Button
+                type="button"
                 variant="outline"
-                onClick={() => navigate('/dashboard')}
+                onClick={() => navigate('/incidents')}
               >
                 Cancel
               </Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Submitting..." : "Submit Report"}
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  'Submit Incident Report'
+                )}
               </Button>
             </CardFooter>
-          </Card>
-        </form>
+          </form>
+        </Card>
       </div>
     </Layout>
   );

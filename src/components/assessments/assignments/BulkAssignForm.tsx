@@ -18,6 +18,7 @@ import { addDays } from 'date-fns';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { User } from '@/contexts/auth/types';
+import { formatUserFullName } from '@/utils/userUtils';
 
 const BulkAssignForm = () => {
   const navigate = useNavigate();
@@ -108,7 +109,7 @@ const BulkAssignForm = () => {
         createAssignment({
           templateId: selectedTemplateId,
           userId: user.id,
-          userName: user.name,
+          userName: formatUserFullName(user),
           dueDate: dueDate.toISOString()
         });
         assignedCount++;
@@ -197,7 +198,7 @@ const BulkAssignForm = () => {
                         htmlFor={`user-${user.id}`} 
                         className="flex-grow"
                       >
-                        {user.name}
+                        {formatUserFullName(user)}
                       </Label>
                     </div>
                   ))

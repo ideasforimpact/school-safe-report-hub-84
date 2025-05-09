@@ -1,6 +1,7 @@
 
 import { useState } from 'react';
 import { User as AuthUser } from '@/contexts/auth/types';
+import { formatUserFullName } from '@/utils/userUtils';
 
 // Initial form data state with updated fields to match what's expected in ReportIncident.tsx
 const initialFormData = {
@@ -24,7 +25,7 @@ export function useIncidentFormData(user: AuthUser | null) {
   const [formData, setFormData] = useState({
     ...initialFormData,
     reportedById: user?.id || '',
-    reportedBy: user?.name || ''
+    reportedBy: user ? formatUserFullName(user) : ''
   });
 
   // Form change handlers

@@ -6,9 +6,43 @@ import { toast } from "@/components/ui/sonner";
 // In-memory user storage
 let users: UserWithPassword[] = [...INITIAL_MOCK_USERS];
 
+// Storage helper functions
+export const getUserFromStorage = (): User | null => {
+  const storedUser = localStorage.getItem('currentUser');
+  if (!storedUser) return null;
+  try {
+    return JSON.parse(storedUser);
+  } catch (error) {
+    return null;
+  }
+};
+
+export const getUsersFromStorage = (): UserWithPassword[] => {
+  const storedUsers = localStorage.getItem('users');
+  if (!storedUsers) return [...INITIAL_MOCK_USERS];
+  try {
+    return JSON.parse(storedUsers);
+  } catch (error) {
+    return [...INITIAL_MOCK_USERS];
+  }
+};
+
+export const saveUserToStorage = (user: User): void => {
+  localStorage.setItem('currentUser', JSON.stringify(user));
+};
+
+export const saveUsersToStorage = (users: UserWithPassword[]): void => {
+  localStorage.setItem('users', JSON.stringify(users));
+};
+
 // Authentication functions
-export const loginUser = (email: string, password: string): User | null => {
-  const user = users.find(
+export const loginUser = (
+  email: string, 
+  password: string,
+  currentUsers: UserWithPassword[] = users,
+  isEmailDomainAllowed?: (email: string, clientId: string) => boolean
+): User | null => {
+  const user = currentUsers.find(
     (u) => u.email === email && u.password === password && u.isActive
   );
   
@@ -20,6 +54,35 @@ export const loginUser = (email: string, password: string): User | null => {
   // Return user without password
   const { password: _, ...userWithoutPassword } = user;
   return userWithoutPassword;
+};
+
+export const logoutUser = (): void => {
+  localStorage.removeItem('currentUser');
+};
+
+export const changeUserPassword = (
+  currentUsers: UserWithPassword[],
+  userId: string,
+  currentPassword: string,
+  newPassword: string
+): UserWithPassword[] | null => {
+  const userIndex = currentUsers.findIndex(
+    (u) => u.id === userId && u.password === currentPassword
+  );
+  
+  if (userIndex === -1) {
+    toast.error("Current password is incorrect");
+    return null;
+  }
+  
+  const updatedUsers = [...currentUsers];
+  updatedUsers[userIndex] = {
+    ...updatedUsers[userIndex],
+    password: newPassword
+  };
+  
+  toast.success("Password updated successfully");
+  return updatedUsers;
 };
 
 export const registerUser = (userData: Omit<UserWithPassword, 'id'>): User => {
@@ -35,29 +98,6 @@ export const registerUser = (userData: Omit<UserWithPassword, 'id'>): User => {
   // Return user without password
   const { password: _, ...userWithoutPassword } = newUser;
   return userWithoutPassword;
-};
-
-export const updateUserPassword = (
-  userId: string,
-  currentPassword: string,
-  newPassword: string
-): boolean => {
-  const userIndex = users.findIndex(
-    (u) => u.id === userId && u.password === currentPassword
-  );
-  
-  if (userIndex === -1) {
-    toast.error("Current password is incorrect");
-    return false;
-  }
-  
-  users[userIndex] = {
-    ...users[userIndex],
-    password: newPassword
-  };
-  
-  toast.success("Password updated successfully");
-  return true;
 };
 
 export const getUsersForClient = (clientId?: string): User[] => {

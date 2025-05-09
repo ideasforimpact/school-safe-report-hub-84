@@ -3,6 +3,7 @@ import { ReactNode } from 'react';
 import { ShieldCheck, LogOut } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { formatUserFullName } from '@/utils/userUtils';
 import { 
   DropdownMenu,
   DropdownMenuContent, 
@@ -51,10 +52,10 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
                     <Button variant="ghost" className="flex items-center space-x-2">
                       <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center">
                         <span className="font-medium text-sm text-primary-700">
-                          {user.name.substring(0, 1).toUpperCase()}
+                          {user.firstName.substring(0, 1).toUpperCase()}
                         </span>
                       </div>
-                      <span>{user.name}</span>
+                      <span>{formatUserFullName(user)}</span>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">

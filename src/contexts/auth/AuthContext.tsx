@@ -1,7 +1,6 @@
 
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { User, UserRole, ModulePermissions, AuthContextType, UserWithPassword, EmployeeType, DepartmentType } from './types';
-import { excludePasswordFromUser, excludePasswordFromUsers } from './utils';
 import { useClient } from '../ClientContext';
 import {
   getUserFromStorage,
@@ -18,6 +17,17 @@ import {
   deleteExistingUser,
   deactivateExistingUser
 } from '@/services/auth/userManagementService';
+
+// Helper functions to exclude password from user objects
+const excludePasswordFromUser = (user: UserWithPassword): User => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { password, ...userWithoutPassword } = user;
+  return userWithoutPassword;
+};
+
+const excludePasswordFromUsers = (users: UserWithPassword[]): User[] => {
+  return users.map(excludePasswordFromUser);
+};
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -39,7 +49,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [users]);
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    const loggedInUser = await loginUser(
+    const loggedInUser = loginUser(
       email, 
       password, 
       users,
