@@ -40,24 +40,42 @@ export const addNewUser = async (
     }
   }
 
-  // Store module permissions in database if provided
   try {
+    // In a real implementation with Supabase, we would store the user data
+    // This is where you could add Supabase integration for persisting the user
+    // const { data, error } = await supabase.auth.signUp({
+    //   email: userData.email,
+    //   password: userData.password,
+    //   options: {
+    //     data: {
+    //       firstName: userData.firstName,
+    //       lastName: userData.lastName,
+    //       role: userData.role,
+    //       employeeId: userData.employeeId,
+    //       employeeType: userData.employeeType,
+    //       department: userData.department,
+    //       joiningDate: userData.joiningDate,
+    //       clientId: userData.clientId,
+    //       isActive: userData.isActive
+    //     }
+    //   }
+    // });
+    
+    // Module permissions would be stored in the user's metadata in a real implementation
     if (userData.modulePermissions) {
       const moduleEntries = Object.entries(userData.modulePermissions)
         .filter(([_, enabled]) => enabled)
-        .map(([key, _]) => ({
-          module_key: key,
-          enabled: true
-        }));
+        .map(([key, _]) => key);
 
-      // This would be where you'd store the module permissions in a real backend
-      console.log("Module permissions to be stored:", moduleEntries);
+      console.log("Module permissions to be stored for employee:", moduleEntries);
       
-      // In a real implementation with Supabase, you would store these permissions
-      // associated with the user ID after the user is created
+      // For a real backend, you would save these permissions to user metadata or a related table
+      // This could be done via hooks or triggers in a production Supabase implementation
     }
   } catch (error) {
-    console.error("Error storing module permissions:", error);
+    console.error("Error saving employee data:", error);
+    toast.error("Failed to save employee data");
+    return null;
   }
 
   const newUser: UserWithPassword = {
@@ -91,21 +109,37 @@ export const updateExistingUser = async (
     return null;
   }
 
-  // Handle module permissions update
   try {
+    // In a real implementation with Supabase, we would update the user and their module permissions
+    
+    // Handle module permissions update
     if (updates.modulePermissions) {
       const moduleEntries = Object.entries(updates.modulePermissions)
         .filter(([_, enabled]) => enabled)
-        .map(([key, _]) => ({
-          module_key: key,
-          enabled: true
-        }));
+        .map(([key, _]) => key);
 
-      // This would be where you'd update the module permissions in a real backend
-      console.log("Module permissions to be updated:", moduleEntries);
+      console.log("Module permissions to be updated for employee:", moduleEntries);
+      
+      // For a real backend implementation, you would update the user's permissions here
+      // await supabase.from('user_metadata').update({ modulePermissions: updates.modulePermissions }).eq('user_id', id);
     }
+
+    // Update other user data
+    // In a real implementation, you would update the user's data in Supabase
+    // Example:
+    // await supabase.auth.admin.updateUserById(id, {
+    //   email: updates.email,
+    //   user_metadata: {
+    //     firstName: updates.firstName,
+    //     lastName: updates.lastName,
+    //     role: updates.role,
+    //     // Other fields...
+    //   }
+    // });
   } catch (error) {
-    console.error("Error updating module permissions:", error);
+    console.error("Error updating employee data:", error);
+    toast.error("Failed to update employee data");
+    return null;
   }
 
   const updatedUsers = currentUsers.map(u => {
@@ -115,7 +149,7 @@ export const updateExistingUser = async (
     return u;
   });
 
-  toast.success("User updated successfully");
+  toast.success("Employee updated successfully");
   return updatedUsers;
 };
 
@@ -128,8 +162,20 @@ export const deleteExistingUser = (
     return null;
   }
 
+  try {
+    // In a real implementation with Supabase, we would delete the user
+    // Example:
+    // await supabase.auth.admin.deleteUser(id);
+    
+    console.log("Employee deleted:", id);
+  } catch (error) {
+    console.error("Error deleting employee:", error);
+    toast.error("Failed to delete employee");
+    return null;
+  }
+
   const updatedUsers = currentUsers.filter(u => u.id !== id);
-  toast.success("User deleted successfully");
+  toast.success("Employee deleted successfully");
   return updatedUsers;
 };
 
@@ -142,6 +188,20 @@ export const deactivateExistingUser = (
     return null;
   }
 
+  try {
+    // In a real implementation with Supabase, we would deactivate the user
+    // Example:
+    // await supabase.auth.admin.updateUserById(id, { 
+    //   user_metadata: { isActive: false } 
+    // });
+    
+    console.log("Employee deactivated:", id);
+  } catch (error) {
+    console.error("Error deactivating employee:", error);
+    toast.error("Failed to deactivate employee");
+    return null;
+  }
+
   const updatedUsers = currentUsers.map(u => {
     if (u.id === id) {
       return { ...u, isActive: false };
@@ -149,6 +209,40 @@ export const deactivateExistingUser = (
     return u;
   });
 
-  toast.success("User deactivated successfully");
+  toast.success("Employee deactivated successfully");
   return updatedUsers;
+};
+
+export const fetchEmployeeModules = async (userId: string): Promise<ModulePermissions | null> => {
+  try {
+    // In a real Supabase implementation, we would fetch the user's modules
+    // Example:
+    // const { data, error } = await supabase
+    //   .from('user_metadata')
+    //   .select('modulePermissions')
+    //   .eq('user_id', userId)
+    //   .single();
+    
+    // if (error) throw error;
+    // return data.modulePermissions;
+    
+    console.log("Fetching modules for employee:", userId);
+    
+    // For demo purposes, return default permissions
+    return {
+      superAdmin: false,
+      incidentReporting: true,
+      incidentAdmin: false,
+      assessmentUser: true,
+      assessmentsAdmin: false,
+      employeeVerificationAdmin: false,
+      grievancesAdmin: false,
+      transportSafetyAdmin: false,
+      eduSafeResourceAccess: true
+    };
+  } catch (error) {
+    console.error("Error fetching employee modules:", error);
+    toast.error("Failed to load employee module permissions");
+    return null;
+  }
 };
