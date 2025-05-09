@@ -2,15 +2,15 @@
 import React from 'react';
 import { Table, TableBody } from '@/components/ui/table';
 import { Incident } from '@/contexts/IncidentContext';
-import { IncidentTableHeader } from './IncidentTableHeader';
+import { IncidentTableHeader, SortField } from './IncidentTableHeader';
 import { IncidentTableRow } from './IncidentTableRow';
 import { TablePagination } from './TablePagination';
 
 interface TableContainerProps {
   incidents: Incident[];
-  sortField: string;
+  sortField: SortField;
   sortDirection: 'asc' | 'desc';
-  handleSort: (field: any) => void;
+  handleSort: (field: SortField) => void;
   currentPage: number;
   totalPages: number;
   setCurrentPage: (page: number) => void;
