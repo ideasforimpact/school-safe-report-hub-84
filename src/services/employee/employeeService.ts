@@ -1,6 +1,10 @@
 
-import { Employee, EmploymentStatus, EmployeeType, DepartmentType } from '@/contexts/employee/types';
+import { Employee, EmploymentStatus } from '@/contexts/employee/types';
 import { v4 as uuidv4 } from 'uuid';
+
+// Define the types locally since they are not exported from contexts/employee/types
+type EmployeeType = 'permanent' | 'contract' | 'part_time' | 'consultant' | 'intern';
+type DepartmentType = 'admin' | 'teaching' | 'security' | 'maintenance' | 'transport' | 'management' | 'it' | 'hr' | 'finance';
 
 // Mock employees data for local storage (for when Supabase is not available/offline)
 const DEFAULT_EMPLOYEES: Employee[] = [
@@ -213,11 +217,15 @@ export const processBulkEmployeeImport = (
       const department = data.department as DepartmentType;
       const status = (data.status || 'active') as EmploymentStatus;
       
-      if (!Object.values(EmployeeType).includes(employeeType as any)) {
+      // Check if the employee type is valid
+      const validEmployeeTypes: EmployeeType[] = ['permanent', 'contract', 'part_time', 'consultant', 'intern'];
+      if (!validEmployeeTypes.includes(employeeType as EmployeeType)) {
         throw new Error(`Invalid employee type: ${data.employeeType}`);
       }
       
-      if (!Object.values(DepartmentType).includes(department as any)) {
+      // Check if the department is valid
+      const validDepartments: DepartmentType[] = ['admin', 'teaching', 'security', 'maintenance', 'transport', 'management', 'it', 'hr', 'finance'];
+      if (!validDepartments.includes(department as DepartmentType)) {
         throw new Error(`Invalid department: ${data.department}`);
       }
       

@@ -2,13 +2,10 @@
 import React from 'react';
 import { render } from '@testing-library/react';
 import VehicleHeader from '../../components/transport-safety/VehicleHeader';
-import { BrowserRouter } from 'react-router-dom';
 
-test('renders VehicleHeader component', () => {
-  const { container } = render(
-    <BrowserRouter>
-      <VehicleHeader />
-    </BrowserRouter>
-  );
-  expect(container).toBeInTheDocument();
+describe('VehicleHeader', () => {
+  it('renders without crashing', () => {
+    const { getByText } = render(<VehicleHeader />);
+    expect(getByText('Vehicle Header')).toBeInTheDocument();
+  });
 });

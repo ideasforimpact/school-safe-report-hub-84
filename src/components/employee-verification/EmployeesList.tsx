@@ -52,61 +52,65 @@ const EmployeesList = () => {
                 </TableCell>
               </TableRow>
             ) : (
-              employees.map((employee) => (
-                <TableRow key={employee.id} className={employee.status === 'inactive' ? "bg-gray-100" : ""}>
-                  <TableCell>{employee.employeeId}</TableCell>
-                  <TableCell>{employee.name}</TableCell>
-                  <TableCell>{employee.department}</TableCell>
-                  <TableCell>{employee.position}</TableCell>
-                  <TableCell>{formatDate(employee.joiningDate)}</TableCell>
-                  <TableCell>
-                    <VerificationStatusBadge status={employee.status} />
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => navigate(`/employee-verification/${employee.id}`)}
-                        disabled={employee.status === 'inactive'}
-                      >
-                        <Eye className="h-4 w-4 mr-1" />
-                        View
-                      </Button>
-                      <EditEmployeeDialog 
-                        employee={employee}
-                        disabled={employee.status === 'inactive'} 
-                      />
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
-                            <Trash2 className="h-4 w-4 mr-1" />
-                            Delete
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This will permanently delete this employee and all associated verification documents.
-                              This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction 
-                              className="bg-red-600 hover:bg-red-700"
-                              onClick={() => deleteEmployee(employee.id)}
-                            >
+              employees.map((employee) => {
+                // Determine if employee is inactive (for verification system)
+                const isInactive = employee.status === 'failed'; // Use 'failed' for verification system
+                
+                return (
+                  <TableRow key={employee.id} className={isInactive ? "bg-gray-100" : ""}>
+                    <TableCell>{employee.employeeId}</TableCell>
+                    <TableCell>{employee.name}</TableCell>
+                    <TableCell>{employee.department}</TableCell>
+                    <TableCell>{employee.position}</TableCell>
+                    <TableCell>{formatDate(employee.joiningDate)}</TableCell>
+                    <TableCell>
+                      <VerificationStatusBadge status={employee.status} />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => navigate(`/employee-verification/${employee.id}`)}
+                          disabled={isInactive}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          View
+                        </Button>
+                        <EditEmployeeDialog 
+                          employee={employee}
+                        />
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700">
+                              <Trash2 className="h-4 w-4 mr-1" />
                               Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will permanently delete this employee and all associated verification documents.
+                                This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction 
+                                className="bg-red-600 hover:bg-red-700"
+                                onClick={() => deleteEmployee(employee.id)}
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>
