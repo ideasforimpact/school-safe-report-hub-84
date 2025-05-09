@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
 import { Employee, EmployeeApplicationFields, EmployeeType, DepartmentType, EmploymentStatus } from '@/contexts/employee/types';
 import { ModulePermissions } from '@/contexts/auth/types';
+import { Json } from '@/integrations/supabase/types';
 
 // Helper function to map database records to our Employee type format
 const mapDbRecordToEmployee = (record: any): Employee => {
@@ -87,7 +88,7 @@ export const addEmployeeToApi = async (
       department: employeeData.department,
       joining_date: employeeData.joiningDate,
       status: employeeData.status,
-      application_fields: employeeData.applicationFields
+      application_fields: employeeData.applicationFields as unknown as Json
     };
 
     const { data, error } = await supabase
@@ -119,7 +120,7 @@ export const updateEmployeeInApi = async (
 ): Promise<Employee> => {
   try {
     // Convert the updates to match the database schema
-    const dbUpdates: any = {};
+    const dbUpdates: Record<string, any> = {};
     
     if (updates.userId !== undefined) dbUpdates.user_id = updates.userId;
     if (updates.employeeId !== undefined) dbUpdates.employee_id = updates.employeeId;
@@ -131,7 +132,7 @@ export const updateEmployeeInApi = async (
     if (updates.department !== undefined) dbUpdates.department = updates.department;
     if (updates.joiningDate !== undefined) dbUpdates.joining_date = updates.joiningDate;
     if (updates.status !== undefined) dbUpdates.status = updates.status;
-    if (updates.applicationFields !== undefined) dbUpdates.application_fields = updates.applicationFields;
+    if (updates.applicationFields !== undefined) dbUpdates.application_fields = updates.applicationFields as unknown as Json;
 
     const { data, error } = await supabase
       .from('employees')
@@ -190,7 +191,7 @@ export const deleteEmployeeFromApi = async (id: string): Promise<void> => {
   }
 };
 
-// New function to get module permissions for an employee
+// Get module permissions for an employee
 export const getEmployeeModulesFromApi = async (employeeId: string): Promise<Array<{id: string, moduleId: string}>> => {
   try {
     const { data, error } = await supabase
@@ -276,7 +277,7 @@ export const removeModulePermissionFromApi = async (
   }
 };
 
-// This function is maintained for backward compatibility but will now use the new table structure
+// This function is maintained for backward compatibility but will now update the application_fields in the employee record
 export const updateModulePermissionsInApi = async (
   id: string,
   modulePermissions: Partial<ModulePermissions>
@@ -297,10 +298,10 @@ export const updateModulePermissionsInApi = async (
 
     // Update application fields with the new module permissions for backward compatibility
     const applicationFields = employee.application_fields || {};
-    const updatedApplicationFields = {
+    const updatedAppFields = {
       ...applicationFields,
       modulePermissions: {
-        ...applicationFields.modulePermissions || {
+        ...((applicationFields as any)?.modulePermissions || {
           superAdmin: false,
           incidentReporting: false,
           incidentAdmin: false,
@@ -310,7 +311,7 @@ export const updateModulePermissionsInApi = async (
           grievancesAdmin: false,
           transportSafetyAdmin: false,
           eduSafeResourceAccess: false
-        },
+        }),
         ...modulePermissions
       }
     };
@@ -319,7 +320,7 @@ export const updateModulePermissionsInApi = async (
     const { data, error } = await supabase
       .from('employees')
       .update({
-        application_fields: updatedApplicationFields
+        application_fields: updatedAppFields as unknown as Json
       })
       .eq('id', id)
       .select('*')
