@@ -56,13 +56,15 @@ const AssessmentsPage = () => {
     if (location.pathname.includes('/templates/new')) {
       return <CreateTemplateForm onCancel={handleCancelCreate} />;
     } else if (location.pathname.match(/\/templates\/[^/]+\/edit$/)) {
-      const templateId = location.pathname.split('/')[3];
-      return <CreateTemplateForm templateId={templateId} onCancel={handleCancelCreate} />;
+      return <CreateTemplateForm templateId={location.pathname.split('/')[3]} onCancel={handleCancelCreate} />;
     } else if (location.pathname.match(/\/templates\/[^/]+\/assign$/)) {
+      // We'll let the component handle getting the templateId from the URL params
       return <AssignTemplateForm />;
     } else if (location.pathname.match(/\/templates\/[^/]+\/bulk-assign$/)) {
+      // We'll let the component handle getting the templateId from the URL params
       return <BulkAssignForm />;
     } else if (location.pathname.match(/\/templates\/[^/]+$/)) {
+      // We'll let the component handle getting the templateId from the URL params
       return <TemplateDetail />;
     } else {
       return <TemplatesList onCreateTemplate={handleCreateTemplate} />;
