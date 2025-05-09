@@ -324,12 +324,18 @@ export const updateModulePermissionsInApi = async (
       }
     }
 
-    const updatedAppFields = {
-      ...applicationFields,
-      modulePermissions: {
-        ...currentModulePermissions,
-        ...modulePermissions
-      }
+    // Create a new application fields object instead of using spread on potentially non-object applicationFields
+    let updatedAppFields: Record<string, any> = {};
+    
+    // Copy existing application fields if it's an object
+    if (applicationFields && typeof applicationFields === 'object' && !Array.isArray(applicationFields)) {
+      updatedAppFields = { ...applicationFields as Record<string, any> };
+    }
+    
+    // Add the module permissions to the object
+    updatedAppFields.modulePermissions = {
+      ...currentModulePermissions,
+      ...modulePermissions
     };
 
     // Update the employee with the new application fields
