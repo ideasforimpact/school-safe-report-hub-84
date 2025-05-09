@@ -1,1 +1,5 @@
+
 project_id = "ybvxkiubnnixntghojyy"
+
+[functions.client-management]
+verify_jwt = false

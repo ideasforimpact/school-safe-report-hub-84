@@ -18,6 +18,9 @@ export interface ClientContextType {
   deleteClient: (id: string) => Promise<void>;
 }
 
+// Re-export Client type for use in other files
+export { Client };
+
 const ClientContext = createContext<ClientContextType | undefined>(undefined);
 
 export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) => {

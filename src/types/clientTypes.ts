@@ -6,6 +6,10 @@ export type ClientRecord = Database['public']['Tables']['clients']['Row'];
 export type ModuleRecord = Database['public']['Tables']['modules']['Row'];
 export type ClientModuleRecord = Database['public']['Tables']['client_modules']['Row'];
 
+// Import necessary types
+import { OAuthProviderName } from '@/utils/authProviders';
+import { ModulePermissions } from '@/contexts/auth/types';
+
 // Client type for the application
 export interface Client {
   id: string;
@@ -23,10 +27,6 @@ export interface Client {
     [key in OAuthProviderName]?: boolean;
   };
 }
-
-// Import necessary types
-import { OAuthProviderName } from '@/utils/authProviders';
-import { ModulePermissions } from '@/contexts/auth/types';
 
 // Helper functions to convert between Supabase and application types
 export const mapDbClientToClient = (dbClient: ClientRecord): Client => {
