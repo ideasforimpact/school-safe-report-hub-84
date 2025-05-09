@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 
-// Define the structure that matches Record<string, string>
+// Define the structure with an index signature for string keys
 export interface FormErrors {
   [key: string]: string;
 }

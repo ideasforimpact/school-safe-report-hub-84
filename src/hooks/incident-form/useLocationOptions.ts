@@ -29,10 +29,16 @@ export function useLocationOptions(locationId: string) {
     }
 
     // Filter facilities that match the selected location
-    const filteredFacilities = facilities.filter(facility => 
-      // Check if there's a locationId property, otherwise assume standalone facilities
-      'locationId' in facility ? facility.locationId === locationId : true
-    );
+    const filteredFacilities = facilities.filter(facility => {
+      // Check if the facility has a locationId property or is related to this location
+      if ('locationId' in facility) {
+        return facility.locationId === locationId;
+      } else if ('location' in facility && facility.location) {
+        return facility.location === locationId;
+      }
+      // If no location info, assume standalone facility
+      return true;
+    });
 
     // Transform filtered facilities to options format
     const options = filteredFacilities.map(facility => ({

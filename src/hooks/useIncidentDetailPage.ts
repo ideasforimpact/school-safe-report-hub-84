@@ -5,6 +5,7 @@ import { useIncidents } from '@/contexts/incident/IncidentContext';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { toast } from 'sonner';
 import { formatUserFullName } from '@/utils/userUtils';
+import { IncidentStatus } from '@/contexts/incident/types';
 
 export function useIncidentDetailPage(id: string) {
   const { incidents, updateIncident, addComment } = useIncidents();
@@ -45,7 +46,7 @@ export function useIncidentDetailPage(id: string) {
     
     try {
       // Update the incident status
-      await updateIncident(incident.id, { status: newStatus });
+      await updateIncident(incident.id, { status: newStatus as IncidentStatus });
       
       // Auto-generate a comment about the status change
       const userName = user ? formatUserFullName(user) : 'A user';
@@ -53,14 +54,11 @@ export function useIncidentDetailPage(id: string) {
       
       // Add a comment about the status change
       await addComment(incident.id, {
-        id: `comment_${Date.now()}`,
         description: statusComment,
         dueDate: new Date(),
         assignedTo: { id: user?.id || 'system', name: userName },
         status: 'Pending',
         createdBy: { id: user?.id || 'system', name: userName },
-        createdAt: new Date(),
-        updatedAt: new Date(),
       });
       
       toast.success(`Status updated to ${newStatus}`);
@@ -80,14 +78,11 @@ export function useIncidentDetailPage(id: string) {
     try {
       // Add a new comment to the incident
       await addComment(incident.id, {
-        id: `comment_${Date.now()}`,
         description: newComment,
         dueDate: new Date(),
         assignedTo: { id: user.id, name: formatUserFullName(user) },
         status: 'Pending',
         createdBy: { id: user.id, name: formatUserFullName(user) },
-        createdAt: new Date(),
-        updatedAt: new Date(),
       });
       
       setNewComment('');
