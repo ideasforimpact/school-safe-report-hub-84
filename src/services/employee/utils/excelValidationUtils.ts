@@ -28,19 +28,28 @@ export const validateExcelData = (data: RawEmployeeData[]): string[] => {
     return errors;
   }
 
+  console.log('Raw Excel data:', data); // Add logging to debug the issue
+
   // Validate each row in the Excel file
   data.forEach((row, index) => {
     const rowNumber = index + 2; // +2 because Excel is 1-indexed and there's a header row
     
     // Check for required fields
     for (const field of requiredFields) {
-      if (!row[field] || String(row[field]).trim() === '') {
+      // More robust check for empty values: handles undefined, null, empty strings and strings with only spaces
+      const fieldValue = row[field];
+      const isEmpty = fieldValue === undefined || fieldValue === null || 
+                     (typeof fieldValue === 'string' && fieldValue.trim() === '') ||
+                     (fieldValue === 0);
+      
+      if (isEmpty) {
         // Fix the error by explicitly casting field to string
         errors.push(`Row ${rowNumber}: ${formatFieldName(String(field))} cannot be empty`);
       }
     }
     
-    // Only proceed with further validation if required fields exist
+    // Only proceed with further validation if we have values for the required fields
+    // Use more lenient checking to avoid false validation errors
     if (row.employeeId && row.employeeType && row.department && row.status && row.email) {
       // Validate employee type
       const validEmployeeType = validateEmployeeType(String(row.employeeType));
@@ -90,3 +99,4 @@ const isValidEmail = (email: string): boolean => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
 };
+

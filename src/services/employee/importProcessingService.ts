@@ -16,12 +16,19 @@ export const processEmployeeData = async (rawData: RawEmployeeData[]): Promise<I
     errors: []
   };
 
+  console.log("Processing employee data:", rawData);
+
   // Process each row
   for (const [index, row] of rawData.entries()) {
     try {
       // Ensure all required fields are present and not empty
       const requiredFields = ['employeeId', 'firstName', 'lastName', 'email', 'employeeType', 'department', 'joiningDate', 'status'];
-      const missingFields = requiredFields.filter(field => !row[field] || String(row[field]).trim() === '');
+      const missingFields = requiredFields.filter(field => {
+        const value = row[field];
+        return value === undefined || value === null || 
+              (typeof value === 'string' && value.trim() === '') ||
+              value === 0;
+      });
       
       if (missingFields.length > 0) {
         result.errors.push(`Row ${index + 2}: Missing required fields: ${missingFields.join(', ')}`);
@@ -67,6 +74,8 @@ export const processEmployeeData = async (rawData: RawEmployeeData[]): Promise<I
         applicationFields: {}
       };
       
+      console.log("Adding employee:", employeeData);
+      
       // Add employee to database
       const addedEmployee = await addEmployeeToApi(employeeData);
       result.addedEmployees.push(addedEmployee);
@@ -78,6 +87,7 @@ export const processEmployeeData = async (rawData: RawEmployeeData[]): Promise<I
     }
   }
 
+  console.log("Import result:", result);
   return result;
 };
 
@@ -100,3 +110,4 @@ export const showImportResultNotifications = (result: ImportResult): void => {
     }
   }
 };
+

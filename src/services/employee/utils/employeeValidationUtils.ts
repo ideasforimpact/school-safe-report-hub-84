@@ -5,7 +5,9 @@ import { EmployeeType, DepartmentType, EmploymentStatus } from '@/contexts/emplo
  * Validate and normalize employee type from import data
  */
 export const validateEmployeeType = (value: string): EmployeeType | null => {
-  const normalizedValue = value.toLowerCase().trim().replace(/\s+/g, '_');
+  if (!value) return null;
+  
+  const normalizedValue = value.toLowerCase().trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
   
   // Check if it's already a valid EmployeeType
   const validTypes: EmployeeType[] = ['permanent', 'contract', 'intern'];
@@ -20,13 +22,31 @@ export const validateEmployeeType = (value: string): EmployeeType | null => {
     full_time: 'permanent',
     fulltime: 'permanent',
     'full-time': 'permanent',
+    fulltime: 'permanent',
+    ft: 'permanent',
     contract: 'contract',
     contractor: 'contract',
     temp: 'contract',
     temporary: 'contract',
+    pt: 'contract',
+    part_time: 'contract',
+    parttime: 'contract',
     intern: 'intern',
     internship: 'intern'
   };
+  
+  // Handle "Full-Time", "Part-Time", etc.
+  if (value.toLowerCase().includes('full') && value.toLowerCase().includes('time')) {
+    return 'permanent';
+  }
+  
+  if (value.toLowerCase().includes('part') && value.toLowerCase().includes('time')) {
+    return 'contract';
+  }
+  
+  if (value.toLowerCase().includes('contract') || value.toLowerCase().includes('contractor')) {
+    return 'contract';
+  }
   
   return typeMap[normalizedValue] || null;
 };
@@ -35,7 +55,9 @@ export const validateEmployeeType = (value: string): EmployeeType | null => {
  * Validate and normalize department from import data
  */
 export const validateDepartment = (value: string): DepartmentType | null => {
-  const normalizedValue = value.toLowerCase().trim().replace(/\s+/g, '_');
+  if (!value) return null;
+  
+  const normalizedValue = value.toLowerCase().trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
   
   // Check if it's already a valid DepartmentType
   const validDepartments: DepartmentType[] = ['admin', 'teaching', 'management', 'it', 'finance', 'hr'];
@@ -54,6 +76,7 @@ export const validateDepartment = (value: string): DepartmentType | null => {
     teacher: 'teaching',
     educator: 'teaching',
     professor: 'teaching',
+    academics: 'teaching',
     support: 'admin',
     support_staff: 'admin',
     'support staff': 'admin',
@@ -85,7 +108,9 @@ export const validateDepartment = (value: string): DepartmentType | null => {
  * Validate and normalize employment status from import data
  */
 export const validateEmploymentStatus = (value: string): EmploymentStatus | null => {
-  const normalizedValue = value.toLowerCase().trim().replace(/\s+/g, '_');
+  if (!value) return null;
+  
+  const normalizedValue = value.toLowerCase().trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
   
   // Check if it's already a valid EmploymentStatus
   const validStatuses: EmploymentStatus[] = ['active', 'on_leave', 'resigned', 'terminated', 'retired'];
@@ -114,3 +139,4 @@ export const validateEmploymentStatus = (value: string): EmploymentStatus | null
   
   return statusMap[normalizedValue] || null;
 };
+

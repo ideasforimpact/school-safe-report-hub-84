@@ -91,6 +91,9 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees }: ImportEm
       const data = await parseExcelFile(file);
       setParsedData(data);
       
+      // Add additional logging to inspect data
+      console.log("Excel data for validation:", data);
+      
       // Validate the parsed data
       const errors = validateExcelData(data);
       
@@ -249,3 +252,4 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees }: ImportEm
 };
 
 export default ImportEmployeeDialog;
+

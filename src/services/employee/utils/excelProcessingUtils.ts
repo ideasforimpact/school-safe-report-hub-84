@@ -5,14 +5,14 @@ import { RawEmployeeData } from '../types/importTypes';
 
 // Define the expected columns in the Excel file and their mappings
 const columnMappings = {
-  'employeeId': ['employee id', 'employeeid', 'employee_id', 'id'],
-  'firstName': ['first name', 'firstname', 'first_name', 'given name'],
+  'employeeId': ['employee id', 'employeeid', 'employee_id', 'id', 'emp id', 'empid'],
+  'firstName': ['first name', 'firstname', 'first_name', 'given name', 'name'],
   'lastName': ['last name', 'lastname', 'last_name', 'surname', 'family name'],
-  'email': ['email', 'email address', 'mail'],
+  'email': ['email', 'email address', 'mail', 'email id', 'emailid'],
   'phone': ['phone', 'phone number', 'mobile', 'contact'],
-  'employeeType': ['employee type', 'employeetype', 'type', 'employment type'],
+  'employeeType': ['employee type', 'employeetype', 'type', 'employment type', 'emp type', 'emp. type'],
   'department': ['department', 'dept', 'division', 'team'],
-  'joiningDate': ['joining date', 'joiningdate', 'join date', 'start date', 'hired date'],
+  'joiningDate': ['joining date', 'joiningdate', 'join date', 'start date', 'hired date', 'date of joining'],
   'status': ['status', 'employment status', 'state']
 };
 
@@ -47,6 +47,9 @@ export const parseExcelFile = (file: File): Promise<RawEmployeeData[]> => {
           reject(new Error('No data found in the Excel file'));
           return;
         }
+
+        // Log the raw data for debugging
+        console.log("Raw Excel data before mapping:", rawData);
         
         // Get the header row keys
         const headers = Object.keys(rawData[0]);
@@ -77,6 +80,8 @@ export const parseExcelFile = (file: File): Promise<RawEmployeeData[]> => {
             }
           }
         });
+
+        console.log("Header mapping:", headerMap);
         
         // Transform the data using our header mapping
         const transformedData: RawEmployeeData[] = rawData.map(row => {
@@ -90,6 +95,7 @@ export const parseExcelFile = (file: File): Promise<RawEmployeeData[]> => {
           return transformed as RawEmployeeData;
         });
         
+        console.log("Transformed data after mapping:", transformedData);
         resolve(transformedData);
       } catch (error) {
         console.error('Error processing Excel file:', error);
@@ -126,3 +132,4 @@ export const validateRequiredColumns = (data: Record<string, any>[]): string[] =
   
   return missingColumns;
 };
+
