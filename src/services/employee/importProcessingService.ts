@@ -19,8 +19,18 @@ export const processEmployeeData = async (rawData: RawEmployeeData[]): Promise<I
   // Process each row
   for (const [index, row] of rawData.entries()) {
     try {
+      // Ensure all required fields are present and not empty
+      const requiredFields = ['employeeId', 'firstName', 'lastName', 'email', 'employeeType', 'department', 'joiningDate', 'status'];
+      const missingFields = requiredFields.filter(field => !row[field] || String(row[field]).trim() === '');
+      
+      if (missingFields.length > 0) {
+        result.errors.push(`Row ${index + 2}: Missing required fields: ${missingFields.join(', ')}`);
+        result.errorCount++;
+        continue;
+      }
+      
       // Validate and normalize employee type
-      const employeeType = validateEmployeeType(row.employeeType);
+      const employeeType = validateEmployeeType(String(row.employeeType));
       if (!employeeType) {
         result.errors.push(`Row ${index + 2}: Invalid employee type "${row.employeeType}"`);
         result.errorCount++;
@@ -28,7 +38,7 @@ export const processEmployeeData = async (rawData: RawEmployeeData[]): Promise<I
       }
       
       // Validate and normalize department
-      const department = validateDepartment(row.department);
+      const department = validateDepartment(String(row.department));
       if (!department) {
         result.errors.push(`Row ${index + 2}: Invalid department "${row.department}"`);
         result.errorCount++;
@@ -36,7 +46,7 @@ export const processEmployeeData = async (rawData: RawEmployeeData[]): Promise<I
       }
       
       // Validate and normalize status
-      const status = validateEmploymentStatus(row.status);
+      const status = validateEmploymentStatus(String(row.status));
       if (!status) {
         result.errors.push(`Row ${index + 2}: Invalid status "${row.status}"`);
         result.errorCount++;
