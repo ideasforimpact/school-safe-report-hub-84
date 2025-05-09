@@ -12,6 +12,15 @@ import {
   getAllEmployees,
 } from '@/services/employee/employeeService';
 
+// Import API services for backend operations
+import {
+  getAllEmployeesFromApi,
+  addEmployeeToApi,
+  updateEmployeeInApi,
+  deleteEmployeeFromApi,
+  updateModulePermissionsInApi
+} from '@/services/employee/employeeApiService';
+
 const EmployeeContext = createContext<EmployeeContextType | undefined>(undefined);
 
 export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -20,9 +29,30 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
 
   // Initialize employees from storage
   useEffect(() => {
-    const storedEmployees = getEmployeesFromStorage();
-    setEmployees(storedEmployees);
-    setLoading(false);
+    const initializeEmployees = async () => {
+      try {
+        setLoading(true);
+        // First try to get employees from the API
+        const apiEmployees = await getAllEmployeesFromApi().catch(() => null);
+        
+        if (apiEmployees && apiEmployees.length > 0) {
+          setEmployees(apiEmployees);
+        } else {
+          // Fallback to local storage if API fails
+          const storedEmployees = getEmployeesFromStorage();
+          setEmployees(storedEmployees);
+        }
+      } catch (error) {
+        console.error("Error initializing employees:", error);
+        // Fallback to local storage if API fails
+        const storedEmployees = getEmployeesFromStorage();
+        setEmployees(storedEmployees);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeEmployees();
   }, []);
 
   // Save employees to localStorage whenever they change
@@ -35,8 +65,19 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
   const addEmployee = async (employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
       setLoading(true);
-      const newEmployee = await addEmployeeService(employeeData);
-      setEmployees(prev => [...prev, newEmployee]);
+      
+      // Try to add employee to API first
+      try {
+        const newEmployee = await addEmployeeToApi(employeeData);
+        setEmployees(prev => [...prev, newEmployee]);
+        return;
+      } catch (apiError) {
+        console.error("API error in addEmployee, falling back to local:", apiError);
+        
+        // If API fails, fallback to local storage
+        const newEmployee = await addEmployeeService(employeeData);
+        setEmployees(prev => [...prev, newEmployee]);
+      }
     } catch (error) {
       console.error("Error in addEmployee:", error);
     } finally {
@@ -47,8 +88,19 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
   const updateEmployee = async (id: string, updates: Partial<Employee>) => {
     try {
       setLoading(true);
-      const updatedEmployee = await updateEmployeeService(id, updates);
-      setEmployees(prev => prev.map(emp => emp.id === id ? updatedEmployee : emp));
+      
+      // Try to update employee in API first
+      try {
+        const updatedEmployee = await updateEmployeeInApi(id, updates);
+        setEmployees(prev => prev.map(emp => emp.id === id ? updatedEmployee : emp));
+        return;
+      } catch (apiError) {
+        console.error("API error in updateEmployee, falling back to local:", apiError);
+        
+        // If API fails, fallback to local storage
+        const updatedEmployee = await updateEmployeeService(id, updates);
+        setEmployees(prev => prev.map(emp => emp.id === id ? updatedEmployee : emp));
+      }
     } catch (error) {
       console.error("Error in updateEmployee:", error);
     } finally {
@@ -59,8 +111,19 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
   const deleteEmployee = async (id: string) => {
     try {
       setLoading(true);
-      await deleteEmployeeService(id);
-      setEmployees(prev => prev.filter(emp => emp.id !== id));
+      
+      // Try to delete employee from API first
+      try {
+        await deleteEmployeeFromApi(id);
+        setEmployees(prev => prev.filter(emp => emp.id !== id));
+        return;
+      } catch (apiError) {
+        console.error("API error in deleteEmployee, falling back to local:", apiError);
+        
+        // If API fails, fallback to local storage
+        await deleteEmployeeService(id);
+        setEmployees(prev => prev.filter(emp => emp.id !== id));
+      }
     } catch (error) {
       console.error("Error in deleteEmployee:", error);
     } finally {

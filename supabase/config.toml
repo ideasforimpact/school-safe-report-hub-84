@@ -3,3 +3,6 @@ project_id = "ybvxkiubnnixntghojyy"
 
 [functions.client-management]
 verify_jwt = false
+
+[functions.employee-management]
+verify_jwt = false
