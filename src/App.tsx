@@ -104,9 +104,9 @@ function App() {
           <Route path="/transport-safety/documents" element={<DocumentsPage />} />
           
           {/* EduSafe Resources Routes */}
-          <Route path="/edusafe" element={<EduSafeResourcesPage />} />
-          <Route path="/edusafe/upload" element={<UploadResourcePage />} />
-          <Route path="/edusafe/edit/:resourceId" element={<EditResourcePage />} />
+          <Route path="/edusafe-resources" element={<EduSafeResourcesPage />} />
+          <Route path="/edusafe-resources/upload" element={<UploadResourcePage />} />
+          <Route path="/edusafe-resources/edit/:resourceId" element={<EditResourcePage />} />
           
           {/* Feedback Routes */}
           <Route path="/feedback" element={<FeedbackPage />} />
