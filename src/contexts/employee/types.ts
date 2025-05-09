@@ -1,0 +1,102 @@
+
+import { ModulePermissions } from '../auth/types';
+
+// Custom employee-specific types
+export type EmploymentStatus = 'active' | 'on_leave' | 'resigned' | 'terminated' | 'retired';
+export type EmployeeGrade = 'junior' | 'mid' | 'senior' | 'lead' | 'manager' | 'director' | 'executive';
+export type EmployeeType = 'permanent' | 'contract' | 'part_time' | 'consultant' | 'intern';
+export type DepartmentType = 'admin' | 'teaching' | 'security' | 'maintenance' | 'transport' | 'management' | 'it' | 'hr' | 'finance';
+
+// Application fields for storing additional employee data
+export interface EmployeeApplicationFields {
+  // Personal details
+  emergencyContact?: string;
+  emergencyPhone?: string;
+  bloodGroup?: string;
+  maritalStatus?: string;
+  
+  // Employment details
+  position?: string;
+  grade?: EmployeeGrade;
+  reportingManager?: string;
+  workLocation?: string;
+  
+  // Education & Certifications
+  education?: {
+    degree: string;
+    institution: string;
+    year: string;
+  }[];
+  certifications?: {
+    name: string;
+    issuingBody: string;
+    year: string;
+  }[];
+  
+  // System access and Module permissions
+  modulePermissions?: ModulePermissions;
+  
+  // Benefits & Compensation
+  salaryBand?: string;
+  benefits?: string[];
+  
+  // Documents
+  documents?: {
+    type: string;
+    fileId: string;
+    uploadDate: string;
+    verificationStatus: 'pending' | 'verified' | 'rejected';
+  }[];
+  
+  // Performance & Reviews
+  performanceReviews?: {
+    reviewId: string;
+    date: string;
+    rating: number;
+    comments: string;
+  }[];
+  
+  // Training
+  trainings?: {
+    trainingId: string;
+    name: string;
+    completionDate: string;
+    score?: number;
+  }[];
+  
+  // Additional fields
+  customFields?: Record<string, any>;
+}
+
+export interface Employee {
+  id: string;
+  userId?: string; // Link to auth user if applicable
+  employeeId: string; // Employee number/code
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  
+  // Key employee information
+  employeeType: EmployeeType;
+  department: DepartmentType;
+  joiningDate: string;
+  status: EmploymentStatus;
+  
+  // Application fields for flexible storage
+  applicationFields?: EmployeeApplicationFields;
+  
+  // Timestamps
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EmployeeContextType {
+  employees: Employee[];
+  loading: boolean;
+  addEmployee: (employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateEmployee: (id: string, updates: Partial<Employee>) => Promise<void>;
+  deleteEmployee: (id: string) => Promise<void>;
+  getEmployeeById: (id: string) => Employee | undefined;
+  getEmployeeByUserId: (userId: string) => Employee | undefined;
+}

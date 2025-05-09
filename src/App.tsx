@@ -1,138 +1,72 @@
-
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
-import './App.css';
-import Dashboard from './pages/Dashboard';
-import Login from './pages/Login';
-import ReportIncident from './pages/ReportIncident';
-import IncidentsList from './pages/IncidentsList';
-import IncidentDetail from './pages/IncidentDetail';
-import NotFound from './pages/NotFound';
-import RouteGuard from './components/RouteGuard';
-import UserManagement from './pages/UserManagement';
-import StudentManagement from './pages/StudentManagement';
-import ClientManagement from './pages/ClientManagement';
-import FacilityManagement from './pages/FacilityManagement';
-import ConfigurationManagement from './pages/ConfigurationManagement';
-import Home from './pages/Home';
-import EditIncident from './pages/EditIncident';
-import Insights from './pages/Insights';
-import Benchmarking from './pages/Benchmarking';
-import AssessmentsPage from './pages/AssessmentsPage';
-import GrievancesPage from './pages/grievances/GrievancesPage';
-import GrievancesDashboardPage from './pages/grievances/GrievancesDashboardPage';
-import GrievanceSubmitPage from './pages/grievances/GrievanceSubmitPage';
-import ThankYouPage from './pages/grievances/ThankYouPage';
-import PublicGrievanceForm from './pages/grievances/PublicGrievanceForm';
-import BackofficeDashboard from './pages/backoffice/BackofficeDashboard';
-import BackofficeSettings from './pages/backoffice/BackofficeSettings';
-import BackofficeAnalytics from './pages/backoffice/BackofficeAnalytics';
-import AssessmentTemplatesManagementPage from './pages/backoffice/AssessmentTemplatesManagementPage';
-import EduSafeResourcesManagementPage from './pages/backoffice/EduSafeResourcesManagementPage';
-import EmployeeVerificationPage from './pages/employee-verification/EmployeeVerificationPage';
-import EmployeeDetailPage from './pages/employee-verification/EmployeeDetailPage';
-import UploadDocumentPage from './pages/employee-verification/UploadDocumentPage';
-import VerificationDashboardPage from './pages/employee-verification/VerificationDashboardPage';
-import TransportSafetyPage from './pages/transport-safety/TransportSafetyPage';
-import VehicleDetailPage from './pages/transport-safety/VehicleDetailPage';
-import DocumentsPage from './pages/transport-safety/DocumentsPage';
-import DashboardPage from './pages/transport-safety/DashboardPage';
-import EduSafeResourcesPage from './pages/edusafe/EduSafeResourcesPage';
-import UploadResourcePage from './pages/edusafe/UploadResourcePage';
-import EditResourcePage from './pages/edusafe/EditResourcePage';
-import FeedbackPage from './pages/feedback/FeedbackPage';
-import FormResponsePage from './pages/feedback/FormResponsePage';
-import Support from './pages/Support';
-import Blog from './pages/Blog';
-import Pricing from './pages/Pricing';
-import NewsPage from './pages/NewsPage';
-import AssessmentResponsePage from './pages/AssessmentResponsePage';
-import EducationalConfiguration from './pages/EducationalConfiguration';
-import IncidentConfiguration from './pages/IncidentConfiguration';
-import OtherConfiguration from './pages/OtherConfiguration';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { ThemeProvider } from '@/components/theme-provider';
+import { Toaster } from '@/components/ui/sonner';
+import { AuthProvider } from '@/contexts/auth/AuthContext';
+import { ClientProvider } from '@/contexts/ClientContext';
+import { EmployeeProvider } from './contexts/employee/EmployeeContext';
+
+// Pages
+import Dashboard from '@/pages/Dashboard';
+import Login from '@/pages/Login';
+import UserManagement from '@/pages/UserManagement';
+import ClientManagement from '@/pages/ClientManagement';
+import EmployeeManagement from '@/pages/EmployeeManagement';
+import EmployeeVerificationPage from '@/pages/employee-verification/EmployeeVerificationPage';
+import EmployeeVerificationDashboard from '@/pages/employee-verification/EmployeeVerificationDashboard';
+import EmployeeVerificationDetails from '@/pages/employee-verification/EmployeeVerificationDetails';
+import IncidentReporting from '@/pages/IncidentReporting';
+import IncidentDetails from '@/pages/IncidentDetails';
+import IncidentDashboard from '@/pages/IncidentDashboard';
+import AssessmentDashboard from '@/pages/AssessmentDashboard';
+import AssessmentDetails from '@/pages/AssessmentDetails';
+import AssessmentForm from '@/pages/AssessmentForm';
+import AssessmentResults from '@/pages/AssessmentResults';
+import Settings from '@/pages/Settings';
+import NotFound from '@/pages/NotFound';
+
+// Auth components
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
 
 function App() {
   return (
-    <>
-      <Routes>
-        {/* Public routes */}
-        <Route path="/" element={<Home />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/support" element={<Support />} />
-        <Route path="/blog" element={<Blog />} />
-        <Route path="/pricing" element={<Pricing />} />
-        <Route path="/news/:newsId" element={<NewsPage />} />
-        <Route path="/grievances/public" element={<PublicGrievanceForm />} />
-        <Route path="/grievances/thankyou" element={<ThankYouPage />} />
-        {/* Redirect from /grievances/form to /grievances/public */}
-        <Route path="/grievances/form" element={<Navigate to="/grievances/public" replace />} />
-        
-        {/* Protected routes */}
-        <Route element={<RouteGuard />}>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/report-incident" element={<ReportIncident />} />
-          <Route path="/incidents" element={<IncidentsList />} />
-          <Route path="/incidents/:incidentId" element={<IncidentDetail />} />
-          <Route path="/incidents/:incidentId/edit" element={<EditIncident />} />
-          <Route path="/incident/:incidentId" element={<IncidentDetail />} />
-          <Route path="/incident/:incidentId/edit" element={<EditIncident />} />
-          <Route path="/insights" element={<Insights />} />
-          <Route path="/benchmarking" element={<Benchmarking />} />
-          <Route path="/users" element={<UserManagement />} />
-          <Route path="/students" element={<StudentManagement />} />
-          <Route path="/clients" element={<ClientManagement />} />
-          <Route path="/facilities" element={<FacilityManagement />} />
-          
-          {/* Configuration Routes */}
-          <Route path="/configuration" element={<ConfigurationManagement />} />
-          <Route path="/educational-configuration" element={<EducationalConfiguration />} />
-          <Route path="/incident-configuration" element={<IncidentConfiguration />} />
-          <Route path="/other-configuration" element={<OtherConfiguration />} />
-          
-          {/* Assessment Routes */}
-          <Route path="/assessments/*" element={<AssessmentsPage />} />
-          <Route path="/assessments/respond/:assignmentId" element={<AssessmentResponsePage />} />
-          
-          {/* Grievances Routes */}
-          <Route path="/grievances" element={<GrievancesPage />} />
-          <Route path="/grievances/dashboard" element={<GrievancesDashboardPage />} />
-          <Route path="/grievances/submit" element={<GrievanceSubmitPage />} />
-          
-          {/* Backoffice Routes */}
-          <Route path="/backoffice" element={<BackofficeDashboard />} />
-          <Route path="/backoffice/settings" element={<BackofficeSettings />} />
-          <Route path="/backoffice/analytics" element={<BackofficeAnalytics />} />
-          <Route path="/backoffice/clients" element={<ClientManagement />} />
-          <Route path="/backoffice/assessment-templates" element={<AssessmentTemplatesManagementPage />} />
-          <Route path="/backoffice/edusafe-resources" element={<EduSafeResourcesManagementPage />} />
-          
-          {/* Employee Verification Routes */}
-          <Route path="/employee-verification" element={<EmployeeVerificationPage />} />
-          <Route path="/employee-verification/dashboard" element={<VerificationDashboardPage />} />
-          <Route path="/employee-verification/:employeeId" element={<EmployeeDetailPage />} />
-          <Route path="/employee-verification/:employeeId/upload-document" element={<UploadDocumentPage />} />
-          
-          {/* Transport Safety Routes */}
-          <Route path="/transport-safety" element={<TransportSafetyPage />} />
-          <Route path="/transport-safety/dashboard" element={<DashboardPage />} />
-          <Route path="/transport-safety/vehicle/:vehicleId" element={<VehicleDetailPage />} />
-          <Route path="/transport-safety/:vehicleId" element={<VehicleDetailPage />} />
-          <Route path="/transport-safety/documents" element={<DocumentsPage />} />
-          
-          {/* EduSafe Resources Routes */}
-          <Route path="/edusafe-resources" element={<EduSafeResourcesPage />} />
-          <Route path="/edusafe-resources/upload" element={<UploadResourcePage />} />
-          <Route path="/edusafe-resources/edit/:resourceId" element={<EditResourcePage />} />
-          
-          {/* Feedback Routes */}
-          <Route path="/feedback" element={<FeedbackPage />} />
-          <Route path="/feedback/response/:formId" element={<FormResponsePage />} />
-        </Route>
-        
-        {/* 404 - Not Found */}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </>
+    <ThemeProvider defaultTheme="light" storageKey="edusafe-theme">
+      <ClientProvider>
+        <AuthProvider>
+          <EmployeeProvider>
+            <Router>
+              <Routes>
+                {/* Public routes */}
+                <Route path="/login" element={<Login />} />
+
+                {/* Protected routes */}
+                <Route element={<ProtectedRoute />}>
+                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/users" element={<UserManagement />} />
+                  <Route path="/clients" element={<ClientManagement />} />
+                  <Route path="/employees" element={<EmployeeManagement />} />
+                  <Route path="/employee-verification" element={<EmployeeVerificationPage />} />
+                  <Route path="/employee-verification/dashboard" element={<EmployeeVerificationDashboard />} />
+                  <Route path="/employee-verification/:id" element={<EmployeeVerificationDetails />} />
+                  <Route path="/incidents" element={<IncidentReporting />} />
+                  <Route path="/incidents/:id" element={<IncidentDetails />} />
+                  <Route path="/incidents/dashboard" element={<IncidentDashboard />} />
+                  <Route path="/assessments" element={<AssessmentDashboard />} />
+                  <Route path="/assessments/:id" element={<AssessmentDetails />} />
+                  <Route path="/assessments/new" element={<AssessmentForm />} />
+                  <Route path="/assessments/:id/results" element={<AssessmentResults />} />
+                  <Route path="/settings" element={<Settings />} />
+                </Route>
+
+                {/* 404 route */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Router>
+            <Toaster position="top-right" />
+          </EmployeeProvider>
+        </AuthProvider>
+      </ClientProvider>
+    </ThemeProvider>
   );
 }
 

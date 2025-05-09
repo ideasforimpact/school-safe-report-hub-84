@@ -36,7 +36,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [users, setUsers] = useState<UserWithPassword[]>(() => getUsersFromStorage());
 
   // Get client context to validate domains
-  const clientContext = useContext(React.createContext<{ isEmailDomainAllowed?: (email: string, clientId: string) => boolean }>({}));
+  const { isEmailDomainAllowed } = useClient();
   
   // Save users to localStorage whenever they change
   useEffect(() => {
@@ -55,7 +55,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       email, 
       password, 
       users,
-      clientContext.isEmailDomainAllowed
+      isEmailDomainAllowed
     );
     
     if (loggedInUser) {
@@ -76,7 +76,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     logoutUser();
   };
 
-  const addUser = (userData: { 
+  const addUser = async (userData: { 
     firstName: string;
     lastName: string;
     email: string; 
@@ -89,24 +89,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     department?: DepartmentType;
     joiningDate?: string;
   }) => {
-    const updatedUsers = addNewUser(users, { ...userData, isActive: true }, clientContext.isEmailDomainAllowed);
-    if (updatedUsers) {
-      setUsers(updatedUsers);
+    try {
+      // Fixed Promise handling
+      const updatedUsers = await addNewUser(
+        users, 
+        { ...userData, isActive: true }, 
+        isEmailDomainAllowed
+      );
+      if (updatedUsers) {
+        setUsers(updatedUsers);
+      }
+    } catch (error) {
+      console.error("Error adding user:", error);
     }
   };
 
-  const updateUser = (id: string, updates: Partial<User & { password?: string }>) => {
-    const updatedUsers = updateExistingUser(users, id, updates);
-    if (updatedUsers) {
-      setUsers(updatedUsers);
-      
-      // If the currently logged-in user is being updated, update their session too
-      if (user && user.id === id) {
-        const { password, ...updatesWithoutPassword } = updates;
-        const updatedUser = { ...user, ...updatesWithoutPassword };
-        setUser(updatedUser);
-        saveUserToStorage(updatedUser);
+  const updateUser = async (id: string, updates: Partial<User & { password?: string }>) => {
+    try {
+      // Fixed Promise handling
+      const updatedUsers = await updateExistingUser(users, id, updates);
+      if (updatedUsers) {
+        setUsers(updatedUsers);
+        
+        // If the currently logged-in user is being updated, update their session too
+        if (user && user.id === id) {
+          const { password, ...updatesWithoutPassword } = updates;
+          const updatedUser = { ...user, ...updatesWithoutPassword };
+          setUser(updatedUser);
+          saveUserToStorage(updatedUser);
+        }
       }
+    } catch (error) {
+      console.error("Error updating user:", error);
     }
   };
 
@@ -129,7 +143,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Add reactivateUser function to fix build error
   const reactivateUser = (id: string) => {
     const updatedUsers = users.map(u => {
       if (u.id === id) {

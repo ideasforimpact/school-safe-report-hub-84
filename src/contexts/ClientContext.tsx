@@ -24,7 +24,7 @@ export interface Client {
   };
 }
 
-export interface ClientContextType {
+interface ClientContextType {
   client: Client | null;
   clients: Client[];
   loading: boolean;
@@ -32,6 +32,7 @@ export interface ClientContextType {
   addClient: (clientData: Omit<Client, 'id' | 'creationDate'>) => Promise<void>;
   updateClient: (id: string, updates: Partial<Client>) => Promise<void>;
   deleteClient: (id: string) => Promise<void>;
+  isEmailDomainAllowed?: (email: string, clientId: string) => boolean;
 }
 
 const ClientContext = createContext<ClientContextType | undefined>(undefined);
@@ -150,6 +151,19 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     });
 
     return permissions;
+  };
+
+  // Check if an email domain is allowed for a specific client
+  const isEmailDomainAllowed = (email: string, clientId: string): boolean => {
+    const client = clients.find(c => c.id === clientId);
+    if (!client || !client.allowedDomains || client.allowedDomains.length === 0) {
+      return true; // If no domains are specified, allow all
+    }
+
+    const emailDomain = email.split('@')[1].toLowerCase();
+    return client.allowedDomains.some(domain => 
+      domain.toLowerCase() === emailDomain
+    );
   };
 
   // Add a new client
@@ -322,7 +336,8 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       loading,
       addClient, 
       updateClient, 
-      deleteClient 
+      deleteClient,
+      isEmailDomainAllowed
     }}>
       {children}
     </ClientContext.Provider>

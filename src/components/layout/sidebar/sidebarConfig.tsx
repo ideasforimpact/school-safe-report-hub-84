@@ -1,4 +1,3 @@
-
 import { 
   Home, 
   AlertTriangle,
@@ -114,3 +113,13 @@ export const getClientItems = (permissions: ModulePermissions) => [
   },
 ];
 
+// Update your sidebar config to include the employee management link
+// Add this to your sidebar items array:
+/*
+{
+  title: 'Employees',
+  path: '/employees',
+  icon: <Users className="h-5 w-5" />,
+  requiredRole: ['admin', 'saas_owner']
+}
+*/
