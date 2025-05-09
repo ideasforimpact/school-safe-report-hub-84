@@ -1,7 +1,8 @@
 
 import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
-import { Employee, EmployeeApplicationFields, ModulePermissions } from '@/contexts/employee/types';
+import { Employee, EmployeeApplicationFields } from '@/contexts/employee/types';
+import { ModulePermissions } from '@/contexts/auth/types';
 
 // API service for employees using Supabase edge functions
 export const getAllEmployeesFromApi = async (): Promise<Employee[]> => {
@@ -28,7 +29,7 @@ export const getEmployeeByIdFromApi = async (id: string): Promise<Employee | nul
   try {
     const { data, error } = await supabase.functions.invoke('employee-management/employee', {
       method: 'GET',
-      query: { id },
+      body: { id },
     });
 
     if (error) {

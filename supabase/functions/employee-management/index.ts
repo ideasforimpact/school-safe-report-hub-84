@@ -86,8 +86,10 @@ serve(async (req) => {
           status: 200,
         });
       } else if (operation === 'employee') {
-        // Get employee by ID
-        const id = url.searchParams.get('id');
+        // Get employee by ID - Now using body instead of query params
+        const requestData = await req.json().catch(() => ({}));
+        const id = requestData.id;
+        
         if (!id) {
           return new Response(JSON.stringify({ error: 'Employee ID is required' }), {
             headers: { 'Content-Type': 'application/json', ...corsHeaders },
