@@ -99,6 +99,7 @@ const UserManagement = () => {
               eduSafeResourceAccess: false
             },
             isActive: employee.status === 'active',
+            createdAt: employee.createdAt || new Date().toISOString(), // Add the missing createdAt field
           }));
 
           setEmployeeUsers(mappedUsers);
@@ -223,6 +224,7 @@ const UserManagement = () => {
             eduSafeResourceAccess: false
           },
           isActive: employee.status === 'active',
+          createdAt: employee.createdAt || new Date().toISOString(), // Add the missing createdAt field
         }));
 
         setEmployeeUsers(mappedUsers);
