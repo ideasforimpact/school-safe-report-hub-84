@@ -35,7 +35,8 @@ export const validateExcelData = (data: RawEmployeeData[]): string[] => {
     // Check for required fields
     for (const field of requiredFields) {
       if (!row[field] || String(row[field]).trim() === '') {
-        errors.push(`Row ${rowNumber}: ${formatFieldName(field)} cannot be empty`);
+        // Fix the error by explicitly casting field to string
+        errors.push(`Row ${rowNumber}: ${formatFieldName(String(field))} cannot be empty`);
       }
     }
     
