@@ -49,7 +49,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument
           selectedDocument,
           'verified',
           method === 'api' 
-            ? 'Document automatically verified successfully.' 
+            ? 'Document automatically verified successfully with government database.' 
             : 'Document manually verified successfully.',
           method
         );
