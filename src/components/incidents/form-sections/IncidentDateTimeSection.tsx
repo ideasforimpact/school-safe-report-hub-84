@@ -1,21 +1,17 @@
 
 import React from 'react';
-import { format } from 'date-fns';
-import { Calendar as CalendarIcon, Clock } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { format } from 'date-fns';
 import { Calendar } from '@/components/ui/calendar';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Button } from '@/components/ui/button';
+import { CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface IncidentDateTimeSectionProps {
   date: Date;
   time: string;
-  onChange: (date: Date | undefined, timeString?: string) => void;
+  onChange: (date?: Date, time?: string) => void;
   errors: Record<string, string>;
 }
 
@@ -26,14 +22,14 @@ const IncidentDateTimeSection: React.FC<IncidentDateTimeSectionProps> = ({
   errors,
 }) => {
   const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(date, e.target.value);
+    onChange(undefined, e.target.value);
   };
 
   return (
-    <div className="space-y-4">
+    <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
       <div className="space-y-2">
-        <label className="text-sm font-medium block">
-          Date*
+        <label htmlFor="date" className="text-sm font-medium block">
+          Date <span className="text-red-500">*</span>
         </label>
         <Popover>
           <PopoverTrigger asChild>
@@ -41,21 +37,21 @@ const IncidentDateTimeSection: React.FC<IncidentDateTimeSectionProps> = ({
               variant="outline"
               className={cn(
                 "w-full justify-start text-left font-normal",
-                !date && "text-muted-foreground",
-                errors.date && "border-red-500"
+                errors.date ? "border-red-500" : "",
+                !date && "text-muted-foreground"
               )}
             >
               <CalendarIcon className="mr-2 h-4 w-4" />
-              {date ? format(date, "PPP") : <span>Select a date</span>}
+              {date ? format(date, "PPP") : <span>Select date</span>}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0">
+          <PopoverContent className="w-auto p-0" align="start">
             <Calendar
               mode="single"
               selected={date}
-              onSelect={(selectedDate) => onChange(selectedDate)}
+              onSelect={(date) => onChange(date)}
               initialFocus
-              disabled={(calendarDate) => calendarDate > new Date()}
+              className={cn("p-3 pointer-events-auto")}
             />
           </PopoverContent>
         </Popover>
@@ -66,19 +62,15 @@ const IncidentDateTimeSection: React.FC<IncidentDateTimeSectionProps> = ({
 
       <div className="space-y-2">
         <label htmlFor="time" className="text-sm font-medium block">
-          Time*
+          Time <span className="text-red-500">*</span>
         </label>
-        <div className="flex items-center">
-          <Clock className="mr-2 h-4 w-4 text-gray-400" />
-          <Input
-            type="time"
-            id="time"
-            name="time"
-            value={time}
-            onChange={handleTimeChange}
-            className={`${errors.time ? "border-red-500" : ""}`}
-          />
-        </div>
+        <Input
+          id="time"
+          type="time"
+          value={time}
+          onChange={handleTimeChange}
+          className={errors.time ? "border-red-500" : ""}
+        />
         {errors.time && (
           <p className="text-red-500 text-sm mt-1">{errors.time}</p>
         )}

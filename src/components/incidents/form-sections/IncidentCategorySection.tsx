@@ -33,16 +33,16 @@ const IncidentCategorySection: React.FC<IncidentCategorySectionProps> = ({
   errors,
 }) => {
   return (
-    <div className="space-y-4">
+    <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
       <div className="space-y-2">
         <label htmlFor="categoryId" className="text-sm font-medium block">
-          Category*
+          Category <span className="text-red-500">*</span>
         </label>
         <Select 
           value={categoryId}
           onValueChange={onCategoryChange}
         >
-          <SelectTrigger className={`${errors.categoryId ? "border-red-500" : ""}`}>
+          <SelectTrigger className={errors.categoryId ? "border-red-500" : ""}>
             <SelectValue placeholder="Select category" />
           </SelectTrigger>
           <SelectContent>
@@ -57,17 +57,17 @@ const IncidentCategorySection: React.FC<IncidentCategorySectionProps> = ({
           <p className="text-red-500 text-sm mt-1">{errors.categoryId}</p>
         )}
       </div>
-
+      
       <div className="space-y-2">
         <label htmlFor="subcategory" className="text-sm font-medium block">
-          Subcategory*
+          Subcategory <span className="text-red-500">*</span>
         </label>
         <Select 
           value={subcategory}
           onValueChange={onSubcategoryChange}
-          disabled={subcategoryOptions.length === 0}
+          disabled={!categoryId || subcategoryOptions.length === 0}
         >
-          <SelectTrigger className={`${errors.subcategory ? "border-red-500" : ""}`}>
+          <SelectTrigger className={errors.subcategory ? "border-red-500" : ""}>
             <SelectValue placeholder="Select subcategory" />
           </SelectTrigger>
           <SelectContent>

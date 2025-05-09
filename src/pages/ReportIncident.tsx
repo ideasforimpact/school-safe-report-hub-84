@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIncidents } from '@/contexts/incident/IncidentContext';
@@ -15,17 +16,27 @@ import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { formatUserFullName } from '@/utils/userUtils';
+import IncidentFormHeader from '@/components/incidents/form-sections/IncidentFormHeader';
+import IncidentTypeSection from '@/components/incidents/form-sections/IncidentTypeSection';
+import IncidentDescriptionSection from '@/components/incidents/form-sections/IncidentDescriptionSection';
+import IncidentCategorySection from '@/components/incidents/form-sections/IncidentCategorySection';
+import IncidentLocationSection from '@/components/incidents/form-sections/IncidentLocationSection';
+import IncidentPrioritySection from '@/components/incidents/form-sections/IncidentPrioritySection';
+import IncidentDateTimeSection from '@/components/incidents/form-sections/IncidentDateTimeSection';
 
 const ReportIncident: React.FC = () => {
   const navigate = useNavigate();
   const { addIncident } = useIncidents();
   const { user } = useAuth();
-  const { currentClient } = useClient();
+  const { clients } = useClient();
   const { formData, setFormData, handleChange, handleSelectChange, handleDateTimeChange } = useIncidentFormData(user);
   const { categoryOptions, subcategoryOptions } = useCategoryOptions();
   const { locationOptions, facilityOptions } = useLocationOptions(formData.locationId);
   const { errors, validateForm } = useIncidentFormValidation();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  
+  // Get the client associated with the current user
+  const currentClient = user?.clientId ? clients.find(c => c.id === user.clientId) : null;
   
   // Effect to check if user is authenticated
   useEffect(() => {
@@ -48,8 +59,6 @@ const ReportIncident: React.FC = () => {
     try {
       // Format data for submission
       const incident = {
-        id: `incident_${Date.now()}`,
-        title: `${formData.type}: ${formData.description.substring(0, 50)}${formData.description.length > 50 ? '...' : ''}`,
         description: formData.description,
         rootCause: formData.rootCause,
         type: formData.type,
@@ -63,13 +72,14 @@ const ReportIncident: React.FC = () => {
         categoryId: formData.categoryId,
         subcategory: formData.subcategory,
         priority: formData.priority,
-        status: 'Open',
         reportedById: user?.id || '',
         reportedBy: formatUserFullName(user),
         assignedTo: '',
         clientId: currentClient?.id || '',
         attachments: [],
-        comments: []
+        comments: [],
+        // Add required fields from Incident type
+        peopleInvolved: []
       };
       
       await addIncident(incident);
@@ -89,85 +99,59 @@ const ReportIncident: React.FC = () => {
       <div className="max-w-4xl mx-auto">
         <Card>
           <CardHeader>
-            <CardTitle>Report an Incident</CardTitle>
-            <CardDescription>
-              Fill out the form below to report an incident, near miss, or unsafe condition.
-            </CardDescription>
+            <IncidentFormHeader />
           </CardHeader>
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-6">
-              <div className="space-y-4">
-                <label className="text-sm font-medium">Report Type</label>
-                <Select 
-                  value={formData.type}
-                  onValueChange={(value) => handleSelectChange('type', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select incident type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Incident">Incident</SelectItem>
-                    <SelectItem value="Near Miss">Near Miss</SelectItem>
-                    <SelectItem value="Unsafe Condition">Unsafe Condition</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <IncidentTypeSection
+                type={formData.type}
+                onChange={(value) => handleSelectChange('type', value)}
+              />
               
-              <div className="space-y-4">
-                <label className="text-sm font-medium">Description</label>
-                <Textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleChange}
-                  placeholder="Describe what happened in detail"
-                  className={errors.description ? "border-red-500" : ""}
-                />
-                {errors.description && (
-                  <p className="text-red-500 text-sm">{errors.description}</p>
-                )}
-              </div>
+              <IncidentDescriptionSection
+                description={formData.description}
+                rootCause={formData.rootCause}
+                onChange={handleChange}
+                errors={errors}
+              />
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-4">
-                  <label className="text-sm font-medium">Category</label>
-                  <Select 
-                    value={formData.categoryId}
-                    onValueChange={(value) => handleSelectChange('categoryId', value)}
-                  >
-                    <SelectTrigger className={errors.categoryId ? "border-red-500" : ""}>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categoryOptions.map(option => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {errors.categoryId && (
-                    <p className="text-red-500 text-sm">{errors.categoryId}</p>
-                  )}
-                </div>
-                
-                <div className="space-y-4">
-                  <label className="text-sm font-medium">Priority</label>
-                  <Select 
-                    value={formData.priority}
-                    onValueChange={(value) => handleSelectChange('priority', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select priority" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Low">Low</SelectItem>
-                      <SelectItem value="Medium">Medium</SelectItem>
-                      <SelectItem value="High">High</SelectItem>
-                      <SelectItem value="Critical">Critical</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+              <IncidentDateTimeSection 
+                date={formData.date ? new Date(formData.date) : new Date()}
+                time={formData.time}
+                onChange={handleDateTimeChange}
+                errors={errors}
+              />
+              
+              <IncidentCategorySection
+                categoryId={formData.categoryId}
+                subcategory={formData.subcategory}
+                categoryOptions={categoryOptions}
+                subcategoryOptions={subcategoryOptions}
+                onCategoryChange={(value) => handleSelectChange('categoryId', value)}
+                onSubcategoryChange={(value) => handleSelectChange('subcategory', value)}
+                errors={errors}
+              />
+              
+              <IncidentLocationSection
+                locationId={formData.locationId}
+                location={formData.location}
+                facilityId={formData.facilityId}
+                locationOptions={locationOptions}
+                facilityOptions={facilityOptions}
+                onLocationIdChange={(value) => handleSelectChange('locationId', value)}
+                onLocationChange={(value) => setFormData(prev => ({
+                  ...prev,
+                  location: value
+                }))}
+                onFacilityChange={(value) => handleSelectChange('facilityId', value)}
+                errors={errors}
+              />
+              
+              <IncidentPrioritySection
+                priority={formData.priority}
+                onChange={(value) => handleSelectChange('priority', value)}
+                errors={errors}
+              />
             </CardContent>
             <CardFooter className="flex justify-between">
               <Button

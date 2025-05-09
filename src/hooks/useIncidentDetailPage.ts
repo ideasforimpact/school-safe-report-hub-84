@@ -1,13 +1,13 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useIncident } from '@/contexts/IncidentContext';
-import { useAuth } from '@/contexts/auth/types';
+import { useIncidents } from '@/contexts/incident/IncidentContext';
+import { useAuth } from '@/contexts/auth/AuthContext';
 import { toast } from 'sonner';
 import { formatUserFullName } from '@/utils/userUtils';
 
 export function useIncidentDetailPage(id: string) {
-  const { getIncidentById, updateIncidentStatus, addIncidentComment } = useIncident();
+  const { getIncidentById, updateIncidentStatus, addIncidentComment } = useIncidents();
   const { user } = useAuth();
   const incident = getIncidentById(id);
   const navigate = useNavigate();
@@ -100,6 +100,8 @@ export function useIncidentDetailPage(id: string) {
     setNewComment,
     isLoading,
     handleStatusChange,
-    handleAddComment
+    handleAddComment,
+    incidentId: id,
+    navigate
   };
 }
