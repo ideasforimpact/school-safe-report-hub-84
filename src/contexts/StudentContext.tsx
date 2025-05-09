@@ -28,7 +28,6 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('student-management', {
-        body: {},
         method: 'GET',
         headers: { path: 'list' }
       });
@@ -93,7 +92,6 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
   const deleteStudent = async (id: string) => {
     try {
       const { error } = await supabase.functions.invoke('student-management', {
-        body: {},
         method: 'DELETE',
         headers: { path: `delete`, id }
       });
