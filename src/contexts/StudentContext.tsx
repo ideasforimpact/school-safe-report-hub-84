@@ -30,7 +30,7 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
       const { data, error } = await supabase.functions.invoke('student-management', {
         body: {},
         method: 'GET',
-        path: 'list'
+        headers: { path: 'list' }
       });
 
       if (error) {
@@ -51,7 +51,7 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
       const { data, error } = await supabase.functions.invoke('student-management', {
         body: student,
         method: 'POST',
-        path: 'create'
+        headers: { path: 'create' }
       });
 
       if (error) {
@@ -71,7 +71,7 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
       const { data, error } = await supabase.functions.invoke('student-management', {
         body: updates,
         method: 'PUT',
-        path: `update?id=${id}`
+        headers: { path: `update`, id }
       });
 
       if (error) {
@@ -95,7 +95,7 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
       const { error } = await supabase.functions.invoke('student-management', {
         body: {},
         method: 'DELETE',
-        path: `delete?id=${id}`
+        headers: { path: `delete`, id }
       });
 
       if (error) {

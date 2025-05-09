@@ -24,8 +24,10 @@ serve(async (req) => {
   }
 
   try {
-    const url = new URL(req.url);
-    const path = url.pathname.split("/").pop();
+    // Extract path information from headers
+    const headers = req.headers;
+    const path = headers.get("path") || "";
+    const id = headers.get("id") || "";
 
     // Parse request body if not OPTIONS method
     let body = {};
@@ -33,43 +35,40 @@ serve(async (req) => {
       body = await req.json();
     }
 
-    // Extract student ID from the URL for operations that need it
-    const studentId = url.searchParams.get("id") || "";
-
     // Handle different API endpoints
     switch (path) {
       case "list":
         return await handleListStudents(req, corsHeaders);
 
       case "get":
-        if (!studentId) {
+        if (!id) {
           return new Response(
             JSON.stringify({ error: "Student ID is required" }),
             { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
-        return await handleGetStudent(studentId, corsHeaders);
+        return await handleGetStudent(id, corsHeaders);
 
       case "create":
         return await handleCreateStudent(body, corsHeaders);
 
       case "update":
-        if (!studentId) {
+        if (!id) {
           return new Response(
             JSON.stringify({ error: "Student ID is required" }),
             { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
-        return await handleUpdateStudent(studentId, body, corsHeaders);
+        return await handleUpdateStudent(id, body, corsHeaders);
 
       case "delete":
-        if (!studentId) {
+        if (!id) {
           return new Response(
             JSON.stringify({ error: "Student ID is required" }),
             { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
-        return await handleDeleteStudent(studentId, corsHeaders);
+        return await handleDeleteStudent(id, corsHeaders);
 
       default:
         return new Response(
@@ -97,7 +96,7 @@ async function handleListStudents(req: Request, corsHeaders: Record<string, stri
   
   // Apply search filter if provided
   if (searchTerm) {
-    query = query.or(`name.ilike.%${searchTerm}%,studentId.ilike.%${searchTerm}%,grade.ilike.%${searchTerm}%,section.ilike.%${searchTerm}%,campus.ilike.%${searchTerm}%`);
+    query = query.or(`name.ilike.%${searchTerm}%,student_id.ilike.%${searchTerm}%,grade.ilike.%${searchTerm}%,section.ilike.%${searchTerm}%,campus.ilike.%${searchTerm}%`);
   }
   
   // Order by creation date descending
@@ -115,6 +114,7 @@ async function handleListStudents(req: Request, corsHeaders: Record<string, stri
   // Transform data to match frontend Student type
   const transformedData = data.map(item => ({
     ...item,
+    id: item.id,
     studentId: item.student_id,
     createdAt: new Date(item.created_at),
     updatedAt: new Date(item.updated_at)
