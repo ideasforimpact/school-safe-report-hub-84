@@ -18,6 +18,7 @@ import EditEmployeeDialog from '@/components/employee/EditEmployeeDialog';
 import ImportEmployeeDialog from '@/components/employee/ImportEmployeeDialog';
 import { Employee } from '@/contexts/employee/types';
 import { toast } from 'sonner';
+import { processEmployeeExcel } from '@/services/employee/importEmployeeService';
 
 const EmployeeManagement = () => {
   const { isAdmin } = useAuth();
@@ -47,22 +48,13 @@ const EmployeeManagement = () => {
     setIsEditDialogOpen(true);
   };
 
-  // Temporary placeholder function for handling file imports
-  // In a real implementation, this would parse the Excel file and add employees
   const handleImportEmployees = async (file: File) => {
-    // This is just a placeholder. In reality, you would:
-    // 1. Parse the Excel file (using a library like xlsx or exceljs)
-    // 2. Convert the data to employee objects
-    // 3. Validate the data
-    // 4. Add each employee to the system
-    
-    // Simulate processing delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // For now, just show a toast notification
-    toast.success(`File "${file.name}" was processed. Import functionality will be implemented later.`);
-    
-    console.log("Import file:", file);
+    try {
+      await processEmployeeExcel(file);
+    } catch (error) {
+      console.error("Import process failed:", error);
+      toast.error("Failed to process employee import");
+    }
   };
 
   // Sort active employees to the top
