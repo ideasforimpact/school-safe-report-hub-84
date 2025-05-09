@@ -298,7 +298,9 @@ export const updateModulePermissionsInApi = async (
 
     // Update application fields with the new module permissions for backward compatibility
     const applicationFields = employee.application_fields || {};
-    const currentModulePermissions = applicationFields.modulePermissions || {
+    
+    // Need to safely extract modulePermissions from applicationFields which could be various JSON types
+    let currentModulePermissions: ModulePermissions = {
       superAdmin: false,
       incidentReporting: false,
       incidentAdmin: false,
@@ -309,6 +311,18 @@ export const updateModulePermissionsInApi = async (
       transportSafetyAdmin: false,
       eduSafeResourceAccess: false
     };
+
+    // Only try to access modulePermissions if applicationFields is an object
+    if (applicationFields && typeof applicationFields === 'object' && !Array.isArray(applicationFields)) {
+      // Safe type assertion since we've verified it's an object
+      const appFields = applicationFields as Record<string, any>;
+      if (appFields.modulePermissions && typeof appFields.modulePermissions === 'object') {
+        currentModulePermissions = {
+          ...currentModulePermissions,
+          ...appFields.modulePermissions
+        };
+      }
+    }
 
     const updatedAppFields = {
       ...applicationFields,
