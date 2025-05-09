@@ -94,6 +94,11 @@ const AssignmentsList = () => {
     return `${diffDays} days remaining`;
   };
   
+  const handleRespondClick = (assignmentId: string) => {
+    console.log(`Navigating to assignment response for ID: ${assignmentId}`);
+    navigate(`/assessments/respond/${assignmentId}`);
+  };
+  
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -156,7 +161,7 @@ const AssignmentsList = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => navigate(`/assessments/assignments/${assignment.id}/respond`)}
+                        onClick={() => handleRespondClick(assignment.id)}
                       >
                         <Eye className="h-4 w-4 mr-1" />
                         {assignment.status === 'Completed' ? 'View' : 'Respond'}

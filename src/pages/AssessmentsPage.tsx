@@ -24,7 +24,7 @@ const AssessmentsPage = () => {
   console.log("Current location:", location.pathname);
   
   // Check if the current route is for responding to an assessment
-  const isResponseRoute = location.pathname.includes('/respond');
+  const isResponseRoute = location.pathname.includes('/respond/');
   
   // If it's a response route, render the response form directly
   if (isResponseRoute) {
