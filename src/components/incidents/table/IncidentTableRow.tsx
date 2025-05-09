@@ -2,7 +2,7 @@
 import React from 'react';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Ticket, BanIcon, Calendar, Building2, Edit, Eye, User, MapPin } from 'lucide-react';
+import { Ticket, BanIcon, Calendar, Building2, Edit, Eye, User } from 'lucide-react';
 import { Incident } from '@/contexts/IncidentContext';
 import { getPriorityIcon } from '@/utils/priorityIcons';
 import { getStatusBadgeClass } from '@/utils/statusUtils';
@@ -69,13 +69,6 @@ export const IncidentTableRow: React.FC<IncidentTableRowProps> = ({
         <div className="flex items-center">
           {React.createElement(getPriorityIcon(incident.priority))}
           <span className="ml-2">{incident.priority || 'Medium'}</span>
-        </div>
-      </TableCell>
-      
-      <TableCell className="text-left">
-        <div className="flex items-center text-sm">
-          <MapPin className="h-4 w-4 mr-2 text-gray-500" />
-          {incident.location}
         </div>
       </TableCell>
       

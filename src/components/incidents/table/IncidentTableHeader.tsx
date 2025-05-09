@@ -4,7 +4,7 @@ import { TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 
 export type SortDirection = 'asc' | 'desc';
-export type SortField = 'ticketId' | 'date' | 'category' | 'priority' | 'location' | 'facility' | 'status';
+export type SortField = 'ticketId' | 'date' | 'category' | 'priority' | 'facility' | 'status';
 
 interface IncidentTableHeaderProps {
   sortField: SortField;
@@ -44,7 +44,6 @@ export const IncidentTableHeader: React.FC<IncidentTableHeaderProps> = ({
         <TableHead>{createSortableHeader('Date', 'date')}</TableHead>
         <TableHead>{createSortableHeader('Category', 'category')}</TableHead>
         <TableHead>{createSortableHeader('Priority', 'priority')}</TableHead>
-        <TableHead>{createSortableHeader('Location', 'location')}</TableHead>
         <TableHead>{createSortableHeader('Facility', 'facility')}</TableHead>
         <TableHead>{createSortableHeader('Status', 'status')}</TableHead>
         <TableHead>Owner</TableHead>
