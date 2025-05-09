@@ -157,7 +157,7 @@ const validateEmployeeType = (value: string): EmployeeType | null => {
   const normalizedValue = value.toLowerCase().trim().replace(/\s+/g, '_');
   
   // Check if it's already a valid EmployeeType
-  const validTypes: EmployeeType[] = ['permanent', 'contract', 'temporary', 'intern'];
+  const validTypes: EmployeeType[] = ['permanent', 'contract', 'intern'];
   if (validTypes.includes(normalizedValue as EmployeeType)) {
     return normalizedValue as EmployeeType;
   }
@@ -171,8 +171,8 @@ const validateEmployeeType = (value: string): EmployeeType | null => {
     'full-time': 'permanent',
     contract: 'contract',
     contractor: 'contract',
-    temp: 'temporary',
-    temporary: 'temporary',
+    temp: 'contract',
+    temporary: 'contract',
     intern: 'intern',
     internship: 'intern'
   };
@@ -187,7 +187,7 @@ const validateDepartment = (value: string): DepartmentType | null => {
   const normalizedValue = value.toLowerCase().trim().replace(/\s+/g, '_');
   
   // Check if it's already a valid DepartmentType
-  const validDepartments: DepartmentType[] = ['admin', 'teaching', 'support_staff', 'management', 'it', 'finance', 'hr', 'facilities', 'security'];
+  const validDepartments: DepartmentType[] = ['admin', 'teaching', 'management', 'it', 'finance', 'hr'];
   if (validDepartments.includes(normalizedValue as DepartmentType)) {
     return normalizedValue as DepartmentType;
   }
@@ -203,9 +203,9 @@ const validateDepartment = (value: string): DepartmentType | null => {
     teacher: 'teaching',
     educator: 'teaching',
     professor: 'teaching',
-    support: 'support_staff',
-    support_staff: 'support_staff',
-    'support staff': 'support_staff',
+    support: 'admin',
+    support_staff: 'admin',
+    'support staff': 'admin',
     management: 'management',
     manager: 'management',
     it: 'it',
@@ -219,12 +219,12 @@ const validateDepartment = (value: string): DepartmentType | null => {
     hr: 'hr',
     'human resources': 'hr',
     human_resources: 'hr',
-    facilities: 'facilities',
-    facility: 'facilities',
-    maintenance: 'facilities',
-    security: 'security',
-    safety: 'security',
-    guard: 'security'
+    facilities: 'admin',
+    facility: 'admin',
+    maintenance: 'admin',
+    security: 'admin',
+    safety: 'admin',
+    guard: 'admin'
   };
   
   return departmentMap[normalizedValue] || null;
