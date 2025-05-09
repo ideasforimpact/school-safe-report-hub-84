@@ -13,7 +13,7 @@ const BulkTemplateUpload = () => {
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  const { addTemplate } = useAssessment();
+  const { createTemplate } = useAssessment();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -81,7 +81,7 @@ const BulkTemplateUpload = () => {
       
       // Process each template
       for (const template of templates) {
-        addTemplate({
+        createTemplate({
           title: template.title,
           description: template.description,
           type: template.type || 'standard',

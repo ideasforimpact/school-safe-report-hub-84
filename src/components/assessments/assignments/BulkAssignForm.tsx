@@ -32,7 +32,8 @@ const BulkAssignForm = () => {
   const [selectAll, setSelectAll] = useState(false);
   
   // Filter out users from the auth context (mock for now)
-  const availableUsers = users?.filter(user => user.role === 'user' || user.role === 'admin') || [];
+  // Fix: Compare with 'admin' and 'reporter' roles instead of 'user'
+  const availableUsers = users?.filter(user => user.role === 'admin' || user.role === 'reporter') || [];
   
   // Set template from URL parameter if available
   useEffect(() => {

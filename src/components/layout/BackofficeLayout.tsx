@@ -2,7 +2,7 @@
 import { ReactNode } from 'react';
 import { ShieldCheck, LogOut } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth/AuthContext';
 import { formatUserFullName } from '@/utils/userUtils';
 import { 
   DropdownMenu,
@@ -35,6 +35,14 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
     navigate('/login');
   };
 
+  // Function to safely get the user's initial
+  const getUserInitial = () => {
+    if (user?.firstName) {
+      return user.firstName.substring(0, 1).toUpperCase();
+    }
+    return 'U'; // Default fallback if firstName is undefined
+  };
+
   return (
     <div className="min-h-screen bg-gray-100">
       {/* Top nav */}
@@ -52,7 +60,7 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
                     <Button variant="ghost" className="flex items-center space-x-2">
                       <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center">
                         <span className="font-medium text-sm text-primary-700">
-                          {user.firstName.substring(0, 1).toUpperCase()}
+                          {getUserInitial()}
                         </span>
                       </div>
                       <span>{formatUserFullName(user)}</span>
