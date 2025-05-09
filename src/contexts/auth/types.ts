@@ -1,35 +1,7 @@
 
-export interface ModulePermissions {
-  superAdmin: boolean;
-  incidentReporting: boolean;
-  incidentAdmin: boolean;
-  assessmentUser: boolean;
-  assessmentsAdmin: boolean;
-  employeeVerificationAdmin: boolean;
-  grievancesAdmin: boolean;
-  transportSafetyAdmin: boolean;
-  eduSafeResourceAccess: boolean;
-}
+import { User, UserRole, ModulePermissions, EmployeeType, DepartmentType } from './types';
 
-export type UserRole = 'admin' | 'user' | 'saas_owner' | 'reporter';
-export type EmployeeType = 'permanent' | 'temporary' | 'contract';
-export type DepartmentType = 'admin' | 'academics' | 'operations';
-
-export interface User {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  role: UserRole;
-  modulePermissions: ModulePermissions;
-  clientId?: string;
-  employeeId?: string;
-  employeeType?: EmployeeType; 
-  department?: DepartmentType;
-  joiningDate?: string;
-  isActive: boolean;
-}
-
+// Define the user with password separately for internal use
 export interface UserWithPassword extends User {
   password: string;
 }
@@ -41,12 +13,12 @@ export interface AuthContextType {
   logout: () => void;
   isAdmin: boolean;
   isSaasOwner: boolean;
-  addUser: (userData: { 
+  addUser: (userData: {
     firstName: string;
     lastName: string;
-    email: string; 
-    password: string; 
-    role: UserRole; 
+    email: string;
+    password: string;
+    role: UserRole;
     modulePermissions: ModulePermissions;
     clientId?: string;
     employeeId?: string;
@@ -59,4 +31,39 @@ export interface AuthContextType {
   deactivateUser: (id: string) => void;
   reactivateUser: (id: string) => void;
   changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
+}
+
+export interface User {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: UserRole;
+  modulePermissions?: ModulePermissions;
+  isActive: boolean;
+  clientId?: string;
+  employeeId?: string;
+  employeeType?: EmployeeType;
+  department?: DepartmentType;
+  joiningDate?: string;
+  createdAt: string;
+  lastLogin?: string;
+}
+
+export type UserRole = 'admin' | 'reporter' | 'viewer' | 'saas_owner';
+
+export type EmployeeType = 'permanent' | 'contract' | 'part_time' | 'consultant';
+
+export type DepartmentType = 'admin' | 'teaching' | 'security' | 'maintenance' | 'transport' | 'management';
+
+export interface ModulePermissions {
+  superAdmin: boolean;
+  incidentReporting: boolean;
+  incidentAdmin: boolean;
+  assessmentUser: boolean;
+  assessmentsAdmin: boolean;
+  employeeVerificationAdmin: boolean;
+  grievancesAdmin: boolean;
+  transportSafetyAdmin: boolean;
+  eduSafeResourceAccess: boolean;
 }

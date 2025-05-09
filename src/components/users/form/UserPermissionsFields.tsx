@@ -36,49 +36,49 @@ const UserPermissionsFields = ({
         
         <div className="flex items-center space-x-2">
           <Checkbox 
-            id={isEditMode ? "edit-all-incidents" : "all-incidents"}
-            checked={permissions.allIncidents}
+            id={isEditMode ? "edit-incident-admin" : "incident-admin"}
+            checked={permissions.incidentAdmin}
             onCheckedChange={(checked) => 
-              onPermissionChange('allIncidents', checked === true)
+              onPermissionChange('incidentAdmin', checked === true)
             }
           />
           <label 
-            htmlFor={isEditMode ? "edit-all-incidents" : "all-incidents"}
+            htmlFor={isEditMode ? "edit-incident-admin" : "incident-admin"}
             className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
           >
-            All Incidents
+            Incident Admin
           </label>
         </div>
         
         <div className="flex items-center space-x-2">
           <Checkbox 
-            id={isEditMode ? "edit-insights" : "insights"}
-            checked={permissions.insights}
+            id={isEditMode ? "edit-assessment-user" : "assessment-user"}
+            checked={permissions.assessmentUser}
             onCheckedChange={(checked) => 
-              onPermissionChange('insights', checked === true)
+              onPermissionChange('assessmentUser', checked === true)
             }
           />
           <label 
-            htmlFor={isEditMode ? "edit-insights" : "insights"}
+            htmlFor={isEditMode ? "edit-assessment-user" : "assessment-user"}
             className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
           >
-            Insights
+            Assessment User
           </label>
         </div>
 
         <div className="flex items-center space-x-2">
           <Checkbox 
-            id={isEditMode ? "edit-benchmarking" : "benchmarking"}
-            checked={permissions.benchmarking}
+            id={isEditMode ? "edit-assessments-admin" : "assessments-admin"}
+            checked={permissions.assessmentsAdmin}
             onCheckedChange={(checked) => 
-              onPermissionChange('benchmarking', checked === true)
+              onPermissionChange('assessmentsAdmin', checked === true)
             }
           />
           <label 
-            htmlFor={isEditMode ? "edit-benchmarking" : "benchmarking"}
+            htmlFor={isEditMode ? "edit-assessments-admin" : "assessments-admin"}
             className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
           >
-            Benchmarking
+            Assessments Admin
           </label>
         </div>
       </div>

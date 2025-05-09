@@ -27,6 +27,8 @@ import PublicGrievanceForm from './pages/grievances/PublicGrievanceForm';
 import BackofficeDashboard from './pages/backoffice/BackofficeDashboard';
 import BackofficeSettings from './pages/backoffice/BackofficeSettings';
 import BackofficeAnalytics from './pages/backoffice/BackofficeAnalytics';
+import AssessmentTemplatesManagementPage from './pages/backoffice/AssessmentTemplatesManagementPage';
+import EduSafeResourcesManagementPage from './pages/backoffice/EduSafeResourcesManagementPage';
 import EmployeeVerificationPage from './pages/employee-verification/EmployeeVerificationPage';
 import EmployeeDetailPage from './pages/employee-verification/EmployeeDetailPage';
 import UploadDocumentPage from './pages/employee-verification/UploadDocumentPage';
@@ -93,6 +95,8 @@ function App() {
           <Route path="/backoffice/settings" element={<BackofficeSettings />} />
           <Route path="/backoffice/analytics" element={<BackofficeAnalytics />} />
           <Route path="/backoffice/clients" element={<ClientManagement />} />
+          <Route path="/backoffice/assessment-templates" element={<AssessmentTemplatesManagementPage />} />
+          <Route path="/backoffice/edusafe-resources" element={<EduSafeResourcesManagementPage />} />
           
           {/* Employee Verification Routes */}
           <Route path="/employee-verification" element={<EmployeeVerificationPage />} />

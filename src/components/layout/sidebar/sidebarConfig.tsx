@@ -10,7 +10,9 @@ import {
   FileCheck,
   MessageSquare,
   Bus,
-  FileText
+  FileText,
+  Upload,
+  Database
 } from 'lucide-react';
 import { ModulePermissions } from '@/contexts/auth/types';
 
@@ -30,8 +32,14 @@ export const getSaasOwnerItems = () => [
   },
   {
     icon: ClipboardList,
-    label: 'Assessments',
-    path: '/assessments',
+    label: 'Assessment\nTemplates',
+    path: '/backoffice/assessment-templates',
+    allowed: true,
+  },
+  {
+    icon: FileText,
+    label: 'EduSafe\nResources',
+    path: '/backoffice/edusafe-resources',
     allowed: true,
   },
   {
@@ -53,7 +61,7 @@ export const getSaasOwnerItems = () => [
     allowed: true,
   },
   {
-    icon: FileText,
+    icon: Database,
     label: 'EduSafe\nResources',
     path: '/edusafe-resources',
     allowed: true,

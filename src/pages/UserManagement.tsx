@@ -31,11 +31,16 @@ const UserManagement = () => {
     joiningDate: '',
     role: 'reporter' as UserRole,
     modulePermissions: {
+      superAdmin: false,
       incidentReporting: true,
-      allIncidents: true,
-      insights: true,
-      benchmarking: false
-    }
+      incidentAdmin: false,
+      assessmentUser: true,
+      assessmentsAdmin: false,
+      employeeVerificationAdmin: false,
+      grievancesAdmin: false,
+      transportSafetyAdmin: false,
+      eduSafeResourceAccess: true
+    } as ModulePermissions
   });
 
   const resetForm = () => {
@@ -50,11 +55,16 @@ const UserManagement = () => {
       joiningDate: '',
       role: 'reporter',
       modulePermissions: {
+        superAdmin: false,
         incidentReporting: true,
-        allIncidents: true,
-        insights: true,
-        benchmarking: false
-      }
+        incidentAdmin: false,
+        assessmentUser: true,
+        assessmentsAdmin: false,
+        employeeVerificationAdmin: false,
+        grievancesAdmin: false,
+        transportSafetyAdmin: false,
+        eduSafeResourceAccess: true
+      } as ModulePermissions
     });
     setCurrentUser(null);
   };
@@ -78,10 +88,15 @@ const UserManagement = () => {
       joiningDate: user.joiningDate || '',
       role: user.role,
       modulePermissions: {
+        superAdmin: user.modulePermissions?.superAdmin ?? false,
         incidentReporting: user.modulePermissions?.incidentReporting ?? true,
-        allIncidents: user.modulePermissions?.allIncidents ?? true,
-        insights: user.modulePermissions?.insights ?? true,
-        benchmarking: user.modulePermissions?.benchmarking ?? false
+        incidentAdmin: user.modulePermissions?.incidentAdmin ?? false,
+        assessmentUser: user.modulePermissions?.assessmentUser ?? true,
+        assessmentsAdmin: user.modulePermissions?.assessmentsAdmin ?? false,
+        employeeVerificationAdmin: user.modulePermissions?.employeeVerificationAdmin ?? false,
+        grievancesAdmin: user.modulePermissions?.grievancesAdmin ?? false,
+        transportSafetyAdmin: user.modulePermissions?.transportSafetyAdmin ?? false,
+        eduSafeResourceAccess: user.modulePermissions?.eduSafeResourceAccess ?? true
       }
     });
     setIsEditDialogOpen(true);

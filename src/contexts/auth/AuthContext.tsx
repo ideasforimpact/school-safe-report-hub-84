@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { User, UserRole, ModulePermissions, AuthContextType, UserWithPassword, EmployeeType, DepartmentType } from './types';
 import { useClient } from '../ClientContext';
@@ -128,6 +129,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Add reactivateUser function to fix build error
+  const reactivateUser = (id: string) => {
+    const updatedUsers = users.map(u => {
+      if (u.id === id) {
+        return { ...u, isActive: true };
+      }
+      return u;
+    });
+    
+    setUsers(updatedUsers);
+    saveUsersToStorage(updatedUsers);
+  };
+
   const changePassword = async (currentPassword: string, newPassword: string): Promise<boolean> => {
     if (!user) {
       return false;
@@ -160,6 +174,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       updateUser,
       deleteUser,
       deactivateUser,
+      reactivateUser,
       changePassword
     }}>
       {children}
