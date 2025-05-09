@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { FileUp, Upload, Check, AlertTriangle } from 'lucide-react';
+import { FileUp, Upload, Check, AlertTriangle, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { validateExcelData } from '@/services/employee/utils/excelValidationUtils';
 import { RawEmployeeData } from '@/services/employee/types/importTypes';
@@ -155,7 +155,8 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees }: ImportEm
         <DialogHeader>
           <DialogTitle>Import Employees</DialogTitle>
           <DialogDescription>
-            Upload an Excel file (.xlsx, .xls) containing employee data
+            Upload an Excel file (.xlsx, .xls) containing employee data. 
+            Existing employees will be updated if they match by employee ID or email.
           </DialogDescription>
         </DialogHeader>
         
@@ -192,6 +193,16 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees }: ImportEm
           )}
         </div>
         
+        <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-sm text-amber-800">
+          <div className="flex items-center gap-2 font-medium">
+            <RefreshCw className="h-4 w-4" />
+            <p>Update/Insert Behavior</p>
+          </div>
+          <p className="mt-1 pl-6">
+            Employees with matching ID or email will be updated. New employees will be added.
+          </p>
+        </div>
+        
         {validationErrors.length > 0 && (
           <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md max-h-32 overflow-y-auto">
             <div className="flex items-center gap-2 text-red-600 mb-2">
@@ -216,7 +227,7 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees }: ImportEm
               <p>All data is valid and ready to import</p>
             </div>
             <p className="text-sm text-green-600 mt-1">
-              {parsedData.length} employee records will be imported
+              {parsedData.length} employee records will be processed
             </p>
           </div>
         )}
@@ -252,4 +263,3 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees }: ImportEm
 };
 
 export default ImportEmployeeDialog;
-

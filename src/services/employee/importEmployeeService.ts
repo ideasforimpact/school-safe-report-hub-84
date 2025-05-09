@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 
 /**
  * Process and import employees from Excel file
+ * Handles both new employee insertion and existing employee updates
  */
 export const processEmployeeExcel = async (file: File): Promise<Employee[]> => {
   try {
@@ -21,7 +22,7 @@ export const processEmployeeExcel = async (file: File): Promise<Employee[]> => {
       throw new Error('Excel data validation failed');
     }
     
-    // Process the data and add employees
+    // Process the data and add/update employees
     const result = await processEmployeeData(rawData);
     
     // Show notifications

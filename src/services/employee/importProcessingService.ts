@@ -1,19 +1,22 @@
 
 import { toast } from 'sonner';
 import { Employee } from '@/contexts/employee/types';
-import { addEmployeeToApi } from './employeeMutationService';
+import { addEmployeeToApi, updateEmployeeInApi } from './employeeApiService';
 import { validateEmployeeType, validateDepartment, validateEmploymentStatus } from './utils/employeeValidationUtils';
 import { RawEmployeeData, ImportResult } from './types/importTypes';
+import { supabase } from '@/integrations/supabase/client';
 
 /**
  * Process the raw employee data from Excel and add valid employees to the system
+ * Handles both new employee insertion and existing employee updates
  */
 export const processEmployeeData = async (rawData: RawEmployeeData[]): Promise<ImportResult> => {
   const result: ImportResult = {
     addedEmployees: [],
     successCount: 0,
     errorCount: 0,
-    errors: []
+    errors: [],
+    updatedCount: 0 // New counter for tracking updated employees
   };
 
   console.log("Processing employee data:", rawData);
@@ -74,12 +77,56 @@ export const processEmployeeData = async (rawData: RawEmployeeData[]): Promise<I
         applicationFields: {}
       };
       
-      console.log("Adding employee:", employeeData);
+      // Check if employee already exists by employeeId
+      const { data: existingEmployeeById, error: idError } = await supabase
+        .from('employees')
+        .select('id')
+        .eq('employee_id', employeeData.employeeId)
+        .maybeSingle();
+        
+      // If not found by employeeId, check by email
+      let existingEmployeeByEmail = null;
+      if (!existingEmployeeById && !idError) {
+        const { data: empByEmail, error: emailError } = await supabase
+          .from('employees')
+          .select('id')
+          .ilike('email', employeeData.email)
+          .maybeSingle();
+          
+        if (!emailError) {
+          existingEmployeeByEmail = empByEmail;
+        }
+      }
       
-      // Add employee to database
-      const addedEmployee = await addEmployeeToApi(employeeData);
-      result.addedEmployees.push(addedEmployee);
-      result.successCount++;
+      const existingEmployee = existingEmployeeById || existingEmployeeByEmail;
+      
+      console.log(`Row ${index + 2}: Employee ${employeeData.employeeId} exists:`, !!existingEmployee);
+      
+      if (existingEmployee) {
+        // Update existing employee
+        try {
+          const updatedEmployee = await updateEmployeeInApi(existingEmployee.id, employeeData);
+          result.addedEmployees.push(updatedEmployee);
+          result.updatedCount++;
+          console.log(`Row ${index + 2}: Updated employee:`, updatedEmployee.id);
+        } catch (updateError) {
+          console.error(`Error updating employee ${employeeData.employeeId}:`, updateError);
+          result.errors.push(`Row ${index + 2}: Failed to update - ${(updateError as Error).message || 'Unknown error'}`);
+          result.errorCount++;
+        }
+      } else {
+        // Add new employee
+        try {
+          const addedEmployee = await addEmployeeToApi(employeeData);
+          result.addedEmployees.push(addedEmployee);
+          result.successCount++;
+          console.log(`Row ${index + 2}: Added new employee:`, addedEmployee.id);
+        } catch (addError) {
+          console.error(`Error adding employee ${employeeData.employeeId}:`, addError);
+          result.errors.push(`Row ${index + 2}: Failed to add - ${(addError as Error).message || 'Unknown error'}`);
+          result.errorCount++;
+        }
+      }
     } catch (error) {
       console.error(`Error processing row ${index + 2}:`, error);
       result.errors.push(`Row ${index + 2}: ${(error as Error).message || 'Unknown error'}`);
@@ -95,9 +142,14 @@ export const processEmployeeData = async (rawData: RawEmployeeData[]): Promise<I
  * Display appropriate toast notifications for import results
  */
 export const showImportResultNotifications = (result: ImportResult): void => {
-  // Show success toast
+  // Show success toast for new employees
   if (result.successCount > 0) {
-    toast.success(`Successfully imported ${result.successCount} employees`);
+    toast.success(`Successfully imported ${result.successCount} new employees`);
+  }
+  
+  // Show success toast for updated employees
+  if (result.updatedCount > 0) {
+    toast.success(`Successfully updated ${result.updatedCount} existing employees`);
   }
   
   // Show error toasts
@@ -106,8 +158,7 @@ export const showImportResultNotifications = (result: ImportResult): void => {
     if (result.errors.length <= 3) {
       result.errors.forEach(error => toast.error(error));
     } else {
-      toast.error(`Failed to import ${result.errors.length} employees. Check console for details.`);
+      toast.error(`Failed to process ${result.errors.length} employee records. Check console for details.`);
     }
   }
 };
-

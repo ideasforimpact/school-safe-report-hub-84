@@ -1,28 +1,27 @@
 
-import { Employee } from '@/contexts/employee/types';
-
 /**
- * Interface for raw employee data from Excel
+ * Raw data structure from Excel import
  */
 export interface RawEmployeeData {
-  employeeId: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone?: string;
-  employeeType: string;
-  department: string;
-  joiningDate: string;
-  status: string;
   [key: string]: any;
+  employeeId?: string | number;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string | number;
+  employeeType?: string;
+  department?: string;
+  joiningDate?: string | number | Date;
+  status?: string;
 }
 
 /**
- * Interface for import result statistics
+ * Results of the import operation
  */
 export interface ImportResult {
-  addedEmployees: Employee[];
+  addedEmployees: any[];
   successCount: number;
+  updatedCount: number; // New counter for updated employees
   errorCount: number;
   errors: string[];
 }
