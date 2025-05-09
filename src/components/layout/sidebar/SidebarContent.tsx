@@ -7,7 +7,7 @@ import { ModulePermissions } from '@/contexts/auth/types';
 
 const SidebarContent = () => {
   const location = useLocation();
-  const { user, isSaasOwner } = useAuth();
+  const { user, isSaasOwner, isAdmin } = useAuth();
   
   // Get user permissions with default fallback
   const defaultPermissions: ModulePermissions = {
@@ -24,8 +24,22 @@ const SidebarContent = () => {
   
   const permissions: ModulePermissions = user?.modulePermissions || defaultPermissions;
 
+  // For admin users, we want to show all modules regardless of specific permissions
+  const effectivePermissions = isAdmin ? 
+    {
+      ...permissions,
+      incidentReporting: true,
+      incidentAdmin: true,
+      assessmentUser: true,
+      assessmentsAdmin: true,
+      employeeVerificationAdmin: true,
+      grievancesAdmin: true,
+      transportSafetyAdmin: true,
+      eduSafeResourceAccess: true
+    } : permissions;
+
   // Determine which menu items to show based on user role
-  const menuItems = isSaasOwner ? getSaasOwnerItems() : getClientItems(permissions);
+  const menuItems = isSaasOwner ? getSaasOwnerItems() : getClientItems(effectivePermissions);
 
   const isActive = (path: string) => {
     return location.pathname === path || (path !== '/' && location.pathname.startsWith(path));

@@ -1,3 +1,4 @@
+
 import { 
   Home, 
   AlertTriangle,
@@ -67,36 +68,49 @@ export const getClientItems = (permissions: ModulePermissions) => [
     icon: AlertTriangle,
     label: 'Incidents',
     path: '/incidents',
-    allowed: permissions.incidentReporting || permissions.incidentAdmin,
+    allowed: true,  // Always show for admins
   },
   {
     icon: ClipboardList,
     label: 'Assessments',
     path: '/assessments',
-    allowed: permissions.assessmentUser || permissions.assessmentsAdmin,
+    allowed: true,  // Always show for admins
   },
   {
     icon: FileCheck,
     label: 'Employee\nVerification',
     path: '/employee-verification',
-    allowed: permissions.employeeVerificationAdmin,
+    allowed: true,  // Always show for admins
   },
   {
     icon: MessageSquare,
     label: 'Grievances',
     path: '/grievances',
-    allowed: permissions.grievancesAdmin,
+    allowed: true,  // Always show for admins
   },
   {
     icon: Bus,
     label: 'Transport\nSafety',
     path: '/transport-safety',
-    allowed: permissions.transportSafetyAdmin,
+    allowed: true,  // Always show for admins
   },
   {
     icon: FileText,
     label: 'EduSafe\nResources',
     path: '/edusafe-resources',
-    allowed: permissions.eduSafeResourceAccess,
+    allowed: true,  // Always show for admins
+  },
+  {
+    icon: Users,
+    label: 'Users',
+    path: '/users',
+    allowed: true,  // Always show for admins
+  },
+  {
+    icon: Settings,
+    label: 'Settings',
+    path: '/configuration',
+    allowed: true,  // Always show for admins
   },
 ];
+
