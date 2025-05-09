@@ -101,6 +101,7 @@ const UserManagement = () => {
             
             // First try the edge function
             try {
+              console.log("Attempting to create employee via edge function:", employeeData);
               const { data, error } = await supabase.functions.invoke('employee-management', {
                 body: JSON.stringify({
                   operation: 'create',
@@ -108,7 +109,10 @@ const UserManagement = () => {
                 })
               });
               
-              if (error) throw error;
+              if (error) {
+                console.error("Edge function error:", error);
+                throw error;
+              }
               console.log("Employee created via edge function:", data);
               toast.success("Employee record created successfully");
             } catch (edgeFuncError) {
@@ -116,6 +120,7 @@ const UserManagement = () => {
               // Fall back to the context function if the edge function fails
               await addEmployee(employeeData);
               console.log("Employee created via context function");
+              toast.success("Employee record created via local storage");
             }
           } catch (empError) {
             console.error("Error adding employee record:", empError);
