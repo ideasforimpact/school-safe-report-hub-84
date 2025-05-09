@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { User, UserRole, ModulePermissions, AuthContextType, UserWithPassword, EmployeeType, DepartmentType } from './types';
 import { useClient } from '../ClientContext';
@@ -49,6 +48,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [users]);
 
   const login = async (email: string, password: string): Promise<boolean> => {
+    console.log("Login attempt:", email, password);
+    
     const loggedInUser = loginUser(
       email, 
       password, 
@@ -57,23 +58,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     );
     
     if (loggedInUser) {
-      // Don't allow inactive users to log in
-      if (!loggedInUser.isActive) {
-        return false;
-      }
+      console.log("Login successful, user:", loggedInUser);
       
       setUser(loggedInUser);
       saveUserToStorage(loggedInUser);
       
-      // Update users list if it was reset during login
-      const currentUsers = getUsersFromStorage();
-      if (currentUsers !== users) {
-        setUsers(currentUsers);
-      }
-      
       return true;
     }
     
+    console.log("Login failed");
     return false;
   };
 

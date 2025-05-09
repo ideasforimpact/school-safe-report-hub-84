@@ -42,14 +42,20 @@ export const loginUser = (
   currentUsers: UserWithPassword[] = users,
   isEmailDomainAllowed?: (email: string, clientId: string) => boolean
 ): User | null => {
+  console.log("Attempting login with:", email, password);
+  console.log("Available users:", currentUsers);
+  
   const user = currentUsers.find(
     (u) => u.email === email && u.password === password && u.isActive
   );
   
   if (!user) {
+    console.error("Login failed - user not found or inactive");
     toast.error("Invalid credentials or account is inactive");
     return null;
   }
+  
+  console.log("Login successful for user:", user);
   
   // Return user without password
   const { password: _, ...userWithoutPassword } = user;

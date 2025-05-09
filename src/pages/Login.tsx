@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, ShieldCheck } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { toast } from "sonner";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -27,6 +28,7 @@ const Login = () => {
       const success = await login(email, password);
       if (success) {
         navigate("/dashboard");
+        toast.success("Login successful!");
       } else {
         setError("Invalid email or password");
       }
@@ -48,9 +50,11 @@ const Login = () => {
       console.log("Using demo credentials:", demoEmail, demoPassword);
       const success = await login(demoEmail, demoPassword);
       if (success) {
+        toast.success("Demo login successful!");
         navigate("/dashboard");
       } else {
-        setError("Demo login failed. Please try again.");
+        toast.error("Demo login failed. Please try again.");
+        setError("Demo login failed. Please check the console for details.");
       }
     } catch (err) {
       console.error("Demo login error:", err);

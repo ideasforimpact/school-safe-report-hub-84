@@ -2,7 +2,7 @@
 import React, { createContext, useContext, useState } from 'react';
 import { FeedbackForm, FormResponse } from '@/types/feedbackTypes';
 import { mockFeedbackForms, mockFormResponses } from '@/data/mockFeedbackData';
-import { FeedbackContextType } from '@/contexts/feedback/types';
+import { FeedbackContextType, FormSubmission, SubmissionStatus } from '@/contexts/feedback/types';
 
 const FeedbackContext = createContext<FeedbackContextType | undefined>(undefined);
 
@@ -16,7 +16,7 @@ export const useFeedback = () => {
 
 export const FeedbackProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [forms, setForms] = useState<FeedbackForm[]>(mockFeedbackForms);
-  const [submissions, setSubmissions] = useState<FormResponse[]>(mockFormResponses);
+  const [submissions, setSubmissions] = useState<FormSubmission[]>(mockFormResponses as unknown as FormSubmission[]);
 
   const getFormById = (id: string) => {
     return forms.find(form => form.id === id);
@@ -26,11 +26,12 @@ export const FeedbackProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     return submissions.find(response => response.id === id);
   };
 
-  const submitFormResponse = (response: Omit<FormResponse, 'id' | 'submittedAt'>) => {
-    const newResponse: FormResponse = {
+  const submitFormResponse = (response: Omit<FormSubmission, 'id' | 'submittedAt'>) => {
+    const newResponse: FormSubmission = {
       ...response,
       id: `response_${Date.now()}`,
-      submittedAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
     
     setSubmissions(prev => [...prev, newResponse]);
@@ -49,7 +50,7 @@ export const FeedbackProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setForms(prev => prev.filter(f => f.id !== formId));
   };
 
-  const addSubmission = (submission: FormResponse) => {
+  const addSubmission = (submission: FormSubmission) => {
     setSubmissions(prev => [...prev, submission]);
   };
 

@@ -61,3 +61,9 @@ export interface IncidentContextType {
   updateDesignation: (id: string, name: string) => void;
   deleteDesignation: (id: string) => void;
 }
+
+// Add these exports to your existing types
+
+export type IncidentStatus = 'Open' | 'In Progress' | 'Resolved' | 'Closed';
+export type IncidentType = 'Bullying' | 'Vandalism' | 'Fighting' | 'Theft' | 'Other';
+export type IncidentLocation = string;
