@@ -1,9 +1,11 @@
+
 import { User, UserWithPassword, UserRole, ModulePermissions, EmployeeType, DepartmentType } from '@/contexts/auth/types';
 import { v4 as uuidv4 } from 'uuid';
 import { validateUserEmail, validateAdminDeletion } from '@/contexts/auth/utils';
-import { toast } from "@/components/ui/sonner";
+import { toast } from "sonner";
+import { supabase } from '@/integrations/supabase/client';
 
-export const addNewUser = (
+export const addNewUser = async (
   currentUsers: UserWithPassword[],
   userData: {
     firstName: string;
@@ -20,11 +22,12 @@ export const addNewUser = (
     joiningDate?: string;
   },
   isEmailDomainAllowed?: (email: string, clientId: string) => boolean
-): UserWithPassword[] | null => {
+): Promise<UserWithPassword[] | null> => {
   // Check if user with this email already exists
   const userExists = currentUsers.find(user => user.email === userData.email);
   if (userExists) {
     console.error("User with this email already exists");
+    toast.error("User with this email already exists");
     return null;
   }
   
@@ -32,8 +35,29 @@ export const addNewUser = (
   if (userData.clientId && userData.email && isEmailDomainAllowed) {
     if (!isEmailDomainAllowed(userData.email, userData.clientId)) {
       console.error("Email domain not allowed for this client");
+      toast.error("Email domain not allowed for this client");
       return null;
     }
+  }
+
+  // Store module permissions in database if provided
+  try {
+    if (userData.modulePermissions) {
+      const moduleEntries = Object.entries(userData.modulePermissions)
+        .filter(([_, enabled]) => enabled)
+        .map(([key, _]) => ({
+          module_key: key,
+          enabled: true
+        }));
+
+      // This would be where you'd store the module permissions in a real backend
+      console.log("Module permissions to be stored:", moduleEntries);
+      
+      // In a real implementation with Supabase, you would store these permissions
+      // associated with the user ID after the user is created
+    }
+  } catch (error) {
+    console.error("Error storing module permissions:", error);
   }
 
   const newUser: UserWithPassword = {
@@ -56,14 +80,32 @@ export const addNewUser = (
   return [...currentUsers, newUser];
 };
 
-export const updateExistingUser = (
+export const updateExistingUser = async (
   currentUsers: UserWithPassword[],
   id: string,
   updates: Partial<User & { password?: string }>
-): UserWithPassword[] | null => {
+): Promise<UserWithPassword[] | null> => {
   // Check if email already exists and it's not the current user
   if (updates.email && !validateUserEmail(currentUsers, updates.email, id)) {
+    toast.error("Email already in use by another user");
     return null;
+  }
+
+  // Handle module permissions update
+  try {
+    if (updates.modulePermissions) {
+      const moduleEntries = Object.entries(updates.modulePermissions)
+        .filter(([_, enabled]) => enabled)
+        .map(([key, _]) => ({
+          module_key: key,
+          enabled: true
+        }));
+
+      // This would be where you'd update the module permissions in a real backend
+      console.log("Module permissions to be updated:", moduleEntries);
+    }
+  } catch (error) {
+    console.error("Error updating module permissions:", error);
   }
 
   const updatedUsers = currentUsers.map(u => {

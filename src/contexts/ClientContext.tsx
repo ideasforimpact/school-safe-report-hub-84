@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { OAuthProviderName } from '@/utils/authProviders';
 import { ModulePermissions } from '@/contexts/auth/types';
@@ -34,9 +33,6 @@ export interface ClientContextType {
   updateClient: (id: string, updates: Partial<Client>) => Promise<void>;
   deleteClient: (id: string) => Promise<void>;
 }
-
-// Re-export Client type for use in other files
-export type { Client };
 
 const ClientContext = createContext<ClientContextType | undefined>(undefined);
 
@@ -340,3 +336,6 @@ export const useClient = (): ClientContextType => {
   }
   return context;
 };
+
+// Export types
+export type { ClientContextType };
