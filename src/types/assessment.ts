@@ -28,7 +28,7 @@ export interface AssessmentAssignment {
   dueDate: string;
   assignedDate: string;
   assignedBy: string;
-  status: 'Pending' | 'In Progress' | 'Completed' | 'Overdue';
+  status: 'New' | 'In Progress' | 'Submitted' | 'Completed';
 }
 
 export interface AssessmentResponse {

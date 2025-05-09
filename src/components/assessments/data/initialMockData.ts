@@ -101,7 +101,7 @@ const createMockAssignments = (templates: AssessmentTemplate[]): AssessmentAssig
   pastDueDate.setDate(today.getDate() - 5);
   
   return [
-    // Assignment for current user - Pending (due soon)
+    // Assignment for current user - New (due soon)
     {
       id: "assignment-001",
       templateId: templates[0].id,
@@ -110,7 +110,7 @@ const createMockAssignments = (templates: AssessmentTemplate[]): AssessmentAssig
       dueDate: dueDateSoon.toISOString(),
       assignedDate: today.toISOString(),
       assignedBy: 'admin',
-      status: 'Pending'
+      status: 'New'
     },
     // Assignment for current user - In Progress
     {
@@ -132,7 +132,7 @@ const createMockAssignments = (templates: AssessmentTemplate[]): AssessmentAssig
       dueDate: pastDueDate.toISOString(),
       assignedDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(), // 15 days ago
       assignedBy: 'admin',
-      status: 'Pending' // This will show as overdue due to the past due date
+      status: 'New' // This will show as overdue due to the past due date
     },
     // Assignment for another user - Completed (for admin view)
     {
@@ -144,6 +144,17 @@ const createMockAssignments = (templates: AssessmentTemplate[]): AssessmentAssig
       assignedDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), // 10 days ago
       assignedBy: 'admin',
       status: 'Completed'
+    },
+    // Assignment for current user - Submitted
+    {
+      id: "assignment-005",
+      templateId: templates[0].id,
+      userId: '3', // Match this to the logged-in user ID for demo purposes
+      userName: 'Jeff Davis',
+      dueDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
+      assignedDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days ago
+      assignedBy: 'admin',
+      status: 'Submitted'
     }
   ];
 };
@@ -152,6 +163,7 @@ const createMockAssignments = (templates: AssessmentTemplate[]): AssessmentAssig
 const createMockResponses = (assignments: AssessmentAssignment[]): AssessmentResponse[] => {
   const inProgressAssignment = assignments.find(a => a.status === 'In Progress');
   const completedAssignment = assignments.find(a => a.status === 'Completed');
+  const submittedAssignment = assignments.find(a => a.status === 'Submitted');
   
   const responses = [];
   
@@ -224,6 +236,51 @@ const createMockResponses = (assignments: AssessmentAssignment[]): AssessmentRes
       ],
       status: 'Submitted',
       score: 100
+    });
+  }
+
+  if (submittedAssignment) {
+    // Full response for the submitted assignment
+    responses.push({
+      id: uuidv4(),
+      assignmentId: submittedAssignment.id,
+      templateId: submittedAssignment.templateId,
+      userId: submittedAssignment.userId,
+      completedDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
+      responses: [
+        {
+          questionId: "question-001",
+          answer: true,
+          comment: "Emergency exits are clearly marked and accessible.",
+          attachments: null
+        },
+        {
+          questionId: "question-002",
+          answer: false,
+          comment: "One fire extinguisher needs to be replaced.",
+          attachments: null
+        },
+        {
+          questionId: "question-003",
+          answer: true,
+          comment: "First aid kit has been recently restocked.",
+          attachments: null
+        },
+        {
+          questionId: "question-004",
+          answer: true,
+          comment: "All hazardous materials are properly stored.",
+          attachments: null
+        },
+        {
+          questionId: "question-005",
+          answer: false,
+          comment: "Identified a trip hazard in the staff area.",
+          attachments: null
+        }
+      ],
+      status: 'Submitted',
+      score: 60
     });
   }
   

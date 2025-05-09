@@ -24,7 +24,7 @@ export const useAssignmentManagement = (userId?: string) => {
       ...assignmentData,
       assignedDate: new Date().toISOString(),
       assignedBy: userId || 'unknown',
-      status: 'Pending'
+      status: 'New'
     };
     
     setAssignments(prev => [...prev, newAssignment]);
