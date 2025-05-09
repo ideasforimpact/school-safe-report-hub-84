@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
@@ -102,6 +103,7 @@ function App() {
           <Route path="/transport-safety" element={<TransportSafetyPage />} />
           <Route path="/transport-safety/dashboard" element={<DashboardPage />} />
           <Route path="/transport-safety/vehicle/:vehicleId" element={<VehicleDetailPage />} />
+          <Route path="/transport-safety/:vehicleId" element={<VehicleDetailPage />} />
           <Route path="/transport-safety/documents" element={<DocumentsPage />} />
           
           {/* EduSafe Resources Routes */}
