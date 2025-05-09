@@ -16,8 +16,8 @@ import {
 } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { UserPlus, FileUp } from 'lucide-react';
-import { User, UserRole, ModulePermissions, EmployeeType, DepartmentType } from '@/contexts/auth/types';
-import { EmploymentStatus } from '@/contexts/employee/types';
+import { User, UserRole, ModulePermissions, EmployeeType as AuthEmployeeType, DepartmentType as AuthDepartmentType } from '@/contexts/auth/types';
+import { EmploymentStatus, EmployeeType as EmployeeContextType, DepartmentType as EmployeeContextDepartmentType } from '@/contexts/employee/types';
 import { toast } from "sonner";
 import { 
   addNewUser, 
@@ -28,6 +28,34 @@ import {
 import { processEmployeeExcel } from '@/services/employee/importEmployeeService';
 import { supabase } from '@/integrations/supabase/client';
 import { getAllEmployeesFromApi } from '@/services/employee/employeeRetrievalService';
+
+// Helper function to convert employee type to auth type
+const convertEmployeeType = (employeeType: EmployeeContextType): AuthEmployeeType => {
+  // Handle 'intern' which is in employee types but not in auth types
+  if (employeeType === 'intern') {
+    return 'consultant' as AuthEmployeeType; // Map intern to consultant as fallback
+  }
+  return employeeType as AuthEmployeeType;
+};
+
+// Helper function to convert department type
+const convertDepartmentType = (department: EmployeeContextDepartmentType): AuthDepartmentType => {
+  // Handle departments in employee context that don't exist in auth context
+  const authDepartments: AuthDepartmentType[] = ['admin', 'teaching', 'security', 'maintenance', 'transport', 'management'];
+  
+  if (authDepartments.includes(department as AuthDepartmentType)) {
+    return department as AuthDepartmentType;
+  }
+  
+  // Map departments that don't exist in auth types to a default value
+  const departmentMapping: Record<string, AuthDepartmentType> = {
+    'it': 'admin',
+    'hr': 'admin',
+    'finance': 'admin'
+  };
+  
+  return departmentMapping[department] || 'admin';
+};
 
 const UserManagement = () => {
   const { isAdmin, users = [] } = useAuth();
@@ -45,8 +73,8 @@ const UserManagement = () => {
     lastName: string;
     email: string;
     employeeId?: string;
-    employeeType?: EmployeeType;
-    department?: DepartmentType;
+    employeeType?: AuthEmployeeType;
+    department?: AuthDepartmentType;
     joiningDate?: string;
     role: UserRole;
     modulePermissions: ModulePermissions;
@@ -77,14 +105,14 @@ const UserManagement = () => {
         
         if (employeeData && employeeData.length > 0) {
           // Map employee data to User format for display in UserList
-          const mappedUsers = employeeData.map(employee => ({
+          const mappedUsers: User[] = employeeData.map(employee => ({
             id: employee.id,
             firstName: employee.firstName,
             lastName: employee.lastName,
             email: employee.email,
             employeeId: employee.employeeId,
-            employeeType: employee.employeeType,
-            department: employee.department,
+            employeeType: convertEmployeeType(employee.employeeType),
+            department: convertDepartmentType(employee.department),
             joiningDate: employee.joiningDate,
             role: employee.applicationFields?.modulePermissions?.superAdmin ? 'admin' : 'reporter' as UserRole,
             modulePermissions: employee.applicationFields?.modulePermissions || {
@@ -99,7 +127,7 @@ const UserManagement = () => {
               eduSafeResourceAccess: false
             },
             isActive: employee.status === 'active',
-            createdAt: employee.createdAt || new Date().toISOString(), // Add the missing createdAt field
+            createdAt: employee.createdAt || new Date().toISOString(),
           }));
 
           setEmployeeUsers(mappedUsers);
@@ -202,14 +230,14 @@ const UserManagement = () => {
       const employeeData = await getAllEmployeesFromApi();
       
       if (employeeData && employeeData.length > 0) {
-        const mappedUsers = employeeData.map(employee => ({
+        const mappedUsers: User[] = employeeData.map(employee => ({
           id: employee.id,
           firstName: employee.firstName,
           lastName: employee.lastName,
           email: employee.email,
           employeeId: employee.employeeId,
-          employeeType: employee.employeeType,
-          department: employee.department,
+          employeeType: convertEmployeeType(employee.employeeType),
+          department: convertDepartmentType(employee.department),
           joiningDate: employee.joiningDate,
           role: employee.applicationFields?.modulePermissions?.superAdmin ? 'admin' : 'reporter' as UserRole,
           modulePermissions: employee.applicationFields?.modulePermissions || {
@@ -224,7 +252,7 @@ const UserManagement = () => {
             eduSafeResourceAccess: false
           },
           isActive: employee.status === 'active',
-          createdAt: employee.createdAt || new Date().toISOString(), // Add the missing createdAt field
+          createdAt: employee.createdAt || new Date().toISOString(),
         }));
 
         setEmployeeUsers(mappedUsers);
