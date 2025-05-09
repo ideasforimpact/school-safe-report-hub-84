@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
-import { UserPlus, FileImport } from 'lucide-react';
+import { UserPlus, FileUp } from 'lucide-react';
 import EmployeeList from '@/components/employee/EmployeeList';
 import AddEmployeeDialog from '@/components/employee/AddEmployeeDialog';
 import EditEmployeeDialog from '@/components/employee/EditEmployeeDialog';
@@ -76,7 +76,7 @@ const EmployeeManagement = () => {
               className="flex items-center gap-2"
               variant="secondary"
             >
-              <FileImport className="h-4 w-4" />
+              <FileUp className="h-4 w-4" />
               <span>Import Employees</span>
             </Button>
             <Button onClick={() => setIsAddDialogOpen(true)}>
