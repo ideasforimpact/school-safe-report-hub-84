@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEmployee } from '@/contexts/employee/EmployeeContext';
 import UserList from '@/components/users/UserList';
 import AddUserDialog from '@/components/users/AddUserDialog';
 import EditUserDialog from '@/components/users/EditUserDialog';
@@ -27,6 +28,7 @@ import { processEmployeeExcel } from '@/services/employee/importEmployeeService'
 
 const UserManagement = () => {
   const { isAdmin, users = [] } = useAuth();
+  const { addEmployee } = useEmployee(); // Connect to employee context
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
@@ -75,7 +77,28 @@ const UserManagement = () => {
       );
       
       if (updatedUsers) {
-        // Since we don't have setUsers in this context, we'll redirect to refresh
+        // Also add the user as an employee
+        if (formData.employeeId && formData.employeeType && formData.department && formData.joiningDate) {
+          try {
+            await addEmployee({
+              employeeId: formData.employeeId,
+              firstName: formData.firstName,
+              lastName: formData.lastName,
+              email: formData.email,
+              employeeType: formData.employeeType,
+              department: formData.department,
+              joiningDate: formData.joiningDate,
+              status: 'active',
+              applicationFields: {
+                modulePermissions: formData.modulePermissions
+              }
+            });
+          } catch (empError) {
+            console.error("Error adding employee record:", empError);
+            toast.error("User added but employee record creation failed");
+          }
+        }
+        
         toast.success("User added successfully");
         resetForm();
         setIsAddDialogOpen(false);
