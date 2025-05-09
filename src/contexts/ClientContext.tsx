@@ -2,6 +2,9 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { OAuthProviderName } from '@/utils/authProviders';
 import { getClientsFromStorage, saveClientsToStorage } from '@/services/client/clientService';
+import { ModulePermissions } from '@/contexts/auth/types';
+
+export type InstitutionType = 'CBSE' | 'IB' | 'IGCSE' | 'ICSE' | 'Matric' | 'Combined Campus' | 'Other';
 
 export interface Client {
   id: string;
@@ -12,12 +15,8 @@ export interface Client {
   creationDate: string;
   active: boolean;
   logo?: string;
-  moduleAccess?: {
-    incidentReporting: boolean;
-    allIncidents: boolean;
-    insights: boolean;
-    benchmarking: boolean;
-  };
+  institutionType?: InstitutionType;
+  moduleAccess?: Partial<ModulePermissions>;
   allowedDomains?: string[];
   authProviders?: {
     [key in OAuthProviderName]?: boolean;
@@ -63,11 +62,17 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         phone: '555-1234',
         creationDate: new Date().toISOString(),
         active: true,
+        institutionType: 'CBSE' as InstitutionType,
         moduleAccess: {
+          superAdmin: false,
           incidentReporting: true,
-          allIncidents: true,
-          insights: true,
-          benchmarking: false
+          incidentAdmin: false,
+          assessmentUser: true,
+          assessmentsAdmin: false,
+          employeeVerificationAdmin: false,
+          grievancesAdmin: false,
+          transportSafetyAdmin: false,
+          eduSafeResourceAccess: true
         },
         allowedDomains: ['example.com'],
         authProviders: {

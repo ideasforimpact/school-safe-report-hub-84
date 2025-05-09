@@ -1,6 +1,5 @@
-
 import { useState } from 'react';
-import { Client, useClient } from '@/contexts/ClientContext';
+import { Client, useClient, InstitutionType } from '@/contexts/ClientContext';
 import { OAuthProviderName } from '@/utils/authProviders';
 import { ModulePermissions } from '@/contexts/auth/types';
 
@@ -12,6 +11,7 @@ export interface ClientFormData {
   moduleAccess: Partial<ModulePermissions>;
   active: boolean;
   logo: string;
+  institutionType: InstitutionType;
   allowedDomains: string[];
   authProviders: {
     [key in OAuthProviderName]?: boolean;
@@ -36,6 +36,7 @@ const initialFormData: ClientFormData = {
   },
   active: true,
   logo: '',
+  institutionType: 'Other',
   allowedDomains: [],
   authProviders: {
     google: false,
@@ -82,6 +83,7 @@ export const useClientManagement = () => {
       },
       active: client.active,
       logo: client.logo || '',
+      institutionType: client.institutionType || 'Other',
       allowedDomains: client.allowedDomains || [],
       authProviders: {
         google: client.authProviders?.google ?? false,
