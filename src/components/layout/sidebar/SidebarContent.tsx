@@ -3,18 +3,26 @@ import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { getSaasOwnerItems, getClientItems } from './sidebarConfig';
 import SidebarMenuItem from './SidebarMenuItem';
+import { ModulePermissions } from '@/contexts/auth/types';
 
 const SidebarContent = () => {
   const location = useLocation();
   const { user, isSaasOwner } = useAuth();
   
-  // Get user permissions
-  const permissions = user?.modulePermissions || {
+  // Get user permissions with default fallback
+  const defaultPermissions: ModulePermissions = {
+    superAdmin: false,
     incidentReporting: true,
-    allIncidents: true,
-    insights: true,
-    benchmarking: false
+    incidentAdmin: false,
+    assessmentUser: true,
+    assessmentsAdmin: false,
+    employeeVerificationAdmin: false,
+    grievancesAdmin: false,
+    transportSafetyAdmin: false,
+    eduSafeResourceAccess: true
   };
+  
+  const permissions: ModulePermissions = user?.modulePermissions || defaultPermissions;
 
   // Determine which menu items to show based on user role
   const menuItems = isSaasOwner ? getSaasOwnerItems() : getClientItems(permissions);

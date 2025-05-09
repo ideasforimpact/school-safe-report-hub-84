@@ -1,18 +1,15 @@
+
 import { useState } from 'react';
 import { Client, useClient } from '@/contexts/ClientContext';
 import { OAuthProviderName } from '@/utils/authProviders';
+import { ModulePermissions } from '@/contexts/auth/types';
 
 export interface ClientFormData {
   name: string;
   email: string;
   contactPerson: string;
   phone: string;
-  moduleAccess: {
-    incidentReporting: boolean;
-    allIncidents: boolean;
-    insights: boolean;
-    benchmarking: boolean;
-  };
+  moduleAccess: Partial<ModulePermissions>;
   active: boolean;
   logo: string;
   allowedDomains: string[];
@@ -27,10 +24,15 @@ const initialFormData: ClientFormData = {
   contactPerson: '',
   phone: '',
   moduleAccess: {
+    superAdmin: false,
     incidentReporting: true,
-    allIncidents: true,
-    insights: true,
-    benchmarking: false
+    incidentAdmin: false,
+    assessmentUser: true,
+    assessmentsAdmin: false,
+    employeeVerificationAdmin: false,
+    grievancesAdmin: false,
+    transportSafetyAdmin: false,
+    eduSafeResourceAccess: true
   },
   active: true,
   logo: '',
@@ -68,10 +70,15 @@ export const useClientManagement = () => {
       contactPerson: client.contactPerson,
       phone: client.phone,
       moduleAccess: {
+        superAdmin: client.moduleAccess?.superAdmin ?? false,
         incidentReporting: client.moduleAccess?.incidentReporting ?? true,
-        allIncidents: client.moduleAccess?.allIncidents ?? true,
-        insights: client.moduleAccess?.insights ?? true,
-        benchmarking: client.moduleAccess?.benchmarking ?? false
+        incidentAdmin: client.moduleAccess?.incidentAdmin ?? false,
+        assessmentUser: client.moduleAccess?.assessmentUser ?? true,
+        assessmentsAdmin: client.moduleAccess?.assessmentsAdmin ?? false,
+        employeeVerificationAdmin: client.moduleAccess?.employeeVerificationAdmin ?? false,
+        grievancesAdmin: client.moduleAccess?.grievancesAdmin ?? false,
+        transportSafetyAdmin: client.moduleAccess?.transportSafetyAdmin ?? false,
+        eduSafeResourceAccess: client.moduleAccess?.eduSafeResourceAccess ?? true
       },
       active: client.active,
       logo: client.logo || '',

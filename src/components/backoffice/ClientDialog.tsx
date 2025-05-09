@@ -15,6 +15,7 @@ import ModuleAccessTab from './tabs/ModuleAccessTab';
 import AuthTab from './tabs/AuthTab';
 import { OAuthProviderName } from '@/utils/authProviders';
 import { ClientFormData } from '@/hooks/useClientManagement';
+import { ModulePermissions } from '@/contexts/auth/types';
 
 interface ClientDialogProps {
   isOpen: boolean;
@@ -46,7 +47,7 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
     }
   };
 
-  const handleModuleAccessChange = (module: string, value: boolean) => {
+  const handleModuleAccessChange = (module: keyof ModulePermissions, value: boolean) => {
     setFormData({
       ...formData,
       moduleAccess: {

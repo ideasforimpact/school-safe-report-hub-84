@@ -92,6 +92,7 @@ function App() {
           <Route path="/backoffice" element={<BackofficeDashboard />} />
           <Route path="/backoffice/settings" element={<BackofficeSettings />} />
           <Route path="/backoffice/analytics" element={<BackofficeAnalytics />} />
+          <Route path="/backoffice/clients" element={<ClientManagement />} />
           
           {/* Employee Verification Routes */}
           <Route path="/employee-verification" element={<EmployeeVerificationPage />} />

@@ -3,17 +3,27 @@ import { UserWithPassword, UserRole, ModulePermissions, EmployeeType, Department
 
 // Default module permissions
 export const DEFAULT_ADMIN_PERMISSIONS: ModulePermissions = {
+  superAdmin: true,
   incidentReporting: true,
-  allIncidents: true,
-  insights: true,
-  benchmarking: true
+  incidentAdmin: true,
+  assessmentUser: true,
+  assessmentsAdmin: true,
+  employeeVerificationAdmin: true,
+  grievancesAdmin: true,
+  transportSafetyAdmin: true,
+  eduSafeResourceAccess: true
 };
 
 export const DEFAULT_REPORTER_PERMISSIONS: ModulePermissions = {
+  superAdmin: false,
   incidentReporting: true,
-  allIncidents: true,
-  insights: true,
-  benchmarking: false
+  incidentAdmin: false,
+  assessmentUser: true,
+  assessmentsAdmin: false,
+  employeeVerificationAdmin: false,
+  grievancesAdmin: false,
+  transportSafetyAdmin: false,
+  eduSafeResourceAccess: true
 };
 
 // Mock users for demo purposes

@@ -12,7 +12,7 @@ import {
   Bus,
   FileText
 } from 'lucide-react';
-import { ModulePermissions } from '@/contexts/AuthContext';
+import { ModulePermissions } from '@/contexts/auth/types';
 
 // SaaS Owner (Backoffice) Menu Items
 export const getSaasOwnerItems = () => [
@@ -84,36 +84,36 @@ export const getClientItems = (permissions: ModulePermissions) => [
     icon: AlertTriangle,
     label: 'Incidents',
     path: '/incidents',
-    allowed: permissions.allIncidents,
+    allowed: permissions.incidentReporting || permissions.incidentAdmin,
   },
   {
     icon: ClipboardList,
     label: 'Assessments',
     path: '/assessments',
-    allowed: true,
+    allowed: permissions.assessmentUser || permissions.assessmentsAdmin,
   },
   {
     icon: FileCheck,
     label: 'Employee\nVerification',
     path: '/employee-verification',
-    allowed: true,
+    allowed: permissions.employeeVerificationAdmin,
   },
   {
     icon: MessageSquare,
     label: 'Grievances',
     path: '/grievances',
-    allowed: true,
+    allowed: permissions.grievancesAdmin,
   },
   {
     icon: Bus,
     label: 'Transport\nSafety',
     path: '/transport-safety',
-    allowed: true,
+    allowed: permissions.transportSafetyAdmin,
   },
   {
     icon: FileText,
     label: 'EduSafe\nResources',
     path: '/edusafe-resources',
-    allowed: true,
+    allowed: permissions.eduSafeResourceAccess,
   },
 ];
