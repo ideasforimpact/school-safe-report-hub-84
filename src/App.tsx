@@ -6,6 +6,7 @@ import { AuthProvider } from '@/contexts/auth/AuthContext';
 import { ClientProvider } from '@/contexts/ClientContext';
 import { EmployeeProvider } from './contexts/employee/EmployeeContext';
 import { StudentProvider } from './contexts/StudentContext';
+import { IncidentProvider } from './contexts/IncidentContext';
 
 // Pages
 import Dashboard from '@/pages/Dashboard';
@@ -21,23 +22,25 @@ function App() {
     <ClientProvider>
       <AuthProvider>
         <EmployeeProvider>
-          <StudentProvider>
-            <Routes>
-              {/* Public routes */}
-              <Route path="/login" element={<Login />} />
+          <IncidentProvider>
+            <StudentProvider>
+              <Routes>
+                {/* Public routes */}
+                <Route path="/login" element={<Login />} />
 
-              {/* Protected routes */}
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/users" element={<UserManagement />} />
-              <Route path="/clients" element={<ClientManagement />} />
-              <Route path="/employees" element={<EmployeeManagement />} />
-              <Route path="/students" element={<StudentManagement />} />
+                {/* Protected routes */}
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/users" element={<UserManagement />} />
+                <Route path="/clients" element={<ClientManagement />} />
+                <Route path="/employees" element={<EmployeeManagement />} />
+                <Route path="/students" element={<StudentManagement />} />
 
-              {/* 404 route */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-            <Toaster position="top-right" />
-          </StudentProvider>
+                {/* 404 route */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+              <Toaster position="top-right" />
+            </StudentProvider>
+          </IncidentProvider>
         </EmployeeProvider>
       </AuthProvider>
     </ClientProvider>

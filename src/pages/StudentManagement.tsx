@@ -100,11 +100,13 @@ const StudentManagement = () => {
         />
 
         {/* Edit Student Dialog */}
-        <EditStudentDialog
-          open={isEditDialogOpen}
-          onOpenChange={setIsEditDialogOpen}
-          student={selectedStudent}
-        />
+        {selectedStudent && (
+          <EditStudentDialog
+            open={isEditDialogOpen}
+            onOpenChange={setIsEditDialogOpen}
+            student={selectedStudent}
+          />
+        )}
 
         {/* Delete Confirmation */}
         <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
