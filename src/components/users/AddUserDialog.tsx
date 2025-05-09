@@ -39,6 +39,7 @@ interface AddUserDialogProps {
   }>>;
   onSubmit: () => void;
   resetForm: () => void;
+  isLoading?: boolean;
 }
 
 const AddUserDialog = ({ 
@@ -47,7 +48,8 @@ const AddUserDialog = ({
   formData, 
   setFormData, 
   onSubmit,
-  resetForm 
+  resetForm,
+  isLoading = false
 }: AddUserDialogProps) => {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -63,10 +65,12 @@ const AddUserDialog = ({
           <Button variant="outline" onClick={() => {
             setIsOpen(false);
             resetForm();
-          }}>
+          }} disabled={isLoading}>
             Cancel
           </Button>
-          <Button onClick={onSubmit}>Add Employee</Button>
+          <Button onClick={onSubmit} disabled={isLoading}>
+            {isLoading ? 'Adding...' : 'Add Employee'}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

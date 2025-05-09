@@ -39,6 +39,7 @@ interface EditUserDialogProps {
   }>>;
   onSubmit: () => void;
   resetForm: () => void;
+  isLoading?: boolean;
 }
 
 const EditUserDialog = ({ 
@@ -47,7 +48,8 @@ const EditUserDialog = ({
   formData, 
   setFormData, 
   onSubmit,
-  resetForm 
+  resetForm,
+  isLoading = false
 }: EditUserDialogProps) => {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -63,10 +65,12 @@ const EditUserDialog = ({
           <Button variant="outline" onClick={() => {
             setIsOpen(false);
             resetForm();
-          }}>
+          }} disabled={isLoading}>
             Cancel
           </Button>
-          <Button onClick={onSubmit}>Update Employee</Button>
+          <Button onClick={onSubmit} disabled={isLoading}>
+            {isLoading ? 'Updating...' : 'Update Employee'}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
