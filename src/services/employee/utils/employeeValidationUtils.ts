@@ -22,7 +22,6 @@ export const validateEmployeeType = (value: string): EmployeeType | null => {
     full_time: 'permanent',
     fulltime: 'permanent',
     'full-time': 'permanent',
-    fulltime: 'permanent',
     ft: 'permanent',
     contract: 'contract',
     contractor: 'contract',
@@ -139,4 +138,3 @@ export const validateEmploymentStatus = (value: string): EmploymentStatus | null
   
   return statusMap[normalizedValue] || null;
 };
-
