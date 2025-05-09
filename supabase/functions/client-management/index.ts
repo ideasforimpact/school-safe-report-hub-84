@@ -23,6 +23,7 @@ interface ClientData {
   institution_type?: string;
   allowed_domains?: string;
   auth_providers?: string;
+  moduleAccess?: Record<string, boolean>;
 }
 
 serve(async (req) => {
@@ -40,19 +41,52 @@ serve(async (req) => {
     // Process requests based on the operation
     if (req.method === 'GET') {
       if (operation === 'clients') {
-        // Get all clients
-        const { data, error } = await supabase
+        // Get all clients with their module access
+        const { data: clientsData, error: clientsError } = await supabase
           .from('clients')
           .select('*');
 
-        if (error) throw error;
+        if (clientsError) throw clientsError;
 
-        return new Response(JSON.stringify({ clients: data }), {
+        // Get all client_modules
+        const { data: modulesData, error: modulesError } = await supabase
+          .from('client_modules')
+          .select('*');
+
+        if (modulesError) throw modulesError;
+
+        // Group modules by client
+        const modulesByClient: Record<string, any[]> = {};
+        modulesData?.forEach((module) => {
+          if (!modulesByClient[module.client_id]) {
+            modulesByClient[module.client_id] = [];
+          }
+          modulesByClient[module.client_id].push(module);
+        });
+
+        // Map clients with their modules
+        const clientsWithModules = clientsData.map(client => {
+          const clientModules = modulesByClient[client.id] || [];
+          const moduleAccess: Record<string, boolean> = {};
+          
+          clientModules.forEach(module => {
+            if (module.enabled) {
+              moduleAccess[module.module_key] = true;
+            }
+          });
+          
+          return {
+            ...client,
+            moduleAccess
+          };
+        });
+
+        return new Response(JSON.stringify({ clients: clientsWithModules }), {
           headers: { 'Content-Type': 'application/json', ...corsHeaders },
           status: 200,
         });
       } else if (operation === 'client') {
-        // Get client by ID
+        // Get client by ID with module access
         const id = url.searchParams.get('id');
         if (!id) {
           return new Response(JSON.stringify({ error: 'Client ID is required' }), {
@@ -61,15 +95,37 @@ serve(async (req) => {
           });
         }
 
-        const { data, error } = await supabase
+        // Get client data
+        const { data: client, error: clientError } = await supabase
           .from('clients')
           .select('*')
           .eq('id', id)
           .single();
 
-        if (error) throw error;
+        if (clientError) throw clientError;
 
-        return new Response(JSON.stringify({ client: data }), {
+        // Get client modules
+        const { data: modules, error: modulesError } = await supabase
+          .from('client_modules')
+          .select('*')
+          .eq('client_id', id);
+
+        if (modulesError) throw modulesError;
+
+        // Map modules to client
+        const moduleAccess: Record<string, boolean> = {};
+        modules?.forEach(module => {
+          if (module.enabled) {
+            moduleAccess[module.module_key] = true;
+          }
+        });
+
+        return new Response(JSON.stringify({ 
+          client: {
+            ...client,
+            moduleAccess
+          }
+        }), {
           headers: { 'Content-Type': 'application/json', ...corsHeaders },
           status: 200,
         });
@@ -78,23 +134,55 @@ serve(async (req) => {
       const requestData = await req.json();
 
       if (operation === 'create') {
-        // Create a new client
+        // Create a new client with module access
         const clientData: ClientData = requestData.client;
+        const moduleAccess = clientData.moduleAccess;
+        
+        // Remove moduleAccess from client data before insertion
+        const { moduleAccess: _, ...clientOnly } = clientData;
 
-        const { data, error } = await supabase
+        // Insert client first
+        const { data: newClient, error: clientError } = await supabase
           .from('clients')
-          .insert([clientData])
-          .select();
+          .insert([clientOnly])
+          .select()
+          .single();
 
-        if (error) throw error;
+        if (clientError) throw clientError;
 
-        return new Response(JSON.stringify({ client: data[0] }), {
+        // Insert module access if provided
+        if (moduleAccess && Object.keys(moduleAccess).length > 0) {
+          const moduleInserts = Object.entries(moduleAccess)
+            .filter(([_, enabled]) => enabled)
+            .map(([key, _]) => ({
+              client_id: newClient.id,
+              module_key: key,
+              enabled: true
+            }));
+
+          if (moduleInserts.length > 0) {
+            const { error: moduleError } = await supabase
+              .from('client_modules')
+              .insert(moduleInserts);
+
+            if (moduleError) {
+              console.error('Error inserting client modules:', moduleError);
+            }
+          }
+        }
+
+        return new Response(JSON.stringify({ 
+          client: {
+            ...newClient,
+            moduleAccess
+          } 
+        }), {
           headers: { 'Content-Type': 'application/json', ...corsHeaders },
           status: 201,
         });
       } else if (operation === 'update') {
-        // Update an existing client
-        const { id, ...updates } = requestData.client;
+        // Update an existing client with module access
+        const { id, moduleAccess, ...clientUpdates } = requestData.client;
 
         if (!id) {
           return new Response(JSON.stringify({ error: 'Client ID is required' }), {
@@ -103,20 +191,59 @@ serve(async (req) => {
           });
         }
 
-        const { data, error } = await supabase
+        // Update client data
+        const { data: updatedClient, error: clientError } = await supabase
           .from('clients')
-          .update(updates)
+          .update(clientUpdates)
           .eq('id', id)
-          .select();
+          .select()
+          .single();
 
-        if (error) throw error;
+        if (clientError) throw clientError;
 
-        return new Response(JSON.stringify({ client: data[0] }), {
+        // Update module access if provided
+        if (moduleAccess) {
+          // Delete existing modules
+          const { error: deleteError } = await supabase
+            .from('client_modules')
+            .delete()
+            .eq('client_id', id);
+
+          if (deleteError) {
+            console.error('Error deleting client modules:', deleteError);
+          }
+
+          // Insert new modules
+          const moduleInserts = Object.entries(moduleAccess)
+            .filter(([_, enabled]) => enabled)
+            .map(([key, _]) => ({
+              client_id: id,
+              module_key: key,
+              enabled: true
+            }));
+
+          if (moduleInserts.length > 0) {
+            const { error: moduleError } = await supabase
+              .from('client_modules')
+              .insert(moduleInserts);
+
+            if (moduleError) {
+              console.error('Error inserting client modules:', moduleError);
+            }
+          }
+        }
+
+        return new Response(JSON.stringify({ 
+          client: {
+            ...updatedClient,
+            moduleAccess
+          } 
+        }), {
           headers: { 'Content-Type': 'application/json', ...corsHeaders },
           status: 200,
         });
       } else if (operation === 'delete') {
-        // Delete a client
+        // Delete a client and its module access
         const { id } = requestData;
 
         if (!id) {
@@ -126,6 +253,17 @@ serve(async (req) => {
           });
         }
 
+        // Delete client modules first (due to foreign key constraints)
+        const { error: moduleError } = await supabase
+          .from('client_modules')
+          .delete()
+          .eq('client_id', id);
+
+        if (moduleError) {
+          console.error('Error deleting client modules:', moduleError);
+        }
+
+        // Delete client
         const { error } = await supabase
           .from('clients')
           .delete()

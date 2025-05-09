@@ -33,15 +33,44 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     const fetchClients = async () => {
       setLoading(true);
       try {
-        const { data, error } = await supabase
+        // Get all clients
+        const { data: clientsData, error: clientsError } = await supabase
           .from('clients')
           .select('*');
 
-        if (error) {
-          throw error;
+        if (clientsError) {
+          throw clientsError;
         }
 
-        const mappedClients = data.map(mapDbClientToClient);
+        // Fetch module access for all clients
+        const { data: modulesData, error: modulesError } = await supabase
+          .from('client_modules')
+          .select('*');
+
+        if (modulesError) {
+          throw modulesError;
+        }
+
+        // Group module access by client id
+        const modulesByClient: Record<string, any[]> = {};
+        modulesData?.forEach(module => {
+          if (!modulesByClient[module.client_id]) {
+            modulesByClient[module.client_id] = [];
+          }
+          modulesByClient[module.client_id].push(module);
+        });
+
+        // Map clients and include their module access
+        const mappedClients = clientsData.map(dbClient => {
+          const clientModules = modulesByClient[dbClient.id] || [];
+          const moduleAccess = mapModulesToPermissions(clientModules);
+          
+          return mapDbClientToClient({
+            ...dbClient,
+            moduleAccess
+          });
+        });
+
         setClients(mappedClients);
         
         // Set default client if there is at least one
@@ -59,23 +88,104 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     fetchClients();
   }, []);
 
+  const mapModulesToPermissions = (clientModules: any[]): Partial<ModulePermissions> => {
+    const permissions: Partial<ModulePermissions> = {
+      superAdmin: false,
+      incidentReporting: false,
+      incidentAdmin: false,
+      assessmentUser: false,
+      assessmentsAdmin: false,
+      employeeVerificationAdmin: false,
+      grievancesAdmin: false,
+      transportSafetyAdmin: false,
+      eduSafeResourceAccess: false
+    };
+
+    clientModules.forEach(module => {
+      if (module.enabled) {
+        // Map module_key to the appropriate permission
+        switch (module.module_key) {
+          case 'superAdmin':
+            permissions.superAdmin = true;
+            break;
+          case 'incidentReporting':
+            permissions.incidentReporting = true;
+            break;
+          case 'incidentAdmin':
+            permissions.incidentAdmin = true;
+            break;
+          case 'assessmentUser':
+            permissions.assessmentUser = true;
+            break;
+          case 'assessmentsAdmin':
+            permissions.assessmentsAdmin = true;
+            break;
+          case 'employeeVerificationAdmin':
+            permissions.employeeVerificationAdmin = true;
+            break;
+          case 'grievancesAdmin':
+            permissions.grievancesAdmin = true;
+            break;
+          case 'transportSafetyAdmin':
+            permissions.transportSafetyAdmin = true;
+            break;
+          case 'eduSafeResourceAccess':
+            permissions.eduSafeResourceAccess = true;
+            break;
+        }
+      }
+    });
+
+    return permissions;
+  };
+
   // Add a new client
   const addClient = async (clientData: Omit<Client, 'id' | 'creationDate'>) => {
     setLoading(true);
     try {
+      // First save the client data
       const dbClient = prepareClientForDb(clientData as Client);
       
       const { data, error } = await supabase
         .from('clients')
         .insert([dbClient])
-        .select();
+        .select('*')
+        .single();
 
       if (error) {
         throw error;
       }
 
-      if (data && data[0]) {
-        const newClient = mapDbClientToClient(data[0]);
+      if (data) {
+        // Now save the module access to client_modules table
+        const moduleEntries = Object.entries(clientData.moduleAccess || {});
+        
+        // Prepare module entries for insertion
+        const moduleInserts = moduleEntries
+          .filter(([_, enabled]) => enabled) // Only include enabled modules
+          .map(([key, _]) => ({
+            client_id: data.id,
+            module_key: key,
+            enabled: true
+          }));
+        
+        if (moduleInserts.length > 0) {
+          const { error: moduleError } = await supabase
+            .from('client_modules')
+            .insert(moduleInserts);
+          
+          if (moduleError) {
+            console.error('Error saving client modules:', moduleError);
+            toast.error('Client created but module access could not be saved');
+          }
+        }
+
+        // Add the new client to state
+        const newClient = mapDbClientToClient({
+          ...data,
+          moduleAccess: clientData.moduleAccess
+        });
+        
         setClients(prev => [...prev, newClient]);
         toast.success('Client added successfully');
       }
@@ -100,6 +210,7 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       const updatedClient = { ...existingClient, ...updates };
       const dbUpdates = prepareClientForDb(updatedClient);
       
+      // Update client record
       const { error } = await supabase
         .from('clients')
         .update(dbUpdates)
@@ -109,7 +220,44 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         throw error;
       }
 
-      setClients(prev => prev.map(c => c.id === id ? updatedClient : c));
+      // Handle module access updates
+      if (updates.moduleAccess) {
+        // Delete existing module entries
+        const { error: deleteError } = await supabase
+          .from('client_modules')
+          .delete()
+          .eq('client_id', id);
+        
+        if (deleteError) {
+          console.error('Error deleting existing client modules:', deleteError);
+        }
+        
+        // Add new module entries
+        const moduleEntries = Object.entries(updates.moduleAccess);
+        
+        // Prepare module entries for insertion
+        const moduleInserts = moduleEntries
+          .filter(([_, enabled]) => enabled) // Only include enabled modules
+          .map(([key, _]) => ({
+            client_id: id,
+            module_key: key,
+            enabled: true
+          }));
+        
+        if (moduleInserts.length > 0) {
+          const { error: moduleError } = await supabase
+            .from('client_modules')
+            .insert(moduleInserts);
+          
+          if (moduleError) {
+            console.error('Error saving client modules:', moduleError);
+            toast.error('Client updated but module access could not be updated');
+          }
+        }
+      }
+
+      // Update client in state
+      setClients(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
       toast.success('Client updated successfully');
     } catch (error) {
       console.error('Error updating client:', error);
@@ -123,6 +271,17 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const deleteClient = async (id: string) => {
     setLoading(true);
     try {
+      // Delete from client_modules first (foreign key constraint)
+      const { error: moduleError } = await supabase
+        .from('client_modules')
+        .delete()
+        .eq('client_id', id);
+      
+      if (moduleError) {
+        console.error('Error deleting client modules:', moduleError);
+      }
+
+      // Then delete the client
       const { error } = await supabase
         .from('clients')
         .delete()

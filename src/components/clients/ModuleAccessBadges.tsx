@@ -8,6 +8,14 @@ interface ModuleAccessBadgesProps {
 }
 
 const ModuleAccessBadges = ({ moduleAccess }: ModuleAccessBadgesProps) => {
+  // Count enabled modules
+  const enabledModulesCount = Object.values(moduleAccess || {}).filter(Boolean).length;
+  
+  // If no modules are enabled, show a placeholder
+  if (!moduleAccess || enabledModulesCount === 0) {
+    return <span className="text-gray-500 text-sm">No modules assigned</span>;
+  }
+  
   return (
     <div className="flex flex-wrap gap-1">
       {moduleAccess?.superAdmin && (
