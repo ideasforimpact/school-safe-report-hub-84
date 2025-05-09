@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -50,6 +51,7 @@ const EmployeeManagement = () => {
   const handleImportEmployees = async (file: File) => {
     try {
       await processEmployeeExcel(file);
+      toast.success("Employees imported successfully");
     } catch (error) {
       console.error("Import process failed:", error);
       toast.error("Failed to process employee import");
@@ -72,10 +74,10 @@ const EmployeeManagement = () => {
             <Button 
               variant="outline" 
               onClick={() => setIsImportDialogOpen(true)}
-              className="gap-2"
+              className="flex items-center gap-2"
             >
               <FileUp className="h-4 w-4" />
-              Import Employees
+              <span>Import Employees</span>
             </Button>
             <Button onClick={() => setIsAddDialogOpen(true)}>
               <UserPlus className="h-4 w-4 mr-2" />
