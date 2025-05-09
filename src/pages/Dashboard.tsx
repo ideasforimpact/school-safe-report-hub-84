@@ -20,6 +20,12 @@ const Dashboard = () => {
   // Calculate summary statistics
   const openIncidents = incidents.filter(inc => inc.status === 'Open').length;
   
+  // Calculate the change in open incidents (mock data for demo)
+  const lastWeekOpenIncidents = Math.round(openIncidents * 0.85); // Mock data
+  const openIncidentsChange = lastWeekOpenIncidents > 0 
+    ? Math.round(((openIncidents - lastWeekOpenIncidents) / lastWeekOpenIncidents) * 100)
+    : 0;
+  
   // Current month incidents
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
@@ -55,7 +61,12 @@ const Dashboard = () => {
         </div>
 
         {/* Integrated Dashboard Section with combined metrics */}
-        <IntegratedDashboardSection />
+        <IntegratedDashboardSection 
+          openIncidentsData={{
+            count: openIncidents,
+            change: openIncidentsChange
+          }}
+        />
         
         {/* Traditional SummaryCards as a fallback or additional view */}
         <div className="border-t border-gray-200 pt-6">

@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { AlertTriangle, FileCheck, AlertCircle, FileText } from 'lucide-react';
 
 interface SafetyModuleSummaryCardsProps {
-  criticalItems: {
+  openIncidents: {
     count: number;
     change: number;
   };
@@ -25,7 +25,7 @@ interface SafetyModuleSummaryCardsProps {
 }
 
 const SafetyModuleSummaryCards: React.FC<SafetyModuleSummaryCardsProps> = ({
-  criticalItems,
+  openIncidents,
   verificationStatus,
   assessmentPerformance,
   safetyResources
@@ -36,11 +36,11 @@ const SafetyModuleSummaryCards: React.FC<SafetyModuleSummaryCardsProps> = ({
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-      {/* Critical Items Card */}
+      {/* Open Incidents Card */}
       <Card className="border-none shadow-card hover:shadow-card-hover transition-shadow">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base md:text-lg font-medium">Critical Items</CardTitle>
+            <CardTitle className="text-base md:text-lg font-medium">Open Incidents</CardTitle>
             <div className="bg-red-100 h-8 w-8 md:h-10 md:w-10 rounded-full flex items-center justify-center">
               <AlertTriangle className="h-4 w-4 md:h-5 md:w-5 text-red-600" />
             </div>
@@ -48,10 +48,10 @@ const SafetyModuleSummaryCards: React.FC<SafetyModuleSummaryCardsProps> = ({
           <CardDescription>Require attention</CardDescription>
         </CardHeader>
         <CardContent>
-          <p className="text-2xl md:text-3xl font-semibold text-primary-700">{criticalItems.count}</p>
+          <p className="text-2xl md:text-3xl font-semibold text-primary-700">{openIncidents.count}</p>
           <div className="flex items-center gap-2 mt-2">
-            <span className={`text-xs ${criticalItems.change > 0 ? 'text-red-600' : 'text-green-600'}`}>
-              {criticalItems.change > 0 ? '+' : ''}{criticalItems.change}%
+            <span className={`text-xs ${openIncidents.change > 0 ? 'text-red-600' : 'text-green-600'}`}>
+              {openIncidents.change > 0 ? '+' : ''}{openIncidents.change}%
             </span>
             <span className="text-xs text-gray-500">from last week</span>
           </div>
