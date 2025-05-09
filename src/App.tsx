@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
 import { AuthProvider } from '@/contexts/auth/AuthContext';
 import { ClientProvider } from '@/contexts/ClientContext';
@@ -19,21 +19,19 @@ function App() {
     <ClientProvider>
       <AuthProvider>
         <EmployeeProvider>
-          <Router>
-            <Routes>
-              {/* Public routes */}
-              <Route path="/login" element={<Login />} />
+          <Routes>
+            {/* Public routes */}
+            <Route path="/login" element={<Login />} />
 
-              {/* Protected routes */}
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/users" element={<UserManagement />} />
-              <Route path="/clients" element={<ClientManagement />} />
-              <Route path="/employees" element={<EmployeeManagement />} />
+            {/* Protected routes */}
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/users" element={<UserManagement />} />
+            <Route path="/clients" element={<ClientManagement />} />
+            <Route path="/employees" element={<EmployeeManagement />} />
 
-              {/* 404 route */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Router>
+            {/* 404 route */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
           <Toaster position="top-right" />
         </EmployeeProvider>
       </AuthProvider>
