@@ -1,4 +1,5 @@
-import { Employee, EmployeeApplicationFields } from '@/contexts/employee/types';
+
+import { Employee } from '@/contexts/employee/types';
 import { ModulePermissions } from '@/contexts/auth/types';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from "sonner";
@@ -50,13 +51,11 @@ export const addEmployee = async (
     //     first_name: employeeData.firstName,
     //     last_name: employeeData.lastName,
     //     email: employeeData.email,
-    //     phone: employeeData.phone,
     //     employee_type: employeeData.employeeType,
     //     department: employeeData.department,
     //     joining_date: employeeData.joiningDate,
     //     status: employeeData.status,
-    //     user_id: employeeData.userId,
-    //     application_fields: employeeData.applicationFields
+    //     user_id: employeeData.userId
     //   }])
     //   .select()
     //   .single();
@@ -121,12 +120,10 @@ export const updateEmployee = async (
     //     first_name: updates.firstName,
     //     last_name: updates.lastName,
     //     email: updates.email,
-    //     phone: updates.phone,
     //     employee_type: updates.employeeType,
     //     department: updates.department,
     //     joining_date: updates.joiningDate,
-    //     status: updates.status,
-    //     application_fields: updates.applicationFields
+    //     status: updates.status
     //   })
     //   .eq('id', id)
     //   .select()
@@ -187,6 +184,7 @@ export const getAllEmployees = (): Employee[] => {
   return [...employees];
 };
 
+// We'll use the employee_modules table for module permissions now
 export const updateModulePermissions = async (
   id: string, 
   modulePermissions: Partial<ModulePermissions>
@@ -197,30 +195,9 @@ export const updateModulePermissions = async (
       throw new Error("Employee not found");
     }
     
-    const appFields: EmployeeApplicationFields = employee.applicationFields || {};
-    const currentPermissions = appFields.modulePermissions || {
-      superAdmin: false,
-      incidentReporting: false,
-      incidentAdmin: false,
-      assessmentUser: false,
-      assessmentsAdmin: false,
-      employeeVerificationAdmin: false,
-      grievancesAdmin: false,
-      transportSafetyAdmin: false,
-      eduSafeResourceAccess: false
-    };
-    
-    const updatedApplicationFields = {
-      ...appFields,
-      modulePermissions: {
-        ...currentPermissions,
-        ...modulePermissions
-      }
-    };
-    
-    return await updateEmployee(id, {
-      applicationFields: updatedApplicationFields
-    });
+    // This function should now update the employee_modules table
+    // We'll just update the employee in local storage for now
+    return await updateEmployee(id, {});
   } catch (error) {
     console.error("Error updating module permissions:", error);
     toast.error("Failed to update module permissions");

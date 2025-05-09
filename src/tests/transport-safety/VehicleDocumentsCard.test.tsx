@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { render } from '@testing-library/react';
-import VehicleDocumentsCard from '../../components/transport-safety/VehicleDocumentsCard';
+import { VehicleDocumentsCard } from '../../components/transport-safety/DocumentsCard';
 
 test('renders vehicle documents card', () => {
   const documents = [

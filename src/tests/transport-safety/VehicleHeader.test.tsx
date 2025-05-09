@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { render } from '@testing-library/react';
-import VehicleHeader from '../../components/transport-safety/VehicleHeader';
+import { VehicleHeader } from '../../components/transport-safety/Header';
 
 test('renders vehicle header', () => {
   const vehicle = {
