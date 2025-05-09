@@ -188,6 +188,39 @@ export type Database = {
         }
         Relationships: []
       }
+      students: {
+        Row: {
+          campus: string
+          created_at: string
+          grade: string
+          id: string
+          name: string
+          section: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          campus: string
+          created_at?: string
+          grade: string
+          id?: string
+          name: string
+          section: string
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          campus?: string
+          created_at?: string
+          grade?: string
+          id?: string
+          name?: string
+          section?: string
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

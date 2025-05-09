@@ -22,10 +22,10 @@ const AddStudentDialog = ({ open, onOpenChange }: AddStudentDialogProps) => {
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const { addStudent } = useStudents();
 
-  const handleSubmit = (data: any) => {
+  const handleSubmit = async (data: any) => {
     setIsSubmitting(true);
     try {
-      addStudent(data);
+      await addStudent(data);
       toast.success('Student added successfully');
       onOpenChange(false);
     } catch (error) {
