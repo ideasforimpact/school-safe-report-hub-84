@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Client, useClient, InstitutionType } from '@/contexts/ClientContext';
 import { OAuthProviderName } from '@/utils/authProviders';
@@ -84,7 +83,7 @@ export const useClientManagement = () => {
       },
       active: client.active,
       logo: client.logo || '',
-      institutionType: client.institutionType || 'Other',
+      institutionType: (client.institutionType as InstitutionType) || 'Other',
       allowedDomains: client.allowedDomains || [],
       authProviders: {
         google: client.authProviders?.google ?? false,

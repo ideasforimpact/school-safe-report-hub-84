@@ -18,8 +18,8 @@ export interface ClientContextType {
   deleteClient: (id: string) => Promise<void>;
 }
 
-// Re-export Client type for use in other files
-export { Client };
+// Re-export Client type for use in other files - using the proper syntax for isolated modules
+export type { Client };
 
 const ClientContext = createContext<ClientContextType | undefined>(undefined);
 
