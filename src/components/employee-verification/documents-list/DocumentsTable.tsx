@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Eye, Download, ShieldCheck } from 'lucide-react';
+import { Eye, Download, ShieldCheck, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatDistanceToNow } from 'date-fns';
 import { capitalize } from 'lodash';
@@ -42,6 +42,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
             <TableHead>Document Number</TableHead>
             <TableHead>Uploaded</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead>Verification Method</TableHead>
             <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -55,6 +56,23 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
               </TableCell>
               <TableCell>
                 <VerificationStatusBadge status={document.verificationStatus} />
+              </TableCell>
+              <TableCell>
+                {document.verificationStatus === 'verified' && document.verificationMethod ? (
+                  <span className={`inline-flex items-center text-xs font-medium px-2 py-1 rounded-full ${
+                    document.verificationMethod === 'api' 
+                      ? 'bg-blue-50 text-blue-800' 
+                      : 'bg-purple-50 text-purple-800'
+                  }`}>
+                    {document.verificationMethod === 'api' ? (
+                      <><ShieldCheck className="h-3.5 w-3.5 mr-1" /> API</>
+                    ) : (
+                      <><Shield className="h-3.5 w-3.5 mr-1" /> Manual</>
+                    )}
+                  </span>
+                ) : (
+                  <span className="text-gray-500 text-sm">-</span>
+                )}
               </TableCell>
               <TableCell>
                 <div className="flex items-center space-x-2">
