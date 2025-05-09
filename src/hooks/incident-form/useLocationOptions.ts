@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useIncidents } from '@/contexts/incident/IncidentContext';
 
 interface LocationOption {
@@ -12,8 +12,8 @@ export function useLocationOptions(locationId: string) {
   const [locationOptions, setLocationOptions] = useState<LocationOption[]>([]);
   const [facilityOptions, setFacilityOptions] = useState<LocationOption[]>([]);
 
+  // Transform locations to options format
   useEffect(() => {
-    // Transform locations data to options format
     const options = locations.map(location => ({
       value: location.id,
       label: location.name
@@ -22,26 +22,14 @@ export function useLocationOptions(locationId: string) {
     setLocationOptions(options);
   }, [locations]);
 
+  // Update facility options when location changes
   useEffect(() => {
     if (!locationId) {
       setFacilityOptions([]);
       return;
     }
 
-    // Filter facilities that match the selected location
-    const filteredFacilities = facilities.filter(facility => {
-      // Check if the facility has a locationId property or is related to this location
-      if ('locationId' in facility) {
-        return facility.locationId === locationId;
-      } else if ('location' in facility && facility.location) {
-        return facility.location === locationId;
-      }
-      // If no location info, assume standalone facility
-      return true;
-    });
-
-    // Transform filtered facilities to options format
-    const options = filteredFacilities.map(facility => ({
+    const options = facilities.map(facility => ({
       value: facility.id,
       label: facility.name
     }));

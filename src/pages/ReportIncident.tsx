@@ -14,14 +14,9 @@ import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { formatUserFullName } from '@/utils/userUtils';
-import { IncidentType } from '@/types/incident';
+import { IncidentType, IncidentCategory } from '@/types/incident';
 import {
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
   FormLabel,
-  FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,7 +35,7 @@ const ReportIncident = () => {
   const navigate = useNavigate();
   const { addIncident } = useIncidents();
   const { user } = useAuth();
-  const { currentClient } = useClient();
+  const { client } = useClient();
   const { formData, setFormData, handleChange, handleSelectChange, handleDateTimeChange } = useIncidentFormData(user || undefined);
   const { categoryOptions, subcategoryOptions } = useCategoryOptions();
   const { locationOptions, facilityOptions } = useLocationOptions(formData.locationId);
@@ -66,6 +61,9 @@ const ReportIncident = () => {
     setIsSubmitting(true);
     
     try {
+      // Get category label (which should be an IncidentCategory)
+      const categoryLabel = categoryOptions.find((cat) => cat.value === formData.categoryId)?.label || '';
+      
       // Format data for submission
       const incident = {
         title: `${formData.type}: ${formData.description.substring(0, 50)}${formData.description.length > 50 ? '...' : ''}`,
@@ -78,7 +76,7 @@ const ReportIncident = () => {
         location: formData.location,
         locationId: formData.locationId,
         facilityId: formData.facilityId,
-        category: categoryOptions.find((cat) => cat.value === formData.categoryId)?.label || '',
+        category: categoryLabel as IncidentCategory, // Cast to IncidentCategory
         categoryId: formData.categoryId,
         subcategory: formData.subcategory,
         priority: formData.priority,
@@ -88,7 +86,7 @@ const ReportIncident = () => {
           name: user ? formatUserFullName(user) : ''
         },
         assignedToId: '',
-        clientId: currentClient?.id || '',
+        clientId: client?.id || '',
         peopleInvolved: []
       };
       
