@@ -1,9 +1,14 @@
 
 export interface ModulePermissions {
+  superAdmin: boolean;
   incidentReporting: boolean;
-  allIncidents: boolean;
-  insights: boolean;
-  benchmarking: boolean;
+  incidentAdmin: boolean;
+  assessmentUser: boolean;
+  assessmentsAdmin: boolean;
+  employeeVerificationAdmin: boolean;
+  grievancesAdmin: boolean;
+  transportSafetyAdmin: boolean;
+  eduSafeResourceAccess: boolean;
 }
 
 export type UserRole = 'admin' | 'user' | 'saas_owner' | 'reporter';
