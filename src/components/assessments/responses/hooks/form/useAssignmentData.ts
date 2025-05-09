@@ -5,7 +5,8 @@ import { useAssessment } from '@/contexts/assessment/AssessmentContext';
 import { useAuth } from '@/contexts/auth/AuthContext';
 
 export const useAssignmentData = () => {
-  const { assignmentId } = useParams();
+  const params = useParams<{ assignmentId: string }>();
+  const assignmentId = params.assignmentId;
   const { templates, assignments, responses } = useAssessment();
   const { user } = useAuth();
   

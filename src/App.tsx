@@ -44,6 +44,7 @@ import Support from './pages/Support';
 import Blog from './pages/Blog';
 import Pricing from './pages/Pricing';
 import NewsPage from './pages/NewsPage';
+import AssessmentResponsePage from './pages/AssessmentResponsePage';
 
 function App() {
   return (
@@ -78,6 +79,7 @@ function App() {
           
           {/* Assessment Routes */}
           <Route path="/assessments/*" element={<AssessmentsPage />} />
+          <Route path="/assessments/respond/:assignmentId" element={<AssessmentResponsePage />} />
           
           {/* Grievances Routes */}
           <Route path="/grievances" element={<GrievancesPage />} />

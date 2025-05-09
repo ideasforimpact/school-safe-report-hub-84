@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
 import { TabsContent } from '@/components/ui/tabs';
-import AssessmentResponseForm from '@/components/assessments/responses/AssessmentResponseForm';
 import AssessmentsHeader from '@/components/assessments/header/AssessmentsHeader';
 import AssessmentTabs from '@/components/assessments/tabs/AssessmentTabs';
 import OverviewTab from '@/components/assessments/tabs/OverviewTab';
@@ -23,18 +22,6 @@ const AssessmentsPage = () => {
   
   console.log("Current location:", location.pathname);
   
-  // Check if the current route is for responding to an assessment
-  const isResponseRoute = location.pathname.includes('/respond/');
-  
-  // If it's a response route, render the response form directly
-  if (isResponseRoute) {
-    return (
-      <Layout>
-        <AssessmentResponseForm />
-      </Layout>
-    );
-  }
-
   // Handle template creation button click
   const handleCreateTemplate = () => {
     console.log("Create template button clicked");
