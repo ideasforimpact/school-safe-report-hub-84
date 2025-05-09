@@ -45,14 +45,16 @@ const IncidentsList = () => {
         <IncidentsHeader />
         
         <Card>
-          <CardContent className="p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-semibold">Incident Management</h2>
-              {activeFilterCount > 0 && (
-                <span className="text-sm font-medium py-1 px-3 rounded-full bg-blue-100 text-blue-700">
-                  {activeFilterCount} filters applied
-                </span>
-              )}
+          <CardContent className="p-0">
+            <div className="px-6 py-4 border-b border-gray-100">
+              <div className="flex justify-between items-center">
+                <h2 className="text-xl font-semibold">Incident Management</h2>
+                {activeFilterCount > 0 && (
+                  <span className="text-sm font-medium py-1 px-3 rounded-full bg-blue-100 text-blue-700">
+                    {activeFilterCount} filters applied
+                  </span>
+                )}
+              </div>
             </div>
 
             <IncidentFilters 
@@ -68,12 +70,12 @@ const IncidentsList = () => {
             />
 
             {isLoading ? (
-              <div className="flex justify-center items-center py-20">
+              <div className="flex justify-center items-center py-20 px-6">
                 <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
                 <span className="ml-2 text-gray-500">Loading incidents...</span>
               </div>
             ) : (
-              <div className="mt-6">
+              <div className="px-6 pt-4 pb-6">
                 <IncidentsTable incidents={filteredIncidents} />
               </div>
             )}

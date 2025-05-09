@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Search, Calendar, ChevronDown, ChevronUp, Filter } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -53,8 +52,8 @@ const IncidentFilters = ({
   ].filter(Boolean).length;
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <div className="space-y-4">
+    <div className="bg-white rounded-lg shadow px-0 py-6">
+      <div className="space-y-4 px-6">
         <div className="flex flex-row items-center justify-between">
           <h2 className="font-semibold text-lg">Filters</h2>
           {activeAdvancedFilterCount > 0 && (
