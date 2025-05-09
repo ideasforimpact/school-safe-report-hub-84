@@ -3,7 +3,6 @@ import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
 import { Employee } from '@/contexts/employee/types';
 import { ModulePermissions } from '@/contexts/auth/types';
-import { Json } from '@/integrations/supabase/types';
 import { mapDbRecordToEmployee } from './utils/employeeMappers';
 
 // Get module permissions for an employee
@@ -111,68 +110,43 @@ export const updateModulePermissionsInApi = async (
       throw fetchError;
     }
 
-    // Update application fields with the new module permissions for backward compatibility
-    const applicationFields = employee.application_fields || {};
-    
-    // Need to safely extract modulePermissions from applicationFields which could be various JSON types
-    let currentModulePermissions: ModulePermissions = {
-      superAdmin: false,
-      incidentReporting: false,
-      incidentAdmin: false,
-      assessmentUser: false,
-      assessmentsAdmin: false,
-      employeeVerificationAdmin: false,
-      grievancesAdmin: false,
-      transportSafetyAdmin: false,
-      eduSafeResourceAccess: false
-    };
+    // Convert the employee to our application model
+    const employeeModel = mapDbRecordToEmployee(employee);
 
-    // Only try to access modulePermissions if applicationFields is an object
-    if (applicationFields && typeof applicationFields === 'object' && !Array.isArray(applicationFields)) {
-      // Safe type assertion since we've verified it's an object
-      const appFields = applicationFields as Record<string, any>;
-      if (appFields.modulePermissions && typeof appFields.modulePermissions === 'object') {
-        currentModulePermissions = {
-          ...currentModulePermissions,
-          ...appFields.modulePermissions
-        };
+    // We'll now use the employee_modules table directly
+    // For each module permission, add or remove the corresponding entry
+    for (const [moduleName, isEnabled] of Object.entries(modulePermissions)) {
+      // Get the module ID for this permission
+      const { data: moduleData, error: moduleError } = await supabase
+        .from('modules')
+        .select('id')
+        .eq('key', moduleName)
+        .single();
+
+      if (moduleError) {
+        console.error(`Error finding module with key ${moduleName}:`, moduleError);
+        continue; // Skip this module and continue with others
       }
-    }
 
-    // Create a new application fields object instead of using spread on potentially non-object applicationFields
-    let updatedAppFields: Record<string, any> = {};
-    
-    // Copy existing application fields if it's an object
-    if (applicationFields && typeof applicationFields === 'object' && !Array.isArray(applicationFields)) {
-      updatedAppFields = { ...applicationFields as Record<string, any> };
-    }
-    
-    // Add the module permissions to the object
-    updatedAppFields.modulePermissions = {
-      ...currentModulePermissions,
-      ...modulePermissions
-    };
+      const moduleId = moduleData.id;
 
-    // Update the employee with the new application fields
-    const { data, error } = await supabase
-      .from('employees')
-      .update({
-        application_fields: updatedAppFields as unknown as Json
-      })
-      .eq('id', id)
-      .select('*')
-      .single();
-
-    if (error) {
-      console.error("Error updating module permissions:", error);
-      toast.error("Failed to update module permissions");
-      throw error;
+      if (isEnabled) {
+        // Add the permission
+        await addModulePermissionToApi(id, moduleId).catch(err => {
+          console.error(`Error adding module permission for ${moduleName}:`, err);
+        });
+      } else {
+        // Remove the permission
+        await removeModulePermissionFromApi(id, moduleId).catch(err => {
+          console.error(`Error removing module permission for ${moduleName}:`, err);
+        });
+      }
     }
 
     toast.success("Module permissions updated successfully");
     
-    // Convert the response back to our Employee type
-    return mapDbRecordToEmployee(data);
+    // Return the updated employee
+    return employeeModel;
   } catch (error) {
     console.error("Error in updateModulePermissionsInApi:", error);
     toast.error("Failed to update module permissions");

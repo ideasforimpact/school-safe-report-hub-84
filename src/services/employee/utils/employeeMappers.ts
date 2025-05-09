@@ -14,7 +14,6 @@ export const mapDbRecordToEmployee = (record: any): Employee => {
     department: record.department as DepartmentType,
     joiningDate: record.joining_date,
     status: record.status as EmploymentStatus,
-    applicationFields: {}, // Default empty object as we no longer store this in DB
     createdAt: record.created_at,
     updatedAt: record.updated_at
   };

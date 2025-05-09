@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -33,31 +34,10 @@ const EmployeeForm = ({ formData, setFormData, isEditMode = false }: EmployeeFor
   };
   
   const handleModulePermissionChange = (module: string, value: boolean) => {
-    // Create default modulePermissions if none exist
-    const currentPermissions = formData.applicationFields?.modulePermissions || {
-      superAdmin: false,
-      incidentReporting: false,
-      incidentAdmin: false,
-      assessmentUser: false,
-      assessmentsAdmin: false,
-      employeeVerificationAdmin: false,
-      grievancesAdmin: false,
-      transportSafetyAdmin: false,
-      eduSafeResourceAccess: false
-    };
-    
-    // Update the specified permission
-    const updatedPermissions = {
-      ...currentPermissions,
-      [module]: value
-    } as ModulePermissions;
-    
+    // This function now only needs to update the form state
+    // Module permissions are managed separately through the employee_modules table
     setFormData({
       ...formData,
-      applicationFields: {
-        ...(formData.applicationFields || {}),
-        modulePermissions: updatedPermissions
-      }
     });
   };
 
@@ -108,16 +88,6 @@ const EmployeeForm = ({ formData, setFormData, isEditMode = false }: EmployeeFor
             placeholder="Enter last name"
           />
         </div>
-      </div>
-
-      <div className="space-y-2">
-        <label htmlFor="phone">Phone Number</label>
-        <Input
-          id="phone"
-          value={formData.phone || ''}
-          onChange={(e) => setFormData({...formData, phone: e.target.value})}
-          placeholder="Enter phone number"
-        />
       </div>
         
       {/* Employment Details Section */}
@@ -198,7 +168,7 @@ const EmployeeForm = ({ formData, setFormData, isEditMode = false }: EmployeeFor
 
       {/* Module Permissions Section */}
       <EmployeeModulePermissions 
-        permissions={formData.applicationFields?.modulePermissions} 
+        permissions={formData.modulePermissions} 
         onPermissionChange={handleModulePermissionChange}
         isEditMode={isEditMode}
       />

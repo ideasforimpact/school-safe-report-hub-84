@@ -7,67 +7,6 @@ export type EmployeeGrade = 'junior' | 'mid' | 'senior' | 'lead' | 'manager' | '
 export type EmployeeType = 'permanent' | 'contract' | 'part_time' | 'consultant' | 'intern';
 export type DepartmentType = 'admin' | 'teaching' | 'security' | 'maintenance' | 'transport' | 'management' | 'it' | 'hr' | 'finance';
 
-// Application fields for storing additional employee data
-export interface EmployeeApplicationFields {
-  // Personal details
-  emergencyContact?: string;
-  emergencyPhone?: string;
-  bloodGroup?: string;
-  maritalStatus?: string;
-  
-  // Employment details
-  position?: string;
-  grade?: EmployeeGrade;
-  reportingManager?: string;
-  workLocation?: string;
-  
-  // Education & Certifications
-  education?: {
-    degree: string;
-    institution: string;
-    year: string;
-  }[];
-  certifications?: {
-    name: string;
-    issuingBody: string;
-    year: string;
-  }[];
-  
-  // System access and Module permissions (now moved to employee_modules table)
-  modulePermissions?: ModulePermissions;
-  
-  // Benefits & Compensation
-  salaryBand?: string;
-  benefits?: string[];
-  
-  // Documents
-  documents?: {
-    type: string;
-    fileId: string;
-    uploadDate: string;
-    verificationStatus: 'pending' | 'verified' | 'rejected';
-  }[];
-  
-  // Performance & Reviews
-  performanceReviews?: {
-    reviewId: string;
-    date: string;
-    rating: number;
-    comments: string;
-  }[];
-  
-  // Training
-  trainings?: {
-    trainingId: string;
-    name: string;
-    completionDate: string;
-    score?: number;
-  }[];
-  
-  // Additional fields
-  customFields?: Record<string, any>;
-}
-
 export interface Employee {
   id: string;
   userId?: string; // Link to auth user if applicable
@@ -82,8 +21,8 @@ export interface Employee {
   joiningDate: string;
   status: EmploymentStatus;
   
-  // Application fields for flexible storage (now stored separately)
-  applicationFields?: EmployeeApplicationFields;
+  // Module permissions (now stored in employee_modules table but needed for UI)
+  modulePermissions?: ModulePermissions;
   
   // Timestamps
   createdAt: string;

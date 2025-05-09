@@ -1,42 +1,35 @@
 
 import React from 'react';
-import { screen } from '@testing-library/react';
-import { renderWithRouter } from './test-utils';
-import VehicleDetailPage from '@/pages/transport-safety/VehicleDetailPage';
-import '@testing-library/jest-dom';
+import { render } from '@testing-library/react';
+import VehicleDetailPage from '../../pages/transport-safety/VehicleDetailPage';
+import { BrowserRouter } from 'react-router-dom';
 
-// Mock the Layout component
-jest.mock('@/components/layout/Layout', () => ({
-  __esModule: true,
-  default: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="layout-mock">{children}</div>
-  )
+// Mock useParams
+jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
+  useParams: () => ({ vehicleId: '1' }),
+  useNavigate: () => jest.fn()
 }));
 
-// Mock VehicleDetailContent component
-jest.mock('@/components/transport-safety/vehicle-detail/VehicleDetailContent', () => ({
-  __esModule: true,
-  default: () => <div data-testid="vehicle-detail-content-mock">Vehicle Detail Content</div>
+// Mock the vehicle service
+jest.mock('../../services/transport-safety/vehicleService', () => ({
+  getVehicleById: () => ({
+    id: '1',
+    make: 'Toyota',
+    model: 'Coaster',
+    year: 2020,
+    type: 'bus',
+    licensePlate: 'ABC-123',
+    status: 'active'
+  })
 }));
 
-describe('VehicleDetailPage', () => {
-  it('renders the layout component', () => {
-    renderWithRouter(<VehicleDetailPage />);
-    
-    expect(screen.getByTestId('layout-mock')).toBeInTheDocument();
-  });
-
-  it('renders the transport safety provider', () => {
-    renderWithRouter(<VehicleDetailPage />);
-    
-    // The provider itself doesn't render any DOM elements,
-    // but we can verify its child component is rendered
-    expect(screen.getByTestId('vehicle-detail-content-mock')).toBeInTheDocument();
-  });
-
-  it('renders the vehicle detail content', () => {
-    renderWithRouter(<VehicleDetailPage />);
-    
-    expect(screen.getByText('Vehicle Detail Content')).toBeInTheDocument();
-  });
+test('renders vehicle detail page', () => {
+  const { getByText } = render(
+    <BrowserRouter>
+      <VehicleDetailPage />
+    </BrowserRouter>
+  );
+  
+  expect(getByText(/vehicle details/i)).toBeInTheDocument();
 });

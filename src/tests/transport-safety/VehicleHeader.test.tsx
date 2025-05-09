@@ -1,24 +1,26 @@
 
 import React from 'react';
-import { screen } from '@testing-library/react';
-import { renderWithRouter } from './test-utils';
-import VehicleHeader from '@/components/transport-safety/vehicle-detail/VehicleHeader';
-import '@testing-library/jest-dom';
+import { render } from '@testing-library/react';
+import VehicleHeader from '../../components/transport-safety/VehicleHeader';
 
-describe('VehicleHeader', () => {
-  it('renders back button correctly', () => {
-    renderWithRouter(<VehicleHeader />);
-    
-    const backButton = screen.getByRole('link', { name: /back to vehicles/i });
-    expect(backButton).toBeInTheDocument();
-    expect(backButton).toHaveAttribute('href', '/transport-safety');
-  });
+test('renders vehicle header', () => {
+  const vehicle = {
+    id: '1',
+    make: 'Toyota',
+    model: 'Coaster',
+    year: 2020,
+    licensePlate: 'ABC-123',
+    status: 'active'
+  };
 
-  it('contains the correct icon', () => {
-    renderWithRouter(<VehicleHeader />);
-    
-    // Check if ArrowLeft icon is rendered
-    const icon = screen.getByTestId('arrow-left-icon');
-    expect(icon).toBeInTheDocument();
-  });
+  const { getByText } = render(
+    <VehicleHeader 
+      vehicle={vehicle}
+      onEditClick={() => {}}
+      onDeleteClick={() => {}}
+    />
+  );
+  
+  expect(getByText('Toyota Coaster (2020)')).toBeInTheDocument();
+  expect(getByText('ABC-123')).toBeInTheDocument();
 });

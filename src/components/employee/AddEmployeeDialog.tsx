@@ -24,24 +24,10 @@ const AddEmployeeDialog = ({ isOpen, setIsOpen, onAddEmployee }: AddEmployeeDial
     firstName: '',
     lastName: '',
     email: '',
-    phone: '',
     employeeType: 'permanent' as EmployeeType,
     department: 'admin' as DepartmentType,
     joiningDate: new Date().toISOString().split('T')[0],
     status: 'active' as EmploymentStatus,
-    applicationFields: {
-      modulePermissions: {
-        superAdmin: false,
-        incidentReporting: true,
-        incidentAdmin: false,
-        assessmentUser: true,
-        assessmentsAdmin: false,
-        employeeVerificationAdmin: false,
-        grievancesAdmin: false,
-        transportSafetyAdmin: false,
-        eduSafeResourceAccess: true
-      }
-    }
   });
 
   const resetForm = () => {
@@ -50,24 +36,10 @@ const AddEmployeeDialog = ({ isOpen, setIsOpen, onAddEmployee }: AddEmployeeDial
       firstName: '',
       lastName: '',
       email: '',
-      phone: '',
       employeeType: 'permanent',
       department: 'admin',
       joiningDate: new Date().toISOString().split('T')[0],
       status: 'active',
-      applicationFields: {
-        modulePermissions: {
-          superAdmin: false,
-          incidentReporting: true,
-          incidentAdmin: false,
-          assessmentUser: true,
-          assessmentsAdmin: false,
-          employeeVerificationAdmin: false,
-          grievancesAdmin: false,
-          transportSafetyAdmin: false,
-          eduSafeResourceAccess: true
-        }
-      }
     });
   };
 

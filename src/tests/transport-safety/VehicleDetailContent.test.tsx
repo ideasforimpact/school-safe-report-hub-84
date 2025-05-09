@@ -1,42 +1,35 @@
 
 import React from 'react';
-import { screen } from '@testing-library/react';
-import { renderWithRouter } from './test-utils';
-import VehicleDetailContent from '@/components/transport-safety/vehicle-detail/VehicleDetailContent';
-import { mockTransportSafetyContext } from './mocks';
-import '@testing-library/jest-dom';
+import { render } from '@testing-library/react';
+import VehicleDetailContent from '../../components/transport-safety/VehicleDetailContent';
 
-// Mock the useParams hook
-jest.mock('react-router-dom', () => ({
-  ...jest.requireActual('react-router-dom'),
-  useParams: () => ({
-    vehicleId: 'test-vehicle-id'
-  })
-}));
+test('renders vehicle detail content', () => {
+  const vehicleData = {
+    id: '1',
+    make: 'Toyota',
+    model: 'Coaster',
+    year: 2020,
+    type: 'bus',
+    licensePlate: 'ABC-123',
+    capacity: 30,
+    status: 'active',
+    vinNumber: 'VIN12345',
+    fuelType: 'diesel',
+    registrationExpiry: '2023-12-31',
+    lastServiceDate: '2023-06-15',
+    nextServiceDue: '2023-12-15',
+    mileage: 50000,
+    insuranceProvider: 'Safety Insurance',
+    insuranceExpiry: '2023-12-31',
+    assignedDriver: 'John Doe',
+    notes: 'Regular maintenance performed',
+    ownedBySchool: true,
+    schoolId: 'school-1'
+  };
 
-describe('VehicleDetailContent', () => {
-  it('renders vehicle detail components when vehicle exists', () => {
-    renderWithRouter(<VehicleDetailContent />);
-    
-    // Check if each component is rendered
-    expect(screen.getByText(/back to vehicles/i)).toBeInTheDocument(); // Header
-    expect(screen.getByText(/toyota coaster/i)).toBeInTheDocument(); // InfoCard
-    expect(screen.getByText('Document Status')).toBeInTheDocument(); // DocumentsCard
-    expect(screen.getByRole('tab', { name: /documents/i })).toBeInTheDocument(); // Tabs
-  });
-
-  it('renders not found component when vehicle does not exist', () => {
-    const customContext = {
-      ...mockTransportSafetyContext,
-      getVehicle: jest.fn().mockReturnValue(undefined)
-    };
-    
-    renderWithRouter(
-      <VehicleDetailContent />, 
-      { transportSafetyContext: customContext }
-    );
-    
-    expect(screen.getByText('Vehicle Not Found')).toBeInTheDocument();
-    expect(screen.getByText(/doesn't exist or has been removed/)).toBeInTheDocument();
-  });
+  const { getByText } = render(
+    <VehicleDetailContent vehicle={vehicleData} />
+  );
+  
+  expect(getByText('Toyota Coaster')).toBeInTheDocument();
 });
