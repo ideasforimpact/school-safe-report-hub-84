@@ -298,20 +298,22 @@ export const updateModulePermissionsInApi = async (
 
     // Update application fields with the new module permissions for backward compatibility
     const applicationFields = employee.application_fields || {};
+    const currentModulePermissions = applicationFields.modulePermissions || {
+      superAdmin: false,
+      incidentReporting: false,
+      incidentAdmin: false,
+      assessmentUser: false,
+      assessmentsAdmin: false,
+      employeeVerificationAdmin: false,
+      grievancesAdmin: false,
+      transportSafetyAdmin: false,
+      eduSafeResourceAccess: false
+    };
+
     const updatedAppFields = {
       ...applicationFields,
       modulePermissions: {
-        ...((applicationFields as any)?.modulePermissions || {
-          superAdmin: false,
-          incidentReporting: false,
-          incidentAdmin: false,
-          assessmentUser: false,
-          assessmentsAdmin: false,
-          employeeVerificationAdmin: false,
-          grievancesAdmin: false,
-          transportSafetyAdmin: false,
-          eduSafeResourceAccess: false
-        }),
+        ...currentModulePermissions,
         ...modulePermissions
       }
     };
