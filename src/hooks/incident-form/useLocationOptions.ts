@@ -29,7 +29,11 @@ export function useLocationOptions(locationId: string) {
       return;
     }
 
-    const options = facilities.map(facility => ({
+    const filteredFacilities = facilities.filter(
+      facility => facility.locationId === locationId
+    );
+
+    const options = filteredFacilities.map(facility => ({
       value: facility.id,
       label: facility.name
     }));

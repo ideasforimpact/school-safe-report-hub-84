@@ -14,7 +14,7 @@ import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { formatUserFullName } from '@/utils/userUtils';
-import { IncidentType, IncidentCategory } from '@/types/incident';
+import { IncidentType, IncidentCategory, IncidentLocation } from '@/types/incident';
 import {
   FormLabel,
 } from "@/components/ui/form";
@@ -73,7 +73,7 @@ const ReportIncident = () => {
         date: new Date(formData.date),
         time: formData.time,
         dateReported: new Date(),
-        location: formData.location,
+        location: formData.location as IncidentLocation,
         locationId: formData.locationId,
         facilityId: formData.facilityId,
         category: categoryLabel as IncidentCategory, // Cast to IncidentCategory
@@ -120,10 +120,9 @@ const ReportIncident = () => {
                       <SelectValue placeholder="Select an incident type" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Safety">Safety</SelectItem>
-                      <SelectItem value="Security">Security</SelectItem>
-                      <SelectItem value="Medical">Medical</SelectItem>
-                      <SelectItem value="Other">Other</SelectItem>
+                      <SelectItem value="Incident">Incident</SelectItem>
+                      <SelectItem value="Near Miss">Near Miss</SelectItem>
+                      <SelectItem value="Unsafe Condition">Unsafe Condition</SelectItem>
                     </SelectContent>
                   </Select>
                   {errors.type && <p className="text-red-500 text-sm">{errors.type}</p>}
