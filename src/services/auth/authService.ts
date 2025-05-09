@@ -1,25 +1,81 @@
 
 import { User, UserWithPassword } from '@/contexts/auth/types';
-import { toast } from "@/components/ui/sonner";
+import { excludePasswordFromUser } from '@/contexts/auth/utils';
 import { INITIAL_MOCK_USERS } from '@/contexts/auth/initialData';
+import { toast } from "@/components/ui/sonner";
 
-// Core authentication functions
+// Keys for localStorage
+const USER_STORAGE_KEY = 'userSession';
+const USERS_STORAGE_KEY = 'usersList';
+
+// Initialize mock users if they don't exist
+export const initializeUsers = () => {
+  const savedUsers = localStorage.getItem(USERS_STORAGE_KEY);
+  if (!savedUsers) {
+    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(INITIAL_MOCK_USERS));
+  } else {
+    // Check for possible migration from old to new data structure
+    try {
+      const parsedUsers = JSON.parse(savedUsers) as UserWithPassword[];
+      const needsMigration = parsedUsers.some(user => !('isActive' in user) || !('firstName' in user));
+      
+      if (needsMigration) {
+        console.log("Migrating user data to new structure");
+        const migratedUsers = parsedUsers.map(user => {
+          // If user has old structure, migrate to new structure
+          if (!('isActive' in user)) {
+            return {
+              ...user,
+              isActive: true
+            };
+          }
+          
+          // If user uses name instead of firstName/lastName
+          if (!('firstName' in user) && 'name' in user) {
+            const nameParts = (user as any).name.split(' ');
+            return {
+              ...user,
+              firstName: nameParts[0] || '',
+              lastName: nameParts.slice(1).join(' ') || '',
+              // Make sure isActive is set
+              isActive: user.isActive ?? true
+            };
+          }
+          
+          return user;
+        });
+        
+        localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(migratedUsers));
+        return migratedUsers;
+      }
+    } catch (error) {
+      console.error("Error migrating user data:", error);
+    }
+  }
+  
+  return JSON.parse(localStorage.getItem(USERS_STORAGE_KEY) || '[]') as UserWithPassword[];
+};
+
 export const getUserFromStorage = (): User | null => {
-  const savedUser = localStorage.getItem('user');
-  return savedUser ? JSON.parse(savedUser) : null;
+  try {
+    const storedUser = localStorage.getItem(USER_STORAGE_KEY);
+    return storedUser ? JSON.parse(storedUser) : null;
+  } catch (error) {
+    console.error("Error retrieving user from storage:", error);
+    return null;
+  }
 };
 
 export const getUsersFromStorage = (): UserWithPassword[] => {
-  const savedUsers = localStorage.getItem('users');
-  return savedUsers ? JSON.parse(savedUsers) : INITIAL_MOCK_USERS;
+  return initializeUsers();
 };
 
 export const saveUserToStorage = (user: User): void => {
-  localStorage.setItem('user', JSON.stringify(user));
+  localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
 };
 
 export const saveUsersToStorage = (users: UserWithPassword[]): void => {
-  localStorage.setItem('users', JSON.stringify(users));
+  localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
 };
 
 export const loginUser = async (
@@ -28,72 +84,90 @@ export const loginUser = async (
   users: UserWithPassword[],
   isEmailDomainAllowed?: (email: string, clientId: string) => boolean
 ): Promise<User | null> => {
-  // Simulate API call delay
-  await new Promise(resolve => setTimeout(resolve, 800));
-  
-  console.log("Attempting login with:", email, password);
-  console.log("Available users:", users.map(u => ({ email: u.email, password: u.password })));
-  
-  // Reset users to initial data if they got corrupted
-  let usersToCheck = users;
-  if (!users.length || !users.some(u => u.email === "owner@saasplatform.com")) {
-    console.log("Resetting users to initial data");
-    usersToCheck = INITIAL_MOCK_USERS;
-    saveUsersToStorage(usersToCheck);
-  }
-  
-  // Find matching user
-  const foundUser = usersToCheck.find(
-    u => u.email === email && u.password === password
-  );
-  
-  if (foundUser) {
-    // If user isn't a SaaS Owner, validate their email domain against client's allowed domains
-    if (foundUser.role !== 'saas_owner' && foundUser.clientId && isEmailDomainAllowed) {
-      const isAllowed = isEmailDomainAllowed(email, foundUser.clientId);
+  try {
+    // Simulate API call delay
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Find user with matching email
+    const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    
+    if (!user) {
+      toast.error("Invalid email or password.");
+      return null;
+    }
+    
+    // Check password
+    if (user.password !== password) {
+      toast.error("Invalid email or password.");
+      return null;
+    }
+
+    // Check if user is active
+    if (!user.isActive) {
+      toast.error("This account has been deactivated. Please contact an administrator.");
+      return null;
+    }
+    
+    // Check if email domain is allowed for client
+    if (user.clientId && isEmailDomainAllowed && user.role !== 'saas_owner') {
+      const isAllowed = isEmailDomainAllowed(email, user.clientId);
       if (!isAllowed) {
-        toast.error("Your email domain is not allowed to access this client's portal");
+        toast.error("Your email domain is not allowed for this client.");
         return null;
       }
     }
-
-    // Remove password from user object
-    const { password: _, ...userWithoutPassword } = foundUser;
-    toast.success(`Welcome back, ${userWithoutPassword.name}!`);
-    return userWithoutPassword;
+    
+    toast.success(`Welcome back, ${user.firstName}!`);
+    
+    // Return user object without password
+    return excludePasswordFromUser(user);
+  } catch (error) {
+    toast.error("An error occurred during login.");
+    console.error("Login error:", error);
+    return null;
   }
-  
-  toast.error("Invalid email or password");
-  return null;
 };
 
 export const logoutUser = (): void => {
-  localStorage.removeItem('user');
-  toast.info("You've been logged out");
+  localStorage.removeItem(USER_STORAGE_KEY);
+  toast.success("Logged out successfully");
 };
 
 export const changeUserPassword = (
   users: UserWithPassword[],
-  userId: string, 
-  currentPassword: string, 
+  userId: string,
+  currentPassword: string,
   newPassword: string
 ): UserWithPassword[] | null => {
-  // Find user record
-  const userRecord = users.find(u => u.id === userId);
-  
-  if (!userRecord || userRecord.password !== currentPassword) {
-    toast.error("Current password is incorrect");
+  try {
+    const userIndex = users.findIndex(u => u.id === userId);
+    
+    if (userIndex === -1) {
+      toast.error("User not found.");
+      return null;
+    }
+    
+    const user = users[userIndex];
+    
+    if (user.password !== currentPassword) {
+      toast.error("Current password is incorrect.");
+      return null;
+    }
+    
+    const updatedUser: UserWithPassword = {
+      ...user,
+      password: newPassword
+    };
+    
+    const updatedUsers = [...users];
+    updatedUsers[userIndex] = updatedUser;
+    
+    toast.success("Password changed successfully.");
+    
+    return updatedUsers;
+  } catch (error) {
+    toast.error("An error occurred while changing password.");
+    console.error("Change password error:", error);
     return null;
   }
-
-  // Update password
-  const updatedUsers = users.map(u => {
-    if (u.id === userId) {
-      return { ...u, password: newPassword };
-    }
-    return u;
-  });
-
-  toast.success("Password changed successfully");
-  return updatedUsers;
 };

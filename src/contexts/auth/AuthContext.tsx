@@ -1,6 +1,6 @@
 
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
-import { User, UserRole, ModulePermissions, AuthContextType, UserWithPassword } from './types';
+import { User, UserRole, ModulePermissions, AuthContextType, UserWithPassword, EmployeeType, DepartmentType } from './types';
 import { excludePasswordFromUser, excludePasswordFromUsers } from './utils';
 import { useClient } from '../ClientContext';
 import {
@@ -15,7 +15,8 @@ import {
 import {
   addNewUser,
   updateExistingUser,
-  deleteExistingUser
+  deleteExistingUser,
+  deactivateExistingUser
 } from '@/services/auth/userManagementService';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -46,6 +47,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     );
     
     if (loggedInUser) {
+      // Don't allow inactive users to log in
+      if (!loggedInUser.isActive) {
+        return false;
+      }
+      
       setUser(loggedInUser);
       saveUserToStorage(loggedInUser);
       
@@ -67,15 +73,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const addUser = (userData: { 
-    name: string; 
+    firstName: string;
+    lastName: string;
     email: string; 
     password: string; 
     role: UserRole; 
     modulePermissions: ModulePermissions;
     clientId?: string;
-    designation?: string;
+    employeeId?: string;
+    employeeType?: EmployeeType;
+    department?: DepartmentType;
+    joiningDate?: string;
   }) => {
-    const updatedUsers = addNewUser(users, userData, clientContext.isEmailDomainAllowed);
+    const updatedUsers = addNewUser(users, { ...userData, isActive: true }, clientContext.isEmailDomainAllowed);
     if (updatedUsers) {
       setUsers(updatedUsers);
     }
@@ -100,6 +110,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const updatedUsers = deleteExistingUser(users, id, user?.id);
     if (updatedUsers) {
       setUsers(updatedUsers);
+    }
+  };
+
+  const deactivateUser = (id: string) => {
+    const updatedUsers = deactivateExistingUser(users, id, user?.id);
+    if (updatedUsers) {
+      setUsers(updatedUsers);
+      
+      // If the currently logged-in user is being deactivated, log them out
+      if (user && user.id === id) {
+        logout();
+      }
     }
   };
 
@@ -134,6 +156,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       addUser,
       updateUser,
       deleteUser,
+      deactivateUser,
       changePassword
     }}>
       {children}

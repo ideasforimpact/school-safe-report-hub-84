@@ -1,5 +1,5 @@
 
-import { UserWithPassword, UserRole, ModulePermissions } from './types';
+import { UserWithPassword, UserRole, ModulePermissions, EmployeeType, DepartmentType } from './types';
 
 // Default module permissions
 export const DEFAULT_ADMIN_PERMISSIONS: ModulePermissions = {
@@ -20,29 +20,46 @@ export const DEFAULT_REPORTER_PERMISSIONS: ModulePermissions = {
 export const INITIAL_MOCK_USERS: UserWithPassword[] = [
   {
     id: '1',
-    name: 'SaaS Owner',
+    firstName: 'SaaS',
+    lastName: 'Owner',
     email: 'owner@saasplatform.com',
     password: 'owner123',
     role: 'saas_owner',
-    modulePermissions: DEFAULT_ADMIN_PERMISSIONS
+    modulePermissions: DEFAULT_ADMIN_PERMISSIONS,
+    isActive: true,
+    employeeId: 'EMP001',
+    employeeType: 'permanent' as EmployeeType,
+    department: 'admin' as DepartmentType,
+    joiningDate: '2023-01-01'
   },
   {
     id: '2',
-    name: 'John Smith',
+    firstName: 'John',
+    lastName: 'Smith',
     email: 'admin@school.edu',
     password: 'admin123',
     role: 'admin',
     modulePermissions: DEFAULT_ADMIN_PERMISSIONS,
-    clientId: '1'
+    clientId: '1',
+    isActive: true,
+    employeeId: 'EMP002',
+    employeeType: 'permanent' as EmployeeType,
+    department: 'academics' as DepartmentType,
+    joiningDate: '2023-02-15'
   },
   {
     id: '3',
-    name: 'Jeff Davis',
+    firstName: 'Jeff',
+    lastName: 'Davis',
     email: 'reporter@school.edu',
     password: 'reporter123',
     role: 'reporter',
     modulePermissions: DEFAULT_REPORTER_PERMISSIONS,
     clientId: '1',
-    designation: 'Teacher'
+    isActive: true,
+    employeeId: 'EMP003',
+    employeeType: 'contract' as EmployeeType,
+    department: 'operations' as DepartmentType,
+    joiningDate: '2023-03-20'
   }
 ];

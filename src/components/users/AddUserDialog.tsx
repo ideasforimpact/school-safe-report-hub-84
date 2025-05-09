@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { UserRole, ModulePermissions } from '@/contexts/AuthContext';
+import { UserRole, ModulePermissions, EmployeeType, DepartmentType } from '@/contexts/auth/types';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -16,18 +16,26 @@ interface AddUserDialogProps {
   isOpen: boolean;
   setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
   formData: {
-    name: string;
+    firstName: string;
+    lastName: string;
     email: string;
     password: string;
-    designation?: string;
+    employeeId?: string;
+    employeeType?: EmployeeType;
+    department?: DepartmentType;
+    joiningDate?: string;
     role: UserRole;
     modulePermissions: ModulePermissions;
   };
   setFormData: React.Dispatch<React.SetStateAction<{
-    name: string;
+    firstName: string;
+    lastName: string;
     email: string;
     password: string;
-    designation?: string;
+    employeeId?: string;
+    employeeType?: EmployeeType;
+    department?: DepartmentType;
+    joiningDate?: string;
     role: UserRole;
     modulePermissions: ModulePermissions;
   }>>;
@@ -45,11 +53,11 @@ const AddUserDialog = ({
 }: AddUserDialogProps) => {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add New User</DialogTitle>
+          <DialogTitle>Add New Employee</DialogTitle>
           <DialogDescription>
-            Add a new user to the system
+            Add a new employee to the system
           </DialogDescription>
         </DialogHeader>
         <UserForm formData={formData} setFormData={setFormData} />
@@ -60,7 +68,7 @@ const AddUserDialog = ({
           }}>
             Cancel
           </Button>
-          <Button onClick={onSubmit}>Add User</Button>
+          <Button onClick={onSubmit}>Add Employee</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

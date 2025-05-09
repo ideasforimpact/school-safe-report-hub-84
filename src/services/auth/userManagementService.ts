@@ -1,18 +1,23 @@
 
-import { User, UserWithPassword, UserRole, ModulePermissions } from '@/contexts/auth/types';
+import { User, UserWithPassword, UserRole, ModulePermissions, EmployeeType, DepartmentType } from '@/contexts/auth/types';
 import { validateUserEmail, validateAdminDeletion } from '@/contexts/auth/utils';
 import { toast } from "@/components/ui/sonner";
 
 export const addNewUser = (
   users: UserWithPassword[],
   userData: { 
-    name: string; 
+    firstName: string;
+    lastName: string;
     email: string; 
     password: string; 
     role: UserRole; 
     modulePermissions: ModulePermissions;
     clientId?: string;
-    designation?: string;
+    employeeId?: string;
+    employeeType?: EmployeeType;
+    department?: DepartmentType;
+    joiningDate?: string;
+    isActive: boolean;
   },
   isEmailDomainAllowed?: (email: string, clientId: string) => boolean
 ): UserWithPassword[] | null => {
@@ -32,13 +37,18 @@ export const addNewUser = (
 
   const newUser: UserWithPassword = {
     id: Date.now().toString(),
-    name: userData.name,
+    firstName: userData.firstName,
+    lastName: userData.lastName,
     email: userData.email,
     password: userData.password,
     role: userData.role,
     modulePermissions: userData.modulePermissions,
     clientId: userData.clientId,
-    designation: userData.designation
+    employeeId: userData.employeeId,
+    employeeType: userData.employeeType,
+    department: userData.department,
+    joiningDate: userData.joiningDate,
+    isActive: userData.isActive
   };
 
   const updatedUsers = [...users, newUser];
@@ -78,5 +88,25 @@ export const deleteExistingUser = (
 
   const updatedUsers = users.filter(u => u.id !== id);
   toast.success("User deleted successfully");
+  return updatedUsers;
+};
+
+export const deactivateExistingUser = (
+  users: UserWithPassword[],
+  id: string,
+  currentUserId: string | undefined
+): UserWithPassword[] | null => {
+  if (!validateAdminDeletion(users, id, currentUserId)) {
+    return null;
+  }
+
+  const updatedUsers = users.map(u => {
+    if (u.id === id) {
+      return { ...u, isActive: false };
+    }
+    return u;
+  });
+
+  toast.success("User deactivated successfully");
   return updatedUsers;
 };

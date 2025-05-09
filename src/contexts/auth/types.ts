@@ -7,15 +7,22 @@ export interface ModulePermissions {
 }
 
 export type UserRole = 'admin' | 'user' | 'saas_owner' | 'reporter';
+export type EmployeeType = 'permanent' | 'temporary' | 'contract';
+export type DepartmentType = 'admin' | 'academics' | 'operations';
 
 export interface User {
   id: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   role: UserRole;
   modulePermissions: ModulePermissions;
-  clientId?: string; // Optional client ID to associate user with a client
-  designation?: string; // Added designation property
+  clientId?: string;
+  employeeId?: string;
+  employeeType?: EmployeeType; 
+  department?: DepartmentType;
+  joiningDate?: string;
+  isActive: boolean;
 }
 
 export interface UserWithPassword extends User {
@@ -30,15 +37,20 @@ export interface AuthContextType {
   isAdmin: boolean;
   isSaasOwner: boolean;
   addUser: (userData: { 
-    name: string; 
+    firstName: string;
+    lastName: string;
     email: string; 
     password: string; 
     role: UserRole; 
     modulePermissions: ModulePermissions;
     clientId?: string;
-    designation?: string; // Added designation property
+    employeeId?: string;
+    employeeType?: EmployeeType;
+    department?: DepartmentType;
+    joiningDate?: string;
   }) => void;
   updateUser: (id: string, updates: Partial<User & { password?: string }>) => void;
   deleteUser: (id: string) => void;
+  deactivateUser: (id: string) => void;
   changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
 }

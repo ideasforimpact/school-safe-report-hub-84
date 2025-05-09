@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { UserRole, ModulePermissions } from '@/contexts/AuthContext';
+import { UserRole, ModulePermissions, EmployeeType, DepartmentType } from '@/contexts/auth/types';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -16,18 +16,26 @@ interface EditUserDialogProps {
   isOpen: boolean;
   setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
   formData: {
-    name: string;
+    firstName: string;
+    lastName: string;
     email: string;
     password: string;
-    designation?: string;
+    employeeId?: string;
+    employeeType?: EmployeeType;
+    department?: DepartmentType;
+    joiningDate?: string;
     role: UserRole;
     modulePermissions: ModulePermissions;
   };
   setFormData: React.Dispatch<React.SetStateAction<{
-    name: string;
+    firstName: string;
+    lastName: string;
     email: string;
     password: string;
-    designation?: string;
+    employeeId?: string;
+    employeeType?: EmployeeType;
+    department?: DepartmentType;
+    joiningDate?: string;
     role: UserRole;
     modulePermissions: ModulePermissions;
   }>>;
@@ -45,11 +53,11 @@ const EditUserDialog = ({
 }: EditUserDialogProps) => {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Edit User</DialogTitle>
+          <DialogTitle>Edit Employee</DialogTitle>
           <DialogDescription>
-            Update user information
+            Update employee information
           </DialogDescription>
         </DialogHeader>
         <UserForm formData={formData} setFormData={setFormData} isEditMode={true} />
@@ -60,7 +68,7 @@ const EditUserDialog = ({
           }}>
             Cancel
           </Button>
-          <Button onClick={onSubmit}>Update User</Button>
+          <Button onClick={onSubmit}>Update Employee</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

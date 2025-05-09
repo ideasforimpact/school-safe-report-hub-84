@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import Layout from '@/components/layout/Layout';
-import { useAuth, User, UserRole, ModulePermissions } from '@/contexts/AuthContext';
+import { useAuth, User, UserRole, ModulePermissions, EmployeeType, DepartmentType } from '@/contexts/AuthContext';
 import {
   Card,
   CardContent,
@@ -16,15 +16,19 @@ import AddUserDialog from '@/components/users/AddUserDialog';
 import EditUserDialog from '@/components/users/EditUserDialog';
 
 const UserManagement = () => {
-  const { users, addUser, updateUser, deleteUser, isAdmin } = useAuth();
+  const { users, addUser, updateUser, deleteUser, deactivateUser, isAdmin } = useAuth();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [formData, setFormData] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
     password: '',
-    designation: '',
+    employeeId: '',
+    employeeType: 'permanent' as EmployeeType,
+    department: 'admin' as DepartmentType,
+    joiningDate: '',
     role: 'reporter' as UserRole,
     modulePermissions: {
       incidentReporting: true,
@@ -36,10 +40,14 @@ const UserManagement = () => {
 
   const resetForm = () => {
     setFormData({
-      name: '',
+      firstName: '',
+      lastName: '',
       email: '',
       password: '',
-      designation: '',
+      employeeId: '',
+      employeeType: 'permanent' as EmployeeType,
+      department: 'admin' as DepartmentType,
+      joiningDate: '',
       role: 'reporter',
       modulePermissions: {
         incidentReporting: true,
@@ -60,10 +68,14 @@ const UserManagement = () => {
   const handleEditClick = (user: User) => {
     setCurrentUser(user);
     setFormData({
-      name: user.name,
+      firstName: user.firstName,
+      lastName: user.lastName,
       email: user.email,
       password: '',
-      designation: user.designation || '',
+      employeeId: user.employeeId || '',
+      employeeType: user.employeeType || 'permanent',
+      department: user.department || 'admin',
+      joiningDate: user.joiningDate || '',
       role: user.role,
       modulePermissions: {
         incidentReporting: user.modulePermissions?.incidentReporting ?? true,
@@ -78,9 +90,13 @@ const UserManagement = () => {
   const handleUpdateUser = () => {
     if (currentUser) {
       updateUser(currentUser.id, {
-        name: formData.name,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
         email: formData.email,
-        designation: formData.designation,
+        employeeId: formData.employeeId,
+        employeeType: formData.employeeType,
+        department: formData.department,
+        joiningDate: formData.joiningDate,
         role: formData.role,
         modulePermissions: formData.modulePermissions,
         ...(formData.password ? { password: formData.password } : {})
@@ -91,9 +107,11 @@ const UserManagement = () => {
   };
 
   const handleDeleteUser = (id: string) => {
-    if (confirm('Are you sure you want to delete this user?')) {
-      deleteUser(id);
-    }
+    deleteUser(id);
+  };
+
+  const handleDeactivateUser = (id: string) => {
+    deactivateUser(id);
   };
 
   if (!isAdmin) {
@@ -110,29 +128,38 @@ const UserManagement = () => {
     );
   }
 
+  // Filter active users to the top
+  const sortedUsers = [...users].sort((a, b) => {
+    if (a.isActive === b.isActive) {
+      return 0;
+    }
+    return a.isActive ? -1 : 1;
+  });
+
   return (
     <Layout>
       <div className="space-y-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">User Management</h1>
+          <h1 className="text-2xl font-bold">Employee Management</h1>
           <Button onClick={() => setIsAddDialogOpen(true)}>
             <UserPlus className="h-4 w-4 mr-2" />
-            Add User
+            Add Employee
           </Button>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Users</CardTitle>
+            <CardTitle>Employees</CardTitle>
             <CardDescription>
-              Manage system users and their roles
+              Manage system employees and their roles
             </CardDescription>
           </CardHeader>
           <CardContent>
             <UserList 
-              users={users}
+              users={sortedUsers}
               onEditClick={handleEditClick}
               onDeleteUser={handleDeleteUser}
+              onDeactivateUser={handleDeactivateUser}
             />
           </CardContent>
         </Card>

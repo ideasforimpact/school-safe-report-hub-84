@@ -3,4 +3,4 @@
 // to maintain backward compatibility with existing imports
 
 export { AuthProvider, useAuth } from './auth/AuthContext';
-export type { User, UserRole, ModulePermissions } from './auth/types';
+export type { User, UserRole, ModulePermissions, EmployeeType, DepartmentType } from './auth/types';
