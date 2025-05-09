@@ -2,12 +2,10 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIncidents } from '@/contexts/incident/IncidentContext';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth/AuthContext';
 import { useClient } from '@/contexts/ClientContext';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import { useIncidentFormData } from '@/hooks/incident-form/useIncidentFormData';
 import { useIncidentFormValidation } from '@/hooks/incident-form/useIncidentFormValidation';
 import { useCategoryOptions } from '@/hooks/incident-form/useCategoryOptions';
@@ -16,6 +14,7 @@ import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { formatUserFullName } from '@/utils/userUtils';
+import { IncidentType } from '@/types/incident';
 import IncidentFormHeader from '@/components/incidents/form-sections/IncidentFormHeader';
 import IncidentTypeSection from '@/components/incidents/form-sections/IncidentTypeSection';
 import IncidentDescriptionSection from '@/components/incidents/form-sections/IncidentDescriptionSection';
@@ -29,7 +28,7 @@ const ReportIncident: React.FC = () => {
   const { addIncident } = useIncidents();
   const { user } = useAuth();
   const { clients } = useClient();
-  const { formData, setFormData, handleChange, handleSelectChange, handleDateTimeChange } = useIncidentFormData(user);
+  const { formData, setFormData, handleChange, handleSelectChange, handleDateTimeChange } = useIncidentFormData();
   const { categoryOptions, subcategoryOptions } = useCategoryOptions();
   const { locationOptions, facilityOptions } = useLocationOptions(formData.locationId);
   const { errors, validateForm } = useIncidentFormValidation();
@@ -61,10 +60,10 @@ const ReportIncident: React.FC = () => {
       const incident = {
         description: formData.description,
         rootCause: formData.rootCause,
-        type: formData.type,
-        date: formData.date,
+        type: formData.type as IncidentType, // Cast to IncidentType
+        date: new Date(formData.date),
         time: formData.time,
-        dateReported: new Date().toISOString(),
+        dateReported: new Date(),
         location: formData.location,
         locationId: formData.locationId,
         facilityId: formData.facilityId, 
@@ -78,7 +77,6 @@ const ReportIncident: React.FC = () => {
         clientId: currentClient?.id || '',
         attachments: [],
         comments: [],
-        // Add required fields from Incident type
         peopleInvolved: []
       };
       

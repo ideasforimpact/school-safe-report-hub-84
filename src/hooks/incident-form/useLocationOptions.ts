@@ -28,9 +28,10 @@ export function useLocationOptions(locationId: string) {
       return;
     }
 
-    // Filter facilities based on selected location
+    // Filter facilities that match the selected location
     const filteredFacilities = facilities.filter(facility => 
-      facility.locationId === locationId
+      // Check if there's a locationId property, otherwise assume standalone facilities
+      'locationId' in facility ? facility.locationId === locationId : true
     );
 
     // Transform filtered facilities to options format

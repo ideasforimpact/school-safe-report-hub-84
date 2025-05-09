@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { FileItem } from '@/types/fileTypes';
 import { ResourceCategory } from '@/types/eduSafeTypes';
@@ -123,7 +122,7 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
       category,
       tags,
       file
-    }, file);
+    });
     
     if (onComplete) {
       onComplete();

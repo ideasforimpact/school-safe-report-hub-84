@@ -7,9 +7,9 @@ import { toast } from 'sonner';
 import { formatUserFullName } from '@/utils/userUtils';
 
 export function useIncidentDetailPage(id: string) {
-  const { getIncidentById, updateIncidentStatus, addIncidentComment } = useIncidents();
+  const { incidents, updateIncident, addComment } = useIncidents();
   const { user } = useAuth();
-  const incident = getIncidentById(id);
+  const incident = incidents.find(inc => inc.id === id);
   const navigate = useNavigate();
   
   const [statusOptions, setStatusOptions] = useState<string[]>([]);
@@ -18,7 +18,7 @@ export function useIncidentDetailPage(id: string) {
 
   useEffect(() => {
     if (!incident) {
-      navigate('/incidents', { replace: true });
+      // navigate('/incidents', { replace: true });
       return;
     }
     
@@ -44,19 +44,23 @@ export function useIncidentDetailPage(id: string) {
     setIsLoading(true);
     
     try {
-      await updateIncidentStatus(incident.id, newStatus);
+      // Update the incident status
+      await updateIncident(incident.id, { status: newStatus });
       
       // Auto-generate a comment about the status change
       const userName = user ? formatUserFullName(user) : 'A user';
       const statusComment = `${userName} changed status from ${incident.status} to ${newStatus}`;
       
-      await addIncidentComment(incident.id, {
+      // Add a comment about the status change
+      await addComment(incident.id, {
         id: `comment_${Date.now()}`,
-        authorId: user?.id || 'system',
-        authorName: user ? formatUserFullName(user) : 'System',
-        content: statusComment,
-        timestamp: new Date().toISOString(),
-        type: 'status_change'
+        description: statusComment,
+        dueDate: new Date(),
+        assignedTo: { id: user?.id || 'system', name: userName },
+        status: 'Pending',
+        createdBy: { id: user?.id || 'system', name: userName },
+        createdAt: new Date(),
+        updatedAt: new Date(),
       });
       
       toast.success(`Status updated to ${newStatus}`);
@@ -74,13 +78,16 @@ export function useIncidentDetailPage(id: string) {
     setIsLoading(true);
     
     try {
-      await addIncidentComment(incident.id, {
+      // Add a new comment to the incident
+      await addComment(incident.id, {
         id: `comment_${Date.now()}`,
-        authorId: user.id,
-        authorName: formatUserFullName(user),
-        content: newComment,
-        timestamp: new Date().toISOString(),
-        type: 'comment'
+        description: newComment,
+        dueDate: new Date(),
+        assignedTo: { id: user.id, name: formatUserFullName(user) },
+        status: 'Pending',
+        createdBy: { id: user.id, name: formatUserFullName(user) },
+        createdAt: new Date(),
+        updatedAt: new Date(),
       });
       
       setNewComment('');

@@ -16,3 +16,6 @@ export interface EduSafeResource {
   ownerType: 'saas' | 'school';
   clientId?: string; // Optional, only present for school-owned resources
 }
+
+// Ensure backward compatibility with existing code
+export type EducationalResource = EduSafeResource;
