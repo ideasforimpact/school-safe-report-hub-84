@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
 import Dashboard from './pages/Dashboard';
 import Login from './pages/Login';
@@ -59,6 +58,8 @@ function App() {
         <Route path="/news/:newsId" element={<NewsPage />} />
         <Route path="/grievances/public" element={<PublicGrievanceForm />} />
         <Route path="/grievances/thankyou" element={<ThankYouPage />} />
+        {/* Redirect from /grievances/form to /grievances/public */}
+        <Route path="/grievances/form" element={<Navigate to="/grievances/public" replace />} />
         
         {/* Protected routes */}
         <Route element={<RouteGuard />}>
