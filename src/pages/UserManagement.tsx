@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -59,7 +60,7 @@ const convertDepartmentType = (department: EmployeeContextDepartmentType): Depar
 
 const UserManagement = () => {
   const { isAdmin, users = [] } = useAuth();
-  const { addEmployee, deactivateEmployee } = useEmployee(); // Make sure we use deactivateEmployee from context
+  const { addEmployee, deactivateEmployee } = useEmployee();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
@@ -366,10 +367,22 @@ const UserManagement = () => {
       const updatedUsers = deactivateExistingUser(users as any, userId); // Type casting to fix TypeScript error
       if (updatedUsers) {
         try {
-          // Use the employee context's deactivateEmployee function directly
-          // This will handle both status update and removing module permissions
-          await deactivateEmployee(userId);
-          console.log("Employee deactivated via context function");
+          // Call the edge function to deactivate the employee
+          const { data, error } = await supabase.functions.invoke('employee-management', {
+            body: JSON.stringify({
+              operation: 'deactivate',
+              id: userId
+            })
+          });
+          
+          if (error) {
+            console.error("Edge function deactivate error:", error);
+            // Fall back to the employee context's deactivateEmployee function
+            await deactivateEmployee(userId);
+            console.log("Employee deactivated via context function");
+          } else {
+            console.log("Employee deactivated via edge function:", data);
+          }
           
           // After successful deactivation, refresh the employee list
           await refreshEmployeesList();

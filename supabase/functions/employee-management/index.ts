@@ -1,409 +1,318 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+// Follow this setup guide to integrate the Deno language server with your editor:
+// https://deno.land/manual/getting_started/setup_your_environment
+// This enables autocomplete, go to definition, etc.
+
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Initialize Supabase client with environment variables
-const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-interface ModulePermissions {
-  superAdmin: boolean;
-  incidentReporting: boolean;
-  incidentAdmin: boolean;
-  assessmentUser: boolean;
-  assessmentsAdmin: boolean;
-  employeeVerificationAdmin: boolean;
-  grievancesAdmin: boolean;
-  transportSafetyAdmin: boolean;
-  eduSafeResourceAccess: boolean;
-}
-
-interface Employee {
-  id?: string;
-  userId?: string;
-  employeeId: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  employeeType: string;
-  department: string;
-  joiningDate: string;
-  status: string;
-}
+console.log("Employee Management Function Started");
 
 serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+  // Handle CORS
+  if (req.method === "OPTIONS") {
+    return new Response(null, {
+      headers: corsHeaders,
+      status: 204,
+    });
   }
 
-  // Get the route to determine operation
-  const url = new URL(req.url);
-  const pathParts = url.pathname.split('/').filter(Boolean);
-  const operation = pathParts[pathParts.length - 1];
-
   try {
-    // Process requests based on the operation
-    if (req.method === 'GET') {
-      if (operation === 'employees') {
-        // Get all employees
-        const { data, error } = await supabase
-          .from('employees')
-          .select('*');
-
-        if (error) throw error;
-
-        return new Response(JSON.stringify({ employees: data }), {
-          headers: { 'Content-Type': 'application/json', ...corsHeaders },
-          status: 200,
-        });
-      } else if (operation === 'employee') {
-        // Get employee by ID - Now using body instead of query params
-        const requestData = await req.json().catch(() => ({}));
-        const id = requestData.id;
-        
-        if (!id) {
-          return new Response(JSON.stringify({ error: 'Employee ID is required' }), {
-            headers: { 'Content-Type': 'application/json', ...corsHeaders },
-            status: 400,
-          });
-        }
-
-        const { data, error } = await supabase
-          .from('employees')
-          .select('*')
-          .eq('id', id)
-          .single();
-
-        if (error) throw error;
-
-        return new Response(JSON.stringify({ employee: data }), {
-          headers: { 'Content-Type': 'application/json', ...corsHeaders },
-          status: 200,
-        });
+    // Create a Supabase client with the Auth context of the logged in user
+    const authHeader = req.headers.get("Authorization")!;
+    const supabaseClient = createClient(
+      // Supabase API URL - env var exported by default when deployed to Supabase Edge Functions
+      Deno.env.get("SUPABASE_URL") ?? "",
+      // Supabase API ANON KEY - env var exported by default when deployed to Supabase Edge Functions
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      // Create client with Auth header of the logged in user
+      {
+        global: {
+          headers: { Authorization: authHeader },
+        },
       }
-    } else if (req.method === 'POST') {
-      const requestData = await req.json();
+    );
 
-      if (operation === 'create') {
-        // Create a new employee
-        const employeeData: Employee = requestData.employee;
+    // Get the request body
+    const { operation, employee, id } = await req.json();
 
-        // Validate required fields
-        if (!employeeData.employeeId || !employeeData.firstName || !employeeData.lastName || !employeeData.email || 
-            !employeeData.employeeType || !employeeData.department || !employeeData.status) {
-          return new Response(JSON.stringify({ error: 'Missing required employee fields' }), {
-            headers: { 'Content-Type': 'application/json', ...corsHeaders },
-            status: 400,
-          });
-        }
+    // Handle different operations
+    switch (operation) {
+      case "create":
+        return await handleCreate(supabaseClient, employee);
 
-        // Check if employee with same employeeId or email exists
-        const { data: existingEmployee, error: checkError } = await supabase
-          .from('employees')
-          .select('id')
-          .or(`email.eq.${employeeData.email},employee_id.eq.${employeeData.employeeId}`)
-          .maybeSingle();
-
-        if (checkError) throw checkError;
-
-        if (existingEmployee) {
-          return new Response(JSON.stringify({ error: 'An employee with this ID or email already exists' }), {
-            headers: { 'Content-Type': 'application/json', ...corsHeaders },
-            status: 409,
-          });
-        }
-
-        // Set timestamps
-        const now = new Date().toISOString();
-
-        // Insert employee - database structure updated, adapted fields
-        const { data, error } = await supabase
-          .from('employees')
-          .insert([{
-            employee_id: employeeData.employeeId,
-            first_name: employeeData.firstName,
-            last_name: employeeData.lastName,
-            email: employeeData.email,
-            employee_type: employeeData.employeeType,
-            department: employeeData.department,
-            joining_date: employeeData.joiningDate,
-            status: employeeData.status,
-            user_id: employeeData.userId,
-            created_at: now,
-            updated_at: now
-          }])
-          .select()
-          .single();
-
-        if (error) throw error;
-
-        return new Response(JSON.stringify({ employee: data }), {
-          headers: { 'Content-Type': 'application/json', ...corsHeaders },
-          status: 201,
-        });
-      } else if (operation === 'update') {
-        // Update an existing employee
-        const { id, ...updates } = requestData.employee;
-
-        if (!id) {
-          return new Response(JSON.stringify({ error: 'Employee ID is required' }), {
-            headers: { 'Content-Type': 'application/json', ...corsHeaders },
-            status: 400,
-          });
-        }
-
-        // Check if employee exists
-        const { data: existingEmployee, error: checkError } = await supabase
-          .from('employees')
-          .select('id')
-          .eq('id', id)
-          .single();
-
-        if (checkError) {
-          return new Response(JSON.stringify({ error: 'Employee not found' }), {
-            headers: { 'Content-Type': 'application/json', ...corsHeaders },
-            status: 404,
-          });
-        }
-
-        // Check if updating to an email or employeeId that already exists
-        if (updates.email || updates.employeeId) {
-          const orConditions = [];
-          if (updates.email) orConditions.push(`email.eq.${updates.email}`);
-          if (updates.employeeId) orConditions.push(`employee_id.eq.${updates.employeeId}`);
-          
-          if (orConditions.length > 0) {
-            const { data: duplicateCheck, error: dupError } = await supabase
-              .from('employees')
-              .select('id')
-              .or(orConditions.join(','))
-              .neq('id', id)
-              .maybeSingle();
-
-            if (dupError) throw dupError;
-
-            if (duplicateCheck) {
-              return new Response(JSON.stringify({ error: 'Another employee with this ID or email already exists' }), {
-                headers: { 'Content-Type': 'application/json', ...corsHeaders },
-                status: 409,
-              });
+      case "update":
+        if (!employee.id) {
+          return new Response(
+            JSON.stringify({ error: "Employee ID is required for update" }),
+            {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 400,
             }
-          }
+          );
         }
+        return await handleUpdate(supabaseClient, employee);
 
-        // Update timestamp and adapt field names for database schema
-        const dbUpdates: Record<string, any> = { updated_at: new Date().toISOString() };
-        
-        // Map camelCase properties to snake_case for database
-        if (updates.firstName !== undefined) dbUpdates.first_name = updates.firstName;
-        if (updates.lastName !== undefined) dbUpdates.last_name = updates.lastName;
-        if (updates.email !== undefined) dbUpdates.email = updates.email;
-        if (updates.employeeId !== undefined) dbUpdates.employee_id = updates.employeeId;
-        if (updates.employeeType !== undefined) dbUpdates.employee_type = updates.employeeType;
-        if (updates.department !== undefined) dbUpdates.department = updates.department;
-        if (updates.joiningDate !== undefined) dbUpdates.joining_date = updates.joiningDate;
-        if (updates.status !== undefined) dbUpdates.status = updates.status;
-        if (updates.userId !== undefined) dbUpdates.user_id = updates.userId;
-
-        // Update employee with adapted field names
-        const { data, error } = await supabase
-          .from('employees')
-          .update(dbUpdates)
-          .eq('id', id)
-          .select()
-          .single();
-
-        if (error) throw error;
-
-        // If the employee is being deactivated, remove all module permissions
-        if (updates.status === 'inactive') {
-          console.log("Employee deactivated, removing all module permissions");
-          const { error: moduleError } = await supabase
-            .from('employee_modules')
-            .delete()
-            .eq('employee_id', id);
-          
-          if (moduleError) {
-            console.error("Error removing module permissions for deactivated employee:", moduleError);
-          } else {
-            console.log("Successfully removed all module permissions for deactivated employee");
-          }
-        }
-
-        return new Response(JSON.stringify({ employee: data }), {
-          headers: { 'Content-Type': 'application/json', ...corsHeaders },
-          status: 200,
-        });
-      } else if (operation === 'delete') {
-        // Delete an employee
-        const { id } = requestData;
-
+      case "delete":
         if (!id) {
-          return new Response(JSON.stringify({ error: 'Employee ID is required' }), {
-            headers: { 'Content-Type': 'application/json', ...corsHeaders },
-            status: 400,
-          });
+          return new Response(
+            JSON.stringify({ error: "Employee ID is required for delete" }),
+            {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 400,
+            }
+          );
         }
+        return await handleDelete(supabaseClient, id);
 
-        // First remove all module permissions
-        const { error: moduleError } = await supabase
-          .from('employee_modules')
-          .delete()
-          .eq('employee_id', id);
-          
-        if (moduleError) {
-          console.error("Error deleting employee module permissions:", moduleError);
-        }
-
-        // Delete employee
-        const { error } = await supabase
-          .from('employees')
-          .delete()
-          .eq('id', id);
-
-        if (error) throw error;
-
-        return new Response(JSON.stringify({ success: true, id }), {
-          headers: { 'Content-Type': 'application/json', ...corsHeaders },
-          status: 200,
-        });
-      } else if (operation === 'update-permissions') {
-        // Update module permissions
-        const { employeeId, modulePermissions } = requestData;
-
-        if (!employeeId) {
-          return new Response(JSON.stringify({ error: 'Employee ID is required' }), {
-            headers: { 'Content-Type': 'application/json', ...corsHeaders },
-            status: 400,
-          });
-        }
-
-        // Check if employee is active before allowing permission changes
-        const { data: employeeData, error: employeeCheckError } = await supabase
-          .from('employees')
-          .select('status')
-          .eq('id', employeeId)
-          .single();
-          
-        if (employeeCheckError) {
-          return new Response(JSON.stringify({ error: 'Failed to verify employee status' }), {
-            headers: { 'Content-Type': 'application/json', ...corsHeaders },
-            status: 500,
-          });
-        }
-        
-        if (employeeData.status !== 'active') {
-          return new Response(JSON.stringify({ error: 'Cannot modify permissions for inactive employees' }), {
-            headers: { 'Content-Type': 'application/json', ...corsHeaders },
-            status: 400,
-          });
-        }
-
-        // First get all available modules to map permission keys to module IDs
-        const { data: modules, error: modulesError } = await supabase
-          .from('modules')
-          .select('id, key');
-
-        if (modulesError) throw modulesError;
-
-        // Create a map of module keys to IDs
-        const moduleKeyToId: Record<string, string> = {};
-        modules.forEach((module: any) => {
-          moduleKeyToId[module.key] = module.id;
-        });
-
-        // Delete existing module permissions
-        const { error: deleteError } = await supabase
-          .from('employee_modules')
-          .delete()
-          .eq('employee_id', employeeId);
-
-        if (deleteError) throw deleteError;
-
-        // Add new module permissions
-        const modulesToAdd = [];
-        for (const [key, value] of Object.entries(modulePermissions)) {
-          if (value && moduleKeyToId[key]) {
-            modulesToAdd.push({
-              employee_id: employeeId,
-              module_id: moduleKeyToId[key]
-            });
-          }
-        }
-
-        if (modulesToAdd.length > 0) {
-          const { data, error: insertError } = await supabase
-            .from('employee_modules')
-            .insert(modulesToAdd)
-            .select();
-
-          if (insertError) throw insertError;
-
-          return new Response(JSON.stringify({ permissions: data }), {
-            headers: { 'Content-Type': 'application/json', ...corsHeaders },
-            status: 200,
-          });
-        }
-
-        return new Response(JSON.stringify({ permissions: [] }), {
-          headers: { 'Content-Type': 'application/json', ...corsHeaders },
-          status: 200,
-        });
-      } else if (operation === 'deactivate') {
-        // Deactivate an employee (special endpoint for this specific operation)
-        const { id } = requestData;
-
+      case "deactivate":
         if (!id) {
-          return new Response(JSON.stringify({ error: 'Employee ID is required' }), {
-            headers: { 'Content-Type': 'application/json', ...corsHeaders },
-            status: 400,
-          });
+          return new Response(
+            JSON.stringify({ error: "Employee ID is required for deactivation" }),
+            {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+              status: 400,
+            }
+          );
         }
+        return await handleDeactivate(supabaseClient, id);
 
-        // Update the employee status to inactive
-        const { data, error } = await supabase
-          .from('employees')
-          .update({ status: 'inactive', updated_at: new Date().toISOString() })
-          .eq('id', id)
-          .select('*')
-          .single();
-
-        if (error) throw error;
-
-        // Remove all module permissions for deactivated employee
-        const { error: moduleError } = await supabase
-          .from('employee_modules')
-          .delete()
-          .eq('employee_id', id);
-          
-        if (moduleError) {
-          console.error("Error removing module permissions for deactivated employee:", moduleError);
-        }
-
-        return new Response(JSON.stringify({ employee: data }), {
-          headers: { 'Content-Type': 'application/json', ...corsHeaders },
-          status: 200,
+      default:
+        return new Response(JSON.stringify({ error: "Invalid operation" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
         });
-      }
     }
-
-    // If no matching operation is found
-    return new Response(JSON.stringify({ error: 'Invalid operation' }), {
-      headers: { 'Content-Type': 'application/json', ...corsHeaders },
-      status: 400,
-    });
   } catch (error) {
-    console.error('Error in employee-management function:', error);
+    console.error("Function error:", error);
     return new Response(JSON.stringify({ error: error.message }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
-      headers: { 'Content-Type': 'application/json', ...corsHeaders },
     });
   }
 });
+
+// Create a new employee
+async function handleCreate(supabaseClient, employeeData) {
+  console.log("Creating employee:", employeeData);
+
+  // Format the employee data for inserting into the database
+  const dbEmployee = {
+    employee_id: employeeData.employeeId,
+    first_name: employeeData.firstName,
+    last_name: employeeData.lastName,
+    email: employeeData.email,
+    employee_type: employeeData.employeeType,
+    department: employeeData.department,
+    joining_date: employeeData.joiningDate,
+    status: employeeData.status || "active",
+  };
+
+  // Insert the new employee
+  const { data: employee, error } = await supabaseClient
+    .from("employees")
+    .insert(dbEmployee)
+    .select("*")
+    .single();
+
+  if (error) {
+    console.error("Error creating employee:", error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500,
+    });
+  }
+
+  // If module permissions were provided, update them as well
+  if (employeeData.modulePermissions && employee) {
+    await updateModulePermissions(supabaseClient, employee.id, employeeData.modulePermissions);
+  }
+
+  return new Response(JSON.stringify({ success: true, employee }), {
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    status: 201,
+  });
+}
+
+// Update an existing employee
+async function handleUpdate(supabaseClient, employeeData) {
+  console.log("Updating employee:", employeeData);
+
+  // Format the employee data for updating in the database
+  const dbEmployee = {
+    first_name: employeeData.firstName,
+    last_name: employeeData.lastName,
+    email: employeeData.email,
+  };
+
+  // Add optional fields if they exist
+  if (employeeData.employeeType) dbEmployee.employee_type = employeeData.employeeType;
+  if (employeeData.department) dbEmployee.department = employeeData.department;
+  if (employeeData.joiningDate) dbEmployee.joining_date = employeeData.joiningDate;
+  if (employeeData.status) dbEmployee.status = employeeData.status;
+  
+  // Update the employee record
+  const { data: employee, error } = await supabaseClient
+    .from("employees")
+    .update(dbEmployee)
+    .eq("id", employeeData.id)
+    .select("*")
+    .single();
+
+  if (error) {
+    console.error("Error updating employee:", error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500,
+    });
+  }
+
+  // If module permissions were provided, update them as well
+  if (employeeData.modulePermissions) {
+    await updateModulePermissions(supabaseClient, employeeData.id, employeeData.modulePermissions);
+  }
+
+  return new Response(JSON.stringify({ success: true, employee }), {
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    status: 200,
+  });
+}
+
+// Delete an employee
+async function handleDelete(supabaseClient, employeeId) {
+  console.log("Deleting employee:", employeeId);
+
+  // First, delete all module permissions for this employee
+  const { error: moduleError } = await supabaseClient
+    .from("employee_modules")
+    .delete()
+    .eq("employee_id", employeeId);
+
+  if (moduleError) {
+    console.error("Error deleting employee module permissions:", moduleError);
+    // Continue with employee deletion even if module deletion fails
+  }
+
+  // Delete the employee
+  const { error } = await supabaseClient
+    .from("employees")
+    .delete()
+    .eq("id", employeeId);
+
+  if (error) {
+    console.error("Error deleting employee:", error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500,
+    });
+  }
+
+  return new Response(JSON.stringify({ success: true }), {
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    status: 200,
+  });
+}
+
+// Deactivate an employee (set status to inactive and remove module permissions)
+async function handleDeactivate(supabaseClient, employeeId) {
+  console.log("Deactivating employee:", employeeId);
+
+  // First, delete all module permissions for this employee
+  const { error: moduleError } = await supabaseClient
+    .from("employee_modules")
+    .delete()
+    .eq("employee_id", employeeId);
+
+  if (moduleError) {
+    console.error("Error removing module permissions:", moduleError);
+    // Continue with status update even if module deletion fails
+  } else {
+    console.log("Successfully removed all module permissions for deactivated employee");
+  }
+
+  // Update the employee status to inactive
+  const { data: employee, error } = await supabaseClient
+    .from("employees")
+    .update({ status: "inactive" })
+    .eq("id", employeeId)
+    .select("*")
+    .single();
+
+  if (error) {
+    console.error("Error deactivating employee:", error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500,
+    });
+  }
+
+  return new Response(JSON.stringify({ success: true, employee }), {
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    status: 200,
+  });
+}
+
+// Helper function to update employee module permissions
+async function updateModulePermissions(supabaseClient, employeeId, permissions) {
+  console.log("Updating module permissions for employee:", employeeId);
+
+  // First, delete all existing module permissions for this employee
+  const { error: deleteError } = await supabaseClient
+    .from("employee_modules")
+    .delete()
+    .eq("employee_id", employeeId);
+
+  if (deleteError) {
+    console.error("Error deleting employee modules:", deleteError);
+    throw deleteError;
+  }
+
+  // Get the module IDs for each module key
+  const { data: modules, error: moduleError } = await supabaseClient
+    .from("modules")
+    .select("id, key");
+
+  if (moduleError) {
+    console.error("Error fetching modules:", moduleError);
+    throw moduleError;
+  }
+
+  // Map module keys to their IDs
+  const moduleKeyToId = {};
+  modules.forEach((module) => {
+    moduleKeyToId[module.key] = module.id;
+  });
+
+  // Create array of module entries to insert
+  const moduleEntries = Object.entries(permissions)
+    .filter(([_, enabled]) => enabled)
+    .map(([key, _]) => ({
+      employee_id: employeeId,
+      module_id: moduleKeyToId[key],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }))
+    .filter((entry) => entry.module_id); // Ensure we only add entries for modules that exist
+
+  if (moduleEntries.length === 0) {
+    console.log("No module permissions to update");
+    return;
+  }
+
+  // Insert the new module permissions
+  const { error: insertError } = await supabaseClient
+    .from("employee_modules")
+    .insert(moduleEntries);
+
+  if (insertError) {
+    console.error("Error inserting employee modules:", insertError);
+    throw insertError;
+  }
+
+  console.log(`Successfully updated ${moduleEntries.length} module permissions for employee ${employeeId}`);
+}

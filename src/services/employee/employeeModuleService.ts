@@ -3,10 +3,25 @@ import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
 import { ModulePermissions } from '@/contexts/auth/types';
 
-// Get all module permissions for an employee
+/**
+ * Get module permissions for an employee
+ * @param employeeId The UUID of the employee
+ * @returns The module permissions object
+ */
 export const getEmployeeModulePermissions = async (employeeId: string): Promise<ModulePermissions> => {
   try {
-    // Default permissions object with all permissions set to false
+    // Get all module entries for this employee from the database
+    const { data, error } = await supabase
+      .from('employee_modules')
+      .select('module_id, modules(key)')
+      .eq('employee_id', employeeId);
+
+    if (error) {
+      console.error("Error fetching employee modules:", error);
+      throw error;
+    }
+
+    // Create a default permissions object with all permissions set to false
     const defaultPermissions: ModulePermissions = {
       superAdmin: false,
       incidentReporting: false,
@@ -19,31 +34,27 @@ export const getEmployeeModulePermissions = async (employeeId: string): Promise<
       eduSafeResourceAccess: false
     };
 
-    // Fetch the employee's module permissions from employee_modules table
-    const { data: moduleEntries, error } = await supabase
-      .from('employee_modules')
-      .select('modules(key)')
-      .eq('employee_id', employeeId);
-
-    if (error) {
-      console.error("Error fetching employee module permissions:", error);
-      toast.error("Failed to fetch module permissions");
+    // If no data, return default permissions
+    if (!data || data.length === 0) {
       return defaultPermissions;
     }
 
-    // Update permissions based on the modules assigned to the employee
+    // Map the module keys from the database to the permissions object
     const permissions = { ...defaultPermissions };
-    moduleEntries.forEach(entry => {
-      const moduleKey = entry.modules?.key;
-      if (moduleKey && moduleKey in permissions) {
-        permissions[moduleKey as keyof ModulePermissions] = true;
+
+    data.forEach(moduleEntry => {
+      if (moduleEntry.modules?.key) {
+        const moduleKey = moduleEntry.modules.key as keyof ModulePermissions;
+        if (moduleKey in permissions) {
+          permissions[moduleKey] = true;
+        }
       }
     });
 
     return permissions;
   } catch (error) {
     console.error("Error in getEmployeeModulePermissions:", error);
-    toast.error("Failed to fetch module permissions");
+    // Return default permissions on error
     return {
       superAdmin: false,
       incidentReporting: false,
@@ -58,83 +69,70 @@ export const getEmployeeModulePermissions = async (employeeId: string): Promise<
   }
 };
 
-// Update module permissions for an employee
-export const updateEmployeeModulePermissions = async (
-  employeeId: string,
-  permissions: ModulePermissions
-): Promise<boolean> => {
+/**
+ * Update module permissions for an employee
+ * @param employeeId The UUID of the employee
+ * @param permissions The module permissions object
+ */
+export const updateEmployeeModulePermissions = async (employeeId: string, permissions: ModulePermissions): Promise<void> => {
   try {
-    // First, get all available modules to map permission keys to module IDs
-    const { data: modules, error: modulesError } = await supabase
-      .from('modules')
-      .select('id, key');
-
-    if (modulesError) {
-      console.error("Error fetching modules:", modulesError);
-      toast.error("Failed to update module permissions");
-      return false;
-    }
-
-    // Create a map of module keys to IDs
-    const moduleKeyToId = Object.fromEntries(
-      modules.map(module => [module.key, module.id])
-    );
-
-    // Delete all existing module permissions for this employee to reset
+    // First, delete all existing module permissions for this employee
     const { error: deleteError } = await supabase
       .from('employee_modules')
       .delete()
       .eq('employee_id', employeeId);
 
     if (deleteError) {
-      console.error("Error deleting existing module permissions:", deleteError);
-      toast.error("Failed to update module permissions");
-      return false;
+      console.error("Error deleting employee modules:", deleteError);
+      throw deleteError;
     }
 
-    // Add new module permissions based on the provided permissions object
-    const modulesToAdd = [];
-    for (const [key, value] of Object.entries(permissions)) {
-      if (value && moduleKeyToId[key]) {
-        modulesToAdd.push({
-          employee_id: employeeId,
-          module_id: moduleKeyToId[key]
-        });
-      }
+    // Get the module IDs for each module key
+    const { data: modules, error: moduleError } = await supabase
+      .from('modules')
+      .select('id, key');
+
+    if (moduleError) {
+      console.error("Error fetching modules:", moduleError);
+      throw moduleError;
     }
 
-    if (modulesToAdd.length > 0) {
-      const { error: insertError } = await supabase
-        .from('employee_modules')
-        .insert(modulesToAdd);
+    // Map module keys to their IDs
+    const moduleKeyToId: Record<string, string> = {};
+    modules?.forEach(module => {
+      moduleKeyToId[module.key] = module.id;
+    });
 
-      if (insertError) {
-        console.error("Error inserting module permissions:", insertError);
-        toast.error("Failed to update module permissions");
-        return false;
-      }
+    // Create array of module entries to insert
+    const moduleEntries = Object.entries(permissions)
+      .filter(([_, enabled]) => enabled)
+      .map(([key, _]) => ({
+        employee_id: employeeId,
+        module_id: moduleKeyToId[key],
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }))
+      .filter(entry => entry.module_id); // Ensure we only add entries for modules that exist
+
+    if (moduleEntries.length === 0) {
+      console.log("No module permissions to update");
+      return;
     }
 
-    toast.success("Module permissions updated successfully");
-    return true;
+    // Insert the new module permissions
+    const { error: insertError } = await supabase
+      .from('employee_modules')
+      .insert(moduleEntries);
+
+    if (insertError) {
+      console.error("Error inserting employee modules:", insertError);
+      throw insertError;
+    }
+
+    console.log(`Successfully updated ${moduleEntries.length} module permissions for employee ${employeeId}`);
   } catch (error) {
     console.error("Error in updateEmployeeModulePermissions:", error);
-    toast.error("Failed to update module permissions");
-    return false;
+    toast.error("Failed to update employee module permissions");
+    throw error;
   }
-};
-
-// Get permissions when deactivating a user
-export const getDeactivatedUserPermissions = async (userId: string): Promise<ModulePermissions> => {
-  return {
-    superAdmin: false,
-    incidentReporting: false,
-    incidentAdmin: false,
-    assessmentUser: false,
-    assessmentsAdmin: false,
-    employeeVerificationAdmin: false,
-    grievancesAdmin: false,
-    transportSafetyAdmin: false,
-    eduSafeResourceAccess: false
-  };
 };
