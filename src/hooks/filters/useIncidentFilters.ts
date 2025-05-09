@@ -13,11 +13,11 @@ export function useIncidentFilters(incidents: Incident[]): FilterHookReturn {
   // Get available options for filters
   const filterOptions = useFilterOptions();
   
-  // Use the correct property names from filterOptions
+  // Extract filter options from filterOptions
   const {
-    categoryOptions: availableCategories,
-    locationOptions: availableLocations,
-    facilityOptions: availableFacilities
+    categoryOptions,
+    locationOptions,
+    facilityOptions
   } = filterOptions;
   
   // Mock subcategories and owners for the interface compatibility
@@ -76,10 +76,10 @@ export function useIncidentFilters(incidents: Incident[]): FilterHookReturn {
   return {
     filters,
     filteredIncidents,
-    availableCategories,
+    availableCategories: categoryOptions,
     availableSubcategories,
-    availableLocations,
-    availableFacilities,
+    availableLocations: locationOptions,
+    availableFacilities: facilityOptions,
     availableOwners,
     handleFilterChange,
     toggleAdvancedFilters,

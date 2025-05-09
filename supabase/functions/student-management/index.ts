@@ -5,7 +5,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.0.0";
 // Set up CORS headers for cross-origin requests
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, path, id",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
 };
 
 // Create a Supabase client using environment variables
@@ -29,7 +30,7 @@ serve(async (req) => {
     const path = headers.get("path") || "";
     const id = headers.get("id") || "";
 
-    // Parse request body if not OPTIONS method
+    // Parse request body if not GET or OPTIONS method
     let body = {};
     if (req.method !== "GET" && req.method !== "OPTIONS") {
       body = await req.json();
@@ -116,8 +117,8 @@ async function handleListStudents(req: Request, corsHeaders: Record<string, stri
     ...item,
     id: item.id,
     studentId: item.student_id,
-    createdAt: new Date(item.created_at),
-    updatedAt: new Date(item.updated_at)
+    createdAt: item.created_at,
+    updatedAt: item.updated_at
   }));
   
   return new Response(
@@ -144,8 +145,8 @@ async function handleGetStudent(id: string, corsHeaders: Record<string, string>)
   const transformedData = {
     ...data,
     studentId: data.student_id,
-    createdAt: new Date(data.created_at),
-    updatedAt: new Date(data.updated_at)
+    createdAt: data.created_at,
+    updatedAt: data.updated_at
   };
   
   return new Response(
@@ -192,8 +193,8 @@ async function handleCreateStudent(body: any, corsHeaders: Record<string, string
     const transformedData = {
       ...data[0],
       studentId: data[0].student_id,
-      createdAt: new Date(data[0].created_at),
-      updatedAt: new Date(data[0].updated_at)
+      createdAt: data[0].created_at,
+      updatedAt: data[0].updated_at
     };
     
     return new Response(
@@ -235,8 +236,8 @@ async function handleUpdateStudent(id: string, body: any, corsHeaders: Record<st
     const transformedData = {
       ...data[0],
       studentId: data[0].student_id,
-      createdAt: new Date(data[0].created_at),
-      updatedAt: new Date(data[0].updated_at)
+      createdAt: data[0].created_at,
+      updatedAt: data[0].updated_at
     };
     
     return new Response(
