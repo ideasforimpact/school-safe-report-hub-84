@@ -1,3 +1,4 @@
+
 // Follow this setup guide to integrate the Deno language server with your editor:
 // https://deno.land/manual/getting_started/setup_your_environment
 // This enables autocomplete, go to definition, etc.
@@ -37,7 +38,7 @@ serve(async (req) => {
       }
     );
 
-    // Get the request body and path parameter
+    // Get the request path parameter
     const requestUrl = new URL(req.url);
     const path = requestUrl.pathname.split("/").pop();
 
@@ -141,7 +142,7 @@ async function handleBulkUpdate(req, supabaseClient) {
           department: emp.department,
           joining_date: emp.joiningDate,
           status: emp.status || 'active',
-          modulePermissions: emp.modulePermissions
+          // modulePermissions will be handled separately
         });
       } else {
         // Check if we have an employee with this employee_id already
@@ -177,7 +178,7 @@ async function handleBulkUpdate(req, supabaseClient) {
             department: empData.department,
             joining_date: empData.joiningDate,
             status: empData.status || 'active',
-            modulePermissions: empData.modulePermissions
+            // modulePermissions will be handled separately
           });
           employeeIdMap.delete(existing.employee_id.toLowerCase());
         }
@@ -194,6 +195,7 @@ async function handleBulkUpdate(req, supabaseClient) {
           department: empData.department,
           joining_date: empData.joiningDate,
           status: empData.status || 'active',
+          // modulePermissions will be handled separately but stored for later use
           modulePermissions: empData.modulePermissions
         });
       }
@@ -225,13 +227,25 @@ async function handleBulkUpdate(req, supabaseClient) {
         for (let i = 0; i < results.created.length; i++) {
           const employee = results.created[i];
           const empData = toCreate[i];
-          if (empData.modulePermissions) {
-            try {
-              await updateModulePermissions(supabaseClient, employee.id, empData.modulePermissions);
-            } catch (error) {
-              console.error(`Error setting module permissions for employee ${employee.id}:`, error);
-              results.errors.push(`Failed to set module permissions for ${employee.employee_id}: ${error.message}`);
-            }
+          
+          // Set default module permissions (incidentReporting and transportSafetyAdmin)
+          const modulePermissions = empData.modulePermissions || {
+            superAdmin: false,
+            incidentReporting: true, // Enable by default
+            incidentAdmin: false,
+            assessmentUser: false,
+            assessmentsAdmin: false,
+            employeeVerificationAdmin: false,
+            grievancesAdmin: false,
+            transportSafetyAdmin: true, // Enable by default
+            eduSafeResourceAccess: false
+          };
+          
+          try {
+            await updateModulePermissions(supabaseClient, employee.id, modulePermissions);
+          } catch (error) {
+            console.error(`Error setting module permissions for employee ${employee.id}:`, error);
+            results.errors.push(`Failed to set module permissions for ${employee.employee_id}: ${error.message}`);
           }
         }
       }
@@ -240,6 +254,7 @@ async function handleBulkUpdate(req, supabaseClient) {
     // Update existing employees one by one (Supabase doesn't support bulk updates with different IDs)
     for (const emp of toUpdate) {
       const { id, modulePermissions, ...updateData } = emp;
+      
       const { data: updatedData, error: updateError } = await supabaseClient
         .from("employees")
         .update(updateData)
@@ -253,14 +268,33 @@ async function handleBulkUpdate(req, supabaseClient) {
       } else if (updatedData) {
         results.updated.push(updatedData);
         
-        // Update module permissions if provided
-        if (modulePermissions) {
-          try {
-            await updateModulePermissions(supabaseClient, id, modulePermissions);
-          } catch (error) {
-            console.error(`Error updating module permissions for employee ${id}:`, error);
-            results.errors.push(`Failed to update module permissions for ${emp.employee_id}: ${error.message}`);
-          }
+        // Find original employee data to get modulePermissions
+        const originalEmp = employees.find(e => e.id === id);
+        
+        // Set default module permissions if not provided
+        const defaultModulePermissions = {
+          superAdmin: false,
+          incidentReporting: true, // Enable by default
+          incidentAdmin: false,
+          assessmentUser: false,
+          assessmentsAdmin: false,
+          employeeVerificationAdmin: false,
+          grievancesAdmin: false,
+          transportSafetyAdmin: true, // Enable by default
+          eduSafeResourceAccess: false
+        };
+        
+        // Use provided modulePermissions or defaults
+        try {
+          // Always update module permissions for consistency
+          await updateModulePermissions(
+            supabaseClient, 
+            id, 
+            originalEmp?.modulePermissions || defaultModulePermissions
+          );
+        } catch (error) {
+          console.error(`Error updating module permissions for employee ${id}:`, error);
+          results.errors.push(`Failed to update module permissions for ${emp.employee_id}: ${error.message}`);
         }
       }
     }
@@ -327,11 +361,40 @@ async function handleBulkCreate(req, supabaseClient) {
       });
     }
     
+    // After creating employees, set default module permissions for each one
+    const results = {
+      created: data,
+      errors: []
+    };
+    
+    // Apply default module permissions to all created employees
+    for (const employee of data || []) {
+      try {
+        const defaultModulePermissions = {
+          superAdmin: false,
+          incidentReporting: true, // Enable by default
+          incidentAdmin: false,
+          assessmentUser: false,
+          assessmentsAdmin: false,
+          employeeVerificationAdmin: false,
+          grievancesAdmin: false,
+          transportSafetyAdmin: true, // Enable by default
+          eduSafeResourceAccess: false
+        };
+        
+        await updateModulePermissions(supabaseClient, employee.id, defaultModulePermissions);
+      } catch (error) {
+        console.error(`Error setting module permissions for employee ${employee.id}:`, error);
+        results.errors.push(`Failed to set module permissions for ${employee.employee_id}: ${error.message}`);
+      }
+    }
+    
     return new Response(
       JSON.stringify({
         success: true,
         count: data.length,
-        employees: data
+        employees: data,
+        errors: results.errors
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -379,8 +442,21 @@ async function handleCreate(supabaseClient, employeeData) {
   }
 
   // If module permissions were provided, update them as well
-  if (employeeData.modulePermissions && employee) {
-    await updateModulePermissions(supabaseClient, employee.id, employeeData.modulePermissions);
+  // If not, set default permissions (incidentReporting and transportSafetyAdmin)
+  const modulePermissions = employeeData.modulePermissions || {
+    superAdmin: false,
+    incidentReporting: true, // Enable by default
+    incidentAdmin: false,
+    assessmentUser: false,
+    assessmentsAdmin: false,
+    employeeVerificationAdmin: false,
+    grievancesAdmin: false,
+    transportSafetyAdmin: true, // Enable by default
+    eduSafeResourceAccess: false
+  };
+  
+  if (employee) {
+    await updateModulePermissions(supabaseClient, employee.id, modulePermissions);
   }
 
   return new Response(JSON.stringify({ success: true, employee }), {
@@ -423,9 +499,20 @@ async function handleUpdate(supabaseClient, employeeData) {
   }
 
   // If module permissions were provided, update them as well
-  if (employeeData.modulePermissions) {
-    await updateModulePermissions(supabaseClient, employeeData.id, employeeData.modulePermissions);
-  }
+  // If not, set default permissions (incidentReporting and transportSafetyAdmin)
+  const modulePermissions = employeeData.modulePermissions || {
+    superAdmin: false,
+    incidentReporting: true, // Enable by default
+    incidentAdmin: false,
+    assessmentUser: false,
+    assessmentsAdmin: false,
+    employeeVerificationAdmin: false,
+    grievancesAdmin: false,
+    transportSafetyAdmin: true, // Enable by default
+    eduSafeResourceAccess: false
+  };
+  
+  await updateModulePermissions(supabaseClient, employeeData.id, modulePermissions);
 
   return new Response(JSON.stringify({ success: true, employee }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
