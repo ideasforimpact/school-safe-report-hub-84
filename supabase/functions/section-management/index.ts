@@ -21,7 +21,7 @@ serve(async (req) => {
 
   try {
     const { action, id, name, gradeId, clientId } = await req.json();
-    console.log(`Section management: Action=${action}, ID=${id}, Name=${name}, GradeID=${gradeId}, ClientID=${clientId}\n`);
+    console.log(`Section management: Action=${action}, ID=${id}, Name=${name}, GradeID=${gradeId}, ClientID=${clientId}`);
 
     switch (action) {
       case 'list': {

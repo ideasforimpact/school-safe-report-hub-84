@@ -58,6 +58,7 @@ export const EditDialog = ({
   const [open, setOpen] = useState(false);
   const [currentValue, setCurrentValue] = useState(value);
 
+  // Update the internal state when the external value changes
   useEffect(() => {
     setCurrentValue(value);
   }, [value]);
