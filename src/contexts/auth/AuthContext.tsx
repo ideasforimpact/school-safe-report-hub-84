@@ -48,27 +48,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     console.log("Setting up Supabase auth listener");
     
-    // Get initial session
-    supabase.auth.getSession().then(({ data, error }) => {
-      console.log("Initial session check:", data?.session?.user?.email);
-      if (error) {
-        console.error("Session check error:", error);
-      }
-      
-      if (data?.session?.user) {
-        handleUserAuthentication(data.session.user);
-      }
-    });
-    
-    // Set up auth state change listener
+    // Set up auth state change listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("Auth state changed:", event, session?.user?.email);
       
       if (event === 'SIGNED_IN' && session?.user) {
-        handleUserAuthentication(session.user);
+        // Don't call handleUserAuthentication directly in the event handler to avoid potential deadlocks
+        setTimeout(() => {
+          handleUserAuthentication(session.user);
+        }, 0);
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
         logoutUser();
+      }
+    });
+    
+    // Then check for existing session
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      console.log("Initial session check:", session?.user?.email);
+      if (error) {
+        console.error("Session check error:", error);
+      }
+      
+      if (session?.user) {
+        handleUserAuthentication(session.user);
       }
     });
     

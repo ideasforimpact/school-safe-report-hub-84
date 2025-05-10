@@ -26,6 +26,7 @@ const Login = () => {
       const { data, error } = await supabase.auth.getSession();
       
       if (data?.session) {
+        console.log("Session detected after redirect:", data.session);
         navigate("/dashboard");
         toast.success("Login successful!");
       }
@@ -66,18 +67,18 @@ const Login = () => {
       setGoogleLoading(true);
       setError("");
       
-      // Using a more reliable approach for redirect URL
-      const redirectTo = `${window.location.origin}/dashboard`;
-      console.log("Google login redirect URL:", redirectTo);
+      // Get the current origin for constructing redirect URL
+      const origin = window.location.origin;
+      const redirectTo = `${origin}/dashboard`;
       
+      console.log("Initiating Google login with redirect to:", redirectTo);
+      
+      // Use signInWithOAuth to redirect to Google's login page directly
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: redirectTo,
-          queryParams: {
-            access_type: 'offline',
-            prompt: 'consent',
-          }
+          // Don't use queryParams that might cause issues
         }
       });
       
@@ -85,14 +86,13 @@ const Login = () => {
         console.error("Google login error:", error);
         toast.error("Google login failed. Please try again.");
         setError(`Google authentication failed: ${error.message}`);
-      } else {
-        // No need for navigation here as the redirect will happen automatically
-        console.log("Google authentication initiated successfully");
+        setGoogleLoading(false);
       }
+      // No else branch needed as successful OAuth will redirect the page
+      
     } catch (err) {
-      console.error("Google login error:", err);
+      console.error("Google login unexpected error:", err);
       setError("An error occurred with Google login. Please try again.");
-    } finally {
       setGoogleLoading(false);
     }
   };
