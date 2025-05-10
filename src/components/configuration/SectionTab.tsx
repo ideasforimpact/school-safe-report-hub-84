@@ -176,9 +176,10 @@ export const SectionTab = ({
                           type: "select",
                           label: "Grade",
                           options: classes.map(cls => ({ value: cls.id, label: cls.name })),
-                          value: editingSection?.classId || section.classId || "",
+                          value: editingSection?.id === section.id ? editingSection.classId : section.classId,
                           onChange: (value) => setEditingSection(prev => 
-                            prev ? {...prev, classId: value} : null
+                            prev && prev.id === section.id ? {...prev, classId: value} : 
+                            { id: section.id, name: section.name, classId: value }
                           )
                         }}
                         onOpenChange={(open) => {
@@ -188,12 +189,13 @@ export const SectionTab = ({
                               name: section.name, 
                               classId: section.classId
                             });
-                          } else {
+                          } else if (!open && editingSection?.id === section.id) {
                             setEditingSection(null);
                           }
                         }}
                         onChange={(value) => setEditingSection(prev => 
-                          prev ? {...prev, name: value} : null
+                          prev && prev.id === section.id ? {...prev, name: value} : 
+                          { id: section.id, name: value, classId: section.classId }
                         )}
                         onSave={handleSectionUpdate}
                         triggerButton={
