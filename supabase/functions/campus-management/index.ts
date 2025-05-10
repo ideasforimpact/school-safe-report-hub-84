@@ -1,176 +1,148 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.5.0"
+// Follow Deno runtime API
+import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-// Define CORS headers for browser access
+// Set CORS headers
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
-
-// Create Supabase client
-const createSupabaseClient = (req: Request) => {
-  const authHeader = req.headers.get('Authorization')
-  const supabaseUrl = Deno.env.get("SUPABASE_URL") || ""
-  const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
-  
-  return createClient(
-    supabaseUrl,
-    supabaseKey,
-    { global: { headers: { Authorization: authHeader || "" } } }
-  )
-}
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+};
 
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
+    return new Response(null, { headers: corsHeaders, status: 204 });
   }
-  
+
   try {
-    // Get the Supabase client
-    const supabase = createSupabaseClient(req)
-    
-    // Get request data based on HTTP method
-    if (req.method === 'GET') {
-      // Extract query parameters from URL
-      const url = new URL(req.url)
-      const clientId = url.searchParams.get('clientId')
-      
-      if (!clientId) {
-        return new Response(
-          JSON.stringify({ error: "Client ID is required" }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
-        )
-      }
-      
-      // Get campuses for the specified client
-      const { data, error } = await supabase
-        .from('campuses')
-        .select('*')
-        .eq('client_id', clientId)
-        .order('name')
-      
-      if (error) {
-        console.error('Error fetching campuses:', error)
-        return new Response(
-          JSON.stringify({ error: error.message }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
-        )
-      }
-      
-      return new Response(
-        JSON.stringify({ campuses: data }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
-      )
+    // Create a Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Parse request data
+    let body: any = {};
+    if (req.method !== 'GET') {
+      body = await req.json();
     }
+
+    const action = req.method === 'GET' 
+      ? new URL(req.url).searchParams.get('action') || 'list'
+      : body.action || '';
     
-    if (req.method === 'POST') {
-      // Parse request body for campus data
-      const { name, clientId } = await req.json()
-      
-      if (!name || !clientId) {
+    // Handle the different actions
+    switch (action) {
+      case 'list': {
+        const clientId = req.method === 'GET'
+          ? new URL(req.url).searchParams.get('clientId')
+          : body.clientId;
+
+        if (!clientId) {
+          return new Response(
+            JSON.stringify({ error: 'Client ID is required' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+          );
+        }
+
+        const { data: campuses, error } = await supabase
+          .from('campuses')
+          .select('*')
+          .eq('client_id', clientId);
+
+        if (error) throw error;
+
         return new Response(
-          JSON.stringify({ error: "Name and client ID are required" }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
-        )
+          JSON.stringify({ campuses }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
-      
-      // Insert new campus
-      const { data, error } = await supabase
-        .from('campuses')
-        .insert([{ name, client_id: clientId }])
-        .select()
-        .single()
-      
-      if (error) {
-        console.error('Error adding campus:', error)
+        
+      case 'create': {
+        const { name, clientId } = body;
+        
+        if (!name || !clientId) {
+          return new Response(
+            JSON.stringify({ error: 'Name and Client ID are required' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+          );
+        }
+        
+        const { data: campus, error } = await supabase
+          .from('campuses')
+          .insert({ name, client_id: clientId })
+          .select()
+          .single();
+        
+        if (error) throw error;
+        
         return new Response(
-          JSON.stringify({ error: error.message }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
-        )
+          JSON.stringify({ campus }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
-      
-      return new Response(
-        JSON.stringify({ campus: data }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 201 }
-      )
+        
+      case 'update': {
+        const { id, name } = body;
+        
+        if (!id || !name) {
+          return new Response(
+            JSON.stringify({ error: 'ID and name are required' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+          );
+        }
+        
+        const { data: campus, error } = await supabase
+          .from('campuses')
+          .update({ name })
+          .eq('id', id)
+          .select()
+          .single();
+        
+        if (error) throw error;
+        
+        return new Response(
+          JSON.stringify({ campus }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+        
+      case 'delete': {
+        const { id } = body;
+        
+        if (!id) {
+          return new Response(
+            JSON.stringify({ error: 'ID is required' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+          );
+        }
+        
+        const { error } = await supabase
+          .from('campuses')
+          .delete()
+          .eq('id', id);
+        
+        if (error) throw error;
+        
+        return new Response(
+          JSON.stringify({ success: true }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+        
+      default:
+        return new Response(
+          JSON.stringify({ error: 'Invalid action' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+        );
     }
-    
-    if (req.method === 'PUT') {
-      // Parse request body for campus update data
-      const { id, name } = await req.json()
-      
-      if (!id || !name) {
-        return new Response(
-          JSON.stringify({ error: "Campus ID and name are required" }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
-        )
-      }
-      
-      // Update campus
-      const { data, error } = await supabase
-        .from('campuses')
-        .update({ name })
-        .eq('id', id)
-        .select()
-        .single()
-      
-      if (error) {
-        console.error('Error updating campus:', error)
-        return new Response(
-          JSON.stringify({ error: error.message }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
-        )
-      }
-      
-      return new Response(
-        JSON.stringify({ campus: data }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
-      )
-    }
-    
-    if (req.method === 'DELETE') {
-      // Parse request body for campus ID
-      const { id } = await req.json()
-      
-      if (!id) {
-        return new Response(
-          JSON.stringify({ error: "Campus ID is required" }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
-        )
-      }
-      
-      // Delete campus
-      const { error } = await supabase
-        .from('campuses')
-        .delete()
-        .eq('id', id)
-      
-      if (error) {
-        console.error('Error deleting campus:', error)
-        return new Response(
-          JSON.stringify({ error: error.message }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
-        )
-      }
-      
-      return new Response(
-        JSON.stringify({ success: true }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
-      )
-    }
-    
-    // Handle unsupported methods
-    return new Response(
-      JSON.stringify({ error: "Method not allowed" }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 405 }
-    )
   } catch (error) {
-    console.error('Unexpected error:', error)
+    console.error('Error:', error);
+    
     return new Response(
-      JSON.stringify({ error: "Internal server error" }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
-    )
+      JSON.stringify({ error: error.message }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+    );
   }
-})
+});

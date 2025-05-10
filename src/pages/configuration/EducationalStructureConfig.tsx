@@ -94,6 +94,7 @@ export const EducationalStructureConfig: React.FC<EducationalStructureConfigProp
               updateClass={updateClass}
               deleteClass={deleteClass}
               sections={sections}
+              loading={loading}
             />
           </TabsContent>
           

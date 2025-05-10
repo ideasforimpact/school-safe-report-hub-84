@@ -61,14 +61,13 @@ export function useOtherConfigurationManagement() {
     
     setLoading(true);
     try {
-      const { data: { campuses: fetchedCampuses }, error } = await supabase.functions.invoke('campus-management', {
-        method: 'GET',
-        query: { clientId: client.id }
+      const { data, error } = await supabase.functions.invoke('campus-management', {
+        body: { clientId: client.id, action: 'list' }
       });
 
       if (error) throw error;
       
-      setCampuses(fetchedCampuses.map((campus: any) => ({
+      setCampuses(data.campuses.map((campus: any) => ({
         id: campus.id,
         name: campus.name
       })));
@@ -119,14 +118,13 @@ export function useOtherConfigurationManagement() {
 
     try {
       setLoading(true);
-      const { data: { campus }, error } = await supabase.functions.invoke('campus-management', {
-        method: 'POST',
-        body: { name, clientId: client.id }
+      const { data, error } = await supabase.functions.invoke('campus-management', {
+        body: { name, clientId: client.id, action: 'create' }
       });
 
       if (error) throw error;
       
-      setCampuses(prev => [...prev, { id: campus.id, name: campus.name }]);
+      setCampuses(prev => [...prev, { id: data.campus.id, name: data.campus.name }]);
       toast.success("Campus added successfully");
     } catch (error) {
       console.error("Error adding campus:", error);
@@ -139,9 +137,8 @@ export function useOtherConfigurationManagement() {
   const updateCampus = async (id: string, name: string) => {
     try {
       setLoading(true);
-      const { data: { campus }, error } = await supabase.functions.invoke('campus-management', {
-        method: 'PUT',
-        body: { id, name }
+      const { data, error } = await supabase.functions.invoke('campus-management', {
+        body: { id, name, action: 'update' }
       });
 
       if (error) throw error;
@@ -160,8 +157,7 @@ export function useOtherConfigurationManagement() {
     try {
       setLoading(true);
       const { error } = await supabase.functions.invoke('campus-management', {
-        method: 'DELETE',
-        body: { id }
+        body: { id, action: 'delete' }
       });
 
       if (error) throw error;
