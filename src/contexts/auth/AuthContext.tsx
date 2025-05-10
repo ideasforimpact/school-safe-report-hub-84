@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { User, UserRole, ModulePermissions, AuthContextType, UserWithPassword, EmployeeType, DepartmentType } from './types';
 import { useClient } from '../ClientContext';
@@ -17,6 +16,7 @@ import {
   deleteExistingUser,
   deactivateExistingUser
 } from '@/services/auth/userManagementService';
+import { supabase } from '@/integrations/supabase/client';
 
 // Helper functions to exclude password from user objects
 const excludePasswordFromUser = (user: UserWithPassword): User => {
@@ -43,6 +43,73 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     saveUsersToStorage(users);
   }, [users]);
 
+  // Set up Supabase auth listener
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Auth state changed:", event, session?.user?.email);
+      
+      if (event === 'SIGNED_IN' && session?.user) {
+        // Find or create user in our local system
+        const supabaseUser = session.user;
+        
+        // Check if user exists in our system
+        let existingUser = users.find(u => u.email === supabaseUser.email);
+        
+        if (existingUser) {
+          // Update login timestamp
+          const updatedUser = {
+            ...existingUser,
+            lastLogin: new Date().toISOString()
+          };
+          
+          const updatedUsers = users.map(u => 
+            u.id === existingUser?.id ? { ...u, lastLogin: new Date().toISOString() } : u
+          );
+          
+          setUsers(updatedUsers);
+          setUser(excludePasswordFromUser(updatedUser));
+          saveUserToStorage(excludePasswordFromUser(updatedUser));
+        } else {
+          // For new users via SSO, create a basic account (can be enhanced later)
+          const newUser: UserWithPassword = {
+            id: supabaseUser.id,
+            firstName: supabaseUser.user_metadata.full_name?.split(' ')[0] || 'New',
+            lastName: supabaseUser.user_metadata.full_name?.split(' ').slice(1).join(' ') || 'User',
+            email: supabaseUser.email || '',
+            password: '', // SSO users don't need passwords in our system
+            role: 'reporter', // Default role
+            modulePermissions: {
+              superAdmin: false,
+              incidentReporting: true,
+              incidentAdmin: false,
+              assessmentUser: false,
+              assessmentsAdmin: false,
+              employeeVerificationAdmin: false,
+              grievancesAdmin: false,
+              transportSafetyAdmin: false,
+              eduSafeResourceAccess: false
+            },
+            isActive: true,
+            createdAt: new Date().toISOString(),
+            lastLogin: new Date().toISOString(),
+          };
+          
+          const updatedUsers = [...users, newUser];
+          setUsers(updatedUsers);
+          setUser(excludePasswordFromUser(newUser));
+          saveUserToStorage(excludePasswordFromUser(newUser));
+        }
+      } else if (event === 'SIGNED_OUT') {
+        // Handle sign out if needed
+        // Note: we're keeping our own logout flow separate
+      }
+    });
+    
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [users]);
+
   // Debug: Log current users to help debugging
   useEffect(() => {
     console.log("Current users in AuthContext:", users);
@@ -61,6 +128,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (loggedInUser) {
       console.log("Login successful, user:", loggedInUser);
       
+      // Also sign in with Supabase
+      try {
+        await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
+      } catch (error) {
+        console.error("Supabase auth error (non-critical):", error);
+      }
+      
       setUser(loggedInUser);
       saveUserToStorage(loggedInUser);
       
@@ -71,9 +148,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return false;
   };
 
-  const logout = () => {
+  const logout = async () => {
     setUser(null);
     logoutUser();
+    
+    // Also sign out from Supabase
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error("Supabase signout error:", error);
+    }
   };
 
   const addUser = async (userData: { 
