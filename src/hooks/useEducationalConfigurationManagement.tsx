@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -85,10 +84,29 @@ export function useEducationalConfigurationManagement() {
     }
   };
 
-  // Fetch sections (placeholder - to be implemented with an edge function)
+  // Fetch sections from the new Supabase function
   const fetchSections = async () => {
-    // Implement section fetching when available
-    setSections([]);
+    if (!client?.id) return;
+    
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('section-management', {
+        body: { clientId: client.id, action: 'list' }
+      });
+
+      if (error) throw error;
+      
+      setSections(data.sections.map((section: any) => ({
+        id: section.id,
+        name: section.name,
+        classId: section.grade_id
+      })));
+    } catch (error) {
+      console.error("Error fetching sections:", error);
+      toast.error("Failed to load sections");
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Fetch facilities
@@ -272,17 +290,76 @@ export function useEducationalConfigurationManagement() {
     }
   };
 
-  // Section management (placeholders - to be implemented)
-  const handleAddSection = (classId: string, name: string) => {
-    // To be implemented
+  // Section management with the new API
+  const handleAddSection = async (classId: string, name: string) => {
+    if (!client?.id) {
+      toast.error("No client selected");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const { data, error } = await supabase.functions.invoke('section-management', {
+        body: { name, gradeId: classId, clientId: client.id, action: 'create' }
+      });
+
+      if (error) throw error;
+      
+      setSections(prev => [...prev, { 
+        id: data.section.id, 
+        name: data.section.name,
+        classId: data.section.grade_id
+      }]);
+      toast.success("Section added successfully");
+    } catch (error) {
+      console.error("Error adding section:", error);
+      toast.error("Failed to add section");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleUpdateSection = (id: string, classId: string, name: string) => {
-    // To be implemented
+  const handleUpdateSection = async (id: string, classId: string, name: string) => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase.functions.invoke('section-management', {
+        body: { id, name, gradeId: classId, action: 'update' }
+      });
+
+      if (error) throw error;
+      
+      setSections(prev => prev.map(section => section.id === id ? { 
+        ...section, 
+        name: data.section.name, 
+        classId: data.section.grade_id 
+      } : section));
+      
+      toast.success("Section updated successfully");
+    } catch (error) {
+      console.error("Error updating section:", error);
+      toast.error("Failed to update section");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDeleteSection = (id: string) => {
-    // To be implemented
+  const handleDeleteSection = async (id: string) => {
+    try {
+      setLoading(true);
+      const { error } = await supabase.functions.invoke('section-management', {
+        body: { id, action: 'delete' }
+      });
+
+      if (error) throw error;
+      
+      setSections(prev => prev.filter(section => section.id !== id));
+      toast.success("Section deleted successfully");
+    } catch (error) {
+      console.error("Error deleting section:", error);
+      toast.error("Failed to delete section");
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Facility management
