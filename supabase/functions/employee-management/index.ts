@@ -23,8 +23,23 @@ serve(async (req) => {
   }
 
   try {
+    // Check for authorization header
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      console.error("Missing authorization header in request");
+      return new Response(
+        JSON.stringify({ 
+          error: "Missing authorization header", 
+          status: 401 
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 401,
+        }
+      );
+    }
+
     // Create a Supabase client with the Auth context of the logged in user
-    const authHeader = req.headers.get("Authorization")!;
     const supabaseClient = createClient(
       // Supabase API URL - env var exported by default when deployed to Supabase Edge Functions
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -38,15 +53,22 @@ serve(async (req) => {
       }
     );
 
+    // Log auth header for debugging (exclude the token itself for security)
+    console.log("Auth header present:", authHeader ? "Yes" : "No");
+
     // Get the request path parameter
     const requestUrl = new URL(req.url);
     const path = requestUrl.pathname.split("/").pop();
+    const pathHeader = req.headers.get("path");
 
-    console.log(`Request path: ${path}`);
+    // Use path from header if available (helps with Supabase Function invoke)
+    const effectivePath = pathHeader || path;
+
+    console.log(`Request path: ${effectivePath}`);
     
-    if (path === "bulk-update") {
+    if (effectivePath === "bulk-update") {
       return await handleBulkUpdate(req, supabaseClient);
-    } else if (path === "bulk-create") {
+    } else if (effectivePath === "bulk-create") {
       return await handleBulkCreate(req, supabaseClient);
     }
     

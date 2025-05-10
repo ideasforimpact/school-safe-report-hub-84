@@ -79,10 +79,15 @@ export const processEmployeeData = async (rawData: RawEmployeeData[]): Promise<I
     console.log(`Sending ${employees.length} employees for bulk processing`);
     
     // Process all employees in a single bulk operation using the edge function
+    // Make sure to include the Authorization header explicitly
     const { data, error } = await supabase.functions.invoke('employee-management', {
       method: 'POST',
-      headers: { path: 'bulk-update' },
-      body: { employees }
+      body: { employees },
+      headers: { 
+        path: 'bulk-update',
+        // Ensure the authorization header is included correctly
+        // Supabase will automatically add the Authorization header with the current session
+      }
     });
     
     if (error) {
