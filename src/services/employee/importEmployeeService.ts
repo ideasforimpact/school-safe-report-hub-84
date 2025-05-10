@@ -15,7 +15,9 @@ import { toast } from 'sonner';
 export const processEmployeeExcel = async (file: File): Promise<Employee[]> => {
   try {
     // Parse the Excel file
+    console.log("Starting Excel processing for file:", file.name);
     const rawData = await parseExcelFile(file);
+    console.log("Excel data parsed successfully, records:", rawData.length);
 
     // Show status message for large imports
     if (rawData.length > 100) {
@@ -54,6 +56,8 @@ export const processEmployeeExcel = async (file: File): Promise<Employee[]> => {
         modulePermissions: defaultModulePermissions
       };
     });
+    
+    console.log("Processed data before sending to API:", processedData);
     
     // Process the data and add/update employees using bulk operations
     console.time('Bulk import processing');

@@ -35,14 +35,11 @@ serve(async (req) => {
 
     // Create a Supabase client - for anonymous access, we don't require auth header
     const supabaseClient = createClient(
-      // Supabase API URL - env var exported by default when deployed to Supabase Edge Functions
       Deno.env.get("SUPABASE_URL") ?? "",
-      // Supabase API ANON KEY - env var exported by default when deployed to Supabase Edge Functions
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
       {
         global: {
           headers: { 
-            // Include auth header if available, but don't require it (verify_jwt is false)
             ...(req.headers.get("Authorization") ? 
               { Authorization: req.headers.get("Authorization")! } : {})
           },
@@ -60,30 +57,44 @@ serve(async (req) => {
 
     console.log(`Request path: ${effectivePath}`);
     
-    // FIX: More robust request body parsing with detailed logging
-    const bodyText = await req.text();
-    console.log("Raw request body:", bodyText);
-    
-    if (!bodyText || bodyText.trim() === '') {
-      console.error("Empty request body");
+    // IMPROVE: More robust request body parsing with detailed logging
+    let bodyText = "";
+    try {
+      bodyText = await req.text();
+      console.log("Raw request body:", bodyText);
+      
+      // Check for empty body early
+      if (!bodyText || bodyText.trim() === '') {
+        console.error("Empty request body");
+        return new Response(JSON.stringify({ 
+          error: "Request body is empty", 
+          details: "The request body must contain valid JSON data"
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        });
+      }
+    } catch (textErr) {
+      console.error("Error reading request body as text:", textErr);
       return new Response(JSON.stringify({ 
-        error: "Request body is empty", 
-        details: "The request body must contain valid JSON data"
+        error: "Error reading request body",
+        details: textErr.message
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 400,
       });
     }
     
+    // Parse JSON body
     let reqBody;
     try {
       reqBody = JSON.parse(bodyText);
       console.log("Request body parsed successfully:", reqBody);
-    } catch (e) {
-      console.error("Error parsing request body:", e);
+    } catch (jsonErr) {
+      console.error("Error parsing request body as JSON:", jsonErr);
       return new Response(JSON.stringify({ 
         error: "Invalid JSON in request body",
-        message: e.message,
+        message: jsonErr.message,
         receivedBody: bodyText.substring(0, 200) + (bodyText.length > 200 ? '...' : '')
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

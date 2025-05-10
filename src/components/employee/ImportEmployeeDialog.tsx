@@ -90,10 +90,10 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees }: ImportEm
       
       // Parse the Excel file
       const data = await parseExcelFile(file);
-      setParsedData(data);
       
-      // Add additional logging to inspect data
-      console.log("Excel data for validation:", data);
+      // Log parsed data to ensure it's properly formatted
+      console.log("Excel data parsed successfully:", data);
+      setParsedData(data);
       
       // Validate the parsed data
       const errors = validateExcelData(data);
@@ -135,14 +135,14 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees }: ImportEm
         toast.info(`Starting import of ${parsedData.length} records. Please wait...`);
       }
       
-      // Perform the import (now uses bulk operations internally)
+      // Ensure we're passing the file to the import function
       await onImportEmployees(file);
       
       resetDialogState();
       setIsOpen(false);
     } catch (error) {
       console.error('Error importing employees:', error);
-      toast.error('Failed to import employees');
+      toast.error(`Failed to import employees: ${(error as Error).message || 'Unknown error'}`);
     } finally {
       setIsUploading(false);
       setImportProgress({ total: 0, current: 0 });

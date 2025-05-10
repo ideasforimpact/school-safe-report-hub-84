@@ -80,11 +80,12 @@ export const processEmployeeData = async (rawData: RawEmployeeData[]): Promise<I
 
     // FIX: Create proper request body and log it before sending
     const requestBody = { employees };
-    const stringifiedBody = JSON.stringify(requestBody);
     
-    console.log("Request payload stringified:", stringifiedBody);
+    // Log the request body as a string to verify its content
+    console.log("Request payload:", requestBody);
+    console.log("Request payload stringified:", JSON.stringify(requestBody));
     
-    // FIX: Ensure proper content-type and pass stringified body
+    // FIX: Use proper Supabase edge function invocation with correct body format
     const { data: response, error } = await supabase.functions.invoke('employee-management', {
       method: 'POST',
       body: requestBody, // Supabase client will automatically stringify this
@@ -94,9 +95,52 @@ export const processEmployeeData = async (rawData: RawEmployeeData[]): Promise<I
       }
     });
     
+    // Alternative approach if the above still fails
     if (error) {
       console.error('Bulk processing error:', error);
-      throw new Error(`Bulk operation failed: ${error.message}`);
+      
+      // Try with a direct fetch as a fallback
+      try {
+        const supabaseUrl = supabase.functions.url('employee-management');
+        console.log("Trying direct fetch to", supabaseUrl);
+        
+        const response = await fetch(supabaseUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'path': 'bulk-update',
+            'Authorization': `Bearer ${supabase.auth.session()?.access_token || ''}`
+          },
+          body: JSON.stringify(requestBody)
+        });
+        
+        if (!response.ok) {
+          throw new Error(`Direct fetch failed with status ${response.status}`);
+        }
+        
+        const data = await response.json();
+        console.log('Direct fetch response:', data);
+        
+        // Process the response
+        if (data && data.success) {
+          result.successCount = data.created || 0;
+          result.updatedCount = data.updated || 0;
+          
+          if (data.employees && Array.isArray(data.employees)) {
+            result.addedEmployees = data.employees.map(transformEmployeeData);
+          }
+          
+          if (data.errors && Array.isArray(data.errors)) {
+            result.errors = [...result.errors, ...data.errors];
+            result.errorCount += data.errors.length;
+          }
+          
+          return result;
+        }
+      } catch (fetchError) {
+        console.error('Direct fetch error:', fetchError);
+        throw new Error(`Bulk operation failed: ${error.message}`);
+      }
     }
     
     console.log('Bulk processing result:', response);
