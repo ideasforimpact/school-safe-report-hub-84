@@ -5,10 +5,11 @@ import { useStudents } from '@/contexts/StudentContext';
 import { Student } from '@/types/student';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, UserSearch } from 'lucide-react';
+import { PlusCircle, UserSearch, FileUp } from 'lucide-react';
 import StudentsList from '@/components/students/StudentsList';
 import AddStudentDialog from '@/components/students/AddStudentDialog';
 import EditStudentDialog from '@/components/students/EditStudentDialog';
+import ImportStudentDialog from '@/components/students/ImportStudentDialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,12 +22,14 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from 'sonner';
 import { Skeleton } from "@/components/ui/skeleton";
+import { processStudentExcel } from '@/services/student/importStudentService';
 
 const StudentManagement = () => {
   const { students, deleteStudent, isLoading } = useStudents();
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [studentToDelete, setStudentToDelete] = useState<string | null>(null);
@@ -56,6 +59,16 @@ const StudentManagement = () => {
     }
   };
 
+  const handleImportStudents = async (file: File) => {
+    try {
+      await processStudentExcel(file);
+      toast.success("Students imported successfully");
+    } catch (error) {
+      console.error("Import process failed:", error);
+      toast.error("Failed to process student import");
+    }
+  };
+
   const filteredStudents = students.filter(
     student =>
       student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -75,9 +88,19 @@ const StudentManagement = () => {
               Manage students in your institution
             </p>
           </div>
-          <Button onClick={() => setIsAddDialogOpen(true)}>
-            <PlusCircle className="mr-2 h-4 w-4" /> Add Student
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => setIsImportDialogOpen(true)}
+              className="flex items-center gap-2"
+              variant="secondary"
+            >
+              <FileUp className="h-4 w-4" />
+              <span>Import Students</span>
+            </Button>
+            <Button onClick={() => setIsAddDialogOpen(true)}>
+              <PlusCircle className="mr-2 h-4 w-4" /> Add Student
+            </Button>
+          </div>
         </div>
 
         {/* Search and filter */}
@@ -125,6 +148,13 @@ const StudentManagement = () => {
             student={selectedStudent}
           />
         )}
+
+        {/* Import Students Dialog */}
+        <ImportStudentDialog
+          open={isImportDialogOpen}
+          onOpenChange={setIsImportDialogOpen}
+          onImportStudents={handleImportStudents}
+        />
 
         {/* Delete Confirmation */}
         <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
