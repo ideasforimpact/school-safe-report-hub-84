@@ -51,7 +51,7 @@ const EmployeeManagement = () => {
     setIsEditDialogOpen(true);
   };
 
-  const handleImportEmployees = async (file: File) => {
+  const handleImportEmployees = async (file: File, clientId?: string) => {
     try {
       await processEmployeeExcel(file, clientId);
       toast.success("Employees imported successfully");

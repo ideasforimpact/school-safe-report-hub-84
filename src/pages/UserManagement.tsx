@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -463,7 +462,7 @@ const UserManagement = () => {
     setIsEditDialogOpen(true);
   };
 
-  // Handle import employees
+  // Handler for importing employees
   const handleImportEmployees = async (file: File) => {
     try {
       setIsLoading(true);
