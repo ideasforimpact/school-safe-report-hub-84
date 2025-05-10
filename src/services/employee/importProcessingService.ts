@@ -78,47 +78,44 @@ export const processEmployeeData = async (rawData: RawEmployeeData[]): Promise<I
     
     console.log(`Sending ${employees.length} employees for bulk processing`);
 
-    // Fix: Use JSON.stringify explicitly for the request body
-    try {
-      const requestBody = { employees };
-      console.log("Request payload:", JSON.stringify(requestBody)); // Log the exact payload being sent
+    // FIX: Create proper request body and log it before sending
+    const requestBody = { employees };
+    const stringifiedBody = JSON.stringify(requestBody);
+    
+    console.log("Request payload stringified:", stringifiedBody);
+    
+    // FIX: Ensure proper content-type and pass stringified body
+    const { data: response, error } = await supabase.functions.invoke('employee-management', {
+      method: 'POST',
+      body: requestBody, // Supabase client will automatically stringify this
+      headers: {
+        'Content-Type': 'application/json',
+        'path': 'bulk-update'
+      }
+    });
+    
+    if (error) {
+      console.error('Bulk processing error:', error);
+      throw new Error(`Bulk operation failed: ${error.message}`);
+    }
+    
+    console.log('Bulk processing result:', response);
+    
+    if (response && response.success) {
+      // Update the result with counts from the bulk operation
+      result.successCount = response.created || 0;
+      result.updatedCount = response.updated || 0;
       
-      const { data: response, error } = await supabase.functions.invoke('employee-management', {
-        method: 'POST',
-        body: requestBody, // This should properly serialize to JSON
-        headers: {
-          'Content-Type': 'application/json',
-          'path': 'bulk-update'
-        }
-      });
-      
-      if (error) {
-        console.error('Bulk processing error:', error);
-        throw new Error(`Bulk operation failed: ${error.message}`);
+      if (response.employees && Array.isArray(response.employees)) {
+        // Transform database employees to match frontend Employee type
+        result.addedEmployees = response.employees.map(transformEmployeeData);
       }
       
-      console.log('Bulk processing result:', response);
-      
-      if (response && response.success) {
-        // Update the result with counts from the bulk operation
-        result.successCount = response.created || 0;
-        result.updatedCount = response.updated || 0;
-        
-        if (response.employees && Array.isArray(response.employees)) {
-          // Transform database employees to match frontend Employee type
-          result.addedEmployees = response.employees.map(transformEmployeeData);
-        }
-        
-        // Add any errors from the bulk operation
-        if (response.errors && Array.isArray(response.errors)) {
-          result.errors = [...result.errors, ...response.errors];
-          result.errorCount += response.errors.length;
-        }
+      // Add any errors from the bulk operation
+      if (response.errors && Array.isArray(response.errors)) {
+        result.errors = [...result.errors, ...response.errors];
+        result.errorCount += response.errors.length;
       }
-    } catch (error) {
-      console.error('Function invocation error:', error);
-      result.errors.push(`API error: ${(error as Error).message || 'Unknown error'}`);
-      result.errorCount++;
     }
     
     return result;

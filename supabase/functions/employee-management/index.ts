@@ -1,3 +1,4 @@
+
 // Follow this setup guide to integrate the Deno language server with your editor:
 // https://deno.land/manual/getting_started/setup_your_environment
 // This enables autocomplete, go to definition, etc.
@@ -24,7 +25,13 @@ serve(async (req) => {
 
   try {
     console.log("Received request:", req.method, req.url);
-    console.log("Request headers:", [...req.headers.entries()]);
+    
+    // Log request headers for debugging
+    const headers = {};
+    req.headers.forEach((value, key) => {
+      headers[key] = value;
+    });
+    console.log("Request headers:", JSON.stringify(headers, null, 2));
 
     // Create a Supabase client - for anonymous access, we don't require auth header
     const supabaseClient = createClient(
@@ -53,34 +60,38 @@ serve(async (req) => {
 
     console.log(`Request path: ${effectivePath}`);
     
-    // Parse the request body with enhanced error handling
-    let reqBody;
-    
-    // Clone the request to log it for debugging
-    const reqClone = req.clone();
-    const bodyText = await reqClone.text();
+    // FIX: More robust request body parsing with detailed logging
+    const bodyText = await req.text();
     console.log("Raw request body:", bodyText);
     
-    try {
-      // Check if request body exists before trying to parse it
-      if (!bodyText || bodyText.trim() === '') {
-        console.error("Empty request body");
-        return new Response(JSON.stringify({ error: "Request body is empty" }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 400,
-        });
-      }
-      
-      reqBody = JSON.parse(bodyText);
-      console.log("Request body parsed successfully:", reqBody);
-    } catch (e) {
-      console.error("Error parsing request body:", e);
-      return new Response(JSON.stringify({ error: "Invalid JSON in request body" }), {
+    if (!bodyText || bodyText.trim() === '') {
+      console.error("Empty request body");
+      return new Response(JSON.stringify({ 
+        error: "Request body is empty", 
+        details: "The request body must contain valid JSON data"
+      }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 400,
       });
     }
     
+    let reqBody;
+    try {
+      reqBody = JSON.parse(bodyText);
+      console.log("Request body parsed successfully:", reqBody);
+    } catch (e) {
+      console.error("Error parsing request body:", e);
+      return new Response(JSON.stringify({ 
+        error: "Invalid JSON in request body",
+        message: e.message,
+        receivedBody: bodyText.substring(0, 200) + (bodyText.length > 200 ? '...' : '')
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
+      });
+    }
+    
+    // Handle the bulk-update path
     if (effectivePath === "bulk-update") {
       console.log("Handling bulk update request");
       const { employees } = reqBody;
@@ -169,7 +180,7 @@ serve(async (req) => {
             department: empData.department,
             joining_date: empData.joiningDate,
             status: empData.status || 'active',
-            // modulePermissions will be handled separately but stored for later use
+            // modulePermissions will be stored for later use
             modulePermissions: empData.modulePermissions
           });
         }
@@ -225,7 +236,7 @@ serve(async (req) => {
         }
       }
       
-      // Update existing employees one by one (Supabase doesn't support bulk updates with different IDs)
+      // Update existing employees
       for (const emp of toUpdate) {
         const { id, modulePermissions, ...updateData } = emp;
         
@@ -260,7 +271,6 @@ serve(async (req) => {
           
           // Use provided modulePermissions or defaults
           try {
-            // Always update module permissions for consistency
             await updateModulePermissions(
               supabaseClient, 
               id, 
@@ -342,7 +352,10 @@ serve(async (req) => {
     }
   } catch (error) {
     console.error("Function error:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ 
+      error: error.message,
+      stack: error.stack
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });
