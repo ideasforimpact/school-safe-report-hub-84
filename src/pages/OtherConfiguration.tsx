@@ -10,10 +10,6 @@ const OtherConfiguration = () => {
     activeTab,
     setActiveTab,
     loading,
-    designations,
-    handleAddDesignation,
-    handleUpdateDesignation,
-    handleDeleteDesignation,
     campuses,
     addCampus,
     updateCampus,
@@ -36,18 +32,14 @@ const OtherConfiguration = () => {
     <Layout>
       <div className="space-y-6 max-w-6xl mx-auto p-4">
         <EducationalConfigurationHeader
-          title="Other Settings Configuration"
-          description="Manage designations, educational structure, and facilities"
+          title="Educational Structure Configuration"
+          description="Manage campuses, classes, sections, and facilities"
         />
 
         <OtherSettingsConfig 
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           loading={loading}
-          designations={designations}
-          addDesignation={handleAddDesignation}
-          updateDesignation={handleUpdateDesignation}
-          deleteDesignation={handleDeleteDesignation}
           campuses={campuses}
           addCampus={addCampus}
           updateCampus={updateCampus}
