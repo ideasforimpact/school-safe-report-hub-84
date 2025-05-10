@@ -38,7 +38,19 @@ serve(async (req) => {
       }
     );
 
-    // Get the request body
+    // Get the request body and path parameter
+    const requestUrl = new URL(req.url);
+    const path = requestUrl.pathname.split("/").pop();
+
+    console.log(`Request path: ${path}`);
+    
+    if (path === "bulk-update") {
+      return await handleBulkUpdate(req, supabaseClient);
+    } else if (path === "bulk-create") {
+      return await handleBulkCreate(req, supabaseClient);
+    }
+    
+    // Get the request body for standard operations
     const { operation, employee, id } = await req.json();
 
     // Handle different operations
@@ -96,6 +108,218 @@ serve(async (req) => {
     });
   }
 });
+
+// Handle bulk update of existing employees and creation of new employees
+async function handleBulkUpdate(req, supabaseClient) {
+  try {
+    const { employees } = await req.json();
+    
+    if (!employees || !Array.isArray(employees)) {
+      return new Response(JSON.stringify({ error: "Invalid request format. Expected 'employees' array." }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
+      });
+    }
+
+    console.log(`Processing bulk update for ${employees.length} employees`);
+
+    // Separate employees into those to update (have IDs) and those to create (don't have IDs)
+    const toCreate = [];
+    const toUpdate = [];
+    const employeeIdMap = new Map();
+    
+    // Process employees to create or update
+    for (const emp of employees) {
+      if (emp.id) {
+        // If ID exists, this is an update
+        toUpdate.push({
+          id: emp.id,
+          first_name: emp.firstName,
+          last_name: emp.lastName,
+          email: emp.email,
+          employee_id: emp.employeeId,
+          employee_type: emp.employeeType,
+          department: emp.department,
+          joining_date: emp.joiningDate,
+          status: emp.status || 'active'
+        });
+      } else {
+        // Check if we have an employee with this employee_id already
+        employeeIdMap.set(emp.employeeId.toLowerCase(), emp);
+      }
+    }
+    
+    // If there are potential new employees, check which ones already exist
+    if (employeeIdMap.size > 0) {
+      const employeeIds = Array.from(employeeIdMap.keys());
+      
+      // Check which employee IDs already exist
+      const { data: existingEmployees, error: lookupError } = await supabaseClient
+        .from("employees")
+        .select("id, employee_id")
+        .in("employee_id", employeeIds.map(id => id.toLowerCase()));
+        
+      if (lookupError) {
+        throw lookupError;
+      }
+      
+      // For existing employees, add them to update list with their database ID
+      for (const existing of (existingEmployees || [])) {
+        const empData = employeeIdMap.get(existing.employee_id.toLowerCase());
+        if (empData) {
+          toUpdate.push({
+            id: existing.id,
+            first_name: empData.firstName,
+            last_name: empData.lastName,
+            email: empData.email,
+            employee_id: empData.employeeId,
+            employee_type: empData.employeeType,
+            department: empData.department,
+            joining_date: empData.joiningDate,
+            status: empData.status || 'active'
+          });
+          employeeIdMap.delete(existing.employee_id.toLowerCase());
+        }
+      }
+      
+      // Any remaining employees are truly new
+      for (const [_, empData] of employeeIdMap.entries()) {
+        toCreate.push({
+          first_name: empData.firstName,
+          last_name: empData.lastName,
+          email: empData.email,
+          employee_id: empData.employeeId,
+          employee_type: empData.employeeType,
+          department: empData.department,
+          joining_date: empData.joiningDate,
+          status: empData.status || 'active'
+        });
+      }
+    }
+    
+    console.log(`Processing ${toCreate.length} new employees and ${toUpdate.length} existing employees`);
+    
+    const results = {
+      created: [],
+      updated: [],
+      errors: []
+    };
+    
+    // Create new employees in bulk if there are any
+    if (toCreate.length > 0) {
+      const { data: createdData, error: createError } = await supabaseClient
+        .from("employees")
+        .insert(toCreate)
+        .select();
+        
+      if (createError) {
+        console.error("Error creating employees:", createError);
+        results.errors.push(`Bulk create error: ${createError.message}`);
+      } else {
+        results.created = createdData || [];
+        console.log(`Successfully created ${results.created.length} employees`);
+      }
+    }
+    
+    // Update existing employees one by one (Supabase doesn't support bulk updates with different IDs)
+    for (const emp of toUpdate) {
+      const { id, ...updateData } = emp;
+      const { data: updatedData, error: updateError } = await supabaseClient
+        .from("employees")
+        .update(updateData)
+        .eq("id", id)
+        .select()
+        .single();
+        
+      if (updateError) {
+        console.error(`Error updating employee ${id}:`, updateError);
+        results.errors.push(`Update error for employee ${emp.employee_id}: ${updateError.message}`);
+      } else if (updatedData) {
+        results.updated.push(updatedData);
+      }
+    }
+    
+    return new Response(
+      JSON.stringify({
+        success: true,
+        created: results.created.length,
+        updated: results.updated.length,
+        errors: results.errors,
+        employees: [...results.created, ...results.updated]
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      }
+    );
+  } catch (error) {
+    console.error("Error in bulk update:", error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500,
+    });
+  }
+}
+
+// Handle bulk creation of employees
+async function handleBulkCreate(req, supabaseClient) {
+  try {
+    const { employees } = await req.json();
+    
+    if (!employees || !Array.isArray(employees)) {
+      return new Response(JSON.stringify({ error: "Invalid request format. Expected 'employees' array." }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
+      });
+    }
+
+    console.log(`Processing bulk creation for ${employees.length} employees`);
+    
+    // Format employees for insertion
+    const formattedEmployees = employees.map(emp => ({
+      employee_id: emp.employeeId,
+      first_name: emp.firstName,
+      last_name: emp.lastName,
+      email: emp.email,
+      employee_type: emp.employeeType,
+      department: emp.department,
+      joining_date: emp.joiningDate,
+      status: emp.status || 'active'
+    }));
+    
+    // Insert all employees in a single operation
+    const { data, error } = await supabaseClient
+      .from("employees")
+      .insert(formattedEmployees)
+      .select();
+      
+    if (error) {
+      console.error("Error creating employees in bulk:", error);
+      return new Response(JSON.stringify({ error: error.message }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 500,
+      });
+    }
+    
+    return new Response(
+      JSON.stringify({
+        success: true,
+        count: data.length,
+        employees: data
+      }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 201,
+      }
+    );
+  } catch (error) {
+    console.error("Error in bulk create:", error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500,
+    });
+  }
+}
 
 // Create a new employee
 async function handleCreate(supabaseClient, employeeData) {

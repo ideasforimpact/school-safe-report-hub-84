@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { FileUp, Upload, Check, AlertTriangle, RefreshCw } from 'lucide-react';
+import { FileUp, Upload, Check, AlertTriangle, RefreshCw, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { validateExcelData } from '@/services/employee/utils/excelValidationUtils';
 import { RawEmployeeData } from '@/services/employee/types/importTypes';
@@ -29,6 +29,7 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees }: ImportEm
   const [isVerified, setIsVerified] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [parsedData, setParsedData] = useState<RawEmployeeData[]>([]);
+  const [importProgress, setImportProgress] = useState({ total: 0, current: 0 });
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -127,7 +128,16 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees }: ImportEm
 
     try {
       setIsUploading(true);
+      setImportProgress({ total: parsedData.length, current: 0 });
+      
+      // Show a toast for large imports
+      if (parsedData.length > 50) {
+        toast.info(`Starting import of ${parsedData.length} records. Please wait...`);
+      }
+      
+      // Perform the import (now uses bulk operations internally)
       await onImportEmployees(file);
+      
       resetDialogState();
       setIsOpen(false);
     } catch (error) {
@@ -135,6 +145,7 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees }: ImportEm
       toast.error('Failed to import employees');
     } finally {
       setIsUploading(false);
+      setImportProgress({ total: 0, current: 0 });
     }
   };
   
@@ -145,6 +156,7 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees }: ImportEm
     setValidationErrors([]);
     setParsedData([]);
     setIsDragging(false);
+    setImportProgress({ total: 0, current: 0 });
   };
 
   return (
@@ -235,22 +247,52 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees }: ImportEm
           </div>
         )}
         
+        {isUploading && importProgress.total > 0 && (
+          <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
+            <div className="flex items-center gap-2 text-blue-600 mb-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <p>Importing employees...</p>
+            </div>
+            <div className="w-full bg-blue-100 rounded-full h-2.5">
+              <div className="bg-blue-600 h-2.5 rounded-full transition-all duration-300" 
+                   style={{ width: `${Math.min(100, (importProgress.current / importProgress.total) * 100)}%` }}></div>
+            </div>
+            <p className="text-xs text-blue-600 mt-2 text-center">
+              Processing bulk import operation...
+            </p>
+          </div>
+        )}
+        
         <DialogFooter className="mt-4 gap-2 flex-col sm:flex-row">
           <Button 
             onClick={handleVerify} 
-            disabled={!file || isVerifying}
+            disabled={!file || isVerifying || isUploading}
             variant="outline"
             className="w-full sm:w-auto"
           >
-            {isVerifying ? 'Verifying...' : 'Verify Data'}
+            {isVerifying ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Verifying...
+              </>
+            ) : 'Verify Data'}
           </Button>
           <Button 
             onClick={handleImport} 
             disabled={!file || isUploading || !isVerified}
             className="gap-2 w-full sm:w-auto"
           >
-            {isUploading ? 'Importing...' : 'Import Employees'}
-            {!isUploading && <Upload className="h-4 w-4" />}
+            {isUploading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Importing...
+              </>
+            ) : (
+              <>
+                Import Employees
+                <Upload className="h-4 w-4 ml-1" />
+              </>
+            )}
           </Button>
           <Button 
             variant="outline" 
@@ -259,6 +301,7 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees }: ImportEm
               setIsOpen(false);
             }}
             className="w-full sm:w-auto"
+            disabled={isUploading}
           >
             Cancel
           </Button>

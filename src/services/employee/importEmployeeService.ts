@@ -8,11 +8,17 @@ import { toast } from 'sonner';
 /**
  * Process and import employees from Excel file
  * Handles both new employee insertion and existing employee updates
+ * Uses bulk operations for better performance
  */
 export const processEmployeeExcel = async (file: File): Promise<Employee[]> => {
   try {
     // Parse the Excel file
     const rawData = await parseExcelFile(file);
+
+    // Show status message for large imports
+    if (rawData.length > 100) {
+      toast.info(`Processing ${rawData.length} records. This may take a moment...`);
+    }
     
     // Validate the data before processing
     const validationErrors = validateExcelData(rawData);
@@ -22,8 +28,10 @@ export const processEmployeeExcel = async (file: File): Promise<Employee[]> => {
       throw new Error('Excel data validation failed');
     }
     
-    // Process the data and add/update employees
+    // Process the data and add/update employees using bulk operations
+    console.time('Bulk import processing');
     const result = await processEmployeeData(rawData);
+    console.timeEnd('Bulk import processing');
     
     // Show notifications
     showImportResultNotifications(result);
