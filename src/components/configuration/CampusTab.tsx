@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -66,8 +65,8 @@ export const CampusTab = ({
       return;
     }
     
+    console.log("Updating campus:", editingCampus.id, editingCampus.name.trim());
     updateCampus(editingCampus.id, editingCampus.name.trim());
-    setEditingCampus(null);
   };
 
   return (
@@ -140,13 +139,13 @@ export const CampusTab = ({
                               id: campus.id, 
                               name: campus.name
                             });
-                          } else {
-                            setEditingCampus(null);
                           }
                         }}
-                        onChange={(value) => setEditingCampus(prev => 
-                          prev ? {...prev, name: value} : null
-                        )}
+                        onChange={(value) => {
+                          if (editingCampus && editingCampus.id === campus.id) {
+                            setEditingCampus({...editingCampus, name: value});
+                          }
+                        }}
                         onSave={handleCampusUpdate}
                         triggerButton={
                           <Button variant="ghost" size="icon" disabled={loading}>

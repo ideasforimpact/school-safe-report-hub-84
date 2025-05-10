@@ -60,16 +60,18 @@ export const EditDialog = ({
 
   // Update the internal state when the external value changes or when dialog opens
   useEffect(() => {
-    setCurrentValue(value);
+    if (open) {
+      setCurrentValue(value);
+    }
   }, [value, open]);
 
   const handleOpenChange = (newOpen: boolean) => {
     setOpen(newOpen);
     onOpenChange(newOpen);
     
-    // Reset to initial value when opened
-    if (newOpen) {
-      setCurrentValue(value);
+    // Reset to initial value when dialog is closed without saving
+    if (!newOpen) {
+      onChange(value); // Reset to original value if dialog is closed without saving
     }
   };
 
@@ -78,9 +80,16 @@ export const EditDialog = ({
       return; // Don't save if empty
     }
     
-    onChange(currentValue); // Make sure the parent component has the current value
-    onSave();
-    setOpen(false);
+    onChange(currentValue); // Update the parent component with the current value
+    onSave(); // Call the save function in the parent component
+    setOpen(false); // Close the dialog after saving
+  };
+
+  // Handle input change
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setCurrentValue(newValue);
+    onChange(newValue);
   };
 
   return (
@@ -97,11 +106,7 @@ export const EditDialog = ({
             <Input
               id="name"
               value={currentValue}
-              onChange={(e) => {
-                const newValue = e.target.value;
-                setCurrentValue(newValue);
-                onChange(newValue);
-              }}
+              onChange={handleInputChange}
               className="col-span-3"
             />
           </div>
