@@ -56,7 +56,7 @@ export const parseExcelFile = async (file: File): Promise<RawEmployeeData[]> => 
             const findEmailField = (): string => {
               // First try known field names
               const knownFieldNames = ['Email', 'email', 'EMAIL', 'EmailAddress', 'Email Address', 
-                'email_address', 'Mail', 'E-Mail', 'e-mail', 'E Mail', 'email_id'];
+                'email_address', 'Mail', 'E-Mail', 'e-mail', 'E Mail', 'email_id', 'Email ID'];
               
               for (const name of knownFieldNames) {
                 if (row[name] !== undefined && row[name] !== '') {
@@ -64,9 +64,10 @@ export const parseExcelFile = async (file: File): Promise<RawEmployeeData[]> => 
                 }
               }
               
-              // Try case-insensitive match for any field containing "email"
+              // Try case-insensitive match for any field containing "email" or "mail"
               for (const key of Object.keys(row)) {
-                if (key.toLowerCase().includes('email') && row[key] !== '') {
+                if ((key.toLowerCase().includes('email') || key.toLowerCase().includes('mail')) && row[key] !== '') {
+                  console.log(`Found email in column: ${key} = ${row[key]}`);
                   return String(row[key]);
                 }
               }
@@ -75,6 +76,7 @@ export const parseExcelFile = async (file: File): Promise<RawEmployeeData[]> => 
               for (const key of Object.keys(row)) {
                 const value = row[key];
                 if (typeof value === 'string' && value.includes('@')) {
+                  console.log(`Found email by @ symbol in column: ${key} = ${value}`);
                   return value;
                 }
               }
@@ -102,7 +104,8 @@ export const parseExcelFile = async (file: File): Promise<RawEmployeeData[]> => 
             
             // Extra validation for required fields, especially email
             if (!mappedData.email) {
-              console.warn(`Warning: Row ${index + 1} is missing email address`);
+              console.warn(`Warning: Row ${index + 1} is missing email address. Original row:`, row);
+              console.warn(`Available columns for this row:`, Object.keys(row));
             }
             
             return mappedData;
