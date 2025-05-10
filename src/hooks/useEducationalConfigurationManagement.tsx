@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useIncidents } from '@/contexts/IncidentContext';
@@ -12,33 +13,23 @@ export function useEducationalConfigurationManagement() {
   const { client } = useClient();
   
   const { 
-    classes: contextClasses,
-    addClass: contextAddClass,
-    updateClass: contextUpdateClass,
-    deleteClass: contextDeleteClass,
     sections: contextSections,
     addSection: contextAddSection,
     updateSection: contextUpdateSection,
-    deleteSection: contextDeleteSection,
-    facilities: contextFacilities,
-    addFacility: contextAddFacility,
-    updateFacility: contextUpdateFacility,
-    deleteFacility: contextDeleteFacility
+    deleteSection: contextDeleteSection
   } = useIncidents();
 
   // Local state 
   const [loading, setLoading] = useState(false);
   const [campuses, setCampuses] = useState<CampusItem[]>([]);
-  const [classes, setClasses] = useState<ClassItem[]>(contextClasses);
+  const [classes, setClasses] = useState<ClassItem[]>([]);
   const [sections, setSections] = useState<SectionItem[]>(contextSections);
-  const [facilities, setFacilities] = useState<ConfigItem[]>(contextFacilities);
+  const [facilities, setFacilities] = useState<ConfigItem[]>([]);
 
-  // Update local state when context changes
+  // Update sections state when context changes
   useEffect(() => {
-    setClasses(contextClasses);
     setSections(contextSections);
-    setFacilities(contextFacilities);
-  }, [contextClasses, contextSections, contextFacilities]);
+  }, [contextSections]);
   
   // Set initial tab based on URL parameter when component mounts
   useEffect(() => {
@@ -52,6 +43,8 @@ export function useEducationalConfigurationManagement() {
   useEffect(() => {
     if (client?.id) {
       fetchCampuses();
+      fetchClasses();
+      fetchFacilities();
     }
   }, [client?.id]);
 
@@ -73,6 +66,53 @@ export function useEducationalConfigurationManagement() {
     } catch (error) {
       console.error("Error fetching campuses:", error);
       toast.error("Failed to load campuses");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchClasses = async () => {
+    if (!client?.id) return;
+    
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('grade-management', {
+        body: { clientId: client.id, action: 'list' }
+      });
+
+      if (error) throw error;
+      
+      setClasses(data.grades.map((grade: any) => ({
+        id: grade.id,
+        name: grade.name,
+        campusId: grade.campus_id
+      })));
+    } catch (error) {
+      console.error("Error fetching grades:", error);
+      toast.error("Failed to load grades");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchFacilities = async () => {
+    if (!client?.id) return;
+    
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('facility-management', {
+        body: { clientId: client.id, action: 'list' }
+      });
+
+      if (error) throw error;
+      
+      setFacilities(data.facilities.map((facility: any) => ({
+        id: facility.id,
+        name: facility.name
+      })));
+    } catch (error) {
+      console.error("Error fetching facilities:", error);
+      toast.error("Failed to load facilities");
     } finally {
       setLoading(false);
     }
@@ -122,6 +162,13 @@ export function useEducationalConfigurationManagement() {
   };
 
   const handleDeleteCampus = async (id: string) => {
+    // First check if there are classes associated with this campus
+    const hasClasses = classes.some(cls => cls.campusId === id);
+    if (hasClasses) {
+      toast.error("Cannot delete campus with associated grades/classes. Delete the grades first.");
+      return;
+    }
+
     try {
       setLoading(true);
       const { error } = await supabase.functions.invoke('campus-management', {
@@ -140,38 +187,94 @@ export function useEducationalConfigurationManagement() {
     }
   };
 
-  // Use existing context methods for other entities
-  const handleAddClass = (campusId: string, name: string) => {
+  const handleAddClass = async (campusId: string, name: string) => {
+    if (!client?.id) {
+      toast.error("No client selected");
+      return;
+    }
+    
     try {
-      console.log("EducationalConfiguration: Adding class:", name, "to campus:", campusId);
-      contextAddClass(campusId, name);
-      toast.success("Class added successfully");
+      setLoading(true);
+      const { data, error } = await supabase.functions.invoke('grade-management', {
+        body: { 
+          name, 
+          campusId, 
+          clientId: client.id, 
+          action: 'create' 
+        }
+      });
+
+      if (error) throw error;
+      
+      setClasses(prev => [...prev, { 
+        id: data.grade.id, 
+        name: data.grade.name,
+        campusId: data.grade.campus_id
+      }]);
+      
+      toast.success("Grade added successfully");
     } catch (error) {
-      console.error("Error adding class:", error);
-      toast.error("Failed to add class");
+      console.error("Error adding grade:", error);
+      toast.error("Failed to add grade");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleUpdateClass = (id: string, campusId: string, name: string) => {
+  const handleUpdateClass = async (id: string, campusId: string, name: string) => {
     try {
-      contextUpdateClass(id, campusId, name);
-      toast.success("Class updated successfully");
+      setLoading(true);
+      const { data, error } = await supabase.functions.invoke('grade-management', {
+        body: { 
+          id, 
+          name, 
+          campusId,
+          action: 'update' 
+        }
+      });
+
+      if (error) throw error;
+      
+      setClasses(prev => prev.map(cls => 
+        cls.id === id ? { ...cls, name, campusId } : cls
+      ));
+      
+      toast.success("Grade updated successfully");
     } catch (error) {
-      console.error("Error updating class:", error);
-      toast.error("Failed to update class");
+      console.error("Error updating grade:", error);
+      toast.error("Failed to update grade");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleDeleteClass = (id: string) => {
+  const handleDeleteClass = async (id: string) => {
+    // Check if there are sections associated with this class
+    const hasSections = sections.some(section => section.classId === id);
+    if (hasSections) {
+      toast.error("Cannot delete grade with associated sections. Delete the sections first.");
+      return;
+    }
+    
     try {
-      contextDeleteClass(id);
-      toast.success("Class deleted successfully");
+      setLoading(true);
+      const { error } = await supabase.functions.invoke('grade-management', {
+        body: { id, action: 'delete' }
+      });
+
+      if (error) throw error;
+      
+      setClasses(prev => prev.filter(cls => cls.id !== id));
+      toast.success("Grade deleted successfully");
     } catch (error) {
-      console.error("Error deleting class:", error);
-      toast.error("Failed to delete class");
+      console.error("Error deleting grade:", error);
+      toast.error("Failed to delete grade");
+    } finally {
+      setLoading(false);
     }
   };
 
+  // Use existing context methods for sections
   const handleAddSection = (classId: string, name: string) => {
     try {
       console.log("EducationalConfiguration: Adding section:", name, "to class:", classId);
@@ -203,33 +306,82 @@ export function useEducationalConfigurationManagement() {
     }
   };
 
-  const handleAddFacility = (name: string) => {
+  const handleAddFacility = async (name: string, campusId: string) => {
+    if (!client?.id) {
+      toast.error("No client selected");
+      return;
+    }
+    
     try {
-      contextAddFacility(name);
+      setLoading(true);
+      const { data, error } = await supabase.functions.invoke('facility-management', {
+        body: { 
+          name, 
+          campusId,
+          clientId: client.id, 
+          action: 'create' 
+        }
+      });
+
+      if (error) throw error;
+      
+      setFacilities(prev => [...prev, { 
+        id: data.facility.id, 
+        name: data.facility.name 
+      }]);
+      
       toast.success("Facility added successfully");
     } catch (error) {
       console.error("Error adding facility:", error);
       toast.error("Failed to add facility");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleUpdateFacility = (id: string, name: string) => {
+  const handleUpdateFacility = async (id: string, name: string, campusId: string) => {
     try {
-      contextUpdateFacility(id, name);
+      setLoading(true);
+      const { data, error } = await supabase.functions.invoke('facility-management', {
+        body: { 
+          id, 
+          name,
+          campusId,
+          action: 'update' 
+        }
+      });
+
+      if (error) throw error;
+      
+      setFacilities(prev => prev.map(facility => 
+        facility.id === id ? { ...facility, name } : facility
+      ));
+      
       toast.success("Facility updated successfully");
     } catch (error) {
       console.error("Error updating facility:", error);
       toast.error("Failed to update facility");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleDeleteFacility = (id: string) => {
+  const handleDeleteFacility = async (id: string) => {
     try {
-      contextDeleteFacility(id);
+      setLoading(true);
+      const { error } = await supabase.functions.invoke('facility-management', {
+        body: { id, action: 'delete' }
+      });
+
+      if (error) throw error;
+      
+      setFacilities(prev => prev.filter(facility => facility.id !== id));
       toast.success("Facility deleted successfully");
     } catch (error) {
       console.error("Error deleting facility:", error);
       toast.error("Failed to delete facility");
+    } finally {
+      setLoading(false);
     }
   };
   

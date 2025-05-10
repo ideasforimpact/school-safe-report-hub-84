@@ -27,8 +27,8 @@ import { Label } from '@/components/ui/label';
 interface FacilityTabProps {
   facilities: ConfigItem[];
   campuses: CampusItem[];
-  addFacility: (name: string) => void;
-  updateFacility: (id: string, name: string) => void;
+  addFacility: (name: string, campusId: string) => void;
+  updateFacility: (id: string, name: string, campusId: string) => void;
   deleteFacility: (id: string) => void;
   loading?: boolean;
 }
@@ -43,7 +43,7 @@ export const FacilityTab = ({
 }: FacilityTabProps) => {
   const [newFacility, setNewFacility] = useState('');
   const [selectedCampusId, setSelectedCampusId] = useState<string>('');
-  const [editingFacility, setEditingFacility] = useState<{id: string, name: string} | null>(null);
+  const [editingFacility, setEditingFacility] = useState<{id: string, name: string, campusId: string} | null>(null);
 
   const handleFacilityAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,9 +58,7 @@ export const FacilityTab = ({
       return;
     }
     
-    // For now, we're not using selectedCampusId in the addFacility function
-    // When the backend is ready, update this to pass the campus ID
-    addFacility(newFacility.trim());
+    addFacility(newFacility.trim(), selectedCampusId);
     setNewFacility('');
     toast.success("Facility added successfully");
   };
@@ -76,7 +74,12 @@ export const FacilityTab = ({
       return;
     }
     
-    updateFacility(editingFacility.id, editingFacility.name.trim());
+    if (!editingFacility.campusId) {
+      toast.error("Please select a campus for this facility");
+      return;
+    }
+    
+    updateFacility(editingFacility.id, editingFacility.name.trim(), editingFacility.campusId);
     setEditingFacility(null);
     toast.success("Facility updated successfully");
   };
@@ -134,13 +137,14 @@ export const FacilityTab = ({
           <TableHeader>
             <TableRow>
               <TableHead>Facility Name</TableHead>
+              <TableHead>Campus</TableHead>
               <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={2} className="text-center py-4">
+                <TableCell colSpan={3} className="text-center py-4">
                   <div className="flex items-center justify-center">
                     <Loader2 className="h-6 w-6 animate-spin mr-2" />
                     <span>Loading facilities...</span>
@@ -149,7 +153,7 @@ export const FacilityTab = ({
               </TableRow>
             ) : facilities.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={2} className="text-center py-4 text-muted-foreground">
+                <TableCell colSpan={3} className="text-center py-4 text-muted-foreground">
                   No facilities available. Add your first facility above.
                 </TableCell>
               </TableRow>
@@ -158,15 +162,32 @@ export const FacilityTab = ({
                 <TableRow key={facility.id}>
                   <TableCell>{facility.name}</TableCell>
                   <TableCell>
+                    {/* We'll add campus name display in the next update */}
+                    Campus Name
+                  </TableCell>
+                  <TableCell>
                     <div className="flex gap-2">
                       <EditDialog
                         title="Edit Facility"
                         description="Update the facility name below"
                         fieldLabel="Facility name"
                         value={facility.name}
+                        extraField={{
+                          type: "select",
+                          label: "Campus",
+                          options: campuses.map(campus => ({ value: campus.id, label: campus.name })),
+                          value: editingFacility?.campusId || "",
+                          onChange: (value) => setEditingFacility(prev => 
+                            prev ? {...prev, campusId: value} : null
+                          )
+                        }}
                         onOpenChange={(open) => {
                           if (open) {
-                            setEditingFacility({id: facility.id, name: facility.name});
+                            setEditingFacility({
+                              id: facility.id, 
+                              name: facility.name,
+                              campusId: "" // Will need to get this from the database in a future update
+                            });
                           } else {
                             setEditingFacility(null);
                           }

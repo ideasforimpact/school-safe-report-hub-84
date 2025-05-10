@@ -1,5 +1,22 @@
 
 project_id = "ybvxkiubnnixntghojyy"
+[api]
+enabled = true
+
+[db]
+enabled = true
+
+[analytics]
+enabled = false
+
+[functions]
+enabled = true
 
 [functions.campus-management]
-verify_jwt = false
+verify_jwt = true
+
+[functions.grade-management]
+verify_jwt = true
+
+[functions.facility-management]
+verify_jwt = true
