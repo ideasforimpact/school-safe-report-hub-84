@@ -11,34 +11,56 @@ import {
   TableRow 
 } from '@/components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
-import { ConfigItem } from '@/contexts/types';
+import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
+import { ConfigItem, CampusItem } from '@/contexts/types';
 import { EditDialog } from './EditDialog';
 import { toast } from 'sonner';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from '@/components/ui/label';
 
 interface FacilityTabProps {
   facilities: ConfigItem[];
+  campuses: CampusItem[];
   addFacility: (name: string) => void;
   updateFacility: (id: string, name: string) => void;
   deleteFacility: (id: string) => void;
+  loading?: boolean;
 }
 
 export const FacilityTab = ({ 
   facilities, 
+  campuses,
   addFacility, 
   updateFacility, 
-  deleteFacility 
+  deleteFacility,
+  loading = false
 }: FacilityTabProps) => {
   const [newFacility, setNewFacility] = useState('');
+  const [selectedCampusId, setSelectedCampusId] = useState<string>('');
   const [editingFacility, setEditingFacility] = useState<{id: string, name: string} | null>(null);
 
-  const handleFacilityAdd = () => {
+  const handleFacilityAdd = (e: React.FormEvent) => {
+    e.preventDefault();
+    
     if (!newFacility.trim()) {
       toast.error("Facility name cannot be empty");
       return;
     }
     
-    addFacility(newFacility);
+    if (!selectedCampusId) {
+      toast.error("Please select a campus for this facility");
+      return;
+    }
+    
+    // For now, we're not using selectedCampusId in the addFacility function
+    // When the backend is ready, update this to pass the campus ID
+    addFacility(newFacility.trim());
     setNewFacility('');
     toast.success("Facility added successfully");
   };
@@ -54,7 +76,7 @@ export const FacilityTab = ({
       return;
     }
     
-    updateFacility(editingFacility.id, editingFacility.name);
+    updateFacility(editingFacility.id, editingFacility.name.trim());
     setEditingFacility(null);
     toast.success("Facility updated successfully");
   };
@@ -66,16 +88,47 @@ export const FacilityTab = ({
         <CardDescription>Manage facilities for your institution</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex gap-4 mb-6">
-          <Input
-            placeholder="New facility name"
-            value={newFacility}
-            onChange={(e) => setNewFacility(e.target.value)}
-          />
-          <Button onClick={handleFacilityAdd}>
-            <Plus className="mr-2 h-4 w-4" /> Add Facility
-          </Button>
-        </div>
+        <form onSubmit={handleFacilityAdd} className="flex gap-4 mb-6 flex-col sm:flex-row">
+          <div className="flex-1">
+            <Label htmlFor="campus-select" className="mb-2 block">Campus</Label>
+            <Select value={selectedCampusId} onValueChange={setSelectedCampusId}>
+              <SelectTrigger id="campus-select" className="w-full">
+                <SelectValue placeholder="Select a Campus" />
+              </SelectTrigger>
+              <SelectContent>
+                {campuses.length === 0 ? (
+                  <SelectItem value="no-campuses" disabled>No campuses available</SelectItem>
+                ) : (
+                  campuses.map((campus) => (
+                    <SelectItem key={campus.id} value={campus.id}>{campus.name}</SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex-1">
+            <Label htmlFor="facility-input" className="mb-2 block">Facility Name</Label>
+            <Input
+              id="facility-input"
+              placeholder="New facility name (e.g., Laboratory)"
+              value={newFacility}
+              onChange={(e) => setNewFacility(e.target.value)}
+            />
+          </div>
+          <div className="self-end">
+            <Button type="submit" className="whitespace-nowrap w-full" disabled={loading}>
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Adding...
+                </>
+              ) : (
+                <>
+                  <Plus className="mr-2 h-4 w-4" /> Add Facility
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
         
         <Table>
           <TableHeader>
@@ -85,7 +138,16 @@ export const FacilityTab = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {facilities.length === 0 ? (
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={2} className="text-center py-4">
+                  <div className="flex items-center justify-center">
+                    <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                    <span>Loading facilities...</span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : facilities.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={2} className="text-center py-4 text-muted-foreground">
                   No facilities available. Add your first facility above.
@@ -114,7 +176,7 @@ export const FacilityTab = ({
                         )}
                         onSave={handleFacilityUpdate}
                         triggerButton={
-                          <Button variant="ghost" size="icon">
+                          <Button variant="ghost" size="icon" disabled={loading}>
                             <Pencil className="h-4 w-4" />
                           </Button>
                         }
@@ -124,6 +186,7 @@ export const FacilityTab = ({
                         variant="ghost" 
                         size="icon" 
                         onClick={() => handleFacilityDelete(facility.id)}
+                        disabled={loading}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
