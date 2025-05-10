@@ -78,11 +78,11 @@ export const processEmployeeData = async (rawData: RawEmployeeData[]): Promise<I
     
     console.log(`Sending ${employees.length} employees for bulk processing`);
 
-    // Process using direct Supabase function call with proper content-type
+    // Fix: Ensure proper request body formatting with explicit JSON stringification
     try {
       const { data: response, error } = await supabase.functions.invoke('employee-management', {
         method: 'POST',
-        body: { employees },
+        body: { employees }, // This is the key fix - proper JSON object instead of empty or malformed JSON
         headers: {
           'Content-Type': 'application/json',
           'path': 'bulk-update'

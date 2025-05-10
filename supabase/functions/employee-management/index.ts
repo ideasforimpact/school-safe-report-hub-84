@@ -54,11 +54,22 @@ serve(async (req) => {
 
     console.log(`Request path: ${effectivePath}`);
     
-    // Parse the request body
+    // Parse the request body - with better error handling
     let reqBody;
     try {
-      reqBody = await req.json();
-      console.log("Request body parsed successfully");
+      // Check if request body exists before trying to parse it
+      const text = await req.text();
+      
+      if (!text || text.trim() === '') {
+        console.error("Empty request body");
+        return new Response(JSON.stringify({ error: "Request body is empty" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        });
+      }
+      
+      reqBody = JSON.parse(text);
+      console.log("Request body parsed successfully:", reqBody);
     } catch (e) {
       console.error("Error parsing request body:", e);
       return new Response(JSON.stringify({ error: "Invalid JSON in request body" }), {

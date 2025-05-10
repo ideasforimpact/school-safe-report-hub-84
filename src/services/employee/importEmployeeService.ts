@@ -45,13 +45,15 @@ export const processEmployeeExcel = async (file: File): Promise<Employee[]> => {
     
     // Add default module permissions to each employee record
     // and normalize/validate employee data fields
-    const processedData = rawData.map(emp => ({
-      ...emp,
-      employeeType: validateEmployeeType(String(emp.employeeType)),
-      department: validateDepartment(String(emp.department)),
-      status: validateEmploymentStatus(String(emp.status)),
-      modulePermissions: defaultModulePermissions
-    }));
+    const processedData = rawData.map(emp => {
+      return {
+        ...emp,
+        employeeType: validateEmployeeType(String(emp.employeeType)),
+        department: validateDepartment(String(emp.department)),
+        status: validateEmploymentStatus(String(emp.status)),
+        modulePermissions: defaultModulePermissions
+      };
+    });
     
     // Process the data and add/update employees using bulk operations
     console.time('Bulk import processing');
