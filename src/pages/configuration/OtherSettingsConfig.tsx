@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DesignationTab } from '@/components/configuration/DesignationTab';
 import { ConfigItem, CampusItem, ClassItem, SectionItem } from '@/contexts/types';
-import { UserCircle, Building } from 'lucide-react';
+import { UserCircle, Building, School } from 'lucide-react';
 import { EducationalStructureConfig } from './EducationalStructureConfig';
 
 interface OtherSettingsConfigProps {
@@ -68,8 +68,12 @@ export const OtherSettingsConfig: React.FC<OtherSettingsConfigProps> = ({
               <span>Designations</span>
             </TabsTrigger>
             <TabsTrigger value="educational-structure" className="flex items-center gap-2">
-              <Building className="h-4 w-4" />
+              <School className="h-4 w-4" />
               <span>Educational Structure</span>
+            </TabsTrigger>
+            <TabsTrigger value="facilities" className="flex items-center gap-2">
+              <Building className="h-4 w-4" />
+              <span>Facilities</span>
             </TabsTrigger>
           </TabsList>
           
@@ -84,8 +88,8 @@ export const OtherSettingsConfig: React.FC<OtherSettingsConfigProps> = ({
           
           <TabsContent value="educational-structure">
             <EducationalStructureConfig 
-              activeTab={activeTab === "educational-structure" ? "campuses" : activeTab}
-              setActiveTab={setActiveTab}
+              activeTab="campuses"
+              setActiveTab={() => {/* This is intentional - we want to stay within educational structure tab */}}
               campuses={campuses}
               addCampus={addCampus}
               updateCampus={updateCampus}
@@ -103,6 +107,15 @@ export const OtherSettingsConfig: React.FC<OtherSettingsConfigProps> = ({
               updateFacility={updateFacility}
               deleteFacility={deleteFacility}
             />
+          </TabsContent>
+          
+          <TabsContent value="facilities">
+            <div className="space-y-4">
+              <h2 className="text-xl font-semibold">Facilities Management</h2>
+              <p className="text-gray-600">
+                Add, edit, or remove facilities. This will be implemented in the next phase.
+              </p>
+            </div>
           </TabsContent>
         </Tabs>
       </CardContent>

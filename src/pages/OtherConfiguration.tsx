@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
 import { useIncidents } from '@/contexts/IncidentContext';
 import { OtherSettingsConfig } from './configuration/OtherSettingsConfig';
+import { toast } from 'sonner';
 
 const OtherConfiguration = () => {
   const [searchParams] = useSearchParams();
@@ -41,15 +42,72 @@ const OtherConfiguration = () => {
   }, [searchParams]);
 
   const handleAddDesignation = (name: string) => {
-    addDesignation(name);
+    try {
+      addDesignation(name);
+      toast.success("Designation added successfully");
+    } catch (error) {
+      console.error("Error adding designation:", error);
+      toast.error("Failed to add designation");
+    }
   };
 
   const handleUpdateDesignation = (id: string, name: string) => {
-    updateDesignation(id, name);
+    try {
+      updateDesignation(id, name);
+      toast.success("Designation updated successfully");
+    } catch (error) {
+      console.error("Error updating designation:", error);
+      toast.error("Failed to update designation");
+    }
   };
 
   const handleDeleteDesignation = (id: string) => {
-    deleteDesignation(id);
+    try {
+      deleteDesignation(id);
+      toast.success("Designation deleted successfully");
+    } catch (error) {
+      console.error("Error deleting designation:", error);
+      toast.error("Failed to delete designation");
+    }
+  };
+
+  const handleAddCampus = (name: string) => {
+    try {
+      console.log('OtherConfiguration: Adding campus:', name); // Debug log
+      addCampus(name);
+      toast.success("Campus added successfully");
+    } catch (error) {
+      console.error("Error adding campus:", error);
+      toast.error("Failed to add campus");
+    }
+  };
+
+  const handleUpdateCampus = (id: string, name: string) => {
+    try {
+      updateCampus(id, name);
+      toast.success("Campus updated successfully");
+    } catch (error) {
+      console.error("Error updating campus:", error);
+      toast.error("Failed to update campus");
+    }
+  };
+
+  const handleDeleteCampus = (id: string) => {
+    try {
+      // Check if campus has associated classes before deleting
+      const hasClasses = classes.some(cls => cls.campusId === id);
+      
+      if (hasClasses) {
+        toast.error("Cannot delete campus with associated classes. Remove the classes first.");
+        return;
+      }
+
+      deleteCampus(id);
+      toast.success("Campus deleted successfully");
+    } catch (error) {
+      console.error("Error deleting campus:", error);
+      toast.error("Failed to delete campus");
+    }
   };
 
   return (
@@ -70,9 +128,9 @@ const OtherConfiguration = () => {
           updateDesignation={handleUpdateDesignation}
           deleteDesignation={handleDeleteDesignation}
           campuses={campuses}
-          addCampus={addCampus}
-          updateCampus={updateCampus}
-          deleteCampus={deleteCampus}
+          addCampus={handleAddCampus}
+          updateCampus={handleUpdateCampus}
+          deleteCampus={handleDeleteCampus}
           classes={classes}
           addClass={addClass}
           updateClass={updateClass}
