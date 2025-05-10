@@ -30,12 +30,12 @@ const AdminSettingsMenu = () => {
         </DropdownMenuItem>
         
         {/* Facilities */}
-        <DropdownMenuItem onClick={() => navigate('/facilities-configuration')} className="cursor-pointer">
+        <DropdownMenuItem onClick={() => navigate('/educational-configuration?tab=facilities')} className="cursor-pointer">
           <Warehouse className="h-4 w-4 mr-2" />
           <span>Facilities</span>
         </DropdownMenuItem>
         
-        {/* Other Settings - Updated to link to educational-configuration */}
+        {/* Other Settings */}
         <DropdownMenuItem onClick={() => navigate('/other-configuration')} className="cursor-pointer">
           <LayoutGrid className="h-4 w-4 mr-2" />
           <span>Other Settings</span>

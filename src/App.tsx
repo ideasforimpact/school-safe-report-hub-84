@@ -38,6 +38,7 @@ function App() {
                 <Route path="/students" element={<StudentManagement />} />
                 <Route path="/educational-configuration" element={<EducationalConfiguration />} />
                 <Route path="/other-configuration" element={<OtherConfiguration />} />
+                <Route path="/facilities-configuration" element={<EducationalConfiguration />} />
 
                 {/* 404 route */}
                 <Route path="*" element={<NotFound />} />
