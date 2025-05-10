@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -78,8 +77,8 @@ export const FacilityTab = ({
       return;
     }
     
+    console.log("Updating facility:", editingFacility.id, editingFacility.name.trim(), editingFacility.campusId);
     updateFacility(editingFacility.id, editingFacility.name.trim(), editingFacility.campusId);
-    setEditingFacility(null);
   };
 
   const getCampusName = (campusId: string) => {
@@ -178,10 +177,13 @@ export const FacilityTab = ({
                           type: "select",
                           label: "Campus",
                           options: campuses.map(campus => ({ value: campus.id, label: campus.name })),
-                          value: editingFacility?.campusId || facility.campusId || "",
-                          onChange: (value) => setEditingFacility(prev => 
-                            prev ? {...prev, campusId: value} : null
-                          )
+                          value: editingFacility?.id === facility.id ? editingFacility.campusId : facility.campusId || "",
+                          onChange: (value) => {
+                            setEditingFacility(prev => 
+                              prev && prev.id === facility.id ? {...prev, campusId: value} : 
+                              { id: facility.id, name: facility.name, campusId: value }
+                            );
+                          }
                         }}
                         onOpenChange={(open) => {
                           if (open) {
@@ -190,13 +192,13 @@ export const FacilityTab = ({
                               name: facility.name,
                               campusId: facility.campusId || ""
                             });
-                          } else {
-                            setEditingFacility(null);
                           }
                         }}
-                        onChange={(value) => setEditingFacility(prev => 
-                          prev ? {...prev, name: value} : null
-                        )}
+                        onChange={(value) => {
+                          setEditingFacility(prev => 
+                            prev && prev.id === facility.id ? {...prev, name: value} : prev
+                          );
+                        }}
                         onSave={handleFacilityUpdate}
                         triggerButton={
                           <Button variant="ghost" size="icon" disabled={loading}>

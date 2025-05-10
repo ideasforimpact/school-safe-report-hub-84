@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -142,9 +143,9 @@ export const CampusTab = ({
                           }
                         }}
                         onChange={(value) => {
-                          if (editingCampus && editingCampus.id === campus.id) {
-                            setEditingCampus({...editingCampus, name: value});
-                          }
+                          setEditingCampus(prev => 
+                            prev && prev.id === campus.id ? {...prev, name: value} : prev
+                          );
                         }}
                         onSave={handleCampusUpdate}
                         triggerButton={

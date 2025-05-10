@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -80,8 +79,8 @@ export const SectionTab = ({
       return;
     }
     
+    console.log("Updating section:", editingSection.id, editingSection.classId, editingSection.name.trim());
     updateSection(editingSection.id, editingSection.classId, editingSection.name.trim());
-    setEditingSection(null);
   };
 
   const getClassName = (classId: string) => {
@@ -179,10 +178,12 @@ export const SectionTab = ({
                           label: "Grade",
                           options: classes.map(cls => ({ value: cls.id, label: cls.name })),
                           value: editingSection?.id === section.id ? editingSection.classId : section.classId,
-                          onChange: (value) => setEditingSection(prev => 
-                            prev && prev.id === section.id ? {...prev, classId: value} : 
-                            { id: section.id, name: section.name, classId: value }
-                          )
+                          onChange: (value) => {
+                            setEditingSection(prev => 
+                              prev && prev.id === section.id ? {...prev, classId: value} : 
+                              { id: section.id, name: section.name, classId: value }
+                            );
+                          }
                         }}
                         onOpenChange={(open) => {
                           if (open) {
@@ -191,14 +192,13 @@ export const SectionTab = ({
                               name: section.name, 
                               classId: section.classId
                             });
-                          } else if (!open && editingSection?.id === section.id) {
-                            setEditingSection(null);
                           }
                         }}
-                        onChange={(value) => setEditingSection(prev => 
-                          prev && prev.id === section.id ? {...prev, name: value} : 
-                          { id: section.id, name: value, classId: section.classId }
-                        )}
+                        onChange={(value) => {
+                          setEditingSection(prev => 
+                            prev && prev.id === section.id ? {...prev, name: value} : prev
+                          );
+                        }}
                         onSave={handleSectionUpdate}
                         triggerButton={
                           <Button variant="ghost" size="icon" disabled={loading}>

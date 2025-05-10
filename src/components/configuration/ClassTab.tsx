@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -88,9 +87,8 @@ export const ClassTab = ({
       return;
     }
     
+    console.log("Updating class:", editingClass.id, editingClass.campusId, editingClass.name.trim());
     updateClass(editingClass.id, editingClass.campusId, editingClass.name.trim());
-    setEditingClass(null);
-    toast.success("Grade updated successfully");
   };
 
   const getCampusName = (campusId: string) => {
@@ -187,10 +185,13 @@ export const ClassTab = ({
                           type: "select",
                           label: "Campus",
                           options: campuses.map(campus => ({ value: campus.id, label: campus.name })),
-                          value: cls.campusId,
-                          onChange: (value) => setEditingClass(prev => 
-                            prev ? {...prev, campusId: value} : null
-                          )
+                          value: editingClass?.id === cls.id ? editingClass.campusId : cls.campusId,
+                          onChange: (value) => {
+                            setEditingClass(prev => 
+                              prev && prev.id === cls.id ? {...prev, campusId: value} : 
+                              { id: cls.id, name: cls.name, campusId: value }
+                            );
+                          }
                         }}
                         onOpenChange={(open) => {
                           if (open) {
@@ -199,13 +200,13 @@ export const ClassTab = ({
                               name: cls.name, 
                               campusId: cls.campusId
                             });
-                          } else {
-                            setEditingClass(null);
                           }
                         }}
-                        onChange={(value) => setEditingClass(prev => 
-                          prev ? {...prev, name: value} : null
-                        )}
+                        onChange={(value) => {
+                          setEditingClass(prev => 
+                            prev && prev.id === cls.id ? {...prev, name: value} : prev
+                          );
+                        }}
                         onSave={handleClassUpdate}
                         triggerButton={
                           <Button variant="ghost" size="icon" disabled={loading}>

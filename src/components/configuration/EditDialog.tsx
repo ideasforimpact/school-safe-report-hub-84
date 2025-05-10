@@ -68,11 +68,6 @@ export const EditDialog = ({
   const handleOpenChange = (newOpen: boolean) => {
     setOpen(newOpen);
     onOpenChange(newOpen);
-    
-    // Reset to initial value when dialog is closed without saving
-    if (!newOpen) {
-      onChange(value); // Reset to original value if dialog is closed without saving
-    }
   };
 
   const handleSave = () => {
@@ -89,7 +84,6 @@ export const EditDialog = ({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     setCurrentValue(newValue);
-    onChange(newValue);
   };
 
   return (
