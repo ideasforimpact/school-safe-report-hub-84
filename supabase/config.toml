@@ -29,5 +29,6 @@ enabled = true
 [analytics]
 enabled = true
 
-[functions.section-management]
+[functions.employee-management]
 verify_jwt = false
+
