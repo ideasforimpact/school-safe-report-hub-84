@@ -1,4 +1,3 @@
-
 // Follow this setup guide to integrate the Deno language server with your editor:
 // https://deno.land/manual/getting_started/setup_your_environment
 // This enables autocomplete, go to definition, etc.
@@ -141,7 +140,8 @@ async function handleBulkUpdate(req, supabaseClient) {
           employee_type: emp.employeeType,
           department: emp.department,
           joining_date: emp.joiningDate,
-          status: emp.status || 'active'
+          status: emp.status || 'active',
+          modulePermissions: emp.modulePermissions
         });
       } else {
         // Check if we have an employee with this employee_id already
@@ -176,7 +176,8 @@ async function handleBulkUpdate(req, supabaseClient) {
             employee_type: empData.employeeType,
             department: empData.department,
             joining_date: empData.joiningDate,
-            status: empData.status || 'active'
+            status: empData.status || 'active',
+            modulePermissions: empData.modulePermissions
           });
           employeeIdMap.delete(existing.employee_id.toLowerCase());
         }
@@ -192,7 +193,8 @@ async function handleBulkUpdate(req, supabaseClient) {
           employee_type: empData.employeeType,
           department: empData.department,
           joining_date: empData.joiningDate,
-          status: empData.status || 'active'
+          status: empData.status || 'active',
+          modulePermissions: empData.modulePermissions
         });
       }
     }
@@ -209,7 +211,7 @@ async function handleBulkUpdate(req, supabaseClient) {
     if (toCreate.length > 0) {
       const { data: createdData, error: createError } = await supabaseClient
         .from("employees")
-        .insert(toCreate)
+        .insert(toCreate.map(({ modulePermissions, ...emp }) => emp)) // Remove modulePermissions from insert data
         .select();
         
       if (createError) {
@@ -218,12 +220,26 @@ async function handleBulkUpdate(req, supabaseClient) {
       } else {
         results.created = createdData || [];
         console.log(`Successfully created ${results.created.length} employees`);
+        
+        // Now handle module permissions for each created employee
+        for (let i = 0; i < results.created.length; i++) {
+          const employee = results.created[i];
+          const empData = toCreate[i];
+          if (empData.modulePermissions) {
+            try {
+              await updateModulePermissions(supabaseClient, employee.id, empData.modulePermissions);
+            } catch (error) {
+              console.error(`Error setting module permissions for employee ${employee.id}:`, error);
+              results.errors.push(`Failed to set module permissions for ${employee.employee_id}: ${error.message}`);
+            }
+          }
+        }
       }
     }
     
     // Update existing employees one by one (Supabase doesn't support bulk updates with different IDs)
     for (const emp of toUpdate) {
-      const { id, ...updateData } = emp;
+      const { id, modulePermissions, ...updateData } = emp;
       const { data: updatedData, error: updateError } = await supabaseClient
         .from("employees")
         .update(updateData)
@@ -236,6 +252,16 @@ async function handleBulkUpdate(req, supabaseClient) {
         results.errors.push(`Update error for employee ${emp.employee_id}: ${updateError.message}`);
       } else if (updatedData) {
         results.updated.push(updatedData);
+        
+        // Update module permissions if provided
+        if (modulePermissions) {
+          try {
+            await updateModulePermissions(supabaseClient, id, modulePermissions);
+          } catch (error) {
+            console.error(`Error updating module permissions for employee ${id}:`, error);
+            results.errors.push(`Failed to update module permissions for ${emp.employee_id}: ${error.message}`);
+          }
+        }
       }
     }
     

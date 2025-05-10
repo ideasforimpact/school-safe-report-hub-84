@@ -1,6 +1,7 @@
 
 import { toast } from 'sonner';
 import { Employee } from '@/contexts/employee/types';
+import { ModulePermissions } from '@/contexts/auth/types';
 import { RawEmployeeData, ImportResult } from './types/importTypes';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -36,7 +37,20 @@ export const processEmployeeData = async (rawData: RawEmployeeData[]): Promise<I
           throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
         }
         
-        // Return the formatted employee data
+        // Set default module permissions for each employee
+        const modulePermissions: ModulePermissions = {
+          superAdmin: false,
+          incidentReporting: true, // Enable Incident Reporting by default as requested
+          incidentAdmin: false,
+          assessmentUser: false,
+          assessmentsAdmin: false,
+          employeeVerificationAdmin: false,
+          grievancesAdmin: false,
+          transportSafetyAdmin: true, // Enable Transport Safety Admin by default as requested
+          eduSafeResourceAccess: false
+        };
+        
+        // Return the formatted employee data with default module permissions
         return {
           employeeId: String(row.employeeId),
           firstName: String(row.firstName),
@@ -46,7 +60,8 @@ export const processEmployeeData = async (rawData: RawEmployeeData[]): Promise<I
           employeeType: String(row.employeeType),
           department: String(row.department),
           joiningDate: String(row.joiningDate),
-          status: String(row.status)
+          status: String(row.status),
+          modulePermissions: modulePermissions
         };
       } catch (error) {
         console.error(`Error processing row ${index + 2}:`, error);
@@ -107,6 +122,19 @@ export const processEmployeeData = async (rawData: RawEmployeeData[]): Promise<I
  * Transform database employee data to match frontend Employee type
  */
 const transformEmployeeData = (dbEmployee: any): Employee => {
+  // Default module permissions that will be applied if not provided in the database record
+  const defaultModulePermissions: ModulePermissions = {
+    superAdmin: false,
+    incidentReporting: true, // Enable Incident Reporting by default as requested
+    incidentAdmin: false,
+    assessmentUser: false,
+    assessmentsAdmin: false,
+    employeeVerificationAdmin: false,
+    grievancesAdmin: false,
+    transportSafetyAdmin: true, // Enable Transport Safety Admin by default as requested
+    eduSafeResourceAccess: false
+  };
+
   return {
     id: dbEmployee.id,
     employeeId: dbEmployee.employee_id,
@@ -118,7 +146,7 @@ const transformEmployeeData = (dbEmployee: any): Employee => {
     department: dbEmployee.department,
     joiningDate: dbEmployee.joining_date,
     status: dbEmployee.status,
-    modulePermissions: {},
+    modulePermissions: dbEmployee.modulePermissions || defaultModulePermissions,
     createdAt: dbEmployee.created_at,
     updatedAt: dbEmployee.updated_at
   };

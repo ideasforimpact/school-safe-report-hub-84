@@ -1,5 +1,6 @@
 
 import { Employee } from '@/contexts/employee/types';
+import { ModulePermissions } from '@/contexts/auth/types';
 import { parseExcelFile } from './utils/excelProcessingUtils';
 import { validateExcelData } from './utils/excelValidationUtils';
 import { processEmployeeData, showImportResultNotifications } from './importProcessingService';
@@ -28,9 +29,28 @@ export const processEmployeeExcel = async (file: File): Promise<Employee[]> => {
       throw new Error('Excel data validation failed');
     }
     
+    // Set default module permissions for all imported employees
+    const defaultModulePermissions: ModulePermissions = {
+      superAdmin: false,
+      incidentReporting: true, // Enable Incident Reporting by default as requested
+      incidentAdmin: false,
+      assessmentUser: false,
+      assessmentsAdmin: false,
+      employeeVerificationAdmin: false,
+      grievancesAdmin: false,
+      transportSafetyAdmin: true, // Enable Transport Safety Admin by default as requested
+      eduSafeResourceAccess: false
+    };
+    
+    // Add default module permissions to each employee record
+    const processedData = rawData.map(emp => ({
+      ...emp,
+      modulePermissions: defaultModulePermissions
+    }));
+    
     // Process the data and add/update employees using bulk operations
     console.time('Bulk import processing');
-    const result = await processEmployeeData(rawData);
+    const result = await processEmployeeData(processedData);
     console.timeEnd('Bulk import processing');
     
     // Show notifications
