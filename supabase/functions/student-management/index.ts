@@ -70,6 +70,9 @@ serve(async (req) => {
           );
         }
         return await handleDeleteStudent(id, corsHeaders);
+        
+      case "validate":
+        return await handleValidateImport(body, corsHeaders);
 
       default:
         return new Response(
@@ -167,6 +170,15 @@ async function handleCreateStudent(body: any, corsHeaders: Record<string, string
     }
   }
   
+  // Validate campus, grade, and section exist in the database
+  const isValid = await validateEducationalStructure(body.campus, body.grade, body.section);
+  if (!isValid.valid) {
+    return new Response(
+      JSON.stringify({ error: isValid.error }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+  
   // Transform data to match database schema
   const studentData = {
     student_id: body.studentId,
@@ -209,7 +221,199 @@ async function handleCreateStudent(body: any, corsHeaders: Record<string, string
   );
 }
 
+async function validateEducationalStructure(campus: string, grade: string, section: string) {
+  if (!campus || !grade || !section) {
+    return { valid: false, error: "Campus, grade and section are all required" };
+  }
+  
+  // Check if campus exists
+  const { data: campusData, error: campusError } = await supabaseClient
+    .from("campuses")
+    .select("id")
+    .ilike("name", campus)
+    .maybeSingle();
+  
+  if (campusError) {
+    console.error("Error checking campus:", campusError);
+    return { valid: false, error: "Database error while validating campus" };
+  }
+  
+  if (!campusData) {
+    return { valid: false, error: `Campus "${campus}" does not exist in the system` };
+  }
+  
+  // Check if grade exists and belongs to the campus
+  const { data: gradeData, error: gradeError } = await supabaseClient
+    .from("grades")
+    .select("id")
+    .ilike("name", grade)
+    .eq("campus_id", campusData.id)
+    .maybeSingle();
+  
+  if (gradeError) {
+    console.error("Error checking grade:", gradeError);
+    return { valid: false, error: "Database error while validating grade" };
+  }
+  
+  if (!gradeData) {
+    return { valid: false, error: `Grade "${grade}" does not exist for campus "${campus}"` };
+  }
+  
+  // Check if section exists and belongs to the grade
+  const { data: sectionData, error: sectionError } = await supabaseClient
+    .from("sections")
+    .select("id")
+    .ilike("name", section)
+    .eq("grade_id", gradeData.id)
+    .maybeSingle();
+  
+  if (sectionError) {
+    console.error("Error checking section:", sectionError);
+    return { valid: false, error: "Database error while validating section" };
+  }
+  
+  if (!sectionData) {
+    return { valid: false, error: `Section "${section}" does not exist for grade "${grade}"` };
+  }
+  
+  return { valid: true, error: null };
+}
+
+async function handleValidateImport(body: any, corsHeaders: Record<string, string>) {
+  const students = body.students || [];
+  if (!Array.isArray(students) || students.length === 0) {
+    return new Response(
+      JSON.stringify({ error: "No student data provided" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+  
+  const errors: string[] = [];
+  const validEntries: Record<string, boolean> = {};
+  
+  // Get all distinct campuses, grades, and sections from the import data
+  const uniqueCampuses = new Set(students.map(s => s.campus?.toLowerCase()));
+  const uniqueGrades = new Set(students.map(s => s.grade?.toLowerCase()));
+  const uniqueSections = new Set(students.map(s => s.section?.toLowerCase()));
+  
+  // Fetch all valid campuses, grades and sections
+  const { data: campusData, error: campusError } = await supabaseClient
+    .from("campuses")
+    .select("id, name");
+  
+  if (campusError) {
+    return new Response(
+      JSON.stringify({ error: "Database error while validating campuses" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+  
+  const { data: gradeData, error: gradeError } = await supabaseClient
+    .from("grades")
+    .select("id, name, campus_id");
+  
+  if (gradeError) {
+    return new Response(
+      JSON.stringify({ error: "Database error while validating grades" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+  
+  const { data: sectionData, error: sectionError } = await supabaseClient
+    .from("sections")
+    .select("id, name, grade_id");
+  
+  if (sectionError) {
+    return new Response(
+      JSON.stringify({ error: "Database error while validating sections" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+  
+  // Create validation maps
+  const validCampuses = new Map(campusData.map(c => [c.name.toLowerCase(), c.id]));
+  const validGrades = new Map();
+  const validSections = new Map();
+  
+  // Build grade validation map (keyed by campus_id + grade_name)
+  gradeData.forEach(g => {
+    const key = `${g.campus_id}:${g.name.toLowerCase()}`;
+    validGrades.set(key, g.id);
+  });
+  
+  // Build section validation map (keyed by grade_id + section_name)
+  sectionData.forEach(s => {
+    const key = `${s.grade_id}:${s.name.toLowerCase()}`;
+    validSections.set(key, s.id);
+  });
+  
+  // Validate each student record
+  students.forEach((student, index) => {
+    const rowNumber = index + 2; // +2 for header row and 1-indexed counting
+    
+    if (!student.campus || typeof student.campus !== 'string' || !student.campus.trim()) {
+      errors.push(`Row ${rowNumber}: Campus is required`);
+      return;
+    }
+    
+    if (!student.grade || typeof student.grade !== 'string' || !student.grade.trim()) {
+      errors.push(`Row ${rowNumber}: Grade is required`);
+      return;
+    }
+    
+    if (!student.section || typeof student.section !== 'string' || !student.section.trim()) {
+      errors.push(`Row ${rowNumber}: Section is required`);
+      return;
+    }
+    
+    // Check campus exists
+    const campusLower = student.campus.toLowerCase();
+    const campusId = validCampuses.get(campusLower);
+    if (!campusId) {
+      errors.push(`Row ${rowNumber}: Campus "${student.campus}" does not exist in the system`);
+      return;
+    }
+    
+    // Check grade exists and belongs to the campus
+    const gradeKey = `${campusId}:${student.grade.toLowerCase()}`;
+    const gradeId = validGrades.get(gradeKey);
+    
+    if (!gradeId) {
+      errors.push(`Row ${rowNumber}: Grade "${student.grade}" does not exist for campus "${student.campus}"`);
+      return;
+    }
+    
+    // Check section exists and belongs to the grade
+    const sectionKey = `${gradeId}:${student.section.toLowerCase()}`;
+    const sectionValid = validSections.has(sectionKey);
+    
+    if (!sectionValid) {
+      errors.push(`Row ${rowNumber}: Section "${student.section}" does not exist for grade "${student.grade}"`);
+      return;
+    }
+  });
+  
+  return new Response(
+    JSON.stringify({
+      valid: errors.length === 0,
+      errors: errors
+    }),
+    { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+  );
+}
+
 async function handleUpdateStudent(id: string, body: any, corsHeaders: Record<string, string>) {
+  // Validate campus, grade, and section if they are being updated
+  if (body.campus && body.grade && body.section) {
+    const isValid = await validateEducationalStructure(body.campus, body.grade, body.section);
+    if (!isValid.valid) {
+      return new Response(
+        JSON.stringify({ error: isValid.error }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+  }
+  
   // Transform updates to match database schema
   const updates: Record<string, any> = {};
   if (body.studentId) updates.student_id = body.studentId;

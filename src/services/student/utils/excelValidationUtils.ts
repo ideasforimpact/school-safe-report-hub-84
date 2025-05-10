@@ -1,4 +1,5 @@
 
+import { supabase } from '@/integrations/supabase/client';
 import { RawStudentData } from '../types/importTypes';
 
 /**
@@ -15,7 +16,7 @@ const requiredFields: (keyof RawStudentData)[] = [
 /**
  * Validate Excel/CSV data to ensure all required fields are present and valid
  */
-export const validateExcelData = (data: RawStudentData[]): string[] => {
+export const validateExcelData = async (data: RawStudentData[]): Promise<string[]> => {
   const errors: string[] = [];
   
   if (!data || data.length === 0) {
@@ -24,6 +25,42 @@ export const validateExcelData = (data: RawStudentData[]): string[] => {
   }
 
   console.log('Raw Excel/CSV data:', data);
+
+  // Fetch valid campuses, grades, and sections from database
+  const { data: campuses, error: campusError } = await supabase
+    .from('campuses')
+    .select('name');
+  
+  if (campusError) {
+    console.error('Error fetching campuses:', campusError);
+    errors.push('Failed to validate campuses: Database error');
+    return errors;
+  }
+
+  const { data: grades, error: gradeError } = await supabase
+    .from('grades')
+    .select('name');
+  
+  if (gradeError) {
+    console.error('Error fetching grades:', gradeError);
+    errors.push('Failed to validate grades: Database error');
+    return errors;
+  }
+
+  const { data: sections, error: sectionError } = await supabase
+    .from('sections')
+    .select('name');
+  
+  if (sectionError) {
+    console.error('Error fetching sections:', sectionError);
+    errors.push('Failed to validate sections: Database error');
+    return errors;
+  }
+
+  // Create sets for faster lookups
+  const validCampuses = new Set(campuses.map(c => c.name.toLowerCase()));
+  const validGrades = new Set(grades.map(g => g.name.toLowerCase()));
+  const validSections = new Set(sections.map(s => s.name.toLowerCase()));
 
   // Validate each row in the file
   data.forEach((row, index) => {
@@ -52,6 +89,27 @@ export const validateExcelData = (data: RawStudentData[]): string[] => {
       // Validate name format
       if (row.name && typeof row.name === 'string' && row.name.length < 2) {
         errors.push(`Row ${rowNumber}: Name "${row.name}" is too short`);
+      }
+    }
+
+    // Validate campus exists in database
+    if (row.campus && typeof row.campus === 'string' && row.campus.trim() !== '') {
+      if (!validCampuses.has(row.campus.toLowerCase())) {
+        errors.push(`Row ${rowNumber}: Campus "${row.campus}" does not exist in the system`);
+      }
+    }
+
+    // Validate grade exists in database
+    if (row.grade && typeof row.grade === 'string' && row.grade.trim() !== '') {
+      if (!validGrades.has(row.grade.toLowerCase())) {
+        errors.push(`Row ${rowNumber}: Grade "${row.grade}" does not exist in the system`);
+      }
+    }
+
+    // Validate section exists in database
+    if (row.section && typeof row.section === 'string' && row.section.trim() !== '') {
+      if (!validSections.has(row.section.toLowerCase())) {
+        errors.push(`Row ${rowNumber}: Section "${row.section}" does not exist in the system`);
       }
     }
   });

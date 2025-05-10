@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Upload, FileUp, AlertCircle, Check } from 'lucide-react';
+import { Upload, FileUp, AlertCircle, Check, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { processStudentExcel, validateStudentExcel } from '@/services/student/importStudentService';
 
@@ -175,7 +175,7 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
               variant="outline"
             >
               {isValidating ? (
-                <>Validating...</>
+                <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Validating...</>
               ) : isValidated ? (
                 <>
                   <Check className="h-4 w-4 mr-1" />
@@ -190,8 +190,11 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
               disabled={!isValidated || isUploading}
               className="gap-1"
             >
-              <FileUp className="h-4 w-4" />
-              {isUploading ? 'Importing...' : 'Import Students'}
+              {isUploading ? (
+                <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Importing...</>
+              ) : (
+                <><FileUp className="h-4 w-4 mr-1" /> Import Students</>
+              )}
             </Button>
           </DialogFooter>
         </div>

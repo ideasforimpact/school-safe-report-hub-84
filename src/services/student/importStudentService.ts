@@ -15,7 +15,7 @@ export const processStudentExcel = async (file: File): Promise<Student[]> => {
     const rawData = await parseExcelFile(file);
     
     // Validate the data before processing
-    const validationErrors = validateExcelData(rawData);
+    const validationErrors = await validateExcelData(rawData);
     if (validationErrors.length > 0) {
       toast.error(`Validation failed with ${validationErrors.length} errors`);
       console.error('Validation errors:', validationErrors);
@@ -45,7 +45,7 @@ export const validateStudentExcel = async (file: File): Promise<string[]> => {
     const rawData = await parseExcelFile(file);
     
     // Validate the data
-    const errors = validateExcelData(rawData);
+    const errors = await validateExcelData(rawData);
     return errors;
   } catch (error) {
     console.error('Error in validateStudentExcel:', error);
