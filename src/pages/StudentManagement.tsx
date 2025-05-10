@@ -33,6 +33,7 @@ const StudentManagement = () => {
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [studentToDelete, setStudentToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleEditClick = (student: Student) => {
     setSelectedStudent(student);
@@ -46,15 +47,17 @@ const StudentManagement = () => {
 
   const confirmDelete = async () => {
     if (studentToDelete) {
+      setIsDeleting(true);
       try {
         await deleteStudent(studentToDelete);
         toast.success('Student deleted successfully');
       } catch (error) {
-        toast.error('Failed to delete student');
-        console.error(error);
+        console.error('Delete error:', error);
+        toast.error('Failed to delete student. Please try again.');
       } finally {
         setIsDeleteAlertOpen(false);
         setStudentToDelete(null);
+        setIsDeleting(false);
       }
     }
   };
@@ -167,12 +170,13 @@ const StudentManagement = () => {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 onClick={confirmDelete}
+                disabled={isDeleting}
               >
-                Delete
+                {isDeleting ? 'Deleting...' : 'Delete'}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

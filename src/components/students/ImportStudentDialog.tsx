@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Upload, FileUp, AlertCircle, Check } from 'lucide-react';
@@ -81,19 +81,24 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
 
     try {
       await onImportStudents(file);
-      onOpenChange(false);
-      setFile(null);
-      setIsValidated(false);
-      setValidationErrors([]);
+      handleDialogClose();
     } catch (error) {
       console.error('Import error:', error);
-    } finally {
       setIsUploading(false);
     }
   };
 
+  const handleDialogClose = () => {
+    // Clear state when dialog is closed
+    setFile(null);
+    setIsValidated(false);
+    setValidationErrors([]);
+    setIsUploading(false);
+    onOpenChange(false);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleDialogClose}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Import Students</DialogTitle>
@@ -125,22 +130,6 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
                   />
                 </div>
               </div>
-              <Button
-                onClick={() => handleValidateFile()}
-                disabled={!file || isValidating}
-                variant="outline"
-              >
-                {isValidating ? (
-                  <>Validating...</>
-                ) : isValidated ? (
-                  <>
-                    <Check className="h-4 w-4 mr-1" />
-                    Validated
-                  </>
-                ) : (
-                  "Verify"
-                )}
-              </Button>
             </div>
           </div>
 
@@ -176,9 +165,25 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
             </div>
           )}
 
-          <div className="flex justify-end space-x-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <DialogFooter className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={handleDialogClose}>
               Cancel
+            </Button>
+            <Button
+              onClick={() => handleValidateFile()}
+              disabled={!file || isValidating}
+              variant="outline"
+            >
+              {isValidating ? (
+                <>Validating...</>
+              ) : isValidated ? (
+                <>
+                  <Check className="h-4 w-4 mr-1" />
+                  Validated
+                </>
+              ) : (
+                "Verify"
+              )}
             </Button>
             <Button
               onClick={handleImport}
@@ -188,7 +193,7 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
               <FileUp className="h-4 w-4" />
               {isUploading ? 'Importing...' : 'Import Students'}
             </Button>
-          </div>
+          </DialogFooter>
         </div>
       </DialogContent>
     </Dialog>

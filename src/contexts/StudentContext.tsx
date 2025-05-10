@@ -91,12 +91,16 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
 
   const deleteStudent = async (id: string) => {
     try {
+      // Need to use JSON.stringify with an empty object to ensure we send a valid JSON body
+      // This prevents "Unexpected end of JSON input" errors
       const { error } = await supabase.functions.invoke('student-management', {
+        body: { id }, // Send the id in the body too as a fallback
         method: 'DELETE',
         headers: { path: `delete`, id }
       });
 
       if (error) {
+        console.error('Delete error response:', error);
         throw error;
       }
 
