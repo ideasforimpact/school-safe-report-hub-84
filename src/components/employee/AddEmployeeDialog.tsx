@@ -71,10 +71,21 @@ const AddEmployeeDialog = ({ isOpen, setIsOpen, onAddEmployee, clientId }: AddEm
   const handleSubmit = async (values: FormValues) => {
     setIsSubmitting(true);
     try {
-      await onAddEmployee({
-        ...values,
+      // Fix: Ensure all required fields from Employee type are provided
+      // The values from the form are guaranteed to have all required fields due to zod validation
+      const employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'> = {
+        employeeId: values.employeeId,
+        firstName: values.firstName,
+        lastName: values.lastName,
+        email: values.email,
+        employeeType: values.employeeType,
+        department: values.department,
+        joiningDate: values.joiningDate,
         status: 'active',
-      });
+        clientId: values.clientId,
+      };
+      
+      await onAddEmployee(employeeData);
       setIsOpen(false);
       form.reset();
     } catch (error) {
