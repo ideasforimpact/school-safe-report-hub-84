@@ -1,7 +1,5 @@
 
 import { RawEmployeeData } from '../types/importTypes';
-import { EmployeeType, DepartmentType, EmploymentStatus } from '@/contexts/employee/types';
-import { validateEmployeeType, validateDepartment, validateEmploymentStatus } from './employeeValidationUtils';
 
 /**
  * Required fields that must be present in the Excel file
@@ -67,35 +65,11 @@ export const validateExcelData = (data: any[]): string[] => {
       }
     });
     
-    // Validate email format
+    // Validate email format if present
     if (row.email) {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(String(row.email))) {
         errors.push(`Row ${rowNum}: Invalid email format - ${row.email}`);
-      }
-    }
-    
-    // Validate employee type using the enhanced validation function
-    if (row.employeeType) {
-      const validEmployeeType = validateEmployeeType(String(row.employeeType));
-      if (!validEmployeeType) {
-        errors.push(`Row ${rowNum}: Invalid employee type - ${row.employeeType}. Expected: permanent, contract, part_time, consultant, or intern`);
-      }
-    }
-    
-    // Validate department using the enhanced validation function
-    if (row.department) {
-      const validDepartment = validateDepartment(String(row.department));
-      if (!validDepartment) {
-        errors.push(`Row ${rowNum}: Invalid department - ${row.department}. Expected: admin, teaching, security, maintenance, transport, management, it, hr, or finance`);
-      }
-    }
-    
-    // Validate status if present
-    if (row.status) {
-      const validStatus = validateEmploymentStatus(String(row.status));
-      if (!validStatus) {
-        errors.push(`Row ${rowNum}: Invalid status - ${row.status}. Expected: active, on_leave, resigned, terminated, retired, or inactive`);
       }
     }
   });

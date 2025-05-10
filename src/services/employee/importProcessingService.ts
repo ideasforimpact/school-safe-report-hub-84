@@ -4,7 +4,6 @@ import { Employee } from '@/contexts/employee/types';
 import { ModulePermissions } from '@/contexts/auth/types';
 import { RawEmployeeData, ImportResult } from './types/importTypes';
 import { supabase } from '@/integrations/supabase/client';
-import { validateEmployeeType, validateDepartment, validateEmploymentStatus } from './utils/employeeValidationUtils';
 
 /**
  * Process the raw employee data from Excel and add valid employees to the system
@@ -38,19 +37,6 @@ export const processEmployeeData = async (rawData: RawEmployeeData[]): Promise<I
           throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
         }
         
-        // Validate and normalize employee type and department
-        const validatedEmployeeType = validateEmployeeType(String(row.employeeType));
-        if (!validatedEmployeeType) {
-          throw new Error(`Invalid employee type: ${row.employeeType}`);
-        }
-        
-        const validatedDepartment = validateDepartment(String(row.department));
-        if (!validatedDepartment) {
-          throw new Error(`Invalid department: ${row.department}`);
-        }
-        
-        const validatedStatus = validateEmploymentStatus(String(row.status)) || 'active';
-        
         // Set default module permissions for each employee
         const modulePermissions: ModulePermissions = {
           superAdmin: false,
@@ -64,17 +50,17 @@ export const processEmployeeData = async (rawData: RawEmployeeData[]): Promise<I
           eduSafeResourceAccess: false
         };
         
-        // Return the formatted employee data with default module permissions
+        // Return the employee data, preserving original values from Excel
         return {
           employeeId: String(row.employeeId),
           firstName: String(row.firstName),
           lastName: String(row.lastName),
           email: String(row.email),
           phone: row.phone ? String(row.phone) : undefined,
-          employeeType: validatedEmployeeType,
-          department: validatedDepartment,
+          employeeType: String(row.employeeType),
+          department: String(row.department),
           joiningDate: String(row.joiningDate),
-          status: validatedStatus,
+          status: String(row.status),
           modulePermissions: modulePermissions
         };
       } catch (error) {
