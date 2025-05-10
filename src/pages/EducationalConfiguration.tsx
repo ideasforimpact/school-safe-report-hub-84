@@ -1,11 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
 import { useIncidents } from '@/contexts/IncidentContext';
 import { EducationalStructureConfig } from './configuration/EducationalStructureConfig';
 import { toast } from 'sonner';
-import { CampusItem, ClassItem, SectionItem } from '@/contexts/types';
+import { CampusItem, ClassItem, SectionItem, ConfigItem } from '@/contexts/types';
 
 const EducationalConfiguration = () => {
   const [searchParams] = useSearchParams();
