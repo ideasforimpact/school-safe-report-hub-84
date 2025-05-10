@@ -10,7 +10,7 @@ export const validateEmployeeType = (value: string): EmployeeType | null => {
   const normalizedValue = value.toLowerCase().trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
   
   // Check if it's already a valid EmployeeType
-  const validTypes: EmployeeType[] = ['permanent', 'contract', 'intern'];
+  const validTypes: EmployeeType[] = ['permanent', 'contract', 'part_time', 'consultant', 'intern'];
   if (validTypes.includes(normalizedValue as EmployeeType)) {
     return normalizedValue as EmployeeType;
   }
@@ -28,10 +28,11 @@ export const validateEmployeeType = (value: string): EmployeeType | null => {
     temp: 'contract',
     temporary: 'contract',
     pt: 'contract',
-    part_time: 'contract',
-    parttime: 'contract',
+    part_time: 'part_time',
+    parttime: 'part_time',
     intern: 'intern',
-    internship: 'intern'
+    internship: 'intern',
+    consultant: 'consultant'
   };
   
   // Handle "Full-Time", "Part-Time", etc.
@@ -40,7 +41,7 @@ export const validateEmployeeType = (value: string): EmployeeType | null => {
   }
   
   if (value.toLowerCase().includes('part') && value.toLowerCase().includes('time')) {
-    return 'contract';
+    return 'part_time';
   }
   
   if (value.toLowerCase().includes('contract') || value.toLowerCase().includes('contractor')) {
@@ -59,7 +60,7 @@ export const validateDepartment = (value: string): DepartmentType | null => {
   const normalizedValue = value.toLowerCase().trim().replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
   
   // Check if it's already a valid DepartmentType
-  const validDepartments: DepartmentType[] = ['admin', 'teaching', 'management', 'it', 'finance', 'hr'];
+  const validDepartments: DepartmentType[] = ['admin', 'teaching', 'security', 'maintenance', 'transport', 'management', 'it', 'hr', 'finance'];
   if (validDepartments.includes(normalizedValue as DepartmentType)) {
     return normalizedValue as DepartmentType;
   }
@@ -100,7 +101,15 @@ export const validateDepartment = (value: string): DepartmentType | null => {
     guard: 'admin',
     // Add the contract as a department mapping to a proper department
     contract: 'admin',
-    contracts: 'admin'
+    contracts: 'admin',
+    contractor: 'admin',
+    contracting: 'admin',
+    transport: 'transport',
+    transportation: 'transport',
+    logistics: 'transport',
+    driver: 'transport',
+    drivers: 'transport',
+    bus: 'transport'
   };
   
   return departmentMap[normalizedValue] || null;

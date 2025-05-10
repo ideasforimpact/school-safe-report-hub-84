@@ -1,3 +1,4 @@
+
 import { RawEmployeeData } from '../types/importTypes';
 import { EmployeeType, DepartmentType, EmploymentStatus } from '@/contexts/employee/types';
 import { validateEmployeeType, validateDepartment, validateEmploymentStatus } from './employeeValidationUtils';
@@ -74,47 +75,32 @@ export const validateExcelData = (data: any[]): string[] => {
       }
     }
     
-    // Validate employee type
-    if (row.employeeType && !isValidEmployeeType(String(row.employeeType))) {
-      errors.push(`Row ${rowNum}: Invalid employee type - ${row.employeeType}. Expected: permanent, contract, part_time, consultant, or intern`);
+    // Validate employee type using the enhanced validation function
+    if (row.employeeType) {
+      const validEmployeeType = validateEmployeeType(String(row.employeeType));
+      if (!validEmployeeType) {
+        errors.push(`Row ${rowNum}: Invalid employee type - ${row.employeeType}. Expected: permanent, contract, part_time, consultant, or intern`);
+      }
     }
     
-    // Validate department
-    if (row.department && !isValidDepartment(String(row.department))) {
-      errors.push(`Row ${rowNum}: Invalid department - ${row.department}. Expected: admin, teaching, security, maintenance, transport, management, it, hr, or finance`);
+    // Validate department using the enhanced validation function
+    if (row.department) {
+      const validDepartment = validateDepartment(String(row.department));
+      if (!validDepartment) {
+        errors.push(`Row ${rowNum}: Invalid department - ${row.department}. Expected: admin, teaching, security, maintenance, transport, management, it, hr, or finance`);
+      }
     }
     
     // Validate status if present
-    if (row.status && !isValidStatus(String(row.status))) {
-      errors.push(`Row ${rowNum}: Invalid status - ${row.status}. Expected: active, on_leave, resigned, terminated, retired, or inactive`);
+    if (row.status) {
+      const validStatus = validateEmploymentStatus(String(row.status));
+      if (!validStatus) {
+        errors.push(`Row ${rowNum}: Invalid status - ${row.status}. Expected: active, on_leave, resigned, terminated, retired, or inactive`);
+      }
     }
   });
   
   return errors;
-};
-
-/**
- * Check if employee type is valid
- */
-const isValidEmployeeType = (type: string): boolean => {
-  const validTypes = ['permanent', 'contract', 'part_time', 'consultant', 'intern'];
-  return validTypes.includes(type.toLowerCase());
-};
-
-/**
- * Check if department is valid
- */
-const isValidDepartment = (department: string): boolean => {
-  const validDepartments = ['admin', 'teaching', 'security', 'maintenance', 'transport', 'management', 'it', 'hr', 'finance'];
-  return validDepartments.includes(department.toLowerCase());
-};
-
-/**
- * Check if status is valid
- */
-const isValidStatus = (status: string): boolean => {
-  const validStatuses = ['active', 'on_leave', 'resigned', 'terminated', 'retired', 'inactive'];
-  return validStatuses.includes(status.toLowerCase());
 };
 
 /**
