@@ -74,6 +74,10 @@ export const EditDialog = ({
   };
 
   const handleSave = () => {
+    if (!currentValue.trim()) {
+      return; // Don't save if empty
+    }
+    
     onChange(currentValue); // Make sure the parent component has the current value
     onSave();
     setOpen(false);

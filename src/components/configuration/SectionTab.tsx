@@ -44,7 +44,6 @@ export const SectionTab = ({
   const [newSection, setNewSection] = useState('');
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [editingSection, setEditingSection] = useState<{id: string, name: string, classId: string} | null>(null);
-  const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
   const handleSectionAdd = (e: React.FormEvent) => {
@@ -68,7 +67,6 @@ export const SectionTab = ({
   const handleSectionDelete = (id: string) => {
     setIsDeleting(id);
     deleteSection(id);
-    // The loading state from props will handle the spinner display
   };
 
   const handleSectionUpdate = () => {
@@ -82,10 +80,7 @@ export const SectionTab = ({
       return;
     }
     
-    setIsUpdating(true);
     updateSection(editingSection.id, editingSection.classId, editingSection.name.trim());
-    // The loading state from props will eventually turn off the spinner
-    // but we'll reset our local state when done
     setEditingSection(null);
   };
 
@@ -206,7 +201,7 @@ export const SectionTab = ({
                         )}
                         onSave={handleSectionUpdate}
                         triggerButton={
-                          <Button variant="ghost" size="icon" disabled={loading || isUpdating}>
+                          <Button variant="ghost" size="icon" disabled={loading}>
                             {loading && editingSection?.id === section.id ? (
                               <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (

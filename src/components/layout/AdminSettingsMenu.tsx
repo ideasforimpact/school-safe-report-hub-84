@@ -2,7 +2,7 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { Settings, AlertTriangle, School, Warehouse } from 'lucide-react';
+import { Settings, AlertTriangle, School } from 'lucide-react';
 
 const AdminSettingsMenu = () => {
   const navigate = useNavigate();

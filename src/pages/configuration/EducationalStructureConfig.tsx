@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -75,85 +74,82 @@ export const EducationalStructureConfig: React.FC<EducationalStructureConfigProp
   };
   
   return (
-    <Card>
-      <CardContent className="pt-6">
-        <Tabs value={currentTab} onValueChange={handleTabChange}>
-          <TabsList className="mb-4">
-            <TabsTrigger value="campuses" className="flex items-center gap-2">
-              <Building className="h-4 w-4" />
-              <span>Campuses</span>
-            </TabsTrigger>
-            <TabsTrigger 
-              value="classes" 
-              className="flex items-center gap-2" 
-              disabled={!hasCampuses}
-            >
-              <GraduationCap className="h-4 w-4" />
-              <span>Grades</span>
-            </TabsTrigger>
-            <TabsTrigger 
-              value="sections" 
-              className="flex items-center gap-2"
-              disabled={!hasCampuses}
-            >
-              <Users className="h-4 w-4" />
-              <span>Sections</span>
-            </TabsTrigger>
-            <TabsTrigger 
-              value="facilities" 
-              className="flex items-center gap-2"
-              disabled={!hasCampuses}
-            >
-              <Warehouse className="h-4 w-4" />
-              <span>Facilities</span>
-            </TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="campuses">
-            <CampusTab 
-              campuses={campuses}
-              addCampus={addCampus}
-              updateCampus={updateCampus}
-              deleteCampus={deleteCampus}
-              classes={classes}
-              loading={loading}
-            />
-          </TabsContent>
-          
-          <TabsContent value="classes">
-            <ClassTab 
-              classes={classes}
-              campuses={campuses}
-              addClass={addClass}
-              updateClass={updateClass}
-              deleteClass={deleteClass}
-              sections={sections}
-              loading={loading}
-            />
-          </TabsContent>
-          
-          <TabsContent value="sections">
-            <SectionTab 
-              sections={sections}
-              classes={classes}
-              addSection={addSection}
-              updateSection={updateSection}
-              deleteSection={deleteSection}
-            />
-          </TabsContent>
-          
-          <TabsContent value="facilities">
-            <FacilityTab 
-              facilities={facilities}
-              campuses={campuses}
-              addFacility={addFacility}
-              updateFacility={updateFacility}
-              deleteFacility={deleteFacility}
-              loading={loading}
-            />
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+    <Tabs value={currentTab} onValueChange={handleTabChange}>
+      <TabsList className="mb-4">
+        <TabsTrigger value="campuses" className="flex items-center gap-2">
+          <Building className="h-4 w-4" />
+          <span>Campuses</span>
+        </TabsTrigger>
+        <TabsTrigger 
+          value="classes" 
+          className="flex items-center gap-2" 
+          disabled={!hasCampuses}
+        >
+          <GraduationCap className="h-4 w-4" />
+          <span>Grades</span>
+        </TabsTrigger>
+        <TabsTrigger 
+          value="sections" 
+          className="flex items-center gap-2"
+          disabled={!hasCampuses}
+        >
+          <Users className="h-4 w-4" />
+          <span>Sections</span>
+        </TabsTrigger>
+        <TabsTrigger 
+          value="facilities" 
+          className="flex items-center gap-2"
+          disabled={!hasCampuses}
+        >
+          <Warehouse className="h-4 w-4" />
+          <span>Facilities</span>
+        </TabsTrigger>
+      </TabsList>
+      
+      <TabsContent value="campuses">
+        <CampusTab 
+          campuses={campuses}
+          addCampus={addCampus}
+          updateCampus={updateCampus}
+          deleteCampus={deleteCampus}
+          classes={classes}
+          loading={loading}
+        />
+      </TabsContent>
+      
+      <TabsContent value="classes">
+        <ClassTab 
+          classes={classes}
+          campuses={campuses}
+          addClass={addClass}
+          updateClass={updateClass}
+          deleteClass={deleteClass}
+          sections={sections}
+          loading={loading}
+        />
+      </TabsContent>
+      
+      <TabsContent value="sections">
+        <SectionTab 
+          sections={sections}
+          classes={classes}
+          addSection={addSection}
+          updateSection={updateSection}
+          deleteSection={deleteSection}
+          loading={loading}
+        />
+      </TabsContent>
+      
+      <TabsContent value="facilities">
+        <FacilityTab 
+          facilities={facilities}
+          campuses={campuses}
+          addFacility={addFacility}
+          updateFacility={updateFacility}
+          deleteFacility={deleteFacility}
+          loading={loading}
+        />
+      </TabsContent>
+    </Tabs>
   );
 };
