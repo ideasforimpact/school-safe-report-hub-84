@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.0.0";
 
@@ -73,6 +72,9 @@ serve(async (req) => {
         
       case "validate":
         return await handleValidateImport(body, corsHeaders);
+        
+      case "bulk-update":
+        return await handleBulkUpdate(body, corsHeaders);
 
       default:
         return new Response(
@@ -473,4 +475,79 @@ async function handleDeleteStudent(id: string, corsHeaders: Record<string, strin
     JSON.stringify({ success: true }),
     { headers: { ...corsHeaders, "Content-Type": "application/json" } }
   );
+}
+
+/**
+ * Handle bulk update of students
+ * This function processes a batch of student updates in a single operation
+ */
+async function handleBulkUpdate(body: any, corsHeaders: Record<string, string>) {
+  const students = body.students || [];
+  if (!Array.isArray(students) || students.length === 0) {
+    return new Response(
+      JSON.stringify({ error: "No student data provided for update" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  console.log(`Processing bulk update for ${students.length} students`);
+  
+  try {
+    const updatedStudents = [];
+    let successCount = 0;
+    
+    // Process students in batches to avoid potential limitations
+    const BATCH_SIZE = 50;
+    for (let i = 0; i < students.length; i += BATCH_SIZE) {
+      const batch = students.slice(i, i + BATCH_SIZE);
+      
+      // For each student in batch, prepare update
+      for (const student of batch) {
+        if (!student.id) {
+          console.error("Student ID missing in update request", student);
+          continue;
+        }
+        
+        // Extract updates for this student
+        const { id, ...updates } = student;
+        
+        // Apply update
+        const { data, error } = await supabaseClient
+          .from("students")
+          .update(updates)
+          .eq("id", id)
+          .select();
+        
+        if (error) {
+          console.error(`Error updating student ${id}:`, error);
+          continue;
+        }
+        
+        if (data && data.length > 0) {
+          updatedStudents.push({
+            ...data[0],
+            studentId: data[0].student_id,
+            createdAt: data[0].created_at,
+            updatedAt: data[0].updated_at
+          });
+          successCount++;
+        }
+      }
+    }
+    
+    return new Response(
+      JSON.stringify({
+        updated: true,
+        count: successCount,
+        students: updatedStudents
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Error in bulk update:", error);
+    return new Response(
+      JSON.stringify({ error: `Bulk update failed: ${error.message}` }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
 }

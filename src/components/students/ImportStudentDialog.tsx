@@ -6,6 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Upload, FileUp, AlertCircle, Check, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { processStudentExcel, validateStudentExcel } from '@/services/student/importStudentService';
+import { useStudents } from '@/contexts/StudentContext';
+import { Progress } from '@/components/ui/progress';
 
 interface ImportStudentDialogProps {
   open: boolean;
@@ -14,17 +16,20 @@ interface ImportStudentDialogProps {
 }
 
 const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStudentDialogProps) => {
+  const { students } = useStudents();
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [isValidated, setIsValidated] = useState(false);
+  const [recordCount, setRecordCount] = useState<number | null>(null);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0] || null;
     setFile(selectedFile);
     setIsValidated(false);
     setValidationErrors([]);
+    setRecordCount(null);
     
     // Auto-validate when a file is selected
     if (selectedFile) {
@@ -49,8 +54,22 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
     setValidationErrors([]);
 
     try {
+      // Show status message if it's a large file (based on file size)
+      if (selectedFile.size > 1000000) { // Roughly 1MB
+        toast.info('Validating a large file. This might take a moment...');
+      }
+      
       const errors = await validateStudentExcel(selectedFile);
       setValidationErrors(errors);
+      
+      // Estimate number of records from file size or extract it during validation
+      try {
+        // This is simplified - in a real app would be more accurate
+        const data = await parseExcelForCount(selectedFile);
+        setRecordCount(data);
+      } catch (e) {
+        console.error("Couldn't determine record count", e);
+      }
       
       if (errors.length === 0) {
         setIsValidated(true);
@@ -63,6 +82,19 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
       toast.error('Failed to validate file');
     } finally {
       setIsValidating(false);
+    }
+  };
+
+  // Simple function to estimate record count from the Excel file
+  const parseExcelForCount = async (file: File): Promise<number> => {
+    // This is a simplification - we're reusing existing functionality
+    try {
+      const { parseExcelFile } = await import('@/services/student/utils/excelProcessingUtils');
+      const data = await parseExcelFile(file);
+      return data.length;
+    } catch (e) {
+      console.error("Error parsing Excel for count:", e);
+      return 0;
     }
   };
 
@@ -80,6 +112,11 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
     setIsUploading(true);
 
     try {
+      // Show a message for large imports to manage user expectations
+      if (recordCount && recordCount > 100) {
+        toast.info(`Processing ${recordCount} records. This may take a moment...`);
+      }
+      
       await onImportStudents(file);
       handleDialogClose();
     } catch (error) {
@@ -94,6 +131,7 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
     setIsValidated(false);
     setValidationErrors([]);
     setIsUploading(false);
+    setRecordCount(null);
     onOpenChange(false);
   };
 
@@ -120,6 +158,11 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
                     <span className="text-sm text-muted-foreground">
                       {file ? file.name : 'Click to select a CSV or Excel file'}
                     </span>
+                    {recordCount && (
+                      <span className="text-xs text-muted-foreground">
+                        {recordCount} records detected
+                      </span>
+                    )}
                   </Label>
                   <input
                     type="file"
@@ -161,7 +204,28 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
               <p className="text-green-600 flex items-center">
                 <Check className="h-4 w-4 mr-1" />
                 File is valid and ready to import
+                {recordCount && ` (${recordCount} records)`}
               </p>
+            </div>
+          )}
+
+          {isValidating && (
+            <div className="space-y-2">
+              <div className="flex items-center">
+                <Loader2 className="h-4 w-4 mr-2 animate-spin text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Validating file...</span>
+              </div>
+              <Progress value={isValidating ? 80 : 0} className="h-1" />
+            </div>
+          )}
+
+          {isUploading && (
+            <div className="space-y-2">
+              <div className="flex items-center">
+                <Loader2 className="h-4 w-4 mr-2 animate-spin text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Importing data...</span>
+              </div>
+              <Progress value={isUploading ? 70 : 0} className="h-1" />
             </div>
           )}
 

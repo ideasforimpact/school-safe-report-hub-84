@@ -26,49 +26,21 @@ export const validateExcelData = async (data: RawStudentData[]): Promise<string[
 
   console.log('Raw Excel/CSV data:', data);
 
-  // Fetch valid campuses, grades, and sections from database
-  const { data: campuses, error: campusError } = await supabase
-    .from('campuses')
-    .select('name');
+  // Extract all unique campuses, grades, and sections from the data for bulk validation
+  const uniqueCampuses = new Set();
+  const uniqueGrades = new Set();
+  const uniqueSections = new Set();
   
-  if (campusError) {
-    console.error('Error fetching campuses:', campusError);
-    errors.push('Failed to validate campuses: Database error');
-    return errors;
-  }
-
-  const { data: grades, error: gradeError } = await supabase
-    .from('grades')
-    .select('name');
+  // Map to track relationships between campuses, grades, and sections
+  const campusGradeMap = new Map(); // campus -> grades
+  const gradeSectionMap = new Map(); // grade -> sections
   
-  if (gradeError) {
-    console.error('Error fetching grades:', gradeError);
-    errors.push('Failed to validate grades: Database error');
-    return errors;
-  }
-
-  const { data: sections, error: sectionError } = await supabase
-    .from('sections')
-    .select('name');
-  
-  if (sectionError) {
-    console.error('Error fetching sections:', sectionError);
-    errors.push('Failed to validate sections: Database error');
-    return errors;
-  }
-
-  // Create sets for faster lookups
-  const validCampuses = new Set(campuses.map(c => c.name.toLowerCase()));
-  const validGrades = new Set(grades.map(g => g.name.toLowerCase()));
-  const validSections = new Set(sections.map(s => s.name.toLowerCase()));
-
-  // Validate each row in the file
+  // First check for required fields and collect unique values
   data.forEach((row, index) => {
     const rowNumber = index + 2; // +2 because Excel/CSV is 1-indexed and there's a header row
     
     // Check for required fields
     for (const field of requiredFields) {
-      // More robust check for empty values: handles undefined, null, empty strings and strings with only spaces
       const fieldValue = row[field];
       const isEmpty = fieldValue === undefined || fieldValue === null || 
                      (typeof fieldValue === 'string' && fieldValue.trim() === '') ||
@@ -79,7 +51,78 @@ export const validateExcelData = async (data: RawStudentData[]): Promise<string[
       }
     }
     
-    // Add specific validations if needed for student data
+    // Add unique values to sets
+    if (row.campus && typeof row.campus === 'string' && row.campus.trim() !== '') {
+      uniqueCampuses.add(row.campus.toLowerCase());
+    }
+    
+    if (row.grade && typeof row.grade === 'string' && row.grade.trim() !== '') {
+      uniqueGrades.add(row.grade.toLowerCase());
+      
+      // Track campus-grade relationship
+      if (row.campus) {
+        const campusKey = row.campus.toLowerCase();
+        if (!campusGradeMap.has(campusKey)) {
+          campusGradeMap.set(campusKey, new Set());
+        }
+        campusGradeMap.get(campusKey).add(row.grade.toLowerCase());
+      }
+    }
+    
+    if (row.section && typeof row.section === 'string' && row.section.trim() !== '') {
+      uniqueSections.add(row.section.toLowerCase());
+      
+      // Track grade-section relationship
+      if (row.grade) {
+        const gradeKey = row.grade.toLowerCase();
+        if (!gradeSectionMap.has(gradeKey)) {
+          gradeSectionMap.set(gradeKey, new Set());
+        }
+        gradeSectionMap.get(gradeKey).add(row.section.toLowerCase());
+      }
+    }
+  });
+
+  // If there are already errors from required fields validation, return early
+  if (errors.length > 0) {
+    return errors;
+  }
+
+  try {
+    // Use the bulk validation endpoint to validate all relationships at once
+    const { data: validationResult, error: validationError } = await supabase.functions.invoke('student-management', {
+      method: 'POST',
+      headers: { path: 'validate' },
+      body: { 
+        students: data.map(row => ({
+          studentId: String(row.studentId),
+          name: String(row.name),
+          grade: String(row.grade),
+          section: String(row.section),
+          campus: String(row.campus)
+        }))
+      }
+    });
+
+    if (validationError) {
+      console.error('Validation API error:', validationError);
+      errors.push('Failed to validate data: API error');
+      return errors;
+    }
+
+    if (!validationResult.valid && validationResult.errors) {
+      return validationResult.errors;
+    }
+  } catch (error) {
+    console.error('Error during validation:', error);
+    errors.push(`Validation error: ${(error as Error).message}`);
+  }
+  
+  // Validate each row individually for name and studentId format
+  data.forEach((row, index) => {
+    const rowNumber = index + 2;
+    
+    // Add specific validations for student data
     if (row.studentId && row.name) {
       // Validate student ID format if needed
       if (row.studentId && typeof row.studentId === 'string' && row.studentId.length < 2) {
@@ -89,27 +132,6 @@ export const validateExcelData = async (data: RawStudentData[]): Promise<string[
       // Validate name format
       if (row.name && typeof row.name === 'string' && row.name.length < 2) {
         errors.push(`Row ${rowNumber}: Name "${row.name}" is too short`);
-      }
-    }
-
-    // Validate campus exists in database
-    if (row.campus && typeof row.campus === 'string' && row.campus.trim() !== '') {
-      if (!validCampuses.has(row.campus.toLowerCase())) {
-        errors.push(`Row ${rowNumber}: Campus "${row.campus}" does not exist in the system`);
-      }
-    }
-
-    // Validate grade exists in database
-    if (row.grade && typeof row.grade === 'string' && row.grade.trim() !== '') {
-      if (!validGrades.has(row.grade.toLowerCase())) {
-        errors.push(`Row ${rowNumber}: Grade "${row.grade}" does not exist in the system`);
-      }
-    }
-
-    // Validate section exists in database
-    if (row.section && typeof row.section === 'string' && row.section.trim() !== '') {
-      if (!validSections.has(row.section.toLowerCase())) {
-        errors.push(`Row ${rowNumber}: Section "${row.section}" does not exist in the system`);
       }
     }
   });
