@@ -26,29 +26,50 @@ export const parseExcelFile = async (file: File): Promise<RawEmployeeData[]> => 
           const firstSheetName = workbook.SheetNames[0];
           const worksheet = workbook.Sheets[firstSheetName];
           
-          // Convert the worksheet to JSON
-          const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: false, defval: '' });
-          console.log("Raw Excel data:", jsonData);
+          // Convert the worksheet to JSON with raw: true to get all data types preserved
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: true, defval: '' });
+          console.log("Raw Excel data:", JSON.stringify(jsonData));
           
           // Map Excel column names to our expected property names
           const employeeData: RawEmployeeData[] = jsonData.map((row: any, index: number) => {
-            // Handle different possible column names for each field
-            const mappedData: RawEmployeeData = {
-              employeeId: row['Employee ID'] || row['EmployeeID'] || row['employeeId'] || row['employee_id'] || row['id'] || '',
-              firstName: row['First Name'] || row['FirstName'] || row['firstName'] || row['first_name'] || '',
-              lastName: row['Last Name'] || row['LastName'] || row['lastName'] || row['last_name'] || '',
-              email: row['Email'] || row['email'] || '',
-              phone: row['Phone'] || row['phone'] || '',
-              employeeType: row['Employee Type'] || row['EmployeeType'] || row['employeeType'] || row['employee_type'] || 'permanent',
-              department: row['Department'] || row['department'] || 'operations',
-              // Handle date formats
-              joiningDate: row['Joining Date'] || row['JoiningDate'] || row['joiningDate'] || row['joining_date'] || 
-                          (new Date().toISOString().split('T')[0]), // Default to today
-              status: row['Status'] || row['status'] || 'active'
+            // Enhanced mapping for various possible column names
+            // First try exact match, then case-insensitive, then with spaces or underscores
+            const getFieldValue = (fieldNames: string[]): string => {
+              for (const name of fieldNames) {
+                // Try direct key match
+                if (row[name] !== undefined) return String(row[name]);
+                
+                // Try case-insensitive match
+                const lowerName = name.toLowerCase();
+                for (const key of Object.keys(row)) {
+                  if (key.toLowerCase() === lowerName) return String(row[key]);
+                }
+              }
+              return '';
             };
             
-            // Log each mapped row to verify
+            // Fix email mapping - add more possible column names
+            const mappedData: RawEmployeeData = {
+              employeeId: getFieldValue(['Employee ID', 'EmployeeID', 'employeeId', 'employee_id', 'id', 'ID', 'Id']),
+              firstName: getFieldValue(['First Name', 'FirstName', 'firstName', 'first_name', 'First name', 'FIRSTNAME']),
+              lastName: getFieldValue(['Last Name', 'LastName', 'lastName', 'last_name', 'Last name', 'LASTNAME']),
+              email: getFieldValue(['Email', 'email', 'EMAIL', 'EmailAddress', 'email_address', 'Email Address', 'Mail']),
+              phone: getFieldValue(['Phone', 'phone', 'PhoneNumber', 'phone_number', 'Phone Number', 'Contact', 'Mobile']),
+              employeeType: getFieldValue(['Employee Type', 'EmployeeType', 'employeeType', 'employee_type', 'Type']) || 'permanent',
+              department: getFieldValue(['Department', 'department', 'DEPARTMENT', 'Dept']) || 'operations',
+              // Handle date formats
+              joiningDate: getFieldValue(['Joining Date', 'JoiningDate', 'joiningDate', 'joining_date', 'Start Date', 'DateJoined']) || 
+                          (new Date().toISOString().split('T')[0]),
+              status: getFieldValue(['Status', 'status', 'STATE', 'Employment Status']) || 'active'
+            };
+            
+            // Log each mapped row to debug
             console.log(`Mapped row ${index + 1}:`, mappedData);
+            
+            // Extra validation for required fields, especially email
+            if (!mappedData.email) {
+              console.warn(`Warning: Row ${index + 1} is missing email address`);
+            }
             
             return mappedData;
           });

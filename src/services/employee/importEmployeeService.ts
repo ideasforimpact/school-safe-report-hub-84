@@ -19,6 +19,13 @@ export const processEmployeeExcel = async (file: File): Promise<Employee[]> => {
     const rawData = await parseExcelFile(file);
     console.log("Excel data parsed successfully, records:", rawData.length);
 
+    // Verify that we have email data in the parsed records
+    const missingEmails = rawData.filter(emp => !emp.email || emp.email.trim() === '').length;
+    if (missingEmails > 0) {
+      console.error(`Warning: ${missingEmails} records are missing email addresses`);
+      toast.warning(`${missingEmails} records are missing email addresses. Please check your Excel file.`);
+    }
+
     // Show status message for large imports
     if (rawData.length > 100) {
       toast.info(`Processing ${rawData.length} records. This may take a moment...`);
@@ -48,8 +55,14 @@ export const processEmployeeExcel = async (file: File): Promise<Employee[]> => {
     // Add default module permissions to each employee record
     // and normalize/validate employee data fields
     const processedData = rawData.map(emp => {
+      // Ensure email exists
+      if (!emp.email || emp.email.trim() === '') {
+        console.warn(`Employee ${emp.firstName} ${emp.lastName} (ID: ${emp.employeeId}) is missing an email address`);
+      }
+      
       return {
         ...emp,
+        email: emp.email || `${emp.firstName.toLowerCase()}.${emp.lastName.toLowerCase()}@example.com`, // Default email if missing
         employeeType: validateEmployeeType(String(emp.employeeType)),
         department: validateDepartment(String(emp.department)),
         status: validateEmploymentStatus(String(emp.status)),

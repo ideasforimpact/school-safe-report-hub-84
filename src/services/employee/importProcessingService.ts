@@ -78,14 +78,14 @@ export const processEmployeeData = async (rawData: RawEmployeeData[]): Promise<I
     
     console.log(`Sending ${employees.length} employees for bulk processing`);
 
-    // FIX: Create proper request body and log it before sending
+    // Create proper request body and log it before sending
     const requestBody = { employees };
     
     // Log the request body as a string to verify its content
     console.log("Request payload:", requestBody);
     console.log("Request payload stringified:", JSON.stringify(requestBody));
     
-    // FIX: Use proper Supabase edge function invocation with correct body format
+    // Use proper Supabase edge function invocation with correct body format
     const { data: response, error } = await supabase.functions.invoke('employee-management', {
       method: 'POST',
       body: requestBody, // Supabase client will automatically stringify this
@@ -101,8 +101,9 @@ export const processEmployeeData = async (rawData: RawEmployeeData[]): Promise<I
       
       // Try with a direct fetch as a fallback
       try {
-        // Fix: Get the functions URL correctly
-        const functionUrl = new URL('employee-management', supabase.functions.url).toString();
+        // Fix: Get the functions URL correctly by accessing it as a string
+        const functionsUrl = supabase.functions.url.toString();
+        const functionUrl = `${functionsUrl}/employee-management`;
         console.log("Trying direct fetch to", functionUrl);
         
         // Fix: Get the current session token properly
