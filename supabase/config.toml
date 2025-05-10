@@ -31,4 +31,3 @@ enabled = true
 
 [functions.employee-management]
 verify_jwt = false
-

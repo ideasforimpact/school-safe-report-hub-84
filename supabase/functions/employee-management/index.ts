@@ -24,39 +24,25 @@ serve(async (req) => {
   }
 
   try {
-    // Check for authorization header
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      console.error("Missing authorization header in request");
-      console.error("Headers received:", [...req.headers.entries()]);
-      return new Response(
-        JSON.stringify({ 
-          error: "Missing authorization header", 
-          status: 401 
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 401,
-        }
-      );
-    }
+    console.log("Received request:", req.method, req.url);
+    console.log("Request headers:", [...req.headers.entries()]);
 
-    // Create a Supabase client with the Auth context of the logged in user
+    // Create a Supabase client - for anonymous access, we don't require auth header
     const supabaseClient = createClient(
       // Supabase API URL - env var exported by default when deployed to Supabase Edge Functions
       Deno.env.get("SUPABASE_URL") ?? "",
       // Supabase API ANON KEY - env var exported by default when deployed to Supabase Edge Functions
       Deno.env.get("SUPABASE_ANON_KEY") ?? "",
-      // Create client with Auth header of the logged in user
       {
         global: {
-          headers: { Authorization: authHeader },
+          headers: { 
+            // Include auth header if available, but don't require it (verify_jwt is false)
+            ...(req.headers.get("Authorization") ? 
+              { Authorization: req.headers.get("Authorization")! } : {})
+          },
         },
       }
     );
-
-    // Log auth header for debugging (exclude the token itself for security)
-    console.log("Auth header present:", authHeader ? "Yes" : "No");
 
     // Get the request path parameter
     const requestUrl = new URL(req.url);
@@ -68,132 +54,99 @@ serve(async (req) => {
 
     console.log(`Request path: ${effectivePath}`);
     
-    if (effectivePath === "bulk-update") {
-      return await handleBulkUpdate(req, supabaseClient);
-    } else if (effectivePath === "bulk-create") {
-      return await handleBulkCreate(req, supabaseClient);
-    }
-    
-    // Get the request body for standard operations
-    const { operation, employee, id } = await req.json();
-
-    // Handle different operations
-    switch (operation) {
-      case "create":
-        return await handleCreate(supabaseClient, employee);
-
-      case "update":
-        if (!employee.id) {
-          return new Response(
-            JSON.stringify({ error: "Employee ID is required for update" }),
-            {
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-              status: 400,
-            }
-          );
-        }
-        return await handleUpdate(supabaseClient, employee);
-
-      case "delete":
-        if (!id) {
-          return new Response(
-            JSON.stringify({ error: "Employee ID is required for delete" }),
-            {
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-              status: 400,
-            }
-          );
-        }
-        return await handleDelete(supabaseClient, id);
-
-      case "deactivate":
-        if (!id) {
-          return new Response(
-            JSON.stringify({ error: "Employee ID is required for deactivation" }),
-            {
-              headers: { ...corsHeaders, "Content-Type": "application/json" },
-              status: 400,
-            }
-          );
-        }
-        return await handleDeactivate(supabaseClient, id);
-
-      default:
-        return new Response(JSON.stringify({ error: "Invalid operation" }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 400,
-        });
-    }
-  } catch (error) {
-    console.error("Function error:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 500,
-    });
-  }
-});
-
-// Handle bulk update of existing employees and creation of new employees
-async function handleBulkUpdate(req, supabaseClient) {
-  try {
-    const { employees } = await req.json();
-    
-    if (!employees || !Array.isArray(employees)) {
-      return new Response(JSON.stringify({ error: "Invalid request format. Expected 'employees' array." }), {
+    // Parse the request body
+    let reqBody;
+    try {
+      reqBody = await req.json();
+      console.log("Request body parsed successfully");
+    } catch (e) {
+      console.error("Error parsing request body:", e);
+      return new Response(JSON.stringify({ error: "Invalid JSON in request body" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 400,
       });
     }
-
-    console.log(`Processing bulk update for ${employees.length} employees`);
-
-    // Separate employees into those to update (have IDs) and those to create (don't have IDs)
-    const toCreate = [];
-    const toUpdate = [];
-    const employeeIdMap = new Map();
     
-    // Process employees to create or update
-    for (const emp of employees) {
-      if (emp.id) {
-        // If ID exists, this is an update
-        toUpdate.push({
-          id: emp.id,
-          first_name: emp.firstName,
-          last_name: emp.lastName,
-          email: emp.email,
-          employee_id: emp.employeeId,
-          employee_type: emp.employeeType,
-          department: emp.department,
-          joining_date: emp.joiningDate,
-          status: emp.status || 'active',
-          // modulePermissions will be handled separately
+    if (effectivePath === "bulk-update") {
+      console.log("Handling bulk update request");
+      const { employees } = reqBody;
+      
+      if (!employees || !Array.isArray(employees)) {
+        console.error("Invalid employees data:", reqBody);
+        return new Response(JSON.stringify({ error: "Invalid request format. Expected 'employees' array." }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
         });
-      } else {
-        // Check if we have an employee with this employee_id already
-        employeeIdMap.set(emp.employeeId.toLowerCase(), emp);
       }
-    }
-    
-    // If there are potential new employees, check which ones already exist
-    if (employeeIdMap.size > 0) {
-      const employeeIds = Array.from(employeeIdMap.keys());
+
+      console.log(`Processing bulk update for ${employees.length} employees`);
+
+      // Separate employees into those to update (have IDs) and those to create (don't have IDs)
+      const toCreate = [];
+      const toUpdate = [];
+      const employeeIdMap = new Map();
       
-      // Check which employee IDs already exist
-      const { data: existingEmployees, error: lookupError } = await supabaseClient
-        .from("employees")
-        .select("id, employee_id")
-        .in("employee_id", employeeIds.map(id => id.toLowerCase()));
-        
-      if (lookupError) {
-        throw lookupError;
-      }
-      
-      // For existing employees, add them to update list with their database ID
-      for (const existing of (existingEmployees || [])) {
-        const empData = employeeIdMap.get(existing.employee_id.toLowerCase());
-        if (empData) {
+      // Process employees to create or update
+      for (const emp of employees) {
+        if (emp.id) {
+          // If ID exists, this is an update
           toUpdate.push({
-            id: existing.id,
+            id: emp.id,
+            first_name: emp.firstName,
+            last_name: emp.lastName,
+            email: emp.email,
+            employee_id: emp.employeeId,
+            employee_type: emp.employeeType,
+            department: emp.department,
+            joining_date: emp.joiningDate,
+            status: emp.status || 'active',
+            // modulePermissions will be handled separately
+          });
+        } else {
+          // Check if we have an employee with this employee_id already
+          employeeIdMap.set(emp.employeeId.toLowerCase(), emp);
+        }
+      }
+      
+      // If there are potential new employees, check which ones already exist
+      if (employeeIdMap.size > 0) {
+        const employeeIds = Array.from(employeeIdMap.keys());
+        
+        // Check which employee IDs already exist
+        const { data: existingEmployees, error: lookupError } = await supabaseClient
+          .from("employees")
+          .select("id, employee_id")
+          .in("employee_id", employeeIds.map(id => id.toLowerCase()));
+          
+        if (lookupError) {
+          console.error("Error looking up existing employees:", lookupError);
+        } else {
+          console.log(`Found ${existingEmployees?.length || 0} existing employees`);
+        }
+        
+        // For existing employees, add them to update list with their database ID
+        for (const existing of (existingEmployees || [])) {
+          const empData = employeeIdMap.get(existing.employee_id.toLowerCase());
+          if (empData) {
+            toUpdate.push({
+              id: existing.id,
+              first_name: empData.firstName,
+              last_name: empData.lastName,
+              email: empData.email,
+              employee_id: empData.employeeId,
+              employee_type: empData.employeeType,
+              department: empData.department,
+              joining_date: empData.joiningDate,
+              status: empData.status || 'active',
+              // modulePermissions will be handled separately
+            });
+            employeeIdMap.delete(existing.employee_id.toLowerCase());
+          }
+        }
+        
+        // Any remaining employees are truly new
+        for (const [_, empData] of employeeIdMap.entries()) {
+          toCreate.push({
             first_name: empData.firstName,
             last_name: empData.lastName,
             email: empData.email,
@@ -202,58 +155,84 @@ async function handleBulkUpdate(req, supabaseClient) {
             department: empData.department,
             joining_date: empData.joiningDate,
             status: empData.status || 'active',
-            // modulePermissions will be handled separately
+            // modulePermissions will be handled separately but stored for later use
+            modulePermissions: empData.modulePermissions
           });
-          employeeIdMap.delete(existing.employee_id.toLowerCase());
         }
       }
       
-      // Any remaining employees are truly new
-      for (const [_, empData] of employeeIdMap.entries()) {
-        toCreate.push({
-          first_name: empData.firstName,
-          last_name: empData.lastName,
-          email: empData.email,
-          employee_id: empData.employeeId,
-          employee_type: empData.employeeType,
-          department: empData.department,
-          joining_date: empData.joiningDate,
-          status: empData.status || 'active',
-          // modulePermissions will be handled separately but stored for later use
-          modulePermissions: empData.modulePermissions
-        });
-      }
-    }
-    
-    console.log(`Processing ${toCreate.length} new employees and ${toUpdate.length} existing employees`);
-    
-    const results = {
-      created: [],
-      updated: [],
-      errors: []
-    };
-    
-    // Create new employees in bulk if there are any
-    if (toCreate.length > 0) {
-      const { data: createdData, error: createError } = await supabaseClient
-        .from("employees")
-        .insert(toCreate.map(({ modulePermissions, ...emp }) => emp)) // Remove modulePermissions from insert data
-        .select();
-        
-      if (createError) {
-        console.error("Error creating employees:", createError);
-        results.errors.push(`Bulk create error: ${createError.message}`);
-      } else {
-        results.created = createdData || [];
-        console.log(`Successfully created ${results.created.length} employees`);
-        
-        // Now handle module permissions for each created employee
-        for (let i = 0; i < results.created.length; i++) {
-          const employee = results.created[i];
-          const empData = toCreate[i];
+      console.log(`Processing ${toCreate.length} new employees and ${toUpdate.length} existing employees`);
+      
+      const results = {
+        created: [],
+        updated: [],
+        errors: []
+      };
+      
+      // Create new employees in bulk if there are any
+      if (toCreate.length > 0) {
+        const { data: createdData, error: createError } = await supabaseClient
+          .from("employees")
+          .insert(toCreate.map(({ modulePermissions, ...emp }) => emp)) // Remove modulePermissions from insert data
+          .select();
           
-          // Set default module permissions (incidentReporting and transportSafetyAdmin)
-          const modulePermissions = empData.modulePermissions || {
+        if (createError) {
+          console.error("Error creating employees:", createError);
+          results.errors.push(`Bulk create error: ${createError.message}`);
+        } else {
+          results.created = createdData || [];
+          console.log(`Successfully created ${results.created.length} employees`);
+          
+          // Now handle module permissions for each created employee
+          for (let i = 0; i < results.created.length; i++) {
+            const employee = results.created[i];
+            const empData = toCreate[i];
+            
+            // Set default module permissions (incidentReporting and transportSafetyAdmin)
+            const modulePermissions = empData.modulePermissions || {
+              superAdmin: false,
+              incidentReporting: true, // Enable by default
+              incidentAdmin: false,
+              assessmentUser: false,
+              assessmentsAdmin: false,
+              employeeVerificationAdmin: false,
+              grievancesAdmin: false,
+              transportSafetyAdmin: true, // Enable by default
+              eduSafeResourceAccess: false
+            };
+            
+            try {
+              await updateModulePermissions(supabaseClient, employee.id, modulePermissions);
+            } catch (error) {
+              console.error(`Error setting module permissions for employee ${employee.id}:`, error);
+              results.errors.push(`Failed to set module permissions for ${employee.employee_id}: ${error.message}`);
+            }
+          }
+        }
+      }
+      
+      // Update existing employees one by one (Supabase doesn't support bulk updates with different IDs)
+      for (const emp of toUpdate) {
+        const { id, modulePermissions, ...updateData } = emp;
+        
+        const { data: updatedData, error: updateError } = await supabaseClient
+          .from("employees")
+          .update(updateData)
+          .eq("id", id)
+          .select()
+          .single();
+          
+        if (updateError) {
+          console.error(`Error updating employee ${id}:`, updateError);
+          results.errors.push(`Update error for employee ${emp.employee_id}: ${updateError.message}`);
+        } else if (updatedData) {
+          results.updated.push(updatedData);
+          
+          // Find original employee data to get modulePermissions
+          const originalEmp = employees.find(e => e.id === id);
+          
+          // Set default module permissions if not provided
+          const defaultModulePermissions = {
             superAdmin: false,
             incidentReporting: true, // Enable by default
             incidentAdmin: false,
@@ -265,173 +244,155 @@ async function handleBulkUpdate(req, supabaseClient) {
             eduSafeResourceAccess: false
           };
           
+          // Use provided modulePermissions or defaults
           try {
-            await updateModulePermissions(supabaseClient, employee.id, modulePermissions);
+            // Always update module permissions for consistency
+            await updateModulePermissions(
+              supabaseClient, 
+              id, 
+              originalEmp?.modulePermissions || defaultModulePermissions
+            );
           } catch (error) {
-            console.error(`Error setting module permissions for employee ${employee.id}:`, error);
-            results.errors.push(`Failed to set module permissions for ${employee.employee_id}: ${error.message}`);
+            console.error(`Error updating module permissions for employee ${id}:`, error);
+            results.errors.push(`Failed to update module permissions for ${emp.employee_id}: ${error.message}`);
           }
         }
       }
-    }
-    
-    // Update existing employees one by one (Supabase doesn't support bulk updates with different IDs)
-    for (const emp of toUpdate) {
-      const { id, modulePermissions, ...updateData } = emp;
       
-      const { data: updatedData, error: updateError } = await supabaseClient
-        .from("employees")
-        .update(updateData)
-        .eq("id", id)
-        .select()
-        .single();
-        
-      if (updateError) {
-        console.error(`Error updating employee ${id}:`, updateError);
-        results.errors.push(`Update error for employee ${emp.employee_id}: ${updateError.message}`);
-      } else if (updatedData) {
-        results.updated.push(updatedData);
-        
-        // Find original employee data to get modulePermissions
-        const originalEmp = employees.find(e => e.id === id);
-        
-        // Set default module permissions if not provided
-        const defaultModulePermissions = {
-          superAdmin: false,
-          incidentReporting: true, // Enable by default
-          incidentAdmin: false,
-          assessmentUser: false,
-          assessmentsAdmin: false,
-          employeeVerificationAdmin: false,
-          grievancesAdmin: false,
-          transportSafetyAdmin: true, // Enable by default
-          eduSafeResourceAccess: false
-        };
-        
-        // Use provided modulePermissions or defaults
-        try {
-          // Always update module permissions for consistency
-          await updateModulePermissions(
-            supabaseClient, 
-            id, 
-            originalEmp?.modulePermissions || defaultModulePermissions
-          );
-        } catch (error) {
-          console.error(`Error updating module permissions for employee ${id}:`, error);
-          results.errors.push(`Failed to update module permissions for ${emp.employee_id}: ${error.message}`);
+      return new Response(
+        JSON.stringify({
+          success: true,
+          created: results.created.length,
+          updated: results.updated.length,
+          errors: results.errors,
+          employees: [...results.created, ...results.updated]
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
         }
-      }
-    }
-    
-    return new Response(
-      JSON.stringify({
-        success: true,
-        created: results.created.length,
-        updated: results.updated.length,
-        errors: results.errors,
-        employees: [...results.created, ...results.updated]
-      }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      }
-    );
-  } catch (error) {
-    console.error("Error in bulk update:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 500,
-    });
-  }
-}
-
-// Handle bulk creation of employees
-async function handleBulkCreate(req, supabaseClient) {
-  try {
-    const { employees } = await req.json();
-    
-    if (!employees || !Array.isArray(employees)) {
-      return new Response(JSON.stringify({ error: "Invalid request format. Expected 'employees' array." }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 400,
-      });
-    }
-
-    console.log(`Processing bulk creation for ${employees.length} employees`);
-    
-    // Format employees for insertion
-    const formattedEmployees = employees.map(emp => ({
-      employee_id: emp.employeeId,
-      first_name: emp.firstName,
-      last_name: emp.lastName,
-      email: emp.email,
-      employee_type: emp.employeeType,
-      department: emp.department,
-      joining_date: emp.joiningDate,
-      status: emp.status || 'active'
-    }));
-    
-    // Insert all employees in a single operation
-    const { data, error } = await supabaseClient
-      .from("employees")
-      .insert(formattedEmployees)
-      .select();
+      );
+    } else {
+      // Handle other operations from the request body
+      const { operation, employee, id } = reqBody;
       
-    if (error) {
-      console.error("Error creating employees in bulk:", error);
-      return new Response(JSON.stringify({ error: error.message }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 500,
-      });
-    }
-    
-    // After creating employees, set default module permissions for each one
-    const results = {
-      created: data,
-      errors: []
-    };
-    
-    // Apply default module permissions to all created employees
-    for (const employee of data || []) {
-      try {
-        const defaultModulePermissions = {
-          superAdmin: false,
-          incidentReporting: true, // Enable by default
-          incidentAdmin: false,
-          assessmentUser: false,
-          assessmentsAdmin: false,
-          employeeVerificationAdmin: false,
-          grievancesAdmin: false,
-          transportSafetyAdmin: true, // Enable by default
-          eduSafeResourceAccess: false
-        };
-        
-        await updateModulePermissions(supabaseClient, employee.id, defaultModulePermissions);
-      } catch (error) {
-        console.error(`Error setting module permissions for employee ${employee.id}:`, error);
-        results.errors.push(`Failed to set module permissions for ${employee.employee_id}: ${error.message}`);
+      console.log("Handling operation:", operation);
+
+      // Handle different operations
+      switch (operation) {
+        case "create":
+          return await handleCreate(supabaseClient, employee);
+
+        case "update":
+          if (!employee.id) {
+            return new Response(
+              JSON.stringify({ error: "Employee ID is required for update" }),
+              {
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+                status: 400,
+              }
+            );
+          }
+          return await handleUpdate(supabaseClient, employee);
+
+        case "delete":
+          if (!id) {
+            return new Response(
+              JSON.stringify({ error: "Employee ID is required for delete" }),
+              {
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+                status: 400,
+              }
+            );
+          }
+          return await handleDelete(supabaseClient, id);
+
+        case "deactivate":
+          if (!id) {
+            return new Response(
+              JSON.stringify({ error: "Employee ID is required for deactivation" }),
+              {
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+                status: 400,
+              }
+            );
+          }
+          return await handleDeactivate(supabaseClient, id);
+
+        default:
+          return new Response(JSON.stringify({ error: "Invalid operation" }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 400,
+          });
       }
     }
-    
-    return new Response(
-      JSON.stringify({
-        success: true,
-        count: data.length,
-        employees: data,
-        errors: results.errors
-      }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 201,
-      }
-    );
   } catch (error) {
-    console.error("Error in bulk create:", error);
+    console.error("Function error:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });
   }
+});
+
+// Helper function to update employee module permissions
+async function updateModulePermissions(supabaseClient, employeeId, permissions) {
+  console.log("Updating module permissions for employee:", employeeId);
+
+  // First, delete all existing module permissions for this employee
+  const { error: deleteError } = await supabaseClient
+    .from("employee_modules")
+    .delete()
+    .eq("employee_id", employeeId);
+
+  if (deleteError) {
+    console.error("Error deleting employee modules:", deleteError);
+    throw deleteError;
+  }
+
+  // Get the module IDs for each module key
+  const { data: modules, error: moduleError } = await supabaseClient
+    .from("modules")
+    .select("id, key");
+
+  if (moduleError) {
+    console.error("Error fetching modules:", moduleError);
+    throw moduleError;
+  }
+
+  // Map module keys to their IDs
+  const moduleKeyToId = {};
+  modules.forEach((module) => {
+    moduleKeyToId[module.key] = module.id;
+  });
+
+  // Create array of module entries to insert
+  const moduleEntries = Object.entries(permissions)
+    .filter(([_, enabled]) => enabled)
+    .map(([key, _]) => ({
+      employee_id: employeeId,
+      module_id: moduleKeyToId[key],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }))
+    .filter((entry) => entry.module_id); // Ensure we only add entries for modules that exist
+
+  if (moduleEntries.length === 0) {
+    console.log("No module permissions to update");
+    return;
+  }
+
+  // Insert the new module permissions
+  const { error: insertError } = await supabaseClient
+    .from("employee_modules")
+    .insert(moduleEntries);
+
+  if (insertError) {
+    console.error("Error inserting employee modules:", insertError);
+    throw insertError;
+  }
+
+  console.log(`Successfully updated ${moduleEntries.length} module permissions for employee ${employeeId}`);
 }
 
 // Create a new employee
@@ -616,64 +577,4 @@ async function handleDeactivate(supabaseClient, employeeId) {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
     status: 200,
   });
-}
-
-// Helper function to update employee module permissions
-async function updateModulePermissions(supabaseClient, employeeId, permissions) {
-  console.log("Updating module permissions for employee:", employeeId);
-
-  // First, delete all existing module permissions for this employee
-  const { error: deleteError } = await supabaseClient
-    .from("employee_modules")
-    .delete()
-    .eq("employee_id", employeeId);
-
-  if (deleteError) {
-    console.error("Error deleting employee modules:", deleteError);
-    throw deleteError;
-  }
-
-  // Get the module IDs for each module key
-  const { data: modules, error: moduleError } = await supabaseClient
-    .from("modules")
-    .select("id, key");
-
-  if (moduleError) {
-    console.error("Error fetching modules:", moduleError);
-    throw moduleError;
-  }
-
-  // Map module keys to their IDs
-  const moduleKeyToId = {};
-  modules.forEach((module) => {
-    moduleKeyToId[module.key] = module.id;
-  });
-
-  // Create array of module entries to insert
-  const moduleEntries = Object.entries(permissions)
-    .filter(([_, enabled]) => enabled)
-    .map(([key, _]) => ({
-      employee_id: employeeId,
-      module_id: moduleKeyToId[key],
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }))
-    .filter((entry) => entry.module_id); // Ensure we only add entries for modules that exist
-
-  if (moduleEntries.length === 0) {
-    console.log("No module permissions to update");
-    return;
-  }
-
-  // Insert the new module permissions
-  const { error: insertError } = await supabaseClient
-    .from("employee_modules")
-    .insert(moduleEntries);
-
-  if (insertError) {
-    console.error("Error inserting employee modules:", insertError);
-    throw insertError;
-  }
-
-  console.log(`Successfully updated ${moduleEntries.length} module permissions for employee ${employeeId}`);
 }

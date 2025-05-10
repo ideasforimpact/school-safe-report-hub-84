@@ -4,6 +4,7 @@ import { ModulePermissions } from '@/contexts/auth/types';
 import { parseExcelFile } from './utils/excelProcessingUtils';
 import { validateExcelData } from './utils/excelValidationUtils';
 import { processEmployeeData, showImportResultNotifications } from './importProcessingService';
+import { validateEmployeeType, validateDepartment, validateEmploymentStatus } from './utils/employeeValidationUtils';
 import { toast } from 'sonner';
 
 /**
@@ -43,8 +44,12 @@ export const processEmployeeExcel = async (file: File): Promise<Employee[]> => {
     };
     
     // Add default module permissions to each employee record
+    // and normalize/validate employee data fields
     const processedData = rawData.map(emp => ({
       ...emp,
+      employeeType: validateEmployeeType(String(emp.employeeType)),
+      department: validateDepartment(String(emp.department)),
+      status: validateEmploymentStatus(String(emp.status)),
       modulePermissions: defaultModulePermissions
     }));
     
