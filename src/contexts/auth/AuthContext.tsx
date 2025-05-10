@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { User, UserRole, ModulePermissions, AuthContextType, UserWithPassword, EmployeeType, DepartmentType } from './types';
 import { useClient } from '../ClientContext';
@@ -41,6 +40,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   // Get client context to validate domains
   const { isEmailDomainAllowed } = useClient();
   
+  // Use navigate for redirection
+  const navigate = useNavigate();
+  
   // Save users to localStorage whenever they change
   useEffect(() => {
     saveUsersToStorage(users);
@@ -82,7 +84,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.log("Cleaning up Supabase auth listener");
       subscription.unsubscribe();
     };
-  }, [users]);
+  }, [users, navigate]);
   
   const checkEmployeeAccess = async (email: string): Promise<boolean> => {
     try {
@@ -99,6 +101,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.error("Employee access check error:", error || "No matching active admin employee found");
         setAuthError("Access denied: Only active admin department employees can login");
         await supabase.auth.signOut();
+        // Redirect to login page after unauthorized access attempt
+        navigate('/login');
         return false;
       }
       
@@ -108,6 +112,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.error("Error checking employee access:", error);
       setAuthError("Error verifying employee access");
       await supabase.auth.signOut();
+      // Redirect to login page after error
+      navigate('/login');
       return false;
     }
   };
@@ -122,6 +128,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.log("Access denied: User is not an admin employee");
       setAuthError("Access denied: Only admin department employees can login");
       await supabase.auth.signOut();
+      // We already redirect in checkEmployeeAccess, but adding here too for safety
+      navigate('/login');
       return;
     }
     
