@@ -10,6 +10,7 @@ import { EducationalStructureConfig } from './EducationalStructureConfig';
 interface OtherSettingsConfigProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  loading?: boolean;
   designations: ConfigItem[];
   addDesignation: (name: string) => void;
   updateDesignation: (id: string, name: string) => void;
@@ -37,6 +38,7 @@ interface OtherSettingsConfigProps {
 export const OtherSettingsConfig: React.FC<OtherSettingsConfigProps> = ({
   activeTab,
   setActiveTab,
+  loading = false,
   designations,
   addDesignation,
   updateDesignation,
@@ -90,6 +92,7 @@ export const OtherSettingsConfig: React.FC<OtherSettingsConfigProps> = ({
             <EducationalStructureConfig 
               activeTab="campuses"
               setActiveTab={() => {/* This is intentional - we want to stay within educational structure tab */}}
+              loading={loading}
               campuses={campuses}
               addCampus={addCampus}
               updateCampus={updateCampus}

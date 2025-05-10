@@ -9,6 +9,7 @@ const EducationalConfiguration = () => {
   const {
     activeTab,
     setActiveTab,
+    loading,
     campuses,
     classes,
     sections,
@@ -38,6 +39,7 @@ const EducationalConfiguration = () => {
         <EducationalStructureConfig 
           activeTab={activeTab}
           setActiveTab={setActiveTab}
+          loading={loading}
           campuses={campuses}
           addCampus={handleAddCampus}
           updateCampus={handleUpdateCampus}

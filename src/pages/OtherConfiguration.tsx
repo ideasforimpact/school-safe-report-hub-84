@@ -9,6 +9,7 @@ const OtherConfiguration = () => {
   const {
     activeTab,
     setActiveTab,
+    loading,
     designations,
     handleAddDesignation,
     handleUpdateDesignation,
@@ -42,6 +43,7 @@ const OtherConfiguration = () => {
         <OtherSettingsConfig 
           activeTab={activeTab}
           setActiveTab={setActiveTab}
+          loading={loading}
           designations={designations}
           addDesignation={handleAddDesignation}
           updateDesignation={handleUpdateDesignation}

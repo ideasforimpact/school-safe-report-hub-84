@@ -12,6 +12,7 @@ import { Building, GraduationCap, Users, Warehouse } from 'lucide-react';
 interface EducationalStructureConfigProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  loading?: boolean;
   campuses: CampusItem[];
   addCampus: (name: string) => void;
   updateCampus: (id: string, name: string) => void;
@@ -33,6 +34,7 @@ interface EducationalStructureConfigProps {
 export const EducationalStructureConfig: React.FC<EducationalStructureConfigProps> = ({
   activeTab,
   setActiveTab,
+  loading = false,
   campuses,
   addCampus,
   updateCampus,
@@ -80,6 +82,7 @@ export const EducationalStructureConfig: React.FC<EducationalStructureConfigProp
               updateCampus={updateCampus}
               deleteCampus={deleteCampus}
               classes={classes}
+              loading={loading}
             />
           </TabsContent>
           

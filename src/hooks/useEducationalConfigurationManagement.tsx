@@ -4,16 +4,15 @@ import { useSearchParams } from 'react-router-dom';
 import { useIncidents } from '@/contexts/IncidentContext';
 import { toast } from 'sonner';
 import { CampusItem, ClassItem, SectionItem, ConfigItem } from '@/contexts/types';
+import { useClient } from '@/contexts/ClientContext';
+import { supabase } from '@/integrations/supabase/client';
 
 export function useEducationalConfigurationManagement() {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('campuses');
+  const { client } = useClient();
   
   const { 
-    campuses: contextCampuses,
-    addCampus: contextAddCampus,
-    updateCampus: contextUpdateCampus,
-    deleteCampus: contextDeleteCampus,
     classes: contextClasses,
     addClass: contextAddClass,
     updateClass: contextUpdateClass,
@@ -28,19 +27,19 @@ export function useEducationalConfigurationManagement() {
     deleteFacility: contextDeleteFacility
   } = useIncidents();
 
-  // Local state to sync with context
-  const [campuses, setCampuses] = useState<CampusItem[]>(contextCampuses);
+  // Local state 
+  const [loading, setLoading] = useState(false);
+  const [campuses, setCampuses] = useState<CampusItem[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>(contextClasses);
   const [sections, setSections] = useState<SectionItem[]>(contextSections);
   const [facilities, setFacilities] = useState<ConfigItem[]>(contextFacilities);
 
   // Update local state when context changes
   useEffect(() => {
-    setCampuses(contextCampuses);
     setClasses(contextClasses);
     setSections(contextSections);
     setFacilities(contextFacilities);
-  }, [contextCampuses, contextClasses, contextSections, contextFacilities]);
+  }, [contextClasses, contextSections, contextFacilities]);
   
   // Set initial tab based on URL parameter when component mounts
   useEffect(() => {
@@ -50,37 +49,103 @@ export function useEducationalConfigurationManagement() {
     }
   }, [searchParams]);
 
-  const handleAddCampus = (name: string) => {
+  // Fetch campuses from database
+  useEffect(() => {
+    if (client?.id) {
+      fetchCampuses();
+    }
+  }, [client?.id]);
+
+  const fetchCampuses = async () => {
+    if (!client?.id) return;
+    
+    setLoading(true);
     try {
-      console.log('EducationalConfiguration: Adding campus:', name); // Debug log
-      contextAddCampus(name);
+      const { data: { campuses: fetchedCampuses }, error } = await supabase.functions.invoke('campus-management', {
+        method: 'GET',
+        query: { clientId: client.id }
+      });
+
+      if (error) throw error;
+      
+      setCampuses(fetchedCampuses.map((campus: any) => ({
+        id: campus.id,
+        name: campus.name
+      })));
+    } catch (error) {
+      console.error("Error fetching campuses:", error);
+      toast.error("Failed to load campuses");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddCampus = async (name: string) => {
+    if (!client?.id) {
+      toast.error("No client selected");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const { data: { campus }, error } = await supabase.functions.invoke('campus-management', {
+        method: 'POST',
+        body: { name, clientId: client.id }
+      });
+
+      if (error) throw error;
+      
+      setCampuses(prev => [...prev, { id: campus.id, name: campus.name }]);
       toast.success("Campus added successfully");
     } catch (error) {
       console.error("Error adding campus:", error);
       toast.error("Failed to add campus");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleUpdateCampus = (id: string, name: string) => {
+  const handleUpdateCampus = async (id: string, name: string) => {
     try {
-      contextUpdateCampus(id, name);
+      setLoading(true);
+      const { data: { campus }, error } = await supabase.functions.invoke('campus-management', {
+        method: 'PUT',
+        body: { id, name }
+      });
+
+      if (error) throw error;
+      
+      setCampuses(prev => prev.map(c => c.id === id ? { ...c, name } : c));
       toast.success("Campus updated successfully");
     } catch (error) {
       console.error("Error updating campus:", error);
       toast.error("Failed to update campus");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleDeleteCampus = (id: string) => {
+  const handleDeleteCampus = async (id: string) => {
     try {
-      contextDeleteCampus(id);
+      setLoading(true);
+      const { error } = await supabase.functions.invoke('campus-management', {
+        method: 'DELETE',
+        body: { id }
+      });
+
+      if (error) throw error;
+      
+      setCampuses(prev => prev.filter(c => c.id !== id));
       toast.success("Campus deleted successfully");
     } catch (error) {
       console.error("Error deleting campus:", error);
       toast.error("Failed to delete campus");
+    } finally {
+      setLoading(false);
     }
   };
 
+  // Use existing context methods for other entities
   const handleAddClass = (campusId: string, name: string) => {
     try {
       console.log("EducationalConfiguration: Adding class:", name, "to campus:", campusId);
@@ -176,6 +241,7 @@ export function useEducationalConfigurationManagement() {
   return {
     activeTab,
     setActiveTab,
+    loading,
     campuses,
     classes,
     sections,

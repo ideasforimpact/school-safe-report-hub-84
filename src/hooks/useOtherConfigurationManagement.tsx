@@ -4,20 +4,19 @@ import { useSearchParams } from 'react-router-dom';
 import { useIncidents } from '@/contexts/IncidentContext';
 import { toast } from 'sonner';
 import { ConfigItem } from '@/contexts/types';
+import { useClient } from '@/contexts/ClientContext';
+import { supabase } from '@/integrations/supabase/client';
 
 export function useOtherConfigurationManagement() {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('designations');
+  const { client } = useClient();
   
   const { 
     designations: contextDesignations,
     addDesignation: contextAddDesignation,
     updateDesignation: contextUpdateDesignation,
     deleteDesignation: contextDeleteDesignation,
-    campuses,
-    addCampus,
-    updateCampus,
-    deleteCampus,
     classes,
     addClass,
     updateClass,
@@ -32,8 +31,10 @@ export function useOtherConfigurationManagement() {
     deleteFacility
   } = useIncidents();
 
-  // Local state for designations
+  // Local state
+  const [loading, setLoading] = useState(false);
   const [designations, setDesignations] = useState<ConfigItem[]>(contextDesignations);
+  const [campuses, setCampuses] = useState<any[]>([]);
 
   // Update local state when context changes
   useEffect(() => {
@@ -47,6 +48,37 @@ export function useOtherConfigurationManagement() {
       setActiveTab(tab);
     }
   }, [searchParams]);
+
+  // Fetch campuses from database
+  useEffect(() => {
+    if (client?.id) {
+      fetchCampuses();
+    }
+  }, [client?.id]);
+
+  const fetchCampuses = async () => {
+    if (!client?.id) return;
+    
+    setLoading(true);
+    try {
+      const { data: { campuses: fetchedCampuses }, error } = await supabase.functions.invoke('campus-management', {
+        method: 'GET',
+        query: { clientId: client.id }
+      });
+
+      if (error) throw error;
+      
+      setCampuses(fetchedCampuses.map((campus: any) => ({
+        id: campus.id,
+        name: campus.name
+      })));
+    } catch (error) {
+      console.error("Error fetching campuses:", error);
+      toast.error("Failed to load campuses");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAddDesignation = (name: string) => {
     try {
@@ -78,9 +110,76 @@ export function useOtherConfigurationManagement() {
     }
   };
 
+  // Campus management with Supabase
+  const addCampus = async (name: string) => {
+    if (!client?.id) {
+      toast.error("No client selected");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const { data: { campus }, error } = await supabase.functions.invoke('campus-management', {
+        method: 'POST',
+        body: { name, clientId: client.id }
+      });
+
+      if (error) throw error;
+      
+      setCampuses(prev => [...prev, { id: campus.id, name: campus.name }]);
+      toast.success("Campus added successfully");
+    } catch (error) {
+      console.error("Error adding campus:", error);
+      toast.error("Failed to add campus");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const updateCampus = async (id: string, name: string) => {
+    try {
+      setLoading(true);
+      const { data: { campus }, error } = await supabase.functions.invoke('campus-management', {
+        method: 'PUT',
+        body: { id, name }
+      });
+
+      if (error) throw error;
+      
+      setCampuses(prev => prev.map(c => c.id === id ? { ...c, name } : c));
+      toast.success("Campus updated successfully");
+    } catch (error) {
+      console.error("Error updating campus:", error);
+      toast.error("Failed to update campus");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const deleteCampus = async (id: string) => {
+    try {
+      setLoading(true);
+      const { error } = await supabase.functions.invoke('campus-management', {
+        method: 'DELETE',
+        body: { id }
+      });
+
+      if (error) throw error;
+      
+      setCampuses(prev => prev.filter(c => c.id !== id));
+      toast.success("Campus deleted successfully");
+    } catch (error) {
+      console.error("Error deleting campus:", error);
+      toast.error("Failed to delete campus");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     activeTab,
     setActiveTab,
+    loading,
     designations,
     handleAddDesignation,
     handleUpdateDesignation,
