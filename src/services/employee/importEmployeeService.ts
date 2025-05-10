@@ -70,6 +70,7 @@ export const processEmployeeExcel = async (file: File): Promise<Employee[]> => {
     return result.addedEmployees;
   } catch (error) {
     console.error('Error in processEmployeeExcel:', error);
+    toast.error(`Import failed: ${(error as Error).message}`);
     throw error;
   }
 };

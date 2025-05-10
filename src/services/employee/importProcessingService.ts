@@ -101,15 +101,20 @@ export const processEmployeeData = async (rawData: RawEmployeeData[]): Promise<I
       
       // Try with a direct fetch as a fallback
       try {
-        const supabaseUrl = supabase.functions.url('employee-management');
-        console.log("Trying direct fetch to", supabaseUrl);
+        // Fix: Get the functions URL correctly
+        const functionUrl = new URL('employee-management', supabase.functions.url).toString();
+        console.log("Trying direct fetch to", functionUrl);
         
-        const response = await fetch(supabaseUrl, {
+        // Fix: Get the current session token properly
+        const { data: sessionData } = await supabase.auth.getSession();
+        const accessToken = sessionData?.session?.access_token || '';
+        
+        const response = await fetch(functionUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'path': 'bulk-update',
-            'Authorization': `Bearer ${supabase.auth.session()?.access_token || ''}`
+            'Authorization': `Bearer ${accessToken}`
           },
           body: JSON.stringify(requestBody)
         });
