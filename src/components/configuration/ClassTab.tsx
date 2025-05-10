@@ -29,6 +29,7 @@ interface ClassTabProps {
   addClass: (campusId: string, name: string) => void;
   updateClass: (id: string, campusId: string, name: string) => void;
   deleteClass: (id: string) => void;
+  sections: Array<{ id: string, name: string, classId: string }>;
 }
 
 export const ClassTab = ({ 
@@ -36,7 +37,8 @@ export const ClassTab = ({
   campuses,
   addClass, 
   updateClass, 
-  deleteClass 
+  deleteClass,
+  sections
 }: ClassTabProps) => {
   const [newClass, setNewClass] = useState('');
   const [selectedCampusId, setSelectedCampusId] = useState<string>('');
@@ -55,12 +57,19 @@ export const ClassTab = ({
       return;
     }
     
-    console.log("Adding class:", newClass, "to campus:", selectedCampusId);
     addClass(selectedCampusId, newClass.trim());
     setNewClass('');
+    toast.success("Class added successfully");
   };
 
   const handleClassDelete = (id: string) => {
+    const hasSections = sections.some(section => section.classId === id);
+    
+    if (hasSections) {
+      toast.error("Cannot delete class with associated sections. Remove the sections first.");
+      return;
+    }
+    
     deleteClass(id);
     toast.success("Class deleted successfully");
   };
@@ -76,21 +85,21 @@ export const ClassTab = ({
       return;
     }
     
-    updateClass(editingClass.id, editingClass.campusId, editingClass.name);
+    updateClass(editingClass.id, editingClass.campusId, editingClass.name.trim());
     setEditingClass(null);
     toast.success("Class updated successfully");
   };
 
   const getCampusName = (campusId: string) => {
-    const foundCampus = campuses.find(campus => campus.id === campusId);
-    return foundCampus ? foundCampus.name : 'Unknown Campus';
+    const campus = campuses.find(c => c.id === campusId);
+    return campus ? campus.name : 'Unknown Campus';
   };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Class Management</CardTitle>
-        <CardDescription>Add, edit, or remove classes</CardDescription>
+        <CardTitle>Grade/Class Management</CardTitle>
+        <CardDescription>Add, edit, or remove grades/classes for each campus</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleClassAdd} className="flex gap-4 mb-6 flex-col sm:flex-row">
@@ -108,20 +117,20 @@ export const ClassTab = ({
           </div>
           <div className="flex-1">
             <Input
-              placeholder="New class name (e.g., Class 6)"
+              placeholder="New grade/class name (e.g., Grade 5)"
               value={newClass}
               onChange={(e) => setNewClass(e.target.value)}
             />
           </div>
           <Button type="submit" className="whitespace-nowrap">
-            <Plus className="mr-2 h-4 w-4" /> Add Class
+            <Plus className="mr-2 h-4 w-4" /> Add Grade/Class
           </Button>
         </form>
         
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Class Name</TableHead>
+              <TableHead>Grade/Class Name</TableHead>
               <TableHead>Campus</TableHead>
               <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
@@ -141,9 +150,9 @@ export const ClassTab = ({
                   <TableCell>
                     <div className="flex gap-2">
                       <EditDialog
-                        title="Edit Class"
-                        description="Update the class details below"
-                        fieldLabel="Class name"
+                        title="Edit Grade/Class"
+                        description="Update the grade/class details below"
+                        fieldLabel="Grade/Class name"
                         value={cls.name}
                         extraField={{
                           type: "select",

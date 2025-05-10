@@ -5,8 +5,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CampusTab } from '@/components/configuration/CampusTab';
 import { ClassTab } from '@/components/configuration/ClassTab';
 import { SectionTab } from '@/components/configuration/SectionTab';
-import { ConfigItem, SectionItem, ClassItem, CampusItem } from '@/contexts/types';
-import { Building, Folder, FolderOpen } from 'lucide-react';
+import { FacilityTab } from '@/components/configuration/FacilityTab';
+import { CampusItem, ClassItem, SectionItem, ConfigItem } from '@/contexts/types';
+import { Building, GraduationCap, Users, Warehouse } from 'lucide-react';
 
 interface EducationalStructureConfigProps {
   activeTab: string;
@@ -23,6 +24,10 @@ interface EducationalStructureConfigProps {
   addSection: (classId: string, name: string) => void;
   updateSection: (id: string, classId: string, name: string) => void;
   deleteSection: (id: string) => void;
+  facilities: ConfigItem[];
+  addFacility: (name: string) => void;
+  updateFacility: (id: string, name: string) => void;
+  deleteFacility: (id: string) => void;
 }
 
 export const EducationalStructureConfig: React.FC<EducationalStructureConfigProps> = ({
@@ -39,7 +44,11 @@ export const EducationalStructureConfig: React.FC<EducationalStructureConfigProp
   sections,
   addSection,
   updateSection,
-  deleteSection
+  deleteSection,
+  facilities,
+  addFacility,
+  updateFacility,
+  deleteFacility
 }) => {
   return (
     <Card>
@@ -51,12 +60,16 @@ export const EducationalStructureConfig: React.FC<EducationalStructureConfigProp
               <span>Campuses</span>
             </TabsTrigger>
             <TabsTrigger value="classes" className="flex items-center gap-2">
-              <Folder className="h-4 w-4" />
-              <span>Classes</span>
+              <GraduationCap className="h-4 w-4" />
+              <span>Grades</span>
             </TabsTrigger>
             <TabsTrigger value="sections" className="flex items-center gap-2">
-              <FolderOpen className="h-4 w-4" />
+              <Users className="h-4 w-4" />
               <span>Sections</span>
+            </TabsTrigger>
+            <TabsTrigger value="facilities" className="flex items-center gap-2">
+              <Warehouse className="h-4 w-4" />
+              <span>Facilities</span>
             </TabsTrigger>
           </TabsList>
           
@@ -77,6 +90,7 @@ export const EducationalStructureConfig: React.FC<EducationalStructureConfigProp
               addClass={addClass}
               updateClass={updateClass}
               deleteClass={deleteClass}
+              sections={sections}
             />
           </TabsContent>
           
@@ -87,6 +101,15 @@ export const EducationalStructureConfig: React.FC<EducationalStructureConfigProp
               addSection={addSection}
               updateSection={updateSection}
               deleteSection={deleteSection}
+            />
+          </TabsContent>
+          
+          <TabsContent value="facilities">
+            <FacilityTab 
+              facilities={facilities}
+              addFacility={addFacility}
+              updateFacility={updateFacility}
+              deleteFacility={deleteFacility}
             />
           </TabsContent>
         </Tabs>

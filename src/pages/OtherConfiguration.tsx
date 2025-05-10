@@ -13,7 +13,23 @@ const OtherConfiguration = () => {
     designations,
     addDesignation,
     updateDesignation,
-    deleteDesignation
+    deleteDesignation,
+    campuses,
+    addCampus,
+    updateCampus,
+    deleteCampus,
+    classes,
+    addClass,
+    updateClass,
+    deleteClass,
+    sections,
+    addSection,
+    updateSection,
+    deleteSection,
+    facilities,
+    addFacility,
+    updateFacility,
+    deleteFacility
   } = useIncidents();
 
   // Set initial tab based on URL parameter when component mounts
@@ -42,7 +58,7 @@ const OtherConfiguration = () => {
         <div>
           <h1 className="text-2xl font-bold">Other Settings Configuration</h1>
           <p className="text-gray-600 mt-1">
-            Manage designations and other system settings
+            Manage designations, educational structure, and facilities
           </p>
         </div>
 
@@ -53,6 +69,22 @@ const OtherConfiguration = () => {
           addDesignation={handleAddDesignation}
           updateDesignation={handleUpdateDesignation}
           deleteDesignation={handleDeleteDesignation}
+          campuses={campuses}
+          addCampus={addCampus}
+          updateCampus={updateCampus}
+          deleteCampus={deleteCampus}
+          classes={classes}
+          addClass={addClass}
+          updateClass={updateClass}
+          deleteClass={deleteClass}
+          sections={sections}
+          addSection={addSection}
+          updateSection={updateSection}
+          deleteSection={deleteSection}
+          facilities={facilities}
+          addFacility={addFacility}
+          updateFacility={updateFacility}
+          deleteFacility={deleteFacility}
         />
       </div>
     </Layout>

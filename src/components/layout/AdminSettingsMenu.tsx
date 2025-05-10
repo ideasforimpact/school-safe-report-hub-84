@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { Settings, AlertTriangle, Building, LayoutGrid } from 'lucide-react';
+import { Settings, AlertTriangle, Building, LayoutGrid, School, Warehouse } from 'lucide-react';
 
 const AdminSettingsMenu = () => {
   const navigate = useNavigate();
@@ -25,8 +25,14 @@ const AdminSettingsMenu = () => {
         
         {/* Educational Structure */}
         <DropdownMenuItem onClick={() => navigate('/educational-configuration')} className="cursor-pointer">
-          <Building className="h-4 w-4 mr-2" />
+          <School className="h-4 w-4 mr-2" />
           <span>Educational Structure</span>
+        </DropdownMenuItem>
+        
+        {/* Facilities */}
+        <DropdownMenuItem onClick={() => navigate('/facilities-configuration')} className="cursor-pointer">
+          <Warehouse className="h-4 w-4 mr-2" />
+          <span>Facilities</span>
         </DropdownMenuItem>
         
         {/* Other Settings */}
@@ -37,7 +43,7 @@ const AdminSettingsMenu = () => {
         
         <DropdownMenuSeparator />
         
-        {/* Keep basic settings */}
+        {/* User management links */}
         <DropdownMenuItem onClick={() => navigate('/users')} className="cursor-pointer">
           User Management
         </DropdownMenuItem>

@@ -14,7 +14,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { ConfigItem } from '@/contexts/types';
 import { EditDialog } from './EditDialog';
-import { toast } from '@/components/ui/sonner';
+import { toast } from 'sonner';
 
 interface FacilityTabProps {
   facilities: ConfigItem[];
@@ -63,7 +63,7 @@ export const FacilityTab = ({
     <Card>
       <CardHeader>
         <CardTitle>School Facilities</CardTitle>
-        <CardDescription>Manage school facilities where incidents can occur</CardDescription>
+        <CardDescription>Manage facilities for your institution</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="flex gap-4 mb-6">
@@ -85,45 +85,53 @@ export const FacilityTab = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {facilities.map((facility) => (
-              <TableRow key={facility.id}>
-                <TableCell>{facility.name}</TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
-                    <EditDialog
-                      title="Edit Facility"
-                      description="Update the facility name below"
-                      fieldLabel="Facility name"
-                      value={facility.name}
-                      onOpenChange={(open) => {
-                        if (open) {
-                          setEditingFacility({id: facility.id, name: facility.name});
-                        } else {
-                          setEditingFacility(null);
-                        }
-                      }}
-                      onChange={(value) => setEditingFacility(prev => 
-                        prev ? {...prev, name: value} : null
-                      )}
-                      onSave={handleFacilityUpdate}
-                      triggerButton={
-                        <Button variant="ghost" size="icon">
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                      }
-                    />
-                    
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => handleFacilityDelete(facility.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+            {facilities.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={2} className="text-center py-4 text-muted-foreground">
+                  No facilities available. Add your first facility above.
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              facilities.map((facility) => (
+                <TableRow key={facility.id}>
+                  <TableCell>{facility.name}</TableCell>
+                  <TableCell>
+                    <div className="flex gap-2">
+                      <EditDialog
+                        title="Edit Facility"
+                        description="Update the facility name below"
+                        fieldLabel="Facility name"
+                        value={facility.name}
+                        onOpenChange={(open) => {
+                          if (open) {
+                            setEditingFacility({id: facility.id, name: facility.name});
+                          } else {
+                            setEditingFacility(null);
+                          }
+                        }}
+                        onChange={(value) => setEditingFacility(prev => 
+                          prev ? {...prev, name: value} : null
+                        )}
+                        onSave={handleFacilityUpdate}
+                        triggerButton={
+                          <Button variant="ghost" size="icon">
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        }
+                      />
+                      
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => handleFacilityDelete(facility.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </CardContent>

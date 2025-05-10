@@ -23,20 +23,26 @@ const EducationalConfiguration = () => {
     sections: contextSections,
     addSection: contextAddSection,
     updateSection: contextUpdateSection,
-    deleteSection: contextDeleteSection
+    deleteSection: contextDeleteSection,
+    facilities: contextFacilities,
+    addFacility: contextAddFacility,
+    updateFacility: contextUpdateFacility,
+    deleteFacility: contextDeleteFacility
   } = useIncidents();
 
   // Local state to sync with context
   const [campuses, setCampuses] = useState<CampusItem[]>(contextCampuses);
   const [classes, setClasses] = useState<ClassItem[]>(contextClasses);
   const [sections, setSections] = useState<SectionItem[]>(contextSections);
+  const [facilities, setFacilities] = useState<ConfigItem[]>(contextFacilities);
 
   // Update local state when context changes
   useEffect(() => {
     setCampuses(contextCampuses);
     setClasses(contextClasses);
     setSections(contextSections);
-  }, [contextCampuses, contextClasses, contextSections]);
+    setFacilities(contextFacilities);
+  }, [contextCampuses, contextClasses, contextSections, contextFacilities]);
   
   // Set initial tab based on URL parameter when component mounts
   useEffect(() => {
@@ -139,13 +145,43 @@ const EducationalConfiguration = () => {
     }
   };
 
+  const handleAddFacility = (name: string) => {
+    try {
+      contextAddFacility(name);
+      toast.success("Facility added successfully");
+    } catch (error) {
+      console.error("Error adding facility:", error);
+      toast.error("Failed to add facility");
+    }
+  };
+
+  const handleUpdateFacility = (id: string, name: string) => {
+    try {
+      contextUpdateFacility(id, name);
+      toast.success("Facility updated successfully");
+    } catch (error) {
+      console.error("Error updating facility:", error);
+      toast.error("Failed to update facility");
+    }
+  };
+
+  const handleDeleteFacility = (id: string) => {
+    try {
+      contextDeleteFacility(id);
+      toast.success("Facility deleted successfully");
+    } catch (error) {
+      console.error("Error deleting facility:", error);
+      toast.error("Failed to delete facility");
+    }
+  };
+
   return (
     <Layout>
       <div className="space-y-6 max-w-6xl mx-auto p-4">
         <div>
           <h1 className="text-2xl font-bold">Educational Structure Configuration</h1>
           <p className="text-gray-600 mt-1">
-            Manage campuses, classes, and sections
+            Manage campuses, classes, sections, and facilities
           </p>
         </div>
 
@@ -164,6 +200,10 @@ const EducationalConfiguration = () => {
           addSection={handleAddSection}
           updateSection={handleUpdateSection}
           deleteSection={handleDeleteSection}
+          facilities={facilities}
+          addFacility={handleAddFacility}
+          updateFacility={handleUpdateFacility}
+          deleteFacility={handleDeleteFacility}
         />
       </div>
     </Layout>
