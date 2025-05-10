@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -44,6 +43,8 @@ const Login = () => {
     if (authError) {
       setError(authError);
       toast.error(authError);
+      setIsLoading(false);
+      setGoogleLoading(false);
     }
   }, [authError]);
 
@@ -62,11 +63,11 @@ const Login = () => {
         if (!authError) {
           setError("Invalid email or password");
         }
+        setIsLoading(false);
       }
     } catch (err) {
       console.error("Login error:", err);
       setError("An error occurred. Please try again.");
-    } finally {
       setIsLoading(false);
     }
   };
@@ -121,11 +122,11 @@ const Login = () => {
       } else {
         toast.error("Demo login failed. Please try again.");
         setError("Demo login failed. Please check the console for details.");
+        setIsLoading(false);
       }
     } catch (err) {
       console.error("Demo login error:", err);
       setError("An error occurred with demo login. Please try again.");
-    } finally {
       setIsLoading(false);
     }
   };

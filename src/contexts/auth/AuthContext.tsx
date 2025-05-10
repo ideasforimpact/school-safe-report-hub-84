@@ -18,6 +18,7 @@ import {
   deactivateExistingUser
 } from '@/services/auth/userManagementService';
 import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
 
 // Helper functions to exclude password from user objects
 const excludePasswordFromUser = (user: UserWithPassword): User => {
@@ -96,6 +97,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       if (error || !data) {
         console.error("Employee access check error:", error || "No matching active admin employee found");
+        setAuthError("Access denied: Only active admin department employees can login");
+        await supabase.auth.signOut();
         return false;
       }
       
@@ -103,6 +106,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return true;
     } catch (error) {
       console.error("Error checking employee access:", error);
+      setAuthError("Error verifying employee access");
+      await supabase.auth.signOut();
       return false;
     }
   };
