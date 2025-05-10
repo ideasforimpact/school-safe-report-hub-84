@@ -21,6 +21,9 @@ export interface Employee {
   joiningDate: string;
   status: EmploymentStatus;
   
+  // Client association
+  clientId?: string; // Reference to the client
+  
   // Module permissions (now stored in employee_modules table but needed for UI)
   modulePermissions?: ModulePermissions;
   

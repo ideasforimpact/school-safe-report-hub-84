@@ -1,4 +1,3 @@
-
 import { Employee } from '@/contexts/employee/types';
 import { ModulePermissions } from '@/contexts/auth/types';
 import { parseExcelFile } from './utils/excelProcessingUtils';
@@ -12,7 +11,7 @@ import { toast } from 'sonner';
  * Handles both new employee insertion and existing employee updates
  * Uses bulk operations for better performance
  */
-export const processEmployeeExcel = async (file: File): Promise<Employee[]> => {
+export const processEmployeeExcel = async (file: File, clientId?: string): Promise<Employee[]> => {
   try {
     // Parse the Excel file
     console.log("Starting Excel processing for file:", file.name);
@@ -79,7 +78,7 @@ export const processEmployeeExcel = async (file: File): Promise<Employee[]> => {
     
     // Process the data and add/update employees using bulk operations
     console.time('Bulk import processing');
-    const result = await processEmployeeData(processedData);
+    const result = await processEmployeeData(processedData, clientId);
     console.timeEnd('Bulk import processing');
     
     // Show notifications

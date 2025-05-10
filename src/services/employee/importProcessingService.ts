@@ -9,7 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
  * Process the raw employee data from Excel and add valid employees to the system
  * Uses bulk operations for better performance with large imports
  */
-export const processEmployeeData = async (rawData: RawEmployeeData[]): Promise<ImportResult> => {
+export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?: string): Promise<ImportResult> => {
   const result: ImportResult = {
     addedEmployees: [],
     successCount: 0,
@@ -61,6 +61,7 @@ export const processEmployeeData = async (rawData: RawEmployeeData[]): Promise<I
           department: String(row.department),
           joiningDate: String(row.joiningDate),
           status: String(row.status),
+          clientId: clientId, // Add clientId if provided
           modulePermissions: modulePermissions
         };
       } catch (error) {

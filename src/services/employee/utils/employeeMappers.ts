@@ -1,7 +1,9 @@
 
 import { Employee } from '@/contexts/employee/types';
 
-// Map a database employee record to our Employee model
+/**
+ * Map database record to Employee object for frontend use
+ */
 export const mapDbRecordToEmployee = (record: any): Employee => {
   return {
     id: record.id,
@@ -14,15 +16,18 @@ export const mapDbRecordToEmployee = (record: any): Employee => {
     department: record.department,
     joiningDate: record.joining_date,
     status: record.status,
+    clientId: record.client_id, // Map the client_id
     createdAt: record.created_at,
-    updatedAt: record.updated_at,
+    updatedAt: record.updated_at
   };
 };
 
-// Map our Employee model to a database record format
-export const mapEmployeeToDbRecord = (employee: Partial<Employee>): Record<string, any> => {
-  const dbRecord: Record<string, any> = {};
-  
+/**
+ * Map Employee object to database record format
+ */
+export const mapEmployeeToDbRecord = (employee: Partial<Employee>): any => {
+  const dbRecord: any = {};
+
   if (employee.userId !== undefined) dbRecord.user_id = employee.userId;
   if (employee.employeeId !== undefined) dbRecord.employee_id = employee.employeeId;
   if (employee.firstName !== undefined) dbRecord.first_name = employee.firstName;
@@ -32,6 +37,7 @@ export const mapEmployeeToDbRecord = (employee: Partial<Employee>): Record<strin
   if (employee.department !== undefined) dbRecord.department = employee.department;
   if (employee.joiningDate !== undefined) dbRecord.joining_date = employee.joiningDate;
   if (employee.status !== undefined) dbRecord.status = employee.status;
-  
+  if (employee.clientId !== undefined) dbRecord.client_id = employee.clientId; // Map clientId to client_id
+
   return dbRecord;
 };

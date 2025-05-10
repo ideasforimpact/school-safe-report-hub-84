@@ -1,27 +1,25 @@
 
-/**
- * Raw data structure from Excel import
- */
+import { Employee, EmployeeType, DepartmentType, EmploymentStatus } from '@/contexts/employee/types';
+import { ModulePermissions } from '@/contexts/auth/types';
+
 export interface RawEmployeeData {
-  [key: string]: any;
-  employeeId?: string | number;
-  firstName?: string;
-  lastName?: string;
-  email?: string;
-  phone?: string | number;
-  employeeType?: string;
-  department?: string;
-  joiningDate?: string | number | Date;
-  status?: string;
+  employeeId: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  employeeType: EmployeeType | string;
+  department: DepartmentType | string;
+  joiningDate: string | number; // Can be string date or Excel number
+  status: EmploymentStatus | string;
+  clientId?: string; // Add clientId field
+  modulePermissions?: ModulePermissions;
 }
 
-/**
- * Results of the import operation
- */
 export interface ImportResult {
-  addedEmployees: any[];
+  addedEmployees: Employee[];
   successCount: number;
-  updatedCount: number; // New counter for updated employees
   errorCount: number;
   errors: string[];
+  updatedCount: number;
 }

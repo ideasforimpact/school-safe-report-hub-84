@@ -153,6 +153,7 @@ export type Database = {
       }
       employees: {
         Row: {
+          client_id: string | null
           created_at: string
           department: string
           email: string
@@ -167,6 +168,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          client_id?: string | null
           created_at?: string
           department: string
           email: string
@@ -181,6 +183,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          client_id?: string | null
           created_at?: string
           department?: string
           email?: string
@@ -194,7 +197,15 @@ export type Database = {
           updated_at?: string
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "employees_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       facilities: {
         Row: {

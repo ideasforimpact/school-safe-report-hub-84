@@ -21,13 +21,16 @@ import { toast } from 'sonner';
 import { processEmployeeExcel } from '@/services/employee/importEmployeeService';
 
 const EmployeeManagement = () => {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const { employees, addEmployee, updateEmployee, deleteEmployee } = useEmployee();
   
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [currentEmployee, setCurrentEmployee] = useState<Employee | null>(null);
+  
+  // Get clientId from user context if available
+  const clientId = user?.clientId;
 
   if (!isAdmin) {
     return (
@@ -50,7 +53,7 @@ const EmployeeManagement = () => {
 
   const handleImportEmployees = async (file: File) => {
     try {
-      await processEmployeeExcel(file);
+      await processEmployeeExcel(file, clientId);
       toast.success("Employees imported successfully");
     } catch (error) {
       console.error("Import process failed:", error);
@@ -108,6 +111,7 @@ const EmployeeManagement = () => {
         isOpen={isAddDialogOpen}
         setIsOpen={setIsAddDialogOpen}
         onAddEmployee={addEmployee}
+        clientId={clientId}
       />
 
       {/* Edit Employee Dialog */}
@@ -125,6 +129,7 @@ const EmployeeManagement = () => {
         isOpen={isImportDialogOpen}
         setIsOpen={setIsImportDialogOpen}
         onImportEmployees={handleImportEmployees}
+        clientId={clientId}
       />
     </Layout>
   );
