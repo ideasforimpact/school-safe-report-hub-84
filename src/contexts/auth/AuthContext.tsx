@@ -85,20 +85,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   
   const checkEmployeeAccess = async (email: string): Promise<boolean> => {
     try {
-      // First check if email exists in employees table and department is admin
+      // Updated to check if email exists in employees table with department as admin AND status is active
       const { data, error } = await supabase
         .from('employees')
         .select('*')
         .eq('email', email)
         .eq('department', 'admin')
+        .eq('status', 'active')  // Added this line to check if the employee is active
         .single();
       
       if (error || !data) {
-        console.error("Employee access check error:", error || "No matching admin employee found");
+        console.error("Employee access check error:", error || "No matching active admin employee found");
         return false;
       }
       
-      console.log("Admin employee found:", data);
+      console.log("Active admin employee found:", data);
       return true;
     } catch (error) {
       console.error("Error checking employee access:", error);

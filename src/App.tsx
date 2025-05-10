@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
 import { AuthProvider } from '@/contexts/auth/AuthContext';
 import { ClientProvider } from '@/contexts/ClientContext';
@@ -29,9 +29,10 @@ function App() {
               <Routes>
                 {/* Public routes */}
                 <Route path="/login" element={<Login />} />
-
+                
                 {/* Protected routes */}
-                <Route path="/" element={<Dashboard />} />
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/users" element={<UserManagement />} />
                 <Route path="/clients" element={<ClientManagement />} />
                 <Route path="/employees" element={<EmployeeManagement />} />
