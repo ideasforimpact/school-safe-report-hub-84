@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -26,8 +27,8 @@ interface EducationalStructureConfigProps {
   updateSection: (id: string, classId: string, name: string) => void;
   deleteSection: (id: string) => void;
   facilities: ConfigItem[];
-  addFacility: (name: string) => void;
-  updateFacility: (id: string, name: string) => void;
+  addFacility: (name: string, campusId: string) => void;
+  updateFacility: (id: string, name: string, campusId: string) => void;
   deleteFacility: (id: string) => void;
 }
 
