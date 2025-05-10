@@ -35,7 +35,7 @@ const AdminSettingsMenu = () => {
           <span>Facilities</span>
         </DropdownMenuItem>
         
-        {/* Other Settings */}
+        {/* Other Settings - Updated to link to educational-configuration */}
         <DropdownMenuItem onClick={() => navigate('/other-configuration')} className="cursor-pointer">
           <LayoutGrid className="h-4 w-4 mr-2" />
           <span>Other Settings</span>

@@ -15,6 +15,8 @@ import UserManagement from '@/pages/UserManagement';
 import ClientManagement from '@/pages/ClientManagement';
 import EmployeeManagement from '@/pages/EmployeeManagement';
 import StudentManagement from '@/pages/StudentManagement';
+import EducationalConfiguration from '@/pages/EducationalConfiguration';
+import OtherConfiguration from '@/pages/OtherConfiguration';
 import NotFound from '@/pages/NotFound';
 
 function App() {
@@ -34,6 +36,8 @@ function App() {
                 <Route path="/clients" element={<ClientManagement />} />
                 <Route path="/employees" element={<EmployeeManagement />} />
                 <Route path="/students" element={<StudentManagement />} />
+                <Route path="/educational-configuration" element={<EducationalConfiguration />} />
+                <Route path="/other-configuration" element={<OtherConfiguration />} />
 
                 {/* 404 route */}
                 <Route path="*" element={<NotFound />} />
