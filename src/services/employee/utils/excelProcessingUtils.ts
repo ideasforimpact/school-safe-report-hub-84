@@ -30,6 +30,9 @@ export const parseExcelFile = async (file: File): Promise<RawEmployeeData[]> => 
           const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: true, defval: '' });
           console.log("Raw Excel data:", JSON.stringify(jsonData));
           
+          // Identify column headers for debugging
+          console.log("Available columns:", Object.keys(jsonData[0] || {}));
+          
           // Map Excel column names to our expected property names
           const employeeData: RawEmployeeData[] = jsonData.map((row: any, index: number) => {
             // Enhanced mapping for various possible column names
@@ -48,19 +51,50 @@ export const parseExcelFile = async (file: File): Promise<RawEmployeeData[]> => 
               return '';
             };
             
-            // Fix email mapping - add more possible column names
+            // Enhanced email field detection with additional common variants
+            // Check for ANY column containing "email" in the name
+            const findEmailField = (): string => {
+              // First try known field names
+              const knownFieldNames = ['Email', 'email', 'EMAIL', 'EmailAddress', 'Email Address', 
+                'email_address', 'Mail', 'E-Mail', 'e-mail', 'E Mail', 'email_id'];
+              
+              for (const name of knownFieldNames) {
+                if (row[name] !== undefined && row[name] !== '') {
+                  return String(row[name]);
+                }
+              }
+              
+              // Try case-insensitive match for any field containing "email"
+              for (const key of Object.keys(row)) {
+                if (key.toLowerCase().includes('email') && row[key] !== '') {
+                  return String(row[key]);
+                }
+              }
+              
+              // Try any field that might be an email (contains @)
+              for (const key of Object.keys(row)) {
+                const value = row[key];
+                if (typeof value === 'string' && value.includes('@')) {
+                  return value;
+                }
+              }
+              
+              return '';
+            };
+            
+            // Fix email mapping with enhanced detection
             const mappedData: RawEmployeeData = {
-              employeeId: getFieldValue(['Employee ID', 'EmployeeID', 'employeeId', 'employee_id', 'id', 'ID', 'Id']),
-              firstName: getFieldValue(['First Name', 'FirstName', 'firstName', 'first_name', 'First name', 'FIRSTNAME']),
-              lastName: getFieldValue(['Last Name', 'LastName', 'lastName', 'last_name', 'Last name', 'LASTNAME']),
-              email: getFieldValue(['Email', 'email', 'EMAIL', 'EmailAddress', 'email_address', 'Email Address', 'Mail']),
-              phone: getFieldValue(['Phone', 'phone', 'PhoneNumber', 'phone_number', 'Phone Number', 'Contact', 'Mobile']),
-              employeeType: getFieldValue(['Employee Type', 'EmployeeType', 'employeeType', 'employee_type', 'Type']) || 'permanent',
-              department: getFieldValue(['Department', 'department', 'DEPARTMENT', 'Dept']) || 'operations',
+              employeeId: getFieldValue(['Employee ID', 'EmployeeID', 'employeeId', 'employee_id', 'id', 'ID', 'Id', 'EmpID', 'EmpId']),
+              firstName: getFieldValue(['First Name', 'FirstName', 'firstName', 'first_name', 'First name', 'FIRSTNAME', 'Name', 'First', 'Given Name']),
+              lastName: getFieldValue(['Last Name', 'LastName', 'lastName', 'last_name', 'Last name', 'LASTNAME', 'Surname', 'Family Name']),
+              email: findEmailField(),
+              phone: getFieldValue(['Phone', 'phone', 'PhoneNumber', 'phone_number', 'Phone Number', 'Contact', 'Mobile', 'Cell', 'Telephone']),
+              employeeType: getFieldValue(['Employee Type', 'EmployeeType', 'employeeType', 'employee_type', 'Type', 'Position', 'Role']) || 'permanent',
+              department: getFieldValue(['Department', 'department', 'DEPARTMENT', 'Dept', 'Team', 'Division', 'Unit']) || 'operations',
               // Handle date formats
-              joiningDate: getFieldValue(['Joining Date', 'JoiningDate', 'joiningDate', 'joining_date', 'Start Date', 'DateJoined']) || 
+              joiningDate: getFieldValue(['Joining Date', 'JoiningDate', 'joiningDate', 'joining_date', 'Start Date', 'DateJoined', 'Date of Joining', 'Hire Date']) || 
                           (new Date().toISOString().split('T')[0]),
-              status: getFieldValue(['Status', 'status', 'STATE', 'Employment Status']) || 'active'
+              status: getFieldValue(['Status', 'status', 'STATE', 'Employment Status', 'Employee Status']) || 'active'
             };
             
             // Log each mapped row to debug

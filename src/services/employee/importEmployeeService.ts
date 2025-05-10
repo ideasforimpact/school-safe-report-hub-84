@@ -55,14 +55,19 @@ export const processEmployeeExcel = async (file: File): Promise<Employee[]> => {
     // Add default module permissions to each employee record
     // and normalize/validate employee data fields
     const processedData = rawData.map(emp => {
-      // Ensure email exists
+      // Generate default email if missing using firstName.lastName@example.com format
+      const email = emp.email && emp.email.trim() !== '' 
+        ? emp.email 
+        : `${emp.firstName.toLowerCase().replace(/\s/g, '')}.${emp.lastName.toLowerCase().replace(/\s/g, '')}@example.com`;
+      
+      // Log generated emails for debugging
       if (!emp.email || emp.email.trim() === '') {
-        console.warn(`Employee ${emp.firstName} ${emp.lastName} (ID: ${emp.employeeId}) is missing an email address`);
+        console.warn(`Generated default email for ${emp.firstName} ${emp.lastName}: ${email}`);
       }
       
       return {
         ...emp,
-        email: emp.email || `${emp.firstName.toLowerCase()}.${emp.lastName.toLowerCase()}@example.com`, // Default email if missing
+        email,
         employeeType: validateEmployeeType(String(emp.employeeType)),
         department: validateDepartment(String(emp.department)),
         status: validateEmploymentStatus(String(emp.status)),

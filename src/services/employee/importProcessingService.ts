@@ -101,14 +101,14 @@ export const processEmployeeData = async (rawData: RawEmployeeData[]): Promise<I
       
       // Try with a direct fetch as a fallback
       try {
-        // Fix: Get the functions URL correctly by accessing it as a string
-        const functionsUrl = supabase.functions.url.toString();
-        const functionUrl = `${functionsUrl}/employee-management`;
+        // Get the Supabase project URL correctly
+        const supabaseUrl = process.env.SUPABASE_URL || 'https://ybvxkiubnnixntghojyy.supabase.co';
+        const functionUrl = `${supabaseUrl}/functions/v1/employee-management`;
         console.log("Trying direct fetch to", functionUrl);
         
-        // Fix: Get the current session token properly
-        const { data: sessionData } = await supabase.auth.getSession();
-        const accessToken = sessionData?.session?.access_token || '';
+        // Get the current session token properly
+        const { data: { session } } = await supabase.auth.getSession();
+        const accessToken = session?.access_token || '';
         
         const response = await fetch(functionUrl, {
           method: 'POST',
