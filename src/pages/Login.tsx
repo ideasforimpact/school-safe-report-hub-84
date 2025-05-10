@@ -17,18 +17,17 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
-  const { login } = useAuth();
+  const { login, authError } = useAuth();
   const navigate = useNavigate();
 
-  // Check for authentication redirect results
+  // Check for authentication redirect results and errors
   useEffect(() => {
     const checkForAuthRedirect = async () => {
       const { data, error } = await supabase.auth.getSession();
       
       if (data?.session) {
         console.log("Session detected after redirect:", data.session);
-        navigate("/dashboard");
-        toast.success("Login successful!");
+        // The AuthContext will check if the user has proper access and handle redirect
       }
       
       if (error) {
@@ -39,6 +38,14 @@ const Login = () => {
     
     checkForAuthRedirect();
   }, [navigate]);
+
+  // Listen for auth errors from context
+  useEffect(() => {
+    if (authError) {
+      setError(authError);
+      toast.error(authError);
+    }
+  }, [authError]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,7 +59,9 @@ const Login = () => {
         navigate("/dashboard");
         toast.success("Login successful!");
       } else {
-        setError("Invalid email or password");
+        if (!authError) {
+          setError("Invalid email or password");
+        }
       }
     } catch (err) {
       console.error("Login error:", err);

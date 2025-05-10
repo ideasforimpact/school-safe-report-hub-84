@@ -35,6 +35,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(() => getUserFromStorage());
   const [users, setUsers] = useState<UserWithPassword[]>(() => getUsersFromStorage());
+  const [authError, setAuthError] = useState<string | null>(null);
 
   // Get client context to validate domains
   const { isEmailDomainAllowed } = useClient();
@@ -60,6 +61,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
         logoutUser();
+        setAuthError(null);
       }
     });
     
@@ -81,9 +83,41 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [users]);
   
-  const handleUserAuthentication = (supabaseUser: any) => {
+  const checkEmployeeAccess = async (email: string): Promise<boolean> => {
+    try {
+      // First check if email exists in employees table and department is admin
+      const { data, error } = await supabase
+        .from('employees')
+        .select('*')
+        .eq('email', email)
+        .eq('department', 'admin')
+        .single();
+      
+      if (error || !data) {
+        console.error("Employee access check error:", error || "No matching admin employee found");
+        return false;
+      }
+      
+      console.log("Admin employee found:", data);
+      return true;
+    } catch (error) {
+      console.error("Error checking employee access:", error);
+      return false;
+    }
+  };
+  
+  const handleUserAuthentication = async (supabaseUser: any) => {
     // Check if user exists in our system
     console.log("Handling authentication for:", supabaseUser.email);
+    
+    // Check if the user has admin access in employees table
+    const hasAccess = await checkEmployeeAccess(supabaseUser.email);
+    if (!hasAccess) {
+      console.log("Access denied: User is not an admin employee");
+      setAuthError("Access denied: Only admin department employees can login");
+      await supabase.auth.signOut();
+      return;
+    }
     
     let existingUser = users.find(u => u.email === supabaseUser.email);
     
@@ -154,39 +188,54 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const login = async (email: string, password: string): Promise<boolean> => {
     console.log("Login attempt:", email, password);
     
-    const loggedInUser = loginUser(
-      email, 
-      password, 
-      users,
-      isEmailDomainAllowed
-    );
-    
-    if (loggedInUser) {
-      console.log("Login successful, user:", loggedInUser);
-      
-      // Also sign in with Supabase
-      try {
-        await supabase.auth.signInWithPassword({
-          email,
-          password
-        });
-      } catch (error) {
-        console.error("Supabase auth error (non-critical):", error);
+    try {
+      // Check if the user is in the employees table with admin department
+      const hasAccess = await checkEmployeeAccess(email);
+      if (!hasAccess) {
+        console.log("Access denied: User is not an admin employee");
+        setAuthError("Access denied: Only admin department employees can login");
+        return false;
       }
       
-      setUser(loggedInUser);
-      saveUserToStorage(loggedInUser);
+      const loggedInUser = loginUser(
+        email, 
+        password, 
+        users,
+        isEmailDomainAllowed
+      );
       
-      return true;
+      if (loggedInUser) {
+        console.log("Login successful, user:", loggedInUser);
+        
+        // Also sign in with Supabase
+        try {
+          await supabase.auth.signInWithPassword({
+            email,
+            password
+          });
+        } catch (error) {
+          console.error("Supabase auth error (non-critical):", error);
+        }
+        
+        setUser(loggedInUser);
+        saveUserToStorage(loggedInUser);
+        setAuthError(null);
+        
+        return true;
+      }
+      
+      console.log("Login failed");
+      return false;
+    } catch (error) {
+      console.error("Login error:", error);
+      return false;
     }
-    
-    console.log("Login failed");
-    return false;
   };
 
   const logout = async () => {
     setUser(null);
     logoutUser();
+    setAuthError(null);
     
     // Also sign out from Supabase
     try {
@@ -308,7 +357,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       deleteUser,
       deactivateUser,
       reactivateUser,
-      changePassword
+      changePassword,
+      authError
     }}>
       {children}
     </AuthContext.Provider>

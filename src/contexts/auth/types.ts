@@ -29,6 +29,7 @@ export interface AuthContextType {
   deactivateUser: (id: string) => void;
   reactivateUser: (id: string) => void;
   changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
+  authError: string | null;
 }
 
 export interface User {
