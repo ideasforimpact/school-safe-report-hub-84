@@ -60,12 +60,11 @@ export const FacilityTab = ({
     
     addFacility(newFacility.trim(), selectedCampusId);
     setNewFacility('');
-    toast.success("Facility added successfully");
+    setSelectedCampusId('');
   };
 
   const handleFacilityDelete = (id: string) => {
     deleteFacility(id);
-    toast.success("Facility deleted successfully");
   };
 
   const handleFacilityUpdate = () => {
@@ -81,7 +80,11 @@ export const FacilityTab = ({
     
     updateFacility(editingFacility.id, editingFacility.name.trim(), editingFacility.campusId);
     setEditingFacility(null);
-    toast.success("Facility updated successfully");
+  };
+
+  const getCampusName = (campusId: string) => {
+    const campus = campuses.find(c => c.id === campusId);
+    return campus ? campus.name : 'Unknown Campus';
   };
 
   return (
@@ -158,12 +161,11 @@ export const FacilityTab = ({
                 </TableCell>
               </TableRow>
             ) : (
-              facilities.map((facility) => (
+              facilities.map((facility: any) => (
                 <TableRow key={facility.id}>
                   <TableCell>{facility.name}</TableCell>
                   <TableCell>
-                    {/* We'll add campus name display in the next update */}
-                    Campus Name
+                    {getCampusName(facility.campusId)}
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
@@ -176,7 +178,7 @@ export const FacilityTab = ({
                           type: "select",
                           label: "Campus",
                           options: campuses.map(campus => ({ value: campus.id, label: campus.name })),
-                          value: editingFacility?.campusId || "",
+                          value: editingFacility?.campusId || facility.campusId || "",
                           onChange: (value) => setEditingFacility(prev => 
                             prev ? {...prev, campusId: value} : null
                           )
@@ -186,7 +188,7 @@ export const FacilityTab = ({
                             setEditingFacility({
                               id: facility.id, 
                               name: facility.name,
-                              campusId: "" // Will need to get this from the database in a future update
+                              campusId: facility.campusId || ""
                             });
                           } else {
                             setEditingFacility(null);

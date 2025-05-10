@@ -1,9 +1,8 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useIncidents } from '@/contexts/IncidentContext';
 import { toast } from 'sonner';
-import { CampusItem, ClassItem, SectionItem, ConfigItem } from '@/contexts/types';
+import { ConfigItem, CampusItem, ClassItem, SectionItem } from '@/contexts/types';
 import { useClient } from '@/contexts/ClientContext';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -12,25 +11,13 @@ export function useEducationalConfigurationManagement() {
   const [activeTab, setActiveTab] = useState('campuses');
   const { client } = useClient();
   
-  const { 
-    sections: contextSections,
-    addSection: contextAddSection,
-    updateSection: contextUpdateSection,
-    deleteSection: contextDeleteSection
-  } = useIncidents();
-
-  // Local state 
+  // Local states
   const [loading, setLoading] = useState(false);
   const [campuses, setCampuses] = useState<CampusItem[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
-  const [sections, setSections] = useState<SectionItem[]>(contextSections);
+  const [sections, setSections] = useState<SectionItem[]>([]);
   const [facilities, setFacilities] = useState<ConfigItem[]>([]);
 
-  // Update sections state when context changes
-  useEffect(() => {
-    setSections(contextSections);
-  }, [contextSections]);
-  
   // Set initial tab based on URL parameter when component mounts
   useEffect(() => {
     const tab = searchParams.get('tab');
@@ -39,15 +26,17 @@ export function useEducationalConfigurationManagement() {
     }
   }, [searchParams]);
 
-  // Fetch campuses from database
+  // Fetch data from Supabase when client changes
   useEffect(() => {
     if (client?.id) {
       fetchCampuses();
       fetchClasses();
+      fetchSections();
       fetchFacilities();
     }
   }, [client?.id]);
 
+  // Fetch campuses
   const fetchCampuses = async () => {
     if (!client?.id) return;
     
@@ -71,6 +60,7 @@ export function useEducationalConfigurationManagement() {
     }
   };
 
+  // Fetch classes/grades
   const fetchClasses = async () => {
     if (!client?.id) return;
     
@@ -95,6 +85,13 @@ export function useEducationalConfigurationManagement() {
     }
   };
 
+  // Fetch sections (placeholder - to be implemented with an edge function)
+  const fetchSections = async () => {
+    // Implement section fetching when available
+    setSections([]);
+  };
+
+  // Fetch facilities
   const fetchFacilities = async () => {
     if (!client?.id) return;
     
@@ -108,7 +105,8 @@ export function useEducationalConfigurationManagement() {
       
       setFacilities(data.facilities.map((facility: any) => ({
         id: facility.id,
-        name: facility.name
+        name: facility.name,
+        campusId: facility.campus_id
       })));
     } catch (error) {
       console.error("Error fetching facilities:", error);
@@ -118,6 +116,7 @@ export function useEducationalConfigurationManagement() {
     }
   };
 
+  // Campus management with Supabase
   const handleAddCampus = async (name: string) => {
     if (!client?.id) {
       toast.error("No client selected");
@@ -162,13 +161,20 @@ export function useEducationalConfigurationManagement() {
   };
 
   const handleDeleteCampus = async (id: string) => {
-    // First check if there are classes associated with this campus
+    // Check if campus has associated classes/grades
     const hasClasses = classes.some(cls => cls.campusId === id);
     if (hasClasses) {
-      toast.error("Cannot delete campus with associated grades/classes. Delete the grades first.");
+      toast.error("Cannot delete campus with associated grades. Remove the grades first.");
       return;
     }
-
+    
+    // Check if campus has associated facilities
+    const hasFacilities = facilities.some((facility: any) => facility.campusId === id);
+    if (hasFacilities) {
+      toast.error("Cannot delete campus with associated facilities. Remove the facilities first.");
+      return;
+    }
+    
     try {
       setLoading(true);
       const { error } = await supabase.functions.invoke('campus-management', {
@@ -187,21 +193,17 @@ export function useEducationalConfigurationManagement() {
     }
   };
 
+  // Class/Grade management
   const handleAddClass = async (campusId: string, name: string) => {
     if (!client?.id) {
       toast.error("No client selected");
       return;
     }
-    
+
     try {
       setLoading(true);
       const { data, error } = await supabase.functions.invoke('grade-management', {
-        body: { 
-          name, 
-          campusId, 
-          clientId: client.id, 
-          action: 'create' 
-        }
+        body: { name, campusId, clientId: client.id, action: 'create' }
       });
 
       if (error) throw error;
@@ -211,7 +213,6 @@ export function useEducationalConfigurationManagement() {
         name: data.grade.name,
         campusId: data.grade.campus_id
       }]);
-      
       toast.success("Grade added successfully");
     } catch (error) {
       console.error("Error adding grade:", error);
@@ -225,19 +226,16 @@ export function useEducationalConfigurationManagement() {
     try {
       setLoading(true);
       const { data, error } = await supabase.functions.invoke('grade-management', {
-        body: { 
-          id, 
-          name, 
-          campusId,
-          action: 'update' 
-        }
+        body: { id, name, campusId, action: 'update' }
       });
 
       if (error) throw error;
       
-      setClasses(prev => prev.map(cls => 
-        cls.id === id ? { ...cls, name, campusId } : cls
-      ));
+      setClasses(prev => prev.map(c => c.id === id ? { 
+        ...c, 
+        name: data.grade.name, 
+        campusId: data.grade.campus_id 
+      } : c));
       
       toast.success("Grade updated successfully");
     } catch (error) {
@@ -249,10 +247,10 @@ export function useEducationalConfigurationManagement() {
   };
 
   const handleDeleteClass = async (id: string) => {
-    // Check if there are sections associated with this class
+    // Check if class has associated sections
     const hasSections = sections.some(section => section.classId === id);
     if (hasSections) {
-      toast.error("Cannot delete grade with associated sections. Delete the sections first.");
+      toast.error("Cannot delete grade with associated sections. Remove the sections first.");
       return;
     }
     
@@ -264,7 +262,7 @@ export function useEducationalConfigurationManagement() {
 
       if (error) throw error;
       
-      setClasses(prev => prev.filter(cls => cls.id !== id));
+      setClasses(prev => prev.filter(c => c.id !== id));
       toast.success("Grade deleted successfully");
     } catch (error) {
       console.error("Error deleting grade:", error);
@@ -274,62 +272,39 @@ export function useEducationalConfigurationManagement() {
     }
   };
 
-  // Use existing context methods for sections
+  // Section management (placeholders - to be implemented)
   const handleAddSection = (classId: string, name: string) => {
-    try {
-      console.log("EducationalConfiguration: Adding section:", name, "to class:", classId);
-      contextAddSection(classId, name);
-      toast.success("Section added successfully");
-    } catch (error) {
-      console.error("Error adding section:", error);
-      toast.error("Failed to add section");
-    }
+    // To be implemented
   };
 
   const handleUpdateSection = (id: string, classId: string, name: string) => {
-    try {
-      contextUpdateSection(id, classId, name);
-      toast.success("Section updated successfully");
-    } catch (error) {
-      console.error("Error updating section:", error);
-      toast.error("Failed to update section");
-    }
+    // To be implemented
   };
 
   const handleDeleteSection = (id: string) => {
-    try {
-      contextDeleteSection(id);
-      toast.success("Section deleted successfully");
-    } catch (error) {
-      console.error("Error deleting section:", error);
-      toast.error("Failed to delete section");
-    }
+    // To be implemented
   };
 
+  // Facility management
   const handleAddFacility = async (name: string, campusId: string) => {
     if (!client?.id) {
       toast.error("No client selected");
       return;
     }
-    
+
     try {
       setLoading(true);
       const { data, error } = await supabase.functions.invoke('facility-management', {
-        body: { 
-          name, 
-          campusId,
-          clientId: client.id, 
-          action: 'create' 
-        }
+        body: { name, campusId, clientId: client.id, action: 'create' }
       });
 
       if (error) throw error;
       
       setFacilities(prev => [...prev, { 
         id: data.facility.id, 
-        name: data.facility.name 
+        name: data.facility.name,
+        campusId: data.facility.campus_id
       }]);
-      
       toast.success("Facility added successfully");
     } catch (error) {
       console.error("Error adding facility:", error);
@@ -343,19 +318,16 @@ export function useEducationalConfigurationManagement() {
     try {
       setLoading(true);
       const { data, error } = await supabase.functions.invoke('facility-management', {
-        body: { 
-          id, 
-          name,
-          campusId,
-          action: 'update' 
-        }
+        body: { id, name, campusId, action: 'update' }
       });
 
       if (error) throw error;
       
-      setFacilities(prev => prev.map(facility => 
-        facility.id === id ? { ...facility, name } : facility
-      ));
+      setFacilities(prev => prev.map(f => f.id === id ? { 
+        ...f, 
+        name: data.facility.name,
+        campusId: data.facility.campus_id
+      } : f));
       
       toast.success("Facility updated successfully");
     } catch (error) {
@@ -375,7 +347,7 @@ export function useEducationalConfigurationManagement() {
 
       if (error) throw error;
       
-      setFacilities(prev => prev.filter(facility => facility.id !== id));
+      setFacilities(prev => prev.filter(f => f.id !== id));
       toast.success("Facility deleted successfully");
     } catch (error) {
       console.error("Error deleting facility:", error);
@@ -384,7 +356,7 @@ export function useEducationalConfigurationManagement() {
       setLoading(false);
     }
   };
-  
+
   return {
     activeTab,
     setActiveTab,
