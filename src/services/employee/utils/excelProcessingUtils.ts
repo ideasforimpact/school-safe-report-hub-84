@@ -1,135 +1,93 @@
-
 import * as XLSX from 'xlsx';
-import { toast } from 'sonner';
 import { RawEmployeeData } from '../types/importTypes';
 
-// Define the expected columns in the Excel file and their mappings
-const columnMappings = {
-  'employeeId': ['employee id', 'employeeid', 'employee_id', 'id', 'emp id', 'empid'],
-  'firstName': ['first name', 'firstname', 'first_name', 'given name', 'name'],
-  'lastName': ['last name', 'lastname', 'last_name', 'surname', 'family name'],
-  'email': ['email', 'email address', 'mail', 'email id', 'emailid'],
-  'phone': ['phone', 'phone number', 'mobile', 'contact'],
-  'employeeType': ['employee type', 'employeetype', 'type', 'employment type', 'emp type', 'emp. type'],
-  'department': ['department', 'dept', 'division', 'team'],
-  'joiningDate': ['joining date', 'joiningdate', 'join date', 'start date', 'hired date', 'date of joining'],
-  'status': ['status', 'employment status', 'state']
-};
-
-// Create a reverse mapping for lookup
-const reverseColumnMappings: Record<string, string> = {};
-
-Object.entries(columnMappings).forEach(([key, values]) => {
-  values.forEach(value => {
-    reverseColumnMappings[value] = key;
-  });
-});
-
 /**
- * Parse Excel file and extract raw employee data with proper column mapping
+ * Parse Excel file and extract employee data
  */
-export const parseExcelFile = (file: File): Promise<RawEmployeeData[]> => {
+export const parseExcelFile = async (file: File): Promise<RawEmployeeData[]> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     
     reader.onload = (e) => {
       try {
-        const data = e.target?.result;
-        const workbook = XLSX.read(data, { type: 'binary' });
-        const sheetName = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[sheetName];
-        
-        // Convert sheet to JSON with raw header names
-        const rawData = XLSX.utils.sheet_to_json<Record<string, any>>(sheet);
-        
-        if (rawData.length === 0) {
-          toast.error('No data found in the Excel file');
-          reject(new Error('No data found in the Excel file'));
-          return;
+        if (!e.target?.result) {
+          throw new Error('Failed to read file content');
         }
-
-        // Log the raw data for debugging
-        console.log("Raw Excel data before mapping:", rawData);
         
-        // Get the header row keys
-        const headers = Object.keys(rawData[0]);
+        const data = e.target.result;
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
         
-        // Map Excel headers to our expected field names
-        const headerMap: Record<string, string> = {};
+        if (!sheetName) {
+          throw new Error('No worksheet found in Excel file');
+        }
         
-        headers.forEach(header => {
-          const normalizedHeader = header.toLowerCase().trim();
+        const worksheet = workbook.Sheets[sheetName];
+        const rawData = XLSX.utils.sheet_to_json(worksheet);
+        
+        console.info("Raw Excel data before mapping:", rawData);
+        
+        // Define header mapping from Excel to our data model
+        const headerMapping: Record<string, string> = {
+          'First Name': 'firstName',
+          'Last Name': 'lastName',
+          'Employee ID': 'employeeId',
+          'Email ID': 'email',
+          'Email': 'email', // Alternative header name
+          'Phone': 'phone',
+          'Employee Type': 'employeeType',
+          'Department': 'department',
+          'Date of Joining': 'joiningDate',
+          'Joining Date': 'joiningDate', // Alternative header name
+          'Status': 'status'
+        };
+        
+        console.info("Header mapping:", headerMapping);
+        
+        // Transform data to match our data model
+        const transformedData = rawData.map((row: any): RawEmployeeData => {
+          const transformedRow: any = {};
           
-          // Check if this header matches any of our expected field mappings
-          const mappedField = reverseColumnMappings[normalizedHeader];
-          
-          if (mappedField) {
-            headerMap[header] = mappedField;
-          } else {
-            // Try to find a partial match
-            for (const [key, values] of Object.entries(columnMappings)) {
-              if (values.some(value => normalizedHeader.includes(value))) {
-                headerMap[header] = key;
-                break;
-              }
+          // Map fields based on header mapping
+          Object.keys(row).forEach(key => {
+            const mappedKey = headerMapping[key];
+            if (mappedKey) {
+              transformedRow[mappedKey] = row[key];
+            } else {
+              // Keep the original key if no mapping exists
+              transformedRow[key] = row[key];
             }
-            
-            // If still no match, use the original header
-            if (!headerMap[header]) {
-              headerMap[header] = header;
-            }
-          }
-        });
-
-        console.log("Header mapping:", headerMap);
-        
-        // Transform the data using our header mapping
-        const transformedData: RawEmployeeData[] = rawData.map(row => {
-          const transformed: Record<string, any> = {};
-          
-          Object.entries(row).forEach(([originalHeader, value]) => {
-            const mappedHeader = headerMap[originalHeader] || originalHeader;
-            transformed[mappedHeader] = value;
           });
           
-          return transformed as RawEmployeeData;
+          // Handle date values that might be in Excel serial format
+          if (transformedRow.joiningDate && typeof transformedRow.joiningDate === 'number') {
+            try {
+              // Convert Excel serial date to JS date
+              const excelEpoch = new Date(1899, 11, 30);
+              const date = new Date(excelEpoch.getTime() + (transformedRow.joiningDate * 24 * 60 * 60 * 1000));
+              transformedRow.joiningDate = date.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+            } catch (e) {
+              console.error("Error converting Excel date:", e);
+            }
+          }
+          
+          return transformedRow;
         });
         
-        console.log("Transformed data after mapping:", transformedData);
+        console.info("Transformed data after mapping:", transformedData);
         resolve(transformedData);
       } catch (error) {
-        console.error('Error processing Excel file:', error);
-        toast.error('Failed to process Excel file');
+        console.error("Error parsing Excel file:", error);
         reject(error);
       }
     };
     
     reader.onerror = (error) => {
-      console.error('Error reading file:', error);
-      toast.error('Error reading file');
-      reject(error);
+      console.error("FileReader error:", error);
+      reject(new Error('Failed to read file'));
     };
     
-    reader.readAsBinaryString(file);
+    // Read the file as an array buffer
+    reader.readAsArrayBuffer(file);
   });
 };
-
-/**
- * Check if all required columns are present in the Excel file
- */
-export const validateRequiredColumns = (data: Record<string, any>[]): string[] => {
-  const requiredColumns = ['employeeId', 'firstName', 'lastName', 'email', 'employeeType', 'department', 'joiningDate', 'status'];
-  const missingColumns: string[] = [];
-  
-  if (data.length === 0) return ['No data found in the file'];
-  
-  const firstRow = data[0];
-  requiredColumns.forEach(col => {
-    if (!(col in firstRow)) {
-      missingColumns.push(col);
-    }
-  });
-  
-  return missingColumns;
-};
-

@@ -1,4 +1,3 @@
-
 // Follow this setup guide to integrate the Deno language server with your editor:
 // https://deno.land/manual/getting_started/setup_your_environment
 // This enables autocomplete, go to definition, etc.
@@ -54,13 +53,17 @@ serve(async (req) => {
 
     console.log(`Request path: ${effectivePath}`);
     
-    // Parse the request body - with better error handling
+    // Parse the request body with enhanced error handling
     let reqBody;
+    
+    // Clone the request to log it for debugging
+    const reqClone = req.clone();
+    const bodyText = await reqClone.text();
+    console.log("Raw request body:", bodyText);
+    
     try {
       // Check if request body exists before trying to parse it
-      const text = await req.text();
-      
-      if (!text || text.trim() === '') {
+      if (!bodyText || bodyText.trim() === '') {
         console.error("Empty request body");
         return new Response(JSON.stringify({ error: "Request body is empty" }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -68,7 +71,7 @@ serve(async (req) => {
         });
       }
       
-      reqBody = JSON.parse(text);
+      reqBody = JSON.parse(bodyText);
       console.log("Request body parsed successfully:", reqBody);
     } catch (e) {
       console.error("Error parsing request body:", e);

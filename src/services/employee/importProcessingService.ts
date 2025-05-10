@@ -78,11 +78,14 @@ export const processEmployeeData = async (rawData: RawEmployeeData[]): Promise<I
     
     console.log(`Sending ${employees.length} employees for bulk processing`);
 
-    // Fix: Ensure proper request body formatting with explicit JSON stringification
+    // Fix: Use JSON.stringify explicitly for the request body
     try {
+      const requestBody = { employees };
+      console.log("Request payload:", JSON.stringify(requestBody)); // Log the exact payload being sent
+      
       const { data: response, error } = await supabase.functions.invoke('employee-management', {
         method: 'POST',
-        body: { employees }, // This is the key fix - proper JSON object instead of empty or malformed JSON
+        body: requestBody, // This should properly serialize to JSON
         headers: {
           'Content-Type': 'application/json',
           'path': 'bulk-update'
