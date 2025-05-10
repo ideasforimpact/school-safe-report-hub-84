@@ -58,17 +58,23 @@ export const EditDialog = ({
   const [open, setOpen] = useState(false);
   const [currentValue, setCurrentValue] = useState(value);
 
-  // Update the internal state when the external value changes
+  // Update the internal state when the external value changes or when dialog opens
   useEffect(() => {
     setCurrentValue(value);
-  }, [value]);
+  }, [value, open]);
 
   const handleOpenChange = (newOpen: boolean) => {
     setOpen(newOpen);
     onOpenChange(newOpen);
+    
+    // Reset to initial value when opened
+    if (newOpen) {
+      setCurrentValue(value);
+    }
   };
 
   const handleSave = () => {
+    onChange(currentValue); // Make sure the parent component has the current value
     onSave();
     setOpen(false);
   };
@@ -88,8 +94,9 @@ export const EditDialog = ({
               id="name"
               value={currentValue}
               onChange={(e) => {
-                setCurrentValue(e.target.value);
-                onChange(e.target.value);
+                const newValue = e.target.value;
+                setCurrentValue(newValue);
+                onChange(newValue);
               }}
               className="col-span-3"
             />
@@ -117,7 +124,12 @@ export const EditDialog = ({
           )}
         </div>
         <DialogFooter>
-          <Button onClick={handleSave}>Save changes</Button>
+          <Button 
+            onClick={handleSave}
+            disabled={!currentValue.trim()}
+          >
+            Save changes
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
