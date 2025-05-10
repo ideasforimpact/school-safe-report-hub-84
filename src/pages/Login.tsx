@@ -66,10 +66,18 @@ const Login = () => {
       setGoogleLoading(true);
       setError("");
       
+      // Using a more reliable approach for redirect URL
+      const redirectTo = `${window.location.origin}/dashboard`;
+      console.log("Google login redirect URL:", redirectTo);
+      
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/dashboard`
+          redirectTo: redirectTo,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'consent',
+          }
         }
       });
       
@@ -77,6 +85,9 @@ const Login = () => {
         console.error("Google login error:", error);
         toast.error("Google login failed. Please try again.");
         setError(`Google authentication failed: ${error.message}`);
+      } else {
+        // No need for navigation here as the redirect will happen automatically
+        console.log("Google authentication initiated successfully");
       }
     } catch (err) {
       console.error("Google login error:", err);

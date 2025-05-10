@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { User, UserRole, ModulePermissions, AuthContextType, UserWithPassword, EmployeeType, DepartmentType } from './types';
 import { useClient } from '../ClientContext';
@@ -45,70 +46,102 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Set up Supabase auth listener
   useEffect(() => {
+    console.log("Setting up Supabase auth listener");
+    
+    // Get initial session
+    supabase.auth.getSession().then(({ data, error }) => {
+      console.log("Initial session check:", data?.session?.user?.email);
+      if (error) {
+        console.error("Session check error:", error);
+      }
+      
+      if (data?.session?.user) {
+        handleUserAuthentication(data.session.user);
+      }
+    });
+    
+    // Set up auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("Auth state changed:", event, session?.user?.email);
       
       if (event === 'SIGNED_IN' && session?.user) {
-        // Find or create user in our local system
-        const supabaseUser = session.user;
-        
-        // Check if user exists in our system
-        let existingUser = users.find(u => u.email === supabaseUser.email);
-        
-        if (existingUser) {
-          // Update login timestamp
-          const updatedUser = {
-            ...existingUser,
-            lastLogin: new Date().toISOString()
-          };
-          
-          const updatedUsers = users.map(u => 
-            u.id === existingUser?.id ? { ...u, lastLogin: new Date().toISOString() } : u
-          );
-          
-          setUsers(updatedUsers);
-          setUser(excludePasswordFromUser(updatedUser));
-          saveUserToStorage(excludePasswordFromUser(updatedUser));
-        } else {
-          // For new users via SSO, create a basic account (can be enhanced later)
-          const newUser: UserWithPassword = {
-            id: supabaseUser.id,
-            firstName: supabaseUser.user_metadata.full_name?.split(' ')[0] || 'New',
-            lastName: supabaseUser.user_metadata.full_name?.split(' ').slice(1).join(' ') || 'User',
-            email: supabaseUser.email || '',
-            password: '', // SSO users don't need passwords in our system
-            role: 'reporter', // Default role
-            modulePermissions: {
-              superAdmin: false,
-              incidentReporting: true,
-              incidentAdmin: false,
-              assessmentUser: false,
-              assessmentsAdmin: false,
-              employeeVerificationAdmin: false,
-              grievancesAdmin: false,
-              transportSafetyAdmin: false,
-              eduSafeResourceAccess: false
-            },
-            isActive: true,
-            createdAt: new Date().toISOString(),
-            lastLogin: new Date().toISOString(),
-          };
-          
-          const updatedUsers = [...users, newUser];
-          setUsers(updatedUsers);
-          setUser(excludePasswordFromUser(newUser));
-          saveUserToStorage(excludePasswordFromUser(newUser));
-        }
+        handleUserAuthentication(session.user);
       } else if (event === 'SIGNED_OUT') {
-        // Handle sign out if needed
-        // Note: we're keeping our own logout flow separate
+        setUser(null);
+        logoutUser();
       }
     });
     
     return () => {
+      console.log("Cleaning up Supabase auth listener");
       subscription.unsubscribe();
     };
   }, [users]);
+  
+  const handleUserAuthentication = (supabaseUser: any) => {
+    // Check if user exists in our system
+    console.log("Handling authentication for:", supabaseUser.email);
+    
+    let existingUser = users.find(u => u.email === supabaseUser.email);
+    
+    if (existingUser) {
+      console.log("User found in our system:", existingUser.firstName);
+      // Update login timestamp
+      const updatedUser = {
+        ...existingUser,
+        lastLogin: new Date().toISOString()
+      };
+      
+      const updatedUsers = users.map(u => 
+        u.id === existingUser?.id ? { ...u, lastLogin: new Date().toISOString() } : u
+      );
+      
+      setUsers(updatedUsers);
+      setUser(excludePasswordFromUser(updatedUser));
+      saveUserToStorage(excludePasswordFromUser(updatedUser));
+      console.log("User session updated");
+    } else {
+      console.log("New user via SSO, creating account");
+      // For new users via SSO, create a basic account
+      const firstName = supabaseUser.user_metadata?.name?.split(' ')?.[0] || 
+                        supabaseUser.user_metadata?.full_name?.split(' ')?.[0] || 
+                        'New';
+      const lastName = supabaseUser.user_metadata?.name?.split(' ').slice(1).join(' ') || 
+                      supabaseUser.user_metadata?.full_name?.split(' ').slice(1).join(' ') || 
+                      'User';
+      
+      console.log("Creating with name:", firstName, lastName);
+                      
+      const newUser: UserWithPassword = {
+        id: supabaseUser.id,
+        firstName,
+        lastName,
+        email: supabaseUser.email || '',
+        password: '', // SSO users don't need passwords in our system
+        role: 'reporter', // Default role
+        modulePermissions: {
+          superAdmin: false,
+          incidentReporting: true,
+          incidentAdmin: false,
+          assessmentUser: false,
+          assessmentsAdmin: false,
+          employeeVerificationAdmin: false,
+          grievancesAdmin: false,
+          transportSafetyAdmin: false,
+          eduSafeResourceAccess: false
+        },
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        lastLogin: new Date().toISOString(),
+      };
+      
+      const updatedUsers = [...users, newUser];
+      setUsers(updatedUsers);
+      setUser(excludePasswordFromUser(newUser));
+      saveUserToStorage(excludePasswordFromUser(newUser));
+      console.log("New user account created");
+    }
+  };
 
   // Debug: Log current users to help debugging
   useEffect(() => {
