@@ -17,6 +17,13 @@ import {
 import { excludePasswordFromUser } from '../utils';
 import { checkEmployeeAccess } from './useEmployeeAccess';
 
+// List of demo emails that can bypass the employee verification
+const DEMO_EMAILS = [
+  'owner@saasplatform.com',
+  'admin@school.edu',
+  'reporter@school.edu'
+];
+
 /**
  * Hook for auth operation handlers
  */
@@ -46,14 +53,19 @@ export function useAuthHandlers({
     // Check if user exists in our system
     console.log("Handling authentication for:", supabaseUser.email);
     
-    // Check if the user has admin access in employees table
-    const hasAccess = await checkEmployeeAccess(supabaseUser.email, setAuthError);
-    if (!hasAccess) {
-      console.log("Access denied: User is not an admin employee");
-      await supabase.auth.signOut();
-      toast.error("Access denied: Only admin department employees can login");
-      navigate('/login');
-      return;
+    // Check if this is a demo user - if so, bypass employee access check
+    const isDemoUser = DEMO_EMAILS.includes(supabaseUser.email);
+    
+    // Only check employee access if not a demo user
+    if (!isDemoUser) {
+      const hasAccess = await checkEmployeeAccess(supabaseUser.email, setAuthError);
+      if (!hasAccess) {
+        console.log("Access denied: User is not an admin employee");
+        await supabase.auth.signOut();
+        toast.error("Access denied: Only admin department employees can login");
+        navigate('/login');
+        return;
+      }
     }
     
     let existingUser = users.find(u => u.email.toLowerCase() === supabaseUser.email.toLowerCase());
@@ -142,12 +154,17 @@ export function useAuthHandlers({
     console.log("Login attempt:", email, password);
     
     try {
-      // Check if the user is in the employees table with admin department
-      const hasAccess = await checkEmployeeAccess(email, setAuthError);
-      if (!hasAccess) {
-        console.log("Access denied: User is not an admin employee");
-        setAuthError("Access denied: Only admin department employees can login");
-        return false;
+      // Check if this is a demo user - if so, bypass employee access check
+      const isDemoUser = DEMO_EMAILS.includes(email);
+      
+      // Only check employee access if not a demo user
+      if (!isDemoUser) {
+        const hasAccess = await checkEmployeeAccess(email, setAuthError);
+        if (!hasAccess) {
+          console.log("Access denied: User is not an admin employee");
+          setAuthError("Access denied: Only admin department employees can login");
+          return false;
+        }
       }
       
       const loggedInUser = loginUser(

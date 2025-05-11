@@ -11,6 +11,13 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
+// List of demo credentials for verification
+const DEMO_CREDENTIALS = [
+  { email: 'owner@saasplatform.com', password: 'owner123', role: 'SaaS Owner' },
+  { email: 'admin@school.edu', password: 'admin123', role: 'Admin' },
+  { email: 'reporter@school.edu', password: 'reporter123', role: 'Reporter' }
+];
+
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -119,6 +126,16 @@ const Login = () => {
   };
 
   const handleDemoLogin = async (demoEmail: string, demoPassword: string) => {
+    // First validate that this is a valid demo credential
+    const isValidDemo = DEMO_CREDENTIALS.some(cred => 
+      cred.email === demoEmail && cred.password === demoPassword
+    );
+
+    if (!isValidDemo) {
+      toast.error("Invalid demo credentials");
+      return;
+    }
+    
     setEmail(demoEmail);
     setPassword(demoPassword);
     setError("");
@@ -131,8 +148,10 @@ const Login = () => {
         // Toast is now handled in AuthContext to prevent duplicates
         navigate("/dashboard");
       } else {
-        toast.error("Demo login failed. Please try again.");
-        setError("Demo login failed. Please check the console for details.");
+        if (!authError) {
+          toast.error("Demo login failed. Please try again.");
+          setError("Demo login failed. Please check the console for details.");
+        }
         setIsLoading(false);
       }
     } catch (err) {
