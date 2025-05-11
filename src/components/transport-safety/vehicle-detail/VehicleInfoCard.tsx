@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, Calendar, Trash2 } from 'lucide-react';
+import { ShieldCheck, Calendar, Trash2, Clock, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import VehicleTypeIcon from '@/components/transport-safety/VehicleTypeIcon';
@@ -30,6 +30,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
 
 interface VehicleInfoCardProps {
   vehicle: Vehicle;
@@ -43,6 +49,7 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
   );
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showVerificationResults, setShowVerificationResults] = useState(false);
+  const [showVerificationHistory, setShowVerificationHistory] = useState(false);
   const [verificationData, setVerificationData] = useState<any>(null);
   const navigate = useNavigate();
   
@@ -99,7 +106,7 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
     
     // Get only the fields we want to display (excluding verification_log which is used for history)
     return data.transformed
-      .filter((item: any) => item.field !== 'verification_log')
+      .filter((item: any) => item.field !== 'verification_log' && item.field !== 'last_response' && item.field !== 'status')
       .map((item: any) => ({
         label: item.field.replace(/_/g, ' ').split(' ').map((word: string) => 
           word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
@@ -116,6 +123,20 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
   };
   
   const verificationLog = getVerificationLog();
+  
+  // Get verification history entries sorted by date (newest first)
+  const getVerificationHistory = () => {
+    if (!verificationLog) return [];
+    
+    return Object.entries(verificationLog)
+      .sort(([dateA], [dateB]) => new Date(dateB).getTime() - new Date(dateA).getTime())
+      .map(([date, data]) => ({
+        date,
+        data
+      }));
+  };
+  
+  const verificationHistory = getVerificationHistory();
 
   return (
     <Card>
@@ -183,16 +204,14 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
           </div>
         )}
         
-        {/* Display verification log information if available - Fix: Wrap in Dialog component */}
+        {/* Display verification actions for logs and history */}
         {verificationLog && (
-          <div className="mt-3">
+          <div className="mt-3 flex space-x-2">
             <Dialog open={showVerificationResults} onOpenChange={setShowVerificationResults}>
               <DialogTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                >
-                  View Verification Details
+                <Button variant="outline" size="sm">
+                  <Clock className="h-4 w-4 mr-2" />
+                  View Latest Verification
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-md">
@@ -219,6 +238,91 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+
+            {verificationHistory.length > 1 && (
+              <Dialog open={showVerificationHistory} onOpenChange={setShowVerificationHistory}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <History className="h-4 w-4 mr-2" />
+                    View Verification History
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-xl max-h-[80vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Verification History</DialogTitle>
+                    <DialogDescription>
+                      View past vehicle verification records.
+                    </DialogDescription>
+                  </DialogHeader>
+                  
+                  <Tabs defaultValue="latest" className="w-full">
+                    <TabsList className="grid grid-cols-2">
+                      <TabsTrigger value="latest">Latest Record</TabsTrigger>
+                      <TabsTrigger value="history">History</TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="latest" className="pt-2">
+                      <div className="text-sm font-medium mb-2">
+                        Latest verification: {verificationHistory[0].date}
+                      </div>
+                      <div className="border rounded-md divide-y">
+                        {Array.isArray(verificationHistory[0].data) ? 
+                          verificationHistory[0].data
+                            .filter((item: any) => item.field !== 'verification_log' && item.field !== 'last_response' && item.field !== 'status')
+                            .map((item: any, idx: number) => (
+                              <div key={idx} className="flex justify-between px-4 py-2">
+                                <span className="font-medium text-gray-500">
+                                  {item.field.replace(/_/g, ' ').split(' ').map((word: string) => 
+                                    word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}:
+                                </span>
+                                <span className="text-gray-900">{String(item.value)}</span>
+                              </div>
+                            ))
+                          : 
+                          <div className="px-4 py-2 text-center text-gray-500">No details available</div>
+                        }
+                      </div>
+                    </TabsContent>
+                    
+                    <TabsContent value="history" className="pt-2">
+                      <div className="space-y-4">
+                        {verificationHistory.map((entry, idx) => (
+                          <div key={idx} className="border rounded-md p-4">
+                            <h4 className="font-medium mb-2">
+                              {new Date(entry.date).toLocaleString()}
+                            </h4>
+                            <div className="text-xs text-gray-500 mb-2">
+                              Verification status: <span className={entry.data.find((i: any) => i.field === 'status')?.value === 'active' ? 'text-green-600' : 'text-amber-600'}>
+                                {String(entry.data.find((i: any) => i.field === 'status')?.value || 'Unknown').toUpperCase()}
+                              </span>
+                            </div>
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              className="w-full mt-2"
+                              onClick={() => {
+                                // Set the selected history entry as the current verification data
+                                setVerificationData({ transformed: entry.data });
+                                setShowVerificationHistory(false);
+                                setShowVerificationResults(true);
+                              }}
+                            >
+                              View Details
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                  
+                  <DialogFooter>
+                    <Button onClick={() => setShowVerificationHistory(false)}>
+                      Close
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
           </div>
         )}
       </CardContent>
