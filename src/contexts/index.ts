@@ -5,7 +5,7 @@ export * from './AuthContext';
 export * from './FacilityContext';
 export * from './ClientContext';
 export * from './StudentContext';
-export * from './auth/AuthContext';
+export * from './auth';
 export * from './assessment/AssessmentContext';
 export * from './employee-verification';
 export * from './feedback/FeedbackContext';
