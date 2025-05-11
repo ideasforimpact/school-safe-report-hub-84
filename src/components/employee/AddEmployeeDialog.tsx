@@ -1,5 +1,4 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -70,7 +69,7 @@ const AddEmployeeDialog = ({ isOpen, setIsOpen, onAddEmployee, clientId }: AddEm
   });
 
   // Update form values when clientId prop changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (clientId) {
       form.setValue('clientId', clientId);
     }
