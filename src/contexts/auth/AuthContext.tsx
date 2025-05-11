@@ -18,6 +18,7 @@ import {
 } from '@/services/auth/userManagementService';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 // Helper functions to exclude password from user objects
 const excludePasswordFromUser = (user: UserWithPassword): User => {
@@ -88,13 +89,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   
   const checkEmployeeAccess = async (email: string): Promise<boolean> => {
     try {
+      console.log("Checking access for:", email);
+      
       // Updated to check if email exists in employees table with department as admin AND status is active
       const { data, error } = await supabase
         .from('employees')
         .select('*')
         .eq('email', email)
         .eq('department', 'admin')
-        .eq('status', 'active')  // Added this line to check if the employee is active
+        .eq('status', 'active')
         .single();
       
       if (error || !data) {
@@ -128,7 +131,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.log("Access denied: User is not an admin employee");
       setAuthError("Access denied: Only admin department employees can login");
       await supabase.auth.signOut();
-      // We already redirect in checkEmployeeAccess, but adding here too for safety
       navigate('/login');
       return;
     }
@@ -151,6 +153,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(excludePasswordFromUser(updatedUser));
       saveUserToStorage(excludePasswordFromUser(updatedUser));
       console.log("User session updated");
+      toast.success(`Welcome back, ${updatedUser.firstName}!`);
     } else {
       console.log("New user via SSO, creating account");
       // For new users via SSO, create a basic account
@@ -169,7 +172,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         lastName,
         email: supabaseUser.email || '',
         password: '', // SSO users don't need passwords in our system
-        role: 'reporter', // Default role
+        role: 'admin', // Assign admin role since they've passed the employee check
         modulePermissions: {
           superAdmin: false,
           incidentReporting: true,
@@ -191,7 +194,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(excludePasswordFromUser(newUser));
       saveUserToStorage(excludePasswordFromUser(newUser));
       console.log("New user account created");
+      toast.success(`Welcome, ${firstName}!`);
     }
+    
+    // If login was successful and we got here, clear any auth errors
+    setAuthError(null);
+    
+    // Redirect to dashboard on successful login
+    navigate('/dashboard');
   };
 
   // Debug: Log current users to help debugging
@@ -234,6 +244,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(loggedInUser);
         saveUserToStorage(loggedInUser);
         setAuthError(null);
+        toast.success(`Welcome back, ${loggedInUser.firstName}!`);
         
         return true;
       }
@@ -257,6 +268,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       console.error("Supabase signout error:", error);
     }
+    
+    // Redirect to login page
+    navigate('/login');
   };
 
   const addUser = async (userData: { 

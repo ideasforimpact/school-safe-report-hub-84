@@ -99,7 +99,6 @@ const Login = () => {
         provider: 'google',
         options: {
           redirectTo: redirectTo,
-          // Don't use queryParams that might cause issues
         }
       });
       
@@ -140,6 +139,11 @@ const Login = () => {
       setError("An error occurred with demo login. Please try again.");
       setIsLoading(false);
     }
+  };
+
+  // This function would be implemented when we connect to real OAuth providers
+  const handleOAuthLogin = (provider: string) => {
+    toast.info(`${provider} authentication is not configured yet. Please use Google or email login.`);
   };
 
   return (
@@ -314,11 +318,6 @@ const Login = () => {
       </div>
     </div>
   );
-  
-  // This function would be implemented when we connect to real OAuth providers
-  const handleOAuthLogin = (provider: string) => {
-    toast.info(`${provider} authentication is not configured yet. Please use Google or email login.`);
-  };
 };
 
 export default Login;
