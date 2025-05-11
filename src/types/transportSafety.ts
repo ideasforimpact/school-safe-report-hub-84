@@ -12,7 +12,6 @@ export interface VehicleDocument {
   notes: string | null;
   lastUpdated: string;
   fileUrls: string[];
-  // Add missing fields that are being used in the code
   provider?: string;
   verificationStatus?: string;
   verificationMethod?: 'api' | 'manual';

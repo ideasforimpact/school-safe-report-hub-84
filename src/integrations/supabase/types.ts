@@ -404,6 +404,9 @@ export type Database = {
           status: string
           type: string
           updated_at: string
+          verification_data: Json | null
+          verification_date: string | null
+          verification_status: string | null
           year: number
         }
         Insert: {
@@ -419,6 +422,9 @@ export type Database = {
           status?: string
           type: string
           updated_at?: string
+          verification_data?: Json | null
+          verification_date?: string | null
+          verification_status?: string | null
           year: number
         }
         Update: {
@@ -434,6 +440,9 @@ export type Database = {
           status?: string
           type?: string
           updated_at?: string
+          verification_data?: Json | null
+          verification_date?: string | null
+          verification_status?: string | null
           year?: number
         }
         Relationships: [
