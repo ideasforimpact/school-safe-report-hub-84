@@ -108,8 +108,8 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
     }
 
     // Use the correct endpoint with proper authentication
-    const supabaseUrl = supabase.functions.url;
-    const functionUrl = `${supabaseUrl}/employee-management`;
+    // Fix: Use a direct URL instead of accessing protected properties
+    const functionUrl = "https://ybvxkiubnnixntghojyy.supabase.co/functions/v1/employee-management";
     
     console.log("Calling function with URL:", functionUrl);
     
@@ -118,7 +118,8 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${session.access_token}`,
-        'apikey': supabase.supabaseKey,
+        // Fix: Use environment variable or public value instead of protected property
+        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlidnhraXVibm5peG50Z2hvanl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3ODcxMzksImV4cCI6MjA2MjM2MzEzOX0.z8KKLi5uNyE0jxUoQtoB6M5iXr2D7hfAeXm5t1piWKo',
         'path': 'bulk-update'
       },
       body: JSON.stringify(requestBody)

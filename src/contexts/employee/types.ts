@@ -41,4 +41,5 @@ export interface EmployeeContextType {
   deleteEmployee: (id: string) => Promise<void>;
   getEmployeeById: (id: string) => Employee | undefined;
   getEmployeeByUserId: (userId: string) => Employee | undefined;
+  fetchEmployees: () => Promise<void>; // Add this missing method
 }

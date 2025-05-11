@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { Employee, EmployeeContextType } from './types';
 import { 
@@ -32,30 +31,7 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
 
   // Initialize employees from storage
   useEffect(() => {
-    const initializeEmployees = async () => {
-      try {
-        setLoading(true);
-        // First try to get employees from the API
-        const apiEmployees = await getAllEmployeesFromApi().catch(() => null);
-        
-        if (apiEmployees && apiEmployees.length > 0) {
-          setEmployees(apiEmployees);
-        } else {
-          // Fallback to local storage if API fails
-          const storedEmployees = getEmployeesFromStorage();
-          setEmployees(storedEmployees);
-        }
-      } catch (error) {
-        console.error("Error initializing employees:", error);
-        // Fallback to local storage if API fails
-        const storedEmployees = getEmployeesFromStorage();
-        setEmployees(storedEmployees);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    initializeEmployees();
+    fetchEmployees();
   }, []);
 
   // Save employees to localStorage whenever they change
@@ -64,6 +40,29 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
       saveEmployeesToStorage(employees);
     }
   }, [employees, loading]);
+
+  const fetchEmployees = async () => {
+    try {
+      setLoading(true);
+      // First try to get employees from the API
+      const apiEmployees = await getAllEmployeesFromApi().catch(() => null);
+      
+      if (apiEmployees && apiEmployees.length > 0) {
+        setEmployees(apiEmployees);
+      } else {
+        // Fallback to local storage if API fails
+        const storedEmployees = getEmployeesFromStorage();
+        setEmployees(storedEmployees);
+      }
+    } catch (error) {
+      console.error("Error initializing employees:", error);
+      // Fallback to local storage if API fails
+      const storedEmployees = getEmployeesFromStorage();
+      setEmployees(storedEmployees);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const addEmployee = async (employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
@@ -221,7 +220,8 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
       deactivateEmployee,
       deleteEmployee,
       getEmployeeById,
-      getEmployeeByUserId
+      getEmployeeByUserId,
+      fetchEmployees
     }}>
       {children}
     </EmployeeContext.Provider>
