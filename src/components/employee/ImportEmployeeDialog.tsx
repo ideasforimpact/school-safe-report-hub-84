@@ -162,7 +162,8 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
       return;
     }
 
-    // Check authentication before proceeding (demo users are always considered authenticated)
+    // Demo users are always considered authenticated
+    // Only show authentication error for non-demo users
     if (isAuthenticated === false && !isDemoUser) {
       toast.error('You must be signed in to import employees');
       return;

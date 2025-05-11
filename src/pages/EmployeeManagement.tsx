@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,6 +21,13 @@ import { toast } from 'sonner';
 import { processEmployeeExcel } from '@/services/employee/importEmployeeService';
 import { supabase } from '@/integrations/supabase/client';
 
+// List of demo emails that can bypass authentication
+const DEMO_EMAILS = [
+  'owner@saasplatform.com',
+  'admin@school.edu',
+  'reporter@school.edu'
+];
+
 const EmployeeManagement = () => {
   const { isAdmin, user } = useAuth();
   const { employees, addEmployee, updateEmployee, deleteEmployee, deactivateEmployee, fetchEmployees } = useEmployee();
@@ -32,6 +40,9 @@ const EmployeeManagement = () => {
   
   // Get clientId from user context if available
   const clientId = user?.clientId;
+  
+  // Check if this is a demo user
+  const isDemoUser = user?.email ? DEMO_EMAILS.includes(user.email) : false;
 
   useEffect(() => {
     // Log the initial state of employees
@@ -115,13 +126,14 @@ const EmployeeManagement = () => {
       const effectiveClientId = importClientId || clientId;
       console.log("Importing employees with clientId:", effectiveClientId);
       
-      // Check if we have an active Supabase session before proceeding
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData?.session) {
-        // If we don't have a session, attempt a refresh or sign in here
-        // For now, just inform the user they need to be logged in
-        toast.error("Please log in to import employees");
-        return;
+      // If this is a demo user, we can skip the session check
+      if (!isDemoUser) {
+        // Check if we have an active Supabase session before proceeding for non-demo users
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (!sessionData?.session) {
+          toast.error("Please log in to import employees");
+          return;
+        }
       }
       
       await processEmployeeExcel(file, effectiveClientId);
