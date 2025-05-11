@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,8 +16,17 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
-  const { login, authError } = useAuth();
+  const { login, authError, user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Check if user is already logged in, redirect if they are
+  useEffect(() => {
+    if (user) {
+      const from = location.state?.from?.pathname || "/dashboard";
+      navigate(from, { replace: true });
+    }
+  }, [user, navigate, location.state]);
 
   // Check for authentication redirect results and errors
   useEffect(() => {
@@ -57,7 +66,9 @@ const Login = () => {
       console.log("Attempting to log in with:", email, password);
       const success = await login(email, password);
       if (success) {
-        navigate("/dashboard");
+        // Redirect to the page they were trying to access before being redirected to login
+        const from = location.state?.from?.pathname || "/dashboard";
+        navigate(from, { replace: true });
         toast.success("Login successful!");
       } else {
         if (!authError) {
