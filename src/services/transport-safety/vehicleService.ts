@@ -105,7 +105,10 @@ export const addVehicle = async (vehicleData: Omit<Vehicle, 'id' | 'createdAt' |
       route: vehicleData.route,
       capacity: capacity,
       status: vehicleData.status,
-      client_id: vehicleData.clientId
+      client_id: vehicleData.clientId,
+      verification_status: vehicleData.verificationStatus,
+      verification_date: vehicleData.verificationDate,
+      verification_data: vehicleData.verificationData
     };
     
     const { data, error } = await supabase
@@ -134,7 +137,10 @@ export const addVehicle = async (vehicleData: Omit<Vehicle, 'id' | 'createdAt' |
       clientId: data.client_id,
       documents: [], // No documents yet as per request
       createdAt: data.created_at,
-      updatedAt: data.updated_at
+      updatedAt: data.updated_at,
+      verificationStatus: data.verification_status,
+      verificationDate: data.verification_date,
+      verificationData: data.verification_data
     };
   } catch (error) {
     console.error('Error in addVehicle:', error);
