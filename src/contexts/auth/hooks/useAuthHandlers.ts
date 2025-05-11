@@ -40,6 +40,9 @@ export function useAuthHandlers({
   const navigate = useNavigate();
 
   const handleUserAuthentication = async (supabaseUser: any) => {
+    // Clear any previous auth errors first
+    setAuthError(null);
+    
     // Check if user exists in our system
     console.log("Handling authentication for:", supabaseUser.email);
     
@@ -48,11 +51,12 @@ export function useAuthHandlers({
     if (!hasAccess) {
       console.log("Access denied: User is not an admin employee");
       await supabase.auth.signOut();
+      toast.error("Access denied: Only admin department employees can login");
       navigate('/login');
       return;
     }
     
-    let existingUser = users.find(u => u.email === supabaseUser.email);
+    let existingUser = users.find(u => u.email.toLowerCase() === supabaseUser.email.toLowerCase());
     let isNewUser = false;
     
     if (existingUser) {

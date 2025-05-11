@@ -20,8 +20,8 @@ const RouteGuard = ({
 
   useEffect(() => {
     if (!user) {
-      // Only show if not already showing an auth error
-      if (!authError) {
+      // Only show if not already showing an auth error and if we're not on the login page
+      if (!authError && location.pathname !== '/login') {
         toast.error("Please log in to access this page");
       }
     } else if (requireAdmin && !isAdmin) {
@@ -29,7 +29,7 @@ const RouteGuard = ({
     } else if (requireSaasOwner && user.role !== 'saas_owner') {
       toast.error("You need owner privileges to access this page");
     }
-  }, [user, isAdmin, requireAdmin, requireSaasOwner, authError]);
+  }, [user, isAdmin, requireAdmin, requireSaasOwner, authError, location.pathname]);
 
   // If user is not logged in, redirect to login page with the return url
   if (!user) {

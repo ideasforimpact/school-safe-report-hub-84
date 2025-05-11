@@ -36,10 +36,11 @@ export function useSupabaseAuth({
       console.log("Auth state changed:", event, session?.user?.email);
       
       if (event === 'SIGNED_IN' && session?.user) {
-        // Don't call handleUserAuthentication directly in the event handler to avoid potential deadlocks
+        // Handle potential deadlock by using setTimeout - this is important!
         setTimeout(() => {
+          console.log("Processing authenticated user:", session.user.email);
           handleUserAuthentication(session.user);
-        }, 0);
+        }, 10);
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
         setAuthError(null);
@@ -56,8 +57,9 @@ export function useSupabaseAuth({
       if (session?.user) {
         // Use setTimeout to avoid potential deadlocks
         setTimeout(() => {
+          console.log("Processing existing session user:", session.user.email);
           handleUserAuthentication(session.user);
-        }, 0);
+        }, 10);
       } else {
         // Mark auth as initialized and complete even if no session
         setIsAuthInitialized(true);

@@ -8,23 +8,41 @@ export async function checkEmployeeAccess(email: string, setAuthError: (error: s
   try {
     console.log("Checking access for:", email);
     
-    // Updated employee query to be more permissive - just check if email exists
+    // First try with exact email match
     const { data, error } = await supabase
       .from('employees')
       .select('*')
-      .eq('email', email)
+      .ilike('email', email)
       .single();
     
-    if (error) {
-      console.error("Employee access check error:", error);
-      setAuthError(`Access denied: Employee not found with email ${email}`);
-      return false;
-    }
-    
-    if (!data) {
-      console.error("No employee found with email:", email);
-      setAuthError("Access denied: No employee record found");
-      return false;
+    if (error || !data) {
+      console.log("Exact email match not found, trying with case-insensitive match");
+      
+      // Try with case-insensitive email comparison
+      const { data: caseInsensitiveData, error: caseInsensitiveError } = await supabase
+        .from('employees')
+        .select('*')
+        .ilike('email', email);
+      
+      if (caseInsensitiveError || !caseInsensitiveData || caseInsensitiveData.length === 0) {
+        console.error("Employee access check error:", error || caseInsensitiveError);
+        setAuthError(`Access denied: No employee found with email ${email}`);
+        return false;
+      }
+      
+      // Find the first active admin
+      const adminEmployee = caseInsensitiveData.find(emp => 
+        emp.department === 'admin' && emp.status === 'active'
+      );
+      
+      if (!adminEmployee) {
+        console.error("No active admin employee found with email:", email);
+        setAuthError("Access denied: Only active admin department employees can login");
+        return false;
+      }
+      
+      console.log("Found admin employee via case-insensitive search:", adminEmployee);
+      return true;
     }
     
     // Check if employee is in admin department and active
