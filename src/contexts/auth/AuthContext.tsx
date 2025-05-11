@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { User, UserRole, ModulePermissions, AuthContextType, UserWithPassword, EmployeeType, DepartmentType } from './types';
 import { useClient } from '../ClientContext';
@@ -37,6 +38,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(() => getUserFromStorage());
   const [users, setUsers] = useState<UserWithPassword[]>(() => getUsersFromStorage());
   const [authError, setAuthError] = useState<string | null>(null);
+  const [isAuthInitialized, setIsAuthInitialized] = useState(false);
 
   // Get client context to validate domains
   const { isEmailDomainAllowed } = useClient();
@@ -78,6 +80,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       if (session?.user) {
         handleUserAuthentication(session.user);
+      } else {
+        // Mark auth as initialized even if no session
+        setIsAuthInitialized(true);
       }
     });
     
@@ -136,6 +141,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
     
     let existingUser = users.find(u => u.email === supabaseUser.email);
+    let isNewUser = false;
     
     if (existingUser) {
       console.log("User found in our system:", existingUser.firstName);
@@ -153,7 +159,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(excludePasswordFromUser(updatedUser));
       saveUserToStorage(excludePasswordFromUser(updatedUser));
       console.log("User session updated");
-      toast.success(`Welcome back, ${updatedUser.firstName}!`);
     } else {
       console.log("New user via SSO, creating account");
       // For new users via SSO, create a basic account
@@ -165,6 +170,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                       'User';
       
       console.log("Creating with name:", firstName, lastName);
+      isNewUser = true;
                       
       const newUser: UserWithPassword = {
         id: supabaseUser.id,
@@ -194,11 +200,22 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(excludePasswordFromUser(newUser));
       saveUserToStorage(excludePasswordFromUser(newUser));
       console.log("New user account created");
-      toast.success(`Welcome, ${firstName}!`);
     }
     
     // If login was successful and we got here, clear any auth errors
     setAuthError(null);
+    
+    // Only show welcome toast the first time, not on every auth change
+    if (!isAuthInitialized) {
+      if (isNewUser) {
+        toast.success(`Welcome, ${existingUser?.firstName || supabaseUser.user_metadata?.name?.split(' ')?.[0] || 'New User'}!`);
+      } else {
+        toast.success(`Welcome back, ${existingUser?.firstName || supabaseUser.user_metadata?.name?.split(' ')?.[0] || 'User'}!`);
+      }
+    }
+    
+    // Mark auth as initialized to prevent duplicate toasts
+    setIsAuthInitialized(true);
     
     // Redirect to dashboard on successful login
     navigate('/dashboard');
@@ -244,7 +261,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setUser(loggedInUser);
         saveUserToStorage(loggedInUser);
         setAuthError(null);
-        toast.success(`Welcome back, ${loggedInUser.firstName}!`);
+        
+        // Toast is now handled by the auth state change listener
         
         return true;
       }

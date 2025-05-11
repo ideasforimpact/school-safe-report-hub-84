@@ -69,7 +69,7 @@ const Login = () => {
         // Redirect to the page they were trying to access before being redirected to login
         const from = location.state?.from?.pathname || "/dashboard";
         navigate(from, { replace: true });
-        toast.success("Login successful!");
+        // Toast is now handled in AuthContext to prevent duplicates
       } else {
         if (!authError) {
           setError("Invalid email or password");
@@ -127,7 +127,7 @@ const Login = () => {
       console.log("Using demo credentials:", demoEmail, demoPassword);
       const success = await login(demoEmail, demoPassword);
       if (success) {
-        toast.success("Demo login successful!");
+        // Toast is now handled in AuthContext to prevent duplicates
         navigate("/dashboard");
       } else {
         toast.error("Demo login failed. Please try again.");
