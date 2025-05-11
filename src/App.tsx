@@ -2,12 +2,11 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
-import { AuthProvider } from '@/contexts/auth'; // Updated import path
+import { AuthProvider } from '@/contexts/auth'; 
 import { ClientProvider } from '@/contexts/ClientContext';
 import { EmployeeProvider } from './contexts/employee/EmployeeContext';
 import { StudentProvider } from './contexts/StudentContext';
 import { IncidentProvider } from './contexts/IncidentContext';
-import RouteGuard from './components/RouteGuard';
 
 // Pages
 import Dashboard from '@/pages/Dashboard';
@@ -35,18 +34,16 @@ function App() {
                 <Route path="/home" element={<Home />} />
                 <Route path="/pricing" element={<Pricing />} />
                 
-                {/* Protected routes - wrapped with RouteGuard */}
-                <Route element={<RouteGuard />}>
-                  <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                  <Route path="/dashboard" element={<Dashboard />} />
-                  <Route path="/users" element={<UserManagement />} />
-                  <Route path="/clients" element={<ClientManagement />} />
-                  <Route path="/employees" element={<EmployeeManagement />} />
-                  <Route path="/students" element={<StudentManagement />} />
-                  <Route path="/educational-configuration" element={<EducationalConfiguration />} />
-                  <Route path="/other-configuration" element={<OtherConfiguration />} />
-                  <Route path="/facilities-configuration" element={<EducationalConfiguration />} />
-                </Route>
+                {/* Routes that were previously protected - now public */}
+                <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/users" element={<UserManagement />} />
+                <Route path="/clients" element={<ClientManagement />} />
+                <Route path="/employees" element={<EmployeeManagement />} />
+                <Route path="/students" element={<StudentManagement />} />
+                <Route path="/educational-configuration" element={<EducationalConfiguration />} />
+                <Route path="/other-configuration" element={<OtherConfiguration />} />
+                <Route path="/facilities-configuration" element={<EducationalConfiguration />} />
 
                 {/* 404 route */}
                 <Route path="*" element={<NotFound />} />
