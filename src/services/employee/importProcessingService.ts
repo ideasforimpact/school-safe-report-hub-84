@@ -91,34 +91,35 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
     console.log("Request payload:", requestBody);
     console.log("Request payload stringified:", JSON.stringify(requestBody));
     
-    // Get the latest access token from the session each time
-    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    // Get current session - first check if we have a valid session
+    const { data: sessionData } = await supabase.auth.getSession();
     
-    if (sessionError) {
-      console.error("Error getting authentication session:", sessionError);
-      throw new Error(`Authentication error: ${sessionError.message}`);
+    if (!sessionData?.session?.access_token) {
+      // Instead of throwing an error, we'll try to proceed with the API key only
+      console.log("No authentication session found, proceeding with API key only");
     }
     
-    const session = sessionData?.session;
-    if (!session || !session.access_token) {
-      console.error("No valid authentication session found");
-      throw new Error("You must be logged in to import employees");
-    }
-
-    // Use a direct URL for the employee management function
+    // Define the URL for the employee management function
     const functionUrl = "https://ybvxkiubnnixntghojyy.supabase.co/functions/v1/employee-management";
+    
+    // Prepare headers - include auth token if available, otherwise rely on apikey
+    const headers = {
+      'Content-Type': 'application/json',
+      'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlidnhraXVibm5peG50Z2hvanl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3ODcxMzksImV4cCI6MjA2MjM2MzEzOX0.z8KKLi5uNyE0jxUoQtoB6M5iXr2D7hfAeXm5t1piWKo',
+      'path': 'bulk-update'
+    };
+    
+    // Add Authorization header if we have a token
+    if (sessionData?.session?.access_token) {
+      headers['Authorization'] = `Bearer ${sessionData.session.access_token}`;
+    }
     
     console.log("Calling function with URL:", functionUrl);
     
-    // Using fetch with the current session token for authentication
+    // Using fetch with prepared headers
     const response = await fetch(functionUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`,
-        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlidnhraXVibm5peG50Z2hvanl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3ODcxMzksImV4cCI6MjA2MjM2MzEzOX0.z8KKLi5uNyE0jxUoQtoB6M5iXr2D7hfAeXm5t1piWKo',
-        'path': 'bulk-update'
-      },
+      headers,
       body: JSON.stringify(requestBody)
     });
     

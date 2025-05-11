@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -19,6 +18,7 @@ import ImportEmployeeDialog from '@/components/employee/ImportEmployeeDialog';
 import { Employee } from '@/contexts/employee/types';
 import { toast } from 'sonner';
 import { processEmployeeExcel } from '@/services/employee/importEmployeeService';
+import { supabase } from '@/lib/supabase';
 
 const EmployeeManagement = () => {
   const { isAdmin, user } = useAuth();
@@ -107,12 +107,22 @@ const EmployeeManagement = () => {
     }
   };
 
+  // Handler for importing employees
   const handleImportEmployees = async (file: File, importClientId?: string) => {
     setIsLoading(true);
     try {
       // Use the provided clientId or fall back to the user's clientId
       const effectiveClientId = importClientId || clientId;
       console.log("Importing employees with clientId:", effectiveClientId);
+      
+      // Check if we have an active Supabase session before proceeding
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData?.session) {
+        // If we don't have a session, attempt a refresh or sign in here
+        // For now, just inform the user they need to be logged in
+        toast.error("Please log in to import employees");
+        return;
+      }
       
       await processEmployeeExcel(file, effectiveClientId);
       // After import, refresh the employee list
@@ -121,7 +131,7 @@ const EmployeeManagement = () => {
       setIsImportDialogOpen(false);
     } catch (error) {
       console.error("Import process failed:", error);
-      toast.error("Failed to process employee import");
+      toast.error(`Failed to process employee import: ${(error as Error).message || 'Unknown error'}`);
       throw error; // Rethrow to handle in the component
     } finally {
       setIsLoading(false);

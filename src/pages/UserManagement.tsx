@@ -471,6 +471,16 @@ const UserManagement = () => {
       setIsLoading(true);
       console.log("Importing employees with clientId:", clientId);
       
+      // Check if we have an active Supabase session before proceeding
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData?.session) {
+        // If we don't have a session, attempt a refresh or sign in here
+        // For now, just inform the user they need to be logged in
+        toast.error("Please log in to import employees");
+        setIsLoading(false);
+        return;
+      }
+      
       await processEmployeeExcel(file, clientId);
       
       // Refresh the employee list after successful import
@@ -479,7 +489,7 @@ const UserManagement = () => {
       setIsImportDialogOpen(false);
     } catch (error) {
       console.error("Import process failed:", error);
-      toast.error("Failed to process employee import");
+      toast.error(`Failed to process employee import: ${(error as Error).message || 'Unknown error'}`);
     } finally {
       setIsLoading(false);
     }
