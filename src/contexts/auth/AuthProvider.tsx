@@ -1,5 +1,5 @@
 
-import React, { createContext, ReactNode, useEffect } from 'react';
+import React, { createContext, ReactNode, useEffect, useRef } from 'react';
 import { User, UserWithPassword, AuthContextType } from './types';
 import { useClient } from '../ClientContext';
 import { useAuthState } from './hooks/useAuthState';
@@ -24,6 +24,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsAuthInitialized,
     authInitCompleteRef
   } = useAuthState();
+  
+  // Track if we've already logged users
+  const hasLoggedUsersRef = useRef(false);
   
   // Get client context to validate domains
   const { isEmailDomainAllowed } = useClient();
@@ -66,8 +69,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Debug: Log current users only once after initialization
   useEffect(() => {
-    if (isAuthInitialized) {
+    if (isAuthInitialized && !hasLoggedUsersRef.current) {
       console.log("Current users in AuthContext:", users);
+      hasLoggedUsersRef.current = true;
     }
   }, [isAuthInitialized, users]);
 

@@ -26,10 +26,16 @@ export function useSupabaseAuth({
   handleUserAuthentication: (supabaseUser: any) => Promise<void>;
 }) {
   const navigate = useNavigate();
-  const authListenerRef = useRef<{ subscription?: { unsubscribe: () => void } }>({}); 
+  const authListenerRef = useRef<{ subscription?: { unsubscribe: () => void } }>({});
+  const initDoneRef = useRef(false);
 
-  // Set up Supabase auth listener
+  // Set up Supabase auth listener - only once
   useEffect(() => {
+    // Skip if we've already initialized
+    if (initDoneRef.current) {
+      return;
+    }
+    
     console.log("Setting up Supabase auth listener");
     
     // Clean up any existing subscription to prevent duplicates
@@ -75,6 +81,9 @@ export function useSupabaseAuth({
         setIsAuthInitialized(true);
         authInitCompleteRef.current = true;
       }
+      
+      // Mark initialization as done
+      initDoneRef.current = true;
     });
     
     // Return cleanup function that will run when component unmounts
