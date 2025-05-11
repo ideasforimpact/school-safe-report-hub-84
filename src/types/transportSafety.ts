@@ -18,6 +18,12 @@ export interface VehicleDocument {
   verificationDate?: string;
 }
 
+export interface VehicleVerificationData {
+  field: string;
+  value: string | number | boolean;
+  verified: boolean;
+}
+
 export interface Vehicle {
   id: string;
   registrationNumber: string;
@@ -35,5 +41,5 @@ export interface Vehicle {
   updatedAt: string;
   verificationStatus?: string;
   verificationDate?: string;
-  verificationData?: any;
+  verificationData?: VehicleVerificationData[];
 }

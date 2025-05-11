@@ -60,15 +60,44 @@ serve(async (req) => {
         }
       );
     }
+    
+    // Transform the Surepass data into the required format
+    // Creating an array of objects with field details
+    const transformedData = [];
+    if (surepassData.data) {
+      const data = surepassData.data;
+      
+      // Add each field as a separate object in the array
+      Object.keys(data).forEach(key => {
+        if (data[key] !== null) {
+          transformedData.push({
+            field: key,
+            value: data[key],
+            verified: true
+          });
+        }
+      });
+    }
+    
+    // Generate verification status based on response
+    let verificationStatus = 'verified';
+    if (transformedData.length === 0) {
+      verificationStatus = 'failed';
+    } else if (surepassData.success === false) {
+      verificationStatus = 'incomplete';
+    }
+    
+    // Current date and time for verification_date
+    const verificationDate = new Date().toISOString();
 
     // If we have a vehicleId, update the vehicle record with verification data
     if (vehicleId) {
       const { data: updateData, error: updateError } = await supabase
         .from('vehicles')
         .update({
-          verification_data: surepassData,
-          verification_status: 'verified',
-          verification_date: new Date().toISOString()
+          verification_data: transformedData,
+          verification_status: verificationStatus,
+          verification_date: verificationDate
         })
         .eq('id', vehicleId)
         .select()
@@ -84,7 +113,12 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        data: surepassData
+        data: {
+          original: surepassData,
+          transformed: transformedData,
+          status: verificationStatus,
+          verificationDate: verificationDate
+        }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

@@ -69,9 +69,9 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
       
       // Update the vehicle in context with verification data
       updateVehicle(vehicleId, {
-        verificationStatus: 'verified',
-        verificationDate: new Date().toISOString(),
-        verificationData: data.data
+        verificationStatus: data.data.status,
+        verificationDate: data.data.verificationDate,
+        verificationData: data.data.transformed
       });
       
       // Process documents if they exist
@@ -94,22 +94,14 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
   };
   
   const formatVerificationData = (data: any) => {
-    if (!data) return [];
+    if (!data || !data.transformed) return [];
     
-    // Extract useful information from the Surepass response
-    const fields = [
-      { label: 'Registration Number', value: data.result?.registration_number || 'N/A' },
-      { label: 'Owner Name', value: data.result?.owner_name || 'N/A' },
-      { label: 'Vehicle Class', value: data.result?.vehicle_class || 'N/A' },
-      { label: 'Manufacturer', value: data.result?.manufacturer || 'N/A' },
-      { label: 'Model', value: data.result?.model || 'N/A' },
-      { label: 'Fuel Type', value: data.result?.fuel_type || 'N/A' },
-      { label: 'Registration Date', value: data.result?.registration_date || 'N/A' },
-      { label: 'Fitness Upto', value: data.result?.fitness_upto || 'N/A' },
-      { label: 'Insurance Upto', value: data.result?.insurance_upto || 'N/A' },
-    ];
-    
-    return fields;
+    // Use the transformed data which is now an array of objects
+    return data.transformed.map((item: any) => ({
+      label: item.field.replace(/_/g, ' ').split(' ').map((word: string) => 
+        word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
+      value: item.value
+    }));
   };
 
   return (
@@ -199,7 +191,7 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
           </DialogHeader>
           
           <div className="border rounded-md divide-y">
-            {formatVerificationData(verificationData).map((field, index) => (
+            {formatVerificationData(verificationData).map((field: any, index: number) => (
               <div key={index} className="flex justify-between px-4 py-2">
                 <span className="font-medium text-gray-500">{field.label}:</span>
                 <span className="text-gray-900">{field.value}</span>
