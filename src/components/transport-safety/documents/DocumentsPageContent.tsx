@@ -12,11 +12,43 @@ import { Plus } from 'lucide-react';
 
 const DocumentsPageContent: React.FC = () => {
   const { vehicleId } = useParams<{ vehicleId: string }>();
-  const { getVehicle } = useTransportSafety();
+  const { getVehicle, vehicles } = useTransportSafety();
   const [showAddDocument, setShowAddDocument] = useState(false);
   
-  const vehicle = getVehicle(vehicleId!);
+  const vehicle = vehicleId ? getVehicle(vehicleId) : null;
+  
+  // If no specific vehicle ID is provided, show all documents or a default view
+  if (!vehicleId) {
+    return (
+      <div className="container mx-auto py-6 max-w-7xl">
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center">
+            <Button asChild variant="ghost" className="mr-4">
+              <Link to="/transport-safety">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Transport Safety
+              </Link>
+            </Button>
+            <h1 className="text-2xl font-bold">All Documents</h1>
+          </div>
+        </div>
+        
+        {/* Display all documents from all vehicles */}
+        <div className="grid gap-6">
+          {vehicles.map(v => (
+            <div key={v.id} className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
+              <h2 className="text-xl font-medium mb-4">
+                {v.make} {v.model} ({v.registrationNumber})
+              </h2>
+              <DocumentsList documents={v.documents} vehicleId={v.id} />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
+  // If vehicle ID is provided but vehicle not found
   if (!vehicle) {
     return <DocumentsNotFound />;
   }
@@ -46,14 +78,14 @@ const DocumentsPageContent: React.FC = () => {
       <h1 className="text-2xl font-bold mb-2">Documents for {make} {model}</h1>
       <p className="text-gray-500 mb-6">Registration Number: {registrationNumber}</p>
 
-      <DocumentsList documents={documents} vehicleId={vehicleId!} />
+      <DocumentsList documents={documents} vehicleId={vehicleId} />
 
       <Dialog open={showAddDocument} onOpenChange={(isOpen) => { if (!isOpen) setShowAddDocument(false); }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Add Document</DialogTitle>
           </DialogHeader>
-          <AddDocumentForm vehicleId={vehicleId!} onClose={() => setShowAddDocument(false)} />
+          <AddDocumentForm vehicleId={vehicleId} onClose={() => setShowAddDocument(false)} />
         </DialogContent>
       </Dialog>
     </div>

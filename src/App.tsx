@@ -50,8 +50,9 @@ function App() {
 
                 {/* Transport Safety routes */}
                 <Route path="/transport-safety" element={<TransportSafetyPage />} />
-                <Route path="/transport-safety/:vehicleId" element={<VehicleDetailPage />} />
                 <Route path="/transport-safety/documents" element={<DocumentsPage />} />
+                <Route path="/transport-safety/:vehicleId" element={<VehicleDetailPage />} />
+                <Route path="/transport-safety/:vehicleId/documents" element={<DocumentsPage />} />
 
                 {/* 404 route */}
                 <Route path="*" element={<NotFound />} />
