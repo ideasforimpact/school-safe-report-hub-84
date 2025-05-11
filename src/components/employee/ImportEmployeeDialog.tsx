@@ -126,10 +126,12 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
         toast.info(`Processing ${recordCount} records. This may take a moment...`);
       }
       
-      // Fix: Make sure clientId is passed to the import function
+      console.log("Using clientId:", effectiveClientId);
+      
+      // Pass clientId to the import function
       await onImportEmployees(file, effectiveClientId);
       
-      // Don't call handleDialogClose directly to avoid stack overflow
+      // Reset state and close dialog after successful import
       setFile(null);
       setIsValidated(false);
       setValidationErrors([]);
@@ -137,6 +139,7 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
       setIsOpen(false);
     } catch (error) {
       console.error('Import failed:', error);
+      // Don't close dialog on error so user can try again
     } finally {
       setIsLoading(false);
     }

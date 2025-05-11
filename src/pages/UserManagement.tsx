@@ -14,7 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
-import { UserPlus, FileUp } from 'lucide-react';
+import { UserPlus, FileUp, RefreshCw } from 'lucide-react';
 import { User, UserRole, ModulePermissions, EmployeeType, DepartmentType } from '@/contexts/auth/types';
 import { EmploymentStatus, EmployeeType as EmployeeContextType, DepartmentType as EmployeeContextDepartmentType } from '@/contexts/employee/types';
 import { toast } from "sonner";
@@ -58,14 +58,17 @@ const convertDepartmentType = (department: EmployeeContextDepartmentType): Depar
 };
 
 const UserManagement = () => {
-  const { isAdmin, users = [] } = useAuth();
-  const { addEmployee, deactivateEmployee } = useEmployee();
+  const { isAdmin, users = [], user } = useAuth();
+  const { addEmployee, deactivateEmployee, fetchEmployees } = useEmployee();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [employeeUsers, setEmployeeUsers] = useState<User[]>([]);
+  
+  // Get clientId from user context
+  const clientId = user?.clientId;
   
   // Default form data for the user forms
   const [formData, setFormData] = useState<{
@@ -98,49 +101,49 @@ const UserManagement = () => {
 
   // Fetch employees from Supabase and map them to User format
   useEffect(() => {
-    const fetchEmployees = async () => {
-      try {
-        setIsLoading(true);
-        const employeeData = await getAllEmployeesFromApi();
-        
-        if (employeeData && employeeData.length > 0) {
-          // Process each employee to get their module permissions
-          const processedUsers = await Promise.all(employeeData.map(async employee => {
-            // Fetch module permissions for this employee
-            const modulePermissions = await getEmployeeModulePermissions(employee.id);
-            
-            return {
-              id: employee.id,
-              firstName: employee.firstName,
-              lastName: employee.lastName,
-              email: employee.email,
-              employeeId: employee.employeeId,
-              employeeType: employee.employeeType as any, // Type conversion handled by helper function
-              department: employee.department as any, // Type conversion handled by helper function
-              joiningDate: employee.joiningDate,
-              role: modulePermissions.superAdmin ? 'admin' : 'reporter' as UserRole,
-              modulePermissions: modulePermissions,
-              isActive: employee.status === 'active',
-              createdAt: employee.createdAt || new Date().toISOString(),
-            };
-          }));
-
-          setEmployeeUsers(processedUsers);
-          console.log("Fetched employees:", processedUsers);
-        } else {
-          console.log("No employees found or error fetching employees");
-          setEmployeeUsers([]);
-        }
-      } catch (error) {
-        console.error("Error fetching employees:", error);
-        toast.error("Failed to fetch employee data");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchEmployees();
+    fetchEmployeesList();
   }, []);
+
+  const fetchEmployeesList = async () => {
+    try {
+      setIsLoading(true);
+      const employeeData = await getAllEmployeesFromApi();
+      
+      if (employeeData && employeeData.length > 0) {
+        // Process each employee to get their module permissions
+        const processedUsers = await Promise.all(employeeData.map(async employee => {
+          // Fetch module permissions for this employee
+          const modulePermissions = await getEmployeeModulePermissions(employee.id);
+          
+          return {
+            id: employee.id,
+            firstName: employee.firstName,
+            lastName: employee.lastName,
+            email: employee.email,
+            employeeId: employee.employeeId,
+            employeeType: employee.employeeType as any, // Type conversion handled by helper function
+            department: employee.department as any, // Type conversion handled by helper function
+            joiningDate: employee.joiningDate,
+            role: modulePermissions.superAdmin ? 'admin' : 'reporter' as UserRole,
+            modulePermissions: modulePermissions,
+            isActive: employee.status === 'active',
+            createdAt: employee.createdAt || new Date().toISOString(),
+          };
+        }));
+
+        setEmployeeUsers(processedUsers);
+        console.log("Fetched employees:", processedUsers);
+      } else {
+        console.log("No employees found or error fetching employees");
+        setEmployeeUsers([]);
+      }
+    } catch (error) {
+      console.error("Error fetching employees:", error);
+      toast.error("Failed to fetch employee data");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Handler for adding a new user
   const handleAddUser = async () => {
@@ -466,13 +469,31 @@ const UserManagement = () => {
   const handleImportEmployees = async (file: File) => {
     try {
       setIsLoading(true);
-      await processEmployeeExcel(file);
+      console.log("Importing employees with clientId:", clientId);
+      
+      await processEmployeeExcel(file, clientId);
+      
+      // Refresh the employee list after successful import
+      await fetchEmployeesList();
       toast.success("Employees imported successfully");
-      // Refresh employees list after import
-      await refreshEmployeesList();
+      setIsImportDialogOpen(false);
     } catch (error) {
       console.error("Import process failed:", error);
       toast.error("Failed to process employee import");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle refresh button click
+  const handleRefreshEmployeesList = async () => {
+    try {
+      setIsLoading(true);
+      await fetchEmployeesList();
+      toast.success("Employee list refreshed");
+    } catch (error) {
+      console.error("Failed to refresh employees:", error);
+      toast.error("Failed to refresh employee list");
     } finally {
       setIsLoading(false);
     }
@@ -518,11 +539,22 @@ const UserManagement = () => {
         </div>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Users</CardTitle>
-            <CardDescription>
-              Manage system users and their permissions
-            </CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Users</CardTitle>
+              <CardDescription>
+                Manage system users and their permissions
+              </CardDescription>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleRefreshEmployeesList}
+              disabled={isLoading}
+              title="Refresh employee list"
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            </Button>
           </CardHeader>
           <CardContent>
             {isLoading ? (
@@ -568,6 +600,7 @@ const UserManagement = () => {
         isOpen={isImportDialogOpen}
         setIsOpen={setIsImportDialogOpen}
         onImportEmployees={handleImportEmployees}
+        clientId={clientId}
       />
     </Layout>
   );

@@ -91,9 +91,7 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
     console.log("Request payload:", requestBody);
     console.log("Request payload stringified:", JSON.stringify(requestBody));
     
-    // FIX: Use the correct API endpoint and ensure we're using the proper authentication
-    // Instead of using Functions.invoke which may have issues with auth token, use the REST API directly
-    // Make sure to get the latest access token from the session each time
+    // Get the latest access token from the session each time
     const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
     
     if (sessionError) {
@@ -107,18 +105,17 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
       throw new Error("You must be logged in to import employees");
     }
 
-    // Use the correct endpoint with proper authentication
-    // Fix: Use a direct URL instead of accessing protected properties
+    // Use a direct URL for the employee management function
     const functionUrl = "https://ybvxkiubnnixntghojyy.supabase.co/functions/v1/employee-management";
     
     console.log("Calling function with URL:", functionUrl);
     
+    // Using fetch with the current session token for authentication
     const response = await fetch(functionUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${session.access_token}`,
-        // Fix: Use environment variable or public value instead of protected property
         'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlidnhraXVibm5peG50Z2hvanl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3ODcxMzksImV4cCI6MjA2MjM2MzEzOX0.z8KKLi5uNyE0jxUoQtoB6M5iXr2D7hfAeXm5t1piWKo',
         'path': 'bulk-update'
       },
