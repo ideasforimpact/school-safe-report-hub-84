@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShieldCheck, Calendar, Trash2, Clock } from 'lucide-react';
@@ -200,7 +199,7 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
                   View Latest Verification
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-md">
+              <DialogContent className="sm:max-w-md max-h-[80vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Vehicle Verification Results</DialogTitle>
                   <DialogDescription>
@@ -208,7 +207,7 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
                   </DialogDescription>
                 </DialogHeader>
                 
-                <div className="border rounded-md divide-y">
+                <div className="border rounded-md divide-y overflow-y-auto">
                   {formatVerificationData(latestVerificationData).map((field: any, index: number) => (
                     <div key={index} className="flex justify-between px-4 py-2">
                       <span className="font-medium text-gray-500">{field.label}:</span>
