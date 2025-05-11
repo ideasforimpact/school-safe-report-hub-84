@@ -2,7 +2,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
-import { AuthProvider } from '@/contexts/auth/AuthContext';
+import { AuthProvider } from '@/contexts/auth'; // Updated import path
 import { ClientProvider } from '@/contexts/ClientContext';
 import { EmployeeProvider } from './contexts/employee/EmployeeContext';
 import { StudentProvider } from './contexts/StudentContext';

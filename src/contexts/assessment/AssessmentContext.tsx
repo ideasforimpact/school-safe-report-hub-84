@@ -1,6 +1,5 @@
-
 import React, { createContext, useContext, useEffect } from 'react';
-import { useAuth } from '../auth/AuthContext';
+import { useAuth } from '../auth';
 import { AssessmentContextType } from './types';
 import { useTemplateManagement } from './hooks/useTemplateManagement';
 import { useQuestionManagement } from './hooks/useQuestionManagement';
