@@ -48,7 +48,7 @@ const EmployeeManagement = () => {
     // Log the initial state of employees
     console.log("Employee management loaded with employees:", employees);
     console.log("Current user clientId:", clientId);
-  }, [employees]);
+  }, [employees, clientId]);
 
   if (!isAdmin) {
     return (
@@ -92,14 +92,17 @@ const EmployeeManagement = () => {
 
   const handleAddEmployee = async (employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
-      console.log("Adding employee with data:", employeeData);
-      // Ensure clientId is set
-      const dataWithClientId = {
-        ...employeeData,
-        clientId: employeeData.clientId || clientId
-      };
-      console.log("Final employee data with clientId:", dataWithClientId);
-      await addEmployee(dataWithClientId);
+      console.log("Adding employee with data before clientId check:", employeeData);
+      
+      // Ensure clientId is set, using the current user's clientId if available
+      // We'll explicitly set it here if it's missing to make the flow more robust
+      if (!employeeData.clientId && clientId) {
+        employeeData.clientId = clientId;
+        console.log("Set clientId from user context:", clientId);
+      }
+      
+      console.log("Final employee data with clientId:", employeeData);
+      await addEmployee(employeeData);
       toast.success("Employee added successfully");
     } catch (error) {
       console.error("Failed to add employee:", error);
@@ -226,7 +229,7 @@ const EmployeeManagement = () => {
         </Card>
       </div>
 
-      {/* Add Employee Dialog */}
+      {/* Add Employee Dialog - Pass clientId explicitly */}
       <AddEmployeeDialog 
         isOpen={isAddDialogOpen}
         setIsOpen={setIsAddDialogOpen}

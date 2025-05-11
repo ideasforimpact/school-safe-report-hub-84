@@ -11,6 +11,11 @@ export const addEmployeeToApi = async (
     // Convert the Employee object to match the database schema
     const dbEmployee = mapEmployeeToDbRecord(employeeData);
 
+    // Log the mapped DB employee data for debugging
+    console.log("Adding employee to API with data:", dbEmployee);
+    console.log("Original clientId:", employeeData.clientId);
+    console.log("Mapped client_id:", dbEmployee.client_id);
+
     // Explicitly define required fields for Supabase insert to prevent type error
     const { data, error } = await supabase
       .from('employees')
@@ -23,6 +28,7 @@ export const addEmployeeToApi = async (
         department: dbEmployee.department,
         joining_date: dbEmployee.joining_date,
         status: dbEmployee.status,
+        client_id: dbEmployee.client_id, // Explicitly include client_id
         user_id: dbEmployee.user_id
       })
       .select('*')
@@ -34,6 +40,7 @@ export const addEmployeeToApi = async (
       throw error;
     }
 
+    console.log("Employee added to API successfully:", data);
     toast.success("Employee added successfully");
     
     // Convert the response back to our Employee type

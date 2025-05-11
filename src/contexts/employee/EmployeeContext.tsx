@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { Employee, EmployeeContextType } from './types';
 import { 
@@ -68,14 +69,16 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
     try {
       setLoading(true);
       
-      // Log the incoming data to debug clientId issues
+      // Enhanced logging for clientId debugging
       console.log("EmployeeContext: Adding employee with data:", employeeData);
+      console.log("clientId value:", employeeData.clientId);
+      console.log("typeof clientId:", typeof employeeData.clientId);
       
       // Try to add employee to API first
       try {
         // Make sure clientId is included in the request
         if (!employeeData.clientId) {
-          console.warn("Adding employee without clientId! This might cause issues.");
+          console.warn("Adding employee without clientId! This might cause issues with database foreign key constraints.");
         }
         
         const newEmployee = await addEmployeeToApi(employeeData);
@@ -89,6 +92,7 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
         
         // Log the new employee with its ID and clientId
         console.log("Employee added successfully:", newEmployee);
+        console.log("New employee clientId:", newEmployee.clientId);
         
         setEmployees(prev => [...prev, newEmployee]);
         return;

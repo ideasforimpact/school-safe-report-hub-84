@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useForm } from 'react-hook-form';
@@ -54,6 +55,9 @@ interface AddEmployeeDialogProps {
 const AddEmployeeDialog = ({ isOpen, setIsOpen, onAddEmployee, clientId }: AddEmployeeDialogProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Log the clientId prop to verify what's being received
+  console.log("AddEmployeeDialog received clientId:", clientId);
+  
   const form = useForm<FormValues>({
     resolver: zodResolver(employeeSchema),
     defaultValues: {
@@ -64,13 +68,14 @@ const AddEmployeeDialog = ({ isOpen, setIsOpen, onAddEmployee, clientId }: AddEm
       employeeType: 'permanent',
       department: 'admin',
       joiningDate: new Date().toISOString().split('T')[0],
-      clientId: clientId, // Set default clientId from props
+      clientId: clientId || '', // Set default clientId from props
     },
   });
 
   // Update form values when clientId prop changes
   useEffect(() => {
     if (clientId) {
+      console.log("Setting clientId in form:", clientId);
       form.setValue('clientId', clientId);
     }
   }, [clientId, form]);
@@ -84,7 +89,7 @@ const AddEmployeeDialog = ({ isOpen, setIsOpen, onAddEmployee, clientId }: AddEm
   const handleSubmit = async (values: FormValues) => {
     setIsSubmitting(true);
     try {
-      // Fix: Ensure all required fields from Employee type are provided
+      // Ensure clientId is included in the employee data
       const employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'> = {
         employeeId: values.employeeId,
         firstName: values.firstName,
@@ -94,7 +99,7 @@ const AddEmployeeDialog = ({ isOpen, setIsOpen, onAddEmployee, clientId }: AddEm
         department: values.department as DepartmentType,
         joiningDate: values.joiningDate,
         status: 'active',
-        clientId: values.clientId || clientId, // Ensure clientId is set
+        clientId: values.clientId || clientId, // Ensure clientId is set from either form or props
       };
       
       console.log("Adding employee with data:", employeeData);
@@ -240,8 +245,20 @@ const AddEmployeeDialog = ({ isOpen, setIsOpen, onAddEmployee, clientId }: AddEm
                 </FormItem>
               )}
             />
-            {/* Hidden clientId field that gets set from props */}
-            <input type="hidden" {...form.register('clientId')} />
+            {/* Add a hidden field for clientId but make it visible during development */}
+            <FormField
+              control={form.control}
+              name="clientId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Client ID (hidden)</FormLabel>
+                  <FormControl>
+                    <Input {...field} disabled={!!clientId} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <DialogFooter>
               <Button 
