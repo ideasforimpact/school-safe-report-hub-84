@@ -32,6 +32,9 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
   const [recordCount, setRecordCount] = useState<number | null>(null);
   const { user } = useAuth();
 
+  // Get clientId from user context if not provided as prop
+  const effectiveClientId = clientId || user?.clientId;
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
@@ -123,7 +126,8 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
         toast.info(`Processing ${recordCount} records. This may take a moment...`);
       }
       
-      await onImportEmployees(file, clientId);
+      // Fix: Make sure clientId is passed to the import function
+      await onImportEmployees(file, effectiveClientId);
       handleDialogClose();
     } catch (error) {
       console.error('Import failed:', error);
@@ -150,7 +154,7 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Import Employees</DialogTitle>
           <DialogDescription>

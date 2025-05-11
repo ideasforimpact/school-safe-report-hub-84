@@ -19,6 +19,7 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
   };
 
   console.log("Processing employee data:", rawData);
+  console.log("Using clientId:", clientId); // Log clientId for debugging
   
   try {
     // Prepare employee data
@@ -37,7 +38,7 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
           throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
         }
         
-        // Set default module permissions for each employee
+        // Set default module permissions for all imported employees
         const modulePermissions: ModulePermissions = {
           superAdmin: false,
           incidentReporting: true, // Enable Incident Reporting by default as requested
@@ -50,7 +51,8 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
           eduSafeResourceAccess: false
         };
         
-        // Return the employee data, preserving original values from Excel
+        // Add default module permissions to each employee record
+        // and normalize/validate employee data fields
         return {
           employeeId: String(row.employeeId),
           firstName: String(row.firstName),
@@ -61,7 +63,7 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
           department: String(row.department),
           joiningDate: String(row.joiningDate),
           status: String(row.status),
-          clientId: clientId, // Add clientId if provided
+          clientId: clientId, // Ensure clientId is passed through
           modulePermissions: modulePermissions
         };
       } catch (error) {
@@ -77,10 +79,13 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
       return result;
     }
     
-    console.log(`Sending ${employees.length} employees for bulk processing`);
+    console.log(`Sending ${employees.length} employees for bulk processing with clientId: ${clientId}`);
 
     // Create proper request body and log it before sending
-    const requestBody = { employees };
+    const requestBody = { 
+      employees,
+      clientId // Include clientId in the request body explicitly
+    };
     
     // Log the request body as a string to verify its content
     console.log("Request payload:", requestBody);
@@ -207,6 +212,7 @@ const transformEmployeeData = (dbEmployee: any): Employee => {
     joiningDate: dbEmployee.joining_date,
     status: dbEmployee.status,
     modulePermissions: dbEmployee.modulePermissions || defaultModulePermissions,
+    clientId: dbEmployee.client_id, // Make sure to include clientId in the transformed data
     createdAt: dbEmployee.created_at,
     updatedAt: dbEmployee.updated_at
   };

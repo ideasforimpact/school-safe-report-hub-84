@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
 import { Employee, EmployeeType, DepartmentType } from '@/contexts/employee/types';
+import { toast } from 'sonner';
 
 // Define the form schema with zod
 const employeeSchema = z.object({
@@ -68,35 +69,41 @@ const AddEmployeeDialog = ({ isOpen, setIsOpen, onAddEmployee, clientId }: AddEm
     },
   });
 
+  const handleCloseDialog = () => {
+    // Reset the form when dialog closes
+    form.reset();
+    setIsOpen(false);
+  };
+
   const handleSubmit = async (values: FormValues) => {
     setIsSubmitting(true);
     try {
       // Fix: Ensure all required fields from Employee type are provided
-      // The values from the form are guaranteed to have all required fields due to zod validation
       const employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'> = {
         employeeId: values.employeeId,
         firstName: values.firstName,
         lastName: values.lastName,
         email: values.email,
-        employeeType: values.employeeType,
-        department: values.department,
+        employeeType: values.employeeType as EmployeeType,
+        department: values.department as DepartmentType,
         joiningDate: values.joiningDate,
         status: 'active',
         clientId: values.clientId,
       };
       
       await onAddEmployee(employeeData);
-      setIsOpen(false);
-      form.reset();
+      toast.success("Employee added successfully");
+      handleCloseDialog(); // Close and reset form
     } catch (error) {
       console.error('Error adding employee:', error);
+      toast.error("Failed to add employee");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={handleCloseDialog}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Add Employee</DialogTitle>
@@ -232,7 +239,7 @@ const AddEmployeeDialog = ({ isOpen, setIsOpen, onAddEmployee, clientId }: AddEm
             <DialogFooter>
               <Button 
                 variant="outline" 
-                onClick={() => setIsOpen(false)}
+                onClick={handleCloseDialog}
                 type="button"
                 disabled={isSubmitting}
               >

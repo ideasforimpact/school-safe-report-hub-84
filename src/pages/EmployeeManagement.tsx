@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmployee } from '@/contexts/employee/EmployeeContext';
@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
-import { UserPlus, FileUp } from 'lucide-react';
+import { UserPlus, FileUp, RefreshCw } from 'lucide-react';
 import EmployeeList from '@/components/employee/EmployeeList';
 import AddEmployeeDialog from '@/components/employee/AddEmployeeDialog';
 import EditEmployeeDialog from '@/components/employee/EditEmployeeDialog';
@@ -22,15 +22,21 @@ import { processEmployeeExcel } from '@/services/employee/importEmployeeService'
 
 const EmployeeManagement = () => {
   const { isAdmin, user } = useAuth();
-  const { employees, addEmployee, updateEmployee, deleteEmployee } = useEmployee();
+  const { employees, addEmployee, updateEmployee, deleteEmployee, deactivateEmployee } = useEmployee();
   
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [currentEmployee, setCurrentEmployee] = useState<Employee | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   
   // Get clientId from user context if available
   const clientId = user?.clientId;
+
+  useEffect(() => {
+    // Log the initial state of employees
+    console.log("Employee management loaded with employees:", employees);
+  }, []);
 
   if (!isAdmin) {
     return (
@@ -47,17 +53,70 @@ const EmployeeManagement = () => {
   }
 
   const handleEditClick = (employee: Employee) => {
+    console.log("Editing employee:", employee);
     setCurrentEmployee(employee);
     setIsEditDialogOpen(true);
   };
 
-  const handleImportEmployees = async (file: File, clientId?: string) => {
+  const handleDeactivateEmployee = async (id: string) => {
     try {
-      await processEmployeeExcel(file, clientId);
+      await deactivateEmployee(id);
+      toast.success("Employee deactivated successfully");
+    } catch (error) {
+      console.error("Failed to deactivate employee:", error);
+      toast.error("Failed to deactivate employee");
+    }
+  };
+
+  const handleDeleteEmployee = async (id: string) => {
+    try {
+      await deleteEmployee(id);
+      toast.success("Employee deleted successfully");
+    } catch (error) {
+      console.error("Failed to delete employee:", error);
+      toast.error("Failed to delete employee");
+    }
+  };
+
+  const handleAddEmployee = async (employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>) => {
+    try {
+      console.log("Adding employee with data:", employeeData);
+      await addEmployee(employeeData);
+      toast.success("Employee added successfully");
+    } catch (error) {
+      console.error("Failed to add employee:", error);
+      toast.error("Failed to add employee");
+      throw error; // Rethrow to handle in the component
+    }
+  };
+
+  const handleUpdateEmployee = async (id: string, updates: Partial<Employee>) => {
+    try {
+      console.log("Updating employee:", id, updates);
+      await updateEmployee(id, updates);
+      toast.success("Employee updated successfully");
+    } catch (error) {
+      console.error("Update process failed:", error);
+      toast.error("Failed to update employee");
+      throw error; // Rethrow to handle in the component
+    }
+  };
+
+  const handleImportEmployees = async (file: File, importClientId?: string) => {
+    setIsLoading(true);
+    try {
+      // Use the provided clientId or fall back to the user's clientId
+      const effectiveClientId = importClientId || clientId;
+      console.log("Importing employees with clientId:", effectiveClientId);
+      
+      await processEmployeeExcel(file, effectiveClientId);
       toast.success("Employees imported successfully");
     } catch (error) {
       console.error("Import process failed:", error);
       toast.error("Failed to process employee import");
+      throw error; // Rethrow to handle in the component
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -78,11 +137,15 @@ const EmployeeManagement = () => {
               onClick={() => setIsImportDialogOpen(true)}
               className="flex items-center gap-2"
               variant="secondary"
+              disabled={isLoading}
             >
               <FileUp className="h-4 w-4" />
               <span>Import Employees</span>
             </Button>
-            <Button onClick={() => setIsAddDialogOpen(true)}>
+            <Button 
+              onClick={() => setIsAddDialogOpen(true)}
+              disabled={isLoading}
+            >
               <UserPlus className="h-4 w-4 mr-2" />
               Add Employee
             </Button>
@@ -90,17 +153,30 @@ const EmployeeManagement = () => {
         </div>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Employees</CardTitle>
-            <CardDescription>
-              Manage employees and their information
-            </CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Employees</CardTitle>
+              <CardDescription>
+                Manage employees and their information
+              </CardDescription>
+            </div>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => {
+                window.location.reload();
+              }}
+              title="Refresh employee list"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </Button>
           </CardHeader>
           <CardContent>
             <EmployeeList 
               employees={sortedEmployees}
               onEditClick={handleEditClick}
-              onDeleteEmployee={deleteEmployee}
+              onDeleteEmployee={handleDeleteEmployee}
+              onDeactivateEmployee={handleDeactivateEmployee}
             />
           </CardContent>
         </Card>
@@ -110,7 +186,7 @@ const EmployeeManagement = () => {
       <AddEmployeeDialog 
         isOpen={isAddDialogOpen}
         setIsOpen={setIsAddDialogOpen}
-        onAddEmployee={addEmployee}
+        onAddEmployee={handleAddEmployee}
         clientId={clientId}
       />
 
@@ -120,7 +196,7 @@ const EmployeeManagement = () => {
           isOpen={isEditDialogOpen}
           setIsOpen={setIsEditDialogOpen}
           employee={currentEmployee}
-          onUpdateEmployee={updateEmployee}
+          onUpdateEmployee={handleUpdateEmployee}
         />
       )}
 
