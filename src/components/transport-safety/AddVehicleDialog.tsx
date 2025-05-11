@@ -40,9 +40,19 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose }) =>
   const onSubmit: SubmitHandler<VehicleFormData> = async (data) => {
     try {
       if (client) {
+        // Ensure numeric values are properly converted from strings or set to null if empty
+        const yearValue = data.year ? Number(data.year) : null;
+        const capacityValue = data.capacity ? Number(data.capacity) : null;
+        
+        if (!yearValue) {
+          toast.error('Year is required and must be a valid number');
+          return;
+        }
+
         await addVehicle({
           ...data,
-          year: Number(data.year),
+          year: yearValue,
+          capacity: capacityValue,
           clientId: client.id // Always use the current client's ID
         });
         reset();

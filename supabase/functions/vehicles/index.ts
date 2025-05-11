@@ -63,9 +63,30 @@ serve(async (req) => {
     if (req.method === 'POST') {
       const vehicleData = await req.json();
       
+      // Ensure numeric fields are properly handled
+      const processedData = {
+        ...vehicleData,
+        year: vehicleData.year ? parseInt(vehicleData.year) : null,
+        capacity: vehicleData.capacity ? parseInt(vehicleData.capacity) : null
+      };
+      
+      // Remove undefined or empty string values for numeric fields
+      if (processedData.capacity === undefined || processedData.capacity === '') {
+        processedData.capacity = null;
+      }
+      
+      if (!processedData.year) {
+        return new Response(JSON.stringify({ 
+          error: "Year is required and must be a valid number" 
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
       const { data, error } = await supabase
         .from('vehicles')
-        .insert([vehicleData])
+        .insert([processedData])
         .select()
         .single();
 
@@ -81,9 +102,25 @@ serve(async (req) => {
       const vehicleId = path;
       const updates = await req.json();
       
+      // Ensure numeric fields are properly handled
+      const processedUpdates = {
+        ...updates,
+        year: updates.year ? parseInt(updates.year) : undefined,
+        capacity: updates.capacity ? parseInt(updates.capacity) : null
+      };
+      
+      // Don't update undefined fields
+      if (processedUpdates.year === undefined) {
+        delete processedUpdates.year;
+      }
+      
+      if (processedUpdates.capacity === undefined || processedUpdates.capacity === '') {
+        processedUpdates.capacity = null;
+      }
+      
       const { data, error } = await supabase
         .from('vehicles')
-        .update(updates)
+        .update(processedUpdates)
         .eq('id', vehicleId)
         .select()
         .single();

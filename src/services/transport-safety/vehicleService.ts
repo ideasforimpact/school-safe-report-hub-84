@@ -80,16 +80,24 @@ export const getVehicleById = async (id: string): Promise<Vehicle | null> => {
 // Add a new vehicle
 export const addVehicle = async (vehicleData: Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt' | 'documents'>): Promise<Vehicle | null> => {
   try {
+    // Ensure numeric fields are properly handled
+    const year = vehicleData.year ? Number(vehicleData.year) : null;
+    const capacity = vehicleData.capacity ? Number(vehicleData.capacity) : null;
+    
+    if (!year) {
+      throw new Error('Year is required and must be a valid number');
+    }
+    
     // Transform the data to match the database schema
     const dbVehicle = {
       registration_number: vehicleData.registrationNumber,
       type: vehicleData.type,
       make: vehicleData.make,
       model: vehicleData.model,
-      year: vehicleData.year,
+      year: year,
       driver: vehicleData.driver,
       route: vehicleData.route,
-      capacity: vehicleData.capacity,
+      capacity: capacity,
       status: vehicleData.status,
       client_id: vehicleData.clientId
     };
@@ -138,10 +146,10 @@ export const updateVehicle = async (id: string, updates: Partial<Vehicle>): Prom
     if (updates.type) dbUpdates.type = updates.type;
     if (updates.make) dbUpdates.make = updates.make;
     if (updates.model) dbUpdates.model = updates.model;
-    if (updates.year) dbUpdates.year = updates.year;
+    if (updates.year !== undefined) dbUpdates.year = Number(updates.year);
     if (updates.driver) dbUpdates.driver = updates.driver;
     if (updates.route) dbUpdates.route = updates.route;
-    if (updates.capacity !== undefined) dbUpdates.capacity = updates.capacity;
+    if (updates.capacity !== undefined) dbUpdates.capacity = updates.capacity ? Number(updates.capacity) : null;
     if (updates.status) dbUpdates.status = updates.status;
     if (updates.clientId) dbUpdates.client_id = updates.clientId;
     
