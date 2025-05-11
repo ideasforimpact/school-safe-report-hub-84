@@ -20,6 +20,9 @@ import OtherConfiguration from '@/pages/OtherConfiguration';
 import NotFound from '@/pages/NotFound';
 import Home from '@/pages/Home';
 import Pricing from '@/pages/Pricing';
+import TransportSafetyPage from '@/pages/transport-safety/TransportSafetyPage';
+import VehicleDetailPage from '@/pages/transport-safety/VehicleDetailPage';
+import DocumentsPage from '@/pages/transport-safety/DocumentsPage';
 
 function App() {
   return (
@@ -44,6 +47,11 @@ function App() {
                 <Route path="/educational-configuration" element={<EducationalConfiguration />} />
                 <Route path="/other-configuration" element={<OtherConfiguration />} />
                 <Route path="/facilities-configuration" element={<EducationalConfiguration />} />
+
+                {/* Transport Safety routes */}
+                <Route path="/transport-safety" element={<TransportSafetyPage />} />
+                <Route path="/transport-safety/:vehicleId" element={<VehicleDetailPage />} />
+                <Route path="/transport-safety/documents" element={<DocumentsPage />} />
 
                 {/* 404 route */}
                 <Route path="*" element={<NotFound />} />
