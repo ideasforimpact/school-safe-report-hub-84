@@ -33,8 +33,14 @@ export const getAllVehicles = async (): Promise<Vehicle[]> => {
       updatedAt: vehicle.updated_at,
       verificationStatus: vehicle.verification_status,
       verificationDate: vehicle.verification_date,
-      // Convert from Json to strongly typed array
-      verificationData: vehicle.verification_data as VehicleVerificationData[] || []
+      // Safely convert JSON data to our typed array
+      verificationData: Array.isArray(vehicle.verification_data) 
+        ? vehicle.verification_data.map((item: any) => ({
+            field: String(item.field || ''),
+            value: item.value,
+            verified: Boolean(item.verified)
+          })) 
+        : []
     }));
   } catch (error) {
     console.error('Error in getAllVehicles:', error);
@@ -76,8 +82,14 @@ export const getVehicleById = async (id: string): Promise<Vehicle | null> => {
       updatedAt: data.updated_at,
       verificationStatus: data.verification_status,
       verificationDate: data.verification_date,
-      // Convert from Json to strongly typed array
-      verificationData: data.verification_data as VehicleVerificationData[] || []
+      // Safely convert JSON data to our typed array
+      verificationData: Array.isArray(data.verification_data) 
+        ? data.verification_data.map((item: any) => ({
+            field: String(item.field || ''),
+            value: item.value,
+            verified: Boolean(item.verified)
+          })) 
+        : []
     };
   } catch (error) {
     console.error('Error in getVehicleById:', error);
@@ -110,8 +122,13 @@ export const addVehicle = async (vehicleData: Omit<Vehicle, 'id' | 'createdAt' |
       client_id: vehicleData.clientId,
       verification_status: vehicleData.verificationStatus,
       verification_date: vehicleData.verificationDate,
-      // Cast the strongly typed array to Json for database storage
-      verification_data: vehicleData.verificationData as any
+      // Ensure verification data is in the correct format for the database
+      verification_data: vehicleData.verificationData ? 
+        vehicleData.verificationData.map(item => ({
+          field: item.field,
+          value: item.value,
+          verified: item.verified
+        })) : []
     };
     
     const { data, error } = await supabase
@@ -143,8 +160,14 @@ export const addVehicle = async (vehicleData: Omit<Vehicle, 'id' | 'createdAt' |
       updatedAt: data.updated_at,
       verificationStatus: data.verification_status,
       verificationDate: data.verification_date,
-      // Convert from Json to strongly typed array
-      verificationData: data.verification_data as VehicleVerificationData[] || []
+      // Safely convert JSON data to our typed array
+      verificationData: Array.isArray(data.verification_data) 
+        ? data.verification_data.map((item: any) => ({
+            field: String(item.field || ''),
+            value: item.value,
+            verified: Boolean(item.verified)
+          })) 
+        : []
     };
   } catch (error) {
     console.error('Error in addVehicle:', error);
@@ -170,7 +193,15 @@ export const updateVehicle = async (id: string, updates: Partial<Vehicle>): Prom
     if (updates.clientId) dbUpdates.client_id = updates.clientId;
     if (updates.verificationStatus) dbUpdates.verification_status = updates.verificationStatus;
     if (updates.verificationDate) dbUpdates.verification_date = updates.verificationDate;
-    if (updates.verificationData) dbUpdates.verification_data = updates.verificationData as any;
+    
+    // Properly format the verification data for the database
+    if (updates.verificationData) {
+      dbUpdates.verification_data = updates.verificationData.map(item => ({
+        field: item.field,
+        value: item.value,
+        verified: item.verified
+      }));
+    }
     
     const { data, error } = await supabase
       .from('vehicles')
@@ -202,8 +233,14 @@ export const updateVehicle = async (id: string, updates: Partial<Vehicle>): Prom
       updatedAt: data.updated_at,
       verificationStatus: data.verification_status,
       verificationDate: data.verification_date,
-      // Convert from Json to strongly typed array
-      verificationData: data.verification_data as VehicleVerificationData[] || []
+      // Safely convert JSON data to our typed array
+      verificationData: Array.isArray(data.verification_data) 
+        ? data.verification_data.map((item: any) => ({
+            field: String(item.field || ''),
+            value: item.value,
+            verified: Boolean(item.verified)
+          })) 
+        : []
     };
   } catch (error) {
     console.error('Error in updateVehicle:', error);
