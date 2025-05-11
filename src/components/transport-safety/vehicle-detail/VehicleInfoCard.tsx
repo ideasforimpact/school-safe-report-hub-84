@@ -183,18 +183,42 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
           </div>
         )}
         
-        {/* Display verification log information if available */}
+        {/* Display verification log information if available - Fix: Wrap in Dialog component */}
         {verificationLog && (
           <div className="mt-3">
-            <DialogTrigger asChild>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setShowVerificationResults(true)}
-              >
-                View Verification Details
-              </Button>
-            </DialogTrigger>
+            <Dialog open={showVerificationResults} onOpenChange={setShowVerificationResults}>
+              <DialogTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                >
+                  View Verification Details
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Vehicle Verification Results</DialogTitle>
+                  <DialogDescription>
+                    Registration details verified through Surepass API.
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <div className="border rounded-md divide-y">
+                  {formatVerificationData(verificationData || { transformed: vehicle.verificationData }).map((field: any, index: number) => (
+                    <div key={index} className="flex justify-between px-4 py-2">
+                      <span className="font-medium text-gray-500">{field.label}:</span>
+                      <span className="text-gray-900">{field.value}</span>
+                    </div>
+                  ))}
+                </div>
+                
+                <DialogFooter>
+                  <Button onClick={() => setShowVerificationResults(false)}>
+                    Close
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         )}
       </CardContent>
@@ -217,33 +241,6 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-      
-      {/* Verification results dialog */}
-      <Dialog open={showVerificationResults} onOpenChange={setShowVerificationResults}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Vehicle Verification Results</DialogTitle>
-            <DialogDescription>
-              Registration details verified through Surepass API.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="border rounded-md divide-y">
-            {formatVerificationData(verificationData || { transformed: vehicle.verificationData }).map((field: any, index: number) => (
-              <div key={index} className="flex justify-between px-4 py-2">
-                <span className="font-medium text-gray-500">{field.label}:</span>
-                <span className="text-gray-900">{field.value}</span>
-              </div>
-            ))}
-          </div>
-          
-          <DialogFooter>
-            <Button onClick={() => setShowVerificationResults(false)}>
-              Close
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </Card>
   );
 };
