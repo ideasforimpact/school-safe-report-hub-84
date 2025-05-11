@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -34,6 +33,16 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const { user } = useAuth();
 
+  // List of demo emails that can bypass authentication
+  const DEMO_EMAILS = [
+    'owner@saasplatform.com',
+    'admin@school.edu',
+    'reporter@school.edu'
+  ];
+  
+  // Check if current user is a demo user
+  const isDemoUser = user?.email ? DEMO_EMAILS.includes(user.email) : false;
+
   // Get clientId from user context if not provided as prop
   const effectiveClientId = clientId || user?.clientId;
 
@@ -48,11 +57,14 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
   const checkAuthStatus = async () => {
     try {
       const { data } = await supabase.auth.getSession();
-      const isAuthValid = !!data?.session?.access_token;
+      // Demo users are always considered authenticated
+      const isAuthValid = !!data?.session?.access_token || isDemoUser;
       setIsAuthenticated(isAuthValid);
       
-      if (!isAuthValid) {
+      if (!isAuthValid && !isDemoUser) {
         console.warn("No valid authentication session found");
+      } else if (isDemoUser) {
+        console.log("Demo user detected - authentication bypass enabled");
       }
     } catch (error) {
       console.error("Error checking auth status:", error);
@@ -144,8 +156,8 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
       return;
     }
 
-    // Check authentication before proceeding
-    if (isAuthenticated === false) {
+    // Check authentication before proceeding (unless it's a demo user)
+    if (isAuthenticated === false && !isDemoUser) {
       toast.error('You must be signed in to import employees');
       return;
     }
@@ -158,6 +170,8 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
       }
       
       console.log("Using clientId:", effectiveClientId);
+      console.log("User is authenticated:", isAuthenticated);
+      console.log("Is demo user:", isDemoUser);
       
       // Pass clientId to the import function
       await onImportEmployees(file, effectiveClientId);
@@ -198,11 +212,20 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
           </DialogDescription>
         </DialogHeader>
 
-        {isAuthenticated === false && (
+        {isAuthenticated === false && !isDemoUser && (
           <div className="border border-destructive/50 rounded-md p-3 bg-destructive/10 mb-4">
             <p className="text-destructive flex items-center">
               <AlertCircle className="h-4 w-4 mr-2" />
               You need to be signed in to import employees. Please sign in and try again.
+            </p>
+          </div>
+        )}
+
+        {isDemoUser && (
+          <div className="border border-green-500/50 rounded-md p-3 bg-green-500/10 mb-4">
+            <p className="text-green-600 flex items-center">
+              <Check className="h-4 w-4 mr-2" />
+              Demo user detected - you have full access to all features.
             </p>
           </div>
         )}
@@ -313,7 +336,7 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
             </Button>
             <Button
               onClick={handleImport}
-              disabled={!isValidated || isLoading || isAuthenticated === false}
+              disabled={!isValidated || isLoading || (isAuthenticated === false && !isDemoUser)}
               className="gap-1"
             >
               {isLoading ? (

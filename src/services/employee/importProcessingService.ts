@@ -1,9 +1,15 @@
-
 import { toast } from 'sonner';
 import { Employee } from '@/contexts/employee/types';
 import { ModulePermissions } from '@/contexts/auth/types';
 import { RawEmployeeData, ImportResult } from './types/importTypes';
 import { supabase } from '@/integrations/supabase/client';
+
+// List of demo emails that can bypass authentication requirements
+const DEMO_EMAILS = [
+  'owner@saasplatform.com',
+  'admin@school.edu',
+  'reporter@school.edu'
+];
 
 /**
  * Process the raw employee data from Excel and add valid employees to the system
@@ -94,8 +100,14 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
     // Get current session - first check if we have a valid session
     const { data: sessionData } = await supabase.auth.getSession();
     
-    if (!sessionData?.session?.access_token) {
-      // If no session is found, show a more specific error
+    // Check if this is a demo user operation - demo users get special bypass privileges
+    let isDemoUser = false;
+    if (sessionData?.session?.user?.email) {
+      isDemoUser = DEMO_EMAILS.includes(sessionData.session.user.email);
+    }
+    
+    // If no session is found and not a demo user, show a more specific error
+    if (!sessionData?.session?.access_token && !isDemoUser) {
       console.log("No authentication session found");
       throw new Error("You must be logged in to import employees");
     }
@@ -103,15 +115,24 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
     // Define the URL for the employee management function
     const functionUrl = "https://ybvxkiubnnixntghojyy.supabase.co/functions/v1/employee-management";
     
-    // Prepare headers - include auth token
-    const headers = {
+    // Prepare headers - include auth token if available, otherwise fallback to API key for demo users
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlidnhraXVibm5peG50Z2hvanl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3ODcxMzksImV4cCI6MjA2MjM2MzEzOX0.z8KKLi5uNyE0jxUoQtoB6M5iXr2D7hfAeXm5t1piWKo',
-      'Authorization': `Bearer ${sessionData.session.access_token}`,
       'path': 'bulk-update'
     };
     
+    // Add authorization header if session is available
+    if (sessionData?.session?.access_token) {
+      headers['Authorization'] = `Bearer ${sessionData.session.access_token}`;
+    } else if (isDemoUser) {
+      // For demo users, allow operation without auth token
+      // We already have the apikey above
+      console.log("Using demo user privileges");
+    }
+    
     console.log("Calling function with URL:", functionUrl);
+    console.log("Headers:", JSON.stringify(headers));
     
     // Using fetch with prepared headers
     const response = await fetch(functionUrl, {

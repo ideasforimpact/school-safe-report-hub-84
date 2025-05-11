@@ -1,4 +1,3 @@
-
 import { User, UserWithPassword } from '../types';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
@@ -79,8 +78,40 @@ export function useAuthHandlers({
         lastLogin: new Date().toISOString()
       };
       
+      // For demo users, ensure they have full admin access
+      if (isDemoUser) {
+        updatedUser.role = 'admin';
+        updatedUser.modulePermissions = {
+          superAdmin: true,
+          incidentReporting: true,
+          incidentAdmin: true,
+          assessmentUser: true,
+          assessmentsAdmin: true,
+          employeeVerificationAdmin: true,
+          grievancesAdmin: true,
+          transportSafetyAdmin: true,
+          eduSafeResourceAccess: true
+        };
+      }
+      
       const updatedUsers = users.map(u => 
-        u.id === existingUser?.id ? { ...u, lastLogin: new Date().toISOString() } : u
+        u.id === existingUser?.id ? { ...u, 
+          lastLogin: new Date().toISOString(),
+          ...(isDemoUser ? { 
+            role: 'admin',
+            modulePermissions: {
+              superAdmin: true,
+              incidentReporting: true,
+              incidentAdmin: true,
+              assessmentUser: true,
+              assessmentsAdmin: true,
+              employeeVerificationAdmin: true,
+              grievancesAdmin: true,
+              transportSafetyAdmin: true,
+              eduSafeResourceAccess: true
+            }
+          } : {})
+        } : u
       );
       
       setUsers(updatedUsers);
@@ -99,15 +130,30 @@ export function useAuthHandlers({
       
       console.log("Creating with name:", firstName, lastName);
       isNewUser = true;
-                    
+      
+      // Determine if this is a demo user being created
+      const isNewDemoUser = DEMO_EMAILS.includes(supabaseUser.email);
+      
       const newUser: UserWithPassword = {
         id: supabaseUser.id,
         firstName,
         lastName,
         email: supabaseUser.email || '',
         password: '', // SSO users don't need passwords in our system
-        role: 'admin', // Assign admin role since they've passed the employee check
-        modulePermissions: {
+        role: isNewDemoUser ? 'admin' : 'admin', // Assign admin role since they've passed the employee check
+        modulePermissions: isNewDemoUser ? {
+          // Full access for demo users
+          superAdmin: true,
+          incidentReporting: true,
+          incidentAdmin: true,
+          assessmentUser: true,
+          assessmentsAdmin: true,
+          employeeVerificationAdmin: true,
+          grievancesAdmin: true,
+          transportSafetyAdmin: true,
+          eduSafeResourceAccess: true
+        } : {
+          // Standard permissions for regular new users
           superAdmin: false,
           incidentReporting: true,
           incidentAdmin: false,
@@ -176,6 +222,22 @@ export function useAuthHandlers({
       
       if (loggedInUser) {
         console.log("Login successful, user:", loggedInUser);
+        
+        // For demo users, ensure they have full permissions
+        if (isDemoUser) {
+          loggedInUser.role = 'admin';
+          loggedInUser.modulePermissions = {
+            superAdmin: true,
+            incidentReporting: true,
+            incidentAdmin: true,
+            assessmentUser: true,
+            assessmentsAdmin: true,
+            employeeVerificationAdmin: true,
+            grievancesAdmin: true,
+            transportSafetyAdmin: true,
+            eduSafeResourceAccess: true
+          };
+        }
         
         // Also sign in with Supabase
         try {
