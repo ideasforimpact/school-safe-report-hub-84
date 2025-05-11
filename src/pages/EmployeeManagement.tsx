@@ -22,7 +22,7 @@ import { processEmployeeExcel } from '@/services/employee/importEmployeeService'
 
 const EmployeeManagement = () => {
   const { isAdmin, user } = useAuth();
-  const { employees, addEmployee, updateEmployee, deleteEmployee, deactivateEmployee } = useEmployee();
+  const { employees, addEmployee, updateEmployee, deleteEmployee, deactivateEmployee, fetchEmployees } = useEmployee();
   
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -81,7 +81,12 @@ const EmployeeManagement = () => {
   const handleAddEmployee = async (employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
       console.log("Adding employee with data:", employeeData);
-      await addEmployee(employeeData);
+      // Ensure clientId is set
+      const dataWithClientId = {
+        ...employeeData,
+        clientId: clientId
+      };
+      await addEmployee(dataWithClientId);
       toast.success("Employee added successfully");
     } catch (error) {
       console.error("Failed to add employee:", error);
@@ -110,7 +115,10 @@ const EmployeeManagement = () => {
       console.log("Importing employees with clientId:", effectiveClientId);
       
       await processEmployeeExcel(file, effectiveClientId);
+      // After import, refresh the employee list
+      await fetchEmployees();
       toast.success("Employees imported successfully");
+      setIsImportDialogOpen(false);
     } catch (error) {
       console.error("Import process failed:", error);
       toast.error("Failed to process employee import");
@@ -126,6 +134,19 @@ const EmployeeManagement = () => {
     if (a.status !== 'active' && b.status === 'active') return 1;
     return 0;
   });
+
+  const handleRefreshEmployees = async () => {
+    try {
+      setIsLoading(true);
+      await fetchEmployees();
+      toast.success("Employee list refreshed");
+    } catch (error) {
+      console.error("Failed to refresh employees:", error);
+      toast.error("Failed to refresh employee list");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <Layout>
@@ -163,12 +184,11 @@ const EmployeeManagement = () => {
             <Button 
               variant="ghost" 
               size="sm" 
-              onClick={() => {
-                window.location.reload();
-              }}
+              onClick={handleRefreshEmployees}
               title="Refresh employee list"
+              disabled={isLoading}
             >
-              <RefreshCw className="h-4 w-4" />
+              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
             </Button>
           </CardHeader>
           <CardContent>

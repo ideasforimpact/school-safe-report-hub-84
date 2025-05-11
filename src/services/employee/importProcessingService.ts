@@ -91,88 +91,65 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
     console.log("Request payload:", requestBody);
     console.log("Request payload stringified:", JSON.stringify(requestBody));
     
-    // Use proper Supabase edge function invocation with correct body format
-    const { data: response, error } = await supabase.functions.invoke('employee-management', {
-      method: 'POST',
-      body: requestBody, // Supabase client will automatically stringify this
-      headers: {
-        'Content-Type': 'application/json',
-        'path': 'bulk-update'
-      }
-    });
+    // FIX: Use the correct API endpoint and ensure we're using the proper authentication
+    // Instead of using Functions.invoke which may have issues with auth token, use the REST API directly
+    // Make sure to get the latest access token from the session each time
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
     
-    // Alternative approach if the above still fails
-    if (error) {
-      console.error('Bulk processing error:', error);
-      
-      // Try with a direct fetch as a fallback
-      try {
-        // Get the Supabase project URL correctly - don't use process.env
-        const supabaseUrl = 'https://ybvxkiubnnixntghojyy.supabase.co';
-        const functionUrl = `${supabaseUrl}/functions/v1/employee-management`;
-        console.log("Trying direct fetch to", functionUrl);
-        
-        // Get the current session token properly
-        const { data: sessionData } = await supabase.auth.getSession();
-        const session = sessionData?.session;
-        const accessToken = session?.access_token || '';
-        
-        const response = await fetch(functionUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'path': 'bulk-update',
-            'Authorization': `Bearer ${accessToken}`
-          },
-          body: JSON.stringify(requestBody)
-        });
-        
-        if (!response.ok) {
-          throw new Error(`Direct fetch failed with status ${response.status}`);
-        }
-        
-        const data = await response.json();
-        console.log('Direct fetch response:', data);
-        
-        // Process the response
-        if (data && data.success) {
-          result.successCount = data.created || 0;
-          result.updatedCount = data.updated || 0;
-          
-          if (data.employees && Array.isArray(data.employees)) {
-            result.addedEmployees = data.employees.map(transformEmployeeData);
-          }
-          
-          if (data.errors && Array.isArray(data.errors)) {
-            result.errors = [...result.errors, ...data.errors];
-            result.errorCount += data.errors.length;
-          }
-          
-          return result;
-        }
-      } catch (fetchError) {
-        console.error('Direct fetch error:', fetchError);
-        throw new Error(`Bulk operation failed: ${error.message}`);
-      }
+    if (sessionError) {
+      console.error("Error getting authentication session:", sessionError);
+      throw new Error(`Authentication error: ${sessionError.message}`);
     }
     
-    console.log('Bulk processing result:', response);
+    const session = sessionData?.session;
+    if (!session || !session.access_token) {
+      console.error("No valid authentication session found");
+      throw new Error("You must be logged in to import employees");
+    }
+
+    // Use the correct endpoint with proper authentication
+    const supabaseUrl = supabase.functions.url;
+    const functionUrl = `${supabaseUrl}/employee-management`;
     
-    if (response && response.success) {
+    console.log("Calling function with URL:", functionUrl);
+    
+    const response = await fetch(functionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+        'apikey': supabase.supabaseKey,
+        'path': 'bulk-update'
+      },
+      body: JSON.stringify(requestBody)
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: "Unknown error" }));
+      console.error(`Function call failed with status ${response.status}:`, errorData);
+      throw new Error(`Bulk operation failed with status ${response.status}: ${errorData.message || 'Unknown error'}`);
+    }
+    
+    const responseData = await response.json();
+    console.log('Bulk processing result:', responseData);
+    
+    if (responseData && responseData.success) {
       // Update the result with counts from the bulk operation
-      result.successCount = response.created || 0;
-      result.updatedCount = response.updated || 0;
+      result.successCount = responseData.created || 0;
+      result.updatedCount = responseData.updated || 0;
       
-      if (response.employees && Array.isArray(response.employees)) {
+      if (responseData.employees && Array.isArray(responseData.employees)) {
         // Transform database employees to match frontend Employee type
-        result.addedEmployees = response.employees.map(transformEmployeeData);
+        result.addedEmployees = responseData.employees.map(transformEmployeeData);
       }
       
       // Add any errors from the bulk operation
-      if (response.errors && Array.isArray(response.errors)) {
-        result.errors = [...result.errors, ...response.errors];
-        result.errorCount += response.errors.length;
+      if (responseData.errors && Array.isArray(responseData.errors)) {
+        result.errors = [...result.errors, ...responseData.errors];
+        result.errorCount += responseData.errors.length;
       }
+    } else {
+      throw new Error("Bulk operation returned unexpected response format");
     }
     
     return result;

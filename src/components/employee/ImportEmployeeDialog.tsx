@@ -128,9 +128,16 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
       
       // Fix: Make sure clientId is passed to the import function
       await onImportEmployees(file, effectiveClientId);
-      handleDialogClose();
+      
+      // Don't call handleDialogClose directly to avoid stack overflow
+      setFile(null);
+      setIsValidated(false);
+      setValidationErrors([]);
+      setRecordCount(null);
+      setIsOpen(false);
     } catch (error) {
       console.error('Import failed:', error);
+    } finally {
       setIsLoading(false);
     }
   };
@@ -142,18 +149,11 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
     setValidationErrors([]);
     setIsLoading(false);
     setRecordCount(null);
-    onOpenChange(false);
-  };
-
-  const onOpenChange = (open: boolean) => {
-    if (!open) {
-      handleDialogClose();
-    }
-    setIsOpen(open);
+    setIsOpen(false);
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Import Employees</DialogTitle>
