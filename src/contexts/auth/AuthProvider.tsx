@@ -49,8 +49,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     isEmailDomainAllowed
   });
 
-  // Set up Supabase auth
-  useSupabaseAuth({
+  // Set up Supabase auth - only once per component lifecycle
+  const supabaseAuth = useSupabaseAuth({
     users,
     setUser,
     setAuthError,
@@ -64,10 +64,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     saveUsersToStorage(users);
   }, [users]);
 
-  // Debug: Log current users to help debugging
+  // Debug: Log current users only once after initialization
   useEffect(() => {
-    console.log("Current users in AuthContext:", users);
-  }, [users]);
+    if (isAuthInitialized) {
+      console.log("Current users in AuthContext:", users);
+    }
+  }, [isAuthInitialized, users]);
 
   const isAdmin = user?.role === 'admin' || user?.role === 'saas_owner';
   const isSaasOwner = user?.role === 'saas_owner';
@@ -80,7 +82,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       user, 
       users: usersWithoutPasswords, 
       login, 
-      logout, 
+      logout: supabaseAuth.logout, // Use the logout from supabaseAuth
       isAdmin,
       isSaasOwner,
       addUser,

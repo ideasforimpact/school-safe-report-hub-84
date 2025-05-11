@@ -1,5 +1,5 @@
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -26,10 +26,17 @@ export function useSupabaseAuth({
   handleUserAuthentication: (supabaseUser: any) => Promise<void>;
 }) {
   const navigate = useNavigate();
+  const authListenerRef = useRef<{ subscription?: { unsubscribe: () => void } }>({}); 
 
   // Set up Supabase auth listener
   useEffect(() => {
     console.log("Setting up Supabase auth listener");
+    
+    // Clean up any existing subscription to prevent duplicates
+    if (authListenerRef.current.subscription) {
+      console.log("Cleaning up existing auth listener before setting up a new one");
+      authListenerRef.current.subscription.unsubscribe();
+    }
     
     // Set up auth state change listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -47,7 +54,10 @@ export function useSupabaseAuth({
       }
     });
     
-    // Then check for existing session
+    // Store the subscription in the ref for later cleanup
+    authListenerRef.current.subscription = subscription;
+    
+    // Check for existing session only once during component mount
     supabase.auth.getSession().then(({ data: { session }, error }) => {
       console.log("Initial session check:", session?.user?.email);
       if (error) {
@@ -67,11 +77,14 @@ export function useSupabaseAuth({
       }
     });
     
+    // Return cleanup function that will run when component unmounts
     return () => {
       console.log("Cleaning up Supabase auth listener");
-      subscription.unsubscribe();
+      if (authListenerRef.current.subscription) {
+        authListenerRef.current.subscription.unsubscribe();
+      }
     };
-  }, [users, navigate, setUser, setAuthError, setIsAuthInitialized, authInitCompleteRef, handleUserAuthentication]);
+  }, []); // Empty dependency array to ensure this only runs once on mount
 
   // Logout function
   const logout = async () => {
