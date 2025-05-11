@@ -47,7 +47,8 @@ const EmployeeManagement = () => {
   useEffect(() => {
     // Log the initial state of employees
     console.log("Employee management loaded with employees:", employees);
-  }, []);
+    console.log("Current user clientId:", clientId);
+  }, [employees]);
 
   if (!isAdmin) {
     return (
@@ -95,8 +96,9 @@ const EmployeeManagement = () => {
       // Ensure clientId is set
       const dataWithClientId = {
         ...employeeData,
-        clientId: clientId
+        clientId: employeeData.clientId || clientId
       };
+      console.log("Final employee data with clientId:", dataWithClientId);
       await addEmployee(dataWithClientId);
       toast.success("Employee added successfully");
     } catch (error) {

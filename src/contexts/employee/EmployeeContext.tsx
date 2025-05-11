@@ -68,8 +68,16 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
     try {
       setLoading(true);
       
+      // Log the incoming data to debug clientId issues
+      console.log("EmployeeContext: Adding employee with data:", employeeData);
+      
       // Try to add employee to API first
       try {
+        // Make sure clientId is included in the request
+        if (!employeeData.clientId) {
+          console.warn("Adding employee without clientId! This might cause issues.");
+        }
+        
         const newEmployee = await addEmployeeToApi(employeeData);
         
         // If the employee has modulePermissions, update them in the database
@@ -78,6 +86,9 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
           // Make sure the returned employee has the module permissions
           newEmployee.modulePermissions = employeeData.modulePermissions;
         }
+        
+        // Log the new employee with its ID and clientId
+        console.log("Employee added successfully:", newEmployee);
         
         setEmployees(prev => [...prev, newEmployee]);
         return;
@@ -90,6 +101,7 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
       }
     } catch (error) {
       console.error("Error in addEmployee:", error);
+      throw error; // Re-throw to propagate to UI
     } finally {
       setLoading(false);
     }

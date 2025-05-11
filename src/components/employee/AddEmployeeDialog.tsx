@@ -69,6 +69,13 @@ const AddEmployeeDialog = ({ isOpen, setIsOpen, onAddEmployee, clientId }: AddEm
     },
   });
 
+  // Update form values when clientId prop changes
+  React.useEffect(() => {
+    if (clientId) {
+      form.setValue('clientId', clientId);
+    }
+  }, [clientId, form]);
+
   const handleCloseDialog = () => {
     // Reset the form when dialog closes
     form.reset();
@@ -88,9 +95,10 @@ const AddEmployeeDialog = ({ isOpen, setIsOpen, onAddEmployee, clientId }: AddEm
         department: values.department as DepartmentType,
         joiningDate: values.joiningDate,
         status: 'active',
-        clientId: values.clientId,
+        clientId: values.clientId || clientId, // Ensure clientId is set
       };
       
+      console.log("Adding employee with data:", employeeData);
       await onAddEmployee(employeeData);
       toast.success("Employee added successfully");
       handleCloseDialog(); // Close and reset form
