@@ -6,6 +6,9 @@ import VehicleSearchBar from './filters/VehicleSearchBar';
 import VehicleBasicFilters from './filters/VehicleBasicFilters';
 import EmptyVehiclesState from './EmptyVehiclesState';
 import { useVehicleFilters } from './filters/useVehicleFilters';
+import { Skeleton } from '@/components/ui/skeleton';
+import { AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface VehiclesListProps {
   showAddVehicle: boolean;
@@ -13,7 +16,7 @@ interface VehiclesListProps {
 }
 
 const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddVehicle }) => {
-  const { vehicles } = useTransportSafety();
+  const { vehicles, loading, error } = useTransportSafety();
   const {
     // State
     searchQuery,
@@ -35,6 +38,33 @@ const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddV
     toggleDocumentStatusFilter,
     clearAllFilters,
   } = useVehicleFilters(vehicles);
+  
+  // Loading state
+  if (loading) {
+    return (
+      <div>
+        <div className="mb-6 flex flex-col space-y-4 bg-white p-4 rounded-lg border border-gray-100 shadow-sm">
+          <Skeleton className="h-10 w-full" />
+          <Skeleton className="h-8 w-1/3" />
+        </div>
+        <div className="space-y-4">
+          <Skeleton className="h-64 w-full" />
+        </div>
+      </div>
+    );
+  }
+  
+  // Error state
+  if (error) {
+    return (
+      <Alert variant="destructive" className="mb-6">
+        <AlertCircle className="h-4 w-4" />
+        <AlertDescription>
+          {error}
+        </AlertDescription>
+      </Alert>
+    );
+  }
   
   return (
     <div>

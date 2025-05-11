@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useForm, SubmitHandler } from 'react-hook-form';
 import { useTransportSafety } from '@/contexts/transport-safety/TransportSafetyContext';
 import { Vehicle } from '@/types/transportSafety';
+import { toast } from 'sonner';
 
 interface AddVehicleDialogProps {
   open: boolean;
@@ -18,7 +19,7 @@ type VehicleFormData = Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt' | 'documen
 
 const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose }) => {
   const { addVehicle } = useTransportSafety();
-  const { register, handleSubmit, formState: { errors, isValid }, reset } = useForm<VehicleFormData>({
+  const { register, handleSubmit, formState: { errors, isValid, isSubmitting }, reset } = useForm<VehicleFormData>({
     defaultValues: {
       registrationNumber: '',
       type: 'bus',
@@ -32,13 +33,18 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose }) =>
     }
   });
 
-  const onSubmit: SubmitHandler<VehicleFormData> = (data) => {
-    addVehicle({
-      ...data,
-      year: Number(data.year)
-    });
-    reset();
-    onClose();
+  const onSubmit: SubmitHandler<VehicleFormData> = async (data) => {
+    try {
+      await addVehicle({
+        ...data,
+        year: Number(data.year)
+      });
+      reset();
+      onClose();
+    } catch (error) {
+      console.error('Error adding vehicle:', error);
+      toast.error('Failed to add vehicle. Please try again.');
+    }
   };
 
   return (
@@ -65,7 +71,10 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose }) =>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="type">Vehicle Type*</Label>
-                <Select defaultValue="bus" onValueChange={(value) => register('type').onChange({ target: { name: 'type', value } })}>
+                <Select 
+                  defaultValue="bus" 
+                  onValueChange={(value) => register('type').onChange({ target: { name: 'type', value } })}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
@@ -81,7 +90,10 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose }) =>
 
               <div className="space-y-2">
                 <Label htmlFor="status">Status*</Label>
-                <Select defaultValue="active" onValueChange={(value) => register('status').onChange({ target: { name: 'status', value } })}>
+                <Select 
+                  defaultValue="active" 
+                  onValueChange={(value) => register('status').onChange({ target: { name: 'status', value } })}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
@@ -180,11 +192,18 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose }) =>
           </div>
 
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => { reset(); onClose(); }}>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => { reset(); onClose(); }}
+            >
               Cancel
             </Button>
-            <Button type="submit">
-              Add Vehicle
+            <Button 
+              type="submit"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Adding...' : 'Add Vehicle'}
             </Button>
           </div>
         </form>
