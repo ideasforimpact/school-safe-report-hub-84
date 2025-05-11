@@ -103,7 +103,21 @@ serve(async (req) => {
     // Transform the Surepass data into the required format
     const transformedData = [];
     
-    // Create verification data from the response fields, excluding verification_log
+    // Add last_response field to track when we got this response
+    transformedData.push({
+      field: 'last_response',
+      value: verificationDate,
+      verified: true
+    });
+    
+    // Add status field from the API response
+    transformedData.push({
+      field: 'status',
+      value: verificationStatus,
+      verified: true
+    });
+    
+    // Create verification data from the response fields
     if (surepassData.data) {
       const data = surepassData.data;
       
@@ -117,27 +131,13 @@ serve(async (req) => {
           });
         }
       });
-      
-      // Add last_response field to track when we got this response
-      transformedData.push({
-        field: 'last_response',
-        value: verificationDate,
-        verified: true
-      });
-      
-      // Add status field from the API response
-      transformedData.push({
-        field: 'status',
-        value: verificationStatus,
-        verified: true
-      });
     }
     
     // Store the current verification data in the log
-    // Create a timestamp-based key for the verification log
-    verificationLog[verificationDate] = transformedData;
+    // Use a timestamp as the key for the log
+    verificationLog[verificationDate] = [...transformedData];
     
-    // Create the complete transformed data by adding the verification log at the beginning
+    // Create the complete transformed data by adding the verification log
     const completeTransformedData = [
       {
         field: "verification_log",

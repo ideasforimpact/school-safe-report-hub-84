@@ -226,7 +226,7 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
                   {formatVerificationData(verificationData || { transformed: vehicle.verificationData }).map((field: any, index: number) => (
                     <div key={index} className="flex justify-between px-4 py-2">
                       <span className="font-medium text-gray-500">{field.label}:</span>
-                      <span className="text-gray-900">{field.value}</span>
+                      <span className="text-gray-900">{typeof field.value === 'object' ? JSON.stringify(field.value) : field.value}</span>
                     </div>
                   ))}
                 </div>
@@ -275,7 +275,7 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
                                   {item.field.replace(/_/g, ' ').split(' ').map((word: string) => 
                                     word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}:
                                 </span>
-                                <span className="text-gray-900">{String(item.value)}</span>
+                                <span className="text-gray-900">{typeof item.value === 'object' ? JSON.stringify(item.value) : String(item.value)}</span>
                               </div>
                             ))
                           : 
@@ -292,8 +292,15 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
                               {new Date(entry.date).toLocaleString()}
                             </h4>
                             <div className="text-xs text-gray-500 mb-2">
-                              Verification status: <span className={entry.data.find((i: any) => i.field === 'status')?.value === 'active' ? 'text-green-600' : 'text-amber-600'}>
-                                {String(entry.data.find((i: any) => i.field === 'status')?.value || 'Unknown').toUpperCase()}
+                              Verification status: <span className={
+                                Array.isArray(entry.data) && 
+                                entry.data.find((i: any) => i.field === 'status')?.value === 'active' ? 
+                                'text-green-600' : 'text-amber-600'
+                              }>
+                                {Array.isArray(entry.data) ? 
+                                  String(entry.data.find((i: any) => i.field === 'status')?.value || 'Unknown').toUpperCase() : 
+                                  'Unknown'
+                                }
                               </span>
                             </div>
                             <Button 
