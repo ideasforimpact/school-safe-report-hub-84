@@ -1,5 +1,5 @@
 
-import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useEffect, useRef } from 'react';
 import { User, UserRole, ModulePermissions, AuthContextType, UserWithPassword, EmployeeType, DepartmentType } from './types';
 import { useClient } from '../ClientContext';
 import {
@@ -39,8 +39,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [users, setUsers] = useState<UserWithPassword[]>(() => getUsersFromStorage());
   const [authError, setAuthError] = useState<string | null>(null);
   const [isAuthInitialized, setIsAuthInitialized] = useState(false);
-  const [authInitComplete, setAuthInitComplete] = useState(false);
-
+  const authInitCompleteRef = useRef(false);
+  
   // Get client context to validate domains
   const { isEmailDomainAllowed } = useClient();
   
@@ -84,7 +84,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       } else {
         // Mark auth as initialized and complete even if no session
         setIsAuthInitialized(true);
-        setAuthInitComplete(true);
+        authInitCompleteRef.current = true;
       }
     });
     
@@ -207,9 +207,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // If login was successful and we got here, clear any auth errors
     setAuthError(null);
     
-    // Only show welcome toast if auth initialization is not yet complete
-    // This prevents the toast from showing on subsequent auth state changes
-    if (!authInitComplete) {
+    // Only show welcome toast if the authentication initialization hasn't completed yet
+    // Using a ref to guarantee we only show the toast once per session
+    if (!authInitCompleteRef.current) {
       if (isNewUser) {
         toast.success(`Welcome, ${existingUser?.firstName || supabaseUser.user_metadata?.name?.split(' ')?.[0] || 'New User'}!`);
       } else {
@@ -218,7 +218,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       // Mark auth as initialized and complete to prevent duplicate toasts
       setIsAuthInitialized(true);
-      setAuthInitComplete(true);
+      authInitCompleteRef.current = true;
     }
     
     // Redirect to dashboard on successful login

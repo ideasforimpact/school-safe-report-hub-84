@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -51,7 +52,7 @@ const Login = () => {
   useEffect(() => {
     if (authError) {
       setError(authError);
-      toast.error(authError);
+      // No need to show toast here, the auth context will handle it
       setIsLoading(false);
       setGoogleLoading(false);
     }
