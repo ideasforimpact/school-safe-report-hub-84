@@ -133,9 +133,9 @@ serve(async (req) => {
       });
     }
     
-    // Store the current verification data in the log
-    // Use a timestamp as the key for the log
-    verificationLog[verificationDate] = [...transformedData];
+    // Store the current verification data in the log - just use the transformed array directly
+    // without wrapping it in any additional objects
+    verificationLog[verificationDate] = transformedData;
     
     // Create the complete transformed data by adding the verification log
     const completeTransformedData = [
