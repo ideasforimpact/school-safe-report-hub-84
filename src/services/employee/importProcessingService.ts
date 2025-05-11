@@ -1,3 +1,4 @@
+
 import { toast } from 'sonner';
 import { Employee } from '@/contexts/employee/types';
 import { ModulePermissions } from '@/contexts/auth/types';
@@ -102,6 +103,7 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
     
     // Check if this is a demo user operation - demo users get special bypass privileges
     let isDemoUser = false;
+    // Check if email is in session data, and if it is, check if it's a demo email
     if (sessionData?.session?.user?.email) {
       isDemoUser = DEMO_EMAILS.includes(sessionData.session.user.email);
     }
@@ -122,13 +124,14 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
       'path': 'bulk-update'
     };
     
-    // Add authorization header if session is available
+    // Add authorization header if session is available or if it's a demo user
     if (sessionData?.session?.access_token) {
       headers['Authorization'] = `Bearer ${sessionData.session.access_token}`;
+      console.log("Using auth token for API call");
     } else if (isDemoUser) {
       // For demo users, allow operation without auth token
       // We already have the apikey above
-      console.log("Using demo user privileges");
+      console.log("Using demo user privileges - bypassing auth token requirement");
     }
     
     console.log("Calling function with URL:", functionUrl);

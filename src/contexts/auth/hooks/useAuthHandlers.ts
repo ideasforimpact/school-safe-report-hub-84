@@ -1,4 +1,5 @@
-import { User, UserWithPassword } from '../types';
+
+import { User, UserWithPassword, UserRole } from '../types';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -80,7 +81,7 @@ export function useAuthHandlers({
       
       // For demo users, ensure they have full admin access
       if (isDemoUser) {
-        updatedUser.role = 'admin';
+        updatedUser.role = 'admin' as UserRole;
         updatedUser.modulePermissions = {
           superAdmin: true,
           incidentReporting: true,
@@ -98,7 +99,7 @@ export function useAuthHandlers({
         u.id === existingUser?.id ? { ...u, 
           lastLogin: new Date().toISOString(),
           ...(isDemoUser ? { 
-            role: 'admin',
+            role: 'admin' as UserRole,
             modulePermissions: {
               superAdmin: true,
               incidentReporting: true,
@@ -140,7 +141,7 @@ export function useAuthHandlers({
         lastName,
         email: supabaseUser.email || '',
         password: '', // SSO users don't need passwords in our system
-        role: isNewDemoUser ? 'admin' : 'admin', // Assign admin role since they've passed the employee check
+        role: isNewDemoUser ? 'admin' as UserRole : 'admin' as UserRole, // Assign admin role since they've passed the employee check
         modulePermissions: isNewDemoUser ? {
           // Full access for demo users
           superAdmin: true,
@@ -225,7 +226,7 @@ export function useAuthHandlers({
         
         // For demo users, ensure they have full permissions
         if (isDemoUser) {
-          loggedInUser.role = 'admin';
+          loggedInUser.role = 'admin' as UserRole;
           loggedInUser.modulePermissions = {
             superAdmin: true,
             incidentReporting: true,

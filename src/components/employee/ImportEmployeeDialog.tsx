@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -56,15 +57,20 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
   // Check if the user is authenticated with Supabase
   const checkAuthStatus = async () => {
     try {
+      // If it's a demo user, we automatically consider them authenticated
+      if (isDemoUser) {
+        console.log("Demo user detected - authentication bypass enabled");
+        setIsAuthenticated(true);
+        return;
+      }
+      
+      // For non-demo users, check actual auth status
       const { data } = await supabase.auth.getSession();
-      // Demo users are always considered authenticated
-      const isAuthValid = !!data?.session?.access_token || isDemoUser;
+      const isAuthValid = !!data?.session?.access_token;
       setIsAuthenticated(isAuthValid);
       
-      if (!isAuthValid && !isDemoUser) {
+      if (!isAuthValid) {
         console.warn("No valid authentication session found");
-      } else if (isDemoUser) {
-        console.log("Demo user detected - authentication bypass enabled");
       }
     } catch (error) {
       console.error("Error checking auth status:", error);
@@ -156,7 +162,7 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
       return;
     }
 
-    // Check authentication before proceeding (unless it's a demo user)
+    // Check authentication before proceeding (demo users are always considered authenticated)
     if (isAuthenticated === false && !isDemoUser) {
       toast.error('You must be signed in to import employees');
       return;
