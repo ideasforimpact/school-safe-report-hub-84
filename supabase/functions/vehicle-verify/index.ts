@@ -32,6 +32,9 @@ serve(async (req) => {
 
     console.log(`Verifying vehicle with registration number: ${registrationNumber}`);
 
+    // Current date and time for verification_date and last_response
+    const verificationDate = new Date().toISOString();
+
     // Call the Surepass API to get RC details - using direct sandbox URL
     const surepassUrl = "https://sandbox.surepass.io/api/v1/rc/rc-full";
     const surepassResponse = await fetch(surepassUrl, {
@@ -61,9 +64,48 @@ serve(async (req) => {
       );
     }
     
-    // Transform the Surepass data into the required format
-    // Creating an array of objects with field details
+    // Generate verification status based on response
+    let verificationStatus = 'verified';
+    if (!surepassData.data) {
+      verificationStatus = 'failed';
+    } else if (surepassData.success === false) {
+      verificationStatus = 'incomplete';
+    } else if (surepassData.data.rc_status) {
+      // Use RC status from response if available
+      verificationStatus = surepassData.data.rc_status.toLowerCase();
+    }
+
+    // Transform the Surepass data into the required format with history
+    // Get existing vehicle data first if we have a vehicleId
+    let existingVerificationData = [];
+    if (vehicleId) {
+      const { data: vehicleData, error } = await supabase
+        .from('vehicles')
+        .select('verification_data')
+        .eq('id', vehicleId)
+        .single();
+
+      if (!error && vehicleData && Array.isArray(vehicleData.verification_data)) {
+        existingVerificationData = vehicleData.verification_data;
+        console.log("Found existing verification data:", existingVerificationData.length, "records");
+      }
+    }
+
+    // Create new verification data structure
     const transformedData = [];
+    
+    // Add history record with complete response and timestamp
+    transformedData.push({
+      field: "verification_log",
+      value: {
+        last_response: verificationDate,
+        original: surepassData,
+        status: verificationStatus
+      },
+      verified: true
+    });
+    
+    // Add each field from the response as a separate object in the array
     if (surepassData.data) {
       const data = surepassData.data;
       
@@ -79,17 +121,6 @@ serve(async (req) => {
       });
     }
     
-    // Generate verification status based on response
-    let verificationStatus = 'verified';
-    if (transformedData.length === 0) {
-      verificationStatus = 'failed';
-    } else if (surepassData.success === false) {
-      verificationStatus = 'incomplete';
-    }
-    
-    // Current date and time for verification_date
-    const verificationDate = new Date().toISOString();
-
     // If we have a vehicleId, update the vehicle record with verification data
     if (vehicleId) {
       const { data: updateData, error: updateError } = await supabase

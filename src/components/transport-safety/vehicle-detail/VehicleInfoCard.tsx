@@ -28,6 +28,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from '@/components/ui/dialog';
 
 interface VehicleInfoCardProps {
@@ -96,13 +97,25 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
   const formatVerificationData = (data: any) => {
     if (!data || !data.transformed) return [];
     
-    // Use the transformed data which is now an array of objects
-    return data.transformed.map((item: any) => ({
-      label: item.field.replace(/_/g, ' ').split(' ').map((word: string) => 
-        word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
-      value: item.value
-    }));
+    // Get only the fields we want to display (excluding verification_log which is used for history)
+    return data.transformed
+      .filter((item: any) => item.field !== 'verification_log')
+      .map((item: any) => ({
+        label: item.field.replace(/_/g, ' ').split(' ').map((word: string) => 
+          word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
+        value: item.value
+      }));
   };
+  
+  // Find verification log entry to get history
+  const getVerificationLog = () => {
+    if (!vehicle.verificationData) return null;
+    
+    const logEntry = vehicle.verificationData.find(item => item.field === 'verification_log');
+    return logEntry?.value || null;
+  };
+  
+  const verificationLog = getVerificationLog();
 
   return (
     <Card>
@@ -159,6 +172,31 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
               : "No safety checks have been run yet"}
           </span>
         </div>
+        
+        {/* Display verification status if available */}
+        {vehicle.verificationStatus && (
+          <div className="mt-2 text-sm text-left">
+            <span className="font-medium">Status:</span> 
+            <span className={`ml-1 ${vehicle.verificationStatus === 'active' ? 'text-green-600' : 'text-amber-600'}`}>
+              {vehicle.verificationStatus.charAt(0).toUpperCase() + vehicle.verificationStatus.slice(1)}
+            </span>
+          </div>
+        )}
+        
+        {/* Display verification log information if available */}
+        {verificationLog && (
+          <div className="mt-3">
+            <DialogTrigger asChild>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setShowVerificationResults(true)}
+              >
+                View Verification Details
+              </Button>
+            </DialogTrigger>
+          </div>
+        )}
       </CardContent>
 
       {/* Delete confirmation dialog */}
@@ -191,7 +229,7 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
           </DialogHeader>
           
           <div className="border rounded-md divide-y">
-            {formatVerificationData(verificationData).map((field: any, index: number) => (
+            {formatVerificationData(verificationData || { transformed: vehicle.verificationData }).map((field: any, index: number) => (
               <div key={index} className="flex justify-between px-4 py-2">
                 <span className="font-medium text-gray-500">{field.label}:</span>
                 <span className="text-gray-900">{field.value}</span>

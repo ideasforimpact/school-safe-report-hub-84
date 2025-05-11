@@ -20,8 +20,14 @@ export interface VehicleDocument {
 
 export interface VehicleVerificationData {
   field: string;
-  value: string | number | boolean;
+  value: string | number | boolean | Record<string, any>;
   verified: boolean;
+}
+
+export interface VerificationLogEntry {
+  last_response: string;
+  original: Record<string, any>;
+  status: string;
 }
 
 export interface Vehicle {
