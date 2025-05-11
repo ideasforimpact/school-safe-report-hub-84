@@ -39,6 +39,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [users, setUsers] = useState<UserWithPassword[]>(() => getUsersFromStorage());
   const [authError, setAuthError] = useState<string | null>(null);
   const [isAuthInitialized, setIsAuthInitialized] = useState(false);
+  const [authInitComplete, setAuthInitComplete] = useState(false);
 
   // Get client context to validate domains
   const { isEmailDomainAllowed } = useClient();
@@ -81,8 +82,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (session?.user) {
         handleUserAuthentication(session.user);
       } else {
-        // Mark auth as initialized even if no session
+        // Mark auth as initialized and complete even if no session
         setIsAuthInitialized(true);
+        setAuthInitComplete(true);
       }
     });
     
@@ -205,17 +207,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // If login was successful and we got here, clear any auth errors
     setAuthError(null);
     
-    // Only show welcome toast the first time, not on every auth change
-    if (!isAuthInitialized) {
+    // Only show welcome toast if auth initialization is not yet complete
+    // This prevents the toast from showing on subsequent auth state changes
+    if (!authInitComplete) {
       if (isNewUser) {
         toast.success(`Welcome, ${existingUser?.firstName || supabaseUser.user_metadata?.name?.split(' ')?.[0] || 'New User'}!`);
       } else {
         toast.success(`Welcome back, ${existingUser?.firstName || supabaseUser.user_metadata?.name?.split(' ')?.[0] || 'User'}!`);
       }
+      
+      // Mark auth as initialized and complete to prevent duplicate toasts
+      setIsAuthInitialized(true);
+      setAuthInitComplete(true);
     }
-    
-    // Mark auth as initialized to prevent duplicate toasts
-    setIsAuthInitialized(true);
     
     // Redirect to dashboard on successful login
     navigate('/dashboard');
