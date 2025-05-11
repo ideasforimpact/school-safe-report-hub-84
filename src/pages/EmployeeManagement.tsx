@@ -18,7 +18,7 @@ import ImportEmployeeDialog from '@/components/employee/ImportEmployeeDialog';
 import { Employee } from '@/contexts/employee/types';
 import { toast } from 'sonner';
 import { processEmployeeExcel } from '@/services/employee/importEmployeeService';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 
 const EmployeeManagement = () => {
   const { isAdmin, user } = useAuth();
