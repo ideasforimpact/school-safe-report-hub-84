@@ -1,15 +1,16 @@
 
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { ShieldCheck, Calendar, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import VehicleTypeIcon from '@/components/transport-safety/VehicleTypeIcon';
 import VehicleStatusBadge from '@/components/transport-safety/VehicleStatusBadge';
-import { toast } from '@/hooks/use-toast';
+import { toast } from 'sonner';
 import { Vehicle } from '@/types/transportSafety';
 import { formatDate } from '@/utils/dateUtils';
 import { useTransportSafety } from '@/contexts/transport-safety/TransportSafetyContext';
+import { supabase } from '@/integrations/supabase/client';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,49 +21,95 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 
 interface VehicleInfoCardProps {
   vehicle: Vehicle;
 }
 
 const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
-  const { verifyDocument, deleteVehicle } = useTransportSafety();
+  const { verifyDocument, deleteVehicle, updateVehicle } = useTransportSafety();
   const [isChecking, setIsChecking] = useState(false);
-  const [lastCheckTime, setLastCheckTime] = useState<Date | null>(null);
+  const [lastCheckTime, setLastCheckTime] = useState<Date | null>(
+    vehicle.verificationDate ? new Date(vehicle.verificationDate) : null
+  );
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showVerificationResults, setShowVerificationResults] = useState(false);
+  const [verificationData, setVerificationData] = useState<any>(null);
   const navigate = useNavigate();
   
   const { id: vehicleId, registrationNumber, make, model, type, status, year, documents } = vehicle;
 
-  const runSafetyCheck = () => {
+  const runSafetyCheck = async () => {
     setIsChecking(true);
     
-    // Simulate API call with a timeout
-    setTimeout(() => {
-      // Process each document and simulate verification
-      documents.forEach(doc => {
-        const randomOutcome = Math.random();
-        // 80% chance of success for the simulation
-        if (randomOutcome < 0.8) {
-          verifyDocument(vehicleId, doc.id, 'verified', 'api', 'Automatically verified through external API');
-        } else {
-          verifyDocument(vehicleId, doc.id, 'failed', 'api', 'Verification failed: Document information mismatch');
-        }
+    try {
+      // Call the Supabase Edge Function to verify the vehicle
+      const { data, error } = await supabase.functions.invoke('vehicle-verify', {
+        body: { registrationNumber, vehicleId }
       });
       
-      const now = new Date();
-      setLastCheckTime(now);
-      setIsChecking(false);
-      toast({
-        title: "Safety Check Complete",
-        description: `${documents.length} documents were checked through external verification APIs.`
+      if (error) {
+        console.error('Error verifying vehicle:', error);
+        toast.error('Vehicle verification failed');
+        return;
+      }
+      
+      // Update verification status in component state
+      setVerificationData(data.data);
+      setLastCheckTime(new Date());
+      setShowVerificationResults(true);
+      
+      // Update the vehicle in context with verification data
+      updateVehicle(vehicleId, {
+        verificationStatus: 'verified',
+        verificationDate: new Date().toISOString(),
+        verificationData: data.data
       });
-    }, 2000);
+      
+      // Process documents if they exist
+      documents.forEach(doc => {
+        verifyDocument(vehicleId, doc.id, 'verified', 'api', 'Automatically verified through Surepass API');
+      });
+      
+      toast.success('Vehicle verified successfully through Surepass');
+    } catch (err) {
+      console.error('Failed to verify vehicle:', err);
+      toast.error('Verification failed. Please try again later.');
+    } finally {
+      setIsChecking(false);
+    }
   };
 
   const handleDeleteVehicle = () => {
     deleteVehicle(vehicleId);
     navigate('/transport-safety');
+  };
+  
+  const formatVerificationData = (data: any) => {
+    if (!data) return [];
+    
+    // Extract useful information from the Surepass response
+    const fields = [
+      { label: 'Registration Number', value: data.result?.registration_number || 'N/A' },
+      { label: 'Owner Name', value: data.result?.owner_name || 'N/A' },
+      { label: 'Vehicle Class', value: data.result?.vehicle_class || 'N/A' },
+      { label: 'Manufacturer', value: data.result?.manufacturer || 'N/A' },
+      { label: 'Model', value: data.result?.model || 'N/A' },
+      { label: 'Fuel Type', value: data.result?.fuel_type || 'N/A' },
+      { label: 'Registration Date', value: data.result?.registration_date || 'N/A' },
+      { label: 'Fitness Upto', value: data.result?.fitness_upto || 'N/A' },
+      { label: 'Insurance Upto', value: data.result?.insurance_upto || 'N/A' },
+    ];
+    
+    return fields;
   };
 
   return (
@@ -116,12 +163,13 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
           <Calendar className="h-3.5 w-3.5 mr-1.5" />
           <span>
             {lastCheckTime 
-              ? `Last updated: ${formatDate(lastCheckTime)} at ${lastCheckTime.toLocaleTimeString()}`
+              ? `Last verified: ${formatDate(lastCheckTime)} at ${lastCheckTime.toLocaleTimeString()}`
               : "No safety checks have been run yet"}
           </span>
         </div>
       </CardContent>
 
+      {/* Delete confirmation dialog */}
       <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -139,6 +187,33 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      
+      {/* Verification results dialog */}
+      <Dialog open={showVerificationResults} onOpenChange={setShowVerificationResults}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Vehicle Verification Results</DialogTitle>
+            <DialogDescription>
+              Registration details verified through Surepass API.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="border rounded-md divide-y">
+            {formatVerificationData(verificationData).map((field, index) => (
+              <div key={index} className="flex justify-between px-4 py-2">
+                <span className="font-medium text-gray-500">{field.label}:</span>
+                <span className="text-gray-900">{field.value}</span>
+              </div>
+            ))}
+          </div>
+          
+          <DialogFooter>
+            <Button onClick={() => setShowVerificationResults(false)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 };

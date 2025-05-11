@@ -15,6 +15,8 @@ export interface VehicleDocument {
   // Add missing fields that are being used in the code
   provider?: string;
   verificationStatus?: string;
+  verificationMethod?: 'api' | 'manual';
+  verificationDate?: string;
 }
 
 export interface Vehicle {
@@ -32,4 +34,7 @@ export interface Vehicle {
   clientId?: string;
   createdAt: string;
   updatedAt: string;
+  verificationStatus?: string;
+  verificationDate?: string;
+  verificationData?: any;
 }

@@ -30,7 +30,10 @@ export const getAllVehicles = async (): Promise<Vehicle[]> => {
       clientId: vehicle.client_id,
       documents: [], // No documents yet as per request
       createdAt: vehicle.created_at,
-      updatedAt: vehicle.updated_at
+      updatedAt: vehicle.updated_at,
+      verificationStatus: vehicle.verification_status,
+      verificationDate: vehicle.verification_date,
+      verificationData: vehicle.verification_data
     }));
   } catch (error) {
     console.error('Error in getAllVehicles:', error);
@@ -69,7 +72,10 @@ export const getVehicleById = async (id: string): Promise<Vehicle | null> => {
       clientId: data.client_id,
       documents: [], // No documents yet as per request
       createdAt: data.created_at,
-      updatedAt: data.updated_at
+      updatedAt: data.updated_at,
+      verificationStatus: data.verification_status,
+      verificationDate: data.verification_date,
+      verificationData: data.verification_data
     };
   } catch (error) {
     console.error('Error in getVehicleById:', error);
@@ -152,6 +158,9 @@ export const updateVehicle = async (id: string, updates: Partial<Vehicle>): Prom
     if (updates.capacity !== undefined) dbUpdates.capacity = updates.capacity ? Number(updates.capacity) : null;
     if (updates.status) dbUpdates.status = updates.status;
     if (updates.clientId) dbUpdates.client_id = updates.clientId;
+    if (updates.verificationStatus) dbUpdates.verification_status = updates.verificationStatus;
+    if (updates.verificationDate) dbUpdates.verification_date = updates.verificationDate;
+    if (updates.verificationData) dbUpdates.verification_data = updates.verificationData;
     
     const { data, error } = await supabase
       .from('vehicles')
@@ -180,7 +189,10 @@ export const updateVehicle = async (id: string, updates: Partial<Vehicle>): Prom
       clientId: data.client_id,
       documents: [], // No documents yet as per request
       createdAt: data.created_at,
-      updatedAt: data.updated_at
+      updatedAt: data.updated_at,
+      verificationStatus: data.verification_status,
+      verificationDate: data.verification_date,
+      verificationData: data.verification_data
     };
   } catch (error) {
     console.error('Error in updateVehicle:', error);
