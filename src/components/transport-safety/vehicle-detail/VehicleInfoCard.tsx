@@ -48,6 +48,20 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
   
   const { id: vehicleId, registrationNumber, make, model, type, status, year, documents } = vehicle;
 
+  const getLatestVerificationData = () => {
+    if (!vehicle.verificationData) return null;
+    
+    const logEntry = vehicle.verificationData.find(item => item.field === 'verification_log');
+    if (!logEntry || !logEntry.value) return null;
+
+    // Get the latest verification date
+    const dates = Object.keys(logEntry.value).sort().reverse();
+    if (dates.length === 0) return null;
+    
+    // Return the data for the latest date
+    return logEntry.value[dates[0]];
+  };
+
   const runSafetyCheck = async () => {
     setIsChecking(true);
     
@@ -95,10 +109,10 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
   };
   
   const formatVerificationData = (data: any) => {
-    if (!data || !data.transformed) return [];
+    if (!data || !Array.isArray(data)) return [];
     
-    // Get only the fields we want to display (excluding verification_log which is used for history)
-    return data.transformed
+    // Filter out the verification_log, last_response, and status fields
+    return data
       .filter((item: any) => item.field !== 'verification_log' && item.field !== 'last_response' && item.field !== 'status')
       .map((item: any) => ({
         label: item.field.replace(/_/g, ' ').split(' ').map((word: string) => 
@@ -106,6 +120,9 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
         value: item.value
       }));
   };
+
+  // Get the latest verification data for display
+  const latestVerificationData = getLatestVerificationData();
 
   return (
     <Card>
@@ -174,7 +191,7 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
         )}
         
         {/* Only show the "View Latest Verification" button */}
-        {vehicle.verificationData && (
+        {latestVerificationData && (
           <div className="mt-3">
             <Dialog open={showVerificationResults} onOpenChange={setShowVerificationResults}>
               <DialogTrigger asChild>
@@ -192,7 +209,7 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
                 </DialogHeader>
                 
                 <div className="border rounded-md divide-y">
-                  {formatVerificationData(verificationData || { transformed: vehicle.verificationData }).map((field: any, index: number) => (
+                  {formatVerificationData(latestVerificationData).map((field: any, index: number) => (
                     <div key={index} className="flex justify-between px-4 py-2">
                       <span className="font-medium text-gray-500">{field.label}:</span>
                       <span className="text-gray-900">{typeof field.value === 'object' ? JSON.stringify(field.value) : field.value}</span>

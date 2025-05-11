@@ -34,7 +34,6 @@ serve(async (req) => {
 
     // Current date and time for verification_date and last_response
     const verificationDate = new Date().toISOString();
-    const timestampKey = verificationDate.replace(/[:.]/g, '-');
 
     // Call the Surepass API to get RC details
     const surepassUrl = "https://sandbox.surepass.io/api/v1/rc/rc-full";
@@ -77,8 +76,7 @@ serve(async (req) => {
     }
 
     // Get existing vehicle data first if we have a vehicleId
-    let existingVerificationData: any[] = [];
-    let verificationLog: Record<string, any> = {};
+    let existingVerificationLog = {};
     
     if (vehicleId) {
       const { data: vehicleData, error } = await supabase
@@ -88,30 +86,28 @@ serve(async (req) => {
         .single();
 
       if (!error && vehicleData && Array.isArray(vehicleData.verification_data)) {
-        existingVerificationData = vehicleData.verification_data;
-        
-        // Find the existing verification log if it exists
-        const logEntry = existingVerificationData.find(item => item.field === 'verification_log');
+        // Find the verification_log entry
+        const logEntry = vehicleData.verification_data.find(item => item.field === 'verification_log');
         if (logEntry && logEntry.value) {
-          verificationLog = logEntry.value;
+          existingVerificationLog = logEntry.value;
         }
         
-        console.log("Found existing verification data:", existingVerificationData.length, "records");
+        console.log("Found existing verification data with log entry");
       }
     }
     
-    // Transform the Surepass data into the required format
-    const transformedData = [];
+    // Create verification data from the response fields
+    const currentVerificationData = [];
     
     // Add last_response field to track when we got this response
-    transformedData.push({
+    currentVerificationData.push({
       field: 'last_response',
       value: verificationDate,
       verified: true
     });
     
     // Add status field from the API response
-    transformedData.push({
+    currentVerificationData.push({
       field: 'status',
       value: verificationStatus,
       verified: true
@@ -124,7 +120,7 @@ serve(async (req) => {
       // Add each field as a separate object in the array
       Object.keys(data).forEach(key => {
         if (data[key] !== null) {
-          transformedData.push({
+          currentVerificationData.push({
             field: key,
             value: data[key],
             verified: true
@@ -133,18 +129,22 @@ serve(async (req) => {
       });
     }
     
-    // Store the transformed data in the verification log with timestamp as key
-    verificationLog[verificationDate] = transformedData;
+    // Store the current verification data in the log with timestamp as key
+    const updatedVerificationLog = {
+      ...existingVerificationLog,
+      [verificationDate]: currentVerificationData
+    };
     
     // Create the verification log entry in the correct format
     const verificationLogEntry = {
       field: "verification_log",
-      value: verificationLog,
+      value: updatedVerificationLog,
       verified: true
     };
     
-    // Create the complete transformed data array starting with the verification log
-    let completeTransformedData = [verificationLogEntry, ...transformedData];
+    // The complete transformed data array should have the verification log as the first item
+    // and NOT include the current verification data separately
+    const completeTransformedData = [verificationLogEntry];
     
     // If we have a vehicleId, update the vehicle record with verification data
     if (vehicleId) {
