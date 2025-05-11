@@ -10,7 +10,6 @@ const corsHeaders = {
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const surepassApiKey = Deno.env.get('SUREPASS_API_KEY') || '';
-const surepassBaseUrl = Deno.env.get('SUREPASS_BASE_URL') || 'https://sandbox.surepass.io';
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -32,10 +31,9 @@ serve(async (req) => {
     }
 
     console.log(`Verifying vehicle with registration number: ${registrationNumber}`);
-    console.log(`Using Surepass base URL: ${surepassBaseUrl}`);
 
-    // Call the Surepass API to get RC details
-    const surepassUrl = `${surepassBaseUrl}/api/v1/rc/rc-full`;
+    // Call the Surepass API to get RC details - using direct sandbox URL
+    const surepassUrl = "https://sandbox.surepass.io/api/v1/rc/rc-full";
     const surepassResponse = await fetch(surepassUrl, {
       method: "POST",
       headers: {
