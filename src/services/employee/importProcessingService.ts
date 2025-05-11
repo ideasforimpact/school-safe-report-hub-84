@@ -95,24 +95,21 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
     const { data: sessionData } = await supabase.auth.getSession();
     
     if (!sessionData?.session?.access_token) {
-      // Instead of throwing an error, we'll try to proceed with the API key only
-      console.log("No authentication session found, proceeding with API key only");
+      // If no session is found, show a more specific error
+      console.log("No authentication session found");
+      throw new Error("You must be logged in to import employees");
     }
     
     // Define the URL for the employee management function
     const functionUrl = "https://ybvxkiubnnixntghojyy.supabase.co/functions/v1/employee-management";
     
-    // Prepare headers - include auth token if available, otherwise rely on apikey
+    // Prepare headers - include auth token
     const headers = {
       'Content-Type': 'application/json',
       'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlidnhraXVibm5peG50Z2hvanl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3ODcxMzksImV4cCI6MjA2MjM2MzEzOX0.z8KKLi5uNyE0jxUoQtoB6M5iXr2D7hfAeXm5t1piWKo',
+      'Authorization': `Bearer ${sessionData.session.access_token}`,
       'path': 'bulk-update'
     };
-    
-    // Add Authorization header if we have a token
-    if (sessionData?.session?.access_token) {
-      headers['Authorization'] = `Bearer ${sessionData.session.access_token}`;
-    }
     
     console.log("Calling function with URL:", functionUrl);
     

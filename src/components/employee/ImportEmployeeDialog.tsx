@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { validateEmployeeExcel } from '@/services/employee/importEmployeeService';
 import { Progress } from '@/components/ui/progress';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ImportEmployeeDialogProps {
   isOpen: boolean;
@@ -30,10 +31,34 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [isValidated, setIsValidated] = useState(false);
   const [recordCount, setRecordCount] = useState<number | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const { user } = useAuth();
 
   // Get clientId from user context if not provided as prop
   const effectiveClientId = clientId || user?.clientId;
+
+  // Check authentication status on component mount and dialog open
+  useEffect(() => {
+    if (isOpen) {
+      checkAuthStatus();
+    }
+  }, [isOpen]);
+
+  // Check if the user is authenticated with Supabase
+  const checkAuthStatus = async () => {
+    try {
+      const { data } = await supabase.auth.getSession();
+      const isAuthValid = !!data?.session?.access_token;
+      setIsAuthenticated(isAuthValid);
+      
+      if (!isAuthValid) {
+        console.warn("No valid authentication session found");
+      }
+    } catch (error) {
+      console.error("Error checking auth status:", error);
+      setIsAuthenticated(false);
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -119,6 +144,12 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
       return;
     }
 
+    // Check authentication before proceeding
+    if (isAuthenticated === false) {
+      toast.error('You must be signed in to import employees');
+      return;
+    }
+
     setIsLoading(true);
     try {
       // Show a message for large imports to manage user expectations
@@ -139,6 +170,8 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
       setIsOpen(false);
     } catch (error) {
       console.error('Import failed:', error);
+      // Better error handling
+      toast.error(`Import failed: ${(error as Error).message || 'Unknown error'}`);
       // Don't close dialog on error so user can try again
     } finally {
       setIsLoading(false);
@@ -164,6 +197,15 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
             Upload an Excel file containing employee information. The file should include employee ID, name, email, and department.
           </DialogDescription>
         </DialogHeader>
+
+        {isAuthenticated === false && (
+          <div className="border border-destructive/50 rounded-md p-3 bg-destructive/10 mb-4">
+            <p className="text-destructive flex items-center">
+              <AlertCircle className="h-4 w-4 mr-2" />
+              You need to be signed in to import employees. Please sign in and try again.
+            </p>
+          </div>
+        )}
 
         <div className="space-y-6">
           <div className="space-y-2">
@@ -271,7 +313,7 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
             </Button>
             <Button
               onClick={handleImport}
-              disabled={!isValidated || isLoading}
+              disabled={!isValidated || isLoading || isAuthenticated === false}
               className="gap-1"
             >
               {isLoading ? (
