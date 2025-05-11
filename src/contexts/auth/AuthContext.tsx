@@ -80,7 +80,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       
       if (session?.user) {
-        handleUserAuthentication(session.user);
+        // Use setTimeout to avoid potential deadlocks
+        setTimeout(() => {
+          handleUserAuthentication(session.user);
+        }, 0);
       } else {
         // Mark auth as initialized and complete even if no session
         setIsAuthInitialized(true);
@@ -98,21 +101,29 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       console.log("Checking access for:", email);
       
-      // Updated to check if email exists in employees table with department as admin AND status is active
+      // Updated employee query to be more permissive - just check if email exists
       const { data, error } = await supabase
         .from('employees')
         .select('*')
         .eq('email', email)
-        .eq('department', 'admin')
-        .eq('status', 'active')
         .single();
       
-      if (error || !data) {
-        console.error("Employee access check error:", error || "No matching active admin employee found");
+      if (error) {
+        console.error("Employee access check error:", error);
+        setAuthError(`Access denied: Employee not found with email ${email}`);
+        return false;
+      }
+      
+      if (!data) {
+        console.error("No employee found with email:", email);
+        setAuthError("Access denied: No employee record found");
+        return false;
+      }
+      
+      // Check if employee is in admin department and active
+      if (data.department !== 'admin' || data.status !== 'active') {
+        console.error("Employee not in admin department or not active:", data);
         setAuthError("Access denied: Only active admin department employees can login");
-        await supabase.auth.signOut();
-        // Redirect to login page after unauthorized access attempt
-        navigate('/login');
         return false;
       }
       
@@ -121,9 +132,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       console.error("Error checking employee access:", error);
       setAuthError("Error verifying employee access");
-      await supabase.auth.signOut();
-      // Redirect to login page after error
-      navigate('/login');
       return false;
     }
   };
@@ -136,7 +144,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     const hasAccess = await checkEmployeeAccess(supabaseUser.email);
     if (!hasAccess) {
       console.log("Access denied: User is not an admin employee");
-      setAuthError("Access denied: Only admin department employees can login");
       await supabase.auth.signOut();
       navigate('/login');
       return;
