@@ -77,8 +77,8 @@ serve(async (req) => {
     }
 
     // Get existing vehicle data first if we have a vehicleId
-    let existingVerificationData = [];
-    let verificationLog = {};
+    let existingVerificationData: any[] = [];
+    let verificationLog: Record<string, any> = {};
     
     if (vehicleId) {
       const { data: vehicleData, error } = await supabase
@@ -133,19 +133,18 @@ serve(async (req) => {
       });
     }
     
-    // Store the current verification data in the log - just use the transformed array directly
-    // without wrapping it in any additional objects
+    // Store the transformed data in the verification log with timestamp as key
     verificationLog[verificationDate] = transformedData;
     
-    // Create the complete transformed data by adding the verification log
-    const completeTransformedData = [
-      {
-        field: "verification_log",
-        value: verificationLog,
-        verified: true
-      },
-      ...transformedData
-    ];
+    // Create the verification log entry in the correct format
+    const verificationLogEntry = {
+      field: "verification_log",
+      value: verificationLog,
+      verified: true
+    };
+    
+    // Create the complete transformed data array starting with the verification log
+    let completeTransformedData = [verificationLogEntry, ...transformedData];
     
     // If we have a vehicleId, update the vehicle record with verification data
     if (vehicleId) {
