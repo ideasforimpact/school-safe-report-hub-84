@@ -20,13 +20,20 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const url = new URL(req.url);
     const path = url.pathname.split('/').pop();
+    
+    // Get query parameters for filtering
+    const clientId = url.searchParams.get('client_id');
 
     // GET /vehicles - List all vehicles
     if (req.method === 'GET' && path === 'vehicles') {
-      const { data, error } = await supabase
-        .from('vehicles')
-        .select('*')
-        .order('created_at', { ascending: false });
+      let query = supabase.from('vehicles').select('*');
+      
+      // Add client_id filter if provided
+      if (clientId) {
+        query = query.eq('client_id', clientId);
+      }
+      
+      const { data, error } = await query.order('created_at', { ascending: false });
 
       if (error) throw error;
       

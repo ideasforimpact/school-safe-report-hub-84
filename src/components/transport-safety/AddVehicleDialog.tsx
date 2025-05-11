@@ -9,6 +9,7 @@ import { useForm, SubmitHandler } from 'react-hook-form';
 import { useTransportSafety } from '@/contexts/transport-safety/TransportSafetyContext';
 import { Vehicle } from '@/types/transportSafety';
 import { toast } from 'sonner';
+import { useClient } from '@/contexts/ClientContext';
 
 interface AddVehicleDialogProps {
   open: boolean;
@@ -19,6 +20,8 @@ type VehicleFormData = Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt' | 'documen
 
 const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose }) => {
   const { addVehicle } = useTransportSafety();
+  const { client } = useClient();
+  
   const { register, handleSubmit, formState: { errors, isValid, isSubmitting }, reset } = useForm<VehicleFormData>({
     defaultValues: {
       registrationNumber: '',
@@ -29,18 +32,24 @@ const AddVehicleDialog: React.FC<AddVehicleDialogProps> = ({ open, onClose }) =>
       status: 'active',
       driver: '',
       route: '',
-      capacity: undefined
+      capacity: undefined,
+      clientId: client?.id
     }
   });
 
   const onSubmit: SubmitHandler<VehicleFormData> = async (data) => {
     try {
-      await addVehicle({
-        ...data,
-        year: Number(data.year)
-      });
-      reset();
-      onClose();
+      if (client) {
+        await addVehicle({
+          ...data,
+          year: Number(data.year),
+          clientId: client.id // Always use the current client's ID
+        });
+        reset();
+        onClose();
+      } else {
+        toast.error('No client selected. Please select a client first.');
+      }
     } catch (error) {
       console.error('Error adding vehicle:', error);
       toast.error('Failed to add vehicle. Please try again.');

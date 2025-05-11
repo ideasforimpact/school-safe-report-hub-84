@@ -393,6 +393,7 @@ export type Database = {
       vehicles: {
         Row: {
           capacity: number | null
+          client_id: string | null
           created_at: string
           driver: string
           id: string
@@ -407,6 +408,7 @@ export type Database = {
         }
         Insert: {
           capacity?: number | null
+          client_id?: string | null
           created_at?: string
           driver: string
           id?: string
@@ -421,6 +423,7 @@ export type Database = {
         }
         Update: {
           capacity?: number | null
+          client_id?: string | null
           created_at?: string
           driver?: string
           id?: string
@@ -433,7 +436,15 @@ export type Database = {
           updated_at?: string
           year?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "vehicles_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

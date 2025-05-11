@@ -1,6 +1,7 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { Vehicle } from "@/types/transportSafety";
+import { Vehicle, VehicleType } from "@/types/transportSafety";
+import { useClient } from "@/contexts/ClientContext";
 
 // Get all vehicles from the database
 export const getAllVehicles = async (): Promise<Vehicle[]> => {
@@ -18,14 +19,15 @@ export const getAllVehicles = async (): Promise<Vehicle[]> => {
     return data.map((vehicle: any) => ({
       id: vehicle.id,
       registrationNumber: vehicle.registration_number,
-      type: vehicle.type,
+      type: vehicle.type as VehicleType,
       make: vehicle.make,
       model: vehicle.model,
       year: vehicle.year,
       driver: vehicle.driver,
       route: vehicle.route,
       capacity: vehicle.capacity,
-      status: vehicle.status,
+      status: vehicle.status as 'active' | 'maintenance' | 'inactive',
+      clientId: vehicle.client_id,
       documents: [], // No documents yet as per request
       createdAt: vehicle.created_at,
       updatedAt: vehicle.updated_at
@@ -56,14 +58,15 @@ export const getVehicleById = async (id: string): Promise<Vehicle | null> => {
     return {
       id: data.id,
       registrationNumber: data.registration_number,
-      type: data.type,
+      type: data.type as VehicleType,
       make: data.make,
       model: data.model,
       year: data.year,
       driver: data.driver,
       route: data.route,
       capacity: data.capacity,
-      status: data.status,
+      status: data.status as 'active' | 'maintenance' | 'inactive',
+      clientId: data.client_id,
       documents: [], // No documents yet as per request
       createdAt: data.created_at,
       updatedAt: data.updated_at
@@ -87,7 +90,8 @@ export const addVehicle = async (vehicleData: Omit<Vehicle, 'id' | 'createdAt' |
       driver: vehicleData.driver,
       route: vehicleData.route,
       capacity: vehicleData.capacity,
-      status: vehicleData.status
+      status: vehicleData.status,
+      client_id: vehicleData.clientId
     };
     
     const { data, error } = await supabase
@@ -105,14 +109,15 @@ export const addVehicle = async (vehicleData: Omit<Vehicle, 'id' | 'createdAt' |
     return {
       id: data.id,
       registrationNumber: data.registration_number,
-      type: data.type,
+      type: data.type as VehicleType,
       make: data.make,
       model: data.model,
       year: data.year,
       driver: data.driver,
       route: data.route,
       capacity: data.capacity,
-      status: data.status,
+      status: data.status as 'active' | 'maintenance' | 'inactive',
+      clientId: data.client_id,
       documents: [], // No documents yet as per request
       createdAt: data.created_at,
       updatedAt: data.updated_at
@@ -138,6 +143,7 @@ export const updateVehicle = async (id: string, updates: Partial<Vehicle>): Prom
     if (updates.route) dbUpdates.route = updates.route;
     if (updates.capacity !== undefined) dbUpdates.capacity = updates.capacity;
     if (updates.status) dbUpdates.status = updates.status;
+    if (updates.clientId) dbUpdates.client_id = updates.clientId;
     
     const { data, error } = await supabase
       .from('vehicles')
@@ -155,14 +161,15 @@ export const updateVehicle = async (id: string, updates: Partial<Vehicle>): Prom
     return {
       id: data.id,
       registrationNumber: data.registration_number,
-      type: data.type,
+      type: data.type as VehicleType,
       make: data.make,
       model: data.model,
       year: data.year,
       driver: data.driver,
       route: data.route,
       capacity: data.capacity,
-      status: data.status,
+      status: data.status as 'active' | 'maintenance' | 'inactive',
+      clientId: data.client_id,
       documents: [], // No documents yet as per request
       createdAt: data.created_at,
       updatedAt: data.updated_at

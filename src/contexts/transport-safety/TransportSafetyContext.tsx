@@ -11,6 +11,7 @@ import {
   updateVehicle as updateVehicleService, 
   deleteVehicle as deleteVehicleService 
 } from '@/services/transport-safety/vehicleService';
+import { useClient } from '@/contexts/ClientContext';
 
 const TransportSafetyContext = createContext<TransportSafetyContextType | undefined>(undefined);
 
@@ -26,6 +27,7 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { client } = useClient();
 
   // Fetch vehicles on component mount
   useEffect(() => {
@@ -33,7 +35,11 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
       try {
         setLoading(true);
         const vehiclesData = await getAllVehicles();
-        setVehicles(vehiclesData);
+        // If client is selected, filter vehicles by client_id
+        const filteredVehicles = client 
+          ? vehiclesData.filter(v => v.clientId === client.id) 
+          : vehiclesData;
+        setVehicles(filteredVehicles);
         setError(null);
       } catch (err) {
         console.error('Failed to fetch vehicles:', err);
@@ -45,11 +51,17 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
     };
 
     fetchVehicles();
-  }, []);
+  }, [client]);
 
   const addVehicle = async (vehicleData: Omit<Vehicle, 'id' | 'createdAt' | 'updatedAt' | 'documents'>) => {
     try {
-      const newVehicle = await addVehicleService(vehicleData);
+      // Ensure client_id is set
+      const dataWithClient = {
+        ...vehicleData,
+        clientId: client?.id
+      };
+
+      const newVehicle = await addVehicleService(dataWithClient);
       
       if (newVehicle) {
         setVehicles([...vehicles, newVehicle]);

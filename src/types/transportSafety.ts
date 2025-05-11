@@ -29,6 +29,7 @@ export interface Vehicle {
   capacity?: number;
   documents: VehicleDocument[];
   status: 'active' | 'maintenance' | 'inactive';
+  clientId?: string;
   createdAt: string;
   updatedAt: string;
 }
