@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { VerificationDocument } from '@/types/employeeVerification';
@@ -98,79 +99,110 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
     }
   };
 
-  const verifyDocument = (id: string, status: 'verified' | 'failed', notes?: string) => {
-    const now = new Date().toISOString();
-    
-    setDocuments(documents.map(doc => {
-      if (doc.id === id) {
-        // Generate mock details for government-verified documents
-        let details = undefined;
-        if (status === 'verified') {
-          switch (doc.documentType) {
-            case 'aadhar':
-              details = {
-                address: '123 Main St, Apartment 4B, Bangalore, Karnataka 560001',
-                name: doc.documentNumber ? `Holder of ${doc.documentNumber}` : 'Document Holder',
-                dob: '1985-05-15'
-              };
-              break;
-            case 'driving_license':
-              details = {
-                address: '45 Park Avenue, Chennai, Tamil Nadu 600001',
-                name: doc.documentNumber ? `Holder of ${doc.documentNumber}` : 'Document Holder',
-                issue_date: '2018-03-10',
-                expiry_date: '2028-03-09'
-              };
-              break;
-            case 'passport':
-              details = {
-                address: '78 Diplomatic Enclave, New Delhi, Delhi 110001',
-                name: doc.documentNumber ? `Holder of ${doc.documentNumber}` : 'Document Holder',
-                issue_date: '2019-07-22',
-                expiry_date: '2029-07-21'
-              };
-              break;
-            case 'voter_id':
-              details = {
-                address: '56 Democracy Street, Mumbai, Maharashtra 400001',
-                name: doc.documentNumber ? `Holder of ${doc.documentNumber}` : 'Document Holder',
-                constituency: 'Mumbai South'
-              };
-              break;
-            case 'pan':
-              details = {
-                name: doc.documentNumber ? `Holder of ${doc.documentNumber}` : 'Document Holder',
-                dob: '1982-11-30',
-                father_name: 'Parent Name'
-              };
-              break;
-            default:
-              details = {};
-          }
-        }
-
-        return { 
-          ...doc, 
-          verificationStatus: status, 
-          verificationDate: now,
-          verificationNotes: notes || doc.verificationNotes,
-          verificationMethod: status === 'verified' ? 'api' : undefined,
-          details: details,
-          updatedAt: now
-        };
+  const verifyDocument = async (id: string, status: 'verified' | 'failed', notes?: string) => {
+    try {
+      setIsLoading(true);
+      const documentToVerify = documents.find(doc => doc.id === id);
+      
+      if (!documentToVerify) {
+        throw new Error('Document not found');
       }
-      return doc;
-    }));
+      
+      // Find the document first to get employeeId
+      const employeeId = documentToVerify.employeeId;
+      const now = new Date().toISOString();
+      
+      // Call the edge function to update the document verification status
+      const { data, error } = await supabase.functions.invoke('employee-documents', {
+        method: 'PUT',
+        body: { 
+          employeeId,
+          documentId: id,
+          verificationStatus: status,
+          verificationNotes: notes
+        }
+      });
+      
+      if (error) {
+        console.error('Error updating document verification status:', error);
+        throw new Error('Failed to update document verification status');
+      }
+      
+      // Generate mock details for government-verified documents
+      let details = undefined;
+      if (status === 'verified') {
+        switch (documentToVerify.documentType) {
+          case 'aadhar':
+            details = {
+              address: '123 Main St, Apartment 4B, Bangalore, Karnataka 560001',
+              name: documentToVerify.documentNumber ? `Holder of ${documentToVerify.documentNumber}` : 'Document Holder',
+              dob: '1985-05-15'
+            };
+            break;
+          case 'driving_license':
+            details = {
+              address: '45 Park Avenue, Chennai, Tamil Nadu 600001',
+              name: documentToVerify.documentNumber ? `Holder of ${documentToVerify.documentNumber}` : 'Document Holder',
+              issue_date: '2018-03-10',
+              expiry_date: '2028-03-09'
+            };
+            break;
+          case 'passport':
+            details = {
+              address: '78 Diplomatic Enclave, New Delhi, Delhi 110001',
+              name: documentToVerify.documentNumber ? `Holder of ${documentToVerify.documentNumber}` : 'Document Holder',
+              issue_date: '2019-07-22',
+              expiry_date: '2029-07-21'
+            };
+            break;
+          case 'voter_id':
+            details = {
+              address: '56 Democracy Street, Mumbai, Maharashtra 400001',
+              name: documentToVerify.documentNumber ? `Holder of ${documentToVerify.documentNumber}` : 'Document Holder',
+              constituency: 'Mumbai South'
+            };
+            break;
+          case 'pan':
+            details = {
+              name: documentToVerify.documentNumber ? `Holder of ${documentToVerify.documentNumber}` : 'Document Holder',
+              dob: '1982-11-30',
+              father_name: 'Parent Name'
+            };
+            break;
+          default:
+            details = {};
+        }
+      }
+      
+      // Update local state
+      setDocuments(docs => docs.map(doc => {
+        if (doc.id === id) {
+          return { 
+            ...doc, 
+            verificationStatus: status, 
+            verificationDate: now,
+            verificationNotes: notes || doc.verificationNotes,
+            verificationMethod: status === 'verified' ? 'api' : undefined,
+            details: details,
+            updatedAt: now
+          };
+        }
+        return doc;
+      }));
 
-    // Update employee status if all documents are verified or if any document fails
-    const updatedDoc = documents.find(doc => doc.id === id);
-    if (updatedDoc) {
-      const employeeId = updatedDoc.employeeId;
+      // Update employee status if all documents are verified or if any document fails
       const employeeDocs = documents.filter(doc => doc.employeeId === employeeId);
       
       // Check if all docs are verified or if any doc failed
-      const allVerified = employeeDocs.every(doc => doc.verificationStatus === 'verified');
-      const anyFailed = employeeDocs.some(doc => doc.verificationStatus === 'failed');
+      const allVerified = employeeDocs.every(doc => {
+        if (doc.id === id) return status === 'verified';
+        return doc.verificationStatus === 'verified';
+      });
+      
+      const anyFailed = employeeDocs.some(doc => {
+        if (doc.id === id) return status === 'failed';
+        return doc.verificationStatus === 'failed';
+      });
       
       if (anyFailed) {
         updateEmployeeStatus(employeeId, 'failed');
@@ -179,6 +211,12 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
       } else {
         updateEmployeeStatus(employeeId, 'pending');
       }
+      
+    } catch (err) {
+      console.error('Error in verifyDocument:', err);
+      throw err;
+    } finally {
+      setIsLoading(false);
     }
   };
 

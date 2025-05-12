@@ -122,6 +122,7 @@ export type Database = {
           employee_id: string
           id: string
           updated_at: string | null
+          verification_status: string | null
         }
         Insert: {
           created_at?: string | null
@@ -132,6 +133,7 @@ export type Database = {
           employee_id: string
           id?: string
           updated_at?: string | null
+          verification_status?: string | null
         }
         Update: {
           created_at?: string | null
@@ -142,6 +144,7 @@ export type Database = {
           employee_id?: string
           id?: string
           updated_at?: string | null
+          verification_status?: string | null
         }
         Relationships: []
       }

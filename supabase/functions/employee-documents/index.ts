@@ -54,6 +54,23 @@ serve(async (req) => {
       return await handleDocumentDelete(employeeId, documentId, supabase, corsHeaders);
     }
 
+    // PUT method for updating document verification status
+    if (req.method === "PUT") {
+      const body = await req.json();
+      const { employeeId, documentId, verificationStatus, verificationNotes } = body;
+      
+      if (documentId && verificationStatus) {
+        return await handleUpdateVerificationStatus(
+          employeeId, 
+          documentId, 
+          verificationStatus, 
+          verificationNotes, 
+          supabase, 
+          corsHeaders
+        );
+      }
+    }
+
     return new Response(
       JSON.stringify({ error: "Method not allowed" }),
       { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -66,6 +83,111 @@ serve(async (req) => {
     );
   }
 });
+
+// New function to handle updating document verification status
+async function handleUpdateVerificationStatus(
+  employeeId, 
+  documentId, 
+  verificationStatus, 
+  verificationNotes, 
+  supabase, 
+  corsHeaders
+) {
+  if (!employeeId || !documentId || !verificationStatus) {
+    return new Response(
+      JSON.stringify({ error: "Missing required fields" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+  
+  try {
+    // Get the employee's documents
+    const { data: existingEntry, error: fetchError } = await supabase
+      .from('employee_documents')
+      .select('*')
+      .eq('employee_id', employeeId)
+      .single();
+    
+    if (fetchError) {
+      throw fetchError;
+    }
+    
+    if (!existingEntry || !existingEntry.documents || !Array.isArray(existingEntry.documents)) {
+      return new Response(
+        JSON.stringify({ error: "No documents found for this employee" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    // Find the document to update
+    const documentToUpdate = existingEntry.documents.find(doc => doc.id === documentId);
+    
+    if (!documentToUpdate) {
+      return new Response(
+        JSON.stringify({ error: "Document not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    // Create log entry for status update
+    const logEntry = {
+      action: 'verify',
+      documentId: documentId,
+      documentType: documentToUpdate.documentType,
+      performedAt: new Date().toISOString(),
+      verificationStatus,
+      details: {
+        documentNumber: documentToUpdate.documentNumber,
+        notes: verificationNotes || "Status updated"
+      }
+    };
+    
+    // Add the log entry to the existing logs
+    const updatedLogs = [...JSON.parse(JSON.stringify(existingEntry.employee_docs_log || [])), logEntry];
+    
+    // Update the document in the array
+    const updatedDocuments = existingEntry.documents.map(doc => {
+      if (doc.id === documentId) {
+        return {
+          ...doc,
+          verificationStatus,
+          verificationDate: new Date().toISOString(),
+          verificationNotes: verificationNotes || doc.verificationNotes
+        };
+      }
+      return doc;
+    });
+    
+    // Update the database record
+    const { error: updateError } = await supabase
+      .from('employee_documents')
+      .update({ 
+        documents: updatedDocuments,
+        employee_docs_log: updatedLogs,
+        verification_status: verificationStatus // Update the main verification_status column
+      })
+      .eq('employee_id', employeeId);
+    
+    if (updateError) {
+      throw updateError;
+    }
+    
+    return new Response(
+      JSON.stringify({ 
+        success: true,
+        status: verificationStatus,
+        document: updatedDocuments.find(doc => doc.id === documentId)
+      }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Error updating document verification status:", error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
 
 async function handleDocumentUpload(employeeId, documentData, supabase, corsHeaders) {
   if (!employeeId || !documentData) {
@@ -134,6 +256,7 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
       documentImage: documentUrl,
       filePath: filePath,
       uploadedAt: new Date().toISOString(),
+      verificationStatus: documentData.verificationStatus || 'pending',
       id: crypto.randomUUID()
     };
     
@@ -164,7 +287,8 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
           documents: updatedDocuments,
           document_type: documentType, // Update the document_type column
           document_no: documentNo,     // Update the document_no column
-          employee_docs_log: updatedLogs // Update the logs
+          employee_docs_log: updatedLogs, // Update the logs
+          verification_status: documentData.verificationStatus || existingEntry.verification_status || 'pending'
         })
         .eq('employee_id', employeeId);
     } else {
@@ -176,7 +300,8 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
           documents: [documentRecord],
           document_type: documentType, // Set the document_type column
           document_no: documentNo,     // Set the document_no column
-          employee_docs_log: [logEntry] // Initialize the logs
+          employee_docs_log: [logEntry], // Initialize the logs
+          verification_status: documentData.verificationStatus || 'pending'
         });
     }
     
@@ -284,7 +409,29 @@ async function handleDocumentDelete(employeeId, documentId, supabase, corsHeader
     if (updatedDocuments.length === 0) {
       await supabase
         .from('employee_documents')
-        .update({ document_type: null, document_no: null })
+        .update({ 
+          document_type: null, 
+          document_no: null,
+          verification_status: null 
+        })
+        .eq('employee_id', employeeId);
+    } else {
+      // Check remaining documents for verification status
+      const allVerified = updatedDocuments.every(doc => doc.verificationStatus === 'verified');
+      const anyFailed = updatedDocuments.some(doc => doc.verificationStatus === 'failed');
+      
+      let newStatus = existingEntry.verification_status;
+      if (anyFailed) {
+        newStatus = 'failed';
+      } else if (allVerified) {
+        newStatus = 'verified';
+      } else {
+        newStatus = 'pending';
+      }
+      
+      await supabase
+        .from('employee_documents')
+        .update({ verification_status: newStatus })
         .eq('employee_id', employeeId);
     }
     
@@ -320,7 +467,8 @@ async function handleListDocuments(employeeId, supabase, corsHeaders) {
         documents,
         document_type: data?.document_type || null,
         document_no: data?.document_no || null,
-        logs: data?.employee_docs_log || []
+        logs: data?.employee_docs_log || [],
+        verification_status: data?.verification_status || null
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
