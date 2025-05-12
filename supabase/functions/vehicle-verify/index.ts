@@ -183,11 +183,11 @@ serve(async (req) => {
       });
     }
     
-    // Add challan data as a separate field if available
-    if (challanData) {
+    // Add challan data as a specific field if available
+    if (challanData && challanData.data) {
       currentVerificationData.push({
-        field: 'challan_response',
-        value: challanData,
+        field: 'challan_details',
+        value: challanData.data,
         verified: true
       });
     }
@@ -206,8 +206,17 @@ serve(async (req) => {
     };
     
     // The complete transformed data array should have the verification log as the first item
-    // and NOT include the current verification data separately
+    // and also include challan details directly in the transformed data
     const completeTransformedData = [verificationLogEntry];
+    
+    // Add challan_details directly in the transformed data if available
+    if (challanData && challanData.data) {
+      completeTransformedData.push({
+        field: "challan_details",
+        value: challanData.data,
+        verified: true
+      });
+    }
     
     // If we have a vehicleId, update the vehicle record with verification data
     if (vehicleId) {
