@@ -13,7 +13,7 @@ const QuickActions: React.FC = () => {
       icon: AlertTriangle,
       color: "text-red-600",
       bgColor: "bg-red-100",
-      path: "/report"
+      path: "/report-incident"
     },
     {
       title: "View All Incidents",
