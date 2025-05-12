@@ -216,7 +216,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
               </TableCell>
               <TableCell>{doc.documentNumber || '—'}</TableCell>
               <TableCell>
-                <VerificationStatusBadge status={doc.verificationStatus} />
+                <VerificationStatusBadge status={doc.verificationStatus} verificationMethod={doc.verificationMethod} />
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex items-center space-x-2 justify-end">
