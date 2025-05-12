@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 
@@ -22,41 +21,28 @@ serve(async (req) => {
 
   // Handle document operations based on the method
   try {
-    // For GET requests, we expect the employeeId in the request body
-    if (req.method === "GET") {
-      let employeeId;
+    // Use POST method for both listing documents and uploading
+    if (req.method === "POST") {
+      const body = await req.json();
+      const { employeeId, documentData } = body;
       
-      // Try to get employeeId from URL query parameters first (for backward compatibility)
-      const url = new URL(req.url);
-      const urlEmployeeId = url.searchParams.get('employeeId');
-      
-      if (urlEmployeeId) {
-        employeeId = urlEmployeeId;
-      } else {
-        // If not in URL, try to get from body
-        try {
-          const body = await req.json();
-          employeeId = body?.employeeId;
-        } catch (e) {
-          console.error("Error parsing request body:", e);
-        }
+      // If documentData is provided, it's an upload operation
+      if (documentData) {
+        return await handleDocumentUpload(employeeId, documentData, supabase, corsHeaders);
+      } 
+      // Otherwise it's a list operation
+      else if (employeeId) {
+        return await handleListDocuments(employeeId, supabase, corsHeaders);
       }
-
-      if (!employeeId) {
+      else {
         return new Response(
-          JSON.stringify({ error: "Missing employeeId parameter" }),
+          JSON.stringify({ error: "Missing required parameters" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      
-      return await handleListDocuments(employeeId, supabase, corsHeaders);
     }
     
-    if (req.method === "POST") {
-      const { employeeId, documentData } = await req.json();
-      return await handleDocumentUpload(employeeId, documentData, supabase, corsHeaders);
-    }
-    
+    // DELETE operation remains the same
     if (req.method === "DELETE") {
       const { employeeId, documentId } = await req.json();
       return await handleDocumentDelete(employeeId, documentId, supabase, corsHeaders);

@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { VerificationDocument } from '@/types/employeeVerification';
@@ -16,9 +17,9 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
     
     setIsLoading(true);
     try {
-      // The correct way to pass employeeId as a parameter is using body for GET requests
+      // For GET requests, we should pass parameters as query strings, not in the body
       const { data, error } = await supabase.functions.invoke('employee-documents', {
-        method: 'GET',
+        method: 'POST',  // Change to POST since we're sending data
         body: { employeeId }
       });
       
