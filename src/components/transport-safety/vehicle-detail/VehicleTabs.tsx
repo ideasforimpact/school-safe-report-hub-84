@@ -125,15 +125,26 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
   const formatVerificationData = (data: any) => {
     if (!data || !Array.isArray(data)) return [];
     
+    // Track already processed challan details to avoid duplicates
+    let processedChallanDetails = false;
+    
     // Filter out fields we don't want to show in the details popup
-    // Specifically filter out duplicated challan_details that might be in the verification log
     return data
       .filter((item: any) => {
-        // Skip verification_log, last_response, status and any duplicated challan_details within the verification log
+        // Skip verification_log, last_response, status
         if (item.field === 'verification_log' || 
             item.field === 'last_response' || 
             item.field === 'status') {
           return false;
+        }
+        
+        // Handle challan_details - only include the first occurrence
+        if (item.field === 'challan_details') {
+          if (processedChallanDetails) {
+            return false; // Skip duplicate challan_details
+          }
+          processedChallanDetails = true;
+          return true;
         }
         
         return true;
@@ -155,35 +166,40 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
             label: 'Challan Details',
             value: (
               <div className="space-y-2 mt-2 border rounded-md p-2 bg-orange-50">
-                {challans.map((challan: any, idx: number) => (
-                  <div key={idx} className="border-b border-orange-200 pb-2 last:border-b-0 last:pb-0">
-                    <div className="grid grid-cols-2 gap-1 text-xs">
-                      <span className="font-medium">Challan No:</span>
-                      <span className="text-right">{challan.challan_number || 'N/A'}</span>
-                      
-                      <span className="font-medium">Amount:</span>
-                      <span className="text-right">₹{challan.amount || '0'}</span>
-                      
-                      <span className="font-medium">Status:</span>
-                      <span className={`text-right ${challan.challan_status?.toUpperCase() === 'DISPOSED' || challan.challan_status?.toUpperCase() === 'PAID' ? 'text-green-600' : 'text-red-600'}`}>
-                        {challan.challan_status || 'UNPAID'}
-                      </span>
-                      
-                      {challan.challan_date && (
-                        <>
-                          <span className="font-medium">Date:</span>
-                          <span className="text-right">{challan.challan_date}</span>
-                        </>
-                      )}
+                {challans.length > 0 ? (
+                  challans.map((challan: any, idx: number) => (
+                    <div key={idx} className="border-b border-orange-200 pb-2 last:border-b-0 last:pb-0">
+                      <div className="grid grid-cols-2 gap-1 text-xs">
+                        <span className="font-medium">Challan No:</span>
+                        <span className="text-right">{challan.challan_number || 'N/A'}</span>
+                        
+                        <span className="font-medium">Amount:</span>
+                        <span className="text-right">₹{challan.amount || '0'}</span>
+                        
+                        <span className="font-medium">Status:</span>
+                        <span className={`text-right ${challan.challan_status?.toUpperCase() === 'DISPOSED' || challan.challan_status?.toUpperCase() === 'PAID' ? 'text-green-600' : 'text-red-600'}`}>
+                          {challan.challan_status || 'UNPAID'}
+                        </span>
+                        
+                        {challan.challan_date && (
+                          <>
+                            <span className="font-medium">Date:</span>
+                            <span className="text-right">{challan.challan_date}</span>
+                          </>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <div className="text-sm text-center py-2">No challan records found</div>
+                )}
               </div>
             ),
             isFormatted: true
           };
         }
         
+        // For all other fields, return simple label-value pairs
         return {
           label,
           value
