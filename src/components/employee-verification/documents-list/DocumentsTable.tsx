@@ -41,7 +41,6 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
           <TableRow>
             <TableHead className="w-[100px]">Type</TableHead>
             <TableHead>Document #</TableHead>
-            <TableHead>Uploaded</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
@@ -56,9 +55,6 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                 </div>
               </TableCell>
               <TableCell>{doc.documentNumber || '—'}</TableCell>
-              <TableCell>
-                {doc.createdAt ? formatDistanceToNow(new Date(doc.createdAt), { addSuffix: true }) : '—'}
-              </TableCell>
               <TableCell>
                 <VerificationStatusBadge status={doc.verificationStatus} />
               </TableCell>
