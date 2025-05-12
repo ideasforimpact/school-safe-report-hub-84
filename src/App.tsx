@@ -25,6 +25,12 @@ import TransportSafetyPage from '@/pages/transport-safety/TransportSafetyPage';
 import VehicleDetailPage from '@/pages/transport-safety/VehicleDetailPage';
 import DocumentsPage from '@/pages/transport-safety/DocumentsPage';
 
+// Incident Pages
+import IncidentsList from '@/pages/IncidentsList';
+import IncidentDetail from '@/pages/IncidentDetail';
+import IncidentConfiguration from '@/pages/IncidentConfiguration';
+import ConfigurationManagement from '@/pages/configuration/ConfigurationManagement';
+
 // Employee Verification Pages
 import EmployeeVerificationPage from '@/pages/employee-verification/EmployeeVerificationPage';
 import EmployeeDetailPage from '@/pages/employee-verification/EmployeeDetailPage';
@@ -55,6 +61,12 @@ function App() {
                   <Route path="/educational-configuration" element={<EducationalConfiguration />} />
                   <Route path="/other-configuration" element={<OtherConfiguration />} />
                   <Route path="/facilities-configuration" element={<EducationalConfiguration />} />
+
+                  {/* Incident Management Routes */}
+                  <Route path="/incidents" element={<IncidentsList />} />
+                  <Route path="/incidents/:incidentId" element={<IncidentDetail />} />
+                  <Route path="/incident-configuration" element={<IncidentConfiguration />} />
+                  <Route path="/configuration" element={<ConfigurationManagement />} />
 
                   {/* Transport Safety routes */}
                   <Route path="/transport-safety" element={<TransportSafetyPage />} />

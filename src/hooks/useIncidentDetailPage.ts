@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIncidents } from '@/contexts/incident/IncidentContext';
 import { useAuth } from '@/contexts/auth/AuthContext';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/use-toast';
 import { formatUserFullName } from '@/utils/userUtils';
 import { IncidentStatus } from '@/types/incident';
 
@@ -61,9 +61,16 @@ export function useIncidentDetailPage(id: string) {
         createdBy: { id: user?.id || 'system', name: userName },
       });
       
-      toast.success(`Status updated to ${newStatus}`);
+      toast({
+        title: "Status updated",
+        description: `Status updated to ${newStatus}`,
+      });
     } catch (error) {
-      toast.error('Failed to update status');
+      toast({
+        title: "Error",
+        description: "Failed to update status",
+        variant: "destructive",
+      });
       console.error(error);
     } finally {
       setIsLoading(false);
@@ -86,9 +93,16 @@ export function useIncidentDetailPage(id: string) {
       });
       
       setNewComment('');
-      toast.success('Comment added successfully');
+      toast({
+        title: "Comment added",
+        description: "Comment added successfully",
+      });
     } catch (error) {
-      toast.error('Failed to add comment');
+      toast({
+        title: "Error",
+        description: "Failed to add comment", 
+        variant: "destructive",
+      });
       console.error(error);
     } finally {
       setIsLoading(false);
