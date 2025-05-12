@@ -9,10 +9,14 @@ const corsHeaders = {
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-const surepassApiKey = Deno.env.get('SUREPASS_API_KEY') || '';
 
 // Get environment configuration
 const isDevelopment = Deno.env.get('ENVIRONMENT') === 'development';
+
+// Choose the appropriate API key based on environment
+const surepassApiKey = isDevelopment 
+  ? Deno.env.get('SUREPASS_SANDBOX_API_KEY') || Deno.env.get('SUREPASS_API_KEY') || ''
+  : Deno.env.get('SUREPASS_PRODUCTION_API_KEY') || Deno.env.get('SUREPASS_API_KEY') || '';
 
 // Choose the appropriate API base URL based on environment
 const surepassBaseUrl = isDevelopment 
@@ -20,6 +24,7 @@ const surepassBaseUrl = isDevelopment
   : "https://kyc-api.surepass.io/api/v1/rc/rc-full";
 
 console.log(`Using Surepass API URL: ${surepassBaseUrl} (Development mode: ${isDevelopment})`);
+console.log(`Using environment-specific API key: ${surepassApiKey ? 'Yes (key present)' : 'No (key missing)'}`);
 
 serve(async (req) => {
   // Handle CORS preflight requests
