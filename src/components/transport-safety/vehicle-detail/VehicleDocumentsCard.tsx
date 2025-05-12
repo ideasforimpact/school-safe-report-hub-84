@@ -43,6 +43,11 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
   const hasChallanFromApi = () => {
     if (!vehicle.verificationData) return false;
     
+    // First check for direct challan_details field
+    const challanDetails = vehicle.verificationData.find(item => item.field === 'challan_details');
+    if (challanDetails && challanDetails.value) return true;
+    
+    // If not found directly, check in the verification log
     const verificationLog = vehicle.verificationData.find(item => item.field === 'verification_log');
     if (!verificationLog || !verificationLog.value) return false;
     
@@ -55,20 +60,24 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
     if (!latestData) return false;
     
     // Check for challan data in the verification response
-    const challanResponse = latestData.find((item: any) => item.field === 'challan_response');
+    const challanResponse = latestData.find((item: any) => item.field === 'challan_details');
     if (!challanResponse) return false;
     
     // Check if there are actual challan details in the response
-    return challanResponse.value && 
-           challanResponse.value.data && 
-           Array.isArray(challanResponse.value.data) && 
-           challanResponse.value.data.length > 0;
+    return Boolean(challanResponse.value);
   };
   
   // Get the latest challan data from verification responses
   const getChallanDetails = () => {
     if (!vehicle.verificationData) return null;
     
+    // First check for direct challan_details field
+    const challanDetails = vehicle.verificationData.find(item => item.field === 'challan_details');
+    if (challanDetails && challanDetails.value && challanDetails.value.challan_details) {
+      return challanDetails.value.challan_details.challans || [];
+    }
+    
+    // If not found directly, check in the verification log
     const verificationLog = vehicle.verificationData.find(item => item.field === 'verification_log');
     if (!verificationLog || !verificationLog.value) return null;
     
@@ -81,10 +90,10 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
     if (!latestData) return null;
     
     // Get the challan response field
-    const challanResponse = latestData.find((item: any) => item.field === 'challan_response');
-    if (!challanResponse || !challanResponse.value || !challanResponse.value.data) return null;
+    const challanResponse = latestData.find((item: any) => item.field === 'challan_details');
+    if (!challanResponse || !challanResponse.value || !challanResponse.value.challan_details) return null;
     
-    return challanResponse.value.data;
+    return challanResponse.value.challan_details.challans || [];
   };
   
   const hasChallanFromNotes = () => {
@@ -188,7 +197,7 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
                 <div key={index} className="border-b border-orange-200 pb-2 last:border-b-0 last:pb-0">
                   <div className="flex justify-between text-xs">
                     <span className="font-medium">Challan No:</span>
-                    <span>{challan.challan_number || 'N/A'}</span>
+                    <span className="text-gray-900">{challan.challan_number || 'N/A'}</span>
                   </div>
                   <div className="flex justify-between text-xs">
                     <span className="font-medium">Amount:</span>
@@ -196,14 +205,14 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
                   </div>
                   <div className="flex justify-between text-xs">
                     <span className="font-medium">Status:</span>
-                    <span className={challan.status === 'PAID' ? 'text-green-600' : 'text-red-600'}>
-                      {challan.status || 'UNPAID'}
+                    <span className={challan.challan_status?.toUpperCase() === 'DISPOSED' || challan.challan_status?.toUpperCase() === 'PAID' ? 'text-green-600' : 'text-red-600'}>
+                      {challan.challan_status || 'UNPAID'}
                     </span>
                   </div>
-                  {challan.violation_date && (
+                  {challan.challan_date && (
                     <div className="flex justify-between text-xs">
                       <span className="font-medium">Date:</span>
-                      <span>{new Date(challan.violation_date).toLocaleDateString()}</span>
+                      <span>{challan.challan_date}</span>
                     </div>
                   )}
                 </div>

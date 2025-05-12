@@ -50,6 +50,16 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
   const hasChallan = (vehicle: Vehicle) => {
     // First check for challan in API verification data
     if (vehicle.verificationData) {
+      // Check direct challan_details field first
+      const challanDetails = vehicle.verificationData.find(item => item.field === 'challan_details');
+      if (challanDetails && challanDetails.value && 
+          challanDetails.value.challan_details && 
+          challanDetails.value.challan_details.challans && 
+          challanDetails.value.challan_details.challans.length > 0) {
+        return true;
+      }
+      
+      // Then check verification log
       const verificationLog = vehicle.verificationData.find(item => item.field === 'verification_log');
       if (verificationLog && verificationLog.value) {
         // Get the latest verification timestamp
@@ -59,12 +69,12 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
           const latestData = verificationLog.value[timestamps[0]];
           if (latestData) {
             // Check for challan data in the verification response
-            const challanResponse = latestData.find((item: any) => item.field === 'challan_response');
-            if (challanResponse && 
-                challanResponse.value && 
-                challanResponse.value.data && 
-                Array.isArray(challanResponse.value.data) && 
-                challanResponse.value.data.length > 0) {
+            const challanItem = latestData.find((item: any) => item.field === 'challan_details');
+            if (challanItem && 
+                challanItem.value && 
+                challanItem.value.challan_details && 
+                challanItem.value.challan_details.challans && 
+                challanItem.value.challan_details.challans.length > 0) {
               return true;
             }
           }

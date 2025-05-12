@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.22.0";
 
@@ -183,11 +182,25 @@ serve(async (req) => {
       });
     }
     
-    // Add challan data as a specific field if available
+    // Add challan data as a specific field if available, but only once
     if (challanData && challanData.data) {
+      // Process challan data to keep only essential information
+      const processedChallanData = {
+        client_id: challanData.data.client_id,
+        challan_details: {
+          challans: challanData.data.challan_details?.challans?.map(challan => ({
+            challan_number: challan.challan_number,
+            challan_status: challan.challan_status,
+            amount: challan.amount,
+            challan_date: challan.challan_date
+          })) || [],
+          successful_backends: challanData.data.challan_details?.successful_backends || []
+        }
+      };
+      
       currentVerificationData.push({
         field: 'challan_details',
-        value: challanData.data,
+        value: processedChallanData,
         verified: true
       });
     }
@@ -211,9 +224,23 @@ serve(async (req) => {
     
     // Add challan_details directly in the transformed data if available
     if (challanData && challanData.data) {
+      // Process challan data again to keep only essential information for the top level
+      const processedTopLevelChallanData = {
+        client_id: challanData.data.client_id,
+        challan_details: {
+          challans: challanData.data.challan_details?.challans?.map(challan => ({
+            challan_number: challan.challan_number,
+            challan_status: challan.challan_status,
+            amount: challan.amount,
+            challan_date: challan.challan_date
+          })) || [],
+          successful_backends: challanData.data.challan_details?.successful_backends || []
+        }
+      };
+      
       completeTransformedData.push({
         field: "challan_details",
-        value: challanData.data,
+        value: processedTopLevelChallanData,
         verified: true
       });
     }
