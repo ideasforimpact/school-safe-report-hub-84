@@ -1,8 +1,6 @@
 
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { FileText, FileX, FileCheck, ShieldAlert } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { FileX, FileCheck, ShieldAlert } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import DocumentStatusBadge from '@/components/transport-safety/DocumentStatusBadge';
 import { Vehicle } from '@/types/transportSafety';
@@ -139,13 +137,6 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
               <DocumentStatusBadge status={document.status} />
             </div>
           ))}
-          
-          <Button asChild className="w-full mt-2">
-            <Link to={`/transport-safety/${vehicleId}/documents`}>
-              <FileText className="h-4 w-4 mr-2" />
-              Manage Documents
-            </Link>
-          </Button>
         </div>
       </CardContent>
     </Card>
