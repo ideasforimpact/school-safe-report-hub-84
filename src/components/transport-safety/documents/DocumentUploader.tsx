@@ -15,7 +15,6 @@ interface DocumentUploaderProps {
 const DocumentUploader: React.FC<DocumentUploaderProps> = ({ vehicleId, onClose, onSuccess }) => {
   const [files, setFiles] = useState<FileItem[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [documentName, setDocumentName] = useState('Vehicle Document');
   
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const fileList = e.target.files;
@@ -75,6 +74,9 @@ const DocumentUploader: React.FC<DocumentUploaderProps> = ({ vehicleId, onClose,
         contentType: file.type,
         base64Data: file.base64
       }));
+      
+      // Use "Vehicle Documents" as the default name
+      const documentName = "Vehicle Documents";
       
       // Call the edge function to handle the upload
       const { data, error } = await supabase.functions.invoke('upload-vehicle-document', {

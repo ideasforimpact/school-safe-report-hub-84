@@ -71,7 +71,11 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
         }
         
         if (data && data.documents) {
-          setUploadedDocuments(data.documents);
+          // Ensure we're setting the expected type
+          const documents = Array.isArray(data.documents) 
+            ? data.documents as UploadedDocument[]
+            : [];
+          setUploadedDocuments(documents);
         }
       } catch (error) {
         console.error('Error fetching documents:', error);
