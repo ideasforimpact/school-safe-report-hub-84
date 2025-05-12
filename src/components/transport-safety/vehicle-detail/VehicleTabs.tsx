@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTransportSafety } from '@/contexts/transport-safety/TransportSafetyContext';
 import { Button } from '@/components/ui/button';
 import { formatDate } from '@/utils/dateUtils';
-import { History, FilePlus, FileText, FileX, Eye, Trash2 } from 'lucide-react';
+import { History, FilePlus, FileText, FileX, Eye, Trash2, Check, Info, Calendar } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -18,6 +18,7 @@ import DocumentUploader from '../documents/DocumentUploader';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { UploadedDocument, formatSupabaseUrl, isPdfFile } from '@/types/fileTypes';
+import { Badge } from '@/components/ui/badge';
 
 interface VehicleTabsProps {
   vehicleId: string;
@@ -122,6 +123,7 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
   
   const verificationHistory = getVerificationHistory();
   
+  // Format verification data - updated to better handle challan details
   const formatVerificationData = (data: any) => {
     if (!data || !Array.isArray(data)) return [];
     
@@ -159,39 +161,66 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
         // Format specific fields for better display
         let value = item.value;
         
-        // Format the challan_details specially to show a better representation
+        // Format the challan_details specially to show a better presentation
         if (item.field === 'challan_details' && value && value.challan_details && value.challan_details.challans) {
           const challans = value.challan_details.challans;
           return {
             label: 'Challan Details',
             value: (
-              <div className="space-y-2 mt-2 border rounded-md p-2 bg-orange-50">
+              <div className="space-y-2 mt-2">
                 {challans.length > 0 ? (
-                  challans.map((challan: any, idx: number) => (
-                    <div key={idx} className="border-b border-orange-200 pb-2 last:border-b-0 last:pb-0">
-                      <div className="grid grid-cols-2 gap-1 text-xs">
-                        <span className="font-medium">Challan No:</span>
-                        <span className="text-right">{challan.challan_number || 'N/A'}</span>
-                        
-                        <span className="font-medium">Amount:</span>
-                        <span className="text-right">₹{challan.amount || '0'}</span>
-                        
-                        <span className="font-medium">Status:</span>
-                        <span className={`text-right ${challan.challan_status?.toUpperCase() === 'DISPOSED' || challan.challan_status?.toUpperCase() === 'PAID' ? 'text-green-600' : 'text-red-600'}`}>
-                          {challan.challan_status || 'UNPAID'}
-                        </span>
-                        
-                        {challan.challan_date && (
-                          <>
-                            <span className="font-medium">Date:</span>
-                            <span className="text-right">{challan.challan_date}</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  ))
+                  <div className="border rounded-md overflow-hidden">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50 text-left">
+                        <tr>
+                          <th className="px-4 py-2 font-medium">Challan Number</th>
+                          <th className="px-4 py-2 font-medium">Amount</th>
+                          <th className="px-4 py-2 font-medium">Status</th>
+                          <th className="px-4 py-2 font-medium">Date</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {challans.map((challan: any, idx: number) => (
+                          <tr key={idx} className="bg-white">
+                            <td className="px-4 py-3">{challan.challan_number || 'N/A'}</td>
+                            <td className="px-4 py-3">₹{challan.amount || '0'}</td>
+                            <td className="px-4 py-3">
+                              <Badge 
+                                className={
+                                  challan.challan_status?.toUpperCase() === 'DISPOSED' || 
+                                  challan.challan_status?.toUpperCase() === 'PAID' 
+                                    ? 'bg-green-100 text-green-800 hover:bg-green-100' 
+                                    : 'bg-red-100 text-red-800 hover:bg-red-100'
+                                }
+                              >
+                                {challan.challan_status || 'UNPAID'}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center">
+                                <Calendar className="h-3 w-3 mr-1 text-gray-500" />
+                                {challan.challan_date || 'N/A'}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 ) : (
-                  <div className="text-sm text-center py-2">No challan records found</div>
+                  <div className="text-sm text-center py-4 bg-gray-50 border rounded-md">
+                    <Info className="h-5 w-5 mx-auto mb-1 text-gray-400" />
+                    <p>No challan records found</p>
+                  </div>
+                )}
+                
+                {value.challan_details.successful_backends && (
+                  <div className="text-xs text-gray-500 flex items-start mt-2">
+                    <Info className="h-3 w-3 mr-1 mt-0.5" />
+                    <span>
+                      Data sources: {value.challan_details.successful_backends.join(', ')}
+                    </span>
+                  </div>
                 )}
               </div>
             ),
