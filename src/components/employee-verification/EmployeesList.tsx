@@ -17,8 +17,16 @@ import EditEmployeeDialog from './EditEmployeeDialog';
 import VerificationStatusBadge from './VerificationStatusBadge';
 
 const EmployeesList = () => {
-  const { employees, deleteEmployee } = useEmployeeVerification();
+  const { employees, deleteEmployee, getEmployeeDocuments } = useEmployeeVerification();
   const navigate = useNavigate();
+
+  const getDocumentCounts = (employeeId: string) => {
+    const documents = getEmployeeDocuments(employeeId);
+    const verified = documents.filter(doc => doc.verificationStatus === 'verified').length;
+    const pending = documents.filter(doc => doc.verificationStatus === 'pending').length;
+    const failed = documents.filter(doc => doc.verificationStatus === 'failed').length;
+    return { verified, pending, failed, total: documents.length };
+  };
 
   return (
     <div className="w-full">
@@ -29,7 +37,7 @@ const EmployeesList = () => {
               <TableHead>Employee ID</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Department</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>Documents</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -44,6 +52,7 @@ const EmployeesList = () => {
               employees.map((employee) => {
                 // Determine if employee is inactive (for verification system)
                 const isInactive = employee.status === 'failed'; // Specific to verification system
+                const counts = getDocumentCounts(employee.id);
                 
                 return (
                   <TableRow key={employee.id} className={isInactive ? "bg-gray-100" : ""}>
@@ -51,7 +60,29 @@ const EmployeesList = () => {
                     <TableCell>{employee.name}</TableCell>
                     <TableCell>{employee.department}</TableCell>
                     <TableCell>
-                      <VerificationStatusBadge status={employee.status} />
+                      <div className="flex items-center space-x-2">
+                        {counts.total > 0 ? (
+                          <>
+                            {counts.verified > 0 && (
+                              <span className="px-2 py-1 text-xs rounded-full font-medium bg-green-100 text-green-800">
+                                {counts.verified} Verified
+                              </span>
+                            )}
+                            {counts.pending > 0 && (
+                              <span className="px-2 py-1 text-xs rounded-full font-medium bg-yellow-100 text-yellow-800">
+                                {counts.pending} Pending
+                              </span>
+                            )}
+                            {counts.failed > 0 && (
+                              <span className="px-2 py-1 text-xs rounded-full font-medium bg-red-100 text-red-800">
+                                {counts.failed} Failed
+                              </span>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-gray-500 text-sm">No documents</span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
