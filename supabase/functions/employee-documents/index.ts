@@ -1,0 +1,275 @@
+
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
+
+// CORS headers setup
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+serve(async (req) => {
+  // Handle CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  // Get the request URL and initialize Supabase client
+  const url = new URL(req.url);
+  
+  const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+  
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+  // Handle document operations based on the path and method
+  try {
+    if (url.pathname === "/employee-documents/upload" && req.method === "POST") {
+      return await handleDocumentUpload(req, supabase);
+    }
+    
+    if (url.pathname === "/employee-documents/delete" && req.method === "DELETE") {
+      return await handleDocumentDelete(req, supabase);
+    }
+    
+    if (url.pathname === "/employee-documents/list" && req.method === "GET") {
+      return await handleListDocuments(req, supabase);
+    }
+
+    return new Response(
+      JSON.stringify({ error: "Not Found" }),
+      { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Error processing request:", error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});
+
+async function handleDocumentUpload(req: Request, supabase) {
+  const { employeeId, documentData } = await req.json();
+  
+  if (!employeeId || !documentData) {
+    return new Response(
+      JSON.stringify({ error: "Missing required fields" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+  
+  try {
+    // Check if document entry exists for this employee
+    const { data: existingDocs, error: fetchError } = await supabase
+      .from('employee_documents')
+      .select('*')
+      .eq('employee_id', employeeId)
+      .single();
+    
+    if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "no rows returned" error
+      throw fetchError;
+    }
+    
+    // Upload the document image to storage first
+    const { documentImage, ...restDocumentData } = documentData;
+    
+    // Generate a unique file path
+    const timestamp = new Date().getTime();
+    const filePath = `${employeeId}/${documentData.documentType}_${timestamp}`;
+    
+    // Extract the base64 content and content type
+    const base64Regex = /^data:([^;]+);base64,(.+)$/;
+    const matches = documentImage.match(base64Regex);
+    
+    if (!matches || matches.length !== 3) {
+      throw new Error("Invalid base64 image format");
+    }
+    
+    const contentType = matches[1];
+    const base64Content = matches[2];
+    const binaryData = Uint8Array.from(atob(base64Content), c => c.charCodeAt(0));
+    
+    // Upload to storage
+    const { data: uploadData, error: uploadError } = await supabase
+      .storage
+      .from('employee-documents')
+      .upload(filePath, binaryData, {
+        contentType,
+        upsert: true
+      });
+    
+    if (uploadError) {
+      throw uploadError;
+    }
+    
+    // Get the public URL
+    const { data: publicUrlData } = await supabase
+      .storage
+      .from('employee-documents')
+      .getPublicUrl(filePath);
+    
+    const documentUrl = publicUrlData.publicUrl;
+    
+    // Prepare document record
+    const documentRecord = {
+      ...restDocumentData,
+      documentImage: documentUrl,
+      filePath: filePath,
+      uploadedAt: new Date().toISOString(),
+      id: crypto.randomUUID()
+    };
+    
+    // Update or insert the document record in the database
+    let dbResult;
+    if (existingDocs) {
+      // Employee already has documents - update the array
+      const updatedDocuments = [...JSON.parse(JSON.stringify(existingDocs.documents)), documentRecord];
+      
+      dbResult = await supabase
+        .from('employee_documents')
+        .update({ documents: updatedDocuments })
+        .eq('employee_id', employeeId);
+    } else {
+      // Create a new record for this employee
+      dbResult = await supabase
+        .from('employee_documents')
+        .insert({
+          employee_id: employeeId,
+          documents: [documentRecord]
+        });
+    }
+    
+    if (dbResult.error) {
+      // If database update fails, try to delete the uploaded file
+      await supabase.storage.from('employee-documents').remove([filePath]);
+      throw dbResult.error;
+    }
+    
+    return new Response(
+      JSON.stringify({ success: true, document: documentRecord }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Error uploading document:", error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
+async function handleDocumentDelete(req: Request, supabase) {
+  const { employeeId, documentId } = await req.json();
+  
+  if (!employeeId || !documentId) {
+    return new Response(
+      JSON.stringify({ error: "Missing required fields" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+  
+  try {
+    // Get the employee's documents
+    const { data: existingDocs, error: fetchError } = await supabase
+      .from('employee_documents')
+      .select('*')
+      .eq('employee_id', employeeId)
+      .single();
+    
+    if (fetchError) {
+      throw fetchError;
+    }
+    
+    if (!existingDocs || !existingDocs.documents || !Array.isArray(existingDocs.documents)) {
+      return new Response(
+        JSON.stringify({ error: "No documents found for this employee" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    // Find the document to delete
+    const documentToDelete = existingDocs.documents.find(doc => doc.id === documentId);
+    
+    if (!documentToDelete) {
+      return new Response(
+        JSON.stringify({ error: "Document not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    // Delete the file from storage if filePath exists
+    if (documentToDelete.filePath) {
+      const { error: storageError } = await supabase
+        .storage
+        .from('employee-documents')
+        .remove([documentToDelete.filePath]);
+      
+      if (storageError) {
+        console.error("Error deleting file from storage:", storageError);
+        // Continue anyway, as we still want to remove the document record
+      }
+    }
+    
+    // Update the documents array, removing the deleted document
+    const updatedDocuments = existingDocs.documents.filter(doc => doc.id !== documentId);
+    
+    // Update the database record
+    const { error: updateError } = await supabase
+      .from('employee_documents')
+      .update({ documents: updatedDocuments })
+      .eq('employee_id', employeeId);
+    
+    if (updateError) {
+      throw updateError;
+    }
+    
+    return new Response(
+      JSON.stringify({ success: true }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Error deleting document:", error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
+async function handleListDocuments(req: Request, supabase) {
+  const url = new URL(req.url);
+  const employeeId = url.searchParams.get('employeeId');
+  
+  if (!employeeId) {
+    return new Response(
+      JSON.stringify({ error: "Missing employeeId parameter" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+  
+  try {
+    const { data, error } = await supabase
+      .from('employee_documents')
+      .select('*')
+      .eq('employee_id', employeeId)
+      .single();
+    
+    if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned" error
+      throw error;
+    }
+    
+    const documents = data?.documents || [];
+    
+    return new Response(
+      JSON.stringify({ documents }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Error retrieving documents:", error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}

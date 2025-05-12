@@ -29,7 +29,9 @@ export const EmployeeVerificationProvider: React.FC<EmployeeVerificationProvider
     addDocument,
     verifyDocument,
     deleteDocument,
-    getEmployeeDocuments
+    getEmployeeDocuments,
+    fetchEmployeeDocuments,
+    isLoading
   } = useDocumentManagement((employeeId, status) => {
     updateEmployee(employeeId, { status });
   });
@@ -47,7 +49,9 @@ export const EmployeeVerificationProvider: React.FC<EmployeeVerificationProvider
         deleteDocument,
         getEmployeeDocuments,
         getEmployee,
-        fetchEmployees
+        fetchEmployees,
+        fetchEmployeeDocuments,
+        isLoading
       }}
     >
       {children}

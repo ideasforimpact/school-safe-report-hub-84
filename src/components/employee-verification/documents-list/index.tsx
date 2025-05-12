@@ -1,10 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { useToast } from '@/hooks/use-toast';
 import EmptyDocumentsState from './EmptyDocumentsState';
 import DocumentsTable from './DocumentsTable';
 import VerificationDialog from './VerificationDialog';
+import { Loader2 } from 'lucide-react';
 
 interface DocumentsListProps {
   employeeId: string;
@@ -12,12 +13,17 @@ interface DocumentsListProps {
 }
 
 const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument }) => {
-  const { getEmployeeDocuments, verifyDocument } = useEmployeeVerification();
+  const { getEmployeeDocuments, verifyDocument, fetchEmployeeDocuments, isLoading } = useEmployeeVerification();
   const documents = getEmployeeDocuments(employeeId);
   const { toast } = useToast();
   const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
+
+  // Fetch documents when component mounts
+  useEffect(() => {
+    fetchEmployeeDocuments(employeeId);
+  }, [employeeId, fetchEmployeeDocuments]);
 
   const handleViewDocument = (documentImage: string) => {
     window.open(documentImage, '_blank');
@@ -105,6 +111,15 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument
       setVerifying(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8">
+        <Loader2 className="h-8 w-8 text-primary animate-spin mb-4" />
+        <p className="text-gray-600">Loading documents...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

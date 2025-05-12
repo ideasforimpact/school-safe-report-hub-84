@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,8 +14,15 @@ const UploadDocumentPage = () => {
     employeeId: string;
   }>();
   const navigate = useNavigate();
-  const { getEmployee } = useEmployeeVerification();
+  const { getEmployee, fetchEmployeeDocuments } = useEmployeeVerification();
   const employee = getEmployee(employeeId || '');
+
+  // Fetch employee documents when component mounts
+  useEffect(() => {
+    if (employeeId) {
+      fetchEmployeeDocuments(employeeId);
+    }
+  }, [employeeId, fetchEmployeeDocuments]);
 
   if (!employee) {
     return <Layout>

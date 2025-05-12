@@ -112,6 +112,30 @@ export type Database = {
         }
         Relationships: []
       }
+      employee_documents: {
+        Row: {
+          created_at: string | null
+          documents: Json
+          employee_id: string
+          id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          documents?: Json
+          employee_id: string
+          id?: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          documents?: Json
+          employee_id?: string
+          id?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       employee_modules: {
         Row: {
           created_at: string

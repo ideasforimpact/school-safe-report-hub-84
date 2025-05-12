@@ -1,13 +1,14 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Upload } from 'lucide-react';
+import { ArrowLeft, Upload, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import EmployeeDetails from '@/components/employee-verification/EmployeeDetails';
 import DocumentsList from '@/components/employee-verification/documents-list';
 import Layout from '@/components/layout/Layout';
 import { Separator } from '@/components/ui/separator';
+import { useToast } from '@/hooks/use-toast';
 
 const EmployeeDetailPage = () => {
   const {
@@ -17,9 +18,19 @@ const EmployeeDetailPage = () => {
   }>();
   const navigate = useNavigate();
   const {
-    getEmployee
+    getEmployee,
+    fetchEmployeeDocuments,
+    isLoading
   } = useEmployeeVerification();
+  const { toast } = useToast();
   const employee = getEmployee(employeeId || '');
+
+  // Fetch documents when component mounts
+  useEffect(() => {
+    if (employeeId) {
+      fetchEmployeeDocuments(employeeId);
+    }
+  }, [employeeId, fetchEmployeeDocuments]);
 
   if (!employee) {
     return <Layout>
@@ -38,6 +49,24 @@ const EmployeeDetailPage = () => {
     navigate(`/employee-verification/${employeeId}/upload-document`);
   };
 
+  const handleRefreshDocuments = async () => {
+    if (employeeId) {
+      try {
+        await fetchEmployeeDocuments(employeeId);
+        toast({
+          title: "Documents Refreshed",
+          description: "The document list has been refreshed.",
+        });
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to refresh documents.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
   return <Layout>
       <div className="container mx-auto py-6 px-4 sm:px-6 max-w-6xl">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 bg-white p-6 rounded-lg border border-gray-100 shadow-sm">
@@ -52,10 +81,21 @@ const EmployeeDetailPage = () => {
             </div>
           </div>
 
-          <Button onClick={handleAddDocument} className="shadow-md">
-            <Upload className="h-4 w-4 mr-2" />
-            Upload Document
-          </Button>
+          <div className="flex space-x-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleRefreshDocuments}
+              disabled={isLoading}
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              <span className="sr-only">Refresh</span>
+            </Button>
+            <Button onClick={handleAddDocument} className="shadow-md">
+              <Upload className="h-4 w-4 mr-2" />
+              Upload Document
+            </Button>
+          </div>
         </div>
 
         <div className="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden mb-8">
@@ -66,9 +106,11 @@ const EmployeeDetailPage = () => {
         
         <div className="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden">
           <div className="p-6">
-            <div className="flex items-center mb-6">
-              <h2 className="font-semibold text-xl whitespace-nowrap">Documents & Verification</h2>
-              <Separator className="flex-grow ml-4" />
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center">
+                <h2 className="font-semibold text-xl whitespace-nowrap">Documents & Verification</h2>
+                <Separator className="flex-grow ml-4" />
+              </div>
             </div>
             
             <DocumentsList employeeId={employee.id} onAddDocument={handleAddDocument} />
