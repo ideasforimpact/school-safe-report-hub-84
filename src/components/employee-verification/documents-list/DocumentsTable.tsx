@@ -1,13 +1,12 @@
 
 import React from 'react';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
-import { DocumentDeleteButton } from './DocumentDeleteButton';
-import { DocumentStatusButton } from './DocumentStatusButton';
-import { DocumentImagePreview } from './DocumentImagePreview';
-import { DocumentActions } from './DocumentActions';
 import { formatDistanceToNow } from 'date-fns';
 import { VerificationDocument } from '@/types/employeeVerification';
-import { getDocumentIcon } from '../utils/documentUtils';
+import { FileCheck } from 'lucide-react'; // Using a simple icon from lucide-react
+import DocumentDeleteButton from '../document-card/DocumentDeleteButton';
+import DocumentActions from '../document-card/DocumentActions';
+import DocumentImagePreview from '../document-card/DocumentImagePreview';
 
 interface DocumentsTableProps {
   documents: VerificationDocument[];
@@ -37,7 +36,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
             <TableRow key={doc.id}>
               <TableCell>
                 <div className="flex items-center gap-2">
-                  {getDocumentIcon(doc.documentType)}
+                  <FileCheck className="h-4 w-4" />
                   <span className="capitalize">
                     {doc.documentType.replace('_', ' ')}
                   </span>
@@ -45,7 +44,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
               </TableCell>
               <TableCell>{doc.documentNumber || '—'}</TableCell>
               <TableCell>
-                <DocumentImagePreview document={doc} />
+                <DocumentImagePreview documentImage={doc.documentImage} />
               </TableCell>
               <TableCell>
                 {doc.createdAt 

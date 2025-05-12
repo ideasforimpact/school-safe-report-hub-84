@@ -16,7 +16,7 @@ interface DocumentsListProps {
 
 const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId }) => {
   const { documents, verifyDocument, deleteDocument, fetchEmployeeDocuments } = useEmployeeVerification();
-  const [isVerifyDialogOpen, setIsVerifyDialogOpen] = useState(false);
+  const [open, setOpen] = useState(false); // Changed from isVerifyDialogOpen to open
   const [selectedDocument, setSelectedDocument] = useState<VerificationDocument | null>(null);
 
   // Filter documents for this employee
@@ -24,7 +24,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId }) => {
 
   const handleVerify = (documentId: string, status: 'verified' | 'failed') => {
     setSelectedDocument(documents.find(doc => doc.id === documentId) || null);
-    setIsVerifyDialogOpen(true);
+    setOpen(true); // Changed to match prop name in VerificationDialog
   };
 
   const handleConfirmVerify = async (notes?: string) => {
@@ -38,7 +38,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId }) => {
       console.error('Error verifying document:', error);
       toast.error('Failed to update document status');
     } finally {
-      setIsVerifyDialogOpen(false);
+      setOpen(false); // Changed to match prop name
       setSelectedDocument(null);
     }
   };
@@ -56,6 +56,11 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId }) => {
   const handleRefresh = () => {
     fetchEmployeeDocuments(employeeId);
     toast.info('Refreshing documents...');
+  };
+
+  const handleAddDocument = () => {
+    // This function is added to match the expected prop
+    window.location.href = `/employee-verification/${employeeId}/upload-document`;
   };
 
   return (
@@ -80,7 +85,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId }) => {
       </div>
 
       {employeeDocuments.length === 0 ? (
-        <EmptyDocumentsState employeeId={employeeId} />
+        <EmptyDocumentsState />
       ) : (
         <DocumentsTable 
           documents={employeeDocuments}
@@ -90,8 +95,8 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId }) => {
       )}
 
       <VerificationDialog 
-        isOpen={isVerifyDialogOpen}
-        onClose={() => setIsVerifyDialogOpen(false)}
+        open={open}
+        onOpenChange={setOpen}
         onConfirm={handleConfirmVerify}
         document={selectedDocument}
       />

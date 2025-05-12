@@ -113,7 +113,7 @@ const EmployeeDetailPage = () => {
               </div>
             </div>
             
-            <DocumentsList employeeId={employee.id} onAddDocument={handleAddDocument} />
+            <DocumentsList employeeId={employee.id} />
           </div>
         </div>
       </div>
