@@ -140,13 +140,9 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
           return false;
         }
         
-        // Handle challan_details - only include the first occurrence
+        // Skip challan_details entirely since we don't want to show the raw JSON
         if (item.field === 'challan_details') {
-          if (processedChallanDetails) {
-            return false; // Skip duplicate challan_details
-          }
-          processedChallanDetails = true;
-          return true;
+          return false;
         }
         
         return true;
@@ -158,80 +154,10 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
                           .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
                           .join(' ');
         
-        // Format specific fields for better display
-        let value = item.value;
-        
-        // Format the challan_details specially to show a better presentation
-        if (item.field === 'challan_details' && value && value.challan_details && value.challan_details.challans) {
-          const challans = value.challan_details.challans;
-          return {
-            label: 'Challan Details',
-            value: (
-              <div className="space-y-2 mt-2">
-                {challans.length > 0 ? (
-                  <div className="border rounded-md overflow-hidden">
-                    <table className="w-full text-sm">
-                      <thead className="bg-gray-50 text-left">
-                        <tr>
-                          <th className="px-4 py-2 font-medium">Challan Number</th>
-                          <th className="px-4 py-2 font-medium">Amount</th>
-                          <th className="px-4 py-2 font-medium">Status</th>
-                          <th className="px-4 py-2 font-medium">Date</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {challans.map((challan: any, idx: number) => (
-                          <tr key={idx} className="bg-white">
-                            <td className="px-4 py-3">{challan.challan_number || 'N/A'}</td>
-                            <td className="px-4 py-3">₹{challan.amount || '0'}</td>
-                            <td className="px-4 py-3">
-                              <Badge 
-                                className={
-                                  challan.challan_status?.toUpperCase() === 'DISPOSED' || 
-                                  challan.challan_status?.toUpperCase() === 'PAID' 
-                                    ? 'bg-green-100 text-green-800 hover:bg-green-100' 
-                                    : 'bg-red-100 text-red-800 hover:bg-red-100'
-                                }
-                              >
-                                {challan.challan_status || 'UNPAID'}
-                              </Badge>
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="flex items-center">
-                                <Calendar className="h-3 w-3 mr-1 text-gray-500" />
-                                {challan.challan_date || 'N/A'}
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="text-sm text-center py-4 bg-gray-50 border rounded-md">
-                    <Info className="h-5 w-5 mx-auto mb-1 text-gray-400" />
-                    <p>No challan records found</p>
-                  </div>
-                )}
-                
-                {value.challan_details.successful_backends && (
-                  <div className="text-xs text-gray-500 flex items-start mt-2">
-                    <Info className="h-3 w-3 mr-1 mt-0.5" />
-                    <span>
-                      Data sources: {value.challan_details.successful_backends.join(', ')}
-                    </span>
-                  </div>
-                )}
-              </div>
-            ),
-            isFormatted: true
-          };
-        }
-        
-        // For all other fields, return simple label-value pairs
+        // Format the value
         return {
           label,
-          value
+          value: item.value
         };
       });
   };
@@ -650,13 +576,9 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
             {formatVerificationData(selectedVerificationData).map((field: any, index: number) => (
               <div key={index} className="px-4 py-2">
                 <div className="font-medium text-gray-500">{field.label}:</div>
-                {field.isFormatted ? (
-                  field.value
-                ) : (
-                  <div className="text-gray-900">
-                    {typeof field.value === 'object' ? JSON.stringify(field.value, null, 2) : String(field.value)}
-                  </div>
-                )}
+                <div className="text-gray-900">
+                  {typeof field.value === 'object' ? JSON.stringify(field.value, null, 2) : String(field.value)}
+                </div>
               </div>
             ))}
           </div>
