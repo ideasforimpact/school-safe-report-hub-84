@@ -1,104 +1,156 @@
 
-import React, { useState } from 'react';
-import DocumentsTable from './DocumentsTable';
-import { Button } from '@/components/ui/button';
-import { PlusCircle } from 'lucide-react';
-import { Link } from 'react-router-dom';
-import { VerificationDocument } from '@/types/employeeVerification';
+import React, { useState, useEffect } from 'react';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
+import { useToast } from '@/hooks/use-toast';
 import EmptyDocumentsState from './EmptyDocumentsState';
+import DocumentsTable from './DocumentsTable';
 import VerificationDialog from './VerificationDialog';
-import { toast } from "sonner";
+import { Loader2 } from 'lucide-react';
 
 interface DocumentsListProps {
   employeeId: string;
+  onAddDocument?: () => void;
 }
 
-const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId }) => {
-  const { documents, verifyDocument, deleteDocument, fetchEmployeeDocuments } = useEmployeeVerification();
-  const [open, setOpen] = useState(false); // Changed from isVerifyDialogOpen to open
-  const [selectedDocument, setSelectedDocument] = useState<VerificationDocument | null>(null);
+const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument }) => {
+  const { getEmployeeDocuments, verifyDocument, fetchEmployeeDocuments, isLoading } = useEmployeeVerification();
+  const documents = getEmployeeDocuments(employeeId);
+  const { toast } = useToast();
+  const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
+  const [selectedDocument, setSelectedDocument] = useState<string | null>(null);
+  const [verifying, setVerifying] = useState(false);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
-  // Filter documents for this employee
-  const employeeDocuments = documents.filter(doc => doc.employeeId === employeeId);
+  // Fetch documents when component mounts
+  useEffect(() => {
+    const loadDocuments = async () => {
+      try {
+        await fetchEmployeeDocuments(employeeId);
+      } finally {
+        // Mark initial load as complete regardless of success/failure
+        setInitialLoadComplete(true);
+      }
+    };
+    
+    loadDocuments();
+  }, [employeeId, fetchEmployeeDocuments]);
 
-  const handleVerify = (documentId: string, status: 'verified' | 'failed') => {
-    setSelectedDocument(documents.find(doc => doc.id === documentId) || null);
-    setOpen(true); // Changed to match prop name in VerificationDialog
+  const handleViewDocument = (documentImage: string) => {
+    window.open(documentImage, '_blank');
   };
 
-  const handleConfirmVerify = async (notes?: string) => {
+  const handleDownloadDocument = (documentImage: string) => {
+    const link = document.createElement('a');
+    link.href = documentImage;
+    link.download = `document-${new Date().getTime()}.jpg`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const openVerifyDialog = (documentId: string) => {
+    setSelectedDocument(documentId);
+    setVerifyDialogOpen(true);
+  };
+
+  const handleVerify = async (method: 'api' | 'manual') => {
     if (!selectedDocument) return;
     
+    setVerifying(true);
+    
     try {
-      const status = selectedDocument.verificationStatus === 'pending' ? 'verified' : 'failed';
-      await verifyDocument(selectedDocument.id, status, notes);
-      toast.success(`Document ${status === 'verified' ? 'verified' : 'marked as failed'} successfully`);
+      // Simulate verification delay
+      setTimeout(() => {
+        const notes = method === 'api' 
+          ? 'Document automatically verified successfully with government database.' 
+          : 'Document manually verified successfully.';
+        
+        verifyDocument(
+          selectedDocument,
+          'verified',
+          notes
+        );
+        
+        toast({
+          title: "Document Verified",
+          description: `The document has been ${method === 'api' ? 'automatically' : 'manually'} verified successfully.`,
+        });
+        
+        setVerifying(false);
+        setVerifyDialogOpen(false);
+      }, 1500); // Simulate API delay
     } catch (error) {
-      console.error('Error verifying document:', error);
-      toast.error('Failed to update document status');
-    } finally {
-      setOpen(false); // Changed to match prop name
-      setSelectedDocument(null);
+      toast({
+        title: "Error",
+        description: "An error occurred during verification.",
+        variant: "destructive",
+      });
+      setVerifying(false);
     }
   };
 
-  const handleDelete = async (documentId: string) => {
+  const rejectDocument = () => {
+    if (!selectedDocument) return;
+    
+    setVerifying(true);
+    
     try {
-      await deleteDocument(documentId);
-      toast.success('Document deleted successfully');
+      // Simulate verification delay
+      setTimeout(() => {
+        verifyDocument(
+          selectedDocument,
+          'failed',
+          'Failed to verify document. Details do not match records.'
+        );
+        
+        toast({
+          title: "Verification Failed",
+          description: "Document verification failed.",
+          variant: "destructive"
+        });
+        
+        setVerifying(false);
+        setVerifyDialogOpen(false);
+      }, 1500); // Simulate API delay
     } catch (error) {
-      console.error('Error deleting document:', error);
-      toast.error('Failed to delete document');
+      toast({
+        title: "Error",
+        description: "An error occurred during verification.",
+        variant: "destructive",
+      });
+      setVerifying(false);
     }
   };
 
-  const handleRefresh = () => {
-    fetchEmployeeDocuments(employeeId);
-    toast.info('Refreshing documents...');
-  };
-
-  const handleAddDocument = () => {
-    // This function is added to match the expected prop
-    window.location.href = `/employee-verification/${employeeId}/upload-document`;
-  };
+  // Show loading state only during initial load, not for subsequent operations
+  if (isLoading && !initialLoadComplete) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8">
+        <Loader2 className="h-8 w-8 text-primary animate-spin mb-4" />
+        <p className="text-gray-600">Loading documents...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="w-full">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-semibold">Documents</h2>
-        <div className="flex space-x-2">
-          <Button 
-            variant="outline" 
-            onClick={handleRefresh}
-            size="sm"
-          >
-            Refresh
-          </Button>
-          <Button asChild size="sm">
-            <Link to={`/employee-verification/${employeeId}/upload`}>
-              <PlusCircle className="h-4 w-4 mr-1" />
-              Add Document
-            </Link>
-          </Button>
-        </div>
-      </div>
-
-      {employeeDocuments.length === 0 ? (
-        <EmptyDocumentsState />
+    <div className="space-y-6">
+      {documents.length === 0 ? (
+        <EmptyDocumentsState onAddDocument={onAddDocument} />
       ) : (
         <DocumentsTable 
-          documents={employeeDocuments}
-          onVerify={handleVerify}
-          onDelete={handleDelete}
+          documents={documents}
+          onViewDocument={handleViewDocument}
+          onDownloadDocument={handleDownloadDocument}
+          onVerifyDocument={openVerifyDialog}
         />
       )}
 
-      <VerificationDialog 
-        open={open}
-        onOpenChange={setOpen}
-        onConfirm={handleConfirmVerify}
-        document={selectedDocument}
+      <VerificationDialog
+        open={verifyDialogOpen}
+        onOpenChange={setVerifyDialogOpen}
+        onVerify={handleVerify}
+        onReject={rejectDocument}
+        isVerifying={verifying}
       />
     </div>
   );

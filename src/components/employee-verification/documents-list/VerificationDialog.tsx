@@ -1,82 +1,77 @@
 
-import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import React from 'react';
+import { ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { Loader2 } from 'lucide-react';
-import { VerificationDocument } from '@/types/employeeVerification';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 
 interface VerificationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (notes?: string) => Promise<void>;
-  document: VerificationDocument | null;
+  onVerify: (method: 'api' | 'manual') => void;
+  onReject: () => void;
+  isVerifying: boolean;
 }
 
-const VerificationDialog = ({ 
-  open, 
-  onOpenChange, 
-  onConfirm, 
-  document 
-}: VerificationDialogProps) => {
-  const [notes, setNotes] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const handleSubmit = async () => {
-    setIsSubmitting(true);
-    try {
-      await onConfirm(notes);
-      setNotes('');
-    } catch (error) {
-      console.error('Error updating document status:', error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const isVerifying = document?.verificationStatus === 'pending';
-  
+const VerificationDialog: React.FC<VerificationDialogProps> = ({
+  open,
+  onOpenChange,
+  onVerify,
+  onReject,
+  isVerifying
+}) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[525px]">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>
-            {isVerifying ? 'Verify Document' : 'Fail Document Verification'}
-          </DialogTitle>
+          <DialogTitle>Verify Document</DialogTitle>
           <DialogDescription>
-            {isVerifying 
-              ? 'Add verification notes to confirm document authenticity.'
-              : 'Provide details about why this document failed verification.'}
+            Choose a verification method for this document.
           </DialogDescription>
         </DialogHeader>
-
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="notes">Verification Notes</Label>
-            <Textarea
-              id="notes"
-              placeholder="Add any notes or observations about this document's verification..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="min-h-[100px]"
-            />
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
-            Cancel
+        <div className="grid grid-cols-1 gap-4 py-4">
+          <Button 
+            variant="outline" 
+            className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 justify-start"
+            onClick={() => onVerify('api')}
+            disabled={isVerifying}
+          >
+            <ShieldCheck className="h-4 w-4 mr-2" />
+            Verify via API
+            <span className="ml-auto text-xs text-blue-500 font-normal">Automated check</span>
           </Button>
-          <Button onClick={handleSubmit} disabled={isSubmitting}>
-            {isSubmitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Processing...
-              </>
-            ) : (
-              isVerifying ? 'Verify Document' : 'Mark as Failed'
-            )}
+          <Button 
+            variant="outline" 
+            className="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200 justify-start"
+            onClick={() => onVerify('manual')}
+            disabled={isVerifying}
+          >
+            <ShieldCheck className="h-4 w-4 mr-2" />
+            Verify Manually
+            <span className="ml-auto text-xs text-purple-500 font-normal">Manual review completed</span>
+          </Button>
+        </div>
+        <DialogFooter>
+          <Button 
+            variant="outline" 
+            className="bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
+            onClick={onReject}
+            disabled={isVerifying}
+          >
+            Reject
+          </Button>
+          <Button 
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            disabled={isVerifying}
+          >
+            Cancel
           </Button>
         </DialogFooter>
       </DialogContent>
