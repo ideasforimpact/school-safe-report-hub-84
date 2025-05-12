@@ -26,6 +26,7 @@ const DocumentDeleteButton: React.FC<DocumentDeleteButtonProps> = ({ documentId 
       });
       setDialogOpen(false);
     } catch (error) {
+      console.error("Error in handleDelete:", error);
       toast({
         title: 'Error',
         description: 'Failed to delete document.',
