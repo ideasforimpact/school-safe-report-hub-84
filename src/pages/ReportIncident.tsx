@@ -6,10 +6,6 @@ import { useAuth } from '@/contexts/auth/AuthContext';
 import { useClient } from '@/contexts/ClientContext';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useIncidentFormData } from '@/hooks/incident-form/useIncidentFormData';
-import { useIncidentFormValidation } from '@/hooks/incident-form/useIncidentFormValidation';
-import { useCategoryOptions } from '@/hooks/incident-form/useCategoryOptions';
-import { useLocationOptions } from '@/hooks/incident-form/useLocationOptions';
 import { toast } from 'sonner';
 import { Loader2, CalendarIcon } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
@@ -22,7 +18,10 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { format } from 'date-fns';
-import { useForm } from "react-hook-form";
+import { useIncidentFormData } from '@/hooks/incident-form/useIncidentFormData';
+import { useCategoryOptions } from '@/hooks/incident-form/useCategoryOptions';
+import { useLocationOptions } from '@/hooks/incident-form/useLocationOptions';
+import { useIncidentFormValidation } from '@/hooks/incident-form/useIncidentFormValidation';
 
 const ReportIncident = () => {
   const navigate = useNavigate();
@@ -37,7 +36,9 @@ const ReportIncident = () => {
 
   // Effect to check if user is authenticated
   useEffect(() => {
+    console.log("ReportIncident component mounted");
     if (!user) {
+      console.log("No user found, redirecting to login");
       toast.error("You must be logged in to report an incident");
       navigate('/login');
     }
@@ -45,9 +46,11 @@ const ReportIncident = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("Form submitted with data:", formData);
     
     // Validate form
     if (!validateForm(formData)) {
+      console.log("Form validation failed", errors);
       return;
     }
     
@@ -83,12 +86,13 @@ const ReportIncident = () => {
         peopleInvolved: []
       };
       
+      console.log("Submitting incident:", incident);
       await addIncident(incident);
       toast.success("Incident reported successfully");
       navigate('/incidents');
     } catch (error) {
-      toast.error("Failed to report incident");
       console.error("Error reporting incident:", error);
+      toast.error("Failed to report incident");
     } finally {
       setIsSubmitting(false);
     }

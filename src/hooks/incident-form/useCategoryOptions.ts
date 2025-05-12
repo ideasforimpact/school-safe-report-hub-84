@@ -1,26 +1,25 @@
 
-import { useEffect, useState } from 'react';
+import { useMemo } from 'react';
 import { useIncidents } from '@/contexts/incident/IncidentContext';
-
-interface CategoryOption {
-  value: string;
-  label: string;
-}
 
 export function useCategoryOptions() {
   const { categories, subcategoryMappings } = useIncidents();
-  const [categoryOptions, setCategoryOptions] = useState<CategoryOption[]>([]);
-  const [subcategoryOptions, setSubcategoryOptions] = useState<CategoryOption[]>([]);
 
-  useEffect(() => {
-    // Transform categories data to options format
-    const options = categories.map(category => ({
+  // Convert categories to options format for select components
+  const categoryOptions = useMemo(() => {
+    return categories.map(category => ({
       value: category.id,
       label: category.name
     }));
-    
-    setCategoryOptions(options);
   }, [categories]);
+
+  // Get subcategory options based on selected category
+  const subcategoryOptions = useMemo(() => {
+    return subcategoryMappings.map(subcategory => ({
+      value: subcategory.id,
+      label: subcategory.name
+    }));
+  }, [subcategoryMappings]);
 
   return {
     categoryOptions,
