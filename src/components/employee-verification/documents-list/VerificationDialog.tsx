@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Label } from '@/components/ui/label';
+import { toast } from '@/hooks/use-toast';
 
 interface VerificationDialogProps {
   open: boolean;
@@ -30,7 +31,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   isVerifying,
   documentType = ''
 }) => {
-  const isAadhar = documentType === 'aadhar';
+  const isAadhar = documentType?.toLowerCase() === 'aadhar';
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [showManualConfirmation, setShowManualConfirmation] = useState(false);
   const [showRejectConfirmation, setShowRejectConfirmation] = useState(false);
@@ -60,12 +61,12 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
 
   // Helper to reset all confirmation states
   const resetConfirmationStates = (keepApiConfirmation = false) => {
-    setShowOtpInput(false);
-    setShowManualConfirmation(false);
-    setShowRejectConfirmation(false);
     if (!keepApiConfirmation) {
       setShowApiConfirmation(false);
     }
+    setShowOtpInput(false);
+    setShowManualConfirmation(false);
+    setShowRejectConfirmation(false);
   };
 
   const handleOtpSubmit = () => {
@@ -73,22 +74,38 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       onVerify('api');
       resetConfirmationStates();
       setOtp("");
+      toast({
+        title: "Verification submitted",
+        description: "The document verification has been submitted via OTP."
+      });
     }
   };
 
   const handleManualConfirm = () => {
     onVerify('manual');
     resetConfirmationStates();
+    toast({
+      title: "Manual verification completed",
+      description: "The document has been manually verified."
+    });
   };
 
   const handleApiConfirm = () => {
     onVerify('api');
     resetConfirmationStates();
+    toast({
+      title: "API verification initiated",
+      description: "The document is being verified via API."
+    });
   };
 
   const handleRejectConfirm = () => {
     onReject();
     resetConfirmationStates();
+    toast({
+      title: "Document rejected",
+      description: "The document has been marked as rejected."
+    });
   };
 
   const handleCancel = () => {
@@ -140,7 +157,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               onClick={handleRejectClick}
               disabled={isVerifying}
             >
-              <ShieldCheck className="h-4 w-4 mr-2" />
+              <AlertCircle className="h-4 w-4 mr-2" />
               Reject Document
               <span className="ml-auto text-xs text-red-500 font-normal">Document verification failed</span>
             </Button>
