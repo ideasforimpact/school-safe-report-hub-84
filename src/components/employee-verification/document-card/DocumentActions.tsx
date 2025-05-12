@@ -85,42 +85,43 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 w-full">
-      <div className="space-y-2">
-        <p className="text-xs text-gray-500 font-medium">Auto Verification</p>
-        <Button 
-          variant="outline" 
-          className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
-          onClick={() => handleVerify('verified', 'api')}
-          disabled={verifying}
-        >
-          <ShieldCheck className="h-4 w-4 mr-2" />
-          {isAadhar ? 'Verify with OTP' : 'Verify API'}
-        </Button>
+    <div className="flex flex-col gap-3 w-full">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 w-full">
+        <div className="space-y-2">
+          <p className="text-xs text-gray-500 font-medium">Auto Verification</p>
+          <Button 
+            variant="outline" 
+            className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
+            onClick={() => handleVerify('verified', 'api')}
+            disabled={verifying}
+          >
+            <ShieldCheck className="h-4 w-4 mr-2" />
+            {isAadhar ? 'Verify with OTP' : 'Verify API'}
+          </Button>
+        </div>
+        <div className="space-y-2">
+          <p className="text-xs text-gray-500 font-medium">Manual Verification</p>
+          <Button 
+            variant="outline" 
+            className="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200"
+            onClick={() => handleVerify('verified', 'manual')}
+            disabled={verifying}
+          >
+            <Shield className="h-4 w-4 mr-2" />
+            Verify Manual
+          </Button>
+        </div>
       </div>
-      <div className="space-y-2">
-        <p className="text-xs text-gray-500 font-medium">Manual Verification</p>
-        <Button 
-          variant="outline" 
-          className="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200"
-          onClick={() => handleVerify('verified', 'manual')}
-          disabled={verifying}
-        >
-          <Shield className="h-4 w-4 mr-2" />
-          Verify Manual
-        </Button>
-      </div>
-      <div className="lg:col-span-2">
-        <Button 
-          variant="outline" 
-          className="w-full bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
-          onClick={() => handleVerify('failed', 'manual')}
-          disabled={verifying}
-        >
-          <AlertTriangle className="h-4 w-4 mr-2" />
-          Reject
-        </Button>
-      </div>
+      
+      <Button 
+        variant="outline" 
+        className="w-full bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
+        onClick={() => handleVerify('failed', 'manual')}
+        disabled={verifying}
+      >
+        <AlertTriangle className="h-4 w-4 mr-2" />
+        Reject Document
+      </Button>
 
       <OtpVerificationDialog 
         open={otpDialogOpen}
