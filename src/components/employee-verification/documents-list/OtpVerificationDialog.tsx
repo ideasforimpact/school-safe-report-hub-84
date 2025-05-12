@@ -14,6 +14,7 @@ import {
   InputOTP,
   InputOTPGroup,
   InputOTPSlot,
+  InputOTPSeparator,
 } from '@/components/ui/input-otp';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -132,6 +133,7 @@ const OtpVerificationDialog: React.FC<OtpVerificationDialogProps> = ({
   React.useEffect(() => {
     if (!open) {
       setOtp('');
+      setOtpRequested(false);
       setError(null);
     }
   }, [open]);
