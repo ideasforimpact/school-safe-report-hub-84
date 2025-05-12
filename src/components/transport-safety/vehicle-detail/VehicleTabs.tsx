@@ -33,6 +33,8 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
   const [selectedFileIndex, setSelectedFileIndex] = React.useState<number>(0);
   const [uploadedDocuments, setUploadedDocuments] = useState<UploadedDocument[]>([]);
   const [isLoadingDocuments, setIsLoadingDocuments] = useState(false);
+  // Add state for uploaded document preview
+  const [selectedUploadedDocument, setSelectedUploadedDocument] = useState<UploadedDocument | null>(null);
   
   const vehicle = getVehicle(vehicleId);
   
@@ -140,36 +142,33 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
   
   // Function to open file preview dialog for uploaded documents
   const openUploadedFilePreview = (document: UploadedDocument, fileIndex: number = 0) => {
-    // Create a pseudo VehicleDocument structure to reuse the existing preview logic
-    const pseudoDocument: VehicleDocument = {
-      id: `upload-${Date.now()}`,
-      type: document.type,
-      number: document.name,
-      issuedDate: document.uploadedAt,
-      expiryDate: '', // No expiry for uploaded documents
-      issuedBy: 'User Upload',
-      status: 'valid',
-      notes: null,
-      lastUpdated: document.uploadedAt,
-      fileUrls: document.files.map(f => f.url),
-      provider: 'User Upload'
-    };
-    
-    setSelectedDocument(pseudoDocument);
+    console.log("Opening preview for uploaded document:", document, "fileIndex:", fileIndex);
+    setSelectedUploadedDocument(document);
     setSelectedFileIndex(fileIndex);
     setShowFilePreview(true);
   };
 
   // Function to navigate between files in preview
   const navigateFile = (direction: 'next' | 'prev') => {
-    if (!selectedDocument || !selectedDocument.fileUrls) return;
-    
-    const totalFiles = selectedDocument.fileUrls.length;
-    
-    if (direction === 'next') {
-      setSelectedFileIndex((selectedFileIndex + 1) % totalFiles);
-    } else {
-      setSelectedFileIndex((selectedFileIndex - 1 + totalFiles) % totalFiles);
+    // Check if we're viewing an uploaded document or a legacy document
+    if (selectedUploadedDocument) {
+      const totalFiles = selectedUploadedDocument.files.length;
+      if (totalFiles <= 1) return;
+      
+      if (direction === 'next') {
+        setSelectedFileIndex((selectedFileIndex + 1) % totalFiles);
+      } else {
+        setSelectedFileIndex((selectedFileIndex - 1 + totalFiles) % totalFiles);
+      }
+    } else if (selectedDocument && selectedDocument.fileUrls) {
+      const totalFiles = selectedDocument.fileUrls.length;
+      if (totalFiles <= 1) return;
+      
+      if (direction === 'next') {
+        setSelectedFileIndex((selectedFileIndex + 1) % totalFiles);
+      } else {
+        setSelectedFileIndex((selectedFileIndex - 1 + totalFiles) % totalFiles);
+      }
     }
   };
 
@@ -195,6 +194,26 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
       title: 'Delete not implemented',
       description: 'File deletion feature will be implemented soon',
     });
+  };
+  
+  // Get current file URL for preview
+  const getCurrentFileUrl = () => {
+    if (selectedUploadedDocument) {
+      return selectedUploadedDocument.files[selectedFileIndex]?.url || '';
+    } else if (selectedDocument && selectedDocument.fileUrls) {
+      return selectedDocument.fileUrls[selectedFileIndex] || '';
+    }
+    return '';
+  };
+
+  // Get total files count
+  const getTotalFiles = () => {
+    if (selectedUploadedDocument) {
+      return selectedUploadedDocument.files.length;
+    } else if (selectedDocument && selectedDocument.fileUrls) {
+      return selectedDocument.fileUrls.length;
+    }
+    return 0;
   };
   
   return (
@@ -303,6 +322,7 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
                           className="h-8 w-8 p-0" 
                           onClick={() => {
                             setSelectedDocument(doc);
+                            setSelectedUploadedDocument(null);
                             setSelectedFileIndex(0);
                             setShowFilePreview(true);
                           }}
@@ -420,30 +440,27 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
         <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {selectedDocument && `${selectedDocument.type.charAt(0).toUpperCase() + selectedDocument.type.slice(1)} Document`}
+              {selectedUploadedDocument 
+                ? `${selectedUploadedDocument.name}`
+                : selectedDocument && `${selectedDocument.type.charAt(0).toUpperCase() + selectedDocument.type.slice(1)} Document`}
             </DialogTitle>
             <DialogDescription>
-              {selectedDocument && `${selectedDocument.number} • Issued by ${selectedDocument.issuedBy}`}
+              {selectedUploadedDocument 
+                ? `Uploaded on: ${formatDate(new Date(selectedUploadedDocument.uploadedAt))}`
+                : selectedDocument && `${selectedDocument.number} • Issued by ${selectedDocument.issuedBy}`}
             </DialogDescription>
           </DialogHeader>
           
           <div className="flex justify-center items-center py-4">
-            {selectedDocument && selectedDocument.fileUrls && selectedDocument.fileUrls[selectedFileIndex] && (
+            {/* Display the currently selected file */}
+            {getCurrentFileUrl() && (
               <div className="w-full max-h-[60vh] overflow-y-auto">
-                {selectedDocument.fileUrls[selectedFileIndex].startsWith('data:image') || 
-                 selectedDocument.fileUrls[selectedFileIndex].includes('/storage/v1/object/public/vehicle-documents') ? (
-                  <img 
-                    src={selectedDocument.fileUrls[selectedFileIndex]} 
-                    alt={`Document file ${selectedFileIndex + 1}`} 
-                    className="mx-auto max-h-full"
-                  />
-                ) : selectedDocument.fileUrls[selectedFileIndex].startsWith('data:application/pdf') || 
-                     selectedDocument.fileUrls[selectedFileIndex].endsWith('.pdf') ? (
+                {getCurrentFileUrl().endsWith('.pdf') || getCurrentFileUrl().includes('application/pdf') ? (
                   <div className="p-4 bg-gray-100 text-center rounded-md">
                     <FileText className="h-12 w-12 mx-auto mb-2 text-gray-600" />
                     <p>PDF Document (Preview not available)</p>
                     <a 
-                      href={selectedDocument.fileUrls[selectedFileIndex]} 
+                      href={getCurrentFileUrl()} 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="text-blue-600 hover:underline mt-2 inline-block"
@@ -451,12 +468,22 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
                       Open PDF
                     </a>
                   </div>
+                ) : getCurrentFileUrl().endsWith('.jpg') || 
+                   getCurrentFileUrl().endsWith('.jpeg') || 
+                   getCurrentFileUrl().endsWith('.png') || 
+                   getCurrentFileUrl().includes('image/') || 
+                   getCurrentFileUrl().includes('/storage/v1/object/public/vehicle-documents') ? (
+                  <img 
+                    src={getCurrentFileUrl()} 
+                    alt={`Document file ${selectedFileIndex + 1}`} 
+                    className="mx-auto max-h-full"
+                  />
                 ) : (
                   <div className="p-4 bg-gray-100 text-center rounded-md">
                     <FileText className="h-12 w-12 mx-auto mb-2 text-gray-600" />
                     <p>Document File (Preview not available)</p>
                     <a 
-                      href={selectedDocument.fileUrls[selectedFileIndex]} 
+                      href={getCurrentFileUrl()} 
                       target="_blank" 
                       rel="noopener noreferrer"
                       className="text-blue-600 hover:underline mt-2 inline-block"
@@ -470,13 +497,13 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
           </div>
 
           {/* File Navigation */}
-          {selectedDocument && selectedDocument.fileUrls && selectedDocument.fileUrls.length > 1 && (
+          {getTotalFiles() > 1 && (
             <div className="flex justify-center items-center space-x-4 mt-2">
               <Button variant="outline" onClick={() => navigateFile('prev')}>
                 Previous
               </Button>
               <span className="text-sm text-gray-500">
-                {selectedFileIndex + 1} of {selectedDocument.fileUrls.length}
+                {selectedFileIndex + 1} of {getTotalFiles()}
               </span>
               <Button variant="outline" onClick={() => navigateFile('next')}>
                 Next
@@ -489,18 +516,19 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
               variant="outline" 
               className="flex items-center gap-1"
               onClick={() => {
-                if (selectedDocument && selectedFileIndex >= 0 && selectedDocument.fileUrls) {
-                  // For now, just log the delete action
-                  console.log(`Delete file at index ${selectedFileIndex}`);
+                if (selectedUploadedDocument) {
+                  handleDeleteFile(selectedUploadedDocument, selectedFileIndex);
+                } else {
+                  console.log(`Delete legacy file at index ${selectedFileIndex}`);
                   toast({
                     title: 'Delete not implemented',
                     description: 'File deletion feature will be implemented soon',
                   });
-                  
-                  // Close preview if it was the last file
-                  if (selectedDocument.fileUrls.length <= 1) {
-                    setShowFilePreview(false);
-                  }
+                }
+                
+                // Close preview if it was the last file
+                if (getTotalFiles() <= 1) {
+                  setShowFilePreview(false);
                 }
               }}
             >
