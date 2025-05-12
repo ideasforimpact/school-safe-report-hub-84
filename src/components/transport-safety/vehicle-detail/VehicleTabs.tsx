@@ -400,9 +400,6 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
                   <div className="flex items-center gap-2">
                     {doc.files && doc.files.length > 0 ? (
                       <div className="flex items-center">
-                        <span className="text-xs bg-green-100 text-green-800 rounded-full px-2 py-1 mr-2">
-                          {doc.files.length} file{doc.files.length !== 1 ? 's' : ''}
-                        </span>
                         <Button 
                           size="sm" 
                           variant="ghost" 
@@ -461,9 +458,6 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
                   <div className="flex items-center gap-2">
                     {doc.fileUrls && doc.fileUrls.length > 0 ? (
                       <div className="flex items-center">
-                        <span className="text-xs bg-green-100 text-green-800 rounded-full px-2 py-1 mr-2">
-                          {doc.fileUrls.length} file{doc.fileUrls.length !== 1 ? 's' : ''}
-                        </span>
                         <Button 
                           size="sm" 
                           variant="ghost" 
