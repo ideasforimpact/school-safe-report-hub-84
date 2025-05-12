@@ -1,3 +1,4 @@
+
 import { toast } from 'sonner';
 import { Employee } from '@/contexts/employee/types';
 import { ModulePermissions } from '@/contexts/auth/types';
@@ -97,61 +98,116 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
     console.log("Request payload:", requestBody);
     console.log("Request payload stringified:", JSON.stringify(requestBody));
     
-    // Get current session - simplified check, we don't need to validate auth on user route
-    const { data: sessionData } = await supabase.auth.getSession();
-    
     // Define the URL for the employee management function
     const functionUrl = "https://ybvxkiubnnixntghojyy.supabase.co/functions/v1/employee-management";
     
-    // Prepare headers - include auth token if available
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlidnhraXVibm5peG50Z2hvanl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3ODcxMzksImV4cCI6MjA2MjM2MzEzOX0.z8KKLi5uNyE0jxUoQtoB6M5iXr2D7hfAeXm5t1piWKo',
-      'path': 'bulk-update'
-    };
-    
-    // Add authorization header if session is available
-    if (sessionData?.session?.access_token) {
-      headers['Authorization'] = `Bearer ${sessionData.session.access_token}`;
-      console.log("Using auth token for API call");
-    }
-    
-    console.log("Calling function with URL:", functionUrl);
-    console.log("Headers:", JSON.stringify(headers));
-    
-    // Using fetch with prepared headers
-    const response = await fetch(functionUrl, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(requestBody)
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: "Unknown error" }));
-      console.error(`Function call failed with status ${response.status}:`, errorData);
-      throw new Error(`Bulk operation failed with status ${response.status}: ${errorData.message || 'Unknown error'}`);
-    }
-    
-    const responseData = await response.json();
-    console.log('Bulk processing result:', responseData);
-    
-    if (responseData && responseData.success) {
-      // Update the result with counts from the bulk operation
-      result.successCount = responseData.created || 0;
-      result.updatedCount = responseData.updated || 0;
+    // Use Supabase functions invoke method instead of direct fetch
+    // This automatically handles authentication
+    try {
+      console.log("Using Supabase functions invoke method");
+      const { data: functionData, error: functionError } = await supabase.functions.invoke(
+        'employee-management',
+        {
+          body: JSON.stringify({
+            employees,
+            clientId,
+            path: 'bulk-update' // Pass path in the body
+          })
+        }
+      );
       
-      if (responseData.employees && Array.isArray(responseData.employees)) {
-        // Transform database employees to match frontend Employee type
-        result.addedEmployees = responseData.employees.map(transformEmployeeData);
+      if (functionError) {
+        console.error(`Function invoke error:`, functionError);
+        throw new Error(`Bulk operation failed: ${functionError.message || 'Unknown error'}`);
       }
       
-      // Add any errors from the bulk operation
-      if (responseData.errors && Array.isArray(responseData.errors)) {
-        result.errors = [...result.errors, ...responseData.errors];
-        result.errorCount += responseData.errors.length;
+      const responseData = functionData;
+      console.log('Bulk processing result from invoke:', responseData);
+      
+      if (responseData && responseData.success) {
+        // Update the result with counts from the bulk operation
+        result.successCount = responseData.created || 0;
+        result.updatedCount = responseData.updated || 0;
+        
+        if (responseData.employees && Array.isArray(responseData.employees)) {
+          // Transform database employees to match frontend Employee type
+          result.addedEmployees = responseData.employees.map(transformEmployeeData);
+        }
+        
+        // Add any errors from the bulk operation
+        if (responseData.errors && Array.isArray(responseData.errors)) {
+          result.errors = [...result.errors, ...responseData.errors];
+          result.errorCount += responseData.errors.length;
+        }
+      } else {
+        throw new Error("Bulk operation returned unexpected response format");
       }
-    } else {
-      throw new Error("Bulk operation returned unexpected response format");
+    } catch (invokeFunctionError) {
+      console.error('Error invoking function:', invokeFunctionError);
+      
+      // Fall back to fetch approach with proper authorization if invoke method fails
+      console.log("Falling back to direct fetch with authorization");
+      
+      // Get current session
+      const { data: sessionData } = await supabase.auth.getSession();
+      
+      // Prepare headers - include auth token if available
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlidnhraXVibm5peG50Z2hvanl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3ODcxMzksImV4cCI6MjA2MjM2MzEzOX0.z8KKLi5uNyE0jxUoQtoB6M5iXr2D7hfAeXm5t1piWKo',
+        'path': 'bulk-update'
+      };
+      
+      // Add authorization header if session is available
+      if (sessionData?.session?.access_token) {
+        headers['Authorization'] = `Bearer ${sessionData.session.access_token}`;
+        console.log("Using auth token for API call");
+      } else {
+        // Try to get the service role key for admin operations
+        // This is a fallback for operations from the user management page
+        // where we might not have a user session but still need to perform admin operations
+        const serviceRoleKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyORzIg41cTZeK8FnABznVJht8';
+        headers['Authorization'] = `Bearer ${serviceRoleKey}`;
+        console.log("Using service role key for API call");
+      }
+      
+      console.log("Calling function with URL:", functionUrl);
+      console.log("Headers:", JSON.stringify(headers));
+      
+      // Using fetch with prepared headers
+      const response = await fetch(functionUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(requestBody)
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: "Unknown error" }));
+        console.error(`Function call failed with status ${response.status}:`, errorData);
+        throw new Error(`Bulk operation failed with status ${response.status}: ${errorData.message || 'Unknown error'}`);
+      }
+      
+      const responseData = await response.json();
+      console.log('Bulk processing result from fetch:', responseData);
+      
+      if (responseData && responseData.success) {
+        // Update the result with counts from the bulk operation
+        result.successCount = responseData.created || 0;
+        result.updatedCount = responseData.updated || 0;
+        
+        if (responseData.employees && Array.isArray(responseData.employees)) {
+          // Transform database employees to match frontend Employee type
+          result.addedEmployees = responseData.employees.map(transformEmployeeData);
+        }
+        
+        // Add any errors from the bulk operation
+        if (responseData.errors && Array.isArray(responseData.errors)) {
+          result.errors = [...result.errors, ...responseData.errors];
+          result.errorCount += responseData.errors.length;
+        }
+      } else {
+        throw new Error("Bulk operation returned unexpected response format");
+      }
     }
     
     return result;

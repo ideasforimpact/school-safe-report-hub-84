@@ -30,7 +30,10 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
   const [isValidated, setIsValidated] = useState(false);
   const [recordCount, setRecordCount] = useState<number | null>(null);
   
-  // Remove authentication checks - we'll assume the user is allowed to import
+  // Log clientId for debugging
+  useEffect(() => {
+    console.log("ImportEmployeeDialog received clientId:", clientId);
+  }, [clientId]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -116,7 +119,6 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
       return;
     }
 
-    // Remove authentication check - proceed directly with import
     setIsLoading(true);
     try {
       // Show a message for large imports to manage user expectations
@@ -124,7 +126,7 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
         toast.info(`Processing ${recordCount} records. This may take a moment...`);
       }
       
-      console.log("Using clientId:", clientId);
+      console.log("Using clientId for import:", clientId);
       
       // Pass clientId to the import function
       await onImportEmployees(file, clientId);
@@ -160,6 +162,7 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
           <DialogTitle>Import Employees</DialogTitle>
           <DialogDescription>
             Upload an Excel file containing employee information. The file should include employee ID, name, email, and department.
+            {clientId && <div className="mt-2 text-sm text-muted-foreground">Client ID: {clientId}</div>}
           </DialogDescription>
         </DialogHeader>
 

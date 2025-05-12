@@ -33,15 +33,22 @@ serve(async (req) => {
     });
     console.log("Request headers:", JSON.stringify(headers, null, 2));
 
-    // Create a Supabase client - for anonymous access, we don't require auth header
+    // Create a Supabase client with authentication from request
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    
+    // Log auth header if present
+    const authHeader = req.headers.get("Authorization");
+    console.log("Auth header present:", authHeader ? "Yes" : "No");
+    
+    // Create Supabase client with auth if available
     const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      supabaseUrl,
+      supabaseKey,
       {
         global: {
           headers: { 
-            ...(req.headers.get("Authorization") ? 
-              { Authorization: req.headers.get("Authorization")! } : {})
+            ...(authHeader ? { Authorization: authHeader } : {})
           },
         },
       }
@@ -102,10 +109,22 @@ serve(async (req) => {
       });
     }
     
+    // Extract path from request body if it was passed there (useful for invoke method)
+    const bodyPath = reqBody.path;
+    if (bodyPath) {
+      console.log("Using path from request body:", bodyPath);
+    }
+    
+    // Final path determination
+    const finalPath = bodyPath || effectivePath;
+    console.log("Final determined path:", finalPath);
+    
     // Handle the bulk-update path
-    if (effectivePath === "bulk-update") {
+    if (finalPath === "bulk-update") {
       console.log("Handling bulk update request");
-      const { employees } = reqBody;
+      const { employees, clientId } = reqBody;
+      
+      console.log("ClientId from request:", clientId);
       
       if (!employees || !Array.isArray(employees)) {
         console.error("Invalid employees data:", reqBody);
@@ -136,6 +155,7 @@ serve(async (req) => {
             department: emp.department,
             joining_date: emp.joiningDate,
             status: emp.status || 'active',
+            client_id: emp.clientId || clientId,  // Use employee's clientId or the global one
             // modulePermissions will be handled separately
           });
         } else {
@@ -174,6 +194,7 @@ serve(async (req) => {
               department: empData.department,
               joining_date: empData.joiningDate,
               status: empData.status || 'active',
+              client_id: empData.clientId || clientId,  // Use employee's clientId or the global one
               // modulePermissions will be handled separately
             });
             employeeIdMap.delete(existing.employee_id.toLowerCase());
@@ -191,6 +212,7 @@ serve(async (req) => {
             department: empData.department,
             joining_date: empData.joiningDate,
             status: empData.status || 'active',
+            client_id: empData.clientId || clientId,  // Use employee's clientId or the global one
             // modulePermissions will be stored for later use
             modulePermissions: empData.modulePermissions
           });
@@ -198,6 +220,7 @@ serve(async (req) => {
       }
       
       console.log(`Processing ${toCreate.length} new employees and ${toUpdate.length} existing employees`);
+      console.log("First new employee to create:", toCreate.length > 0 ? toCreate[0] : "None");
       
       const results = {
         created: [],
@@ -207,9 +230,16 @@ serve(async (req) => {
       
       // Create new employees in bulk if there are any
       if (toCreate.length > 0) {
+        // Prepare the data for insert
+        const insertData = toCreate.map(({ modulePermissions, ...emp }) => {
+          // Log the client_id for debugging
+          console.log(`Inserting employee with client_id: ${emp.client_id}`);
+          return emp;
+        });
+        
         const { data: createdData, error: createError } = await supabaseClient
           .from("employees")
-          .insert(toCreate.map(({ modulePermissions, ...emp }) => emp)) // Remove modulePermissions from insert data
+          .insert(insertData) // Remove modulePermissions from insert data
           .select();
           
         if (createError) {
@@ -250,6 +280,8 @@ serve(async (req) => {
       // Update existing employees
       for (const emp of toUpdate) {
         const { id, modulePermissions, ...updateData } = emp;
+        
+        console.log(`Updating employee ${id} with client_id: ${updateData.client_id}`);
         
         const { data: updatedData, error: updateError } = await supabaseClient
           .from("employees")
@@ -447,7 +479,10 @@ async function handleCreate(supabaseClient, employeeData) {
     department: employeeData.department,
     joining_date: employeeData.joiningDate,
     status: employeeData.status || "active",
+    client_id: employeeData.clientId, // Ensure client_id is set
   };
+
+  console.log("DB employee data for insert:", dbEmployee);
 
   // Insert the new employee
   const { data: employee, error } = await supabaseClient
@@ -504,6 +539,7 @@ async function handleUpdate(supabaseClient, employeeData) {
   if (employeeData.department) dbEmployee.department = employeeData.department;
   if (employeeData.joiningDate) dbEmployee.joining_date = employeeData.joiningDate;
   if (employeeData.status) dbEmployee.status = employeeData.status;
+  if (employeeData.clientId) dbEmployee.client_id = employeeData.clientId;
   
   // Update the employee record
   const { data: employee, error } = await supabaseClient
