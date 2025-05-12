@@ -1,6 +1,11 @@
 
 import { useState, useMemo } from 'react';
 import { Vehicle } from '@/types/transportSafety';
+import { 
+  hasExpiredDocuments, 
+  hasExpiringDocuments, 
+  hasAllValidDocuments 
+} from '@/utils/transport-safety/documentStatusUtils';
 
 interface DocumentStatusFilters {
   valid: boolean;
@@ -69,30 +74,36 @@ export const useVehicleFilters = (vehicles: Vehicle[]) => {
       const matchesStatus = statusFilter === 'all' ? true : vehicle.status === statusFilter;
       const matchesType = typeFilter === 'all' ? true : vehicle.type === typeFilter;
       
-      // Document filters
+      // Document status filters with enhanced logic
+      let matchesDocumentStatus = true;
+      
+      if (hasActiveDocumentStatusFilters) {
+        if (documentStatusFilters.valid && !documentStatusFilters.expired && !documentStatusFilters.expiring_soon) {
+          // Only valid selected - show vehicles with ALL valid documents
+          matchesDocumentStatus = hasAllValidDocuments(vehicle);
+        } else if (documentStatusFilters.expired && !documentStatusFilters.valid && !documentStatusFilters.expiring_soon) {
+          // Only expired selected - show vehicles with ANY expired documents
+          matchesDocumentStatus = hasExpiredDocuments(vehicle);
+        } else if (documentStatusFilters.expiring_soon && !documentStatusFilters.valid && !documentStatusFilters.expired) {
+          // Only expiring soon selected - show vehicles with ANY expiring soon documents
+          matchesDocumentStatus = hasExpiringDocuments(vehicle);
+        } else {
+          // Multiple filters selected - OR logic between the different statuses
+          matchesDocumentStatus = 
+            (documentStatusFilters.valid && hasAllValidDocuments(vehicle)) || 
+            (documentStatusFilters.expired && hasExpiredDocuments(vehicle)) || 
+            (documentStatusFilters.expiring_soon && hasExpiringDocuments(vehicle));
+        }
+      }
+      
+      // Document type filter
       let matchesDocumentType = true;
-      let matchesDocumentStatus = !hasActiveDocumentStatusFilters;
-
-      if (documentTypeFilter !== 'all' || hasActiveDocumentStatusFilters) {
+      if (documentTypeFilter !== 'all') {
         const relevantDocuments = vehicle.documents.filter(doc => 
-          documentTypeFilter === 'all' ? true : doc.type === documentTypeFilter
+          doc.type === documentTypeFilter
         );
         
-        // If we're filtering by document type and there are no matching documents
-        if (documentTypeFilter !== 'all' && relevantDocuments.length === 0) {
-          matchesDocumentType = false;
-        }
-        
-        // Check document statuses if any status filters are active
-        if (hasActiveDocumentStatusFilters) {
-          matchesDocumentStatus = relevantDocuments.some(doc => {
-            // Type safe check
-            if (doc.status === 'valid' && documentStatusFilters.valid) return true;
-            if (doc.status === 'expired' && documentStatusFilters.expired) return true;
-            if (doc.status === 'expiring_soon' && documentStatusFilters.expiring_soon) return true;
-            return false;
-          });
-        }
+        matchesDocumentType = relevantDocuments.length > 0;
       }
       
       return matchesSearch && matchesStatus && matchesType && matchesDocumentType && 

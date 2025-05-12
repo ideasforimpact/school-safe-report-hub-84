@@ -141,7 +141,7 @@ export const hasDocument = (vehicle: Vehicle, docType: string): boolean => {
 };
 
 /**
- * Check if vehicle has any expired documents
+ * Check if vehicle has any expired or missing documents
  */
 export const hasExpiredDocuments = (vehicle: Vehicle): boolean => {
   const fitnessStatus = getDocumentStatus(vehicle, 'fitness');
@@ -154,18 +154,32 @@ export const hasExpiredDocuments = (vehicle: Vehicle): boolean => {
 };
 
 /**
- * Check if vehicle has any documents expiring soon
+ * Check if vehicle has any documents expiring soon but none expired
  */
 export const hasExpiringDocuments = (vehicle: Vehicle): boolean => {
   const fitnessStatus = getDocumentStatus(vehicle, 'fitness');
   const insuranceStatus = getDocumentStatus(vehicle, 'insurance');
   const pollutionStatus = getDocumentStatus(vehicle, 'pollution');
   
+  // No expired documents but at least one expiring soon
   return !hasExpiredDocuments(vehicle) && (
     fitnessStatus.status === 'expiring_soon' || 
     insuranceStatus.status === 'expiring_soon' || 
     pollutionStatus.status === 'expiring_soon'
   );
+};
+
+/**
+ * Check if all vehicle documents are valid (not expired, not missing, not expiring soon)
+ */
+export const hasAllValidDocuments = (vehicle: Vehicle): boolean => {
+  const fitnessStatus = getDocumentStatus(vehicle, 'fitness').status;
+  const insuranceStatus = getDocumentStatus(vehicle, 'insurance').status;
+  const pollutionStatus = getDocumentStatus(vehicle, 'pollution').status;
+  
+  return fitnessStatus === 'valid' && 
+         insuranceStatus === 'valid' && 
+         pollutionStatus === 'valid';
 };
 
 /**

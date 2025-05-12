@@ -110,11 +110,11 @@ const VehicleBasicFilters: React.FC<VehicleBasicFiltersProps> = ({
             id="valid-status" 
             checked={documentStatusFilters.valid}
             onCheckedChange={() => toggleDocumentStatusFilter('valid')}
-            className="h-3.5 w-3.5"
+            className={`h-4 w-4 ${documentStatusFilters.valid ? 'bg-green-500 text-white' : ''}`}
           />
-          <Label htmlFor="valid-status" className="flex items-center cursor-pointer text-xs">
-            <FileCheck className="h-3 w-3 mr-1 text-green-600" />
-            <span>Valid</span>
+          <Label htmlFor="valid-status" className={`flex items-center cursor-pointer text-xs ${documentStatusFilters.valid ? 'font-medium text-green-700' : ''}`}>
+            <FileCheck className={`h-3.5 w-3.5 mr-1 ${documentStatusFilters.valid ? 'text-green-600' : 'text-gray-500'}`} />
+            <span>{documentStatusFilters.valid ? 'All Valid' : 'Valid'}</span>
           </Label>
         </div>
         
@@ -123,11 +123,11 @@ const VehicleBasicFilters: React.FC<VehicleBasicFiltersProps> = ({
             id="expired-status" 
             checked={documentStatusFilters.expired}
             onCheckedChange={() => toggleDocumentStatusFilter('expired')}
-            className="h-3.5 w-3.5"
+            className={`h-4 w-4 ${documentStatusFilters.expired ? 'bg-red-500 text-white' : ''}`}
           />
-          <Label htmlFor="expired-status" className="flex items-center cursor-pointer text-xs">
-            <FileX className="h-3 w-3 mr-1 text-red-600" />
-            <span>Expired</span>
+          <Label htmlFor="expired-status" className={`flex items-center cursor-pointer text-xs ${documentStatusFilters.expired ? 'font-medium text-red-700' : ''}`}>
+            <FileX className={`h-3.5 w-3.5 mr-1 ${documentStatusFilters.expired ? 'text-red-600' : 'text-gray-500'}`} />
+            <span>{documentStatusFilters.expired ? 'Any Expired/Missing' : 'Expired'}</span>
           </Label>
         </div>
         
@@ -136,11 +136,11 @@ const VehicleBasicFilters: React.FC<VehicleBasicFiltersProps> = ({
             id="expiring-status" 
             checked={documentStatusFilters.expiring_soon}
             onCheckedChange={() => toggleDocumentStatusFilter('expiring_soon')}
-            className="h-3.5 w-3.5"
+            className={`h-4 w-4 ${documentStatusFilters.expiring_soon ? 'bg-yellow-500 text-white' : ''}`}
           />
-          <Label htmlFor="expiring-status" className="flex items-center cursor-pointer text-xs">
-            <FileWarning className="h-3 w-3 mr-1 text-yellow-600" />
-            <span>Expiring Soon</span>
+          <Label htmlFor="expiring-status" className={`flex items-center cursor-pointer text-xs ${documentStatusFilters.expiring_soon ? 'font-medium text-yellow-700' : ''}`}>
+            <FileWarning className={`h-3.5 w-3.5 mr-1 ${documentStatusFilters.expiring_soon ? 'text-yellow-600' : 'text-gray-500'}`} />
+            <span>{documentStatusFilters.expiring_soon ? 'Any Expiring Soon' : 'Expiring Soon'}</span>
           </Label>
         </div>
       </div>
