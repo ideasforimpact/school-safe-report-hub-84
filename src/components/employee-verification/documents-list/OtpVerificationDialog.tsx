@@ -128,6 +128,14 @@ const OtpVerificationDialog: React.FC<OtpVerificationDialogProps> = ({
     onOpenChange(false);
   };
 
+  // Reset OTP when dialog opens/closes to prevent stale state
+  React.useEffect(() => {
+    if (!open) {
+      setOtp('');
+      setError(null);
+    }
+  }, [open]);
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
@@ -167,8 +175,8 @@ const OtpVerificationDialog: React.FC<OtpVerificationDialogProps> = ({
                   onChange={setOtp}
                   render={({ slots }) => (
                     <InputOTPGroup>
-                      {slots.map((slot, index) => (
-                        <InputOTPSlot key={index} {...slot} index={index} />
+                      {slots.map((slot, i) => (
+                        <InputOTPSlot key={i} {...slot} index={i} />
                       ))}
                     </InputOTPGroup>
                   )}
