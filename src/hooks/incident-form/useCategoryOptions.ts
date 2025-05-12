@@ -15,10 +15,20 @@ export function useCategoryOptions() {
 
   // Get subcategory options based on selected category
   const subcategoryOptions = useMemo(() => {
-    return subcategoryMappings.map(subcategory => ({
-      value: subcategory.id,
-      label: subcategory.name
-    }));
+    // Return all subcategories for now - this will be filtered by the selected category in a parent component
+    const allSubcategories = [];
+    // Flatten all subcategory mappings into a single array
+    Object.values(subcategoryMappings).forEach(subcategoryArray => {
+      if (Array.isArray(subcategoryArray)) {
+        subcategoryArray.forEach(subcategory => {
+          allSubcategories.push({
+            value: subcategory.id,
+            label: subcategory.name
+          });
+        });
+      }
+    });
+    return allSubcategories;
   }, [subcategoryMappings]);
 
   return {

@@ -17,12 +17,13 @@ export function useLocationOptions(selectedLocationId: string) {
   const facilityOptions = useMemo(() => {
     if (!selectedLocationId) return [];
     
-    return facilities
-      .filter(facility => facility.locationId === selectedLocationId)
-      .map(facility => ({
-        value: facility.id,
-        label: facility.name
-      }));
+    // Since we don't have a direct relationship between locations and facilities in the ConfigItem interface,
+    // we'll return all facilities for now
+    // In a real application, you would likely have facilities that belong to specific locations
+    return facilities.map(facility => ({
+      value: facility.id,
+      label: facility.name
+    }));
   }, [facilities, selectedLocationId]);
 
   return {
