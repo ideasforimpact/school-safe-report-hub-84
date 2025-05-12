@@ -28,7 +28,7 @@ export const addEmployeeToApi = async (
         department: dbEmployee.department,
         joining_date: dbEmployee.joining_date,
         status: dbEmployee.status,
-        client_id: dbEmployee.client_id, // Explicitly include client_id
+        client_id: dbEmployee.client_id, // Make sure client_id is included
         user_id: dbEmployee.user_id
       })
       .select('*')

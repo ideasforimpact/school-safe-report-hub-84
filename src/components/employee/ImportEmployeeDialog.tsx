@@ -12,16 +12,14 @@ import {
 import { Label } from '@/components/ui/label';
 import { FileUp, Check, AlertCircle, Loader2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
-import { useAuth } from '@/contexts/AuthContext';
 import { validateEmployeeExcel } from '@/services/employee/importEmployeeService';
 import { Progress } from '@/components/ui/progress';
-import { supabase } from '@/integrations/supabase/client';
 
 interface ImportEmployeeDialogProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
   onImportEmployees: (file: File, clientId?: string) => Promise<void>;
-  clientId?: string; // Add optional clientId prop
+  clientId?: string;
 }
 
 const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }: ImportEmployeeDialogProps) => {
@@ -31,52 +29,8 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [isValidated, setIsValidated] = useState(false);
   const [recordCount, setRecordCount] = useState<number | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-  const { user } = useAuth();
-
-  // List of demo emails that can bypass authentication
-  const DEMO_EMAILS = [
-    'owner@saasplatform.com',
-    'admin@school.edu',
-    'reporter@school.edu'
-  ];
   
-  // Check if current user is a demo user
-  const isDemoUser = user?.email ? DEMO_EMAILS.includes(user.email) : false;
-
-  // Get clientId from user context if not provided as prop
-  const effectiveClientId = clientId || user?.clientId;
-
-  // Check authentication status on component mount and dialog open
-  useEffect(() => {
-    if (isOpen) {
-      checkAuthStatus();
-    }
-  }, [isOpen]);
-
-  // Check if the user is authenticated with Supabase
-  const checkAuthStatus = async () => {
-    try {
-      // If it's a demo user, we automatically consider them authenticated
-      if (isDemoUser) {
-        console.log("Demo user detected - authentication bypass enabled");
-        setIsAuthenticated(true);
-        return;
-      }
-      
-      // For non-demo users, check actual auth status
-      const { data } = await supabase.auth.getSession();
-      const isAuthValid = !!data?.session?.access_token;
-      setIsAuthenticated(isAuthValid);
-      
-      if (!isAuthValid) {
-        console.warn("No valid authentication session found");
-      }
-    } catch (error) {
-      console.error("Error checking auth status:", error);
-      setIsAuthenticated(false);
-    }
-  };
+  // Remove authentication checks - we'll assume the user is allowed to import
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -162,13 +116,7 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
       return;
     }
 
-    // Demo users are always considered authenticated
-    // Only show authentication error for non-demo users
-    if (isAuthenticated === false && !isDemoUser) {
-      toast.error('You must be signed in to import employees');
-      return;
-    }
-
+    // Remove authentication check - proceed directly with import
     setIsLoading(true);
     try {
       // Show a message for large imports to manage user expectations
@@ -176,12 +124,10 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
         toast.info(`Processing ${recordCount} records. This may take a moment...`);
       }
       
-      console.log("Using clientId:", effectiveClientId);
-      console.log("User is authenticated:", isAuthenticated);
-      console.log("Is demo user:", isDemoUser);
+      console.log("Using clientId:", clientId);
       
       // Pass clientId to the import function
-      await onImportEmployees(file, effectiveClientId);
+      await onImportEmployees(file, clientId);
       
       // Reset state and close dialog after successful import
       setFile(null);
@@ -191,9 +137,7 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
       setIsOpen(false);
     } catch (error) {
       console.error('Import failed:', error);
-      // Better error handling
       toast.error(`Import failed: ${(error as Error).message || 'Unknown error'}`);
-      // Don't close dialog on error so user can try again
     } finally {
       setIsLoading(false);
     }
@@ -218,24 +162,6 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
             Upload an Excel file containing employee information. The file should include employee ID, name, email, and department.
           </DialogDescription>
         </DialogHeader>
-
-        {isAuthenticated === false && !isDemoUser && (
-          <div className="border border-destructive/50 rounded-md p-3 bg-destructive/10 mb-4">
-            <p className="text-destructive flex items-center">
-              <AlertCircle className="h-4 w-4 mr-2" />
-              You need to be signed in to import employees. Please sign in and try again.
-            </p>
-          </div>
-        )}
-
-        {isDemoUser && (
-          <div className="border border-green-500/50 rounded-md p-3 bg-green-500/10 mb-4">
-            <p className="text-green-600 flex items-center">
-              <Check className="h-4 w-4 mr-2" />
-              Demo user detected - you have full access to all features.
-            </p>
-          </div>
-        )}
 
         <div className="space-y-6">
           <div className="space-y-2">
@@ -343,7 +269,7 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
             </Button>
             <Button
               onClick={handleImport}
-              disabled={!isValidated || isLoading || (isAuthenticated === false && !isDemoUser)}
+              disabled={!isValidated || isLoading}
               className="gap-1"
             >
               {isLoading ? (

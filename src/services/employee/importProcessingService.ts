@@ -1,4 +1,3 @@
-
 import { toast } from 'sonner';
 import { Employee } from '@/contexts/employee/types';
 import { ModulePermissions } from '@/contexts/auth/types';
@@ -48,13 +47,13 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
         // Set default module permissions for all imported employees
         const modulePermissions: ModulePermissions = {
           superAdmin: false,
-          incidentReporting: true, // Enable Incident Reporting by default as requested
+          incidentReporting: true, 
           incidentAdmin: false,
           assessmentUser: false,
           assessmentsAdmin: false,
           employeeVerificationAdmin: false,
           grievancesAdmin: false,
-          transportSafetyAdmin: true, // Enable Transport Safety Admin by default as requested
+          transportSafetyAdmin: true,
           eduSafeResourceAccess: false
         };
         
@@ -98,40 +97,23 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
     console.log("Request payload:", requestBody);
     console.log("Request payload stringified:", JSON.stringify(requestBody));
     
-    // Get current session - first check if we have a valid session
+    // Get current session - simplified check, we don't need to validate auth on user route
     const { data: sessionData } = await supabase.auth.getSession();
-    
-    // Check if this is a demo user operation - demo users get special bypass privileges
-    let isDemoUser = false;
-    // Check if email is in session data, and if it is, check if it's a demo email
-    if (sessionData?.session?.user?.email) {
-      isDemoUser = DEMO_EMAILS.includes(sessionData.session.user.email);
-    }
-    
-    // If no session is found and not a demo user, show a more specific error
-    if (!sessionData?.session?.access_token && !isDemoUser) {
-      console.log("No authentication session found");
-      throw new Error("You must be logged in to import employees");
-    }
     
     // Define the URL for the employee management function
     const functionUrl = "https://ybvxkiubnnixntghojyy.supabase.co/functions/v1/employee-management";
     
-    // Prepare headers - include auth token if available, otherwise fallback to API key for demo users
+    // Prepare headers - include auth token if available
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlidnhraXVibm5peG50Z2hvanl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3ODcxMzksImV4cCI6MjA2MjM2MzEzOX0.z8KKLi5uNyE0jxUoQtoB6M5iXr2D7hfAeXm5t1piWKo',
       'path': 'bulk-update'
     };
     
-    // Add authorization header if session is available or if it's a demo user
+    // Add authorization header if session is available
     if (sessionData?.session?.access_token) {
       headers['Authorization'] = `Bearer ${sessionData.session.access_token}`;
       console.log("Using auth token for API call");
-    } else if (isDemoUser) {
-      // For demo users, allow operation without auth token
-      // We already have the apikey above
-      console.log("Using demo user privileges - bypassing auth token requirement");
     }
     
     console.log("Calling function with URL:", functionUrl);
@@ -188,13 +170,13 @@ const transformEmployeeData = (dbEmployee: any): Employee => {
   // Default module permissions that will be applied if not provided in the database record
   const defaultModulePermissions: ModulePermissions = {
     superAdmin: false,
-    incidentReporting: true, // Enable Incident Reporting by default as requested
+    incidentReporting: true,
     incidentAdmin: false,
     assessmentUser: false,
     assessmentsAdmin: false,
     employeeVerificationAdmin: false,
     grievancesAdmin: false,
-    transportSafetyAdmin: true, // Enable Transport Safety Admin by default as requested
+    transportSafetyAdmin: true,
     eduSafeResourceAccess: false
   };
 

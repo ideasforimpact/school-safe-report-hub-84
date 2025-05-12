@@ -465,22 +465,13 @@ const UserManagement = () => {
     setIsEditDialogOpen(true);
   };
 
-  // Handler for importing employees
+  // Handler for importing employees - Simplified to focus on validation and processing only
   const handleImportEmployees = async (file: File) => {
     try {
       setIsLoading(true);
       console.log("Importing employees with clientId:", clientId);
       
-      // Check if we have an active Supabase session before proceeding
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData?.session) {
-        // If we don't have a session, attempt a refresh or sign in here
-        // For now, just inform the user they need to be logged in
-        toast.error("Please log in to import employees");
-        setIsLoading(false);
-        return;
-      }
-      
+      // No authentication check needed - proceed directly to import
       await processEmployeeExcel(file, clientId);
       
       // Refresh the employee list after successful import
