@@ -18,16 +18,20 @@ export interface VehicleDocument {
   verificationDate?: string;
 }
 
-export interface VehicleVerificationData {
+export interface VehicleVerificationField {
   field: string;
-  value: string | number | boolean | Record<string, any>;
+  value: any;
   verified: boolean;
 }
 
-export interface VerificationLogEntry {
-  last_response: string;
-  original: Record<string, any>;
-  status: string;
+export interface VerificationLogItem {
+  [timestamp: string]: VehicleVerificationField[];
+}
+
+export interface VehicleVerificationData {
+  field: string;
+  value: string | number | boolean | VerificationLogItem;
+  verified: boolean;
 }
 
 export interface Vehicle {
@@ -48,5 +52,5 @@ export interface Vehicle {
   verificationStatus?: string;
   verificationDate?: string;
   verificationData?: VehicleVerificationData[];
-  verification_log?: Record<string, VerificationLogEntry>;
+  verification_log?: Record<string, any>; // Legacy field, keeping for backward compatibility
 }

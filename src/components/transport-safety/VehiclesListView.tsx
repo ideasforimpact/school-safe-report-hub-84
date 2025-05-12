@@ -32,16 +32,33 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
       const sampleVehicle = vehicles[0];
       console.log("Sample vehicle verification_log:", sampleVehicle.verification_log);
       
-      // Check if we have proper verification log data
-      if (sampleVehicle.verification_log && sampleVehicle.verification_log.last_response) {
+      // Check if we have proper verification data
+      if (sampleVehicle.verificationData) {
         try {
-          const response = sampleVehicle.verification_log.last_response;
-          console.log("Verification last_response type:", typeof response);
-          if (typeof response === 'string') {
-            const parsedData = JSON.parse(response);
-            console.log("Parsed verification data:", parsedData);
-            console.log("FC expiry date (fit_up_to):", parsedData.fit_up_to);
-            console.log("Insurance expiry date (insurance_upto):", parsedData.insurance_upto);
+          // Look for verification_log field in the verificationData array
+          const verificationLogEntry = sampleVehicle.verificationData.find(
+            item => item.field === 'verification_log'
+          );
+          
+          if (verificationLogEntry && verificationLogEntry.value) {
+            console.log("Found verification_log entry:", verificationLogEntry);
+            
+            // Get the most recent verification timestamp (last key in the object)
+            const timestamps = Object.keys(verificationLogEntry.value);
+            if (timestamps.length > 0) {
+              const latestTimestamp = timestamps[timestamps.length - 1];
+              console.log("Latest verification timestamp:", latestTimestamp);
+              
+              // Access the array of verification data for this timestamp
+              const verificationData = verificationLogEntry.value[latestTimestamp];
+              
+              // Find fit_up_to and insurance_upto in the verification data
+              const fitUpTo = verificationData.find(item => item.field === 'fit_up_to')?.value;
+              const insuranceUpto = verificationData.find(item => item.field === 'insurance_upto')?.value;
+              
+              console.log("Verification fit_up_to:", fitUpTo);
+              console.log("Verification insurance_upto:", insuranceUpto);
+            }
           }
         } catch (e) {
           console.error("Error parsing verification data:", e);
@@ -54,76 +71,74 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
     const document = vehicle.documents.find(doc => doc.type === docType);
     
     // If we have verification_log data, use it for more accurate status
-    if (vehicle.verification_log && vehicle.verification_log.last_response) {
+    if (vehicle.verificationData) {
       const currentDate = new Date();
       console.log(`Checking ${docType} status for vehicle ${vehicle.registrationNumber}`);
       
-      // Check fitness certificate (FC)
-      if (docType === 'fitness' && vehicle.verification_log.last_response) {
-        try {
-          const data = vehicle.verification_log.last_response;
-          console.log(`${docType} verification data:`, data);
-          
-          if (typeof data === 'string') {
-            const parsedData = JSON.parse(data);
-            console.log(`Parsed ${docType} data:`, parsedData);
+      try {
+        // Find the verification_log entry
+        const verificationLogEntry = vehicle.verificationData.find(
+          item => item.field === 'verification_log'
+        );
+        
+        if (verificationLogEntry && verificationLogEntry.value) {
+          // Get the most recent verification timestamp (last key in the object)
+          const timestamps = Object.keys(verificationLogEntry.value);
+          if (timestamps.length > 0) {
+            const latestTimestamp = timestamps[timestamps.length - 1];
             
-            if (parsedData && parsedData.fit_up_to) {
-              const fitUpToDate = new Date(parsedData.fit_up_to);
-              console.log(`${docType} expiry date:`, fitUpToDate, "Current date:", currentDate);
-              
-              if (!isNaN(fitUpToDate.getTime())) {
-                if (fitUpToDate < currentDate) {
-                  console.log(`${docType} is EXPIRED`);
-                  return 'expired';
-                } else {
-                  // Check if expiring in 30 days
-                  const thirtyDaysFromNow = new Date();
-                  thirtyDaysFromNow.setDate(currentDate.getDate() + 30);
-                  const status = fitUpToDate < thirtyDaysFromNow ? 'expiring_soon' : 'valid';
-                  console.log(`${docType} is ${status.toUpperCase()}`);
-                  return status;
+            // Access the array of verification data for this timestamp
+            const verificationData = verificationLogEntry.value[latestTimestamp];
+            
+            // Check fitness certificate (FC)
+            if (docType === 'fitness') {
+              const fitUpToItem = verificationData.find(item => item.field === 'fit_up_to');
+              if (fitUpToItem && fitUpToItem.value) {
+                const fitUpToDate = new Date(fitUpToItem.value);
+                console.log(`${docType} expiry date:`, fitUpToDate, "Current date:", currentDate);
+                
+                if (!isNaN(fitUpToDate.getTime())) {
+                  if (fitUpToDate < currentDate) {
+                    console.log(`${docType} is EXPIRED`);
+                    return 'expired';
+                  } else {
+                    // Check if expiring in 30 days
+                    const thirtyDaysFromNow = new Date();
+                    thirtyDaysFromNow.setDate(currentDate.getDate() + 30);
+                    const status = fitUpToDate < thirtyDaysFromNow ? 'expiring_soon' : 'valid';
+                    console.log(`${docType} is ${status.toUpperCase()}`);
+                    return status;
+                  }
+                }
+              }
+            }
+            
+            // Check insurance
+            if (docType === 'insurance') {
+              const insuranceUpToItem = verificationData.find(item => item.field === 'insurance_upto');
+              if (insuranceUpToItem && insuranceUpToItem.value) {
+                const insuranceUpToDate = new Date(insuranceUpToItem.value);
+                console.log(`${docType} expiry date:`, insuranceUpToDate, "Current date:", currentDate);
+                
+                if (!isNaN(insuranceUpToDate.getTime())) {
+                  if (insuranceUpToDate < currentDate) {
+                    console.log(`${docType} is EXPIRED`);
+                    return 'expired';
+                  } else {
+                    // Check if expiring in 30 days
+                    const thirtyDaysFromNow = new Date();
+                    thirtyDaysFromNow.setDate(currentDate.getDate() + 30);
+                    const status = insuranceUpToDate < thirtyDaysFromNow ? 'expiring_soon' : 'valid';
+                    console.log(`${docType} is ${status.toUpperCase()}`);
+                    return status;
+                  }
                 }
               }
             }
           }
-        } catch (e) {
-          console.error(`Error parsing ${docType} data:`, e);
         }
-      }
-      
-      // Check insurance
-      if (docType === 'insurance' && vehicle.verification_log.last_response) {
-        try {
-          const data = vehicle.verification_log.last_response;
-          console.log(`${docType} verification data:`, data);
-          
-          if (typeof data === 'string') {
-            const parsedData = JSON.parse(data);
-            console.log(`Parsed ${docType} data:`, parsedData);
-            
-            if (parsedData && parsedData.insurance_upto) {
-              const insuranceUpToDate = new Date(parsedData.insurance_upto);
-              console.log(`${docType} expiry date:`, insuranceUpToDate, "Current date:", currentDate);
-              
-              if (!isNaN(insuranceUpToDate.getTime())) {
-                if (insuranceUpToDate < currentDate) {
-                  console.log(`${docType} is EXPIRED`);
-                  return 'expired';
-                } else {
-                  // Check if expiring in 30 days
-                  const thirtyDaysFromNow = new Date();
-                  thirtyDaysFromNow.setDate(currentDate.getDate() + 30);
-                  const status = insuranceUpToDate < thirtyDaysFromNow ? 'expiring_soon' : 'valid';
-                  console.log(`${docType} is ${status.toUpperCase()}`);
-                  return status;
-                }
-              }
-            }
-          }
-        } catch (e) {
-          console.error(`Error parsing ${docType} data:`, e);
-        }
+      } catch (e) {
+        console.error(`Error processing ${docType} data:`, e);
       }
     }
     
