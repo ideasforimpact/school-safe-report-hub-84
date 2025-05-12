@@ -186,13 +186,141 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
     });
   };
   
-  // Delete a file (just log for now, implement actual deletion later)
-  const handleDeleteFile = (document: UploadedDocument, fileIndex: number) => {
-    console.log('Delete file:', document.files[fileIndex]);
-    toast({
-      title: 'Delete not implemented',
-      description: 'File deletion feature will be implemented soon',
-    });
+  // Delete a file from storage and update database
+  const handleDeleteFile = async (document: UploadedDocument, fileIndex: number) => {
+    try {
+      const file = document.files[fileIndex];
+      
+      if (!file || !file.path) {
+        toast({
+          title: 'Error deleting file',
+          description: 'File information is missing',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      // First, delete the file from storage
+      const { error: storageError } = await supabase.storage
+        .from('vehicle-documents')
+        .remove([file.path]);
+        
+      if (storageError) {
+        console.error('Error deleting from storage:', storageError);
+        toast({
+          title: 'Error deleting file',
+          description: 'Could not delete file from storage',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      // Then, update the document record in the database
+      const updatedDocumentFiles = document.files.filter((_, idx) => idx !== fileIndex);
+      
+      // If there are no more files, remove the entire document
+      if (updatedDocumentFiles.length === 0) {
+        const { data: currentData, error: fetchError } = await supabase
+          .from('vehicle_documents')
+          .select('documents')
+          .eq('vehicle_id', vehicleId)
+          .single();
+          
+        if (fetchError) {
+          console.error('Error fetching documents:', fetchError);
+          return;
+        }
+        
+        if (currentData && Array.isArray(currentData.documents)) {
+          const updatedDocuments = currentData.documents.filter(
+            (doc: any) => doc.uploadedAt !== document.uploadedAt
+          );
+          
+          const { error: updateError } = await supabase
+            .from('vehicle_documents')
+            .update({ documents: updatedDocuments })
+            .eq('vehicle_id', vehicleId);
+            
+          if (updateError) {
+            console.error('Error updating documents:', updateError);
+            return;
+          }
+          
+          // Update local state to reflect deletion
+          setUploadedDocuments(prev => 
+            prev.filter(doc => doc.uploadedAt !== document.uploadedAt)
+          );
+        }
+      } else {
+        // Just update the files array of the document
+        const { data: currentData, error: fetchError } = await supabase
+          .from('vehicle_documents')
+          .select('documents')
+          .eq('vehicle_id', vehicleId)
+          .single();
+          
+        if (fetchError) {
+          console.error('Error fetching documents:', fetchError);
+          return;
+        }
+        
+        if (currentData && Array.isArray(currentData.documents)) {
+          const updatedDocuments = currentData.documents.map((doc: any) => {
+            if (doc.uploadedAt === document.uploadedAt) {
+              return {
+                ...doc,
+                files: doc.files.filter((_: any, idx: number) => idx !== fileIndex)
+              };
+            }
+            return doc;
+          });
+          
+          const { error: updateError } = await supabase
+            .from('vehicle_documents')
+            .update({ documents: updatedDocuments })
+            .eq('vehicle_id', vehicleId);
+            
+          if (updateError) {
+            console.error('Error updating documents:', updateError);
+            return;
+          }
+          
+          // Update local state to reflect file deletion
+          setUploadedDocuments(prev => 
+            prev.map(doc => {
+              if (doc.uploadedAt === document.uploadedAt) {
+                return {
+                  ...doc,
+                  files: doc.files.filter((_, idx) => idx !== fileIndex)
+                };
+              }
+              return doc;
+            })
+          );
+        }
+      }
+      
+      toast({
+        title: 'File deleted',
+        description: 'The file has been deleted successfully',
+      });
+      
+      // Close the preview if it was the last file
+      if (document.files.length <= 1) {
+        setShowFilePreview(false);
+      } else if (fileIndex >= document.files.length - 1) {
+        // If we deleted the last file in the array, set index to the new last file
+        setSelectedFileIndex(document.files.length - 2);
+      }
+      
+    } catch (error) {
+      console.error('Error in handleDeleteFile:', error);
+      toast({
+        title: 'Error deleting file',
+        description: 'An unexpected error occurred',
+        variant: 'destructive',
+      });
+    }
   };
   
   // Get current file URL for preview
@@ -529,7 +657,7 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
                   console.log(`Delete legacy file at index ${selectedFileIndex}`);
                   toast({
                     title: 'Delete not implemented',
-                    description: 'File deletion feature will be implemented soon',
+                    description: 'Legacy file deletion feature will be implemented soon',
                   });
                 }
                 
