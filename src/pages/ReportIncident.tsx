@@ -10,7 +10,7 @@ import { useIncidentFormData } from '@/hooks/incident-form/useIncidentFormData';
 import { useIncidentFormValidation } from '@/hooks/incident-form/useIncidentFormValidation';
 import { useCategoryOptions } from '@/hooks/incident-form/useCategoryOptions';
 import { useLocationOptions } from '@/hooks/incident-form/useLocationOptions';
-import { toast } from 'sonner';
+import { toast } from '@/components/ui/use-toast';
 import { Loader2, CalendarIcon } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { formatUserFullName } from '@/utils/userUtils';
@@ -38,7 +38,11 @@ const ReportIncident = () => {
   // Effect to check if user is authenticated
   useEffect(() => {
     if (!user) {
-      toast.error("You must be logged in to report an incident");
+      toast({
+        title: "Authentication Required",
+        description: "You must be logged in to report an incident",
+        variant: "destructive"
+      });
       navigate('/login');
     }
   }, [user, navigate]);
@@ -84,10 +88,17 @@ const ReportIncident = () => {
       };
       
       await addIncident(incident);
-      toast.success("Incident reported successfully");
+      toast({
+        title: "Success",
+        description: "Incident reported successfully"
+      });
       navigate('/incidents');
     } catch (error) {
-      toast.error("Failed to report incident");
+      toast({
+        title: "Error",
+        description: "Failed to report incident",
+        variant: "destructive"
+      });
       console.error("Error reporting incident:", error);
     } finally {
       setIsSubmitting(false);

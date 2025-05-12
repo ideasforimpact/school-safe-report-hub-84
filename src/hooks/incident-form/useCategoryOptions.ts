@@ -22,8 +22,24 @@ export function useCategoryOptions() {
     setCategoryOptions(options);
   }, [categories]);
 
+  // We'll update subcategory options based on selected category
+  const updateSubcategoryOptions = (categoryId: string) => {
+    if (!categoryId || !subcategoryMappings[categoryId]) {
+      setSubcategoryOptions([]);
+      return;
+    }
+
+    const options = subcategoryMappings[categoryId].map(subcategory => ({
+      value: subcategory.id,
+      label: subcategory.name
+    }));
+    
+    setSubcategoryOptions(options);
+  };
+
   return {
     categoryOptions,
-    subcategoryOptions
+    subcategoryOptions,
+    updateSubcategoryOptions
   };
 }

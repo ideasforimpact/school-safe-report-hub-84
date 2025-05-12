@@ -24,6 +24,7 @@ import Pricing from '@/pages/Pricing';
 import TransportSafetyPage from '@/pages/transport-safety/TransportSafetyPage';
 import VehicleDetailPage from '@/pages/transport-safety/VehicleDetailPage';
 import DocumentsPage from '@/pages/transport-safety/DocumentsPage';
+import ReportIncident from '@/pages/ReportIncident';
 
 // Incident Pages
 import IncidentsList from '@/pages/IncidentsList';
@@ -67,6 +68,7 @@ function App() {
                   <Route path="/incidents/:incidentId" element={<IncidentDetail />} />
                   <Route path="/incident-configuration" element={<IncidentConfiguration />} />
                   <Route path="/configuration" element={<ConfigurationManagement />} />
+                  <Route path="/report-incident" element={<ReportIncident />} />
 
                   {/* Transport Safety routes */}
                   <Route path="/transport-safety" element={<TransportSafetyPage />} />
