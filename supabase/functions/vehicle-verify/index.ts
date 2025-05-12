@@ -35,8 +35,8 @@ serve(async (req) => {
     // Current date and time for verification_date and last_response
     const verificationDate = new Date().toISOString();
 
-    // Call the Surepass API to get RC details
-    const surepassUrl = "https://sandbox.surepass.io/api/v1/rc/rc-full";
+    // Call the Surepass API to get RC details - Updated to use production URL
+    const surepassUrl = "https://kyc-api.surepass.io/api/v1/rc/rc-full";
     const surepassResponse = await fetch(surepassUrl, {
       method: "POST",
       headers: {
