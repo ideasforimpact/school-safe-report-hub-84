@@ -21,14 +21,16 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
     try {
       // In a real app, this would call an API to verify the document
       setTimeout(() => {
+        const notes = status === 'verified' 
+          ? `Document ${method === 'api' ? 'automatically' : 'manually'} verified successfully.` 
+          : 'Failed to verify document. Details do not match records.';
+        
         verifyDocument(
           document.id, 
           status, 
-          status === 'verified' 
-            ? `Document ${method === 'api' ? 'automatically' : 'manually'} verified successfully.` 
-            : 'Failed to verify document. Details do not match records.',
-          method
+          notes
         );
+        
         toast({
           title: status === 'verified' ? 'Document Verified' : 'Verification Failed',
           description: status === 'verified' 

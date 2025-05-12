@@ -45,13 +45,14 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument
     try {
       // Simulate verification delay
       setTimeout(() => {
+        const notes = method === 'api' 
+          ? 'Document automatically verified successfully with government database.' 
+          : 'Document manually verified successfully.';
+        
         verifyDocument(
           selectedDocument,
           'verified',
-          method === 'api' 
-            ? 'Document automatically verified successfully with government database.' 
-            : 'Document manually verified successfully.',
-          method
+          notes
         );
         
         toast({

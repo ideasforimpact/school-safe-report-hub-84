@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Employee } from '@/types/employeeVerification';
 import { initialEmployees } from '../initialData';
@@ -28,14 +28,16 @@ export const useEmployeeManagement = () => {
           employeeId: emp.employee_id || '',
           name: `${emp.first_name} ${emp.last_name}`,
           email: emp.email || '',
-          phone: emp.phone || '',
-          dateOfBirth: emp.date_of_birth || '',
-          address: emp.address || '',
+          // Use default values for fields that don't exist in the database
+          phone: '',
+          dateOfBirth: '',
+          address: '',
           joiningDate: emp.joining_date || new Date().toISOString(),
           department: emp.department || '',
-          position: emp.position || '',
+          position: emp.employee_type || '', // Use employee_type as position since it doesn't exist
           employeeType: (emp.employee_type as Employee['employeeType']) || 'permanent',
-          status: emp.verification_status || 'pending',
+          status: emp.status === 'verified' ? 'verified' : 
+                 emp.status === 'failed' ? 'failed' : 'pending', // Map status to our verification status
           createdAt: emp.created_at || new Date().toISOString(),
           updatedAt: emp.updated_at || new Date().toISOString(),
         }));
@@ -48,9 +50,9 @@ export const useEmployeeManagement = () => {
   }, []);
 
   // Call fetchEmployees initially
-  useState(() => {
+  useEffect(() => {
     fetchEmployees();
-  });
+  }, [fetchEmployees]);
 
   const addEmployee = (employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt' | 'status'>) => {
     const now = new Date().toISOString();
