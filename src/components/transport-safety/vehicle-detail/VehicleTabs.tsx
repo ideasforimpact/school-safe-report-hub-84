@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTransportSafety } from '@/contexts/transport-safety/TransportSafetyContext';
 import { Button } from '@/components/ui/button';
 import { formatDate } from '@/utils/dateUtils';
-import { History, FilePlus, FileText } from 'lucide-react';
+import { History, FilePlus, FileText, FileX, Eye } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -26,6 +26,9 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
   const [showVerificationDetails, setShowVerificationDetails] = React.useState(false);
   const [selectedVerificationData, setSelectedVerificationData] = React.useState<any>(null);
   const [showAddDocumentDialog, setShowAddDocumentDialog] = React.useState(false);
+  const [showFilePreview, setShowFilePreview] = React.useState(false);
+  const [selectedDocument, setSelectedDocument] = React.useState<VehicleDocument | null>(null);
+  const [selectedFileIndex, setSelectedFileIndex] = React.useState<number>(0);
   
   const vehicle = getVehicle(vehicleId);
   
@@ -74,6 +77,26 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
   const hasAttachedFiles = (document: VehicleDocument) => {
     return document.fileUrls && document.fileUrls.length > 0;
   };
+
+  // Function to open file preview dialog
+  const openFilePreview = (document: VehicleDocument, index: number = 0) => {
+    setSelectedDocument(document);
+    setSelectedFileIndex(index);
+    setShowFilePreview(true);
+  };
+
+  // Function to navigate between files in preview
+  const navigateFile = (direction: 'next' | 'prev') => {
+    if (!selectedDocument || !selectedDocument.fileUrls) return;
+    
+    const totalFiles = selectedDocument.fileUrls.length;
+    
+    if (direction === 'next') {
+      setSelectedFileIndex((selectedFileIndex + 1) % totalFiles);
+    } else {
+      setSelectedFileIndex((selectedFileIndex - 1 + totalFiles) % totalFiles);
+    }
+  };
   
   return (
     <Tabs defaultValue="documents">
@@ -114,11 +137,21 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center">
+                  <div className="flex items-center gap-2">
                     {hasAttachedFiles(doc) ? (
-                      <span className="text-xs bg-green-100 text-green-800 rounded-full px-2 py-1">
-                        {doc.fileUrls.length} file{doc.fileUrls.length !== 1 ? 's' : ''}
-                      </span>
+                      <>
+                        <span className="text-xs bg-green-100 text-green-800 rounded-full px-2 py-1">
+                          {doc.fileUrls.length} file{doc.fileUrls.length !== 1 ? 's' : ''}
+                        </span>
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          className="h-8 w-8 p-0" 
+                          onClick={() => openFilePreview(doc)}
+                        >
+                          <Eye className="h-4 w-4 text-gray-500" />
+                        </Button>
+                      </>
                     ) : (
                       <span className="text-xs bg-gray-100 text-gray-600 rounded-full px-2 py-1">
                         No files
@@ -226,6 +259,84 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
             vehicleId={vehicleId} 
             onClose={() => setShowAddDocumentDialog(false)} 
           />
+        </DialogContent>
+      </Dialog>
+
+      {/* File Preview Dialog */}
+      <Dialog open={showFilePreview} onOpenChange={setShowFilePreview}>
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedDocument && `${selectedDocument.type.charAt(0).toUpperCase() + selectedDocument.type.slice(1)} Document`}
+            </DialogTitle>
+            <DialogDescription>
+              {selectedDocument && `${selectedDocument.number} • Issued by ${selectedDocument.issuedBy}`}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex justify-center items-center py-4">
+            {selectedDocument && selectedDocument.fileUrls && selectedDocument.fileUrls[selectedFileIndex] && (
+              <div className="w-full max-h-[60vh] overflow-y-auto">
+                {selectedDocument.fileUrls[selectedFileIndex].startsWith('data:image') ? (
+                  <img 
+                    src={selectedDocument.fileUrls[selectedFileIndex]} 
+                    alt={`Document file ${selectedFileIndex + 1}`} 
+                    className="mx-auto max-h-full"
+                  />
+                ) : selectedDocument.fileUrls[selectedFileIndex].startsWith('data:application/pdf') ? (
+                  <div className="p-4 bg-gray-100 text-center rounded-md">
+                    <FileText className="h-12 w-12 mx-auto mb-2 text-gray-600" />
+                    <p>PDF Document (Preview not available)</p>
+                  </div>
+                ) : (
+                  <div className="p-4 bg-gray-100 text-center rounded-md">
+                    <FileText className="h-12 w-12 mx-auto mb-2 text-gray-600" />
+                    <p>Document File (Preview not available)</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* File Navigation */}
+          {selectedDocument && selectedDocument.fileUrls && selectedDocument.fileUrls.length > 1 && (
+            <div className="flex justify-center items-center space-x-4 mt-2">
+              <Button variant="outline" onClick={() => navigateFile('prev')}>
+                Previous
+              </Button>
+              <span className="text-sm text-gray-500">
+                {selectedFileIndex + 1} of {selectedDocument.fileUrls.length}
+              </span>
+              <Button variant="outline" onClick={() => navigateFile('next')}>
+                Next
+              </Button>
+            </div>
+          )}
+          
+          <DialogFooter className="flex justify-between">
+            <Button 
+              variant="outline" 
+              className="flex items-center gap-1"
+              onClick={() => {
+                if (selectedDocument && selectedFileIndex >= 0 && selectedDocument.fileUrls) {
+                  // In a real app, we would implement proper delete functionality here
+                  // For this demo, we'll just log it
+                  console.log(`Delete file at index ${selectedFileIndex}`);
+                  
+                  // Close preview if it was the last file
+                  if (selectedDocument.fileUrls.length <= 1) {
+                    setShowFilePreview(false);
+                  }
+                }
+              }}
+            >
+              <FileX className="h-4 w-4" />
+              Delete File
+            </Button>
+            <Button onClick={() => setShowFilePreview(false)}>
+              Close
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </Tabs>
