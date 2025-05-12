@@ -122,9 +122,10 @@ serve(async (req) => {
     // Handle the bulk-update path
     if (finalPath === "bulk-update") {
       console.log("Handling bulk update request");
-      const { employees, clientId } = reqBody;
+      const { employees, clientId, updateExisting = true } = reqBody;
       
       console.log("ClientId from request:", clientId);
+      console.log("Update existing flag:", updateExisting);
       
       if (!employees || !Array.isArray(employees)) {
         console.error("Invalid employees data:", reqBody);
@@ -144,69 +145,117 @@ serve(async (req) => {
           processedClientId = clientId;
           console.log("Valid UUID clientId provided:", processedClientId);
         } else if (typeof clientId === 'string' && !isNaN(parseInt(clientId))) {
-          // For numeric IDs in string format, we need to set it to null
-          // The database will use a default value or reject it if required
-          console.log("Numeric clientId cannot be used directly, setting to null");
-          processedClientId = null;
+          // For numeric IDs in string format, we need a deterministic UUID based on the client number
+          const numericClientId = parseInt(clientId);
+          const hexId = numericClientId.toString(16).padStart(8, '0');
+          processedClientId = `${hexId.slice(0, 8)}-4000-8000-8000-000000000000`;
+          console.log("Created deterministic UUID for numeric clientId:", processedClientId);
         } else {
           console.log("Invalid clientId format, setting to null");
           processedClientId = null;
         }
       }
 
-      // Separate employees into those to update (have IDs) and those to create (don't have IDs)
-      const toCreate = [];
-      const toUpdate = [];
+      // Create maps to efficiently track employees by ID and email
       const employeeIdMap = new Map();
       
-      // Process employees to create or update
+      // Process all employees first
       for (const emp of employees) {
-        if (emp.id) {
-          // If ID exists, this is an update
-          toUpdate.push({
-            id: emp.id,
-            first_name: emp.firstName,
-            last_name: emp.lastName,
-            email: emp.email,
-            employee_id: emp.employeeId,
-            employee_type: emp.employeeType,
-            department: emp.department,
-            joining_date: emp.joiningDate,
-            status: emp.status || 'active',
-            client_id: processedClientId,  // Use processed clientId
-            // modulePermissions will be handled separately
-          });
-        } else {
-          // Check if we have an employee with this employee_id already
-          employeeIdMap.set(emp.employeeId.toLowerCase(), {
-            ...emp,
-            clientId: processedClientId // Use processed clientId
-          });
-        }
+        const employeeId = typeof emp.employeeId === 'string' ? emp.employeeId.trim().toLowerCase() : String(emp.employeeId).trim().toLowerCase();
+        employeeIdMap.set(employeeId, {
+          ...emp,
+          clientId: processedClientId // Use processed clientId
+        });
       }
       
-      // If there are potential new employees, check which ones already exist
-      if (employeeIdMap.size > 0) {
+      // Separate employees into those to update (existing) and those to create (new)
+      const toCreate = [];
+      const toUpdate = [];
+      
+      // If updateExisting is true, check which employees already exist by employee_id
+      if (updateExisting && employeeIdMap.size > 0) {
         const employeeIds = Array.from(employeeIdMap.keys());
+        console.log(`Checking ${employeeIds.length} employee IDs for existing records`);
         
-        // Check which employee IDs already exist
-        const { data: existingEmployees, error: lookupError } = await supabaseClient
-          .from("employees")
-          .select("id, employee_id")
-          .in("employee_id", employeeIds.map(id => id.toLowerCase()));
-          
-        if (lookupError) {
-          console.error("Error looking up existing employees:", lookupError);
-        } else {
-          console.log(`Found ${existingEmployees?.length || 0} existing employees`);
-        }
-        
-        // For existing employees, add them to update list with their database ID
-        for (const existing of (existingEmployees || [])) {
-          const empData = employeeIdMap.get(existing.employee_id.toLowerCase());
-          if (empData) {
-            toUpdate.push({
-              id: existing.id,
+        try {
+          // Check which employee IDs already exist
+          const { data: existingEmployees, error: lookupError } = await supabaseClient
+            .from("employees")
+            .select("id, employee_id")
+            .in("employee_id", employeeIds);
+            
+          if (lookupError) {
+            console.error("Error looking up existing employees:", lookupError);
+            // Continue with processing, assuming no matches (will create new records)
+          } else if (existingEmployees && existingEmployees.length > 0) {
+            console.log(`Found ${existingEmployees.length} existing employees by ID`);
+            
+            // Create a map of existing employee IDs to their database IDs
+            const existingIdMap = new Map();
+            for (const existing of existingEmployees) {
+              existingIdMap.set(existing.employee_id.toLowerCase(), existing.id);
+            }
+            
+            // Process each employee
+            for (const [empId, empData] of employeeIdMap.entries()) {
+              const dbId = existingIdMap.get(empId.toLowerCase());
+              
+              if (dbId) {
+                // This employee exists, add to update list
+                console.log(`Employee ID ${empId} exists with DB ID ${dbId}, will update`);
+                toUpdate.push({
+                  id: dbId,
+                  first_name: empData.firstName,
+                  last_name: empData.lastName,
+                  email: empData.email,
+                  employee_id: empData.employeeId,
+                  employee_type: empData.employeeType,
+                  department: empData.department,
+                  joining_date: empData.joiningDate,
+                  status: empData.status || 'active',
+                  client_id: processedClientId,
+                  modulePermissions: empData.modulePermissions
+                });
+              } else {
+                // This is a new employee
+                console.log(`Employee ID ${empId} is new, will create`);
+                toCreate.push({
+                  first_name: empData.firstName,
+                  last_name: empData.lastName,
+                  email: empData.email,
+                  employee_id: empData.employeeId,
+                  employee_type: empData.employeeType,
+                  department: empData.department,
+                  joining_date: empData.joiningDate,
+                  status: empData.status || 'active',
+                  client_id: processedClientId,
+                  modulePermissions: empData.modulePermissions
+                });
+              }
+            }
+          } else {
+            // No existing employees found, all are new
+            console.log("No existing employees found, all will be created as new");
+            for (const [_, empData] of employeeIdMap.entries()) {
+              toCreate.push({
+                first_name: empData.firstName,
+                last_name: empData.lastName,
+                email: empData.email,
+                employee_id: empData.employeeId,
+                employee_type: empData.employeeType,
+                department: empData.department,
+                joining_date: empData.joiningDate,
+                status: empData.status || 'active',
+                client_id: processedClientId,
+                modulePermissions: empData.modulePermissions
+              });
+            }
+          }
+        } catch (error) {
+          console.error("Error checking existing employees:", error);
+          // Continue with processing, assuming all are new (will create new records)
+          for (const [_, empData] of employeeIdMap.entries()) {
+            toCreate.push({
               first_name: empData.firstName,
               last_name: empData.lastName,
               email: empData.email,
@@ -215,14 +264,13 @@ serve(async (req) => {
               department: empData.department,
               joining_date: empData.joiningDate,
               status: empData.status || 'active',
-              client_id: processedClientId,  // Use processed clientId
-              // modulePermissions will be handled separately
+              client_id: processedClientId,
+              modulePermissions: empData.modulePermissions
             });
-            employeeIdMap.delete(existing.employee_id.toLowerCase());
           }
         }
-        
-        // Any remaining employees are truly new
+      } else {
+        // Just create all as new if not checking for updates
         for (const [_, empData] of employeeIdMap.entries()) {
           toCreate.push({
             first_name: empData.firstName,
@@ -233,8 +281,7 @@ serve(async (req) => {
             department: empData.department,
             joining_date: empData.joiningDate,
             status: empData.status || 'active',
-            client_id: processedClientId,  // Use processed clientId
-            // modulePermissions will be stored for later use
+            client_id: processedClientId,
             modulePermissions: empData.modulePermissions
           });
         }
@@ -242,6 +289,7 @@ serve(async (req) => {
       
       console.log(`Processing ${toCreate.length} new employees and ${toUpdate.length} existing employees`);
       console.log("First new employee to create:", toCreate.length > 0 ? toCreate[0] : "None");
+      console.log("First employee to update:", toUpdate.length > 0 ? toUpdate[0] : "None");
       
       const results = {
         created: [],
@@ -258,91 +306,86 @@ serve(async (req) => {
           return emp;
         });
         
-        const { data: createdData, error: createError } = await supabaseClient
-          .from("employees")
-          .insert(insertData) // Remove modulePermissions from insert data
-          .select();
-          
-        if (createError) {
-          console.error("Error creating employees:", createError);
-          results.errors.push(`Bulk create error: ${createError.message}`);
-        } else {
-          results.created = createdData || [];
-          console.log(`Successfully created ${results.created.length} employees`);
-          
-          // Now handle module permissions for each created employee
-          for (let i = 0; i < results.created.length; i++) {
-            const employee = results.created[i];
-            const empData = toCreate[i];
+        try {
+          const { data: createdData, error: createError } = await supabaseClient
+            .from("employees")
+            .insert(insertData) // Remove modulePermissions from insert data
+            .select();
             
-            // Set default module permissions (incidentReporting and transportSafetyAdmin)
-            const modulePermissions = empData.modulePermissions || {
-              superAdmin: false,
-              incidentReporting: true, // Enable by default
-              incidentAdmin: false,
-              assessmentUser: false,
-              assessmentsAdmin: false,
-              employeeVerificationAdmin: false,
-              grievancesAdmin: false,
-              transportSafetyAdmin: true, // Enable by default
-              eduSafeResourceAccess: false
-            };
+          if (createError) {
+            console.error("Error creating employees:", createError);
+            results.errors.push(`Bulk create error: ${createError.message}`);
+          } else if (createdData) {
+            results.created = createdData;
+            console.log(`Successfully created ${results.created.length} employees`);
             
-            try {
-              await updateModulePermissions(supabaseClient, employee.id, modulePermissions);
-            } catch (error) {
-              console.error(`Error setting module permissions for employee ${employee.id}:`, error);
-              results.errors.push(`Failed to set module permissions for ${employee.employee_id}: ${error.message}`);
+            // Now handle module permissions for each created employee
+            for (let i = 0; i < results.created.length; i++) {
+              const employee = results.created[i];
+              const empData = toCreate[i];
+              
+              // Set default module permissions (incidentReporting and transportSafetyAdmin)
+              const modulePermissions = empData.modulePermissions || {
+                superAdmin: false,
+                incidentReporting: true, // Enable by default
+                incidentAdmin: false,
+                assessmentUser: false,
+                assessmentsAdmin: false,
+                employeeVerificationAdmin: false,
+                grievancesAdmin: false,
+                transportSafetyAdmin: true, // Enable by default
+                eduSafeResourceAccess: false
+              };
+              
+              try {
+                await updateModulePermissions(supabaseClient, employee.id, modulePermissions);
+              } catch (error) {
+                console.error(`Error setting module permissions for employee ${employee.id}:`, error);
+                results.errors.push(`Failed to set module permissions for ${employee.employee_id}: ${error.message}`);
+              }
             }
           }
+        } catch (createErr) {
+          console.error("Exception during employee creation:", createErr);
+          results.errors.push(`Exception during employee creation: ${createErr.message}`);
         }
       }
       
       // Update existing employees
-      for (const emp of toUpdate) {
-        const { id, modulePermissions, ...updateData } = emp;
-        
-        console.log(`Updating employee ${id} with client_id:`, updateData.client_id);
-        
-        const { data: updatedData, error: updateError } = await supabaseClient
-          .from("employees")
-          .update(updateData)
-          .eq("id", id)
-          .select()
-          .single();
-          
-        if (updateError) {
-          console.error(`Error updating employee ${id}:`, updateError);
-          results.errors.push(`Update error for employee ${emp.employee_id}: ${updateError.message}`);
-        } else if (updatedData) {
-          results.updated.push(updatedData);
-          
-          // Find original employee data to get modulePermissions
-          const originalEmp = employees.find(e => e.id === id);
-          
-          // Set default module permissions if not provided
-          const defaultModulePermissions = {
-            superAdmin: false,
-            incidentReporting: true, // Enable by default
-            incidentAdmin: false,
-            assessmentUser: false,
-            assessmentsAdmin: false,
-            employeeVerificationAdmin: false,
-            grievancesAdmin: false,
-            transportSafetyAdmin: true, // Enable by default
-            eduSafeResourceAccess: false
-          };
-          
-          // Use provided modulePermissions or defaults
+      if (toUpdate.length > 0) {
+        for (const emp of toUpdate) {
           try {
-            await updateModulePermissions(
-              supabaseClient, 
-              id, 
-              originalEmp?.modulePermissions || defaultModulePermissions
-            );
-          } catch (error) {
-            console.error(`Error updating module permissions for employee ${id}:`, error);
-            results.errors.push(`Failed to update module permissions for ${emp.employee_id}: ${error.message}`);
+            const { id, modulePermissions, ...updateData } = emp;
+            
+            console.log(`Updating employee ${id} with client_id:`, updateData.client_id);
+            
+            const { data: updatedData, error: updateError } = await supabaseClient
+              .from("employees")
+              .update(updateData)
+              .eq("id", id)
+              .select()
+              .single();
+              
+            if (updateError) {
+              console.error(`Error updating employee ${id}:`, updateError);
+              results.errors.push(`Update error for employee ${emp.employee_id}: ${updateError.message}`);
+            } else if (updatedData) {
+              results.updated.push(updatedData);
+              console.log(`Successfully updated employee ${id}`);
+              
+              // Update module permissions if provided
+              if (modulePermissions) {
+                try {
+                  await updateModulePermissions(supabaseClient, id, modulePermissions);
+                } catch (error) {
+                  console.error(`Error updating module permissions for employee ${id}:`, error);
+                  results.errors.push(`Failed to update module permissions for ${emp.employee_id}: ${error.message}`);
+                }
+              }
+            }
+          } catch (updateErr) {
+            console.error(`Exception during employee update:`, updateErr);
+            results.errors.push(`Exception during employee update: ${updateErr.message}`);
           }
         }
       }

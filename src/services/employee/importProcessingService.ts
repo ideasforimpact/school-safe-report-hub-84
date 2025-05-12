@@ -1,4 +1,3 @@
-
 import { toast } from 'sonner';
 import { Employee } from '@/contexts/employee/types';
 import { ModulePermissions } from '@/contexts/auth/types';
@@ -61,7 +60,7 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
         // Add default module permissions to each employee record
         // and normalize/validate employee data fields
         return {
-          employeeId: String(row.employeeId),
+          employeeId: String(row.employeeId).trim(),  // Ensure trimmed values for comparison
           firstName: String(row.firstName),
           lastName: String(row.lastName),
           email: String(row.email),
@@ -109,15 +108,14 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
     // Create proper request body and log it before sending
     const requestBody = { 
       employees,
-      clientId // Include clientId in the request body explicitly
+      clientId, // Include clientId in the request body explicitly
+      path: 'bulk-update', // Explicitly specify the path for more clarity
+      updateExisting: true  // Flag to ensure we update existing employees
     };
     
     // Log the request body as a string to verify its content
     console.log("Request payload:", requestBody);
     console.log("Request payload stringified:", JSON.stringify(requestBody));
-    
-    // Define the URL for the employee management function
-    const functionUrl = "https://ybvxkiubnnixntghojyy.supabase.co/functions/v1/employee-management";
     
     // Use Supabase functions invoke method instead of direct fetch
     // This automatically handles authentication
@@ -126,11 +124,7 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
       const { data: functionData, error: functionError } = await supabase.functions.invoke(
         'employee-management',
         {
-          body: JSON.stringify({
-            employees,
-            clientId,
-            path: 'bulk-update' // Pass path in the body
-          })
+          body: JSON.stringify(requestBody)
         }
       );
       
@@ -189,11 +183,11 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
         console.log("Using service role key for API call");
       }
       
-      console.log("Calling function with URL:", functionUrl);
+      console.log("Calling function with URL:", 'https://ybvxkiubnnixntghojyy.supabase.co/functions/v1/employee-management');
       console.log("Headers:", JSON.stringify(headers));
       
       // Using fetch with prepared headers
-      const response = await fetch(functionUrl, {
+      const response = await fetch('https://ybvxkiubnnixntghojyy.supabase.co/functions/v1/employee-management', {
         method: 'POST',
         headers,
         body: JSON.stringify(requestBody)

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import {
@@ -137,6 +136,7 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
       setValidationErrors([]);
       setRecordCount(null);
       setIsOpen(false);
+      toast.success("Import completed successfully");
     } catch (error) {
       console.error('Import failed:', error);
       toast.error(`Import failed: ${(error as Error).message || 'Unknown error'}`);
@@ -163,6 +163,9 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
           <DialogDescription>
             Upload an Excel file containing employee information. The file should include employee ID, name, email, and department.
             {clientId && <div className="mt-2 text-sm text-muted-foreground">Client ID: {clientId}</div>}
+            <div className="mt-2 text-xs text-muted-foreground">
+              Note: Existing employees will be updated based on their Employee ID
+            </div>
           </DialogDescription>
         </DialogHeader>
 
