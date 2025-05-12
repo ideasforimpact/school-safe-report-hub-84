@@ -1,3 +1,4 @@
+
 import React from 'react';
 import {
   Table,
@@ -14,7 +15,6 @@ import { useNavigate } from 'react-router-dom';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import EditEmployeeDialog from './EditEmployeeDialog';
 import { Badge } from '@/components/ui/badge';
-import { getDocumentIcon, getDocumentTypeLabel } from './utils/documentUtils';
 
 const EmployeesList = () => {
   const { employees, deleteEmployee, getEmployeeDocuments } = useEmployeeVerification();
@@ -23,13 +23,13 @@ const EmployeesList = () => {
   const renderDocumentsInfo = (employeeId: string) => {
     const documents = getEmployeeDocuments(employeeId);
     
-    if (documents.length === 0) {
-      return <span className="text-gray-500 text-sm">No documents</span>;
-    }
-
     // Group by verification status
     const verified = documents.filter(doc => doc.verificationStatus === 'verified');
     const failed = documents.filter(doc => doc.verificationStatus === 'failed');
+
+    if (verified.length === 0 && failed.length === 0) {
+      return <span className="text-gray-500 text-sm">No documents</span>;
+    }
 
     return (
       <div className="flex flex-wrap gap-2">
