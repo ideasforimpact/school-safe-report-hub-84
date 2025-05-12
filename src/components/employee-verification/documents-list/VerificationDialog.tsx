@@ -39,7 +39,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
             Choose a verification method for this {documentType || 'document'}.
           </DialogDescription>
         </DialogHeader>
-        <div className="grid grid-cols-1 gap-4 py-4">
+        <div className="flex flex-col gap-4 py-4">
           <Button 
             variant="outline" 
             className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 justify-start"
@@ -62,16 +62,19 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
             Verify Manually
             <span className="ml-auto text-xs text-purple-500 font-normal">Manual review completed</span>
           </Button>
-        </div>
-        <DialogFooter>
+          
           <Button 
             variant="outline" 
-            className="bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
+            className="w-full bg-red-50 hover:bg-red-100 text-red-700 border-red-200 justify-start"
             onClick={onReject}
             disabled={isVerifying}
           >
-            Reject
+            <ShieldCheck className="h-4 w-4 mr-2" />
+            Reject Document
+            <span className="ml-auto text-xs text-red-500 font-normal">Document verification failed</span>
           </Button>
+        </div>
+        <DialogFooter>
           <Button 
             variant="outline"
             onClick={() => onOpenChange(false)}
