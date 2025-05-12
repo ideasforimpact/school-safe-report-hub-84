@@ -1,3 +1,4 @@
+
 import { Incident, User, Activity, ActionItem, Comment } from '@/types/incident';
 import { ConfigItem, SubcategoryItem, SectionItem, ClassItem, CampusItem } from '@/contexts/types';
 
@@ -69,9 +70,6 @@ export type {
   Activity,
   ActionItem,
   Comment,
-  IncidentType,
-  IncidentCategory,
-  IncidentStatus,
   Person,
   UserRef,
   Document,
@@ -85,8 +83,13 @@ export type Campus = CampusItem;
 export type Class = ClassItem;
 export type Section = SectionItem;
 
-// Use the IncidentStatus type from types/incident.ts
-export type { IncidentStatus, IncidentType, IncidentLocation } from '@/types/incident';
+// Export incident types
+export type { 
+  IncidentType, 
+  IncidentCategory,
+  IncidentLocation,
+  IncidentStatus 
+} from '@/types/incident';
 
 // Export ConfigItem and SubcategoryItem
 export type { ConfigItem, SubcategoryItem };
