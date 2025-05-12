@@ -115,6 +115,8 @@ export type Database = {
       employee_documents: {
         Row: {
           created_at: string | null
+          document_no: string | null
+          document_type: string | null
           documents: Json
           employee_id: string
           id: string
@@ -122,6 +124,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          document_no?: string | null
+          document_type?: string | null
           documents?: Json
           employee_id: string
           id?: string
@@ -129,6 +133,8 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          document_no?: string | null
+          document_type?: string | null
           documents?: Json
           employee_id?: string
           id?: string

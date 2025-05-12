@@ -22,7 +22,7 @@ serve(async (req) => {
 
   // Handle document operations based on the method
   try {
-    // For GET requests, we now expect the employeeId in the request body
+    // For GET requests, we expect the employeeId in the request body
     if (req.method === "GET") {
       let employeeId;
       
@@ -85,7 +85,7 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
   
   try {
     // Check if document entry exists for this employee
-    const { data: existingDocs, error: fetchError } = await supabase
+    const { data: existingEntry, error: fetchError } = await supabase
       .from('employee_documents')
       .select('*')
       .eq('employee_id', employeeId)
@@ -138,21 +138,29 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
     // Prepare document record
     const documentRecord = {
       ...restDocumentData,
+      documentNumber: restDocumentData.documentNumber || '',
       documentImage: documentUrl,
       filePath: filePath,
       uploadedAt: new Date().toISOString(),
       id: crypto.randomUUID()
     };
     
-    // Update or insert the document record in the database
+    // Store document_type and document_no in the main row
+    const documentType = documentData.documentType || null;
+    const documentNo = documentData.documentNumber || null;
+    
     let dbResult;
-    if (existingDocs) {
+    if (existingEntry) {
       // Employee already has documents - update the array
-      const updatedDocuments = [...JSON.parse(JSON.stringify(existingDocs.documents)), documentRecord];
+      const updatedDocuments = [...JSON.parse(JSON.stringify(existingEntry.documents || [])), documentRecord];
       
       dbResult = await supabase
         .from('employee_documents')
-        .update({ documents: updatedDocuments })
+        .update({ 
+          documents: updatedDocuments,
+          document_type: documentType, // Update the document_type column
+          document_no: documentNo      // Update the document_no column
+        })
         .eq('employee_id', employeeId);
     } else {
       // Create a new record for this employee
@@ -160,7 +168,9 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
         .from('employee_documents')
         .insert({
           employee_id: employeeId,
-          documents: [documentRecord]
+          documents: [documentRecord],
+          document_type: documentType, // Set the document_type column
+          document_no: documentNo      // Set the document_no column
         });
     }
     
@@ -193,7 +203,7 @@ async function handleDocumentDelete(employeeId, documentId, supabase, corsHeader
   
   try {
     // Get the employee's documents
-    const { data: existingDocs, error: fetchError } = await supabase
+    const { data: existingEntry, error: fetchError } = await supabase
       .from('employee_documents')
       .select('*')
       .eq('employee_id', employeeId)
@@ -203,7 +213,7 @@ async function handleDocumentDelete(employeeId, documentId, supabase, corsHeader
       throw fetchError;
     }
     
-    if (!existingDocs || !existingDocs.documents || !Array.isArray(existingDocs.documents)) {
+    if (!existingEntry || !existingEntry.documents || !Array.isArray(existingEntry.documents)) {
       return new Response(
         JSON.stringify({ error: "No documents found for this employee" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -211,7 +221,7 @@ async function handleDocumentDelete(employeeId, documentId, supabase, corsHeader
     }
     
     // Find the document to delete
-    const documentToDelete = existingDocs.documents.find(doc => doc.id === documentId);
+    const documentToDelete = existingEntry.documents.find(doc => doc.id === documentId);
     
     if (!documentToDelete) {
       return new Response(
@@ -234,7 +244,7 @@ async function handleDocumentDelete(employeeId, documentId, supabase, corsHeader
     }
     
     // Update the documents array, removing the deleted document
-    const updatedDocuments = existingDocs.documents.filter(doc => doc.id !== documentId);
+    const updatedDocuments = existingEntry.documents.filter(doc => doc.id !== documentId);
     
     // Update the database record
     const { error: updateError } = await supabase
@@ -244,6 +254,14 @@ async function handleDocumentDelete(employeeId, documentId, supabase, corsHeader
     
     if (updateError) {
       throw updateError;
+    }
+    
+    // If no documents remain, update the document_type and document_no to null
+    if (updatedDocuments.length === 0) {
+      await supabase
+        .from('employee_documents')
+        .update({ document_type: null, document_no: null })
+        .eq('employee_id', employeeId);
     }
     
     return new Response(
@@ -274,7 +292,11 @@ async function handleListDocuments(employeeId, supabase, corsHeaders) {
     const documents = data?.documents || [];
     
     return new Response(
-      JSON.stringify({ documents }),
+      JSON.stringify({ 
+        documents,
+        document_type: data?.document_type || null,
+        document_no: data?.document_no || null
+      }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
