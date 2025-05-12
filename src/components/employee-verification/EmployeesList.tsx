@@ -51,8 +51,8 @@ const EmployeesList = () => {
               <TableHead>Employee ID</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Department</TableHead>
-              <TableHead>Actions</TableHead>
               <TableHead>Verify</TableHead>
+              <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -73,19 +73,6 @@ const EmployeesList = () => {
                     <TableCell>{employee.employeeId}</TableCell>
                     <TableCell>{employee.name}</TableCell>
                     <TableCell>{employee.department}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => navigate(`/employee-verification/${employee.id}`)}
-                          disabled={isInactive}
-                        >
-                          <Eye className="h-4 w-4 mr-1" />
-                          View
-                        </Button>
-                      </div>
-                    </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
                         {isVerified ? (
@@ -113,6 +100,18 @@ const EmployeesList = () => {
                             </Button>
                           </>
                         )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => navigate(`/employee-verification/${employee.id}`)}
+                          disabled={isInactive}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>
