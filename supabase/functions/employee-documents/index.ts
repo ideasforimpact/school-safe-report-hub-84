@@ -14,31 +14,57 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Get the request URL and initialize Supabase client
-  const url = new URL(req.url);
-  
+  // Initialize Supabase client
   const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
   
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-  // Handle document operations based on the path and method
+  // Handle document operations based on the method
   try {
-    if (url.pathname === "/employee-documents/upload" && req.method === "POST") {
-      return await handleDocumentUpload(req, supabase);
+    // For GET requests, we now expect the employeeId in the request body
+    if (req.method === "GET") {
+      let employeeId;
+      
+      // Try to get employeeId from URL query parameters first (for backward compatibility)
+      const url = new URL(req.url);
+      const urlEmployeeId = url.searchParams.get('employeeId');
+      
+      if (urlEmployeeId) {
+        employeeId = urlEmployeeId;
+      } else {
+        // If not in URL, try to get from body
+        try {
+          const body = await req.json();
+          employeeId = body?.employeeId;
+        } catch (e) {
+          console.error("Error parsing request body:", e);
+        }
+      }
+
+      if (!employeeId) {
+        return new Response(
+          JSON.stringify({ error: "Missing employeeId parameter" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      return await handleListDocuments(employeeId, supabase, corsHeaders);
     }
     
-    if (url.pathname === "/employee-documents/delete" && req.method === "DELETE") {
-      return await handleDocumentDelete(req, supabase);
+    if (req.method === "POST") {
+      const { employeeId, documentData } = await req.json();
+      return await handleDocumentUpload(employeeId, documentData, supabase, corsHeaders);
     }
     
-    if (url.pathname === "/employee-documents/list" && req.method === "GET") {
-      return await handleListDocuments(req, supabase);
+    if (req.method === "DELETE") {
+      const { employeeId, documentId } = await req.json();
+      return await handleDocumentDelete(employeeId, documentId, supabase, corsHeaders);
     }
 
     return new Response(
-      JSON.stringify({ error: "Not Found" }),
-      { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ error: "Method not allowed" }),
+      { status: 405, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
     console.error("Error processing request:", error);
@@ -49,9 +75,7 @@ serve(async (req) => {
   }
 });
 
-async function handleDocumentUpload(req: Request, supabase) {
-  const { employeeId, documentData } = await req.json();
-  
+async function handleDocumentUpload(employeeId, documentData, supabase, corsHeaders) {
   if (!employeeId || !documentData) {
     return new Response(
       JSON.stringify({ error: "Missing required fields" }),
@@ -159,9 +183,7 @@ async function handleDocumentUpload(req: Request, supabase) {
   }
 }
 
-async function handleDocumentDelete(req: Request, supabase) {
-  const { employeeId, documentId } = await req.json();
-  
+async function handleDocumentDelete(employeeId, documentId, supabase, corsHeaders) {
   if (!employeeId || !documentId) {
     return new Response(
       JSON.stringify({ error: "Missing required fields" }),
@@ -237,17 +259,7 @@ async function handleDocumentDelete(req: Request, supabase) {
   }
 }
 
-async function handleListDocuments(req: Request, supabase) {
-  const url = new URL(req.url);
-  const employeeId = url.searchParams.get('employeeId');
-  
-  if (!employeeId) {
-    return new Response(
-      JSON.stringify({ error: "Missing employeeId parameter" }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-  
+async function handleListDocuments(employeeId, supabase, corsHeaders) {
   try {
     const { data, error } = await supabase
       .from('employee_documents')

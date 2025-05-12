@@ -13,9 +13,10 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
   const fetchEmployeeDocuments = useCallback(async (employeeId: string) => {
     setIsLoading(true);
     try {
+      // The correct way to pass employeeId as a parameter is using body for GET requests
       const { data, error } = await supabase.functions.invoke('employee-documents', {
         method: 'GET',
-        query: { employeeId }
+        body: { employeeId }
       });
       
       if (error) {
