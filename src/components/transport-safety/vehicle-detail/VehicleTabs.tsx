@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTransportSafety } from '@/contexts/transport-safety/TransportSafetyContext';
 import { Button } from '@/components/ui/button';
 import { formatDate } from '@/utils/dateUtils';
-import { History } from 'lucide-react';
+import { History, FilePlus, FileText } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -14,6 +14,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import AddDocumentForm from '@/components/transport-safety/documents/AddDocumentForm';
+import { VehicleDocument } from '@/types/transportSafety';
 
 interface VehicleTabsProps {
   vehicleId: string;
@@ -23,6 +25,7 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
   const { getVehicle } = useTransportSafety();
   const [showVerificationDetails, setShowVerificationDetails] = React.useState(false);
   const [selectedVerificationData, setSelectedVerificationData] = React.useState<any>(null);
+  const [showAddDocumentDialog, setShowAddDocumentDialog] = React.useState(false);
   
   const vehicle = getVehicle(vehicleId);
   
@@ -67,6 +70,11 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
     setShowVerificationDetails(true);
   };
   
+  // Function to determine if a document has files attached
+  const hasAttachedFiles = (document: VehicleDocument) => {
+    return document.fileUrls && document.fileUrls.length > 0;
+  };
+  
   return (
     <Tabs defaultValue="documents">
       <TabsList className="mb-4">
@@ -75,10 +83,65 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
       </TabsList>
       
       <TabsContent value="documents" className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
-        <h2 className="text-lg font-medium mb-4 text-left">Vehicle Documents</h2>
-        <p className="text-gray-500 text-left">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-medium">Vehicle Documents</h2>
+          <Button 
+            onClick={() => setShowAddDocumentDialog(true)} 
+            variant="outline" 
+            size="sm"
+            className="flex items-center gap-1"
+          >
+            <FilePlus className="h-4 w-4" />
+            Add Document
+          </Button>
+        </div>
+        
+        {vehicle && vehicle.documents.length > 0 ? (
+          <div className="space-y-4">
+            <h3 className="text-sm font-medium text-gray-500 mb-2">Uploaded Documents</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {vehicle.documents.map((doc) => (
+                <div 
+                  key={doc.id} 
+                  className="flex items-center justify-between p-3 border rounded-md hover:bg-gray-50"
+                >
+                  <div className="flex items-center">
+                    <FileText className="h-5 w-5 text-gray-400 mr-3" />
+                    <div>
+                      <p className="font-medium">{doc.type.charAt(0).toUpperCase() + doc.type.slice(1)}</p>
+                      <p className="text-xs text-gray-500">
+                        {doc.number} • Expires: {formatDate(new Date(doc.expiryDate))}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center">
+                    {hasAttachedFiles(doc) ? (
+                      <span className="text-xs bg-green-100 text-green-800 rounded-full px-2 py-1">
+                        {doc.fileUrls.length} file{doc.fileUrls.length !== 1 ? 's' : ''}
+                      </span>
+                    ) : (
+                      <span className="text-xs bg-gray-100 text-gray-600 rounded-full px-2 py-1">
+                        No files
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="text-center py-8 border border-dashed rounded-md bg-gray-50">
+            <FileText className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+            <h3 className="text-gray-500 mb-2">No Documents Uploaded</h3>
+            <p className="text-gray-400 text-sm mb-3">Add important vehicle documents like registration, insurance, and pollution certificates.</p>
+          </div>
+        )}
+        
+        <p className="text-gray-500 text-sm mt-4">
           For detailed document management, including verification and updates, please visit the 
-          <Link to={`/transport-safety/${vehicleId}/documents`} className="text-primary ml-1">Document Management</Link> page.
+          <Link to={`/transport-safety/${vehicleId}/documents`} className="text-primary ml-1">
+            Document Management
+          </Link> page.
         </p>
       </TabsContent>
       
@@ -147,6 +210,22 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
               Close
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Add Document Dialog */}
+      <Dialog open={showAddDocumentDialog} onOpenChange={setShowAddDocumentDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add New Document</DialogTitle>
+            <DialogDescription>
+              Upload a new document for this vehicle
+            </DialogDescription>
+          </DialogHeader>
+          <AddDocumentForm 
+            vehicleId={vehicleId} 
+            onClose={() => setShowAddDocumentDialog(false)} 
+          />
         </DialogContent>
       </Dialog>
     </Tabs>
