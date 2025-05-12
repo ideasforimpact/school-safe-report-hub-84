@@ -6,7 +6,7 @@ import { AuthProvider } from '@/contexts/auth';
 import { ClientProvider } from '@/contexts/ClientContext';
 import { EmployeeProvider } from './contexts/employee/EmployeeContext';
 import { StudentProvider } from './contexts/StudentContext';
-import { IncidentProvider } from './contexts/IncidentContext';
+import { IncidentProvider } from './contexts/incident';
 import { EmployeeVerificationProvider } from './contexts/employee-verification';
 
 // Pages

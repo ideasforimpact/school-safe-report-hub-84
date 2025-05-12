@@ -1,6 +1,6 @@
 
 import { useEffect, useState } from 'react';
-import { useIncidents } from '@/contexts/incident/IncidentContext';
+import { useIncidents } from '@/contexts/incident';
 
 interface CategoryOption {
   value: string;

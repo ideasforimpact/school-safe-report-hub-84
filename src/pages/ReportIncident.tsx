@@ -1,7 +1,7 @@
 
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useIncidents } from '@/contexts/incident/IncidentContext';
+import { useIncidents } from '@/contexts/IncidentContext';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { useClient } from '@/contexts/ClientContext';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
