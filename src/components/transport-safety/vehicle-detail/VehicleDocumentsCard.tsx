@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { FileX, FileCheck, ShieldAlert } from 'lucide-react';
+import { FileX, FileCheck, ShieldAlert, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import DocumentStatusBadge from '@/components/transport-safety/DocumentStatusBadge';
 import { Vehicle } from '@/types/transportSafety';
@@ -39,13 +39,65 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
     }
   };
   
-  const hasChallan = () => {
+  // Check for challan details in verification data
+  const hasChallanFromApi = () => {
+    if (!vehicle.verificationData) return false;
+    
+    const verificationLog = vehicle.verificationData.find(item => item.field === 'verification_log');
+    if (!verificationLog || !verificationLog.value) return false;
+    
+    // Get the latest verification timestamp
+    const timestamps = Object.keys(verificationLog.value).sort().reverse();
+    if (timestamps.length === 0) return false;
+    
+    // Get the latest verification data
+    const latestData = verificationLog.value[timestamps[0]];
+    if (!latestData) return false;
+    
+    // Check for challan data in the verification response
+    const challanResponse = latestData.find((item: any) => item.field === 'challan_response');
+    if (!challanResponse) return false;
+    
+    // Check if there are actual challan details in the response
+    return challanResponse.value && 
+           challanResponse.value.data && 
+           Array.isArray(challanResponse.value.data) && 
+           challanResponse.value.data.length > 0;
+  };
+  
+  // Get the latest challan data from verification responses
+  const getChallanDetails = () => {
+    if (!vehicle.verificationData) return null;
+    
+    const verificationLog = vehicle.verificationData.find(item => item.field === 'verification_log');
+    if (!verificationLog || !verificationLog.value) return null;
+    
+    // Get the latest verification timestamp
+    const timestamps = Object.keys(verificationLog.value).sort().reverse();
+    if (timestamps.length === 0) return null;
+    
+    // Get the latest verification data
+    const latestData = verificationLog.value[timestamps[0]];
+    if (!latestData) return null;
+    
+    // Get the challan response field
+    const challanResponse = latestData.find((item: any) => item.field === 'challan_response');
+    if (!challanResponse || !challanResponse.value || !challanResponse.value.data) return null;
+    
+    return challanResponse.value.data;
+  };
+  
+  const hasChallanFromNotes = () => {
     // Check for any specific notes or properties that indicate a challan
     return documents.some(doc => 
       doc.notes?.toLowerCase().includes('challan') || 
       doc.issuedBy?.toLowerCase().includes('police') ||
       doc.provider?.toLowerCase().includes('police')
     );
+  };
+  
+  const hasChallan = () => {
+    return hasChallanFromApi() || hasChallanFromNotes();
   };
   
   // Format date in a user-friendly way
@@ -58,6 +110,9 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
       return 'Invalid Date';
     }
   };
+
+  // Get challan details for display
+  const challanDetails = getChallanDetails();
 
   return (
     <Card>
@@ -113,6 +168,7 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
             <span className="text-sm font-medium">Challan Status</span>
             {hasChallan() ? (
               <Badge variant="outline" className="bg-orange-100 border-orange-200 text-orange-800 text-xs flex items-center gap-1">
+                <AlertCircle className="h-4 w-4 text-orange-600" />
                 <span>Pending Challan</span>
               </Badge>
             ) : (
@@ -122,6 +178,39 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
             )}
           </div>
         </div>
+
+        {/* Display challan details if available from API */}
+        {challanDetails && challanDetails.length > 0 && (
+          <div className="mb-4">
+            <h3 className="text-sm font-semibold mb-2 text-left">Challan Details</h3>
+            <div className="space-y-2 border rounded-md p-3 bg-orange-50">
+              {challanDetails.map((challan: any, index: number) => (
+                <div key={index} className="border-b border-orange-200 pb-2 last:border-b-0 last:pb-0">
+                  <div className="flex justify-between text-xs">
+                    <span className="font-medium">Challan No:</span>
+                    <span>{challan.challan_number || 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="font-medium">Amount:</span>
+                    <span>₹{challan.amount || '0'}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="font-medium">Status:</span>
+                    <span className={challan.status === 'PAID' ? 'text-green-600' : 'text-red-600'}>
+                      {challan.status || 'UNPAID'}
+                    </span>
+                  </div>
+                  {challan.violation_date && (
+                    <div className="flex justify-between text-xs">
+                      <span className="font-medium">Date:</span>
+                      <span>{new Date(challan.violation_date).toLocaleDateString()}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="space-y-4">
           {documents.map(document => (

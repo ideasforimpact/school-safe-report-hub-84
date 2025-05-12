@@ -3,7 +3,7 @@ import React from 'react';
 import { Vehicle } from '@/types/transportSafety';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Eye, FileCog, FileCheck, FileX, ShieldAlert, Flag, RefreshCw } from 'lucide-react';
+import { Eye, FileCheck, FileX, ShieldAlert, Flag, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import VehicleStatusBadge from './VehicleStatusBadge';
@@ -48,7 +48,31 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
   };
 
   const hasChallan = (vehicle: Vehicle) => {
-    // Check for any specific notes or properties that indicate a challan
+    // First check for challan in API verification data
+    if (vehicle.verificationData) {
+      const verificationLog = vehicle.verificationData.find(item => item.field === 'verification_log');
+      if (verificationLog && verificationLog.value) {
+        // Get the latest verification timestamp
+        const timestamps = Object.keys(verificationLog.value).sort().reverse();
+        if (timestamps.length > 0) {
+          // Get the latest verification data
+          const latestData = verificationLog.value[timestamps[0]];
+          if (latestData) {
+            // Check for challan data in the verification response
+            const challanResponse = latestData.find((item: any) => item.field === 'challan_response');
+            if (challanResponse && 
+                challanResponse.value && 
+                challanResponse.value.data && 
+                Array.isArray(challanResponse.value.data) && 
+                challanResponse.value.data.length > 0) {
+              return true;
+            }
+          }
+        }
+      }
+    }
+    
+    // Fallback to check for any specific notes or properties that indicate a challan
     return vehicle.documents.some(doc => 
       doc.notes?.toLowerCase().includes('challan') || 
       doc.issuedBy?.toLowerCase().includes('police') ||

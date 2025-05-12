@@ -18,12 +18,17 @@ const surepassApiKey = isDevelopment
   ? Deno.env.get('SUREPASS_SANDBOX_API_KEY') || Deno.env.get('SUREPASS_API_KEY') || ''
   : Deno.env.get('SUREPASS_PRODUCTION_API_KEY') || Deno.env.get('SUREPASS_API_KEY') || '';
 
-// Choose the appropriate API base URL based on environment
+// Choose the appropriate API base URLs based on environment
 const surepassBaseUrl = isDevelopment 
   ? "https://sandbox.surepass.io/api/v1/rc/rc-full"
   : "https://kyc-api.surepass.io/api/v1/rc/rc-full";
 
+const surepassChallanUrl = isDevelopment
+  ? "https://sandbox.surepass.io/api/v1/rc/rc-related/challan-details"
+  : "https://kyc-api.surepass.io/api/v1/rc/rc-related/challan-details";
+
 console.log(`Using Surepass API URL: ${surepassBaseUrl} (Development mode: ${isDevelopment})`);
+console.log(`Using Surepass Challan URL: ${surepassChallanUrl}`);
 console.log(`Using environment-specific API key: ${surepassApiKey ? 'Yes (key present)' : 'No (key missing)'}`);
 
 serve(async (req) => {
@@ -77,6 +82,40 @@ serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       );
+    }
+    
+    // Extract client_id from the response for challan API call
+    let challanData = null;
+    if (surepassData.data && surepassData.data.client_id) {
+      const clientId = surepassData.data.client_id;
+      console.log(`Got client_id: ${clientId}, making challan details request`);
+      
+      try {
+        // Make the second API call to get challan details
+        const challanResponse = await fetch(surepassChallanUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${surepassApiKey}`
+          },
+          body: JSON.stringify({
+            client_id: clientId
+          })
+        });
+        
+        challanData = await challanResponse.json();
+        console.log("Challan API response received:", challanData.success ? "Success" : "Failed");
+        
+        // Add challan data to the registration data
+        if (surepassData.data) {
+          surepassData.data.challan_details = challanData.data || null;
+        }
+      } catch (challanError) {
+        console.error("Error fetching challan details:", challanError);
+        // Continue even if challan request fails
+      }
+    } else {
+      console.log("No client_id available from verification response for challan lookup");
     }
     
     // Generate verification status based on response
@@ -144,6 +183,15 @@ serve(async (req) => {
       });
     }
     
+    // Add challan data as a separate field if available
+    if (challanData) {
+      currentVerificationData.push({
+        field: 'challan_response',
+        value: challanData,
+        verified: true
+      });
+    }
+    
     // Store the current verification data in the log with timestamp as key
     const updatedVerificationLog = {
       ...existingVerificationLog,
@@ -186,6 +234,7 @@ serve(async (req) => {
         success: true,
         data: {
           original: surepassData,
+          challan: challanData,
           transformed: completeTransformedData,
           status: verificationStatus,
           verificationDate: verificationDate
