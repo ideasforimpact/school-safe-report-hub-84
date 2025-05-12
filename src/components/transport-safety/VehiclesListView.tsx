@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Vehicle } from '@/types/transportSafety';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -25,35 +25,70 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
     totalPages
   } = usePagination(vehicles, 10);
 
+  // Add effect to log vehicles info when component mounts or vehicles change
+  useEffect(() => {
+    console.log("Vehicles data:", vehicles);
+    if (vehicles.length > 0) {
+      const sampleVehicle = vehicles[0];
+      console.log("Sample vehicle verification_log:", sampleVehicle.verification_log);
+      
+      // Check if we have proper verification log data
+      if (sampleVehicle.verification_log && sampleVehicle.verification_log.last_response) {
+        try {
+          const response = sampleVehicle.verification_log.last_response;
+          console.log("Verification last_response type:", typeof response);
+          if (typeof response === 'string') {
+            const parsedData = JSON.parse(response);
+            console.log("Parsed verification data:", parsedData);
+            console.log("FC expiry date (fit_up_to):", parsedData.fit_up_to);
+            console.log("Insurance expiry date (insurance_upto):", parsedData.insurance_upto);
+          }
+        } catch (e) {
+          console.error("Error parsing verification data:", e);
+        }
+      }
+    }
+  }, [vehicles]);
+
   const getDocumentStatus = (vehicle: Vehicle, docType: string) => {
     const document = vehicle.documents.find(doc => doc.type === docType);
     
     // If we have verification_log data, use it for more accurate status
-    if (vehicle.verification_log) {
+    if (vehicle.verification_log && vehicle.verification_log.last_response) {
       const currentDate = new Date();
+      console.log(`Checking ${docType} status for vehicle ${vehicle.registrationNumber}`);
       
       // Check fitness certificate (FC)
       if (docType === 'fitness' && vehicle.verification_log.last_response) {
         try {
           const data = vehicle.verification_log.last_response;
+          console.log(`${docType} verification data:`, data);
+          
           if (typeof data === 'string') {
             const parsedData = JSON.parse(data);
+            console.log(`Parsed ${docType} data:`, parsedData);
+            
             if (parsedData && parsedData.fit_up_to) {
               const fitUpToDate = new Date(parsedData.fit_up_to);
+              console.log(`${docType} expiry date:`, fitUpToDate, "Current date:", currentDate);
+              
               if (!isNaN(fitUpToDate.getTime())) {
                 if (fitUpToDate < currentDate) {
+                  console.log(`${docType} is EXPIRED`);
                   return 'expired';
                 } else {
                   // Check if expiring in 30 days
                   const thirtyDaysFromNow = new Date();
                   thirtyDaysFromNow.setDate(currentDate.getDate() + 30);
-                  return fitUpToDate < thirtyDaysFromNow ? 'expiring_soon' : 'valid';
+                  const status = fitUpToDate < thirtyDaysFromNow ? 'expiring_soon' : 'valid';
+                  console.log(`${docType} is ${status.toUpperCase()}`);
+                  return status;
                 }
               }
             }
           }
         } catch (e) {
-          console.error("Error parsing fitness data:", e);
+          console.error(`Error parsing ${docType} data:`, e);
         }
       }
       
@@ -61,24 +96,33 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
       if (docType === 'insurance' && vehicle.verification_log.last_response) {
         try {
           const data = vehicle.verification_log.last_response;
+          console.log(`${docType} verification data:`, data);
+          
           if (typeof data === 'string') {
             const parsedData = JSON.parse(data);
+            console.log(`Parsed ${docType} data:`, parsedData);
+            
             if (parsedData && parsedData.insurance_upto) {
               const insuranceUpToDate = new Date(parsedData.insurance_upto);
+              console.log(`${docType} expiry date:`, insuranceUpToDate, "Current date:", currentDate);
+              
               if (!isNaN(insuranceUpToDate.getTime())) {
                 if (insuranceUpToDate < currentDate) {
+                  console.log(`${docType} is EXPIRED`);
                   return 'expired';
                 } else {
                   // Check if expiring in 30 days
                   const thirtyDaysFromNow = new Date();
                   thirtyDaysFromNow.setDate(currentDate.getDate() + 30);
-                  return insuranceUpToDate < thirtyDaysFromNow ? 'expiring_soon' : 'valid';
+                  const status = insuranceUpToDate < thirtyDaysFromNow ? 'expiring_soon' : 'valid';
+                  console.log(`${docType} is ${status.toUpperCase()}`);
+                  return status;
                 }
               }
             }
           }
         } catch (e) {
-          console.error("Error parsing insurance data:", e);
+          console.error(`Error parsing ${docType} data:`, e);
         }
       }
     }
@@ -149,14 +193,26 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
             const hasExpiringSoon = !hasExpired && (insuranceStatus === 'expiring_soon' || 
                                   fcStatus === 'expiring_soon' || pollutionStatus === 'expiring_soon' || 
                                   challanStatus === 'expiring_soon');
-
-            // Use the stronger, more visible border styles
-            return <TableRow key={vehicle.id} className={cn(
+            
+            console.log(`Vehicle ${vehicle.registrationNumber} status summary:`, {
+              insurance: insuranceStatus,
+              fc: fcStatus,
+              pollution: pollutionStatus,
+              challan: challanStatus,
+              hasExpired,
+              hasExpiringSoon
+            });
+            
+            const rowClassName = cn(
               "hover:bg-muted/50", 
               hasExpired ? "bg-red-50 border-l-4 border-l-red-500" : 
               hasExpiringSoon ? "bg-yellow-50 border-l-4 border-l-yellow-500" : 
               "border-l-4 border-l-green-500"
-            )}>
+            );
+            
+            console.log(`Applied row class for ${vehicle.registrationNumber}:`, rowClassName);
+
+            return <TableRow key={vehicle.id} className={rowClassName}>
                   <TableCell>
                     <div className="bg-gray-100 p-2 rounded-lg inline-flex">
                       <VehicleTypeIcon type={vehicle.type} />
