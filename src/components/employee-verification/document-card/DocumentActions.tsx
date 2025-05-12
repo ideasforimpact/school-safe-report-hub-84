@@ -5,6 +5,7 @@ import { AlertTriangle, ShieldCheck, Shield } from 'lucide-react';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { useToast } from '@/hooks/use-toast';
 import { VerificationDocument } from '@/types/employeeVerification';
+import OtpVerificationDialog from '../documents-list/OtpVerificationDialog';
 
 interface DocumentActionsProps {
   document: VerificationDocument;
@@ -13,10 +14,19 @@ interface DocumentActionsProps {
 
 const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyButton = true }) => {
   const [verifying, setVerifying] = useState(false);
+  const [otpDialogOpen, setOtpDialogOpen] = useState(false);
   const { verifyDocument } = useEmployeeVerification();
   const { toast } = useToast();
 
+  const isAadhar = document.documentType === 'aadhar';
+
   const handleVerify = async (status: 'verified' | 'failed', method: 'api' | 'manual') => {
+    // For Aadhar documents that need OTP verification
+    if (isAadhar && method === 'api' && status === 'verified') {
+      setOtpDialogOpen(true);
+      return;
+    }
+    
     setVerifying(true);
     try {
       // In a real app, this would call an API to verify the document
@@ -49,6 +59,27 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
     }
   };
 
+  const handleOtpVerificationComplete = (success: boolean, message: string) => {
+    if (success) {
+      verifyDocument(
+        document.id,
+        'verified',
+        'Document verified successfully via Aadhar OTP verification.'
+      );
+      
+      toast({
+        title: "Document Verified",
+        description: message,
+      });
+    } else {
+      toast({
+        title: "Verification Failed",
+        description: message,
+        variant: "destructive"
+      });
+    }
+  };
+
   if (document.verificationStatus !== 'pending' || !showVerifyButton) {
     return null;
   }
@@ -64,7 +95,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
           disabled={verifying}
         >
           <ShieldCheck className="h-4 w-4 mr-2" />
-          Verify API
+          {isAadhar ? 'Verify with OTP' : 'Verify API'}
         </Button>
       </div>
       <div className="space-y-2">
@@ -90,6 +121,14 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
           Reject
         </Button>
       </div>
+
+      <OtpVerificationDialog 
+        open={otpDialogOpen}
+        onOpenChange={setOtpDialogOpen}
+        documentId={document.id}
+        documentNumber={document.documentNumber}
+        onVerificationComplete={handleOtpVerificationComplete}
+      />
     </div>
   );
 };

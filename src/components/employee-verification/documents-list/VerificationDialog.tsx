@@ -17,6 +17,7 @@ interface VerificationDialogProps {
   onVerify: (method: 'api' | 'manual') => void;
   onReject: () => void;
   isVerifying: boolean;
+  documentType?: string;
 }
 
 const VerificationDialog: React.FC<VerificationDialogProps> = ({
@@ -24,15 +25,18 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   onOpenChange,
   onVerify,
   onReject,
-  isVerifying
+  isVerifying,
+  documentType = ''
 }) => {
+  const isAadhar = documentType === 'aadhar';
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Verify Document</DialogTitle>
           <DialogDescription>
-            Choose a verification method for this document.
+            Choose a verification method for this {documentType || 'document'}.
           </DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-1 gap-4 py-4">
@@ -43,8 +47,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
             disabled={isVerifying}
           >
             <ShieldCheck className="h-4 w-4 mr-2" />
-            Verify via API
-            <span className="ml-auto text-xs text-blue-500 font-normal">Automated check</span>
+            {isAadhar ? 'Verify via Aadhar API (Requires OTP)' : 'Verify via API'}
+            <span className="ml-auto text-xs text-blue-500 font-normal">
+              {isAadhar ? 'OTP verification' : 'Automated check'}
+            </span>
           </Button>
           <Button 
             variant="outline" 

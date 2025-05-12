@@ -5,6 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import EmptyDocumentsState from './EmptyDocumentsState';
 import DocumentsTable from './DocumentsTable';
 import VerificationDialog from './VerificationDialog';
+import OtpVerificationDialog from './OtpVerificationDialog';
 import { Loader2 } from 'lucide-react';
 
 interface DocumentsListProps {
@@ -16,8 +17,12 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument
   const { getEmployeeDocuments, verifyDocument, fetchEmployeeDocuments, isLoading } = useEmployeeVerification();
   const documents = getEmployeeDocuments(employeeId);
   const { toast } = useToast();
+  
   const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
+  const [otpDialogOpen, setOtpDialogOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<string | null>(null);
+  const [selectedDocumentType, setSelectedDocumentType] = useState<string | null>(null);
+  const [selectedDocumentNumber, setSelectedDocumentNumber] = useState<string>('');
   const [verifying, setVerifying] = useState(false);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
@@ -49,12 +54,26 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument
   };
 
   const openVerifyDialog = (documentId: string) => {
-    setSelectedDocument(documentId);
-    setVerifyDialogOpen(true);
+    const document = documents.find(doc => doc.id === documentId);
+    if (document) {
+      setSelectedDocument(documentId);
+      setSelectedDocumentType(document.documentType);
+      setSelectedDocumentNumber(document.documentNumber || '');
+      setVerifyDialogOpen(true);
+    }
   };
 
   const handleVerify = async (method: 'api' | 'manual') => {
     if (!selectedDocument) return;
+    
+    // Special handling for Aadhar documents with API verification
+    const isAadhar = selectedDocumentType === 'aadhar' && method === 'api';
+    
+    if (isAadhar) {
+      setVerifyDialogOpen(false);
+      setOtpDialogOpen(true);
+      return;
+    }
     
     setVerifying(true);
     
@@ -86,6 +105,27 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument
         variant: "destructive",
       });
       setVerifying(false);
+    }
+  };
+
+  const handleOtpVerificationComplete = (success: boolean, message: string) => {
+    if (success && selectedDocument) {
+      verifyDocument(
+        selectedDocument,
+        'verified',
+        'Document verified successfully via Aadhar OTP verification.'
+      );
+      
+      toast({
+        title: "Document Verified",
+        description: message,
+      });
+    } else {
+      toast({
+        title: "Verification Failed",
+        description: message,
+        variant: "destructive"
+      });
     }
   };
 
@@ -151,6 +191,15 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument
         onVerify={handleVerify}
         onReject={rejectDocument}
         isVerifying={verifying}
+        documentType={selectedDocumentType || undefined}
+      />
+
+      <OtpVerificationDialog 
+        open={otpDialogOpen}
+        onOpenChange={setOtpDialogOpen}
+        documentId={selectedDocument || ''}
+        documentNumber={selectedDocumentNumber}
+        onVerificationComplete={handleOtpVerificationComplete}
       />
     </div>
   );
