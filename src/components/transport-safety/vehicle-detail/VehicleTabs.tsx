@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTransportSafety } from '@/contexts/transport-safety/TransportSafetyContext';
 import { Button } from '@/components/ui/button';
 import { formatDate } from '@/utils/dateUtils';
-import { History, FilePlus, FileText, FileX, Eye } from 'lucide-react';
+import { History, FilePlus, FileText, FileX, Eye, Trash2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -399,19 +399,28 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
                   </div>
                   <div className="flex items-center gap-2">
                     {doc.files && doc.files.length > 0 ? (
-                      <>
-                        <span className="text-xs bg-green-100 text-green-800 rounded-full px-2 py-1">
+                      <div className="flex items-center">
+                        <span className="text-xs bg-green-100 text-green-800 rounded-full px-2 py-1 mr-2">
                           {doc.files.length} file{doc.files.length !== 1 ? 's' : ''}
                         </span>
                         <Button 
                           size="sm" 
                           variant="ghost" 
-                          className="h-8 w-8 p-0" 
+                          className="h-8 w-8 p-0 mr-1" 
                           onClick={() => openUploadedFilePreview(doc, 0)}
                         >
                           <Eye className="h-4 w-4 text-gray-500" />
                         </Button>
-                      </>
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50" 
+                          title="Delete document"
+                          onClick={() => handleDeleteFile(doc, 0)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     ) : (
                       <span className="text-xs bg-gray-100 text-gray-600 rounded-full px-2 py-1">
                         No files
@@ -451,8 +460,8 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
                   </div>
                   <div className="flex items-center gap-2">
                     {doc.fileUrls && doc.fileUrls.length > 0 ? (
-                      <>
-                        <span className="text-xs bg-green-100 text-green-800 rounded-full px-2 py-1">
+                      <div className="flex items-center">
+                        <span className="text-xs bg-green-100 text-green-800 rounded-full px-2 py-1 mr-2">
                           {doc.fileUrls.length} file{doc.fileUrls.length !== 1 ? 's' : ''}
                         </span>
                         <Button 
@@ -468,7 +477,7 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
                         >
                           <Eye className="h-4 w-4 text-gray-500" />
                         </Button>
-                      </>
+                      </div>
                     ) : (
                       <span className="text-xs bg-gray-100 text-gray-600 rounded-full px-2 py-1">
                         No files
