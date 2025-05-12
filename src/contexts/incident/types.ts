@@ -1,4 +1,3 @@
-
 import { Incident, User, Activity, ActionItem, Comment } from '@/types/incident';
 import { ConfigItem, SubcategoryItem, SectionItem, ClassItem, CampusItem } from '@/contexts/types';
 
