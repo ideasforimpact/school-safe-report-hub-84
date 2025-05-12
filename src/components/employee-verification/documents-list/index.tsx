@@ -22,7 +22,11 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument
 
   // Fetch documents when component mounts
   useEffect(() => {
-    fetchEmployeeDocuments(employeeId);
+    const loadDocuments = async () => {
+      await fetchEmployeeDocuments(employeeId);
+    };
+    
+    loadDocuments();
   }, [employeeId, fetchEmployeeDocuments]);
 
   const handleViewDocument = (documentImage: string) => {

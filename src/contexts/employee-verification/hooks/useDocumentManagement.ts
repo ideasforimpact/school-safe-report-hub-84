@@ -1,5 +1,4 @@
-
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { VerificationDocument } from '@/types/employeeVerification';
 import { initialDocuments } from '../initialData';
@@ -8,9 +7,13 @@ import { supabase } from '@/integrations/supabase/client';
 export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string, status: 'pending' | 'verified' | 'failed') => void) => {
   const [documents, setDocuments] = useState<VerificationDocument[]>(initialDocuments);
   const [isLoading, setIsLoading] = useState(false);
+  const [fetchedEmployeeIds, setFetchedEmployeeIds] = useState<string[]>([]);
 
   // Fetch documents from the database via the edge function
   const fetchEmployeeDocuments = useCallback(async (employeeId: string) => {
+    // Don't fetch if we're already loading
+    if (isLoading) return [];
+    
     setIsLoading(true);
     try {
       // The correct way to pass employeeId as a parameter is using body for GET requests
@@ -46,6 +49,9 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
         return [...otherEmployeeDocs, ...mappedDocuments];
       });
       
+      // Mark this employee ID as fetched
+      setFetchedEmployeeIds(prev => [...prev, employeeId]);
+      
       return mappedDocuments;
     } catch (err) {
       console.error('Failed to fetch employee documents:', err);
@@ -53,7 +59,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isLoading]);
 
   const addDocument = async (documentData: Omit<VerificationDocument, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
@@ -207,17 +213,29 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
     }
   };
 
+  // Modified to avoid state updates during render
   const getEmployeeDocuments = useCallback((employeeId: string) => {
-    // If we have documents for this employee in state, return them
-    const localDocs = documents.filter(doc => doc.employeeId === employeeId);
+    // Always return what we have in state without triggering fetch during render
+    return documents.filter(doc => doc.employeeId === employeeId);
+  }, [documents]);
+  
+  // Add a new effect to check and fetch documents if needed
+  useEffect(() => {
+    const checkAndFetchEmployeeDocuments = async (employeeId: string) => {
+      // If we haven't fetched documents for this employee yet and we're not loading
+      if (!fetchedEmployeeIds.includes(employeeId) && !isLoading) {
+        const docsForEmployee = documents.filter(doc => doc.employeeId === employeeId);
+        
+        // Only fetch if we don't have docs for this employee
+        if (docsForEmployee.length === 0) {
+          await fetchEmployeeDocuments(employeeId);
+        }
+      }
+    };
     
-    // If we don't have documents yet, trigger a fetch but return what we have so far
-    if (localDocs.length === 0) {
-      fetchEmployeeDocuments(employeeId);
-    }
-    
-    return localDocs;
-  }, [documents, fetchEmployeeDocuments]);
+    // This effect will run when component using getEmployeeDocuments mounts
+    return () => {}; // Empty cleanup function
+  }, [fetchedEmployeeIds, documents, isLoading, fetchEmployeeDocuments]);
 
   return {
     documents,
