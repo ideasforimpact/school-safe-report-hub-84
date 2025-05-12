@@ -14,7 +14,7 @@ import { Eye, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import EditEmployeeDialog from './EditEmployeeDialog';
-import { getDocumentIcon, getDocumentDisplayName } from './utils/documentUtils';
+import { getDocumentIcon, getDocumentTypeLabel } from './utils/documentUtils';
 
 const EmployeesList = () => {
   const { employees, deleteEmployee, getEmployeeDocuments } = useEmployeeVerification();
@@ -43,7 +43,7 @@ const EmployeesList = () => {
               {verified.map(doc => (
                 <div key={doc.id} className="flex items-center text-xs border border-green-200 rounded px-1 py-0.5 bg-green-50">
                   {getDocumentIcon(doc.documentType)}
-                  <span className="ml-1">{getDocumentDisplayName(doc.documentType)}</span>
+                  <span className="ml-1">{getDocumentTypeLabel(doc.documentType)}</span>
                 </div>
               ))}
             </div>
@@ -59,7 +59,7 @@ const EmployeesList = () => {
               {pending.map(doc => (
                 <div key={doc.id} className="flex items-center text-xs border border-yellow-200 rounded px-1 py-0.5 bg-yellow-50">
                   {getDocumentIcon(doc.documentType)}
-                  <span className="ml-1">{getDocumentDisplayName(doc.documentType)}</span>
+                  <span className="ml-1">{getDocumentTypeLabel(doc.documentType)}</span>
                 </div>
               ))}
             </div>
@@ -75,7 +75,7 @@ const EmployeesList = () => {
               {failed.map(doc => (
                 <div key={doc.id} className="flex items-center text-xs border border-red-200 rounded px-1 py-0.5 bg-red-50">
                   {getDocumentIcon(doc.documentType)}
-                  <span className="ml-1">{getDocumentDisplayName(doc.documentType)}</span>
+                  <span className="ml-1">{getDocumentTypeLabel(doc.documentType)}</span>
                 </div>
               ))}
             </div>
