@@ -43,57 +43,26 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
   const hasChallanFromApi = () => {
     if (!vehicle.verificationData) return false;
     
-    // First check for direct challan_details field
+    // Check for direct challan_details field
     const challanDetails = vehicle.verificationData.find(item => item.field === 'challan_details');
-    if (challanDetails && challanDetails.value) return true;
+    if (challanDetails && challanDetails.value && challanDetails.value.challan_details && 
+        challanDetails.value.challan_details.challans && 
+        challanDetails.value.challan_details.challans.length > 0) return true;
     
-    // If not found directly, check in the verification log
-    const verificationLog = vehicle.verificationData.find(item => item.field === 'verification_log');
-    if (!verificationLog || !verificationLog.value) return false;
-    
-    // Get the latest verification timestamp
-    const timestamps = Object.keys(verificationLog.value).sort().reverse();
-    if (timestamps.length === 0) return false;
-    
-    // Get the latest verification data
-    const latestData = verificationLog.value[timestamps[0]];
-    if (!latestData) return false;
-    
-    // Check for challan data in the verification response
-    const challanResponse = latestData.find((item: any) => item.field === 'challan_details');
-    if (!challanResponse) return false;
-    
-    // Check if there are actual challan details in the response
-    return Boolean(challanResponse.value);
+    return false;
   };
   
   // Get the latest challan data from verification responses
   const getChallanDetails = () => {
     if (!vehicle.verificationData) return null;
     
-    // First check for direct challan_details field
+    // Check for direct challan_details field
     const challanDetails = vehicle.verificationData.find(item => item.field === 'challan_details');
     if (challanDetails && challanDetails.value && challanDetails.value.challan_details) {
       return challanDetails.value.challan_details.challans || [];
     }
     
-    // If not found directly, check in the verification log
-    const verificationLog = vehicle.verificationData.find(item => item.field === 'verification_log');
-    if (!verificationLog || !verificationLog.value) return null;
-    
-    // Get the latest verification timestamp
-    const timestamps = Object.keys(verificationLog.value).sort().reverse();
-    if (timestamps.length === 0) return null;
-    
-    // Get the latest verification data
-    const latestData = verificationLog.value[timestamps[0]];
-    if (!latestData) return null;
-    
-    // Get the challan response field
-    const challanResponse = latestData.find((item: any) => item.field === 'challan_details');
-    if (!challanResponse || !challanResponse.value || !challanResponse.value.challan_details) return null;
-    
-    return challanResponse.value.challan_details.challans || [];
+    return null;
   };
   
   const hasChallanFromNotes = () => {

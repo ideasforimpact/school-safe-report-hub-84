@@ -125,13 +125,70 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
   const formatVerificationData = (data: any) => {
     if (!data || !Array.isArray(data)) return [];
     
+    // Filter out fields we don't want to show in the details popup
+    // Specifically filter out duplicated challan_details that might be in the verification log
     return data
-      .filter((item: any) => item.field !== 'verification_log' && item.field !== 'last_response' && item.field !== 'status')
-      .map((item: any) => ({
-        label: item.field.replace(/_/g, ' ').split(' ').map((word: string) => 
-          word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
-        value: item.value
-      }));
+      .filter((item: any) => {
+        // Skip verification_log, last_response, status and any duplicated challan_details within the verification log
+        if (item.field === 'verification_log' || 
+            item.field === 'last_response' || 
+            item.field === 'status') {
+          return false;
+        }
+        
+        return true;
+      })
+      .map((item: any) => {
+        // Format the field label
+        let label = item.field.replace(/_/g, ' ')
+                          .split(' ')
+                          .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
+                          .join(' ');
+        
+        // Format specific fields for better display
+        let value = item.value;
+        
+        // Format the challan_details specially to show a better representation
+        if (item.field === 'challan_details' && value && value.challan_details && value.challan_details.challans) {
+          const challans = value.challan_details.challans;
+          return {
+            label: 'Challan Details',
+            value: (
+              <div className="space-y-2 mt-2 border rounded-md p-2 bg-orange-50">
+                {challans.map((challan: any, idx: number) => (
+                  <div key={idx} className="border-b border-orange-200 pb-2 last:border-b-0 last:pb-0">
+                    <div className="grid grid-cols-2 gap-1 text-xs">
+                      <span className="font-medium">Challan No:</span>
+                      <span className="text-right">{challan.challan_number || 'N/A'}</span>
+                      
+                      <span className="font-medium">Amount:</span>
+                      <span className="text-right">₹{challan.amount || '0'}</span>
+                      
+                      <span className="font-medium">Status:</span>
+                      <span className={`text-right ${challan.challan_status?.toUpperCase() === 'DISPOSED' || challan.challan_status?.toUpperCase() === 'PAID' ? 'text-green-600' : 'text-red-600'}`}>
+                        {challan.challan_status || 'UNPAID'}
+                      </span>
+                      
+                      {challan.challan_date && (
+                        <>
+                          <span className="font-medium">Date:</span>
+                          <span className="text-right">{challan.challan_date}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ),
+            isFormatted: true
+          };
+        }
+        
+        return {
+          label,
+          value
+        };
+      });
   };
   
   const viewVerificationDetails = (data: any) => {
@@ -546,9 +603,15 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
           
           <div className="border rounded-md divide-y">
             {formatVerificationData(selectedVerificationData).map((field: any, index: number) => (
-              <div key={index} className="flex justify-between px-4 py-2">
-                <span className="font-medium text-gray-500">{field.label}:</span>
-                <span className="text-gray-900">{typeof field.value === 'object' ? JSON.stringify(field.value) : String(field.value)}</span>
+              <div key={index} className="px-4 py-2">
+                <div className="font-medium text-gray-500">{field.label}:</div>
+                {field.isFormatted ? (
+                  field.value
+                ) : (
+                  <div className="text-gray-900">
+                    {typeof field.value === 'object' ? JSON.stringify(field.value, null, 2) : String(field.value)}
+                  </div>
+                )}
               </div>
             ))}
           </div>
