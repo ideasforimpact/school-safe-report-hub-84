@@ -148,9 +148,9 @@ export const hasExpiredDocuments = (vehicle: Vehicle): boolean => {
   const insuranceStatus = getDocumentStatus(vehicle, 'insurance');
   const pollutionStatus = getDocumentStatus(vehicle, 'pollution');
   
-  return fitnessStatus.status === 'expired' || 
-         insuranceStatus.status === 'expired' || 
-         pollutionStatus.status === 'expired';
+  return fitnessStatus.status === 'expired' || fitnessStatus.status === 'missing' ||
+         insuranceStatus.status === 'expired' || insuranceStatus.status === 'missing' ||
+         pollutionStatus.status === 'expired' || pollutionStatus.status === 'missing';
 };
 
 /**
@@ -193,6 +193,7 @@ export const getDocumentStatusColor = (status: string): string => {
     case 'valid':
       return 'bg-green-100 border-green-200 text-green-800';
     case 'expired':
+    case 'missing':
       return 'bg-red-100 border-red-200 text-red-800';
     case 'expiring_soon':
       return 'bg-yellow-100 border-yellow-200 text-yellow-800';

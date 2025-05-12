@@ -3,7 +3,7 @@ import React from 'react';
 import { Vehicle } from '@/types/transportSafety';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Eye, FileCog, FileCheck, FileX, ShieldAlert, FileWarning, Flag, RefreshCw } from 'lucide-react';
+import { Eye, FileCog, FileCheck, FileX, ShieldAlert, Flag, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import VehicleStatusBadge from './VehicleStatusBadge';
@@ -38,6 +38,7 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
       case 'valid':
         return <FileCheck className="h-4 w-4 text-green-600" />;
       case 'expired':
+      case 'missing': // Treat missing as expired
         return <FileX className="h-4 w-4 text-red-600" />;
       case 'expiring_soon':
         return <ShieldAlert className="h-4 w-4 text-yellow-600" />;
@@ -62,16 +63,11 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
     }
   };
 
-  const getMissingFieldClasses = (status: string) => {
-    return status === 'missing' ? 'border-2 border-red-500 rounded-md' : '';
-  };
-
   return <div className="w-full">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-medium">Vehicle List</h3>
-        <Button variant="outline" size="sm" onClick={handleRefresh} className="flex items-center gap-1">
+        <Button variant="outline" size="sm" onClick={handleRefresh} className="flex items-center">
           <RefreshCw className="h-4 w-4" />
-          <span>Refresh</span>
         </Button>
       </div>
       
@@ -121,8 +117,7 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                         variant="outline" 
                         className={cn(
                           "text-xs flex items-center gap-1 px-2 py-1", 
-                          getDocumentStatusColor(insuranceStatus),
-                          getMissingFieldClasses(insuranceStatus)
+                          getDocumentStatusColor(insuranceStatus === 'missing' ? 'expired' : insuranceStatus)
                         )}
                       >
                         {getDocumentIcon(insuranceStatus)}
@@ -132,8 +127,7 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                         variant="outline" 
                         className={cn(
                           "text-xs flex items-center gap-1 px-2 py-1", 
-                          getDocumentStatusColor(fcStatus),
-                          getMissingFieldClasses(fcStatus)
+                          getDocumentStatusColor(fcStatus === 'missing' ? 'expired' : fcStatus)
                         )}
                       >
                         {getDocumentIcon(fcStatus)}
@@ -143,8 +137,7 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                         variant="outline" 
                         className={cn(
                           "text-xs flex items-center gap-1 px-2 py-1", 
-                          getDocumentStatusColor(pollutionStatus),
-                          getMissingFieldClasses(pollutionStatus)
+                          getDocumentStatusColor(pollutionStatus === 'missing' ? 'expired' : pollutionStatus)
                         )}
                       >
                         {getDocumentIcon(pollutionStatus)}
