@@ -19,11 +19,17 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument
   const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
   // Fetch documents when component mounts
   useEffect(() => {
     const loadDocuments = async () => {
-      await fetchEmployeeDocuments(employeeId);
+      try {
+        await fetchEmployeeDocuments(employeeId);
+      } finally {
+        // Mark initial load as complete regardless of success/failure
+        setInitialLoadComplete(true);
+      }
     };
     
     loadDocuments();
@@ -116,7 +122,8 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument
     }
   };
 
-  if (isLoading) {
+  // Show loading state only during initial load, not for subsequent operations
+  if (isLoading && !initialLoadComplete) {
     return (
       <div className="flex flex-col items-center justify-center p-8">
         <Loader2 className="h-8 w-8 text-primary animate-spin mb-4" />

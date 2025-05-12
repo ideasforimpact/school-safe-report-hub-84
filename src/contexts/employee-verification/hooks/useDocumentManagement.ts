@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { VerificationDocument } from '@/types/employeeVerification';
@@ -12,8 +11,10 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
 
   // Fetch documents from the database via the edge function
   const fetchEmployeeDocuments = useCallback(async (employeeId: string) => {
-    // Don't fetch if we're already loading
-    if (isLoading) return [];
+    // Skip if we're already loading or if this employee's documents have already been fetched
+    if (isLoading || fetchedEmployeeIds.includes(employeeId)) {
+      return [];
+    }
     
     setIsLoading(true);
     try {
@@ -51,7 +52,9 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
       });
       
       // Mark this employee ID as fetched
-      setFetchedEmployeeIds(prev => [...prev, employeeId]);
+      if (!fetchedEmployeeIds.includes(employeeId)) {
+        setFetchedEmployeeIds(prev => [...prev, employeeId]);
+      }
       
       return mappedDocuments;
     } catch (err) {
@@ -60,7 +63,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading]);
+  }, [isLoading, fetchedEmployeeIds]);
 
   const addDocument = async (documentData: Omit<VerificationDocument, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
@@ -216,10 +219,9 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
 
   // Modified to avoid state updates during render
   const getEmployeeDocuments = useCallback((employeeId: string) => {
-    // Always return what we have in state without triggering fetch during render
     return documents.filter(doc => doc.employeeId === employeeId);
   }, [documents]);
-  
+
   // Add a new effect to check and fetch documents if needed
   useEffect(() => {
     const checkAndFetchEmployeeDocuments = async (employeeId: string) => {
