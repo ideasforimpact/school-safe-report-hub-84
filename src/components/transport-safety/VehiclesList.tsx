@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useTransportSafety } from '@/contexts/transport-safety/TransportSafetyContext';
 import VehiclesListView from './VehiclesListView';
@@ -11,7 +12,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
-import { getDocumentStatus, getLatestVerificationLog } from '@/utils/transport-safety/documentStatusUtils';
+import { getDocumentStatus, getLatestVerificationLog, findVerificationField } from '@/utils/transport-safety/documentStatusUtils';
 
 interface VehiclesListProps {
   showAddVehicle: boolean;
@@ -81,12 +82,29 @@ const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddV
     };
   };
   
+  // Get document expiration dates
+  const getDocumentDates = (vehicle) => {
+    const latestLog = getLatestVerificationLog(vehicle);
+    if (!latestLog) return { fcUpto: 'N/A', insuranceUpto: 'N/A', pucUpto: 'N/A' };
+    
+    const fcField = findVerificationField(latestLog, 'fit_up_to');
+    const insuranceField = findVerificationField(latestLog, 'insurance_upto');
+    const pucField = findVerificationField(latestLog, 'pucc_upto');
+    
+    return {
+      fcUpto: fcField?.value || 'N/A',
+      insuranceUpto: insuranceField?.value || 'N/A',
+      pucUpto: pucField?.value || 'N/A'
+    };
+  };
+  
   // Export vehicles to Excel
   const exportToExcel = () => {
     try {
       // Convert vehicle data to a format suitable for Excel
       const exportData = filteredVehicles.map(vehicle => {
         const documentStatuses = getDocumentStatuses(vehicle);
+        const documentDates = getDocumentDates(vehicle);
         const vehicleHasChallan = hasChallan(vehicle);
         
         return {
@@ -98,9 +116,12 @@ const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddV
           'Vehicle Status': vehicle.status,
           'Driver': vehicle.driver || 'N/A',
           'Route': vehicle.route || 'N/A',
+          'FC Status': documentStatuses.fitness,
+          'FC Upto': documentDates.fcUpto,
           'Insurance Status': documentStatuses.insurance,
-          'Fitness Certificate Status': documentStatuses.fitness,
-          'Pollution Certificate Status': documentStatuses.pollution,
+          'Insurance Upto': documentDates.insuranceUpto,
+          'PUC Status': documentStatuses.pollution,
+          'PUC Upto': documentDates.pucUpto,
           'Has Challan': vehicleHasChallan ? 'Yes' : 'No',
           'Last Verified': vehicle.verificationDate ? new Date(vehicle.verificationDate).toLocaleDateString() : 'Never'
         };
