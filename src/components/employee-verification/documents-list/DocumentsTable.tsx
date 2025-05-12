@@ -219,144 +219,137 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                 <VerificationStatusBadge status={doc.verificationStatus} />
               </TableCell>
               <TableCell className="text-right">
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center space-x-2 justify-end">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => onViewDocument(doc.documentImage)}
-                    >
-                      <Eye className="h-4 w-4" />
-                      <span className="sr-only">View</span>
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => onDownloadDocument(doc.documentImage)}
-                    >
-                      <Download className="h-4 w-4" />
-                      <span className="sr-only">Download</span>
-                    </Button>
-                    <DocumentDeleteButton documentId={doc.id} />
-                  </div>
+                <div className="flex items-center space-x-2 justify-end">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => onViewDocument(doc.documentImage)}
+                  >
+                    <Eye className="h-4 w-4" />
+                    <span className="sr-only">View</span>
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => onDownloadDocument(doc.documentImage)}
+                  >
+                    <Download className="h-4 w-4" />
+                    <span className="sr-only">Download</span>
+                  </Button>
                   
                   {doc.verificationStatus === 'pending' && (
-                    <div className="flex flex-col gap-2">
-                      <div className="flex items-center space-x-2 justify-end">
-                        {!showOtpInput || showOtpInput !== doc.id ? (
-                          <>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              className={`bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 ${activeButtonId === `verify-api-${doc.id}` ? 'ring-2 ring-blue-500' : ''}`}
-                              onClick={() => handleVerify(doc, 'verified', 'api')}
-                              disabled={verifying}
-                              id={`verify-api-${doc.id}`}
-                            >
-                              <ShieldCheck className="h-4 w-4 mr-1" />
-                              Govt Verify
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              className="bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200"
-                              onClick={() => handleVerify(doc, 'verified', 'manual')}
-                              disabled={verifying}
-                            >
-                              <Shield className="h-4 w-4 mr-1" />
-                              Manual Verify
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              className="bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
-                              onClick={() => handleVerify(doc, 'failed', 'manual')}
-                              disabled={verifying}
-                            >
-                              <AlertTriangle className="h-4 w-4 mr-1" />
-                              Reject
-                            </Button>
-                          </>
-                        ) : null}
+                    <>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className={`bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 ${activeButtonId === `verify-api-${doc.id}` ? 'ring-2 ring-blue-500' : ''}`}
+                        onClick={() => handleVerify(doc, 'verified', 'api')}
+                        disabled={verifying || showOtpInput === doc.id}
+                        id={`verify-api-${doc.id}`}
+                      >
+                        <ShieldCheck className="h-4 w-4 mr-1" />
+                        Govt Verify
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200"
+                        onClick={() => handleVerify(doc, 'verified', 'manual')}
+                        disabled={verifying || showOtpInput === doc.id}
+                      >
+                        <Shield className="h-4 w-4 mr-1" />
+                        Manual
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
+                        onClick={() => handleVerify(doc, 'failed', 'manual')}
+                        disabled={verifying || showOtpInput === doc.id}
+                      >
+                        <AlertTriangle className="h-4 w-4 mr-1" />
+                        Reject
+                      </Button>
+                    </>
+                  )}
+                  
+                  <DocumentDeleteButton documentId={doc.id} />
+                </div>
+                
+                {showOtpInput === doc.id && (
+                  <div className="mt-2 p-3 border border-blue-200 rounded-md bg-blue-50">
+                    {error && (
+                      <div className="bg-red-50 p-3 rounded-md border border-red-200 flex items-center gap-2 text-red-700 mb-2">
+                        <AlertTriangle className="h-4 w-4" />
+                        <p className="text-sm">{error}</p>
                       </div>
+                    )}
 
-                      {showOtpInput === doc.id && (
-                        <div className="flex flex-col gap-4 w-full mt-2 p-3 border border-blue-200 rounded-md bg-blue-50">
-                          {error && (
-                            <div className="bg-red-50 p-3 rounded-md border border-red-200 flex items-center gap-2 text-red-700">
-                              <AlertTriangle className="h-4 w-4" />
-                              <p className="text-sm">{error}</p>
-                            </div>
-                          )}
+                    <div className="flex flex-col items-center justify-center gap-4 py-2">
+                      {!otpRequested || otpRequested !== doc.id ? (
+                        <div className="w-full">
+                          <p className="text-sm text-blue-700 mb-2">Request an OTP to be sent to the registered mobile number linked with this Aadhar.</p>
+                          <Button
+                            onClick={() => handleRequestOtp(doc)}
+                            disabled={requestingOtp}
+                            className="w-full"
+                          >
+                            {requestingOtp && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                            Request OTP
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex flex-col items-center space-y-2 w-full">
+                            <p className="text-sm text-gray-500">Enter the 6-digit verification code</p>
+                            <InputOTP
+                              maxLength={6}
+                              value={otp}
+                              onChange={setOtp}
+                              render={({ slots }) => (
+                                <InputOTPGroup>
+                                  {slots.map((slot, i) => (
+                                    <InputOTPSlot key={i} {...slot} index={i} />
+                                  ))}
+                                </InputOTPGroup>
+                              )}
+                            />
+                          </div>
 
-                          <div className="flex flex-col items-center justify-center gap-4 py-2">
-                            {!otpRequested || otpRequested !== doc.id ? (
-                              <div className="w-full">
-                                <p className="text-sm text-blue-700 mb-2">Request an OTP to be sent to the registered mobile number linked with this Aadhar.</p>
-                                <Button
-                                  onClick={() => handleRequestOtp(doc)}
-                                  disabled={requestingOtp}
-                                  className="w-full"
-                                >
-                                  {requestingOtp && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                                  Request OTP
-                                </Button>
-                              </div>
-                            ) : (
-                              <>
-                                <div className="flex flex-col items-center space-y-2 w-full">
-                                  <p className="text-sm text-gray-500">Enter the 6-digit verification code</p>
-                                  <InputOTP
-                                    maxLength={6}
-                                    value={otp}
-                                    onChange={setOtp}
-                                    render={({ slots }) => (
-                                      <InputOTPGroup>
-                                        {slots.map((slot, i) => (
-                                          <InputOTPSlot key={i} {...slot} index={i} />
-                                        ))}
-                                      </InputOTPGroup>
-                                    )}
-                                  />
-                                </div>
-
-                                <div className="flex flex-col w-full gap-2">
-                                  <Button
-                                    onClick={() => handleVerifyOtp(doc)}
-                                    disabled={verifyingOtp || otp.length < 6}
-                                    className="w-full"
-                                  >
-                                    {verifyingOtp && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                                    Verify OTP
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    onClick={() => handleRequestOtp(doc)}
-                                    disabled={requestingOtp}
-                                    className="w-full"
-                                  >
-                                    {requestingOtp && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                                    Resend OTP
-                                  </Button>
-                                </div>
-                              </>
-                            )}
-
-                            <Button 
-                              variant="ghost"
-                              onClick={resetOtpState}
-                              className="flex items-center gap-1 text-gray-600"
-                              size="sm"
+                          <div className="flex flex-col w-full gap-2">
+                            <Button
+                              onClick={() => handleVerifyOtp(doc)}
+                              disabled={verifyingOtp || otp.length < 6}
+                              className="w-full"
                             >
-                              <ArrowLeft className="h-3 w-3" />
-                              Cancel
+                              {verifyingOtp && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                              Verify OTP
+                            </Button>
+                            <Button
+                              variant="outline"
+                              onClick={() => handleRequestOtp(doc)}
+                              disabled={requestingOtp}
+                              className="w-full"
+                            >
+                              {requestingOtp && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                              Resend OTP
                             </Button>
                           </div>
-                        </div>
+                        </>
                       )}
+
+                      <Button 
+                        variant="ghost"
+                        onClick={resetOtpState}
+                        className="flex items-center gap-1 text-gray-600"
+                        size="sm"
+                      >
+                        <ArrowLeft className="h-3 w-3" />
+                        Cancel
+                      </Button>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </TableCell>
             </TableRow>
           ))}
