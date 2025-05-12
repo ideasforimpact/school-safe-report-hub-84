@@ -1,8 +1,9 @@
+
 import React from 'react';
 import { Vehicle } from '@/types/transportSafety';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Eye, FileCheck, FileX, ShieldAlert, Flag, RefreshCw } from 'lucide-react';
+import { Eye, FileCheck, FileX, ShieldAlert, Flag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import VehicleStatusBadge from './VehicleStatusBadge';
@@ -72,22 +73,8 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
     );
   };
 
-  const handleRefresh = () => {
-    if (onRefresh) {
-      onRefresh();
-      toast.info("Refreshing vehicle data...");
-    }
-  };
-
   return (
     <div className="w-full">
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-medium">Vehicle List</h3>
-        <Button variant="outline" size="sm" onClick={handleRefresh} className="flex items-center">
-          <RefreshCw className="h-4 w-4" />
-        </Button>
-      </div>
-      
       <div className="rounded-md border">
         <Table>
           <TableHeader>
