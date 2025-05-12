@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useTransportSafety } from '@/contexts/transport-safety/TransportSafetyContext';
 import VehiclesListView from './VehiclesListView';
@@ -7,7 +6,7 @@ import VehicleBasicFilters from './filters/VehicleBasicFilters';
 import EmptyVehiclesState from './EmptyVehiclesState';
 import { useVehicleFilters } from './filters/useVehicleFilters';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertCircle, FileExcel, Download } from 'lucide-react';
+import { AlertCircle, FileText, Download } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -147,7 +146,7 @@ const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddV
                 onClick={exportToExcel} 
                 className="flex items-center gap-1"
               >
-                <FileExcel className="h-4 w-4" />
+                <FileText className="h-4 w-4" />
                 <span>Export to Excel</span>
               </Button>
             </div>
