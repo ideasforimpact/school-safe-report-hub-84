@@ -26,6 +26,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
   const [otpRequested, setOtpRequested] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [txnId, setTxnId] = useState<string | null>(null);
+  const [activeButtonId, setActiveButtonId] = useState<string | null>(null);
   
   const { verifyDocument } = useEmployeeVerification();
   const { toast } = useToast();
@@ -36,6 +37,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
     // For Aadhar documents that need OTP verification
     if (isAadhar && method === 'api' && status === 'verified') {
       setShowOtpInput(true);
+      setActiveButtonId('verify-api');
       setError(null);
       return;
     }
@@ -165,93 +167,11 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
     setTxnId(null);
     setError(null);
     setShowOtpInput(false);
+    setActiveButtonId(null);
   };
 
   if (document.verificationStatus !== 'pending' || !showVerifyButton) {
     return null;
-  }
-
-  if (showOtpInput) {
-    return (
-      <div className="flex flex-col gap-4 w-full">
-        <div className="bg-blue-50 p-3 rounded-md border border-blue-200 text-sm">
-          <h4 className="font-medium text-blue-700 mb-1">Aadhar OTP Verification</h4>
-          <p className="text-blue-600 text-xs">
-            {!otpRequested
-              ? 'Request an OTP to be sent to the registered mobile number linked with this Aadhar.'
-              : 'Enter the 6-digit OTP sent to your registered mobile number.'}
-          </p>
-        </div>
-
-        {error && (
-          <div className="bg-red-50 p-3 rounded-md border border-red-200 flex items-center gap-2 text-red-700">
-            <AlertTriangle className="h-4 w-4" />
-            <p className="text-sm">{error}</p>
-          </div>
-        )}
-
-        <div className="flex flex-col items-center justify-center gap-4 py-2">
-          {!otpRequested ? (
-            <Button
-              onClick={handleRequestOtp}
-              disabled={requestingOtp}
-              className="w-full"
-            >
-              {requestingOtp && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Request OTP
-            </Button>
-          ) : (
-            <>
-              <div className="flex flex-col items-center space-y-2 w-full">
-                <p className="text-sm text-gray-500">Enter the 6-digit verification code</p>
-                <InputOTP
-                  maxLength={6}
-                  value={otp}
-                  onChange={setOtp}
-                  render={({ slots }) => (
-                    <InputOTPGroup>
-                      {slots.map((slot, i) => (
-                        <InputOTPSlot key={i} {...slot} index={i} />
-                      ))}
-                    </InputOTPGroup>
-                  )}
-                />
-              </div>
-
-              <div className="flex flex-col w-full gap-2">
-                <Button
-                  onClick={handleVerifyOtp}
-                  disabled={verifyingOtp || otp.length < 6}
-                  className="w-full"
-                >
-                  {verifyingOtp && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  Verify OTP
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleRequestOtp}
-                  disabled={requestingOtp}
-                  className="w-full"
-                >
-                  {requestingOtp && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  Resend OTP
-                </Button>
-              </div>
-            </>
-          )}
-
-          <Button 
-            variant="ghost"
-            onClick={resetOtpState}
-            className="flex items-center gap-1 text-gray-600"
-            size="sm"
-          >
-            <ArrowLeft className="h-3 w-3" />
-            Back to verification options
-          </Button>
-        </div>
-      </div>
-    );
   }
 
   return (
@@ -260,38 +180,124 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
         <div className="space-y-2">
           <p className="text-xs text-gray-500 font-medium">Auto Verification</p>
           <Button 
-            variant="outline" 
-            className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
+            variant={activeButtonId === 'verify-api' ? "default" : "outline"} 
+            className={`w-full ${activeButtonId === 'verify-api' 
+              ? 'bg-blue-600 hover:bg-blue-700 text-white' 
+              : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200'}`}
             onClick={() => handleVerify('verified', 'api')}
             disabled={verifying}
+            id="verify-api"
           >
             <ShieldCheck className="h-4 w-4 mr-2" />
             {isAadhar ? 'Verify with OTP' : 'Verify API'}
           </Button>
         </div>
-        <div className="space-y-2">
-          <p className="text-xs text-gray-500 font-medium">Manual Verification</p>
-          <Button 
-            variant="outline" 
-            className="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200"
-            onClick={() => handleVerify('verified', 'manual')}
-            disabled={verifying}
-          >
-            <Shield className="h-4 w-4 mr-2" />
-            Verify Manual
-          </Button>
-        </div>
+        
+        {/* Only show these buttons if OTP input is not shown */}
+        {!showOtpInput && (
+          <div className="space-y-2">
+            <p className="text-xs text-gray-500 font-medium">Manual Verification</p>
+            <Button 
+              variant="outline" 
+              className="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200"
+              onClick={() => handleVerify('verified', 'manual')}
+              disabled={verifying}
+            >
+              <Shield className="h-4 w-4 mr-2" />
+              Verify Manual
+            </Button>
+          </div>
+        )}
       </div>
       
-      <Button 
-        variant="outline" 
-        className="w-full bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
-        onClick={() => handleVerify('failed', 'manual')}
-        disabled={verifying}
-      >
-        <AlertTriangle className="h-4 w-4 mr-2" />
-        Reject Document
-      </Button>
+      {/* Only show reject button if OTP input is not shown */}
+      {!showOtpInput && (
+        <Button 
+          variant="outline" 
+          className="w-full bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
+          onClick={() => handleVerify('failed', 'manual')}
+          disabled={verifying}
+        >
+          <AlertTriangle className="h-4 w-4 mr-2" />
+          Reject Document
+        </Button>
+      )}
+
+      {/* Show OTP input below buttons when needed */}
+      {showOtpInput && (
+        <div className="flex flex-col gap-4 w-full mt-2 p-3 border border-blue-200 rounded-md bg-blue-50">
+          {error && (
+            <div className="bg-red-50 p-3 rounded-md border border-red-200 flex items-center gap-2 text-red-700">
+              <AlertTriangle className="h-4 w-4" />
+              <p className="text-sm">{error}</p>
+            </div>
+          )}
+
+          <div className="flex flex-col items-center justify-center gap-4 py-2">
+            {!otpRequested ? (
+              <div className="w-full">
+                <p className="text-sm text-blue-700 mb-2">Request an OTP to be sent to the registered mobile number linked with this Aadhar.</p>
+                <Button
+                  onClick={handleRequestOtp}
+                  disabled={requestingOtp}
+                  className="w-full"
+                >
+                  {requestingOtp && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Request OTP
+                </Button>
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-col items-center space-y-2 w-full">
+                  <p className="text-sm text-gray-500">Enter the 6-digit verification code</p>
+                  <InputOTP
+                    maxLength={6}
+                    value={otp}
+                    onChange={setOtp}
+                    render={({ slots }) => (
+                      <InputOTPGroup>
+                        {slots.map((slot, i) => (
+                          <InputOTPSlot key={i} {...slot} index={i} />
+                        ))}
+                      </InputOTPGroup>
+                    )}
+                  />
+                </div>
+
+                <div className="flex flex-col w-full gap-2">
+                  <Button
+                    onClick={handleVerifyOtp}
+                    disabled={verifyingOtp || otp.length < 6}
+                    className="w-full"
+                  >
+                    {verifyingOtp && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    Verify OTP
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={handleRequestOtp}
+                    disabled={requestingOtp}
+                    className="w-full"
+                  >
+                    {requestingOtp && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    Resend OTP
+                  </Button>
+                </div>
+              </>
+            )}
+
+            <Button 
+              variant="ghost"
+              onClick={resetOtpState}
+              className="flex items-center gap-1 text-gray-600"
+              size="sm"
+            >
+              <ArrowLeft className="h-3 w-3" />
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
