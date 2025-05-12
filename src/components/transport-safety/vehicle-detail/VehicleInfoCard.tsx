@@ -188,10 +188,12 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
             </span>
           </div>
         )}
+
         
         {/* Only show the "View Latest Verification" button */}
         {latestVerificationData && (
           <div className="mt-3">
+            {formatVerificationData(latestVerificationData)}
             <Dialog open={showVerificationResults} onOpenChange={setShowVerificationResults}>
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm">
@@ -209,6 +211,7 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
                 
                 <div className="border rounded-md divide-y overflow-y-auto">
                   {formatVerificationData(latestVerificationData).map((field: any, index: number) => (
+                     
                     <div key={index} className="flex justify-between px-4 py-2">
                       <span className="font-medium text-gray-500">{field.label}:</span>
                       <span className="text-gray-900">{typeof field.value === 'object' ? JSON.stringify(field.value) : field.value}</span>
