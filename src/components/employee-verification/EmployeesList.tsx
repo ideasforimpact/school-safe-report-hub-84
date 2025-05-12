@@ -1,4 +1,3 @@
-
 import React from 'react';
 import {
   Table,
@@ -14,6 +13,7 @@ import { Eye, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import EditEmployeeDialog from './EditEmployeeDialog';
+import { Badge } from '@/components/ui/badge';
 import { getDocumentIcon, getDocumentTypeLabel } from './utils/documentUtils';
 
 const EmployeesList = () => {
@@ -29,57 +29,20 @@ const EmployeesList = () => {
 
     // Group by verification status
     const verified = documents.filter(doc => doc.verificationStatus === 'verified');
-    const pending = documents.filter(doc => doc.verificationStatus === 'pending');
     const failed = documents.filter(doc => doc.verificationStatus === 'failed');
 
     return (
-      <div className="flex flex-col space-y-2">
+      <div className="flex flex-wrap gap-2">
         {verified.length > 0 && (
-          <div className="space-y-1">
-            <div className="text-xs font-medium text-green-800 bg-green-100 rounded-full px-2 py-0.5 inline-block">
-              Verified ({verified.length})
-            </div>
-            <div className="flex flex-wrap gap-1">
-              {verified.map(doc => (
-                <div key={doc.id} className="flex items-center text-xs border border-green-200 rounded px-1 py-0.5 bg-green-50">
-                  {getDocumentIcon(doc.documentType)}
-                  <span className="ml-1">{getDocumentTypeLabel(doc.documentType)}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+            Verified ({verified.length})
+          </Badge>
         )}
-
-        {pending.length > 0 && (
-          <div className="space-y-1">
-            <div className="text-xs font-medium text-yellow-800 bg-yellow-100 rounded-full px-2 py-0.5 inline-block">
-              Pending ({pending.length})
-            </div>
-            <div className="flex flex-wrap gap-1">
-              {pending.map(doc => (
-                <div key={doc.id} className="flex items-center text-xs border border-yellow-200 rounded px-1 py-0.5 bg-yellow-50">
-                  {getDocumentIcon(doc.documentType)}
-                  <span className="ml-1">{getDocumentTypeLabel(doc.documentType)}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
+        
         {failed.length > 0 && (
-          <div className="space-y-1">
-            <div className="text-xs font-medium text-red-800 bg-red-100 rounded-full px-2 py-0.5 inline-block">
-              Failed ({failed.length})
-            </div>
-            <div className="flex flex-wrap gap-1">
-              {failed.map(doc => (
-                <div key={doc.id} className="flex items-center text-xs border border-red-200 rounded px-1 py-0.5 bg-red-50">
-                  {getDocumentIcon(doc.documentType)}
-                  <span className="ml-1">{getDocumentTypeLabel(doc.documentType)}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+            Failed ({failed.length})
+          </Badge>
         )}
       </div>
     );
