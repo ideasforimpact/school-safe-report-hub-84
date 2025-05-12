@@ -11,6 +11,16 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const surepassApiKey = Deno.env.get('SUREPASS_API_KEY') || '';
 
+// Get environment configuration
+const isDevelopment = Deno.env.get('ENVIRONMENT') === 'development';
+
+// Choose the appropriate API base URL based on environment
+const surepassBaseUrl = isDevelopment 
+  ? "https://sandbox.surepass.io/api/v1/rc/rc-full"
+  : "https://kyc-api.surepass.io/api/v1/rc/rc-full";
+
+console.log(`Using Surepass API URL: ${surepassBaseUrl} (Development mode: ${isDevelopment})`);
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -35,9 +45,9 @@ serve(async (req) => {
     // Current date and time for verification_date and last_response
     const verificationDate = new Date().toISOString();
 
-    // Call the Surepass API to get RC details - Updated to use production URL
-    const surepassUrl = "https://kyc-api.surepass.io/api/v1/rc/rc-full";
-    const surepassResponse = await fetch(surepassUrl, {
+    // Call the Surepass API to get RC details
+    console.log(`Making API request to: ${surepassBaseUrl}`);
+    const surepassResponse = await fetch(surepassBaseUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
