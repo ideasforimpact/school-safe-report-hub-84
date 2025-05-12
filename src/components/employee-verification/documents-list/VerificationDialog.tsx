@@ -34,54 +34,70 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [showManualConfirmation, setShowManualConfirmation] = useState(false);
   const [showRejectConfirmation, setShowRejectConfirmation] = useState(false);
+  const [showApiConfirmation, setShowApiConfirmation] = useState(false);
   const [otp, setOtp] = useState("");
 
   const handleAadharApiClick = () => {
     if (isAadhar) {
       setShowOtpInput(true);
-      setShowManualConfirmation(false);
-      setShowRejectConfirmation(false);
+      resetConfirmationStates();
     } else {
-      onVerify('api');
+      // For non-Aadhar documents, show API confirmation screen
+      setShowApiConfirmation(true);
+      resetConfirmationStates(true);
     }
   };
   
   const handleManualVerifyClick = () => {
     setShowManualConfirmation(true);
-    setShowOtpInput(false);
-    setShowRejectConfirmation(false);
+    resetConfirmationStates();
   };
 
   const handleRejectClick = () => {
     setShowRejectConfirmation(true);
+    resetConfirmationStates();
+  };
+
+  // Helper to reset all confirmation states
+  const resetConfirmationStates = (keepApiConfirmation = false) => {
     setShowOtpInput(false);
     setShowManualConfirmation(false);
+    setShowRejectConfirmation(false);
+    if (!keepApiConfirmation) {
+      setShowApiConfirmation(false);
+    }
   };
 
   const handleOtpSubmit = () => {
     if (otp.length === 4) {
       onVerify('api');
-      setShowOtpInput(false);
+      resetConfirmationStates();
       setOtp("");
     }
   };
 
   const handleManualConfirm = () => {
     onVerify('manual');
-    setShowManualConfirmation(false);
+    resetConfirmationStates();
+  };
+
+  const handleApiConfirm = () => {
+    onVerify('api');
+    resetConfirmationStates();
   };
 
   const handleRejectConfirm = () => {
     onReject();
-    setShowRejectConfirmation(false);
+    resetConfirmationStates();
   };
 
   const handleCancel = () => {
-    setShowOtpInput(false);
-    setShowManualConfirmation(false);
-    setShowRejectConfirmation(false);
+    resetConfirmationStates();
     setOtp("");
   };
+
+  // Check if we're showing any confirmation screen
+  const isShowingConfirmation = showOtpInput || showManualConfirmation || showRejectConfirmation || showApiConfirmation;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -93,7 +109,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           </DialogDescription>
         </DialogHeader>
         
-        {!showOtpInput && !showManualConfirmation && !showRejectConfirmation ? (
+        {!isShowingConfirmation ? (
           <div className="flex flex-col gap-4 py-4">
             <Button 
               variant="outline" 
@@ -159,7 +175,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               </p>
             </div>
           </div>
-        ) : (
+        ) : showRejectConfirmation ? (
           <div className="flex flex-col gap-4 py-4">
             <div className="space-y-4 text-center">
               <p className="text-base text-red-700">
@@ -167,6 +183,17 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               </p>
               <p className="text-sm text-muted-foreground">
                 This will mark the document as failed verification and may affect the employee's verification status.
+              </p>
+            </div>
+          </div>
+        ) : showApiConfirmation && (
+          <div className="flex flex-col gap-4 py-4">
+            <div className="space-y-4 text-center">
+              <p className="text-base text-blue-700">
+                Are you sure you want to verify this document via API?
+              </p>
+              <p className="text-sm text-muted-foreground">
+                API verification will check this document against official records automatically.
               </p>
             </div>
           </div>
@@ -206,6 +233,17 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
                 onClick={handleRejectConfirm}
               >
                 Reject
+              </Button>
+            </>
+          ) : showApiConfirmation ? (
+            <>
+              <Button variant="outline" onClick={handleCancel}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleApiConfirm}
+              >
+                Verify
               </Button>
             </>
           ) : (
