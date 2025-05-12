@@ -7,6 +7,7 @@ import { ClientProvider } from '@/contexts/ClientContext';
 import { EmployeeProvider } from './contexts/employee/EmployeeContext';
 import { StudentProvider } from './contexts/StudentContext';
 import { IncidentProvider } from './contexts/IncidentContext';
+import { EmployeeVerificationProvider } from './contexts/employee-verification';
 
 // Pages
 import Dashboard from '@/pages/Dashboard';
@@ -24,6 +25,12 @@ import TransportSafetyPage from '@/pages/transport-safety/TransportSafetyPage';
 import VehicleDetailPage from '@/pages/transport-safety/VehicleDetailPage';
 import DocumentsPage from '@/pages/transport-safety/DocumentsPage';
 
+// Employee Verification Pages
+import EmployeeVerificationPage from '@/pages/employee-verification/EmployeeVerificationPage';
+import EmployeeDetailPage from '@/pages/employee-verification/EmployeeDetailPage';
+import UploadDocumentPage from '@/pages/employee-verification/UploadDocumentPage';
+import VerificationDashboardPage from '@/pages/employee-verification/VerificationDashboardPage';
+
 function App() {
   return (
     <ClientProvider>
@@ -31,33 +38,41 @@ function App() {
         <EmployeeProvider>
           <IncidentProvider>
             <StudentProvider>
-              <Routes>
-                {/* Public routes */}
-                <Route path="/login" element={<Login />} />
-                <Route path="/home" element={<Home />} />
-                <Route path="/pricing" element={<Pricing />} />
-                
-                {/* Routes that were previously protected - now public */}
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/users" element={<UserManagement />} />
-                <Route path="/clients" element={<ClientManagement />} />
-                <Route path="/employees" element={<EmployeeManagement />} />
-                <Route path="/students" element={<StudentManagement />} />
-                <Route path="/educational-configuration" element={<EducationalConfiguration />} />
-                <Route path="/other-configuration" element={<OtherConfiguration />} />
-                <Route path="/facilities-configuration" element={<EducationalConfiguration />} />
+              <EmployeeVerificationProvider>
+                <Routes>
+                  {/* Public routes */}
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/home" element={<Home />} />
+                  <Route path="/pricing" element={<Pricing />} />
+                  
+                  {/* Routes that were previously protected - now public */}
+                  <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/users" element={<UserManagement />} />
+                  <Route path="/clients" element={<ClientManagement />} />
+                  <Route path="/employees" element={<EmployeeManagement />} />
+                  <Route path="/students" element={<StudentManagement />} />
+                  <Route path="/educational-configuration" element={<EducationalConfiguration />} />
+                  <Route path="/other-configuration" element={<OtherConfiguration />} />
+                  <Route path="/facilities-configuration" element={<EducationalConfiguration />} />
 
-                {/* Transport Safety routes */}
-                <Route path="/transport-safety" element={<TransportSafetyPage />} />
-                <Route path="/transport-safety/documents" element={<DocumentsPage />} />
-                <Route path="/transport-safety/:vehicleId" element={<VehicleDetailPage />} />
-                <Route path="/transport-safety/:vehicleId/documents" element={<DocumentsPage />} />
+                  {/* Transport Safety routes */}
+                  <Route path="/transport-safety" element={<TransportSafetyPage />} />
+                  <Route path="/transport-safety/documents" element={<DocumentsPage />} />
+                  <Route path="/transport-safety/:vehicleId" element={<VehicleDetailPage />} />
+                  <Route path="/transport-safety/:vehicleId/documents" element={<DocumentsPage />} />
+                  
+                  {/* Employee Verification routes */}
+                  <Route path="/employee-verification" element={<EmployeeVerificationPage />} />
+                  <Route path="/employee-verification/:employeeId" element={<EmployeeDetailPage />} />
+                  <Route path="/employee-verification/:employeeId/upload-document" element={<UploadDocumentPage />} />
+                  <Route path="/employee-verification/dashboard" element={<VerificationDashboardPage />} />
 
-                {/* 404 route */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-              <Toaster position="top-right" />
+                  {/* 404 route */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+                <Toaster position="top-right" />
+              </EmployeeVerificationProvider>
             </StudentProvider>
           </IncidentProvider>
         </EmployeeProvider>
