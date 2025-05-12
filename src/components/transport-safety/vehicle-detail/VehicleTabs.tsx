@@ -123,25 +123,18 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
   
   const verificationHistory = getVerificationHistory();
   
-  // Format verification data - updated to better handle challan details
+  // Format verification data - updated to remove challan_details completely
   const formatVerificationData = (data: any) => {
     if (!data || !Array.isArray(data)) return [];
-    
-    // Track already processed challan details to avoid duplicates
-    let processedChallanDetails = false;
     
     // Filter out fields we don't want to show in the details popup
     return data
       .filter((item: any) => {
-        // Skip verification_log, last_response, status
+        // Skip verification_log, last_response, status, and challan_details
         if (item.field === 'verification_log' || 
             item.field === 'last_response' || 
-            item.field === 'status') {
-          return false;
-        }
-        
-        // Skip challan_details entirely since we don't want to show the raw JSON
-        if (item.field === 'challan_details') {
+            item.field === 'status' ||
+            item.field === 'challan_details') {
           return false;
         }
         
