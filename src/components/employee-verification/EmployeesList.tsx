@@ -14,18 +14,75 @@ import { Eye, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import EditEmployeeDialog from './EditEmployeeDialog';
-import VerificationStatusBadge from './VerificationStatusBadge';
+import { getDocumentIcon, getDocumentDisplayName } from './utils/documentUtils';
 
 const EmployeesList = () => {
   const { employees, deleteEmployee, getEmployeeDocuments } = useEmployeeVerification();
   const navigate = useNavigate();
 
-  const getDocumentCounts = (employeeId: string) => {
+  const renderDocumentsInfo = (employeeId: string) => {
     const documents = getEmployeeDocuments(employeeId);
-    const verified = documents.filter(doc => doc.verificationStatus === 'verified').length;
-    const pending = documents.filter(doc => doc.verificationStatus === 'pending').length;
-    const failed = documents.filter(doc => doc.verificationStatus === 'failed').length;
-    return { verified, pending, failed, total: documents.length };
+    
+    if (documents.length === 0) {
+      return <span className="text-gray-500 text-sm">No documents</span>;
+    }
+
+    // Group by verification status
+    const verified = documents.filter(doc => doc.verificationStatus === 'verified');
+    const pending = documents.filter(doc => doc.verificationStatus === 'pending');
+    const failed = documents.filter(doc => doc.verificationStatus === 'failed');
+
+    return (
+      <div className="flex flex-col space-y-2">
+        {verified.length > 0 && (
+          <div className="space-y-1">
+            <div className="text-xs font-medium text-green-800 bg-green-100 rounded-full px-2 py-0.5 inline-block">
+              Verified ({verified.length})
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {verified.map(doc => (
+                <div key={doc.id} className="flex items-center text-xs border border-green-200 rounded px-1 py-0.5 bg-green-50">
+                  {getDocumentIcon(doc.documentType)}
+                  <span className="ml-1">{getDocumentDisplayName(doc.documentType)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {pending.length > 0 && (
+          <div className="space-y-1">
+            <div className="text-xs font-medium text-yellow-800 bg-yellow-100 rounded-full px-2 py-0.5 inline-block">
+              Pending ({pending.length})
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {pending.map(doc => (
+                <div key={doc.id} className="flex items-center text-xs border border-yellow-200 rounded px-1 py-0.5 bg-yellow-50">
+                  {getDocumentIcon(doc.documentType)}
+                  <span className="ml-1">{getDocumentDisplayName(doc.documentType)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {failed.length > 0 && (
+          <div className="space-y-1">
+            <div className="text-xs font-medium text-red-800 bg-red-100 rounded-full px-2 py-0.5 inline-block">
+              Failed ({failed.length})
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {failed.map(doc => (
+                <div key={doc.id} className="flex items-center text-xs border border-red-200 rounded px-1 py-0.5 bg-red-50">
+                  {getDocumentIcon(doc.documentType)}
+                  <span className="ml-1">{getDocumentDisplayName(doc.documentType)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -52,37 +109,14 @@ const EmployeesList = () => {
               employees.map((employee) => {
                 // Determine if employee is inactive (for verification system)
                 const isInactive = employee.status === 'failed'; // Specific to verification system
-                const counts = getDocumentCounts(employee.id);
                 
                 return (
                   <TableRow key={employee.id} className={isInactive ? "bg-gray-100" : ""}>
                     <TableCell>{employee.employeeId}</TableCell>
                     <TableCell>{employee.name}</TableCell>
                     <TableCell>{employee.department}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        {counts.total > 0 ? (
-                          <>
-                            {counts.verified > 0 && (
-                              <span className="px-2 py-1 text-xs rounded-full font-medium bg-green-100 text-green-800">
-                                {counts.verified} Verified
-                              </span>
-                            )}
-                            {counts.pending > 0 && (
-                              <span className="px-2 py-1 text-xs rounded-full font-medium bg-yellow-100 text-yellow-800">
-                                {counts.pending} Pending
-                              </span>
-                            )}
-                            {counts.failed > 0 && (
-                              <span className="px-2 py-1 text-xs rounded-full font-medium bg-red-100 text-red-800">
-                                {counts.failed} Failed
-                              </span>
-                            )}
-                          </>
-                        ) : (
-                          <span className="text-gray-500 text-sm">No documents</span>
-                        )}
-                      </div>
+                    <TableCell className="max-w-md">
+                      {renderDocumentsInfo(employee.id)}
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">

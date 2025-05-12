@@ -1,33 +1,29 @@
 
+import { FileText, CreditCard, Passport, File, Car, FileCheck } from 'lucide-react';
+import React from 'react';
 import { VerificationDocumentType } from '@/types/employeeVerification';
 
-/**
- * Gets a human-readable label for a document type
- */
-export const getDocumentTypeLabel = (type: VerificationDocumentType): string => {
-  switch (type) {
-    case 'aadhar': return 'Aadhar Card';
-    case 'pan': return 'PAN Card';
-    case 'driving_license': return 'Driving License';
-    case 'passport': return 'Passport';
-    case 'voter_id': return 'Voter ID';
-    case 'bank_account': return 'Bank Account';
-    case 'other': return 'Other Document';
-    default: return type;
+export const getDocumentIcon = (documentType: VerificationDocumentType): React.ReactNode => {
+  switch (documentType) {
+    case 'aadhar':
+      return <CreditCard className="h-4 w-4 text-blue-600" />;
+    case 'pan':
+      return <CreditCard className="h-4 w-4 text-orange-600" />;
+    case 'passport':
+      return <Passport className="h-4 w-4 text-green-600" />;
+    case 'driving_license':
+      return <Car className="h-4 w-4 text-red-600" />;
+    case 'voter_id':
+      return <FileCheck className="h-4 w-4 text-purple-600" />;
+    case 'bank_account':
+      return <FileText className="h-4 w-4 text-yellow-600" />;
+    default:
+      return <File className="h-4 w-4 text-gray-600" />;
   }
 };
 
-/**
- * Gets a placeholder text for document number input based on type
- */
-export const getDocumentPlaceholder = (type: VerificationDocumentType): string => {
-  switch (type) {
-    case 'aadhar': return '1234 5678 9012';
-    case 'pan': return 'ABCDE1234F';
-    case 'driving_license': return 'DL98765432109876';
-    case 'passport': return 'A1234567';
-    case 'voter_id': return 'XYZ1234567';
-    case 'other': return 'Document Reference Number';
-    default: return 'XXXX1234';
-  }
+export const getDocumentDisplayName = (documentType: VerificationDocumentType): string => {
+  return documentType.replace('_', ' ').split(' ').map(word => 
+    word.charAt(0).toUpperCase() + word.slice(1)
+  ).join(' ');
 };

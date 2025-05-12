@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Eye, Download, ShieldCheck, Shield } from 'lucide-react';
+import { Eye, Download, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatDistanceToNow } from 'date-fns';
 import { capitalize } from 'lodash';
