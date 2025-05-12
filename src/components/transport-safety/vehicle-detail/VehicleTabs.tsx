@@ -33,7 +33,6 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
   const [selectedFileIndex, setSelectedFileIndex] = React.useState<number>(0);
   const [uploadedDocuments, setUploadedDocuments] = useState<UploadedDocument[]>([]);
   const [isLoadingDocuments, setIsLoadingDocuments] = useState(false);
-  // Add state for uploaded document preview
   const [selectedUploadedDocument, setSelectedUploadedDocument] = useState<UploadedDocument | null>(null);
   
   const vehicle = getVehicle(vehicleId);
@@ -206,6 +205,15 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
     return '';
   };
 
+  // Check if current file is a PDF
+  const isPdfFile = () => {
+    const fileUrl = getCurrentFileUrl();
+    return fileUrl.toLowerCase().endsWith('.pdf') || 
+           fileUrl.toLowerCase().includes('application/pdf') ||
+           (selectedUploadedDocument?.files[selectedFileIndex]?.name && 
+            selectedUploadedDocument.files[selectedFileIndex].name.toLowerCase().endsWith('.pdf'));
+  };
+
   // Get total files count
   const getTotalFiles = () => {
     if (selectedUploadedDocument) {
@@ -223,6 +231,7 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
         <TabsTrigger value="history">History</TabsTrigger>
       </TabsList>
       
+      {/* Documents Tab Content */}
       <TabsContent value="documents" className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-medium">Vehicle Documents</h2>
@@ -237,6 +246,7 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
           </Button>
         </div>
         
+        {/* Documents List: Loading, Empty, or Populated */}
         {isLoadingDocuments ? (
           <div className="text-center py-8">
             <p>Loading documents...</p>
@@ -292,6 +302,7 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
           </div>
         )}
         
+        {/* Legacy Documents Section */}
         {vehicle && vehicle.documents.length > 0 && (
           <div className="mt-6 pt-6 border-t">
             <h3 className="text-sm font-medium text-gray-500 mb-2">Legacy Documents</h3>
@@ -350,6 +361,7 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
         </p>
       </TabsContent>
       
+      {/* History Tab Content */}
       <TabsContent value="history" className="bg-white rounded-lg shadow-sm p-6 border border-gray-100">
         <h2 className="text-lg font-medium mb-4 text-left">Verification History</h2>
         
@@ -455,18 +467,13 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
             {/* Display the currently selected file */}
             {getCurrentFileUrl() && (
               <div className="w-full max-h-[60vh] overflow-y-auto">
-                {getCurrentFileUrl().endsWith('.pdf') || getCurrentFileUrl().includes('application/pdf') ? (
-                  <div className="p-4 bg-gray-100 text-center rounded-md">
-                    <FileText className="h-12 w-12 mx-auto mb-2 text-gray-600" />
-                    <p>PDF Document (Preview not available)</p>
-                    <a 
-                      href={getCurrentFileUrl()} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline mt-2 inline-block"
-                    >
-                      Open PDF
-                    </a>
+                {isPdfFile() ? (
+                  <div className="relative w-full" style={{ height: '60vh' }}>
+                    <iframe 
+                      src={getCurrentFileUrl()} 
+                      className="absolute inset-0 w-full h-full border-0"
+                      title="PDF Document Viewer"
+                    />
                   </div>
                 ) : getCurrentFileUrl().endsWith('.jpg') || 
                    getCurrentFileUrl().endsWith('.jpeg') || 
