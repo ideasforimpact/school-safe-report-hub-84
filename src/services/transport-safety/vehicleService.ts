@@ -122,7 +122,7 @@ export const addVehicle = async (vehicleData: Omit<Vehicle, 'id' | 'createdAt' |
       client_id: vehicleData.clientId,
       verification_status: vehicleData.verificationStatus,
       verification_date: vehicleData.verificationDate,
-      // Ensure verification data is in the correct format for the database
+      // Convert verification_data to JSON compatible format
       verification_data: vehicleData.verificationData ? 
         vehicleData.verificationData.map(item => ({
           field: item.field,
@@ -134,35 +134,40 @@ export const addVehicle = async (vehicleData: Omit<Vehicle, 'id' | 'createdAt' |
     const { data, error } = await supabase
       .from('vehicles')
       .insert([dbVehicle])
-      .select()
-      .single();
+      .select();
       
     if (error) {
       console.error('Error adding vehicle:', error);
       throw error;
     }
     
+    if (!data || data.length === 0) {
+      throw new Error('No data returned after inserting vehicle');
+    }
+    
+    const newVehicle = data[0];
+    
     // Transform the response to match our Vehicle type
     return {
-      id: data.id,
-      registrationNumber: data.registration_number,
-      type: data.type as VehicleType,
-      make: data.make,
-      model: data.model,
-      year: data.year,
-      driver: data.driver,
-      route: data.route,
-      capacity: data.capacity,
-      status: data.status as 'active' | 'maintenance' | 'inactive',
-      clientId: data.client_id,
+      id: newVehicle.id,
+      registrationNumber: newVehicle.registration_number,
+      type: newVehicle.type as VehicleType,
+      make: newVehicle.make,
+      model: newVehicle.model,
+      year: newVehicle.year,
+      driver: newVehicle.driver,
+      route: newVehicle.route,
+      capacity: newVehicle.capacity,
+      status: newVehicle.status as 'active' | 'maintenance' | 'inactive',
+      clientId: newVehicle.client_id,
       documents: [], // No documents yet as per request
-      createdAt: data.created_at,
-      updatedAt: data.updated_at,
-      verificationStatus: data.verification_status,
-      verificationDate: data.verification_date,
+      createdAt: newVehicle.created_at,
+      updatedAt: newVehicle.updated_at,
+      verificationStatus: newVehicle.verification_status,
+      verificationDate: newVehicle.verification_date,
       // Safely convert JSON data to our typed array
-      verificationData: Array.isArray(data.verification_data) 
-        ? data.verification_data.map((item: any) => ({
+      verificationData: Array.isArray(newVehicle.verification_data) 
+        ? newVehicle.verification_data.map((item: any) => ({
             field: String(item.field || ''),
             value: item.value,
             verified: Boolean(item.verified)

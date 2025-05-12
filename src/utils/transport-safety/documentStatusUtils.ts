@@ -1,5 +1,4 @@
-
-import { Vehicle, VehicleVerificationField } from '@/types/transportSafety';
+import { Vehicle, VehicleVerificationField, VerificationLogItem } from '@/types/transportSafety';
 
 export interface DocumentStatus {
   status: 'valid' | 'expired' | 'expiring_soon' | 'missing';
@@ -20,12 +19,13 @@ export const getLatestVerificationLog = (vehicle: Vehicle): VehicleVerificationF
   if (!verificationLogEntry || !verificationLogEntry.value) return null;
   
   // Get the most recent verification timestamp (last key in the object)
-  const timestamps = Object.keys(verificationLogEntry.value as VerificationLogItem).sort().reverse();
+  const logData = verificationLogEntry.value as VerificationLogItem;
+  const timestamps = Object.keys(logData).sort().reverse();
   if (timestamps.length === 0) return null;
   
   // Return the data for the latest timestamp
   const latestTimestamp = timestamps[0];
-  return (verificationLogEntry.value as VerificationLogItem)[latestTimestamp];
+  return logData[latestTimestamp];
 };
 
 /**
