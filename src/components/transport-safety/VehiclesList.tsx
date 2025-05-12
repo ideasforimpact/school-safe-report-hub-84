@@ -16,7 +16,7 @@ interface VehiclesListProps {
 }
 
 const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddVehicle }) => {
-  const { vehicles, loading, error } = useTransportSafety();
+  const { vehicles, loading, error, fetchVehicles } = useTransportSafety();
   const {
     // State
     searchQuery,
@@ -65,6 +65,10 @@ const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddV
       </Alert>
     );
   }
+
+  const handleRefresh = () => {
+    fetchVehicles();
+  };
   
   return (
     <div>
@@ -98,7 +102,7 @@ const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddV
       {filteredVehicles.length === 0 ? (
         <EmptyVehiclesState setShowAddVehicle={setShowAddVehicle} />
       ) : (
-        <VehiclesListView vehicles={filteredVehicles} />
+        <VehiclesListView vehicles={filteredVehicles} onRefresh={handleRefresh} />
       )}
     </div>
   );

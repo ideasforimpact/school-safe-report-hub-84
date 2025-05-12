@@ -29,27 +29,27 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
   const [error, setError] = useState<string | null>(null);
   const { client } = useClient();
 
+  const fetchVehicles = async () => {
+    try {
+      setLoading(true);
+      const vehiclesData = await getAllVehicles();
+      // If client is selected, filter vehicles by client_id
+      const filteredVehicles = client 
+        ? vehiclesData.filter(v => v.clientId === client.id) 
+        : vehiclesData;
+      setVehicles(filteredVehicles);
+      setError(null);
+    } catch (err) {
+      console.error('Failed to fetch vehicles:', err);
+      setError('Failed to load vehicles. Please try again later.');
+      toast.error('Failed to load vehicles');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Fetch vehicles on component mount
   useEffect(() => {
-    const fetchVehicles = async () => {
-      try {
-        setLoading(true);
-        const vehiclesData = await getAllVehicles();
-        // If client is selected, filter vehicles by client_id
-        const filteredVehicles = client 
-          ? vehiclesData.filter(v => v.clientId === client.id) 
-          : vehiclesData;
-        setVehicles(filteredVehicles);
-        setError(null);
-      } catch (err) {
-        console.error('Failed to fetch vehicles:', err);
-        setError('Failed to load vehicles. Please try again later.');
-        toast.error('Failed to load vehicles');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchVehicles();
   }, [client]);
 
@@ -202,7 +202,8 @@ export const TransportSafetyProvider: React.FC<TransportSafetyProviderProps> = (
         addDocument,
         updateDocument,
         deleteDocument,
-        verifyDocument
+        verifyDocument,
+        fetchVehicles
       }}
     >
       {children}

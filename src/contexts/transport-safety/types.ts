@@ -14,6 +14,7 @@ export interface TransportSafetyContextType {
   updateDocument: (vehicleId: string, documentId: string, updates: Partial<VehicleDocument>) => void;
   deleteDocument: (vehicleId: string, documentId: string) => void;
   verifyDocument: (vehicleId: string, documentId: string, status: 'verified' | 'failed', method: 'api' | 'manual', notes?: string) => void;
+  fetchVehicles: () => Promise<void>;
 }
 
 export interface TransportSafetyProviderProps {

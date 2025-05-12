@@ -1,22 +1,30 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Vehicle } from '@/types/transportSafety';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Eye, FileCog, FileCheck, FileX, ShieldAlert, FileWarning, Flag } from 'lucide-react';
+import { Eye, FileCog, FileCheck, FileX, ShieldAlert, FileWarning, Flag, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import VehicleStatusBadge from './VehicleStatusBadge';
 import VehicleTypeIcon from './VehicleTypeIcon';
 import { usePagination } from '@/hooks/usePagination';
 import { cn } from '@/lib/utils';
+import { 
+  getDocumentStatus, 
+  getDocumentStatusColor, 
+  getVehicleRowClassName 
+} from '@/utils/transport-safety/documentStatusUtils';
+import { toast } from 'sonner';
 
 interface VehiclesListViewProps {
   vehicles: Vehicle[];
+  onRefresh?: () => void;
 }
 
 const VehiclesListView: React.FC<VehiclesListViewProps> = ({
-  vehicles
+  vehicles,
+  onRefresh
 }) => {
   const {
     paginatedItems,
@@ -24,136 +32,6 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
     setCurrentPage,
     totalPages
   } = usePagination(vehicles, 10);
-
-  // Add effect to log vehicles info when component mounts or vehicles change
-  useEffect(() => {
-    console.log("Vehicles data:", vehicles);
-    if (vehicles.length > 0) {
-      const sampleVehicle = vehicles[0];
-      console.log("Sample vehicle verification_log:", sampleVehicle.verification_log);
-      
-      // Check if we have proper verification data
-      if (sampleVehicle.verificationData) {
-        try {
-          // Look for verification_log field in the verificationData array
-          const verificationLogEntry = sampleVehicle.verificationData.find(
-            item => item.field === 'verification_log'
-          );
-          
-          if (verificationLogEntry && verificationLogEntry.value) {
-            console.log("Found verification_log entry:", verificationLogEntry);
-            
-            // Get the most recent verification timestamp (last key in the object)
-            const timestamps = Object.keys(verificationLogEntry.value);
-            if (timestamps.length > 0) {
-              const latestTimestamp = timestamps[timestamps.length - 1];
-              console.log("Latest verification timestamp:", latestTimestamp);
-              
-              // Access the array of verification data for this timestamp
-              const verificationData = verificationLogEntry.value[latestTimestamp];
-              
-              // Find fit_up_to and insurance_upto in the verification data
-              const fitUpTo = verificationData.find(item => item.field === 'fit_up_to')?.value;
-              const insuranceUpto = verificationData.find(item => item.field === 'insurance_upto')?.value;
-              
-              console.log("Verification fit_up_to:", fitUpTo);
-              console.log("Verification insurance_upto:", insuranceUpto);
-            }
-          }
-        } catch (e) {
-          console.error("Error parsing verification data:", e);
-        }
-      }
-    }
-  }, [vehicles]);
-
-  const getDocumentStatus = (vehicle: Vehicle, docType: string) => {
-    const document = vehicle.documents.find(doc => doc.type === docType);
-    
-    // If we have verification_log data, use it for more accurate status
-    if (vehicle.verificationData) {
-      const currentDate = new Date();
-      console.log(`Checking ${docType} status for vehicle ${vehicle.registrationNumber}`);
-      
-      try {
-        // Find the verification_log entry
-        const verificationLogEntry = vehicle.verificationData.find(
-          item => item.field === 'verification_log'
-        );
-        
-        if (verificationLogEntry && verificationLogEntry.value) {
-          // Get the most recent verification timestamp (last key in the object)
-          const timestamps = Object.keys(verificationLogEntry.value);
-          if (timestamps.length > 0) {
-            const latestTimestamp = timestamps[timestamps.length - 1];
-            
-            // Access the array of verification data for this timestamp
-            const verificationData = verificationLogEntry.value[latestTimestamp];
-            
-            // Check fitness certificate (FC)
-            if (docType === 'fitness') {
-              const fitUpToItem = verificationData.find(item => item.field === 'fit_up_to');
-              if (fitUpToItem && fitUpToItem.value) {
-                const fitUpToDate = new Date(fitUpToItem.value);
-                console.log(`${docType} expiry date:`, fitUpToDate, "Current date:", currentDate);
-                
-                if (!isNaN(fitUpToDate.getTime())) {
-                  if (fitUpToDate < currentDate) {
-                    console.log(`${docType} is EXPIRED`);
-                    return 'expired';
-                  } else {
-                    // Check if expiring in 30 days
-                    const thirtyDaysFromNow = new Date();
-                    thirtyDaysFromNow.setDate(currentDate.getDate() + 30);
-                    const status = fitUpToDate < thirtyDaysFromNow ? 'expiring_soon' : 'valid';
-                    console.log(`${docType} is ${status.toUpperCase()}`);
-                    return status;
-                  }
-                }
-              }
-            }
-            
-            // Check insurance
-            if (docType === 'insurance') {
-              const insuranceUpToItem = verificationData.find(item => item.field === 'insurance_upto');
-              if (insuranceUpToItem && insuranceUpToItem.value) {
-                const insuranceUpToDate = new Date(insuranceUpToItem.value);
-                console.log(`${docType} expiry date:`, insuranceUpToDate, "Current date:", currentDate);
-                
-                if (!isNaN(insuranceUpToDate.getTime())) {
-                  if (insuranceUpToDate < currentDate) {
-                    console.log(`${docType} is EXPIRED`);
-                    return 'expired';
-                  } else {
-                    // Check if expiring in 30 days
-                    const thirtyDaysFromNow = new Date();
-                    thirtyDaysFromNow.setDate(currentDate.getDate() + 30);
-                    const status = insuranceUpToDate < thirtyDaysFromNow ? 'expiring_soon' : 'valid';
-                    console.log(`${docType} is ${status.toUpperCase()}`);
-                    return status;
-                  }
-                }
-              }
-            }
-          }
-        }
-      } catch (e) {
-        console.error(`Error processing ${docType} data:`, e);
-      }
-    }
-    
-    // Fallback to document status if verification_log doesn't have the data
-    return document ? document.status : 'missing';
-  };
-
-  const hasChallan = (vehicle: Vehicle) => {
-    // Check for any specific notes or properties that indicate a challan
-    return vehicle.documents.some(doc => 
-      doc.notes?.toLowerCase().includes('challan') || 
-      doc.issuedBy?.toLowerCase().includes('police') ||
-      doc.provider?.toLowerCase().includes('police')
-    );
-  };
 
   const getDocumentIcon = (status: string) => {
     switch (status) {
@@ -168,20 +46,31 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
     }
   };
 
-  const getDocumentStatusColor = (status: string) => {
-    switch (status) {
-      case 'valid':
-        return 'bg-green-100 border-green-200 text-green-800';
-      case 'expired':
-        return 'bg-red-100 border-red-200 text-red-800';
-      case 'expiring_soon':
-        return 'bg-yellow-100 border-yellow-200 text-yellow-800';
-      default:
-        return 'bg-gray-100 border-gray-200 text-gray-800';
+  const hasChallan = (vehicle: Vehicle) => {
+    // Check for any specific notes or properties that indicate a challan
+    return vehicle.documents.some(doc => 
+      doc.notes?.toLowerCase().includes('challan') || 
+      doc.issuedBy?.toLowerCase().includes('police') ||
+      doc.provider?.toLowerCase().includes('police')
+    );
+  };
+
+  const handleRefresh = () => {
+    if (onRefresh) {
+      onRefresh();
+      toast.info("Refreshing vehicle data...");
     }
   };
 
   return <div className="w-full">
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-lg font-medium">Vehicle List</h3>
+        <Button variant="outline" size="sm" onClick={handleRefresh} className="flex items-center gap-1">
+          <RefreshCw className="h-4 w-4" />
+          <span>Refresh</span>
+        </Button>
+      </div>
+      
       <div className="rounded-md border">
         <Table>
           <TableHeader>
@@ -189,7 +78,7 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
               <TableHead className="w-[80px] text-left">Type</TableHead>
               <TableHead className="text-left">Vehicle Details</TableHead>
               <TableHead className="w-[160px] text-left">Registration</TableHead>
-              <TableHead className="w-[100px] text-left">Status</TableHead>
+              <TableHead className="w-[100px] text-left">Fleet Status</TableHead>
               <TableHead className="w-[180px] text-left">Documents</TableHead>
               <TableHead className="w-[80px] text-left">Challan</TableHead>
               <TableHead className="w-[60px] text-left">Actions</TableHead>
@@ -197,37 +86,13 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
           </TableHeader>
           <TableBody>
             {paginatedItems.map(vehicle => {
-            const insuranceStatus = getDocumentStatus(vehicle, 'insurance');
-            const fcStatus = getDocumentStatus(vehicle, 'fitness');
-            const pollutionStatus = getDocumentStatus(vehicle, 'pollution');
-            const challanStatus = getDocumentStatus(vehicle, 'registration');
-            const vehicleHasChallan = hasChallan(vehicle);
-
-            const hasExpired = insuranceStatus === 'expired' || fcStatus === 'expired' || 
-                              pollutionStatus === 'expired' || challanStatus === 'expired';
-            const hasExpiringSoon = !hasExpired && (insuranceStatus === 'expiring_soon' || 
-                                  fcStatus === 'expiring_soon' || pollutionStatus === 'expiring_soon' || 
-                                  challanStatus === 'expiring_soon');
-            
-            console.log(`Vehicle ${vehicle.registrationNumber} status summary:`, {
-              insurance: insuranceStatus,
-              fc: fcStatus,
-              pollution: pollutionStatus,
-              challan: challanStatus,
-              hasExpired,
-              hasExpiringSoon
-            });
-            
-            const rowClassName = cn(
-              "hover:bg-muted/50", 
-              hasExpired ? "bg-red-50 border-l-4 border-l-red-500" : 
-              hasExpiringSoon ? "bg-yellow-50 border-l-4 border-l-yellow-500" : 
-              "border-l-4 border-l-green-500"
-            );
-            
-            console.log(`Applied row class for ${vehicle.registrationNumber}:`, rowClassName);
-
-            return <TableRow key={vehicle.id} className={rowClassName}>
+              const insuranceStatus = getDocumentStatus(vehicle, 'insurance').status;
+              const fcStatus = getDocumentStatus(vehicle, 'fitness').status;
+              const pollutionStatus = getDocumentStatus(vehicle, 'pollution').status;
+              const vehicleHasChallan = hasChallan(vehicle);
+              const rowClassName = getVehicleRowClassName(vehicle);
+              
+              return <TableRow key={vehicle.id} className={rowClassName}>
                   <TableCell>
                     <div className="bg-gray-100 p-2 rounded-lg inline-flex">
                       <VehicleTypeIcon type={vehicle.type} />
@@ -260,10 +125,6 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                         {getDocumentIcon(pollutionStatus)}
                         <span>PUC</span>
                       </Badge>
-                      <Badge variant="outline" className={cn("text-xs flex items-center gap-1 px-2 py-1", getDocumentStatusColor(challanStatus))}>
-                        {getDocumentIcon(challanStatus)}
-                        <span>RC</span>
-                      </Badge>
                     </div>
                   </TableCell>
                   <TableCell className="text-left">
@@ -286,7 +147,7 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                     </div>
                   </TableCell>
                 </TableRow>;
-          })}
+            })}
           </TableBody>
         </Table>
       </div>
