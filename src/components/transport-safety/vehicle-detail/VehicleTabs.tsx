@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useTransportSafety } from '@/contexts/transport-safety/TransportSafetyContext';
@@ -14,11 +14,25 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import AddDocumentForm from '@/components/transport-safety/documents/AddDocumentForm';
 import { VehicleDocument } from '@/types/transportSafety';
+import DocumentUploader from '../documents/DocumentUploader';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 
 interface VehicleTabsProps {
   vehicleId: string;
+}
+
+interface UploadedDocument {
+  name: string;
+  type: string;
+  uploadedAt: string;
+  files: {
+    name: string;
+    path: string;
+    url: string;
+    uploadedAt: string;
+  }[];
 }
 
 const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
@@ -29,8 +43,45 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
   const [showFilePreview, setShowFilePreview] = React.useState(false);
   const [selectedDocument, setSelectedDocument] = React.useState<VehicleDocument | null>(null);
   const [selectedFileIndex, setSelectedFileIndex] = React.useState<number>(0);
+  const [uploadedDocuments, setUploadedDocuments] = useState<UploadedDocument[]>([]);
+  const [isLoadingDocuments, setIsLoadingDocuments] = useState(false);
   
   const vehicle = getVehicle(vehicleId);
+  
+  // Fetch uploaded documents from the database
+  useEffect(() => {
+    const fetchDocuments = async () => {
+      if (!vehicleId) return;
+      
+      setIsLoadingDocuments(true);
+      try {
+        const { data, error } = await supabase
+          .from('vehicle_documents')
+          .select('*')
+          .eq('vehicle_id', vehicleId)
+          .single();
+          
+        if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
+          console.error('Error fetching documents:', error);
+          toast({
+            title: 'Error fetching documents',
+            description: 'There was an error fetching your documents',
+            variant: 'destructive',
+          });
+        }
+        
+        if (data && data.documents) {
+          setUploadedDocuments(data.documents);
+        }
+      } catch (error) {
+        console.error('Error fetching documents:', error);
+      } finally {
+        setIsLoadingDocuments(false);
+      }
+    };
+    
+    fetchDocuments();
+  }, [vehicleId]);
   
   // Find verification log entry to get history
   const getVerificationLog = () => {
@@ -73,15 +124,25 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
     setShowVerificationDetails(true);
   };
   
-  // Function to determine if a document has files attached
-  const hasAttachedFiles = (document: VehicleDocument) => {
-    return document.fileUrls && document.fileUrls.length > 0;
-  };
-
-  // Function to open file preview dialog
-  const openFilePreview = (document: VehicleDocument, index: number = 0) => {
-    setSelectedDocument(document);
-    setSelectedFileIndex(index);
+  // Function to open file preview dialog for uploaded documents
+  const openUploadedFilePreview = (document: UploadedDocument, fileIndex: number = 0) => {
+    // Create a pseudo VehicleDocument structure to reuse the existing preview logic
+    const pseudoDocument: VehicleDocument = {
+      id: `upload-${Date.now()}`,
+      type: document.type,
+      number: document.name,
+      issuedDate: document.uploadedAt,
+      expiryDate: '', // No expiry for uploaded documents
+      issuedBy: 'User Upload',
+      status: 'valid',
+      notes: null,
+      lastUpdated: document.uploadedAt,
+      fileUrls: document.files.map(f => f.url),
+      provider: 'User Upload'
+    };
+    
+    setSelectedDocument(pseudoDocument);
+    setSelectedFileIndex(fileIndex);
     setShowFilePreview(true);
   };
 
@@ -96,6 +157,30 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
     } else {
       setSelectedFileIndex((selectedFileIndex - 1 + totalFiles) % totalFiles);
     }
+  };
+
+  // Handle successful upload
+  const handleUploadSuccess = (result: any) => {
+    console.log('Upload success:', result);
+    
+    // Refresh the documents list
+    if (result.result && result.result[0] && result.result[0].documents) {
+      setUploadedDocuments(result.result[0].documents);
+    }
+    
+    toast({
+      title: 'Documents Uploaded',
+      description: 'Your documents have been uploaded successfully',
+    });
+  };
+  
+  // Delete a file (just log for now, implement actual deletion later)
+  const handleDeleteFile = (document: UploadedDocument, fileIndex: number) => {
+    console.log('Delete file:', document.files[fileIndex]);
+    toast({
+      title: 'Delete not implemented',
+      description: 'File deletion feature will be implemented soon',
+    });
   };
   
   return (
@@ -115,39 +200,43 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
             className="flex items-center gap-1"
           >
             <FilePlus className="h-4 w-4" />
-            Add Document
+            Upload Documents
           </Button>
         </div>
         
-        {vehicle && vehicle.documents.length > 0 ? (
+        {isLoadingDocuments ? (
+          <div className="text-center py-8">
+            <p>Loading documents...</p>
+          </div>
+        ) : uploadedDocuments.length > 0 ? (
           <div className="space-y-4">
             <h3 className="text-sm font-medium text-gray-500 mb-2">Uploaded Documents</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {vehicle.documents.map((doc) => (
+              {uploadedDocuments.map((doc, idx) => (
                 <div 
-                  key={doc.id} 
+                  key={`${doc.name}-${idx}`} 
                   className="flex items-center justify-between p-3 border rounded-md hover:bg-gray-50"
                 >
                   <div className="flex items-center">
                     <FileText className="h-5 w-5 text-gray-400 mr-3" />
                     <div>
-                      <p className="font-medium">{doc.type.charAt(0).toUpperCase() + doc.type.slice(1)}</p>
+                      <p className="font-medium">{doc.name}</p>
                       <p className="text-xs text-gray-500">
-                        {doc.number} • Expires: {formatDate(new Date(doc.expiryDate))}
+                        Uploaded: {formatDate(new Date(doc.uploadedAt))}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {hasAttachedFiles(doc) ? (
+                    {doc.files && doc.files.length > 0 ? (
                       <>
                         <span className="text-xs bg-green-100 text-green-800 rounded-full px-2 py-1">
-                          {doc.fileUrls.length} file{doc.fileUrls.length !== 1 ? 's' : ''}
+                          {doc.files.length} file{doc.files.length !== 1 ? 's' : ''}
                         </span>
                         <Button 
                           size="sm" 
                           variant="ghost" 
                           className="h-8 w-8 p-0" 
-                          onClick={() => openFilePreview(doc)}
+                          onClick={() => openUploadedFilePreview(doc, 0)}
                         >
                           <Eye className="h-4 w-4 text-gray-500" />
                         </Button>
@@ -167,6 +256,55 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
             <FileText className="h-12 w-12 text-gray-300 mx-auto mb-3" />
             <h3 className="text-gray-500 mb-2">No Documents Uploaded</h3>
             <p className="text-gray-400 text-sm mb-3">Add important vehicle documents like registration, insurance, and pollution certificates.</p>
+          </div>
+        )}
+        
+        {vehicle && vehicle.documents.length > 0 && (
+          <div className="mt-6 pt-6 border-t">
+            <h3 className="text-sm font-medium text-gray-500 mb-2">Legacy Documents</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {vehicle.documents.map((doc) => (
+                <div 
+                  key={doc.id} 
+                  className="flex items-center justify-between p-3 border rounded-md hover:bg-gray-50"
+                >
+                  <div className="flex items-center">
+                    <FileText className="h-5 w-5 text-gray-400 mr-3" />
+                    <div>
+                      <p className="font-medium">{doc.type.charAt(0).toUpperCase() + doc.type.slice(1)}</p>
+                      <p className="text-xs text-gray-500">
+                        {doc.number} • Expires: {formatDate(new Date(doc.expiryDate))}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {doc.fileUrls && doc.fileUrls.length > 0 ? (
+                      <>
+                        <span className="text-xs bg-green-100 text-green-800 rounded-full px-2 py-1">
+                          {doc.fileUrls.length} file{doc.fileUrls.length !== 1 ? 's' : ''}
+                        </span>
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          className="h-8 w-8 p-0" 
+                          onClick={() => {
+                            setSelectedDocument(doc);
+                            setSelectedFileIndex(0);
+                            setShowFilePreview(true);
+                          }}
+                        >
+                          <Eye className="h-4 w-4 text-gray-500" />
+                        </Button>
+                      </>
+                    ) : (
+                      <span className="text-xs bg-gray-100 text-gray-600 rounded-full px-2 py-1">
+                        No files
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
         
@@ -246,18 +384,19 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
         </DialogContent>
       </Dialog>
       
-      {/* Add Document Dialog */}
+      {/* Upload Document Dialog */}
       <Dialog open={showAddDocumentDialog} onOpenChange={setShowAddDocumentDialog}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Add New Document</DialogTitle>
+            <DialogTitle>Upload Documents</DialogTitle>
             <DialogDescription>
-              Upload a new document for this vehicle
+              Upload new documents for this vehicle
             </DialogDescription>
           </DialogHeader>
-          <AddDocumentForm 
+          <DocumentUploader 
             vehicleId={vehicleId} 
             onClose={() => setShowAddDocumentDialog(false)} 
+            onSuccess={handleUploadSuccess}
           />
         </DialogContent>
       </Dialog>
@@ -277,21 +416,39 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
           <div className="flex justify-center items-center py-4">
             {selectedDocument && selectedDocument.fileUrls && selectedDocument.fileUrls[selectedFileIndex] && (
               <div className="w-full max-h-[60vh] overflow-y-auto">
-                {selectedDocument.fileUrls[selectedFileIndex].startsWith('data:image') ? (
+                {selectedDocument.fileUrls[selectedFileIndex].startsWith('data:image') || 
+                 selectedDocument.fileUrls[selectedFileIndex].includes('/storage/v1/object/public/vehicle-documents') ? (
                   <img 
                     src={selectedDocument.fileUrls[selectedFileIndex]} 
                     alt={`Document file ${selectedFileIndex + 1}`} 
                     className="mx-auto max-h-full"
                   />
-                ) : selectedDocument.fileUrls[selectedFileIndex].startsWith('data:application/pdf') ? (
+                ) : selectedDocument.fileUrls[selectedFileIndex].startsWith('data:application/pdf') || 
+                     selectedDocument.fileUrls[selectedFileIndex].endsWith('.pdf') ? (
                   <div className="p-4 bg-gray-100 text-center rounded-md">
                     <FileText className="h-12 w-12 mx-auto mb-2 text-gray-600" />
                     <p>PDF Document (Preview not available)</p>
+                    <a 
+                      href={selectedDocument.fileUrls[selectedFileIndex]} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline mt-2 inline-block"
+                    >
+                      Open PDF
+                    </a>
                   </div>
                 ) : (
                   <div className="p-4 bg-gray-100 text-center rounded-md">
                     <FileText className="h-12 w-12 mx-auto mb-2 text-gray-600" />
                     <p>Document File (Preview not available)</p>
+                    <a 
+                      href={selectedDocument.fileUrls[selectedFileIndex]} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline mt-2 inline-block"
+                    >
+                      Download File
+                    </a>
                   </div>
                 )}
               </div>
@@ -319,9 +476,12 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
               className="flex items-center gap-1"
               onClick={() => {
                 if (selectedDocument && selectedFileIndex >= 0 && selectedDocument.fileUrls) {
-                  // In a real app, we would implement proper delete functionality here
-                  // For this demo, we'll just log it
+                  // For now, just log the delete action
                   console.log(`Delete file at index ${selectedFileIndex}`);
+                  toast({
+                    title: 'Delete not implemented',
+                    description: 'File deletion feature will be implemented soon',
+                  });
                   
                   // Close preview if it was the last file
                   if (selectedDocument.fileUrls.length <= 1) {
