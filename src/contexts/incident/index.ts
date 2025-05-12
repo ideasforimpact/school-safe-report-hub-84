@@ -21,4 +21,4 @@ export type {
   Activity,
   ConfigItem,
   SubcategoryItem
-} from './IncidentContext';
+} from './types';
