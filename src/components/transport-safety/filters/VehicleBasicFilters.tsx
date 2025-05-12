@@ -74,20 +74,7 @@ const VehicleBasicFilters: React.FC<VehicleBasicFiltersProps> = ({
           </Select>
         </div>
 
-        <div className="flex items-center">
-          <Select value={documentTypeFilter} onValueChange={setDocumentTypeFilter}>
-            <SelectTrigger className="w-[140px] h-10">
-              <SelectValue placeholder="Document" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Documents</SelectItem>
-              <SelectItem value="insurance">Insurance</SelectItem>
-              <SelectItem value="fitness">Fitness Certificate</SelectItem>
-              <SelectItem value="pollution">Pollution Certificate</SelectItem>
-              <SelectItem value="registration">Registration</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+       
         
         {activeFiltersCount > 0 && (
           <Button 
