@@ -17,7 +17,7 @@ import { VehicleDocument } from '@/types/transportSafety';
 import DocumentUploader from '../documents/DocumentUploader';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { UploadedDocument } from '@/types/fileTypes'; // Import the interface
+import { UploadedDocument, formatSupabaseUrl, isPdfFile } from '@/types/fileTypes';
 
 interface VehicleTabsProps {
   vehicleId: string;
@@ -326,20 +326,20 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
   // Get current file URL for preview
   const getCurrentFileUrl = () => {
     if (selectedUploadedDocument) {
-      return selectedUploadedDocument.files[selectedFileIndex]?.url || '';
+      const fileUrl = selectedUploadedDocument.files[selectedFileIndex]?.url || '';
+      return formatSupabaseUrl(fileUrl);
     } else if (selectedDocument && selectedDocument.fileUrls) {
-      return selectedDocument.fileUrls[selectedFileIndex] || '';
+      const fileUrl = selectedDocument.fileUrls[selectedFileIndex] || '';
+      return formatSupabaseUrl(fileUrl);
     }
     return '';
   };
 
   // Check if current file is a PDF
-  const isPdfFile = () => {
+  const isPdfFileForPreview = () => {
     const fileUrl = getCurrentFileUrl();
-    return fileUrl.toLowerCase().endsWith('.pdf') || 
-           fileUrl.toLowerCase().includes('application/pdf') ||
-           (selectedUploadedDocument?.files[selectedFileIndex]?.name && 
-            selectedUploadedDocument.files[selectedFileIndex].name.toLowerCase().endsWith('.pdf'));
+    const fileName = selectedUploadedDocument?.files[selectedFileIndex]?.name;
+    return isPdfFile(fileUrl, fileName);
   };
 
   // Get total files count
@@ -595,7 +595,7 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
             {/* Display the currently selected file */}
             {getCurrentFileUrl() && (
               <div className="w-full max-h-[60vh] overflow-y-auto">
-                {isPdfFile() ? (
+                {isPdfFileForPreview() ? (
                   <div className="relative w-full" style={{ height: '60vh' }}>
                     <iframe 
                       src={getCurrentFileUrl()} 
@@ -606,8 +606,7 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
                 ) : getCurrentFileUrl().endsWith('.jpg') || 
                    getCurrentFileUrl().endsWith('.jpeg') || 
                    getCurrentFileUrl().endsWith('.png') || 
-                   getCurrentFileUrl().includes('image/') || 
-                   getCurrentFileUrl().includes('/storage/v1/object/public/vehicle-documents') ? (
+                   getCurrentFileUrl().includes('image/') ? (
                   <img 
                     src={getCurrentFileUrl()} 
                     alt={`Document file ${selectedFileIndex + 1}`} 

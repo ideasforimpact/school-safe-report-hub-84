@@ -80,7 +80,7 @@ serve(async (req) => {
         continue;
       }
       
-      // Get public URL
+      // Get public URL - Constructing the correct URL format
       const { data: { publicUrl } } = supabase.storage
         .from('vehicle-documents')
         .getPublicUrl(filePath);
