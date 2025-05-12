@@ -71,7 +71,6 @@ export type {
   Comment,
   IncidentType,
   IncidentCategory,
-  IncidentLocation,
   IncidentStatus,
   Person,
   UserRef,
