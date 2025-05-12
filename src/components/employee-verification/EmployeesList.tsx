@@ -9,10 +9,23 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Eye, CheckCircle, FileCheck, AlertCircle } from 'lucide-react';
+import { 
+  Eye, 
+  CheckCircle, 
+  FileCheck, 
+  AlertCircle,
+  CreditCard,  // Aadhar
+  FileText,    // PAN
+  Car,         // Driving License
+  Globe,       // Passport
+  Building,    // Bank Account
+  Users,       // Voter ID
+  File         // Other
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { toast } from "sonner";
+import { VerificationDocumentType } from '@/types/employeeVerification';
 
 const EmployeesList = () => {
   const { employees, updateEmployee, documents, fetchEmployeeDocuments } = useEmployeeVerification();
@@ -64,6 +77,55 @@ const EmployeesList = () => {
     };
   };
 
+  // Get document icon by type
+  const getDocumentIcon = (type: VerificationDocumentType) => {
+    switch (type) {
+      case 'aadhar': return <CreditCard className="h-4 w-4" />;
+      case 'pan': return <FileText className="h-4 w-4" />;
+      case 'driving_license': return <Car className="h-4 w-4" />;
+      case 'passport': return <Globe className="h-4 w-4" />;
+      case 'bank_account': return <Building className="h-4 w-4" />;
+      case 'voter_id': return <Users className="h-4 w-4" />;
+      case 'other': return <File className="h-4 w-4" />;
+      default: return <File className="h-4 w-4" />;
+    }
+  };
+
+  // Get grouped documents by type with status for an employee
+  const getEmployeeDocumentsByType = (employeeId: string) => {
+    const employeeDocs = documents.filter(doc => doc.employeeId === employeeId);
+    const result: Record<VerificationDocumentType, { status: 'verified' | 'failed' | 'pending', count: number }> = {} as any;
+    
+    employeeDocs.forEach(doc => {
+      if (!result[doc.documentType]) {
+        result[doc.documentType] = { status: doc.verificationStatus, count: 1 };
+      } else {
+        result[doc.documentType].count += 1;
+        
+        // If any doc of this type is verified, mark the type as verified
+        if (doc.verificationStatus === 'verified') {
+          result[doc.documentType].status = 'verified';
+        }
+        // If no verified but has failed, mark as failed
+        else if (doc.verificationStatus === 'failed' && result[doc.documentType].status !== 'verified') {
+          result[doc.documentType].status = 'failed';
+        }
+      }
+    });
+    
+    return result;
+  };
+
+  // Get status color for document badge
+  const getStatusColor = (status: 'verified' | 'failed' | 'pending') => {
+    switch (status) {
+      case 'verified': return 'text-green-600 bg-green-50 border-green-200';
+      case 'failed': return 'text-red-600 bg-red-50 border-red-200';
+      case 'pending': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+      default: return 'text-gray-600 bg-gray-50 border-gray-200';
+    }
+  };
+
   return (
     <div className="w-full">
       <div className="rounded-md border">
@@ -90,7 +152,7 @@ const EmployeesList = () => {
                 // Determine if employee is inactive (for verification system)
                 const isInactive = employee.status === 'failed'; // Specific to verification system
                 const isVerified = employee.status === 'verified';
-                const documentStatus = getDocumentStatus(employee.id);
+                const documentsByType = getEmployeeDocumentsByType(employee.id);
                 
                 return (
                   <TableRow key={employee.id} className={isInactive ? "bg-gray-100" : ""}>
@@ -98,26 +160,21 @@ const EmployeesList = () => {
                     <TableCell>{employee.name}</TableCell>
                     <TableCell>{employee.department}</TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        {documentStatus.verified > 0 && (
-                          <div className="flex items-center text-green-600">
-                            <CheckCircle className="h-4 w-4 mr-1" />
-                            <span className="text-xs">{documentStatus.verified}</span>
-                          </div>
-                        )}
-                        {documentStatus.failed > 0 && (
-                          <div className="flex items-center text-red-500">
-                            <AlertCircle className="h-4 w-4 mr-1" />
-                            <span className="text-xs">{documentStatus.failed}</span>
-                          </div>
-                        )}
-                        {documentStatus.pending > 0 && (
-                          <div className="flex items-center text-yellow-500">
-                            <FileCheck className="h-4 w-4 mr-1" />
-                            <span className="text-xs">{documentStatus.pending}</span>
-                          </div>
-                        )}
-                        {(documentStatus.verified + documentStatus.failed + documentStatus.pending) === 0 && (
+                      <div className="flex flex-wrap items-center gap-1">
+                        {Object.entries(documentsByType).length > 0 ? (
+                          Object.entries(documentsByType).map(([type, info]) => (
+                            <div 
+                              key={type} 
+                              className={`flex items-center border px-1 py-0.5 rounded ${getStatusColor(info.status)}`}
+                              title={`${type}: ${info.status}`}
+                            >
+                              {getDocumentIcon(type as VerificationDocumentType)}
+                              {info.count > 1 && (
+                                <span className="text-xs ml-1">{info.count}</span>
+                              )}
+                            </div>
+                          ))
+                        ) : (
                           <span className="text-xs text-gray-500">No documents</span>
                         )}
                       </div>
