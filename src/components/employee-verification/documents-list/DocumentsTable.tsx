@@ -41,7 +41,6 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
           <TableRow>
             <TableHead className="w-[100px]">Type</TableHead>
             <TableHead>Document #</TableHead>
-            <TableHead>Preview</TableHead>
             <TableHead>Uploaded</TableHead>
             <TableHead>Status</TableHead>
             <TableHead className="text-right">Actions</TableHead>
@@ -57,14 +56,6 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                 </div>
               </TableCell>
               <TableCell>{doc.documentNumber || '—'}</TableCell>
-              <TableCell>
-                <img 
-                  src={doc.documentImage} 
-                  alt="Document preview" 
-                  className="h-12 w-16 object-cover rounded border border-gray-200 cursor-pointer"
-                  onClick={() => onViewDocument(doc.documentImage)}
-                />
-              </TableCell>
               <TableCell>
                 {doc.createdAt ? formatDistanceToNow(new Date(doc.createdAt), { addSuffix: true }) : '—'}
               </TableCell>
