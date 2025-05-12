@@ -6,7 +6,7 @@ import { AuthProvider } from '@/contexts/auth';
 import { ClientProvider } from '@/contexts/ClientContext';
 import { EmployeeProvider } from './contexts/employee/EmployeeContext';
 import { StudentProvider } from './contexts/StudentContext';
-import { IncidentProvider } from './contexts/incident';
+import { IncidentProvider } from './contexts/IncidentContext';
 import { EmployeeVerificationProvider } from './contexts/employee-verification';
 
 // Pages
@@ -24,13 +24,6 @@ import Pricing from '@/pages/Pricing';
 import TransportSafetyPage from '@/pages/transport-safety/TransportSafetyPage';
 import VehicleDetailPage from '@/pages/transport-safety/VehicleDetailPage';
 import DocumentsPage from '@/pages/transport-safety/DocumentsPage';
-import ReportIncident from '@/pages/ReportIncident';
-
-// Incident Pages
-import IncidentsList from '@/pages/IncidentsList';
-import IncidentDetail from '@/pages/IncidentDetail';
-import IncidentConfiguration from '@/pages/IncidentConfiguration';
-import ConfigurationManagement from '@/pages/configuration/ConfigurationManagement';
 
 // Employee Verification Pages
 import EmployeeVerificationPage from '@/pages/employee-verification/EmployeeVerificationPage';
@@ -62,13 +55,6 @@ function App() {
                   <Route path="/educational-configuration" element={<EducationalConfiguration />} />
                   <Route path="/other-configuration" element={<OtherConfiguration />} />
                   <Route path="/facilities-configuration" element={<EducationalConfiguration />} />
-
-                  {/* Incident Management Routes */}
-                  <Route path="/incidents" element={<IncidentsList />} />
-                  <Route path="/incidents/:incidentId" element={<IncidentDetail />} />
-                  <Route path="/incident-configuration" element={<IncidentConfiguration />} />
-                  <Route path="/configuration" element={<ConfigurationManagement />} />
-                  <Route path="/report-incident" element={<ReportIncident />} />
 
                   {/* Transport Safety routes */}
                   <Route path="/transport-safety" element={<TransportSafetyPage />} />

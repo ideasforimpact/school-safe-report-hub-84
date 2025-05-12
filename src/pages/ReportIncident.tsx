@@ -1,7 +1,7 @@
 
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useIncidents } from '@/contexts/incident';
+import { useIncidents } from '@/contexts/incident/IncidentContext';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { useClient } from '@/contexts/ClientContext';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
@@ -10,7 +10,7 @@ import { useIncidentFormData } from '@/hooks/incident-form/useIncidentFormData';
 import { useIncidentFormValidation } from '@/hooks/incident-form/useIncidentFormValidation';
 import { useCategoryOptions } from '@/hooks/incident-form/useCategoryOptions';
 import { useLocationOptions } from '@/hooks/incident-form/useLocationOptions';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 import { Loader2, CalendarIcon } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { formatUserFullName } from '@/utils/userUtils';
@@ -38,11 +38,7 @@ const ReportIncident = () => {
   // Effect to check if user is authenticated
   useEffect(() => {
     if (!user) {
-      toast({
-        title: "Authentication Required",
-        description: "You must be logged in to report an incident",
-        variant: "destructive"
-      });
+      toast.error("You must be logged in to report an incident");
       navigate('/login');
     }
   }, [user, navigate]);
@@ -88,17 +84,10 @@ const ReportIncident = () => {
       };
       
       await addIncident(incident);
-      toast({
-        title: "Success",
-        description: "Incident reported successfully"
-      });
+      toast.success("Incident reported successfully");
       navigate('/incidents');
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to report incident",
-        variant: "destructive"
-      });
+      toast.error("Failed to report incident");
       console.error("Error reporting incident:", error);
     } finally {
       setIsSubmitting(false);

@@ -62,33 +62,5 @@ export interface IncidentContextType {
   deleteDesignation: (id: string) => void;
 }
 
-// Export types from the incident types file
-export type {
-  Incident,
-  User, 
-  Activity,
-  ActionItem,
-  Comment,
-  Person,
-  UserRef,
-  Document,
-  FileItem,
-  Action,
-  ContributingFactor,
-} from '@/types/incident';
-
-// Export Campus, Class, Section types
-export type Campus = CampusItem;
-export type Class = ClassItem;
-export type Section = SectionItem;
-
-// Export incident types
-export type { 
-  IncidentType, 
-  IncidentCategory,
-  IncidentLocation,
-  IncidentStatus 
-} from '@/types/incident';
-
-// Export ConfigItem and SubcategoryItem
-export type { ConfigItem, SubcategoryItem };
+// Use the IncidentStatus type from types/incident.ts
+export type { IncidentStatus, IncidentType, IncidentLocation } from '@/types/incident';
