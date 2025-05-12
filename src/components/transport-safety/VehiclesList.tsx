@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useTransportSafety } from '@/contexts/transport-safety/TransportSafetyContext';
 import VehiclesListView from './VehiclesListView';
@@ -12,6 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
+import { getDocumentStatus, getLatestVerificationLog } from '@/utils/transport-safety/documentStatusUtils';
 
 interface VehiclesListProps {
   showAddVehicle: boolean;
@@ -42,22 +42,69 @@ const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddV
     clearAllFilters,
   } = useVehicleFilters(vehicles);
   
+  // Function to check if a vehicle has challan records
+  const hasChallan = (vehicle) => {
+    // Check for challan in verification log data
+    if (vehicle.verificationData) {
+      // Get the latest verification log
+      const latestLog = getLatestVerificationLog(vehicle);
+      if (!latestLog) return false;
+      
+      // Find challan_details in the latest log
+      const challanDetails = latestLog.find(item => item.field === 'challan_details');
+      if (challanDetails && challanDetails.value && 
+          challanDetails.value.challan_details && 
+          challanDetails.value.challan_details.challans && 
+          challanDetails.value.challan_details.challans.length > 0) {
+        return true;
+      }
+    }
+    
+    // Fallback to check for any specific notes or properties that indicate a challan
+    return vehicle.documents.some(doc => 
+      doc.notes?.toLowerCase().includes('challan') || 
+      doc.issuedBy?.toLowerCase().includes('police') ||
+      doc.provider?.toLowerCase().includes('police')
+    );
+  };
+  
+  // Get document statuses for a vehicle
+  const getDocumentStatuses = (vehicle) => {
+    const insuranceStatus = getDocumentStatus(vehicle, 'insurance').status;
+    const fcStatus = getDocumentStatus(vehicle, 'fitness').status;
+    const pollutionStatus = getDocumentStatus(vehicle, 'pollution').status;
+    
+    return {
+      insurance: insuranceStatus === 'missing' ? 'expired' : insuranceStatus,
+      fitness: fcStatus === 'missing' ? 'expired' : fcStatus,
+      pollution: pollutionStatus === 'missing' ? 'expired' : pollutionStatus
+    };
+  };
+  
   // Export vehicles to Excel
   const exportToExcel = () => {
     try {
       // Convert vehicle data to a format suitable for Excel
-      const exportData = filteredVehicles.map(vehicle => ({
-        'Registration Number': vehicle.registrationNumber,
-        'Make': vehicle.make,
-        'Model': vehicle.model,
-        'Type': vehicle.type,
-        'Year': vehicle.year,
-        'Status': vehicle.status,
-        'Driver': vehicle.driver || 'N/A',
-        'Route': vehicle.route || 'N/A',
-        'Documents Count': vehicle.documents.length,
-        'Last Verified': vehicle.verificationDate ? new Date(vehicle.verificationDate).toLocaleDateString() : 'Never'
-      }));
+      const exportData = filteredVehicles.map(vehicle => {
+        const documentStatuses = getDocumentStatuses(vehicle);
+        const vehicleHasChallan = hasChallan(vehicle);
+        
+        return {
+          'Registration Number': vehicle.registrationNumber,
+          'Make': vehicle.make,
+          'Model': vehicle.model,
+          'Type': vehicle.type,
+          'Year': vehicle.year,
+          'Vehicle Status': vehicle.status,
+          'Driver': vehicle.driver || 'N/A',
+          'Route': vehicle.route || 'N/A',
+          'Insurance Status': documentStatuses.insurance,
+          'Fitness Certificate Status': documentStatuses.fitness,
+          'Pollution Certificate Status': documentStatuses.pollution,
+          'Has Challan': vehicleHasChallan ? 'Yes' : 'No',
+          'Last Verified': vehicle.verificationDate ? new Date(vehicle.verificationDate).toLocaleDateString() : 'Never'
+        };
+      });
       
       // Create workbook and worksheet
       const worksheet = XLSX.utils.json_to_sheet(exportData);
