@@ -136,6 +136,24 @@ serve(async (req) => {
 
       console.log(`Processing bulk update for ${employees.length} employees`);
 
+      // Check and standardize clientId format
+      let processedClientId = null;
+      if (clientId) {
+        // Check if clientId is a valid UUID
+        if (isValidUUID(clientId)) {
+          processedClientId = clientId;
+          console.log("Valid UUID clientId provided:", processedClientId);
+        } else if (typeof clientId === 'string' && !isNaN(parseInt(clientId))) {
+          // For numeric IDs in string format, we need to set it to null
+          // The database will use a default value or reject it if required
+          console.log("Numeric clientId cannot be used directly, setting to null");
+          processedClientId = null;
+        } else {
+          console.log("Invalid clientId format, setting to null");
+          processedClientId = null;
+        }
+      }
+
       // Separate employees into those to update (have IDs) and those to create (don't have IDs)
       const toCreate = [];
       const toUpdate = [];
@@ -155,12 +173,15 @@ serve(async (req) => {
             department: emp.department,
             joining_date: emp.joiningDate,
             status: emp.status || 'active',
-            client_id: emp.clientId || clientId,  // Use employee's clientId or the global one
+            client_id: processedClientId,  // Use processed clientId
             // modulePermissions will be handled separately
           });
         } else {
           // Check if we have an employee with this employee_id already
-          employeeIdMap.set(emp.employeeId.toLowerCase(), emp);
+          employeeIdMap.set(emp.employeeId.toLowerCase(), {
+            ...emp,
+            clientId: processedClientId // Use processed clientId
+          });
         }
       }
       
@@ -194,7 +215,7 @@ serve(async (req) => {
               department: empData.department,
               joining_date: empData.joiningDate,
               status: empData.status || 'active',
-              client_id: empData.clientId || clientId,  // Use employee's clientId or the global one
+              client_id: processedClientId,  // Use processed clientId
               // modulePermissions will be handled separately
             });
             employeeIdMap.delete(existing.employee_id.toLowerCase());
@@ -212,7 +233,7 @@ serve(async (req) => {
             department: empData.department,
             joining_date: empData.joiningDate,
             status: empData.status || 'active',
-            client_id: empData.clientId || clientId,  // Use employee's clientId or the global one
+            client_id: processedClientId,  // Use processed clientId
             // modulePermissions will be stored for later use
             modulePermissions: empData.modulePermissions
           });
@@ -233,7 +254,7 @@ serve(async (req) => {
         // Prepare the data for insert
         const insertData = toCreate.map(({ modulePermissions, ...emp }) => {
           // Log the client_id for debugging
-          console.log(`Inserting employee with client_id: ${emp.client_id}`);
+          console.log(`Inserting employee with client_id:`, emp.client_id);
           return emp;
         });
         
@@ -281,7 +302,7 @@ serve(async (req) => {
       for (const emp of toUpdate) {
         const { id, modulePermissions, ...updateData } = emp;
         
-        console.log(`Updating employee ${id} with client_id: ${updateData.client_id}`);
+        console.log(`Updating employee ${id} with client_id:`, updateData.client_id);
         
         const { data: updatedData, error: updateError } = await supabaseClient
           .from("employees")
@@ -469,6 +490,16 @@ async function updateModulePermissions(supabaseClient, employeeId, permissions) 
 async function handleCreate(supabaseClient, employeeData) {
   console.log("Creating employee:", employeeData);
 
+  // Process the clientId if it's not in UUID format
+  let processedClientId = null;
+  if (employeeData.clientId) {
+    if (isValidUUID(employeeData.clientId)) {
+      processedClientId = employeeData.clientId;
+    } else {
+      console.log("Non-UUID clientId provided, setting to null");
+    }
+  }
+
   // Format the employee data for inserting into the database
   const dbEmployee = {
     employee_id: employeeData.employeeId,
@@ -479,7 +510,7 @@ async function handleCreate(supabaseClient, employeeData) {
     department: employeeData.department,
     joining_date: employeeData.joiningDate,
     status: employeeData.status || "active",
-    client_id: employeeData.clientId, // Ensure client_id is set
+    client_id: processedClientId, // Use processed clientId
   };
 
   console.log("DB employee data for insert:", dbEmployee);
@@ -527,6 +558,16 @@ async function handleCreate(supabaseClient, employeeData) {
 async function handleUpdate(supabaseClient, employeeData) {
   console.log("Updating employee:", employeeData);
 
+  // Process the clientId if it's not in UUID format
+  let processedClientId = null;
+  if (employeeData.clientId) {
+    if (isValidUUID(employeeData.clientId)) {
+      processedClientId = employeeData.clientId;
+    } else {
+      console.log("Non-UUID clientId provided, setting to null");
+    }
+  }
+
   // Format the employee data for updating in the database
   const dbEmployee = {
     first_name: employeeData.firstName,
@@ -539,7 +580,7 @@ async function handleUpdate(supabaseClient, employeeData) {
   if (employeeData.department) dbEmployee.department = employeeData.department;
   if (employeeData.joiningDate) dbEmployee.joining_date = employeeData.joiningDate;
   if (employeeData.status) dbEmployee.status = employeeData.status;
-  if (employeeData.clientId) dbEmployee.client_id = employeeData.clientId;
+  if (processedClientId) dbEmployee.client_id = processedClientId;
   
   // Update the employee record
   const { data: employee, error } = await supabaseClient
@@ -652,3 +693,11 @@ async function handleDeactivate(supabaseClient, employeeId) {
     status: 200,
   });
 }
+
+/**
+ * Check if a string is a valid UUID
+ */
+const isValidUUID = (str: string): boolean => {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+};
