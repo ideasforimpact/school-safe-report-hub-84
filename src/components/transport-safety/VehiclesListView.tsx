@@ -62,6 +62,10 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
     }
   };
 
+  const getMissingFieldClasses = (status: string) => {
+    return status === 'missing' ? 'border-2 border-red-500 rounded-md' : '';
+  };
+
   return <div className="w-full">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-medium">Vehicle List</h3>
@@ -113,15 +117,36 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                   </TableCell>
                   <TableCell className="text-left">
                     <div className="flex gap-1">
-                      <Badge variant="outline" className={cn("text-xs flex items-center gap-1 px-2 py-1", getDocumentStatusColor(insuranceStatus))}>
+                      <Badge 
+                        variant="outline" 
+                        className={cn(
+                          "text-xs flex items-center gap-1 px-2 py-1", 
+                          getDocumentStatusColor(insuranceStatus),
+                          getMissingFieldClasses(insuranceStatus)
+                        )}
+                      >
                         {getDocumentIcon(insuranceStatus)}
                         <span>Ins</span>
                       </Badge>
-                      <Badge variant="outline" className={cn("text-xs flex items-center gap-1 px-2 py-1", getDocumentStatusColor(fcStatus))}>
+                      <Badge 
+                        variant="outline" 
+                        className={cn(
+                          "text-xs flex items-center gap-1 px-2 py-1", 
+                          getDocumentStatusColor(fcStatus),
+                          getMissingFieldClasses(fcStatus)
+                        )}
+                      >
                         {getDocumentIcon(fcStatus)}
                         <span>FC</span>
                       </Badge>
-                      <Badge variant="outline" className={cn("text-xs flex items-center gap-1 px-2 py-1", getDocumentStatusColor(pollutionStatus))}>
+                      <Badge 
+                        variant="outline" 
+                        className={cn(
+                          "text-xs flex items-center gap-1 px-2 py-1", 
+                          getDocumentStatusColor(pollutionStatus),
+                          getMissingFieldClasses(pollutionStatus)
+                        )}
+                      >
                         {getDocumentIcon(pollutionStatus)}
                         <span>PUC</span>
                       </Badge>

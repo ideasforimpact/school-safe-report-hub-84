@@ -100,7 +100,7 @@ export const getDocumentStatus = (vehicle: Vehicle, docType: string): DocumentSt
       fieldName = 'insurance_upto';
       break;
     case 'pollution':
-      fieldName = 'pucc_upto'; // Corrected from pucc_up_to to pucc_upto
+      fieldName = 'pucc_upto'; // Using pucc_upto (not pucc_up_to)
       break;
     default:
       // Default case (for RC and other types)
