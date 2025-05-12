@@ -145,7 +145,7 @@ const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddV
                 variant="outline" 
                 size="sm" 
                 onClick={exportToExcel} 
-                className="flex items-center gap-1"
+                className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 hover:text-blue-800 transition-all flex items-center gap-1 shadow-sm"
               >
                 <FileText className="h-4 w-4" />
                 <span>Export to Excel</span>
@@ -154,10 +154,10 @@ const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddV
                 variant="outline" 
                 size="sm" 
                 onClick={handleRefresh} 
-                className="flex items-center gap-1"
+                className="flex items-center justify-center w-9 h-9 p-0"
+                title="Refresh"
               >
                 <RefreshCw className="h-4 w-4" />
-                <span>Refresh</span>
               </Button>
             </div>
           </div>
