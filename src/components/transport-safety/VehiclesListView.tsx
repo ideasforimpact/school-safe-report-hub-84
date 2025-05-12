@@ -150,6 +150,7 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
                                   fcStatus === 'expiring_soon' || pollutionStatus === 'expiring_soon' || 
                                   challanStatus === 'expiring_soon');
 
+            // Use the stronger, more visible border styles
             return <TableRow key={vehicle.id} className={cn(
               "hover:bg-muted/50", 
               hasExpired ? "bg-red-50 border-l-4 border-l-red-500" : 
