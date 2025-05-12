@@ -141,17 +141,30 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
     const documentType = documentData.documentType || null;
     const documentNo = documentData.documentNumber || null;
     
+    // Create log entry for upload
+    const logEntry = {
+      action: 'upload',
+      documentId: documentRecord.id,
+      documentType,
+      performedAt: new Date().toISOString(),
+      details: {
+        documentNumber: documentNo
+      }
+    };
+    
     let dbResult;
     if (existingEntry) {
       // Employee already has documents - update the array
       const updatedDocuments = [...JSON.parse(JSON.stringify(existingEntry.documents || [])), documentRecord];
+      const updatedLogs = [...JSON.parse(JSON.stringify(existingEntry.employee_docs_log || [])), logEntry];
       
       dbResult = await supabase
         .from('employee_documents')
         .update({ 
           documents: updatedDocuments,
           document_type: documentType, // Update the document_type column
-          document_no: documentNo      // Update the document_no column
+          document_no: documentNo,     // Update the document_no column
+          employee_docs_log: updatedLogs // Update the logs
         })
         .eq('employee_id', employeeId);
     } else {
@@ -162,7 +175,8 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
           employee_id: employeeId,
           documents: [documentRecord],
           document_type: documentType, // Set the document_type column
-          document_no: documentNo      // Set the document_no column
+          document_no: documentNo,     // Set the document_no column
+          employee_docs_log: [logEntry] // Initialize the logs
         });
     }
     
@@ -222,6 +236,21 @@ async function handleDocumentDelete(employeeId, documentId, supabase, corsHeader
       );
     }
     
+    // Create log entry for document deletion
+    const logEntry = {
+      action: 'delete',
+      documentId: documentId,
+      documentType: documentToDelete.documentType,
+      performedAt: new Date().toISOString(),
+      details: {
+        documentNumber: documentToDelete.documentNumber,
+        documentImage: documentToDelete.documentImage
+      }
+    };
+    
+    // Add the log entry to the existing logs
+    const updatedLogs = [...JSON.parse(JSON.stringify(existingEntry.employee_docs_log || [])), logEntry];
+    
     // Delete the file from storage if filePath exists
     if (documentToDelete.filePath) {
       const { error: storageError } = await supabase
@@ -238,10 +267,13 @@ async function handleDocumentDelete(employeeId, documentId, supabase, corsHeader
     // Update the documents array, removing the deleted document
     const updatedDocuments = existingEntry.documents.filter(doc => doc.id !== documentId);
     
-    // Update the database record
+    // Update the database record with both document changes and the new log entry
     const { error: updateError } = await supabase
       .from('employee_documents')
-      .update({ documents: updatedDocuments })
+      .update({ 
+        documents: updatedDocuments,
+        employee_docs_log: updatedLogs 
+      })
       .eq('employee_id', employeeId);
     
     if (updateError) {
@@ -287,7 +319,8 @@ async function handleListDocuments(employeeId, supabase, corsHeaders) {
       JSON.stringify({ 
         documents,
         document_type: data?.document_type || null,
-        document_no: data?.document_no || null
+        document_no: data?.document_no || null,
+        logs: data?.employee_docs_log || []
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

@@ -118,6 +118,7 @@ export type Database = {
           document_no: string | null
           document_type: string | null
           documents: Json
+          employee_docs_log: Json | null
           employee_id: string
           id: string
           updated_at: string | null
@@ -127,6 +128,7 @@ export type Database = {
           document_no?: string | null
           document_type?: string | null
           documents?: Json
+          employee_docs_log?: Json | null
           employee_id: string
           id?: string
           updated_at?: string | null
@@ -136,6 +138,7 @@ export type Database = {
           document_no?: string | null
           document_type?: string | null
           documents?: Json
+          employee_docs_log?: Json | null
           employee_id?: string
           id?: string
           updated_at?: string | null
