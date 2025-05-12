@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -18,21 +17,10 @@ import { VehicleDocument } from '@/types/transportSafety';
 import DocumentUploader from '../documents/DocumentUploader';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { UploadedDocument } from '@/types/fileTypes'; // Import the interface
 
 interface VehicleTabsProps {
   vehicleId: string;
-}
-
-interface UploadedDocument {
-  name: string;
-  type: string;
-  uploadedAt: string;
-  files: {
-    name: string;
-    path: string;
-    url: string;
-    uploadedAt: string;
-  }[];
 }
 
 const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
@@ -71,11 +59,33 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
         }
         
         if (data && data.documents) {
-          // Ensure we're setting the expected type
-          const documents = Array.isArray(data.documents) 
-            ? data.documents as UploadedDocument[]
-            : [];
-          setUploadedDocuments(documents);
+          // Safely transform the data using type assertion after validation
+          const rawDocuments = Array.isArray(data.documents) ? data.documents : [];
+          
+          // Transform and validate each document
+          const transformedDocuments: UploadedDocument[] = rawDocuments
+            .filter((doc: any) => 
+              doc && 
+              typeof doc.name === 'string' && 
+              typeof doc.type === 'string' && 
+              typeof doc.uploadedAt === 'string' &&
+              Array.isArray(doc.files)
+            )
+            .map((doc: any) => ({
+              name: doc.name,
+              type: doc.type,
+              uploadedAt: doc.uploadedAt,
+              files: Array.isArray(doc.files) 
+                ? doc.files.map((file: any) => ({
+                    name: file.name || 'Unnamed file',
+                    path: file.path || '',
+                    url: file.url || '',
+                    uploadedAt: file.uploadedAt || doc.uploadedAt
+                  }))
+                : []
+            }));
+            
+          setUploadedDocuments(transformedDocuments);
         }
       } catch (error) {
         console.error('Error fetching documents:', error);
