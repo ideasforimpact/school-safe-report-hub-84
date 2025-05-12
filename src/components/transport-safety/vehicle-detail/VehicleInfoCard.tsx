@@ -111,13 +111,16 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
     if (!data || !Array.isArray(data)) return [];
     
     // Filter out the verification_log, last_response, and status fields
-    return data
+    let finalResponse = data
       .filter((item: any) => item.field !== 'verification_log' && item.field !== 'last_response' && item.field !== 'status')
       .map((item: any) => ({
         label: item.field.replace(/_/g, ' ').split(' ').map((word: string) => 
           word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
         value: item.value
       }));
+
+     console.log(finalResponse)
+    return finalResponse
   };
 
   // Get the latest verification data for display
@@ -193,7 +196,6 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
         {/* Only show the "View Latest Verification" button */}
         {latestVerificationData && (
           <div className="mt-3">
-            {formatVerificationData(latestVerificationData)}
             <Dialog open={showVerificationResults} onOpenChange={setShowVerificationResults}>
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm">
