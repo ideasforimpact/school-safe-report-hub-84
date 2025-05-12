@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Vehicle } from '@/types/transportSafety';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -80,7 +79,8 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
     }
   };
 
-  return <div className="w-full">
+  return (
+    <div className="w-full">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-medium">Vehicle List</h3>
         <Button variant="outline" size="sm" onClick={handleRefresh} className="flex items-center">
@@ -188,7 +188,8 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
       </div>
       
       {/* Pagination */}
-      {totalPages > 1 && <div className="flex items-center justify-end space-x-2 py-4">
+      {totalPages > 1 && (
+        <div className="flex items-center justify-end space-x-2 py-4">
           <Button variant="outline" size="sm" onClick={() => setCurrentPage(currentPage - 1)} disabled={currentPage === 1}>
             Previous
           </Button>
@@ -198,8 +199,10 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
           <Button variant="outline" size="sm" onClick={() => setCurrentPage(currentPage + 1)} disabled={currentPage === totalPages}>
             Next
           </Button>
-        </div>}
-    </div>;
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default VehiclesListView;

@@ -7,8 +7,11 @@ import VehicleBasicFilters from './filters/VehicleBasicFilters';
 import EmptyVehiclesState from './EmptyVehiclesState';
 import { useVehicleFilters } from './filters/useVehicleFilters';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, FileExcel, Download } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
 
 interface VehiclesListProps {
   showAddVehicle: boolean;
@@ -38,6 +41,38 @@ const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddV
     toggleDocumentStatusFilter,
     clearAllFilters,
   } = useVehicleFilters(vehicles);
+  
+  // Export vehicles to Excel
+  const exportToExcel = () => {
+    try {
+      // Convert vehicle data to a format suitable for Excel
+      const exportData = filteredVehicles.map(vehicle => ({
+        'Registration Number': vehicle.registrationNumber,
+        'Make': vehicle.make,
+        'Model': vehicle.model,
+        'Type': vehicle.type,
+        'Year': vehicle.year,
+        'Status': vehicle.status,
+        'Driver': vehicle.driver || 'N/A',
+        'Route': vehicle.route || 'N/A',
+        'Documents Count': vehicle.documents.length,
+        'Last Verified': vehicle.verificationDate ? new Date(vehicle.verificationDate).toLocaleDateString() : 'Never'
+      }));
+      
+      // Create workbook and worksheet
+      const worksheet = XLSX.utils.json_to_sheet(exportData);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Vehicles");
+      
+      // Generate Excel file and trigger download
+      XLSX.writeFile(workbook, `vehicle_data_${new Date().toISOString().split('T')[0]}.xlsx`);
+      
+      toast.success('Vehicle data exported successfully');
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      toast.error('Failed to export vehicle data');
+    }
+  };
   
   // Loading state
   if (loading) {
@@ -98,11 +133,27 @@ const VehiclesList: React.FC<VehiclesListProps> = ({ showAddVehicle, setShowAddV
         </div>
       </div>
 
-      {/* Vehicles display */}
+      {/* Vehicles display with export button */}
       {filteredVehicles.length === 0 ? (
         <EmptyVehiclesState setShowAddVehicle={setShowAddVehicle} />
       ) : (
-        <VehiclesListView vehicles={filteredVehicles} onRefresh={handleRefresh} />
+        <>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-medium">Vehicle List</h3>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={exportToExcel} 
+                className="flex items-center gap-1"
+              >
+                <FileExcel className="h-4 w-4" />
+                <span>Export to Excel</span>
+              </Button>
+            </div>
+          </div>
+          <VehiclesListView vehicles={filteredVehicles} onRefresh={handleRefresh} />
+        </>
       )}
     </div>
   );
