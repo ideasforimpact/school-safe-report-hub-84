@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShieldCheck, Calendar, Trash2, Clock } from 'lucide-react';
@@ -29,6 +30,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 
 interface VehicleInfoCardProps {
   vehicle: Vehicle;
@@ -112,15 +114,18 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
     
     // Filter out the verification_log, last_response, and status fields
     let finalResponse = data
-      .filter((item: any) => item.field !== 'verification_log' && item.field !== 'last_response' && item.field !== 'status')
+      .filter((item: any) => 
+        item.field !== 'verification_log' && 
+        item.field !== 'last_response' && 
+        item.field !== 'status' && 
+        item.field !== 'challan_details')
       .map((item: any) => ({
         label: item.field.replace(/_/g, ' ').split(' ').map((word: string) => 
           word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
         value: item.value
       }));
 
-     console.log(finalResponse)
-    return finalResponse
+    return finalResponse;
   };
 
   // Get the latest verification data for display
@@ -213,7 +218,6 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
                 
                 <div className="border rounded-md divide-y overflow-y-auto">
                   {formatVerificationData(latestVerificationData).map((field: any, index: number) => (
-                     
                     <div key={index} className="flex justify-between px-4 py-2">
                       <span className="font-medium text-gray-500">{field.label}:</span>
                       <span className="text-gray-900">{typeof field.value === 'object' ? JSON.stringify(field.value) : field.value}</span>
