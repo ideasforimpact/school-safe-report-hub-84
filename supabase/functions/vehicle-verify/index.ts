@@ -172,7 +172,7 @@ serve(async (req) => {
       
       // Add each field as a separate object in the array
       Object.keys(data).forEach(key => {
-        if (data[key] !== null) {
+        if (data[key] !== null && key !== 'challan_details') {
           currentVerificationData.push({
             field: key,
             value: data[key],
@@ -182,7 +182,7 @@ serve(async (req) => {
       });
     }
     
-    // Add challan data as a specific field if available, but only once
+    // Add challan data as a specific field if available, with simplified structure
     if (challanData && challanData.data) {
       // Process challan data to keep only essential information
       const processedChallanData = {
@@ -198,6 +198,7 @@ serve(async (req) => {
         }
       };
       
+      // Add to verification data only once
       currentVerificationData.push({
         field: 'challan_details',
         value: processedChallanData,
@@ -219,31 +220,8 @@ serve(async (req) => {
     };
     
     // The complete transformed data array should have the verification log as the first item
-    // and also include challan details directly in the transformed data
+    // No need to add challan_details separately as it's already in the verification log
     const completeTransformedData = [verificationLogEntry];
-    
-    // Add challan_details directly in the transformed data if available
-    if (challanData && challanData.data) {
-      // Process challan data again to keep only essential information for the top level
-      const processedTopLevelChallanData = {
-        client_id: challanData.data.client_id,
-        challan_details: {
-          challans: challanData.data.challan_details?.challans?.map(challan => ({
-            challan_number: challan.challan_number,
-            challan_status: challan.challan_status,
-            amount: challan.amount,
-            challan_date: challan.challan_date
-          })) || [],
-          successful_backends: challanData.data.challan_details?.successful_backends || []
-        }
-      };
-      
-      completeTransformedData.push({
-        field: "challan_details",
-        value: processedTopLevelChallanData,
-        verified: true
-      });
-    }
     
     // If we have a vehicleId, update the vehicle record with verification data
     if (vehicleId) {

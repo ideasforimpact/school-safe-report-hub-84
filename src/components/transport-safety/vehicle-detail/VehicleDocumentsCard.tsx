@@ -43,21 +43,36 @@ const VehicleDocumentsCard: React.FC<VehicleDocumentsCardProps> = ({ vehicle }) 
   const hasChallanFromApi = () => {
     if (!vehicle.verificationData) return false;
     
-    // Check for direct challan_details field
-    const challanDetails = vehicle.verificationData.find(item => item.field === 'challan_details');
-    if (challanDetails && challanDetails.value && challanDetails.value.challan_details && 
+    // Find the verification_log entry
+    const logEntry = vehicle.verificationData.find(item => item.field === 'verification_log');
+    if (!logEntry || !logEntry.value) return false;
+    
+    // Get the latest verification log
+    const latestLog = getLatestVerificationLog(vehicle);
+    if (!latestLog) return false;
+    
+    // Find challan_details in the latest log
+    const challanDetails = latestLog.find(item => item.field === 'challan_details');
+    if (challanDetails && challanDetails.value && 
+        challanDetails.value.challan_details && 
         challanDetails.value.challan_details.challans && 
-        challanDetails.value.challan_details.challans.length > 0) return true;
+        challanDetails.value.challan_details.challans.length > 0) {
+      return true;
+    }
     
     return false;
   };
   
-  // Get the latest challan data from verification responses
+  // Get the latest challan data from verification log
   const getChallanDetails = () => {
     if (!vehicle.verificationData) return null;
     
-    // Check for direct challan_details field
-    const challanDetails = vehicle.verificationData.find(item => item.field === 'challan_details');
+    // Get the latest verification log
+    const latestLog = getLatestVerificationLog(vehicle);
+    if (!latestLog) return null;
+    
+    // Find challan_details in the latest log
+    const challanDetails = latestLog.find(item => item.field === 'challan_details');
     if (challanDetails && challanDetails.value && challanDetails.value.challan_details) {
       return challanDetails.value.challan_details.challans || [];
     }

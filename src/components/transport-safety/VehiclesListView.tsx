@@ -13,7 +13,8 @@ import { cn } from '@/lib/utils';
 import { 
   getDocumentStatus, 
   getDocumentStatusColor, 
-  getVehicleRowClassName 
+  getVehicleRowClassName,
+  getLatestVerificationLog
 } from '@/utils/transport-safety/documentStatusUtils';
 import { toast } from 'sonner';
 
@@ -48,10 +49,14 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
   };
 
   const hasChallan = (vehicle: Vehicle) => {
-    // Check for challan in API verification data
+    // Check for challan in verification log data
     if (vehicle.verificationData) {
-      // Check direct challan_details field
-      const challanDetails = vehicle.verificationData.find(item => item.field === 'challan_details');
+      // Get the latest verification log
+      const latestLog = getLatestVerificationLog(vehicle);
+      if (!latestLog) return false;
+      
+      // Find challan_details in the latest log
+      const challanDetails = latestLog.find(item => item.field === 'challan_details');
       if (challanDetails && challanDetails.value && 
           challanDetails.value.challan_details && 
           challanDetails.value.challan_details.challans && 
