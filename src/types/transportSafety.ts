@@ -30,7 +30,7 @@ export interface VerificationLogItem {
 
 export interface VehicleVerificationData {
   field: string;
-  value: string | number | boolean | VerificationLogItem;
+  value: any;
   verified: boolean;
 }
 

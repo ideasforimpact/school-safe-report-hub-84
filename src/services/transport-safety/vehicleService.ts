@@ -122,13 +122,14 @@ export const addVehicle = async (vehicleData: Omit<Vehicle, 'id' | 'createdAt' |
       client_id: vehicleData.clientId,
       verification_status: vehicleData.verificationStatus,
       verification_date: vehicleData.verificationDate,
-      // Convert verification_data to JSON compatible format
-      verification_data: vehicleData.verificationData ? 
-        vehicleData.verificationData.map(item => ({
-          field: item.field,
-          value: item.value,
-          verified: item.verified
-        })) : []
+      // Convert verification_data to JSON compatible format for Supabase
+      verification_data: vehicleData.verificationData 
+        ? vehicleData.verificationData.map(item => ({
+            field: item.field,
+            value: item.value,
+            verified: item.verified
+          })) 
+        : []
     };
     
     const { data, error } = await supabase

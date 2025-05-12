@@ -1,9 +1,14 @@
 
-import { Vehicle, VehicleVerificationField, VerificationLogItem } from '@/types/transportSafety';
+import { Vehicle, VehicleVerificationField } from '@/types/transportSafety';
 
 export interface DocumentStatus {
   status: 'valid' | 'expired' | 'expiring_soon' | 'missing';
   expiryDate?: Date | null;
+}
+
+// Define a type for verification log item
+export interface VerificationLogItem {
+  [timestamp: string]: VehicleVerificationField[];
 }
 
 /**
@@ -129,7 +134,7 @@ export const hasDocument = (vehicle: Vehicle, docType: string): boolean => {
   }
   
   if (docType === 'pollution') {
-    return !!findVerificationField(verificationLog, 'pucc_up_to');
+    return !!findVerificationField(verificationLog, 'pucc_upto');
   }
   
   return false;
