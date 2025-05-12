@@ -10,7 +10,6 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Label } from '@/components/ui/label';
 
@@ -33,14 +32,21 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
 }) => {
   const isAadhar = documentType === 'aadhar';
   const [showOtpInput, setShowOtpInput] = useState(false);
+  const [showManualConfirmation, setShowManualConfirmation] = useState(false);
   const [otp, setOtp] = useState("");
 
   const handleAadharApiClick = () => {
     if (isAadhar) {
       setShowOtpInput(true);
+      setShowManualConfirmation(false);
     } else {
       onVerify('api');
     }
+  };
+  
+  const handleManualVerifyClick = () => {
+    setShowManualConfirmation(true);
+    setShowOtpInput(false);
   };
 
   const handleOtpSubmit = () => {
@@ -51,8 +57,14 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     }
   };
 
+  const handleManualConfirm = () => {
+    onVerify('manual');
+    setShowManualConfirmation(false);
+  };
+
   const handleCancel = () => {
     setShowOtpInput(false);
+    setShowManualConfirmation(false);
     setOtp("");
   };
 
@@ -65,7 +77,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
             Choose a verification method for this {documentType || 'document'}.
           </DialogDescription>
         </DialogHeader>
-        {!showOtpInput ? (
+        
+        {!showOtpInput && !showManualConfirmation ? (
           <div className="flex flex-col gap-4 py-4">
             <Button 
               variant="outline" 
@@ -82,7 +95,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
             <Button 
               variant="outline" 
               className="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200 justify-start"
-              onClick={() => onVerify('manual')}
+              onClick={handleManualVerifyClick}
               disabled={isVerifying}
             >
               <ShieldCheck className="h-4 w-4 mr-2" />
@@ -101,7 +114,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               <span className="ml-auto text-xs text-red-500 font-normal">Document verification failed</span>
             </Button>
           </div>
-        ) : (
+        ) : showOtpInput ? (
           <div className="flex flex-col gap-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="otp">Enter 4-digit OTP received</Label>
@@ -120,7 +133,19 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               </p>
             </div>
           </div>
+        ) : (
+          <div className="flex flex-col gap-4 py-4">
+            <div className="space-y-4 text-center">
+              <p className="text-base">
+                Are you sure you want to manually verify this document?
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Manual verification confirms that you have physically inspected the document and found it valid.
+              </p>
+            </div>
+          </div>
         )}
+        
         <DialogFooter>
           {showOtpInput ? (
             <>
@@ -132,6 +157,17 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
                 disabled={otp.length !== 4}
               >
                 Verify
+              </Button>
+            </>
+          ) : showManualConfirmation ? (
+            <>
+              <Button variant="outline" onClick={handleCancel}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleManualConfirm}
+              >
+                Confirm
               </Button>
             </>
           ) : (
