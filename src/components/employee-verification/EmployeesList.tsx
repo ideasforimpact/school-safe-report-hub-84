@@ -194,7 +194,7 @@ const EmployeesList = () => {
                               onClick={() => handleGovtVerify(employee.id)}
                               disabled={isInactive}
                             >
-                              Govt.
+                              Govt
                             </Button>
                             <Button 
                               variant="outline" 
