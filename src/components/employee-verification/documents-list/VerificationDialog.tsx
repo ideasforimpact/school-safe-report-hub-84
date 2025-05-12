@@ -33,12 +33,14 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const isAadhar = documentType === 'aadhar';
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [showManualConfirmation, setShowManualConfirmation] = useState(false);
+  const [showRejectConfirmation, setShowRejectConfirmation] = useState(false);
   const [otp, setOtp] = useState("");
 
   const handleAadharApiClick = () => {
     if (isAadhar) {
       setShowOtpInput(true);
       setShowManualConfirmation(false);
+      setShowRejectConfirmation(false);
     } else {
       onVerify('api');
     }
@@ -47,6 +49,13 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const handleManualVerifyClick = () => {
     setShowManualConfirmation(true);
     setShowOtpInput(false);
+    setShowRejectConfirmation(false);
+  };
+
+  const handleRejectClick = () => {
+    setShowRejectConfirmation(true);
+    setShowOtpInput(false);
+    setShowManualConfirmation(false);
   };
 
   const handleOtpSubmit = () => {
@@ -62,9 +71,15 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     setShowManualConfirmation(false);
   };
 
+  const handleRejectConfirm = () => {
+    onReject();
+    setShowRejectConfirmation(false);
+  };
+
   const handleCancel = () => {
     setShowOtpInput(false);
     setShowManualConfirmation(false);
+    setShowRejectConfirmation(false);
     setOtp("");
   };
 
@@ -78,7 +93,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           </DialogDescription>
         </DialogHeader>
         
-        {!showOtpInput && !showManualConfirmation ? (
+        {!showOtpInput && !showManualConfirmation && !showRejectConfirmation ? (
           <div className="flex flex-col gap-4 py-4">
             <Button 
               variant="outline" 
@@ -106,7 +121,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
             <Button 
               variant="outline" 
               className="w-full bg-red-50 hover:bg-red-100 text-red-700 border-red-200 justify-start"
-              onClick={onReject}
+              onClick={handleRejectClick}
               disabled={isVerifying}
             >
               <ShieldCheck className="h-4 w-4 mr-2" />
@@ -133,7 +148,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               </p>
             </div>
           </div>
-        ) : (
+        ) : showManualConfirmation ? (
           <div className="flex flex-col gap-4 py-4">
             <div className="space-y-4 text-center">
               <p className="text-base">
@@ -141,6 +156,17 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               </p>
               <p className="text-sm text-muted-foreground">
                 Manual verification confirms that you have physically inspected the document and found it valid.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4 py-4">
+            <div className="space-y-4 text-center">
+              <p className="text-base text-red-700">
+                Are you sure you want to reject this document?
+              </p>
+              <p className="text-sm text-muted-foreground">
+                This will mark the document as failed verification and may affect the employee's verification status.
               </p>
             </div>
           </div>
@@ -168,6 +194,18 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
                 onClick={handleManualConfirm}
               >
                 Confirm
+              </Button>
+            </>
+          ) : showRejectConfirmation ? (
+            <>
+              <Button variant="outline" onClick={handleCancel}>
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive"
+                onClick={handleRejectConfirm}
+              >
+                Reject
               </Button>
             </>
           ) : (
