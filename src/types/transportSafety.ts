@@ -48,4 +48,5 @@ export interface Vehicle {
   verificationStatus?: string;
   verificationDate?: string;
   verificationData?: VehicleVerificationData[];
+  verification_log?: Record<string, VerificationLogEntry>;
 }

@@ -27,6 +27,63 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
 
   const getDocumentStatus = (vehicle: Vehicle, docType: string) => {
     const document = vehicle.documents.find(doc => doc.type === docType);
+    
+    // If we have verification_log data, use it for more accurate status
+    if (vehicle.verification_log) {
+      const currentDate = new Date();
+      
+      // Check fitness certificate (FC)
+      if (docType === 'fitness' && vehicle.verification_log.last_response) {
+        try {
+          const data = vehicle.verification_log.last_response;
+          if (typeof data === 'string') {
+            const parsedData = JSON.parse(data);
+            if (parsedData && parsedData.fit_up_to) {
+              const fitUpToDate = new Date(parsedData.fit_up_to);
+              if (!isNaN(fitUpToDate.getTime())) {
+                if (fitUpToDate < currentDate) {
+                  return 'expired';
+                } else {
+                  // Check if expiring in 30 days
+                  const thirtyDaysFromNow = new Date();
+                  thirtyDaysFromNow.setDate(currentDate.getDate() + 30);
+                  return fitUpToDate < thirtyDaysFromNow ? 'expiring_soon' : 'valid';
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.error("Error parsing fitness data:", e);
+        }
+      }
+      
+      // Check insurance
+      if (docType === 'insurance' && vehicle.verification_log.last_response) {
+        try {
+          const data = vehicle.verification_log.last_response;
+          if (typeof data === 'string') {
+            const parsedData = JSON.parse(data);
+            if (parsedData && parsedData.insurance_upto) {
+              const insuranceUpToDate = new Date(parsedData.insurance_upto);
+              if (!isNaN(insuranceUpToDate.getTime())) {
+                if (insuranceUpToDate < currentDate) {
+                  return 'expired';
+                } else {
+                  // Check if expiring in 30 days
+                  const thirtyDaysFromNow = new Date();
+                  thirtyDaysFromNow.setDate(currentDate.getDate() + 30);
+                  return insuranceUpToDate < thirtyDaysFromNow ? 'expiring_soon' : 'valid';
+                }
+              }
+            }
+          }
+        } catch (e) {
+          console.error("Error parsing insurance data:", e);
+        }
+      }
+    }
+    
+    // Fallback to document status if verification_log doesn't have the data
     return document ? document.status : 'missing';
   };
 
@@ -87,7 +144,18 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
             const challanStatus = getDocumentStatus(vehicle, 'registration');
             const vehicleHasChallan = hasChallan(vehicle);
 
-            return <TableRow key={vehicle.id} className={cn("hover:bg-muted/50", vehicle.documents.some(doc => doc.status === 'expired') ? "bg-red-50" : vehicle.documents.some(doc => doc.status === 'expiring_soon') ? "bg-yellow-50" : "")}>
+            const hasExpired = insuranceStatus === 'expired' || fcStatus === 'expired' || 
+                              pollutionStatus === 'expired' || challanStatus === 'expired';
+            const hasExpiringSoon = !hasExpired && (insuranceStatus === 'expiring_soon' || 
+                                  fcStatus === 'expiring_soon' || pollutionStatus === 'expiring_soon' || 
+                                  challanStatus === 'expiring_soon');
+
+            return <TableRow key={vehicle.id} className={cn(
+              "hover:bg-muted/50", 
+              hasExpired ? "bg-red-50 border-l-4 border-l-red-500" : 
+              hasExpiringSoon ? "bg-yellow-50 border-l-4 border-l-yellow-500" : 
+              "border-l-4 border-l-green-500"
+            )}>
                   <TableCell>
                     <div className="bg-gray-100 p-2 rounded-lg inline-flex">
                       <VehicleTypeIcon type={vehicle.type} />
