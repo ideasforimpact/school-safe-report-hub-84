@@ -79,7 +79,7 @@ const VehiclesListView: React.FC<VehiclesListViewProps> = ({
               <TableHead className="text-left">Vehicle Details</TableHead>
               <TableHead className="w-[160px] text-left">Registration</TableHead>
               <TableHead className="w-[100px] text-left">Status</TableHead>
-              <TableHead className="w-[180px] text-left">Documents</TableHead>
+              <TableHead className="w-[180px] text-left">Vehicle Status</TableHead>
               <TableHead className="w-[80px] text-left">Challan</TableHead>
               <TableHead className="w-[60px] text-left">Actions</TableHead>
             </TableRow>

@@ -1,6 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { Vehicle, VehicleType, VehicleVerificationData } from "@/types/transportSafety";
+import { Vehicle, VehicleType } from "@/types/transportSafety";
 import { useClient } from "@/contexts/ClientContext";
 
 // Get all vehicles from the database

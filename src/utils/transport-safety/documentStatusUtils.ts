@@ -1,3 +1,4 @@
+
 import { Vehicle, VehicleVerificationField, VerificationLogItem } from '@/types/transportSafety';
 
 export interface DocumentStatus {
@@ -94,7 +95,7 @@ export const getDocumentStatus = (vehicle: Vehicle, docType: string): DocumentSt
       fieldName = 'insurance_upto';
       break;
     case 'pollution':
-      fieldName = 'pucc_up_to'; // Map pollution to pucc_up_to
+      fieldName = 'pucc_upto'; // Corrected from pucc_up_to to pucc_upto
       break;
     default:
       // Default case (for RC and other types)
