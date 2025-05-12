@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -167,7 +167,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         ) : showManualConfirmation ? (
           <div className="flex flex-col gap-4 py-4">
             <div className="space-y-4 text-center">
-              <p className="text-base">
+              <p className="text-base text-purple-700">
                 Are you sure you want to manually verify this document?
               </p>
               <p className="text-sm text-muted-foreground">
@@ -218,6 +218,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
                 Cancel
               </Button>
               <Button 
+                className="bg-purple-600 hover:bg-purple-700"
                 onClick={handleManualConfirm}
               >
                 Confirm
@@ -241,6 +242,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
                 Cancel
               </Button>
               <Button 
+                className="bg-blue-600 hover:bg-blue-700"
                 onClick={handleApiConfirm}
               >
                 Verify
