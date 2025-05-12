@@ -15,19 +15,10 @@ import { useNavigate } from 'react-router-dom';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import EditEmployeeDialog from './EditEmployeeDialog';
 import VerificationStatusBadge from './VerificationStatusBadge';
-import { format } from 'date-fns';
 
 const EmployeesList = () => {
   const { employees, deleteEmployee } = useEmployeeVerification();
   const navigate = useNavigate();
-
-  const formatDate = (dateString: string) => {
-    try {
-      return format(new Date(dateString), 'MMM d, yyyy');
-    } catch (error) {
-      return dateString;
-    }
-  };
 
   return (
     <div className="w-full">
@@ -38,8 +29,6 @@ const EmployeesList = () => {
               <TableHead>Employee ID</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Department</TableHead>
-              <TableHead>Position</TableHead>
-              <TableHead>Join Date</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
@@ -47,7 +36,7 @@ const EmployeesList = () => {
           <TableBody>
             {employees.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-6 text-gray-500">
+                <TableCell colSpan={5} className="text-center py-6 text-gray-500">
                   No employees found. Add your first employee to get started.
                 </TableCell>
               </TableRow>
@@ -61,8 +50,6 @@ const EmployeesList = () => {
                     <TableCell>{employee.employeeId}</TableCell>
                     <TableCell>{employee.name}</TableCell>
                     <TableCell>{employee.department}</TableCell>
-                    <TableCell>{employee.position}</TableCell>
-                    <TableCell>{formatDate(employee.joiningDate)}</TableCell>
                     <TableCell>
                       <VerificationStatusBadge status={employee.status} />
                     </TableCell>
