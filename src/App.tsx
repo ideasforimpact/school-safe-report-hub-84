@@ -65,6 +65,8 @@ function App() {
                   <Route path="/incidents/:id" element={<IncidentDetail />} />
                   <Route path="/report-incident" element={<ReportIncident />} />
                   <Route path="/edit-incident/:id" element={<EditIncident />} />
+                  <Route path="/insights" element={<Insights />} />
+
 
                   {/* Transport Safety routes */}
                   <Route path="/transport-safety" element={<TransportSafetyPage />} />
