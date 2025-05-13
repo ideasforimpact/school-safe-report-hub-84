@@ -129,7 +129,7 @@ async function handleAadharOtpRequest(req: Request, supabase, corsHeaders) {
       );
     }
 
-    // Call the SurePass API to request OTP
+    // Call the SurePass API to request OTP - use the plain document number from the request
     console.log("Calling SurePass API to generate OTP");
     const surepassResponse = await fetch(`${baseUrl}/api/v1/aadhaar-v2/generate-otp`, {
       method: 'POST',
@@ -138,7 +138,7 @@ async function handleAadharOtpRequest(req: Request, supabase, corsHeaders) {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({ 
-        aadhaar_number: documentNumber 
+        aadhaar_number: documentNumber // Use the plain document number directly
       })
     });
     
