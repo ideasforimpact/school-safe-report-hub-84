@@ -14,15 +14,13 @@ const UploadDocumentPage = () => {
     employeeId: string;
   }>();
   const navigate = useNavigate();
-  const { getEmployee, fetchEmployeeDocuments } = useEmployeeVerification();
+  const { getEmployee, fetchDocumentTypes } = useEmployeeVerification();
   const employee = getEmployee(employeeId || '');
 
-  // Fetch employee documents when component mounts
+  // Fetch document types once at the page level instead of in components
   useEffect(() => {
-    if (employeeId) {
-      fetchEmployeeDocuments(employeeId);
-    }
-  }, [employeeId, fetchEmployeeDocuments]);
+    fetchDocumentTypes();
+  }, [fetchDocumentTypes]);
 
   if (!employee) {
     return <Layout>

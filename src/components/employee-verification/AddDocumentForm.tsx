@@ -20,11 +20,15 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
   const { toast } = useToast();
   const { addDocument, fetchEmployeeDocuments, documentTypes, fetchDocumentTypes } = useEmployeeVerification();
 
-  // Fetch employee documents and document types when component mounts
+  // Fetch document types only once when component mounts
+  useEffect(() => {
+    fetchDocumentTypes();
+  }, [fetchDocumentTypes]);
+
+  // Only fetch employee documents once when the component mounts
   useEffect(() => {
     fetchEmployeeDocuments(employeeId);
-    fetchDocumentTypes();
-  }, [employeeId, fetchEmployeeDocuments, fetchDocumentTypes]);
+  }, [employeeId, fetchEmployeeDocuments]);
 
   const handleFileUploaded = (base64: string) => {
     // This function will be called when a file is uploaded
@@ -57,13 +61,13 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
 
     setIsSubmitting(true);
     try {
-      // Added the missing verificationStatus property
+      // Fixed the type by using the correct union type for verificationStatus
       const documentData = {
         employeeId,
         documentTypeId: selectedTypeId,
         documentNumber: values.documentNumber,
         documentImage: values.documentImage,
-        verificationStatus: 'pending' // Adding the required property
+        verificationStatus: 'pending' as 'pending' | 'verified' | 'failed' // Fixed typing
       };
 
       console.log('Adding document with data:', {
