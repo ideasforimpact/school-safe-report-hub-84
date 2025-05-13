@@ -1,105 +1,165 @@
 
-import React, { createContext, ReactNode, useEffect, useRef } from 'react';
-import { User, UserWithPassword, AuthContextType } from './types';
-import { useClient } from '../ClientContext';
-import { useAuthState } from './hooks/useAuthState';
-import { useAuthHandlers } from './hooks/useAuthHandlers';
-import { useSupabaseAuth } from './hooks/useSupabaseAuth';
-import { saveUsersToStorage } from '@/services/auth/authService';
-import { excludePasswordFromUsers } from './utils';
+import React, { createContext, useState, useEffect, ReactNode } from 'react';
+import { getUserFromStorage, getUsersFromStorage, saveUsersToStorage } from '@/services/auth/authService';
+import { User, UserRole, UserWithPassword, ModulePermissions, EmployeeType, DepartmentType } from './types';
+import { INITIAL_MOCK_USERS } from './initialData';
 
-// Create context
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+interface AuthContextType {
+  user: User | null;
+  isAdmin: boolean;
+  isSaasOwner: boolean;
+  users: UserWithPassword[];
+  setUsers: React.Dispatch<React.SetStateAction<UserWithPassword[]>>;
+  login: (email: string, password: string) => User | null;
+  logout: () => void;
+  changePassword: (
+    userId: string,
+    currentPassword: string,
+    newPassword: string
+  ) => boolean;
+  addUser: (userData: Omit<UserWithPassword, 'id'>) => User;
+  getUsersForClient: (clientId?: string) => User[];
+  authError: string | null;
+  setAuthError: (error: string | null) => void;
+}
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  // Get auth state from custom hook
-  const { 
-    user, 
-    setUser, 
-    users, 
-    setUsers, 
-    authError, 
-    setAuthError, 
-    isAuthInitialized, 
-    setIsAuthInitialized,
-    authInitCompleteRef
-  } = useAuthState();
-  
-  // Track if we've already logged users
-  const hasLoggedUsersRef = useRef(false);
-  
-  // Get client context to validate domains
-  const { isEmailDomainAllowed } = useClient();
+// Create the context with a default value
+export const AuthContext = createContext<AuthContextType>({
+  user: null,
+  isAdmin: false,
+  isSaasOwner: false,
+  users: [],
+  setUsers: () => {},
+  login: () => null,
+  logout: () => {},
+  changePassword: () => false,
+  addUser: () => ({} as User),
+  getUsersForClient: () => [],
+  authError: null,
+  setAuthError: () => {},
+});
 
-  // Get auth handlers
-  const { 
-    login, 
-    logout,
-    addUser,
-    updateUser,
-    deleteUser,
-    deactivateUser,
-    reactivateUser,
-    changeUserPassword,
-    handleUserAuthentication
-  } = useAuthHandlers({
-    user,
-    users,
-    setUser,
-    setUsers,
-    setAuthError,
-    authInitCompleteRef,
-    isEmailDomainAllowed
-  });
+interface AuthProviderProps {
+  children: ReactNode;
+}
 
-  // Set up Supabase auth - only once per component lifecycle
-  const supabaseAuth = useSupabaseAuth({
-    users,
-    setUser,
-    setAuthError,
-    setIsAuthInitialized,
-    authInitCompleteRef,
-    handleUserAuthentication
-  });
+// Create the AuthProvider component
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(() => getUserFromStorage());
+  const [users, setUsers] = useState<UserWithPassword[]>(() => getUsersFromStorage() || INITIAL_MOCK_USERS);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  // Computed properties
+  const isAdmin = Boolean(user?.role === 'admin' || user?.role === 'saas_owner');
+  const isSaasOwner = Boolean(user?.role === 'saas_owner');
 
   // Save users to localStorage whenever they change
   useEffect(() => {
-    saveUsersToStorage(users);
+    if (users.length > 0) {
+      saveUsersToStorage(users);
+    }
   }, [users]);
 
-  // Debug: Log current users only once after initialization
-  useEffect(() => {
-    if (isAuthInitialized && !hasLoggedUsersRef.current) {
-      console.log("Current users in AuthContext:", users);
-      hasLoggedUsersRef.current = true;
+  // Mock login function
+  const login = (email: string, password: string): User | null => {
+    const foundUser = users.find(
+      (u) => u.email === email && 
+             u.password === password && 
+             u.isActive !== false
+    );
+    
+    if (!foundUser) {
+      setAuthError("Invalid credentials");
+      return null;
     }
-  }, [isAuthInitialized, users]);
+    
+    // Create user without password
+    const { password: _, ...userWithoutPassword } = foundUser;
+    
+    // Set the current user
+    setUser(userWithoutPassword);
+    localStorage.setItem('currentUser', JSON.stringify(userWithoutPassword));
+    setAuthError(null);
+    return userWithoutPassword;
+  };
 
-  const isAdmin = user?.role === 'admin' || user?.role === 'saas_owner';
-  const isSaasOwner = user?.role === 'saas_owner';
+  // Mock logout function
+  const logout = () => {
+    setUser(null);
+    localStorage.removeItem('currentUser');
+  };
 
-  // Expose only user objects without passwords
-  const usersWithoutPasswords = excludePasswordFromUsers(users);
+  // Mock change password function
+  const changePassword = (
+    userId: string,
+    currentPassword: string,
+    newPassword: string
+  ): boolean => {
+    const userIndex = users.findIndex(
+      (u) => u.id === userId && u.password === currentPassword
+    );
+    
+    if (userIndex === -1) {
+      setAuthError("Current password is incorrect");
+      return false;
+    }
+    
+    const updatedUsers = [...users];
+    updatedUsers[userIndex] = {
+      ...updatedUsers[userIndex],
+      password: newPassword,
+    };
+    
+    setUsers(updatedUsers);
+    setAuthError(null);
+    return true;
+  };
+
+  // Mock addUser function
+  const addUser = (userData: Omit<UserWithPassword, 'id'>): User => {
+    // Create new user with ID
+    const newUser = {
+      id: Date.now().toString(),
+      ...userData,
+      isActive: true,
+    };
+    
+    setUsers((prevUsers) => [...prevUsers, newUser]);
+    
+    // Return user without password
+    const { password: _, ...userWithoutPassword } = newUser;
+    return userWithoutPassword;
+  };
+
+  // Function to get users for a specific client
+  const getUsersForClient = (clientId?: string): User[] => {
+    if (!clientId) {
+      return users.map(({ password, ...user }) => user);
+    }
+    
+    return users
+      .filter((user) => user.clientId === clientId || user.role === 'saas_owner')
+      .map(({ password, ...user }) => user);
+  };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      users: usersWithoutPasswords, 
-      login, 
-      logout: supabaseAuth.logout, // Use the logout from supabaseAuth
-      isAdmin,
-      isSaasOwner,
-      addUser,
-      updateUser,
-      deleteUser,
-      deactivateUser,
-      reactivateUser,
-      changePassword: changeUserPassword,
-      authError
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isAdmin,
+        isSaasOwner,
+        users,
+        setUsers,
+        login,
+        logout,
+        changePassword,
+        addUser,
+        getUsersForClient,
+        authError,
+        setAuthError,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 };
-
-export { AuthContext };
