@@ -163,6 +163,7 @@ export type Database = {
       employee_documents: {
         Row: {
           created_at: string | null
+          document_number: string | null
           document_status_id: string | null
           document_type_id: string | null
           document_url: string
@@ -175,6 +176,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          document_number?: string | null
           document_status_id?: string | null
           document_type_id?: string | null
           document_url: string
@@ -187,6 +189,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          document_number?: string | null
           document_status_id?: string | null
           document_type_id?: string | null
           document_url?: string
@@ -670,7 +673,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      decrypt_document_number: {
+        Args: { encrypted_doc_number: string }
+        Returns: string
+      }
+      encrypt_document_number: {
+        Args: { doc_number: string }
+        Returns: string
+      }
+      get_masked_document_number: {
+        Args: { encrypted_doc_number: string }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never

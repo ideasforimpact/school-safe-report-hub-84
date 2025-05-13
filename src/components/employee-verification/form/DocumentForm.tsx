@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -41,6 +42,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
 
   const documentPlaceholder = getDocumentPlaceholder(selectedTypeId);
   const [selectedFileName, setSelectedFileName] = useState<string>('');
+  const [documentNumberHelp, setDocumentNumberHelp] = useState<string>('For security, only the last 2 digits will be visible after submission');
 
   const handleSubmit = (data: any) => {
     if (!data.documentImage) {
@@ -63,7 +65,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
     console.log('Submitting document with data:', {
       employeeId: uploadData.employeeId,
       documentTypeId: uploadData.documentTypeId,
-      documentNumber: uploadData.documentNumber,
+      documentNumber: uploadData.documentNumber ? 'Provided' : 'Not provided',
       imageSize: uploadData.documentImage ? uploadData.documentImage.length : 0,
     });
 
@@ -95,6 +97,9 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
                   {...field} 
                 />
               </FormControl>
+              {documentNumberHelp && (
+                <p className="text-xs text-gray-500 mt-1">{documentNumberHelp}</p>
+              )}
               <FormMessage />
             </FormItem>
           )}

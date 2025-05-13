@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from 'react';
 import { VerificationDocument } from '@/types/employeeVerification';
 import { initialDocuments } from '../initialData';
@@ -57,7 +56,8 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
       console.log('Starting document upload process:', {
         employeeId: documentData.employeeId,
         documentTypeId: documentData.documentTypeId,
-        hasImage: !!documentData.documentImage
+        hasImage: !!documentData.documentImage,
+        hasDocNumber: !!documentData.documentNumber
       });
       
       setIsLoading(true);
@@ -88,7 +88,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
         employeeId: documentData.employeeId,
         documentTypeId: documentData.documentTypeId,
         documentTypeName: data.document.documentTypeName,
-        documentNumber: documentData.documentNumber || '',
+        documentNumber: data.document.documentNumber || '',
         documentImage: data.document.documentImage || '',
         verificationStatus: data.document.verificationStatus || 'pending',
         createdAt: new Date().toISOString(),

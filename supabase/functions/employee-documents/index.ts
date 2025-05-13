@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 import { v4 as uuidv4 } from "https://esm.sh/uuid@10.0.0";
@@ -251,7 +252,7 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
     console.log("Handling document upload for employee:", employeeId);
     
     // Upload the document image to storage first
-    const { documentImage, ...restDocumentData } = documentData;
+    const { documentImage, documentNumber, ...restDocumentData } = documentData;
     
     // Generate a unique file path
     const timestamp = new Date().getTime();
@@ -288,15 +289,6 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
     
     console.log("File uploaded successfully:", uploadData);
     
-    // Get the public URL
-    const { data: publicUrlData } = await supabase
-      .storage
-      .from('employee-documents')
-      .getPublicUrl(filePath);
-    
-    const documentUrl = publicUrlData.publicUrl;
-    console.log("Generated public URL:", documentUrl);
-    
     // Get document type name
     const { data: documentTypeData } = await supabase
       .from('employee_document_type')
@@ -304,12 +296,26 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
       .eq('id', restDocumentData.documentTypeId)
       .single();
     
+    // Encrypt the document number using the database function
+    let encryptedDocNumber = null;
+    if (documentNumber) {
+      const { data: encryptResult, error: encryptError } = await supabase
+        .rpc('encrypt_document_number', { doc_number: documentNumber });
+      
+      if (encryptError) {
+        console.error("Error encrypting document number:", encryptError);
+      } else {
+        encryptedDocNumber = encryptResult;
+        console.log("Document number encrypted successfully");
+      }
+    }
+    
     // Insert new document record with only the required fields
     const newDocumentRecord = {
       employee_id: employeeId,
       document_type_id: restDocumentData.documentTypeId,
       document_type_name: documentTypeData?.name || 'unknown',
-      document_number: restDocumentData.documentNumber || '',
+      document_number: encryptedDocNumber, // Store encrypted document number
       document_url: filePath, // Store only the file path, not the full URL
       verification_status: 'pending',
       created_at: new Date().toISOString(),
@@ -321,6 +327,7 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
       documentTypeId: newDocumentRecord.document_type_id,
       documentTypeName: newDocumentRecord.document_type_name,
       filePath: newDocumentRecord.document_url,
+      hasEncryptedDocNumber: !!encryptedDocNumber
     });
     
     // Insert the document record
@@ -337,13 +344,17 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
     }
     
     console.log("Document uploaded and saved successfully");
+    
+    // Get the masked document number for display
+    let maskedDocNumber = documentNumber ? documentNumber.slice(0, -2).replace(/./g, 'X') + documentNumber.slice(-2) : '';
+    
     return new Response(
       JSON.stringify({ 
         success: true, 
         document: {
           id: insertData.id,
           documentTypeName: insertData.document_type_name,
-          documentNumber: insertData.document_number,
+          documentNumber: maskedDocNumber,
           verificationStatus: insertData.verification_status
         }
       }),
@@ -360,6 +371,7 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
 
 async function handleListDocuments(employeeId, supabase, corsHeaders) {
   try {
+    // First fetch the documents
     const { data, error } = await supabase
       .from('employee_documents')
       .select('*, document_status:document_status_id(name), document_type:document_type_id(name)')
@@ -369,27 +381,46 @@ async function handleListDocuments(employeeId, supabase, corsHeaders) {
       throw error;
     }
     
-    // Process each document to match the expected structure
-    const processedDocuments = data.map(doc => ({
-      id: doc.id,
-      employeeId: doc.employee_id,
-      documentTypeId: doc.document_type_id,
-      documentTypeName: doc.document_type?.name || doc.document_type_name,
-      documentNumber: doc.document_number,
-      documentImage: doc.document_url ? `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${doc.document_url}` : '',
-      verificationStatus: doc.verification_status,
-      documentStatusId: doc.document_status_id,
-      documentStatusName: doc.document_status?.name || doc.document_status_name,
-      verificationDate: doc.verification_date,
-      verificationNotes: doc.verification_notes,
-      verificationMethod: doc.verification_method,
-      details: doc.details || {},
-      createdAt: doc.created_at,
-      updatedAt: doc.updated_at
+    // Get masked document numbers for each document that has one
+    const maskedDocuments = await Promise.all(data.map(async (doc) => {
+      let maskedDocNumber = null;
+      
+      // If document has a document number, get the masked version
+      if (doc.document_number) {
+        try {
+          const { data: maskedData, error: maskedError } = await supabase
+            .rpc('get_masked_document_number', { encrypted_doc_number: doc.document_number });
+          
+          if (!maskedError && maskedData) {
+            maskedDocNumber = maskedData;
+          }
+        } catch (err) {
+          console.error("Error getting masked document number:", err);
+        }
+      }
+      
+      // Process each document to match the expected structure
+      return {
+        id: doc.id,
+        employeeId: doc.employee_id,
+        documentTypeId: doc.document_type_id,
+        documentTypeName: doc.document_type?.name || doc.document_type_name,
+        documentNumber: maskedDocNumber || '',
+        documentImage: doc.document_url ? `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${doc.document_url}` : '',
+        verificationStatus: doc.verification_status,
+        documentStatusId: doc.document_status_id,
+        documentStatusName: doc.document_status?.name || doc.document_status_name,
+        verificationDate: doc.verification_date,
+        verificationNotes: doc.verification_notes,
+        verificationMethod: doc.verification_method,
+        details: doc.details || {},
+        createdAt: doc.created_at,
+        updatedAt: doc.updated_at
+      };
     }));
     
     return new Response(
-      JSON.stringify({ documents: processedDocuments }),
+      JSON.stringify({ documents: maskedDocuments }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {

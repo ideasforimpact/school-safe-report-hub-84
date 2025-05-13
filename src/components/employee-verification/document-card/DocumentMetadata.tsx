@@ -67,7 +67,7 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
         <p className="text-sm text-gray-500">
           {documentTypeName === 'other' ? 
             (documentNumber || 'No reference number') : 
-            `#${documentNumber || 'N/A'}`}
+            documentNumber ? `#${documentNumber}` : 'No reference number'}
         </p>
         {renderVerificationMethod()}
       </div>
