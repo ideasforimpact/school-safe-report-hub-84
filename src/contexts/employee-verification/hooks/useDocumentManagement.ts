@@ -1,5 +1,5 @@
+
 import { useState, useCallback, useEffect } from 'react';
-import { v4 as uuidv4 } from 'uuid';
 import { VerificationDocument } from '@/types/employeeVerification';
 import { initialDocuments } from '../initialData';
 import { supabase } from '@/integrations/supabase/client';
@@ -20,7 +20,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
     try {
       // For GET requests, we should pass parameters as query strings, not in the body
       const { data, error } = await supabase.functions.invoke('employee-documents', {
-        method: 'POST',  // Change to POST since we're sending data
+        method: 'POST',  // Using POST to send data in body
         body: { employeeId }
       });
       
@@ -29,24 +29,8 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
         return [];
       }
       
-      // Map the documents from the database to our VerificationDocument type
-      const mappedDocuments = (data?.documents || []).map((doc: any): VerificationDocument => ({
-        id: doc.id,
-        employeeId: employeeId,
-        documentTypeId: doc.documentTypeId,
-        documentTypeName: doc.documentTypeName,
-        documentNumber: doc.documentNumber || '',
-        documentImage: doc.documentImage,
-        verificationStatus: doc.verificationStatus || 'pending',
-        documentStatusId: doc.documentStatusId,
-        documentStatusName: doc.documentStatusName,
-        verificationDate: doc.verificationDate,
-        verificationNotes: doc.verificationNotes,
-        verificationMethod: doc.verificationMethod,
-        details: doc.details,
-        createdAt: doc.uploadedAt || doc.createdAt || new Date().toISOString(),
-        updatedAt: doc.updatedAt || new Date().toISOString()
-      }));
+      // Documents are now returned directly from the edge function
+      const mappedDocuments = data?.documents || [];
       
       setDocuments(currentDocuments => {
         // Merge with existing documents that are not for this employee
@@ -98,15 +82,15 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
       
       console.log('Document upload successful, response:', data);
       
-      // If upload successful, add to local state
+      // Add the returned document to local state
       const newDocument: VerificationDocument = {
-        ...documentData,
         id: data.document.id,
+        employeeId: documentData.employeeId,
+        documentTypeId: documentData.documentTypeId,
         documentTypeName: data.document.documentTypeName,
-        documentImage: data.document.documentImage || '',
+        documentNumber: documentData.documentNumber || '',
+        documentImage: documentData.documentImage || '',
         verificationStatus: data.document.verificationStatus || 'pending',
-        documentStatusId: data.document.documentStatusId,
-        documentStatusName: data.document.documentStatusName || 'pending',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
@@ -132,7 +116,6 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
       
       // Find the document first to get employeeId
       const employeeId = documentToVerify.employeeId;
-      const now = new Date().toISOString();
       
       // Call the edge function to update the document verification status
       const { data, error } = await supabase.functions.invoke('employee-documents', {
@@ -141,12 +124,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
           employeeId,
           documentId: id,
           verificationStatus: status,
-          verificationNotes: notes,
-          // We'll need to map the status to a document_status_id in the edge function
-          documentStatusId: status === 'verified' ? 
-            // We'll use governance status for verified documents
-            null : // This will be handled in the edge function
-            null   // This will be handled in the edge function
+          verificationNotes: notes
         }
       });
       
@@ -155,84 +133,23 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
         throw new Error('Failed to update document verification status');
       }
       
-      // Generate mock details for government-verified documents
-      let details = undefined;
-      if (status === 'verified') {
-        if (documentToVerify.documentTypeName === 'aadhar') {
-          details = {
-            address: '123 Main St, Apartment 4B, Bangalore, Karnataka 560001',
-            name: documentToVerify.documentNumber ? `Holder of ${documentToVerify.documentNumber}` : 'Document Holder',
-            dob: '1985-05-15'
-          };
-        } else if (documentToVerify.documentTypeName === 'driving_license') {
-          details = {
-            address: '45 Park Avenue, Chennai, Tamil Nadu 600001',
-            name: documentToVerify.documentNumber ? `Holder of ${documentToVerify.documentNumber}` : 'Document Holder',
-            issue_date: '2018-03-10',
-            expiry_date: '2028-03-09'
-          };
-        } else if (documentToVerify.documentTypeName === 'passport') {
-          details = {
-            address: '78 Diplomatic Enclave, New Delhi, Delhi 110001',
-            name: documentToVerify.documentNumber ? `Holder of ${documentToVerify.documentNumber}` : 'Document Holder',
-            issue_date: '2019-07-22',
-            expiry_date: '2029-07-21'
-          };
-        } else if (documentToVerify.documentTypeName === 'voter_id') {
-          details = {
-            address: '56 Democracy Street, Mumbai, Maharashtra 400001',
-            name: documentToVerify.documentNumber ? `Holder of ${documentToVerify.documentNumber}` : 'Document Holder',
-            constituency: 'Mumbai South'
-          };
-        } else if (documentToVerify.documentTypeName === 'pan') {
-          details = {
-            name: documentToVerify.documentNumber ? `Holder of ${documentToVerify.documentNumber}` : 'Document Holder',
-            dob: '1982-11-30',
-            father_name: 'Parent Name'
-          };
-        } else {
-          details = {};
-        }
-      }
-      
-      // Update local state
+      // Update local state with the updated document
       setDocuments(docs => docs.map(doc => {
         if (doc.id === id) {
           return { 
             ...doc, 
             verificationStatus: status, 
-            verificationDate: now,
+            verificationDate: new Date().toISOString(),
             verificationNotes: notes || doc.verificationNotes,
             verificationMethod: status === 'verified' ? 'api' : undefined,
-            details: details,
-            documentStatusName: status === 'verified' ? 'governance' : 'rejected',
-            updatedAt: now
+            updatedAt: new Date().toISOString()
           };
         }
         return doc;
       }));
 
-      // Update employee status if all documents are verified or if any document fails
-      const employeeDocs = documents.filter(doc => doc.employeeId === employeeId);
-      
-      // Check if all docs are verified or if any doc failed
-      const allVerified = employeeDocs.every(doc => {
-        if (doc.id === id) return status === 'verified';
-        return doc.verificationStatus === 'verified';
-      });
-      
-      const anyFailed = employeeDocs.some(doc => {
-        if (doc.id === id) return status === 'failed';
-        return doc.verificationStatus === 'failed';
-      });
-      
-      if (anyFailed) {
-        await updateEmployeeStatus(employeeId, 'failed');
-      } else if (allVerified) {
-        await updateEmployeeStatus(employeeId, 'verified');
-      } else {
-        await updateEmployeeStatus(employeeId, 'pending');
-      }
+      // Update employee status based on all documents
+      await updateEmployeeStatus(employeeId, data.status || status);
       
     } catch (err) {
       console.error('Error in verifyDocument:', err);

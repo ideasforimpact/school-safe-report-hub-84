@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
+import { v4 as uuidv4 } from "https://esm.sh/uuid@10.0.0";
 
 // CORS headers setup
 const corsHeaders = {
@@ -161,34 +162,6 @@ async function handleUpdateVerificationStatus(
   }
   
   try {
-    // Get the employee's documents
-    const { data: existingEntry, error: fetchError } = await supabase
-      .from('employee_documents')
-      .select('*')
-      .eq('employee_id', employeeId)
-      .single();
-    
-    if (fetchError) {
-      throw fetchError;
-    }
-    
-    if (!existingEntry || !existingEntry.documents || !Array.isArray(existingEntry.documents)) {
-      return new Response(
-        JSON.stringify({ error: "No documents found for this employee" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    
-    // Find the document to update
-    const documentToUpdate = existingEntry.documents.find(doc => doc.id === documentId);
-    
-    if (!documentToUpdate) {
-      return new Response(
-        JSON.stringify({ error: "Document not found" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
     // Get document status name if documentStatusId is provided
     let documentStatusName = null;
     if (documentStatusId) {
@@ -203,58 +176,57 @@ async function handleUpdateVerificationStatus(
       }
     }
     
-    // Create log entry for status update
-    const logEntry = {
-      action: 'verify',
-      documentId: documentId,
-      documentTypeId: documentToUpdate.documentTypeId,
-      performedAt: new Date().toISOString(),
-      verificationStatus: verificationStatus || documentToUpdate.verificationStatus,
-      documentStatusId: documentStatusId || documentToUpdate.documentStatusId,
-      details: {
-        documentNumber: documentToUpdate.documentNumber,
-        notes: verificationNotes || "Status updated"
-      }
-    };
-    
-    // Add the log entry to the existing logs
-    const updatedLogs = [...JSON.parse(JSON.stringify(existingEntry.employee_docs_log || [])), logEntry];
-    
-    // Update the document in the array
-    const updatedDocuments = existingEntry.documents.map(doc => {
-      if (doc.id === documentId) {
-        return {
-          ...doc,
-          verificationStatus: verificationStatus || doc.verificationStatus,
-          documentStatusId: documentStatusId || doc.documentStatusId,
-          documentStatusName: documentStatusName || doc.documentStatusName,
-          verificationDate: new Date().toISOString(),
-          verificationNotes: verificationNotes || doc.verificationNotes
-        };
-      }
-      return doc;
-    });
-    
-    // Update the database record with the new verification_status column
-    const { error: updateError } = await supabase
+    // Update individual document record
+    const { data: updateData, error: updateError } = await supabase
       .from('employee_documents')
       .update({ 
-        documents: updatedDocuments,
-        employee_docs_log: updatedLogs,
-        verification_status: verificationStatus || existingEntry.verification_status, // Update the new verification_status column
-        document_status_id: documentStatusId || existingEntry.document_status_id
+        verification_status: verificationStatus,
+        document_status_id: documentStatusId,
+        document_status_name: documentStatusName,
+        verification_date: new Date().toISOString(),
+        verification_notes: verificationNotes,
+        updated_at: new Date().toISOString()
       })
-      .eq('employee_id', employeeId);
+      .eq('id', documentId)
+      .select()
+      .single();
     
     if (updateError) {
       throw updateError;
     }
     
+    // Check all employee documents to update overall status
+    const { data: employeeDocs, error: fetchError } = await supabase
+      .from('employee_documents')
+      .select('*')
+      .eq('employee_id', employeeId);
+    
+    if (fetchError) {
+      throw fetchError;
+    }
+    
+    // Determine overall employee verification status
+    let overallStatus = 'pending';
+    const allVerified = employeeDocs.every(doc => doc.verification_status === 'verified');
+    const anyFailed = employeeDocs.some(doc => doc.verification_status === 'failed');
+    
+    if (anyFailed) {
+      overallStatus = 'failed';
+    } else if (allVerified) {
+      overallStatus = 'verified';
+    }
+    
+    // Update employee status
+    await supabase
+      .from('employees')
+      .update({ status: overallStatus })
+      .eq('id', employeeId);
+    
     return new Response(
       JSON.stringify({ 
         success: true,
-        status: verificationStatus || existingEntry.verification_status,
-        document: updatedDocuments.find(doc => doc.id === documentId)
+        status: verificationStatus,
+        document: updateData
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
@@ -339,77 +311,40 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
       .eq('name', 'pending')
       .single();
     
-    // Prepare document record with minimal data
-    const documentRecord = {
-      id: crypto.randomUUID(),
-      documentTypeId: restDocumentData.documentTypeId,
-      documentTypeName: documentTypeData?.name || 'unknown',
-      documentNumber: restDocumentData.documentNumber || '',
-      documentImage: documentUrl,
-      filePath: filePath,
-      documentStatusId: pendingStatusData?.id,
-      documentStatusName: pendingStatusData?.name || 'pending',
-      verificationStatus: 'pending',
-      uploadedAt: new Date().toISOString(),
+    // Insert new document record
+    const newDocumentRecord = {
+      id: uuidv4(),
+      employee_id: employeeId,
+      document_type_id: restDocumentData.documentTypeId,
+      document_type_name: documentTypeData?.name || 'unknown',
+      document_number: restDocumentData.documentNumber || '',
+      document_url: documentUrl,
+      file_path: filePath,
+      document_status_id: pendingStatusData?.id,
+      document_status_name: pendingStatusData?.name || 'pending',
+      verification_status: 'pending',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
     };
     
-    console.log("Document record created:", {
-      id: documentRecord.id,
-      documentTypeId: documentRecord.documentTypeId,
-      documentTypeName: documentRecord.documentTypeName,
-      filePath: documentRecord.filePath,
+    console.log("Creating document record:", {
+      id: newDocumentRecord.id,
+      documentTypeId: newDocumentRecord.document_type_id,
+      documentTypeName: newDocumentRecord.document_type_name,
+      filePath: newDocumentRecord.file_path,
     });
     
-    // Check if document entry exists for this employee
-    console.log("Checking if employee already has documents...");
-    const { data: existingEntry, error: fetchError } = await supabase
+    // Insert the document record
+    const { data: insertData, error: insertError } = await supabase
       .from('employee_documents')
-      .select('*')
-      .eq('employee_id', employeeId)
+      .insert(newDocumentRecord)
+      .select()
       .single();
     
-    if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "no rows returned" error
-      console.error("Error fetching existing documents:", fetchError);
-      throw fetchError;
-    }
-    
-    let dbResult;
-    if (existingEntry) {
-      console.log("Employee already has documents - updating the array");
-      // Employee already has documents - update the array
-      const updatedDocuments = [...JSON.parse(JSON.stringify(existingEntry.documents || [])), documentRecord];
-      
-      dbResult = await supabase
-        .from('employee_documents')
-        .update({ 
-          documents: updatedDocuments,
-          document_type_id: restDocumentData.documentTypeId,
-          document_status_id: pendingStatusData?.id,
-          verification_status: 'pending',
-          updated_at: new Date().toISOString()
-        })
-        .eq('employee_id', employeeId);
-    } else {
-      console.log("Creating new document record for employee");
-      // Create a new record for this employee
-      dbResult = await supabase
-        .from('employee_documents')
-        .insert({
-          employee_id: employeeId,
-          documents: [documentRecord],
-          document_type_id: restDocumentData.documentTypeId,
-          document_status_id: pendingStatusData?.id,
-          verification_status: 'pending',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        });
-    }
-    
-    if (dbResult.error) {
-      console.error("Database update error:", dbResult.error);
-      // If database update fails, try to delete the uploaded file
+    if (insertError) {
+      // If database insertion fails, try to delete the uploaded file
       await supabase.storage.from('employee-documents').remove([filePath]);
-      throw dbResult.error;
+      throw insertError;
     }
     
     console.log("Document uploaded and saved successfully");
@@ -417,10 +352,10 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
       JSON.stringify({ 
         success: true, 
         document: {
-          id: documentRecord.id,
-          documentTypeName: documentRecord.documentTypeName,
-          documentNumber: documentRecord.documentNumber,
-          verificationStatus: documentRecord.verificationStatus
+          id: insertData.id,
+          documentTypeName: insertData.document_type_name,
+          documentNumber: insertData.document_number,
+          verificationStatus: insertData.verification_status
         }
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -443,26 +378,17 @@ async function handleDocumentDelete(employeeId, documentId, supabase, corsHeader
   }
   
   try {
-    // Get the employee's documents
-    const { data: existingEntry, error: fetchError } = await supabase
+    // Get the document details first
+    const { data: documentToDelete, error: fetchError } = await supabase
       .from('employee_documents')
       .select('*')
+      .eq('id', documentId)
       .eq('employee_id', employeeId)
       .single();
     
     if (fetchError) {
       throw fetchError;
     }
-    
-    if (!existingEntry || !existingEntry.documents || !Array.isArray(existingEntry.documents)) {
-      return new Response(
-        JSON.stringify({ error: "No documents found for this employee" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    
-    // Find the document to delete
-    const documentToDelete = existingEntry.documents.find(doc => doc.id === documentId);
     
     if (!documentToDelete) {
       return new Response(
@@ -471,27 +397,12 @@ async function handleDocumentDelete(employeeId, documentId, supabase, corsHeader
       );
     }
     
-    // Create log entry for document deletion
-    const logEntry = {
-      action: 'delete',
-      documentId: documentId,
-      documentTypeId: documentToDelete.documentTypeId,
-      performedAt: new Date().toISOString(),
-      details: {
-        documentNumber: documentToDelete.documentNumber,
-        documentImage: documentToDelete.documentImage
-      }
-    };
-    
-    // Add the log entry to the existing logs
-    const updatedLogs = [...JSON.parse(JSON.stringify(existingEntry.employee_docs_log || [])), logEntry];
-    
-    // Delete the file from storage if filePath exists
-    if (documentToDelete.filePath) {
+    // Delete the file from storage if file_path exists
+    if (documentToDelete.file_path) {
       const { error: storageError } = await supabase
         .storage
         .from('employee-documents')
-        .remove([documentToDelete.filePath]);
+        .remove([documentToDelete.file_path]);
       
       if (storageError) {
         console.error("Error deleting file from storage:", storageError);
@@ -499,51 +410,41 @@ async function handleDocumentDelete(employeeId, documentId, supabase, corsHeader
       }
     }
     
-    // Update the documents array, removing the deleted document
-    const updatedDocuments = existingEntry.documents.filter(doc => doc.id !== documentId);
-    
-    // Update the database record with both document changes and the new log entry
-    const { error: updateError } = await supabase
+    // Delete the document record
+    const { error: deleteError } = await supabase
       .from('employee_documents')
-      .update({ 
-        documents: updatedDocuments,
-        employee_docs_log: updatedLogs 
-      })
-      .eq('employee_id', employeeId);
+      .delete()
+      .eq('id', documentId);
     
-    if (updateError) {
-      throw updateError;
+    if (deleteError) {
+      throw deleteError;
     }
     
-    // If no documents remain, update the document_type_id and document_status_id to null
-    if (updatedDocuments.length === 0) {
-      await supabase
-        .from('employee_documents')
-        .update({ 
-          document_type_id: null, 
-          document_status_id: null,
-          verification_status: null 
-        })
-        .eq('employee_id', employeeId);
-    } else {
-      // Check remaining documents for verification status
-      const allVerified = updatedDocuments.every(doc => doc.verificationStatus === 'verified');
-      const anyFailed = updatedDocuments.some(doc => doc.verificationStatus === 'failed');
+    // Check remaining documents for verification status
+    const { data: remainingDocs } = await supabase
+      .from('employee_documents')
+      .select('verification_status')
+      .eq('employee_id', employeeId);
+    
+    // Determine overall employee verification status
+    let newStatus = 'pending';
+    
+    if (remainingDocs && remainingDocs.length > 0) {
+      const allVerified = remainingDocs.every(doc => doc.verification_status === 'verified');
+      const anyFailed = remainingDocs.some(doc => doc.verification_status === 'failed');
       
-      let newStatus = existingEntry.verification_status;
       if (anyFailed) {
         newStatus = 'failed';
       } else if (allVerified) {
         newStatus = 'verified';
-      } else {
-        newStatus = 'pending';
       }
-      
-      await supabase
-        .from('employee_documents')
-        .update({ verification_status: newStatus })
-        .eq('employee_id', employeeId);
     }
+    
+    // Update employee status
+    await supabase
+      .from('employees')
+      .update({ status: newStatus })
+      .eq('id', employeeId);
     
     return new Response(
       JSON.stringify({ success: true }),
@@ -563,34 +464,33 @@ async function handleListDocuments(employeeId, supabase, corsHeaders) {
     const { data, error } = await supabase
       .from('employee_documents')
       .select('*, document_status:document_status_id(name), document_type:document_type_id(name)')
-      .eq('employee_id', employeeId)
-      .single();
+      .eq('employee_id', employeeId);
     
-    if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned" error
+    if (error) {
       throw error;
     }
     
-    // Process document records to include type and status names
-    const documents = data?.documents || [];
-    if (documents.length > 0 && data) {
-      documents.forEach(doc => {
-        if (data.document_status) {
-          doc.documentStatusName = data.document_status.name;
-        }
-        if (data.document_type) {
-          doc.documentTypeName = data.document_type.name;
-        }
-      });
-    }
+    // Process each document to match the expected structure
+    const processedDocuments = data.map(doc => ({
+      id: doc.id,
+      employeeId: doc.employee_id,
+      documentTypeId: doc.document_type_id,
+      documentTypeName: doc.document_type?.name || doc.document_type_name,
+      documentNumber: doc.document_number,
+      documentImage: doc.document_url,
+      verificationStatus: doc.verification_status,
+      documentStatusId: doc.document_status_id,
+      documentStatusName: doc.document_status?.name || doc.document_status_name,
+      verificationDate: doc.verification_date,
+      verificationNotes: doc.verification_notes,
+      verificationMethod: doc.verification_method,
+      details: doc.details || {},
+      createdAt: doc.created_at,
+      updatedAt: doc.updated_at
+    }));
     
     return new Response(
-      JSON.stringify({ 
-        documents,
-        document_type_id: data?.document_type_id || null,
-        document_status_id: data?.document_status_id || null,
-        logs: data?.employee_docs_log || [],
-        verification_status: data?.verification_status || null
-      }),
+      JSON.stringify({ documents: processedDocuments }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
@@ -621,7 +521,7 @@ async function handleAadharOtpRequest(body, corsHeaders) {
     await new Promise(resolve => setTimeout(resolve, 1000));
     
     // Generate a mock transaction ID
-    const txnId = crypto.randomUUID();
+    const txnId = uuidv4();
     
     // In a production environment, you would call the actual Aadhar API:
     // const surepassApiKey = Deno.env.get("SUREPASS_API_KEY");
@@ -702,103 +602,59 @@ async function handleAadharOtpVerify(body, supabase, corsHeaders) {
       );
     }
     
-    // Find which employee has this document
-    let employeeId = null;
-    
-    // Get all employee documents
-    const { data: employeeDocs, error: fetchError } = await supabase
+    // Get the document to verify
+    const { data: docData, error: docError } = await supabase
       .from('employee_documents')
-      .select('*');
+      .select('*')
+      .eq('id', documentId)
+      .single();
     
-    if (fetchError) {
-      throw fetchError;
+    if (docError) {
+      throw docError;
     }
     
-    // Find the employee who owns this document
-    for (const empDoc of employeeDocs) {
-      if (empDoc.documents && Array.isArray(empDoc.documents)) {
-        const documentExists = empDoc.documents.some(doc => doc.id === documentId);
-        if (documentExists) {
-          employeeId = empDoc.employee_id;
-          break;
-        }
-      }
-    }
-    
-    if (!employeeId) {
+    if (!docData) {
       return new Response(
         JSON.stringify({ error: "Document not found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
     
-    // Now update the document status
-    const { data: existingEntry, error: fetchDocError } = await supabase
-      .from('employee_documents')
-      .select('*')
-      .eq('employee_id', employeeId)
-      .single();
-    
-    if (fetchDocError) {
-      throw fetchDocError;
-    }
-    
-    if (!existingEntry.documents || !Array.isArray(existingEntry.documents)) {
-      return new Response(
-        JSON.stringify({ error: "No documents found for this employee" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    
-    // Create log entry for verification
-    const logEntry = {
-      action: 'verify',
-      documentId: documentId,
-      documentType: 'aadhar',
-      performedAt: new Date().toISOString(),
-      verificationStatus: 'verified',
-      details: {
-        method: 'aadhar_api',
-        txnId: txnId,
-        verificationNotes: 'Document verified via Aadhar OTP'
-      }
-    };
-    
-    // Update the document in the array
-    const updatedDocuments = existingEntry.documents.map(doc => {
-      if (doc.id === documentId) {
-        return {
-          ...doc,
-          verificationStatus: 'verified',
-          verificationDate: new Date().toISOString(),
-          verificationNotes: 'Document verified via Aadhar OTP verification',
-          verificationMethod: 'api',
-          details: {
-            ...doc.details,
-            aadhar_api_verification: true,
-            verified_at: new Date().toISOString(),
-            txn_id: txnId
-          }
-        };
-      }
-      return doc;
-    });
-    
-    // Add the log entry to the existing logs
-    const updatedLogs = [...JSON.parse(JSON.stringify(existingEntry.employee_docs_log || [])), logEntry];
-    
-    // Update the database record
+    // Update the document verification status
     const { error: updateError } = await supabase
       .from('employee_documents')
-      .update({ 
-        documents: updatedDocuments,
-        employee_docs_log: updatedLogs,
-        verification_status: 'verified' // Update the main verification_status column
+      .update({
+        verification_status: 'verified',
+        verification_date: new Date().toISOString(),
+        verification_notes: 'Document verified via Aadhar OTP verification',
+        verification_method: 'api',
+        details: {
+          ...docData.details,
+          aadhar_api_verification: true,
+          verified_at: new Date().toISOString(),
+          txn_id: txnId
+        }
       })
-      .eq('employee_id', employeeId);
+      .eq('id', documentId);
     
     if (updateError) {
       throw updateError;
+    }
+    
+    // Check if all employee documents are now verified
+    const { data: employeeDocs } = await supabase
+      .from('employee_documents')
+      .select('verification_status')
+      .eq('employee_id', docData.employee_id);
+    
+    const allVerified = employeeDocs.every(doc => doc.verification_status === 'verified');
+    
+    // Update employee status if all docs are verified
+    if (allVerified) {
+      await supabase
+        .from('employees')
+        .update({ status: 'verified' })
+        .eq('id', docData.employee_id);
     }
     
     return new Response(
