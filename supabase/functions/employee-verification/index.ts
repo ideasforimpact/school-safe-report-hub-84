@@ -80,9 +80,11 @@ serve(async (req) => {
           const currentTime = new Date();
           const timeDiffSeconds = Math.floor((currentTime.getTime() - lastOtpTime.getTime()) / 1000); // in seconds
           
-          // OTP validity period (3 minutes)
+          console.log("Time difference since last OTP (seconds):", timeDiffSeconds);
+          
+          // OTP validity period (3 minutes = 180 seconds)
           const OTP_VALIDITY_SECONDS = 3 * 60;
-          // Cooldown period (15 minutes)
+          // Cooldown period (15 minutes = 900 seconds)
           const COOLDOWN_SECONDS = 15 * 60;
           
           // If it's been less than 3 minutes, OTP is still valid
@@ -98,18 +100,22 @@ serve(async (req) => {
               { headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
           } 
-          // If it's been less than 15 minutes, enforce cooldown period
+          // If it's been less than 15 minutes but more than 3 minutes, enforce cooldown period
           else if (timeDiffSeconds < COOLDOWN_SECONDS) {
+            // No cooldown remaining if more than 3 minutes have passed
+            // OTP is no longer valid but we're still in cooldown period
             const cooldownRemaining = COOLDOWN_SECONDS - timeDiffSeconds;
             console.log(`Cooldown period active. ${cooldownRemaining} seconds remaining.`);
             
             return new Response(
               JSON.stringify({ 
-                error: "Cooldown period active", 
+                error: "Cooldown period active, please wait before requesting a new OTP", 
                 cooldownRemaining 
               }),
               { headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
+          } else {
+            console.log("Cooldown period has expired, allowing new OTP request");
           }
         }
       }

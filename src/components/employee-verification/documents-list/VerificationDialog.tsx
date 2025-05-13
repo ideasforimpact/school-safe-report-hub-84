@@ -44,6 +44,12 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const [cooldownTimerId, setCooldownTimerId] = useState<number | null>(null);
   const [txnId, setTxnId] = useState<string | null>(null);
   const [clientId, setClientId] = useState<string | null>(null);
+  const [isOtpComplete, setIsOtpComplete] = useState(false);
+
+  // Check if OTP is complete (6 digits)
+  useEffect(() => {
+    setIsOtpComplete(otp.length === 6);
+  }, [otp]);
 
   // Cleanup timer on unmount
   useEffect(() => {
@@ -61,6 +67,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       setOtp("");
       setTxnId(null);
       setClientId(null);
+      setIsOtpComplete(false);
       if (cooldownTimerId !== null) {
         clearInterval(cooldownTimerId);
         setCooldownTimerId(null);
@@ -269,6 +276,14 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
+  // Debug logs
+  console.log("OTP state:", {
+    otp,
+    otpLength: otp.length,
+    isOtpComplete,
+    hasTxnId: !!txnId
+  });
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -358,8 +373,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               </Button>
               <Button 
                 onClick={handleOtpSubmit}
-                disabled={otp.length !== 6 || !txnId}
-                className={otp.length === 6 && txnId ? "bg-primary" : ""}
+                disabled={!isOtpComplete || !txnId || isVerifying}
+                className={isOtpComplete && txnId && !isVerifying ? "bg-primary" : ""}
               >
                 Verify
               </Button>
