@@ -59,7 +59,7 @@ const OtpVerificationDialog: React.FC<OtpVerificationDialogProps> = ({
         return;
       }
       
-      if (data.error) {
+      if (data?.error) {
         if (data.cooldownRemaining) {
           // Handle cooldown period
           setCooldownRemaining(data.cooldownRemaining);

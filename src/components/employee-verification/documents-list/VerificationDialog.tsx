@@ -107,7 +107,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           method: 'POST',
           body: { 
             documentId, 
-            documentNumber 
+            documentNumber // Send the plain document number
           }
         });
         
@@ -121,7 +121,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           return;
         }
         
-        if (data.error) {
+        if (data?.error) {
           if (data.cooldownRemaining) {
             // Handle cooldown period
             startCooldownTimer(data.cooldownRemaining * 60);
