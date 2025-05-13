@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,7 +10,6 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
@@ -40,6 +39,53 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const isAadhar = documentType === 'aadhar';
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [otp, setOtp] = useState("");
+  const [cooldownSeconds, setCooldownSeconds] = useState<number | null>(null);
+  const [cooldownTimerId, setCooldownTimerId] = useState<number | null>(null);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (cooldownTimerId !== null) {
+        clearInterval(cooldownTimerId);
+      }
+    };
+  }, [cooldownTimerId]);
+
+  // Reset states when dialog closes
+  useEffect(() => {
+    if (!open) {
+      setShowOtpInput(false);
+      setOtp("");
+      if (cooldownTimerId !== null) {
+        clearInterval(cooldownTimerId);
+        setCooldownTimerId(null);
+      }
+      setCooldownSeconds(null);
+    }
+  }, [open]);
+
+  const startCooldownTimer = (seconds: number) => {
+    setCooldownSeconds(seconds);
+    
+    // Clear any existing timer
+    if (cooldownTimerId !== null) {
+      clearInterval(cooldownTimerId);
+    }
+    
+    // Start new timer
+    const timerId = window.setInterval(() => {
+      setCooldownSeconds(prevSeconds => {
+        if (prevSeconds === null || prevSeconds <= 1) {
+          clearInterval(timerId);
+          setCooldownTimerId(null);
+          return null;
+        }
+        return prevSeconds - 1;
+      });
+    }, 1000);
+    
+    setCooldownTimerId(timerId);
+  };
 
   const handleAadharApiClick = async () => {
     if (isAadhar) {
@@ -54,7 +100,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       
       // Call the edge function to request OTP
       try {
-        const { data, error } = await fetch(`/api/employee-verification/request-aadhar-otp`, {
+        const response = await fetch(`/api/employee-verification/request-aadhar-otp`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -63,20 +109,30 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
             documentId, 
             documentNumber 
           })
-        }).then(res => res.json());
+        });
         
-        if (error) {
-          throw new Error(error);
+        if (!response.ok) {
+          const errorData = await response.json();
+          // Handle rate limiting (cooldown period)
+          if (response.status === 429 && errorData.cooldownRemaining) {
+            startCooldownTimer(errorData.cooldownRemaining * 60);
+            throw new Error(`Please wait ${errorData.cooldownRemaining} minutes before requesting another OTP`);
+          }
+          throw new Error(errorData.error || "Failed to send OTP");
         }
+        
+        const data = await response.json();
         
         if (data?.success) {
           setShowOtpInput(true);
+          // Start a 3-minute countdown for OTP validity
+          startCooldownTimer(3 * 60);
           toast({
             title: "OTP Sent",
             description: "A verification code has been sent to your registered mobile number"
           });
         } else {
-          throw new Error(data?.message || "Failed to send OTP");
+          throw new Error(data?.error || data?.message || "Failed to send OTP");
         }
       } catch (err: any) {
         toast({
@@ -93,7 +149,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const handleOtpSubmit = async () => {
     if (otp.length === 6) {
       try {
-        const { data, error } = await fetch(`/api/employee-verification/verify-aadhar-otp`, {
+        const response = await fetch(`/api/employee-verification/verify-aadhar-otp`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -102,11 +158,14 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
             documentId, 
             otp 
           })
-        }).then(res => res.json());
+        });
         
-        if (error) {
-          throw new Error(error);
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "OTP verification failed");
         }
+        
+        const data = await response.json();
         
         if (data?.success) {
           toast({
@@ -116,8 +175,12 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           onVerify('api');
           setShowOtpInput(false);
           setOtp("");
+          if (cooldownTimerId !== null) {
+            clearInterval(cooldownTimerId);
+            setCooldownTimerId(null);
+          }
         } else {
-          throw new Error(data?.message || "OTP verification failed");
+          throw new Error(data?.error || data?.message || "OTP verification failed");
         }
       } catch (err: any) {
         toast({
@@ -138,6 +201,17 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const handleCancel = () => {
     setShowOtpInput(false);
     setOtp("");
+    if (cooldownTimerId !== null) {
+      clearInterval(cooldownTimerId);
+      setCooldownTimerId(null);
+    }
+    setCooldownSeconds(null);
+  };
+  
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
   return (
@@ -155,13 +229,20 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               variant="outline" 
               className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 justify-start"
               onClick={handleAadharApiClick}
-              disabled={isVerifying}
+              disabled={isVerifying || cooldownSeconds !== null}
             >
               <ShieldCheck className="h-4 w-4 mr-2" />
               {isAadhar ? 'Verify via Aadhar API (Requires OTP)' : 'Verify via API'}
-              <span className="ml-auto text-xs text-blue-500 font-normal">
-                {isAadhar ? 'OTP verification' : 'Automated check'}
-              </span>
+              {cooldownSeconds !== null && (
+                <span className="ml-auto text-xs text-blue-500 font-normal">
+                  Retry in {formatTime(cooldownSeconds)}
+                </span>
+              )}
+              {cooldownSeconds === null && (
+                <span className="ml-auto text-xs text-blue-500 font-normal">
+                  {isAadhar ? 'OTP verification' : 'Automated check'}
+                </span>
+              )}
             </Button>
             <Button 
               variant="outline" 
@@ -201,9 +282,16 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
                   </InputOTPGroup>
                 </InputOTP>
               </div>
-              <p className="text-sm text-muted-foreground text-center">
-                OTP sent to registered mobile number
-              </p>
+              <div className="text-center space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  OTP sent to registered mobile number
+                </p>
+                {cooldownSeconds !== null && (
+                  <p className="text-sm text-amber-600 font-medium">
+                    OTP expires in {formatTime(cooldownSeconds)}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         )}

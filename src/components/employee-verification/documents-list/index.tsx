@@ -95,29 +95,26 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument
     }
   };
 
-  const rejectDocument = () => {
+  const rejectDocument = async () => {
     if (!selectedDocument) return;
     
     setVerifying(true);
     
     try {
-      // Simulate verification delay
-      setTimeout(() => {
-        verifyDocument(
-          selectedDocument,
-          'failed',
-          'Failed to verify document. Details do not match records.'
-        );
-        
-        toast({
-          title: "Verification Failed",
-          description: "Document verification failed.",
-          variant: "destructive"
-        });
-        
-        setVerifying(false);
-        setVerifyDialogOpen(false);
-      }, 1500); // Simulate API delay
+      await verifyDocument(
+        selectedDocument,
+        'failed',
+        'Failed to verify document. Details do not match records.'
+      );
+      
+      toast({
+        title: "Verification Failed",
+        description: "Document verification failed.",
+        variant: "destructive"
+      });
+      
+      setVerifying(false);
+      setVerifyDialogOpen(false);
     } catch (error) {
       toast({
         title: "Error",
