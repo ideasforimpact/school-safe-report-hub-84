@@ -7,10 +7,8 @@ import Dashboard from './pages/Dashboard';
 import { Toaster } from "@/components/ui/toaster";
 import { IncidentProvider } from './contexts/IncidentContext';
 import IncidentReport from './pages/IncidentReport';
-
-// Simple mock components for the missing imports
-const ThemeProvider = ({ children }: { children: React.ReactNode }) => <>{children}</>;
-const Protected = ({ children }: { children: React.ReactNode }) => <>{children}</>;
+import Protected from './components/auth/Protected';
+import { ThemeProvider } from './components/theme-provider';
 
 function App() {
   return (
