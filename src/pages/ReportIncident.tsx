@@ -21,7 +21,6 @@ const ReportIncident = () => {
     nextTicketId,
     formData,
     supportingFiles,
-    availableSubcategories,
     peopleInvolved,
     isSubmitting,
     setIsSubmitting,
@@ -32,10 +31,8 @@ const ReportIncident = () => {
     addPerson,
     removePerson,
     handleFilesChange,
-    getSelectedCategory,
     getSelectedLocation,
     getSelectedFacility,
-    categories,
     locations,
     facilities,
     users: incidentUsers
@@ -54,8 +51,7 @@ const ReportIncident = () => {
         ? new Date(`${formData.date}T${formData.time}`) 
         : new Date();
       
-      // Get the actual category, location and facility names if available
-      const categoryName = formData.categoryId ? getSelectedCategory() : '';
+      // Get the actual location and facility names if available
       const locationName = formData.locationId ? getSelectedLocation() : '';
       const facilityName = formData.facilityId ? getSelectedFacility() : '';
       
@@ -80,7 +76,7 @@ const ReportIncident = () => {
       
       addIncident({
         type: (formData.type || 'Incident') as IncidentType,
-        category: categoryName as any,
+        category: formData.categoryId as any,
         subcategory: formData.subcategory || '',
         description: formData.description || '',
         date: dateTime,
@@ -112,11 +108,6 @@ const ReportIncident = () => {
     }
   };
   
-  // Fix: Create a properly typed adapter function for select changes
-  const handleSelectAdapter = (name: string, value: string) => {
-    handleSelectChange(name, value);
-  };
-  
   const handleDateTimeAdapter = (date: Date, timeString?: string) => {
     if (date) {
       handleDateTimeChange('date', date);
@@ -142,12 +133,12 @@ const ReportIncident = () => {
               <IncidentDetailsForm
                 formData={formData}
                 onChange={handleChangeAdapter}
-                onSelectChange={handleSelectAdapter} 
+                onSelectChange={handleSelectChange} 
                 onDateTimeChange={handleDateTimeAdapter}
                 supportingFiles={supportingFiles}
                 onFilesChange={handleFilesChange}
-                categories={categories}
-                availableSubcategories={availableSubcategories}
+                categories={[]}  // Not used anymore as we fetch directly in CategorySection
+                availableSubcategories={[]} // Not used anymore as we fetch directly in CategorySection
                 locations={locations}
                 facilities={facilities}
                 users={users}

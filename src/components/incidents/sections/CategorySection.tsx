@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Select,
   SelectContent,
@@ -7,27 +7,105 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from '@/hooks/use-toast';
 
-interface ConfigItem {
+interface CategorySectionProps {
+  categoryId: string;
+  subcategory: string;
+  onSelectChange: (name: string, value: string) => void;
+}
+
+interface CategoryItem {
   id: string;
   name: string;
 }
 
-interface CategorySectionProps {
-  categoryId: string;
-  categories: ConfigItem[];
-  subcategory: string;
-  availableSubcategories: {id: string, name: string}[];
-  onSelectChange: (name: string, value: string) => void;
+interface SubcategoryItem {
+  id: string;
+  name: string;
+  category_id: string;
 }
 
 const CategorySection: React.FC<CategorySectionProps> = ({
   categoryId,
-  categories,
   subcategory,
-  availableSubcategories,
   onSelectChange,
 }) => {
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
+  const [subcategories, setSubcategories] = useState<SubcategoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [availableSubcategories, setAvailableSubcategories] = useState<SubcategoryItem[]>([]);
+
+  // Fetch categories from the database
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('incident_categories')
+          .select('id, name')
+          .eq('is_active', true);
+
+        if (error) {
+          console.error('Error fetching categories:', error);
+          toast({
+            title: 'Error',
+            description: 'Failed to load categories. Please try again.',
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        setCategories(data || []);
+      } catch (err) {
+        console.error('Exception fetching categories:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
+  // Fetch subcategories from the database
+  useEffect(() => {
+    const fetchSubcategories = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('incident_subcategories')
+          .select('id, name, category_id')
+          .eq('is_active', true);
+
+        if (error) {
+          console.error('Error fetching subcategories:', error);
+          toast({
+            title: 'Error',
+            description: 'Failed to load subcategories. Please try again.',
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        setSubcategories(data || []);
+      } catch (err) {
+        console.error('Exception fetching subcategories:', err);
+      }
+    };
+
+    fetchSubcategories();
+  }, []);
+
+  // Filter subcategories based on selected category
+  useEffect(() => {
+    if (!categoryId) {
+      setAvailableSubcategories([]);
+      return;
+    }
+
+    const filtered = subcategories.filter(sub => sub.category_id === categoryId);
+    setAvailableSubcategories(filtered);
+  }, [categoryId, subcategories]);
+
   return (
     <>
       <div className="space-y-2 text-left">
@@ -37,6 +115,7 @@ const CategorySection: React.FC<CategorySectionProps> = ({
         <Select 
           value={categoryId}
           onValueChange={(value) => onSelectChange('categoryId', value)}
+          disabled={loading}
         >
           <SelectTrigger>
             <SelectValue placeholder="Select category" />
@@ -65,7 +144,7 @@ const CategorySection: React.FC<CategorySectionProps> = ({
           </SelectTrigger>
           <SelectContent>
             {availableSubcategories.map(subcategory => (
-              <SelectItem key={subcategory.id} value={subcategory.name}>
+              <SelectItem key={subcategory.id} value={subcategory.id}>
                 {subcategory.name}
               </SelectItem>
             ))}

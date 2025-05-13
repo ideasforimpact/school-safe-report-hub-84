@@ -46,8 +46,6 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
   onDateTimeChange,
   supportingFiles,
   onFilesChange,
-  categories,
-  availableSubcategories,
   locations,
   facilities,
   users
@@ -67,9 +65,7 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
       <div className="space-y-6">
         <CategorySection
           categoryId={formData.categoryId}
-          categories={categories}
           subcategory={formData.subcategory}
-          availableSubcategories={availableSubcategories}
           onSelectChange={onSelectChange}
         />
       </div>
