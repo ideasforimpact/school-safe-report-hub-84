@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 
@@ -79,45 +78,31 @@ serve(async (req) => {
           const lastOtpTime = new Date(document.last_otp_generated);
           const currentTime = new Date();
           
-          // Calculate time difference in seconds
-          const timeDiffSeconds = Math.floor((currentTime.getTime() - lastOtpTime.getTime()) / 1000);
+          // Calculate time difference in minutes
+          const timeDiffMinutes = (currentTime.getTime() - lastOtpTime.getTime()) / (1000 * 60);
           
           console.log("Current time:", currentTime.toISOString());
           console.log("Last OTP time:", lastOtpTime.toISOString());
-          console.log("Time difference since last OTP (seconds):", timeDiffSeconds);
+          console.log("Time difference since last OTP (minutes):", timeDiffMinutes);
           
-          // OTP validity period (3 minutes = 180 seconds)
-          const OTP_VALIDITY_SECONDS = 3 * 60;
-          // Cooldown period (15 minutes = 900 seconds)
-          const COOLDOWN_SECONDS = 15 * 60;
+          // OTP validity period: 3 minutes
+          const OTP_VALIDITY_MINUTES = 3;
           
           // If it's been less than 3 minutes, OTP is still valid
-          if (timeDiffSeconds < OTP_VALIDITY_SECONDS) {
-            const remainingValiditySeconds = OTP_VALIDITY_SECONDS - timeDiffSeconds;
+          if (timeDiffMinutes < OTP_VALIDITY_MINUTES) {
+            const remainingValiditySeconds = Math.ceil((OTP_VALIDITY_MINUTES - timeDiffMinutes) * 60);
             console.log(`OTP still valid. ${remainingValiditySeconds} seconds remaining for use.`);
             
             return new Response(
               JSON.stringify({ 
                 error: "OTP already sent and still valid", 
-                cooldownRemaining: remainingValiditySeconds
-              }),
-              { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-            );
-          } 
-          // If it's been less than 15 minutes but more than 3 minutes, enforce cooldown period
-          else if (timeDiffSeconds < COOLDOWN_SECONDS) {
-            const cooldownRemaining = COOLDOWN_SECONDS - timeDiffSeconds;
-            console.log(`Cooldown period active. ${cooldownRemaining} seconds remaining.`);
-            
-            return new Response(
-              JSON.stringify({ 
-                error: "Cooldown period active, please wait before requesting a new OTP", 
-                cooldownRemaining 
+                cooldownRemaining: remainingValiditySeconds,
+                otpStatus: "valid"
               }),
               { headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
           } else {
-            console.log("Cooldown period has expired, allowing new OTP request");
+            console.log("Previous OTP has expired, allowing new OTP request");
           }
         }
       }

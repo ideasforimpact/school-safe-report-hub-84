@@ -72,6 +72,17 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     }
   }, [open]);
 
+  // Monitor otp value changes for debugging
+  useEffect(() => {
+    console.log("OTP state:", {
+      otp,
+      otpLength: otp.length,
+      isOtpComplete,
+      hasTxnId: !!txnId,
+      isVerifying
+    });
+  }, [otp, isOtpComplete, txnId, isVerifying]);
+
   const startCooldownTimer = (seconds: number) => {
     console.log(`Starting cooldown timer with seconds: ${seconds}, current time: ${new Date().toISOString()}`);
     setCooldownSeconds(seconds);
@@ -116,7 +127,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           body: { 
             action: 'requestAadharOtp',
             documentId, 
-            documentNumber // Send the plain document number
+            documentNumber
           }
         });
         
@@ -134,18 +145,24 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         
         if (data?.error) {
           if (data.cooldownRemaining) {
-            // Handle cooldown period - now in seconds
+            // Handle OTP still valid case
             startCooldownTimer(data.cooldownRemaining);
+            
+            toast({
+              title: "OTP Already Sent",
+              description: `A verification code has already been sent to your registered mobile number and is still valid for ${formatTime(data.cooldownRemaining)}.`,
+              variant: "info",
+            });
+          } else {
+            toast({
+              title: "Information",
+              description: data.error,
+              variant: "default",
+            });
           }
           
-          toast({
-            title: "Information",
-            description: data.error,
-            variant: "default",
-          });
-          
           // If OTP is still valid, show the OTP input
-          if (data.error.includes("OTP already sent and still valid")) {
+          if (data.error.includes("OTP already sent and still valid") || data.otpStatus === "valid") {
             setShowOtpInput(true);
           }
           
@@ -279,15 +296,6 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
-  // Debug logs
-  console.log("OTP state:", {
-    otp,
-    otpLength: otp.length,
-    isOtpComplete,
-    hasTxnId: !!txnId,
-    isVerifying
-  });
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
@@ -378,7 +386,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               <Button 
                 onClick={handleOtpSubmit}
                 disabled={!isOtpComplete || !txnId || isVerifying}
-                className={isOtpComplete && txnId && !isVerifying ? "bg-primary" : ""}
+                className={isOtpComplete && txnId ? "bg-primary" : ""}
               >
                 Verify
               </Button>
