@@ -45,6 +45,17 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const [txnId, setTxnId] = useState<string | null>(null);
   const [clientId, setClientId] = useState<string | null>(null);
 
+  // Logging OTP state for debugging
+  useEffect(() => {
+    console.info("OTP state:", {
+      otp,
+      otpLength: otp.length,
+      isOtpComplete: otp.length === 6,
+      hasTxnId: !!txnId,
+      isVerifying
+    });
+  }, [otp, txnId, isVerifying]);
+
   // Cleanup timer on unmount
   useEffect(() => {
     return () => {
@@ -70,6 +81,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   }, [open]);
 
   const startCooldownTimer = (seconds: number) => {
+    console.info("Starting cooldown timer with seconds:", seconds, "current time:", new Date().toISOString());
     setCooldownSeconds(seconds);
     
     // Clear any existing timer
@@ -131,7 +143,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         if (data?.error) {
           if (data.cooldownRemaining) {
             // Handle cooldown period
-            startCooldownTimer(data.cooldownRemaining * 60);
+            startCooldownTimer(data.cooldownRemaining);
           }
           
           toast({
@@ -287,12 +299,12 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               disabled={isVerifying || cooldownSeconds !== null}
             >
               <ShieldCheck className="h-4 w-4 mr-2" />
-              {isAadhar ? 'Verify via Aadhar API (Requires OTP)' : 'Verify via API'}
-              {cooldownSeconds !== null && (
-                <span className="ml-auto text-xs text-blue-500 font-normal">
-                  Retry in {formatTime(cooldownSeconds)}
-                </span>
-              )}
+              {isAadhar 
+                ? cooldownSeconds !== null 
+                  ? `Retry in ${formatTime(cooldownSeconds)}` 
+                  : 'Verify via Aadhar API (Requires OTP)' 
+                : 'Verify via API'
+              }
               {cooldownSeconds === null && (
                 <span className="ml-auto text-xs text-blue-500 font-normal">
                   {isAadhar ? 'OTP verification' : 'Automated check'}
