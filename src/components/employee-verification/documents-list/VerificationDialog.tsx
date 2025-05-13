@@ -42,6 +42,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const [otp, setOtp] = useState("");
   const [cooldownSeconds, setCooldownSeconds] = useState<number | null>(null);
   const [cooldownTimerId, setCooldownTimerId] = useState<number | null>(null);
+  const [txnId, setTxnId] = useState<string | null>(null);
 
   // Cleanup timer on unmount
   useEffect(() => {
@@ -57,6 +58,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     if (!open) {
       setShowOtpInput(false);
       setOtp("");
+      setTxnId(null);
       if (cooldownTimerId !== null) {
         clearInterval(cooldownTimerId);
         setCooldownTimerId(null);
@@ -103,9 +105,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       try {
         console.log("Sending OTP request for document ID:", documentId);
         
-        const { data, error } = await supabase.functions.invoke('employee-verification/request-aadhar-otp', {
+        const { data, error } = await supabase.functions.invoke('employee-verification', {
           method: 'POST',
           body: { 
+            action: 'requestAadharOtp',
             documentId, 
             documentNumber // Send the plain document number
           }
@@ -135,6 +138,11 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           return;
         }
         
+        // Store transaction ID for OTP verification
+        if (data?.txnId) {
+          setTxnId(data.txnId);
+        }
+        
         setShowOtpInput(true);
         // Start a 3-minute countdown for OTP validity
         startCooldownTimer(3 * 60);
@@ -157,11 +165,13 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const handleOtpSubmit = async () => {
     if (otp.length === 6) {
       try {
-        const { data, error } = await supabase.functions.invoke('employee-verification/verify-aadhar-otp', {
+        const { data, error } = await supabase.functions.invoke('employee-verification', {
           method: 'POST',
           body: { 
+            action: 'verifyAadharOtp',
             documentId, 
-            otp 
+            otp,
+            txnId 
           }
         });
         
@@ -175,7 +185,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           return;
         }
         
-        if (data.error) {
+        if (data?.error) {
           toast({
             title: "Verification Failed",
             description: data.error,
@@ -191,6 +201,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         onVerify('api');
         setShowOtpInput(false);
         setOtp("");
+        setTxnId(null);
         if (cooldownTimerId !== null) {
           clearInterval(cooldownTimerId);
           setCooldownTimerId(null);
@@ -214,6 +225,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const handleCancel = () => {
     setShowOtpInput(false);
     setOtp("");
+    setTxnId(null);
     if (cooldownTimerId !== null) {
       clearInterval(cooldownTimerId);
       setCooldownTimerId(null);

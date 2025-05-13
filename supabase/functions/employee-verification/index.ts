@@ -19,8 +19,21 @@ serve(async (req) => {
   }
   
   try {
-    const { action, documentId, documentNumber, otp, txnId } = await req.json();
-    console.log(`Received ${action} request`, { documentId, hasDocNumber: !!documentNumber, hasTxnId: !!txnId, hasOtp: !!otp });
+    const requestBody = await req.json();
+    const { 
+      action,
+      documentId, 
+      documentNumber, 
+      otp, 
+      txnId 
+    } = requestBody;
+    
+    console.log(`Received ${action} request`, { 
+      documentId, 
+      hasDocNumber: !!documentNumber, 
+      hasTxnId: !!txnId, 
+      hasOtp: !!otp 
+    });
     
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
