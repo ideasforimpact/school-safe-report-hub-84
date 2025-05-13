@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Routes, Route, BrowserRouter } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/auth/AuthContext';
 import { ClientProvider } from './contexts/ClientContext';
 import Dashboard from './pages/Dashboard';
