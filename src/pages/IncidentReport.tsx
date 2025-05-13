@@ -157,7 +157,14 @@ const IncidentReport = () => {
                   <IncidentDateTimeSection
                     date={formData.date}
                     time={formData.time}
-                    onDateTimeChange={handleDateTimeChange}
+                    onDateTimeChange={(date, timeString) => {
+                      if (date) {
+                        handleDateTimeChange('date', date);
+                      }
+                      if (timeString) {
+                        handleDateTimeChange('time', timeString);
+                      }
+                    }}
                     errors={errors}
                   />
                   

@@ -47,6 +47,7 @@ const IncidentDateTimeSection: React.FC<IncidentDateTimeSectionProps> = ({
               onSelect={(selectedDate) => onDateTimeChange(selectedDate, undefined)}
               disabled={(dateToCheck) => dateToCheck > new Date()}
               initialFocus
+              className="p-3 pointer-events-auto"
             />
           </PopoverContent>
         </Popover>
