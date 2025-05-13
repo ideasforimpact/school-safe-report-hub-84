@@ -314,12 +314,11 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               disabled={isVerifying || cooldownSeconds !== null}
             >
               <ShieldCheck className="h-4 w-4 mr-2" />
-              {isAadhar ? 'Verify via Aadhar API (Requires OTP)' : 'Verify via API'}
-              {cooldownSeconds !== null && (
-                <span className="ml-auto text-xs text-blue-500 font-normal">
-                  Retry in {formatTime(cooldownSeconds)}
-                </span>
-              )}
+              {isAadhar ? (
+                cooldownSeconds !== null 
+                ? `Retry in ${formatTime(cooldownSeconds)}` 
+                : 'Verify via Aadhar API (Requires OTP)'
+              ) : 'Verify via API'}
               {cooldownSeconds === null && (
                 <span className="ml-auto text-xs text-blue-500 font-normal">
                   {isAadhar ? 'OTP verification' : 'Automated check'}
