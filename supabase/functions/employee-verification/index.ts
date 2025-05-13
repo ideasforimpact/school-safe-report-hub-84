@@ -41,30 +41,33 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    // For Aadhar OTP actions, always use production URL and key
-    let baseUrl = "https://kyc-api.surepass.io";
-    let apiKey = Deno.env.get("SUREPASS_PRODUCTION_API_KEY");
+    // Set up production vs. sandbox environment for the Surepass API
+    const environment = Deno.env.get("ENVIRONMENT") || "development";
     
+    // Default base URL for Surepass API and API key
+    let baseUrl = environment === "production" 
+      ? Deno.env.get("SUREPASS_BASE_URL") || "https://sandbox.surepass.io"
+      : "https://sandbox.surepass.io";
+    
+    let apiKey = environment === "production" 
+      ? Deno.env.get("SUREPASS_PRODUCTION_API_KEY") 
+      : Deno.env.get("SUREPASS_SANDBOX_API_KEY");
+    
+    // Override baseUrl and apiKey for specific actions
     if (action === 'requestAadharOtp' || action === 'verifyAadharOtp') {
-      console.log(`Using production API for ${action}: ${baseUrl}`);
-    } else {
-      // For other actions, use environment-based configuration
-      const environment = Deno.env.get("ENVIRONMENT") || "development";
-      baseUrl = environment === "production" 
-        ? Deno.env.get("SUREPASS_BASE_URL") || "https://sandbox.surepass.io"
-        : "https://sandbox.surepass.io";
+      // For these specific actions, always use production URL and key
+      baseUrl = "https://kyc-api.surepass.io";
+      apiKey = Deno.env.get("SUREPASS_PRODUCTION_API_KEY");
       
-      apiKey = environment === "production" 
-        ? Deno.env.get("SUREPASS_PRODUCTION_API_KEY") 
-        : Deno.env.get("SUREPASS_SANDBOX_API_KEY");
+      console.log(`Using production API for ${action}: ${baseUrl}`);
     }
     
     // Check if we're testing in development mode
-    const isDevTest = !apiKey;
+    const isDevTest = environment === "development" && !apiKey;
     
     // Handle Aadhar OTP request
     if (action === 'requestAadharOtp') {
-      // Check if document has had an OTP generated recently
+      // Check if document has had an OTP generated in the last 15 minutes
       if (documentId) {
         const { data: document, error: docError } = await supabase
           .from('employee_documents')
@@ -77,32 +80,32 @@ serve(async (req) => {
         } else if (document?.last_otp_generated) {
           const lastOtpTime = new Date(document.last_otp_generated);
           const currentTime = new Date();
+          const timeDiff = (currentTime.getTime() - lastOtpTime.getTime()) / (1000 * 60); // in minutes
           
-          // Calculate time difference in minutes
-          const timeDiffMinutes = (currentTime.getTime() - lastOtpTime.getTime()) / (1000 * 60);
-          
-          console.log("Current time:", currentTime.toISOString());
-          console.log("Last OTP time:", lastOtpTime.toISOString());
-          console.log("Time difference since last OTP (minutes):", timeDiffMinutes);
-          
-          // OTP validity period: 3 minutes
-          const OTP_VALIDITY_MINUTES = 3;
-          
-          // If it's been less than 3 minutes, OTP is still valid
-          if (timeDiffMinutes < OTP_VALIDITY_MINUTES) {
-            const remainingValiditySeconds = Math.ceil((OTP_VALIDITY_MINUTES - timeDiffMinutes) * 60);
-            console.log(`OTP still valid. ${remainingValiditySeconds} seconds remaining for use.`);
+          // If it's been less than 3 minutes, allow retry with the remaining time
+          // Otherwise, enforce a 15-minute cooldown
+          if (timeDiff < 3) {
+            const cooldownRemaining = Math.ceil(3 - timeDiff);
+            console.log(`OTP still valid. ${cooldownRemaining} minutes remaining for reuse.`);
             
             return new Response(
               JSON.stringify({ 
                 error: "OTP already sent and still valid", 
-                cooldownRemaining: remainingValiditySeconds,
-                otpStatus: "valid"
+                cooldownRemaining 
               }),
               { headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
-          } else {
-            console.log("Previous OTP has expired, allowing new OTP request");
+          } else if (timeDiff < 15) {
+            const cooldownRemaining = Math.ceil(15 - timeDiff);
+            console.log(`Cooldown period active. ${cooldownRemaining} minutes remaining.`);
+            
+            return new Response(
+              JSON.stringify({ 
+                error: "Cooldown period active", 
+                cooldownRemaining 
+              }),
+              { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
           }
         }
       }

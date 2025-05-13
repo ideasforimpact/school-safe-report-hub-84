@@ -45,9 +45,6 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const [txnId, setTxnId] = useState<string | null>(null);
   const [clientId, setClientId] = useState<string | null>(null);
 
-  // Simple state to track if OTP is complete (6 digits)
-  const isOtpComplete = otp.length === 6;
-
   // Cleanup timer on unmount
   useEffect(() => {
     return () => {
@@ -72,19 +69,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     }
   }, [open]);
 
-  // Monitor otp value changes for debugging
-  useEffect(() => {
-    console.log("OTP state:", {
-      otp,
-      otpLength: otp.length,
-      isOtpComplete,
-      hasTxnId: !!txnId,
-      isVerifying
-    });
-  }, [otp, isOtpComplete, txnId, isVerifying]);
-
   const startCooldownTimer = (seconds: number) => {
-    console.log(`Starting cooldown timer with seconds: ${seconds}, current time: ${new Date().toISOString()}`);
     setCooldownSeconds(seconds);
     
     // Clear any existing timer
@@ -127,7 +112,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           body: { 
             action: 'requestAadharOtp',
             documentId, 
-            documentNumber
+            documentNumber // Send the plain document number
           }
         });
         
@@ -145,27 +130,15 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         
         if (data?.error) {
           if (data.cooldownRemaining) {
-            // Handle OTP still valid case
-            startCooldownTimer(data.cooldownRemaining);
-            
-            toast({
-              title: "OTP Already Sent",
-              description: `A verification code has already been sent to your registered mobile number and is still valid for ${formatTime(data.cooldownRemaining)}.`,
-              variant: "default",
-            });
-          } else {
-            toast({
-              title: "Information",
-              description: data.error,
-              variant: "default",
-            });
+            // Handle cooldown period
+            startCooldownTimer(data.cooldownRemaining * 60);
           }
           
-          // If OTP is still valid, show the OTP input
-          if (data.error.includes("OTP already sent and still valid") || data.otpStatus === "valid") {
-            setShowOtpInput(true);
-          }
-          
+          toast({
+            title: "Error",
+            description: data.error,
+            variant: "destructive",
+          });
           return;
         }
         
@@ -181,7 +154,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         }
         
         setShowOtpInput(true);
-        // Start a 3-minute countdown for OTP validity (in seconds)
+        // Start a 3-minute countdown for OTP validity
         startCooldownTimer(3 * 60);
         toast({
           title: "OTP Sent",
@@ -314,11 +287,12 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               disabled={isVerifying || cooldownSeconds !== null}
             >
               <ShieldCheck className="h-4 w-4 mr-2" />
-              {isAadhar ? (
-                cooldownSeconds !== null 
-                ? `Retry in ${formatTime(cooldownSeconds)}` 
-                : 'Verify via Aadhar API (Requires OTP)'
-              ) : 'Verify via API'}
+              {isAadhar ? 'Verify via Aadhar API (Requires OTP)' : 'Verify via API'}
+              {cooldownSeconds !== null && (
+                <span className="ml-auto text-xs text-blue-500 font-normal">
+                  Retry in {formatTime(cooldownSeconds)}
+                </span>
+              )}
               {cooldownSeconds === null && (
                 <span className="ml-auto text-xs text-blue-500 font-normal">
                   {isAadhar ? 'OTP verification' : 'Automated check'}
@@ -384,7 +358,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               </Button>
               <Button 
                 onClick={handleOtpSubmit}
-                disabled={!isOtpComplete || !txnId}
+                disabled={otp.length !== 6 || !txnId}
               >
                 Verify
               </Button>
