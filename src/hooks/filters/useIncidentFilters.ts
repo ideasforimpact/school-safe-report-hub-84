@@ -26,9 +26,6 @@ export function useIncidentFilters(incidents: Incident[]): FilterHookReturn {
     designations
   } = useFilterOptions();
   
-  // Make an empty array for subcategories since they need to be handled separately
-  const availableSubcategories: string[] = [];
-  
   // Create available owners array from incidents data
   const availableOwners = incidents
     .filter(incident => incident.owner)
@@ -90,7 +87,7 @@ export function useIncidentFilters(incidents: Incident[]): FilterHookReturn {
     filters,
     filteredIncidents,
     availableCategories: categoryOptions,
-    availableSubcategories,
+    availableSubcategories: [],
     availableLocations: locationOptions,
     availableFacilities: facilityOptions,
     availableOwners,

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { AlertTriangle, ArrowLeft } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { useIncidentDetail } from '@/hooks/useIncidentDetail';
+import { useState } from 'react';
 
 const IncidentDetail = () => {
   const { id = '' } = useParams<{ id: string }>();

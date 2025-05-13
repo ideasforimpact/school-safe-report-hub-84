@@ -37,7 +37,7 @@ export function useIncidentFormData(user: AuthUser | undefined) {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Fix the handleDateTimeChange function to properly handle the parameters
+  // Updated handleDateTimeChange function to properly handle the parameters
   const handleDateTimeChange = (field: string, value: Date | string) => {
     if (field === 'date' && value instanceof Date) {
       setFormData(prev => ({ 
