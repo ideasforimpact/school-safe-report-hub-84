@@ -6,7 +6,7 @@ import { CategoryTab } from '@/components/configuration/CategoryTab';
 import { SubcategoryTab } from '@/components/configuration/SubcategoryTab';
 import { LocationTab } from '@/components/configuration/LocationTab';
 import { FacilityTab } from '@/components/configuration/FacilityTab';
-import { ConfigItem, SubcategoryItem } from '@/contexts/types';
+import { ConfigItem, SubcategoryItem, CampusItem } from '@/contexts/types';
 import { MapPin, Building2 } from 'lucide-react';
 
 interface IncidentRelatedConfigProps {
@@ -28,6 +28,7 @@ interface IncidentRelatedConfigProps {
   addFacility: (name: string) => void;
   updateFacility: (id: string, name: string) => void;
   deleteFacility: (id: string) => void;
+  campuses: CampusItem[]; // Added campuses to the interface
 }
 
 export const IncidentRelatedConfig: React.FC<IncidentRelatedConfigProps> = ({
@@ -48,8 +49,12 @@ export const IncidentRelatedConfig: React.FC<IncidentRelatedConfigProps> = ({
   facilities,
   addFacility,
   updateFacility,
-  deleteFacility
+  deleteFacility,
+  campuses // Added campuses to the destructured props
 }) => {
+  // Check if campuses are available to enable tabs
+  const hasCampuses = campuses.length > 0;
+  
   return (
     <Card>
       <CardContent className="pt-6">
@@ -61,7 +66,11 @@ export const IncidentRelatedConfig: React.FC<IncidentRelatedConfigProps> = ({
               <MapPin className="h-4 w-4" />
               <span>Locations</span>
             </TabsTrigger>
-            <TabsTrigger value="facilities" className="flex items-center gap-2">
+            <TabsTrigger 
+              value="facilities" 
+              className="flex items-center gap-2"
+              disabled={!hasCampuses} // Disable if no campuses
+            >
               <Building2 className="h-4 w-4" />
               <span>Facilities</span>
             </TabsTrigger>
@@ -101,6 +110,7 @@ export const IncidentRelatedConfig: React.FC<IncidentRelatedConfigProps> = ({
               addFacility={addFacility}
               updateFacility={updateFacility}
               deleteFacility={deleteFacility}
+              campuses={campuses} // Pass campuses to the FacilityTab component
             />
           </TabsContent>
         </Tabs>

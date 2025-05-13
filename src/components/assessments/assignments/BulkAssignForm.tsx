@@ -1,10 +1,9 @@
 
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAssessment } from '@/contexts/AssessmentContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -15,18 +14,16 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DatePicker } from '@/components/ui/date-picker';
-import { format, addDays } from 'date-fns';
+import { addDays } from 'date-fns';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { User } from '@/contexts/auth/types';
+import { formatUserFullName } from '@/utils/userUtils';
 
-interface BulkAssignFormProps {
-  templateId?: string;
-}
-
-const BulkAssignForm: React.FC<BulkAssignFormProps> = ({ templateId }) => {
+const BulkAssignForm = () => {
   const navigate = useNavigate();
-  const { templates, createAssignment } = useAssessment();
+  const { templateId } = useParams<{ templateId: string }>();
+  const { templates, createAssignment, getTemplateById } = useAssessment();
   const { users } = useAuth();
   
   const [selectedTemplateId, setSelectedTemplateId] = useState(templateId || '');
@@ -35,7 +32,21 @@ const BulkAssignForm: React.FC<BulkAssignFormProps> = ({ templateId }) => {
   const [selectAll, setSelectAll] = useState(false);
   
   // Filter out users from the auth context (mock for now)
-  const availableUsers = users?.filter(user => user.role === 'user' || user.role === 'admin') || [];
+  // Fix: Compare with 'admin' and 'reporter' roles instead of 'user'
+  const availableUsers = users?.filter(user => user.role === 'admin' || user.role === 'reporter') || [];
+  
+  // Set template from URL parameter if available
+  useEffect(() => {
+    if (templateId) {
+      const template = getTemplateById(templateId);
+      if (template) {
+        setSelectedTemplateId(templateId);
+      } else {
+        toast.error('Template not found');
+        navigate('/assessments/templates');
+      }
+    }
+  }, [templateId, getTemplateById, navigate]);
   
   // Handle template selection
   const handleTemplateChange = (value: string) => {
@@ -99,7 +110,7 @@ const BulkAssignForm: React.FC<BulkAssignFormProps> = ({ templateId }) => {
         createAssignment({
           templateId: selectedTemplateId,
           userId: user.id,
-          userName: user.name, // Use user.name instead of firstName/lastName
+          userName: formatUserFullName(user),
           dueDate: dueDate.toISOString()
         });
         assignedCount++;
@@ -114,7 +125,7 @@ const BulkAssignForm: React.FC<BulkAssignFormProps> = ({ templateId }) => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">Bulk Assign Assessment</h2>
-        <Button variant="outline" onClick={() => navigate('/assessments/assignments')}>
+        <Button variant="outline" onClick={() => navigate('/assessments/templates')}>
           Cancel
         </Button>
       </div>
@@ -188,7 +199,7 @@ const BulkAssignForm: React.FC<BulkAssignFormProps> = ({ templateId }) => {
                         htmlFor={`user-${user.id}`} 
                         className="flex-grow"
                       >
-                        {user.name} {/* Use user.name instead of firstName/lastName */}
+                        {formatUserFullName(user)}
                       </Label>
                     </div>
                   ))

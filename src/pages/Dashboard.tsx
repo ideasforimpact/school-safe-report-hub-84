@@ -1,90 +1,165 @@
 
-import { useNavigate } from 'react-router-dom';
-import { useIncidents } from '@/contexts/IncidentContext';
-import { useAuth } from '@/contexts/AuthContext';
+import React from 'react';
 import Layout from '@/components/layout/Layout';
-import SummaryCards from '@/components/dashboard/SummaryCards';
-import IncidentStatusSection from '@/components/dashboard/IncidentStatusSection';
-import SafetyResources from '@/components/dashboard/SafetyResources';
-import { Button } from '@/components/ui/button';
-import { AlertTriangle } from 'lucide-react';
+import { useIncidents } from '@/contexts/IncidentContext';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
+import ActivityList from '@/components/ActivityList';
+import { formatDistanceToNow } from 'date-fns';
 
 const Dashboard = () => {
   const { incidents, getRecentActivities } = useIncidents();
-  const { user, isSaasOwner } = useAuth();
-  const navigate = useNavigate();
+  const recentActivities = getRecentActivities().slice(0, 5);
 
-  // School name that would come from backend in a real implementation
-  const schoolName = isSaasOwner ? "All Schools" : "Raks Pallikkoodam";
+  // Format date to be more readable
+  const formatDate = (date: Date) => {
+    return formatDistanceToNow(new Date(date), { addSuffix: true });
+  };
 
-  // Calculate summary statistics
-  const openIncidents = incidents.filter(inc => inc.status === 'Open').length;
+  // Calculate statistics for the dashboard
+  const totalIncidents = incidents.length;
+  const openIncidents = incidents.filter(incident => incident.status === 'Open').length;
+  const inProgressIncidents = incidents.filter(incident => incident.status === 'In Progress').length;
+  const closedIncidents = incidents.filter(incident => incident.status === 'Closed').length;
   
-  // Current month incidents
-  const currentMonth = new Date().getMonth();
-  const currentYear = new Date().getFullYear();
-  const incidentsThisMonth = incidents.filter(inc => {
-    const incDate = new Date(inc.date);
-    return incDate.getMonth() === currentMonth && incDate.getFullYear() === currentYear;
-  }).length;
+  // Safety stats - assuming we can calculate these from our data
+  const incidentFreeStreak = 14; // Placeholder for "days without incident"
+  const reportRate = 92; // Placeholder for reporting rate percentage
   
-  // Most common category
-  const categoryCounts = incidents.reduce((acc, inc) => {
-    acc[inc.category] = (acc[inc.category] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
-  
-  const mostCommonCategory = Object.entries(categoryCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'None';
-  
-  // Total people involved
-  const totalPeopleInvolved = incidents.reduce((total, inc) => total + (inc.peopleInvolved?.length || 0), 0);
+  // Calculate resolution time in days (average)
+  const calculateAverageResolutionTime = () => {
+    const closedIncidentsWithDates = incidents.filter(
+      i => i.status === 'Closed' && i.createdAt && i.updatedAt
+    );
+    
+    if (closedIncidentsWithDates.length === 0) return 0;
+    
+    const totalDays = closedIncidentsWithDates.reduce((sum, incident) => {
+      const createdDate = new Date(incident.createdAt);
+      const closedDate = new Date(incident.updatedAt);
+      const diffTime = Math.abs(closedDate.getTime() - createdDate.getTime());
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      return sum + diffDays;
+    }, 0);
+    
+    return Math.round(totalDays / closedIncidentsWithDates.length);
+  };
 
   return (
     <Layout>
-      <div className="space-y-6 md:space-y-8 w-full">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 w-full">
-          <div className="text-left">
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Welcome to {schoolName} Safety Dashboard</h1>
-            <p className="text-sm md:text-base text-gray-600 mt-1">Track, manage, and analyze school safety incidents</p>
-          </div>
-          
-          <Button onClick={() => navigate('/report-incident')} className="whitespace-nowrap">
-            <AlertTriangle className="h-4 w-4 mr-2" />
-            Report New Incident
-          </Button>
-        </div>
-
-        {/* Summary Cards Section */}
-        <SummaryCards 
-          openIncidents={openIncidents}
-          totalIncidents={incidents.length}
-          incidentsThisMonth={incidentsThisMonth}
-          mostCommonCategory={mostCommonCategory}
-          categoryCounts={categoryCounts}
-          totalPeopleInvolved={totalPeopleInvolved}
-        />
+      <div className="container py-6">
+        <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
         
-        {/* Insights Grid - Replace QuickActions and RecentActivities with more insights */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-          {/* Incident Status Chart */}
-          <div>
-            <IncidentStatusSection />
-          </div>
+        {/* If no incidents yet, show a welcome message */}
+        {totalIncidents === 0 && (
+          <Alert className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Welcome to the Safety Management System</AlertTitle>
+            <AlertDescription>
+              Get started by reporting your first incident or exploring the system's features.
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {/* Dashboard Cards */}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
+          {/* Incident Status Cards */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Total Incidents
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{totalIncidents}</div>
+            </CardContent>
+          </Card>
           
-          {/* Category Distribution */}
-          <div>
-            <IncidentStatusSection title="Category Distribution" />
-          </div>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Open Incidents
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-red-500">{openIncidents}</div>
+              <p className="text-xs text-muted-foreground">
+                {openIncidents > 0 ? `${Math.round((openIncidents / totalIncidents) * 100) || 0}% of total` : 'No open incidents'}
+              </p>
+            </CardContent>
+          </Card>
           
-          {/* Monthly Trend */}
-          <div>
-            <IncidentStatusSection title="Monthly Trend" />
-          </div>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                In Progress
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-amber-500">{inProgressIncidents}</div>
+              <p className="text-xs text-muted-foreground">
+                {inProgressIncidents > 0 ? `${Math.round((inProgressIncidents / totalIncidents) * 100) || 0}% of total` : 'No incidents in progress'}
+              </p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Resolved
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-500">{closedIncidents}</div>
+              <p className="text-xs text-muted-foreground">
+                {closedIncidents > 0 ? `${Math.round((closedIncidents / totalIncidents) * 100) || 0}% of total` : 'No resolved incidents'}
+              </p>
+            </CardContent>
+          </Card>
         </div>
-
-        {/* Safety Resources Section */}
-        <div className="col-span-full">
-          <SafetyResources />
+        
+        {/* Additional dashboard content would go here */}
+        <div className="grid gap-6 md:grid-cols-2">
+          {/* Recent Activity */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Activity</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {recentActivities.length > 0 ? (
+                <ActivityList 
+                  activities={recentActivities} 
+                  formatDate={formatDate} 
+                />
+              ) : (
+                <p className="text-muted-foreground text-sm">No recent activity to display</p>
+              )}
+            </CardContent>
+          </Card>
+          
+          {/* Safety Stats */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Safety Stats</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Days Without Incident</p>
+                <p className="text-2xl font-bold">{incidentFreeStreak}</p>
+              </div>
+              
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Reporting Rate</p>
+                <p className="text-2xl font-bold">{reportRate}%</p>
+              </div>
+              
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Avg. Resolution Time</p>
+                <p className="text-2xl font-bold">{calculateAverageResolutionTime()} days</p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </Layout>

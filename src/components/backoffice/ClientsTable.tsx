@@ -27,6 +27,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import ModuleAccessBadges from '../clients/ModuleAccessBadges';
 
 interface ClientsTableProps {
   clients: Client[];
@@ -105,14 +106,7 @@ const ClientsTable: React.FC<ClientsTableProps> = ({
                   </TableCell>
                   <TableCell>{formatDate(client.creationDate)}</TableCell>
                   <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {client.moduleAccess?.incidentReporting && (
-                        <Badge variant="outline" className="bg-blue-100 text-blue-800">Reporting</Badge>
-                      )}
-                      {client.moduleAccess?.insights && (
-                        <Badge variant="outline" className="bg-purple-100 text-purple-800">Insights</Badge>
-                      )}
-                    </div>
+                    <ModuleAccessBadges moduleAccess={client.moduleAccess || {}} />
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">

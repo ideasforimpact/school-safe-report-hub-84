@@ -3,6 +3,14 @@ import React from 'react';
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ImageIcon } from 'lucide-react';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
+import { InstitutionType } from '@/contexts/ClientContext';
 
 interface BasicInfoTabProps {
   formData: {
@@ -12,12 +20,17 @@ interface BasicInfoTabProps {
     phone: string;
     active: boolean;
     logo: string;
+    institutionType: InstitutionType;
   };
   setFormData: (formData: any) => void;
   handleLogoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
 const BasicInfoTab = ({ formData, setFormData, handleLogoUpload }: BasicInfoTabProps) => {
+  const institutionTypes: InstitutionType[] = [
+    'CBSE', 'IB', 'IGCSE', 'ICSE', 'Matric', 'Combined Campus', 'Other'
+  ];
+
   return (
     <div className="space-y-4">
       {/* Logo Upload */}
@@ -58,6 +71,26 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload }: BasicInfoTabP
           placeholder="Enter client name"
         />
       </div>
+      
+      <div className="space-y-2">
+        <label htmlFor="institutionType">Institution Type</label>
+        <Select
+          value={formData.institutionType}
+          onValueChange={(value) => setFormData({...formData, institutionType: value as InstitutionType})}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select institution type" />
+          </SelectTrigger>
+          <SelectContent>
+            {institutionTypes.map((type) => (
+              <SelectItem key={type} value={type}>
+                {type}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      
       <div className="space-y-2">
         <label htmlFor="contactPerson">Contact Person</label>
         <Input

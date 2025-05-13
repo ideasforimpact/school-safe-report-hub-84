@@ -1,24 +1,29 @@
 
 import React from 'react';
-import { UserRole, ModulePermissions } from '@/contexts/AuthContext';
+import { UserRole, ModulePermissions, EmployeeType, DepartmentType } from '@/contexts/auth/types';
 import UserBasicInfoFields from './UserBasicInfoFields';
-import UserRoleSelector from './UserRoleSelector';
 import UserPermissionsFields from './UserPermissionsFields';
 
 interface UserFormContainerProps {
   formData: {
-    name: string;
+    firstName: string;
+    lastName: string;
     email: string;
-    password: string;
-    designation?: string;
+    employeeId?: string;
+    employeeType?: EmployeeType;
+    department?: DepartmentType;
+    joiningDate?: string;
     role: UserRole;
     modulePermissions: ModulePermissions;
   };
   setFormData: React.Dispatch<React.SetStateAction<{
-    name: string;
+    firstName: string;
+    lastName: string;
     email: string;
-    password: string;
-    designation?: string;
+    employeeId?: string;
+    employeeType?: EmployeeType;
+    department?: DepartmentType;
+    joiningDate?: string;
     role: UserRole;
     modulePermissions: ModulePermissions;
   }>>;
@@ -41,11 +46,6 @@ const UserFormContainer = ({ formData, setFormData, isEditMode = false }: UserFo
       <UserBasicInfoFields 
         formData={formData}
         setFormData={setFormData}
-        isEditMode={isEditMode}
-      />
-      <UserRoleSelector
-        role={formData.role}
-        onRoleChange={(role) => setFormData({...formData, role})}
         isEditMode={isEditMode}
       />
       <UserPermissionsFields

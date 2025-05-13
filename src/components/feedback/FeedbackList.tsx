@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Check, Clock, Filter, Search, X } from 'lucide-react';
@@ -21,6 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { FormSubmission } from '@/contexts/feedback/types';
 
 const FeedbackList = () => {
   const { submissions } = useFeedback();
@@ -47,7 +47,10 @@ const FeedbackList = () => {
   });
 
   // Get unique form IDs for filter dropdown
-  const formOptions = [...new Set(submissions.map(s => ({ id: s.formId, title: s.formTitle })))];
+  const formOptions = submissions.length > 0 ? 
+    [...new Set(submissions.map(s => ({ id: s.formId, title: s.formTitle })))]
+      .filter((v, i, a) => a.findIndex(t => t.id === v.id) === i)
+    : [];
 
   const getStatusBadge = (status: string) => {
     switch(status) {

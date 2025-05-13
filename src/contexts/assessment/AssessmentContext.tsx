@@ -1,6 +1,5 @@
-
 import React, { createContext, useContext, useEffect } from 'react';
-import { useAuth } from '../auth/AuthContext';
+import { useAuth } from '../auth';
 import { AssessmentContextType } from './types';
 import { useTemplateManagement } from './hooks/useTemplateManagement';
 import { useQuestionManagement } from './hooks/useQuestionManagement';
@@ -32,7 +31,8 @@ export const AssessmentProvider: React.FC<{children: React.ReactNode}> = ({ chil
     createTemplate, 
     updateTemplate, 
     deleteTemplate, 
-    getTemplateById 
+    getTemplateById,
+    setTemplates
   } = useTemplateManagement(user?.id);
   
   // Set up assignment management
@@ -41,29 +41,15 @@ export const AssessmentProvider: React.FC<{children: React.ReactNode}> = ({ chil
     createAssignment, 
     updateAssignment, 
     deleteAssignment, 
-    getUserAssignments, 
-    setAssignments 
+    getUserAssignments
   } = useAssignmentManagement(user?.id);
 
-  // Set up question management - fix the type issue here
+  // Set up question management with the setTemplates function
   const { 
     addQuestion, 
     updateQuestion, 
     removeQuestion 
-  } = useQuestionManagement(templates, (templates) => {
-    // This wrapper ensures we're providing the expected setState function
-    // that takes either a new state value or a function to update the state
-    return (updater) => {
-      if (typeof updater === 'function') {
-        const updatedTemplates = updater(templates);
-        // Fix: Pass the id and updates as separate arguments
-        updateTemplate(updatedTemplates.id, updatedTemplates);
-      } else {
-        // Fix: Pass the id and updates as separate arguments
-        updateTemplate(updater.id, updater);
-      }
-    };
-  });
+  } = useQuestionManagement(templates, setTemplates);
   
   // Set up response management
   const { 

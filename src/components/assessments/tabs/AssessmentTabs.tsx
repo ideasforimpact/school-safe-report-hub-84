@@ -5,9 +5,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 interface AssessmentTabsProps {
   children: React.ReactNode;
+  defaultValue?: string;
 }
 
-const AssessmentTabs: React.FC<AssessmentTabsProps> = ({ children }) => {
+const AssessmentTabs: React.FC<AssessmentTabsProps> = ({ children, defaultValue }) => {
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -20,7 +21,7 @@ const AssessmentTabs: React.FC<AssessmentTabsProps> = ({ children }) => {
     return 'overview';
   };
   
-  const [activeTab, setActiveTab] = useState(getActiveTab());
+  const [activeTab, setActiveTab] = useState(defaultValue || getActiveTab());
   
   // Update active tab when location changes
   useEffect(() => {

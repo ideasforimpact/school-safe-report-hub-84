@@ -1,157 +1,45 @@
 
-import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import React from 'react';
 import Layout from '@/components/layout/Layout';
-import { useIncidents } from '@/contexts/IncidentContext';
 import { EducationalStructureConfig } from './configuration/EducationalStructureConfig';
-import { toast } from 'sonner';
-import { CampusItem, ClassItem, SectionItem } from '@/contexts/types';
+import { EducationalConfigurationHeader } from '@/components/configuration/EducationalConfigurationHeader';
+import { useEducationalConfigurationManagement } from '@/hooks/useEducationalConfigurationManagement';
 
 const EducationalConfiguration = () => {
-  const [searchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState('campuses');
-  
-  const { 
-    campuses: contextCampuses,
-    addCampus: contextAddCampus,
-    updateCampus: contextUpdateCampus,
-    deleteCampus: contextDeleteCampus,
-    classes: contextClasses,
-    addClass: contextAddClass,
-    updateClass: contextUpdateClass,
-    deleteClass: contextDeleteClass,
-    sections: contextSections,
-    addSection: contextAddSection,
-    updateSection: contextUpdateSection,
-    deleteSection: contextDeleteSection
-  } = useIncidents();
-
-  // Local state to sync with context
-  const [campuses, setCampuses] = useState<CampusItem[]>(contextCampuses);
-  const [classes, setClasses] = useState<ClassItem[]>(contextClasses);
-  const [sections, setSections] = useState<SectionItem[]>(contextSections);
-
-  // Update local state when context changes
-  useEffect(() => {
-    setCampuses(contextCampuses);
-    setClasses(contextClasses);
-    setSections(contextSections);
-  }, [contextCampuses, contextClasses, contextSections]);
-  
-  // Set initial tab based on URL parameter when component mounts
-  useEffect(() => {
-    const tab = searchParams.get('tab');
-    if (tab) {
-      setActiveTab(tab);
-    }
-  }, [searchParams]);
-
-  const handleAddCampus = (name: string) => {
-    try {
-      console.log('EducationalConfiguration: Adding campus:', name); // Debug log
-      contextAddCampus(name);
-      toast.success("Campus added successfully");
-    } catch (error) {
-      console.error("Error adding campus:", error);
-      toast.error("Failed to add campus");
-    }
-  };
-
-  const handleUpdateCampus = (id: string, name: string) => {
-    try {
-      contextUpdateCampus(id, name);
-      toast.success("Campus updated successfully");
-    } catch (error) {
-      console.error("Error updating campus:", error);
-      toast.error("Failed to update campus");
-    }
-  };
-
-  const handleDeleteCampus = (id: string) => {
-    try {
-      contextDeleteCampus(id);
-      toast.success("Campus deleted successfully");
-    } catch (error) {
-      console.error("Error deleting campus:", error);
-      toast.error("Failed to delete campus");
-    }
-  };
-
-  const handleAddClass = (campusId: string, name: string) => {
-    try {
-      console.log("EducationalConfiguration: Adding class:", name, "to campus:", campusId);
-      contextAddClass(campusId, name);
-      toast.success("Class added successfully");
-    } catch (error) {
-      console.error("Error adding class:", error);
-      toast.error("Failed to add class");
-    }
-  };
-
-  const handleUpdateClass = (id: string, campusId: string, name: string) => {
-    try {
-      contextUpdateClass(id, campusId, name);
-      toast.success("Class updated successfully");
-    } catch (error) {
-      console.error("Error updating class:", error);
-      toast.error("Failed to update class");
-    }
-  };
-
-  const handleDeleteClass = (id: string) => {
-    try {
-      contextDeleteClass(id);
-      toast.success("Class deleted successfully");
-    } catch (error) {
-      console.error("Error deleting class:", error);
-      toast.error("Failed to delete class");
-    }
-  };
-
-  const handleAddSection = (classId: string, name: string) => {
-    try {
-      console.log("EducationalConfiguration: Adding section:", name, "to class:", classId);
-      contextAddSection(classId, name);
-      toast.success("Section added successfully");
-    } catch (error) {
-      console.error("Error adding section:", error);
-      toast.error("Failed to add section");
-    }
-  };
-
-  const handleUpdateSection = (id: string, classId: string, name: string) => {
-    try {
-      contextUpdateSection(id, classId, name);
-      toast.success("Section updated successfully");
-    } catch (error) {
-      console.error("Error updating section:", error);
-      toast.error("Failed to update section");
-    }
-  };
-
-  const handleDeleteSection = (id: string) => {
-    try {
-      contextDeleteSection(id);
-      toast.success("Section deleted successfully");
-    } catch (error) {
-      console.error("Error deleting section:", error);
-      toast.error("Failed to delete section");
-    }
-  };
+  const {
+    activeTab,
+    setActiveTab,
+    loading,
+    campuses,
+    classes,
+    sections,
+    facilities,
+    handleAddCampus,
+    handleUpdateCampus,
+    handleDeleteCampus,
+    handleAddClass,
+    handleUpdateClass,
+    handleDeleteClass,
+    handleAddSection,
+    handleUpdateSection,
+    handleDeleteSection,
+    handleAddFacility,
+    handleUpdateFacility,
+    handleDeleteFacility
+  } = useEducationalConfigurationManagement();
 
   return (
     <Layout>
       <div className="space-y-6 max-w-6xl mx-auto p-4">
-        <div>
-          <h1 className="text-2xl font-bold">Educational Structure Configuration</h1>
-          <p className="text-gray-600 mt-1">
-            Manage campuses, classes, and sections
-          </p>
-        </div>
+        <EducationalConfigurationHeader
+          title="Educational Structure Configuration"
+          description="Manage campuses, classes, sections, and facilities"
+        />
 
         <EducationalStructureConfig 
           activeTab={activeTab}
           setActiveTab={setActiveTab}
+          loading={loading}
           campuses={campuses}
           addCampus={handleAddCampus}
           updateCampus={handleUpdateCampus}
@@ -164,6 +52,10 @@ const EducationalConfiguration = () => {
           addSection={handleAddSection}
           updateSection={handleUpdateSection}
           deleteSection={handleDeleteSection}
+          facilities={facilities}
+          addFacility={handleAddFacility}
+          updateFacility={handleUpdateFacility}
+          deleteFacility={handleDeleteFacility}
         />
       </div>
     </Layout>

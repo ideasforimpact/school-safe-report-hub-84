@@ -13,11 +13,13 @@ import useClientManagement from '@/hooks/useClientManagement';
 import ClientHeader from '@/components/clients/ClientHeader';
 import ClientList from '@/components/clients/ClientList';
 import ClientDialog from '@/components/backoffice/ClientDialog';
+import { Loader2 } from 'lucide-react'; // Import loading spinner
 
 const ClientManagement = () => {
   const { isAdmin } = useAuth();
   const {
     clients,
+    loading,
     formData,
     setFormData,
     isAddDialogOpen,
@@ -58,11 +60,18 @@ const ClientManagement = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ClientList 
-              clients={clients}
-              onEditClick={handleEditClick}
-              onDeleteClient={handleDeleteClient}
-            />
+            {loading ? (
+              <div className="flex justify-center items-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                <span className="ml-2">Loading clients...</span>
+              </div>
+            ) : (
+              <ClientList 
+                clients={clients}
+                onEditClick={handleEditClick}
+                onDeleteClient={handleDeleteClient}
+              />
+            )}
           </CardContent>
         </Card>
       </div>
@@ -79,6 +88,7 @@ const ClientManagement = () => {
           resetForm();
         }}
         isEdit={false}
+        isLoading={loading}
       />
 
       {/* Edit Client Dialog */}
@@ -93,6 +103,7 @@ const ClientManagement = () => {
           resetForm();
         }}
         isEdit={true}
+        isLoading={loading}
       />
     </Layout>
   );

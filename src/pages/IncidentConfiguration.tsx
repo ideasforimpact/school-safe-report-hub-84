@@ -27,7 +27,8 @@ const IncidentConfiguration = () => {
     facilities: contextFacilities,
     addFacility: contextAddFacility,
     deleteFacility: contextDeleteFacility,
-    updateFacility: contextUpdateFacility
+    updateFacility: contextUpdateFacility,
+    campuses: contextCampuses // Get campuses from context
   } = useIncidents();
 
   // Local state to track changes
@@ -35,6 +36,7 @@ const IncidentConfiguration = () => {
   const [subcategoryMappings, setSubcategoryMappings] = useState(contextSubcategories);
   const [locations, setLocations] = useState(contextLocations);
   const [facilities, setFacilities] = useState(contextFacilities);
+  const [campuses, setCampuses] = useState(contextCampuses); // Add state for campuses
 
   // Update local state when context changes
   useEffect(() => {
@@ -42,7 +44,8 @@ const IncidentConfiguration = () => {
     setSubcategoryMappings(contextSubcategories);
     setLocations(contextLocations);
     setFacilities(contextFacilities);
-  }, [contextCategories, contextSubcategories, contextLocations, contextFacilities]);
+    setCampuses(contextCampuses); // Update campuses state when context changes
+  }, [contextCategories, contextSubcategories, contextLocations, contextFacilities, contextCampuses]);
 
   // Set initial tab based on URL parameter when component mounts
   useEffect(() => {
@@ -201,6 +204,7 @@ const IncidentConfiguration = () => {
           addFacility={handleAddFacility}
           updateFacility={handleUpdateFacility}
           deleteFacility={handleDeleteFacility}
+          campuses={campuses} // Pass campuses to the IncidentRelatedConfig component
         />
       </div>
     </Layout>

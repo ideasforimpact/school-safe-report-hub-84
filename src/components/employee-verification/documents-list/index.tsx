@@ -1,10 +1,12 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { useToast } from '@/hooks/use-toast';
 import EmptyDocumentsState from './EmptyDocumentsState';
 import DocumentsTable from './DocumentsTable';
 import VerificationDialog from './VerificationDialog';
+import OtpVerificationDialog from './OtpVerificationDialog';
+import { Loader2 } from 'lucide-react';
 
 interface DocumentsListProps {
   employeeId: string;
@@ -12,12 +14,31 @@ interface DocumentsListProps {
 }
 
 const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument }) => {
-  const { getEmployeeDocuments, verifyDocument } = useEmployeeVerification();
+  const { getEmployeeDocuments, verifyDocument, fetchEmployeeDocuments, isLoading } = useEmployeeVerification();
   const documents = getEmployeeDocuments(employeeId);
   const { toast } = useToast();
+  
   const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
+  const [otpDialogOpen, setOtpDialogOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<string | null>(null);
+  const [selectedDocumentType, setSelectedDocumentType] = useState<string | null>(null);
+  const [selectedDocumentNumber, setSelectedDocumentNumber] = useState<string>('');
   const [verifying, setVerifying] = useState(false);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+
+  // Fetch documents when component mounts
+  useEffect(() => {
+    const loadDocuments = async () => {
+      try {
+        await fetchEmployeeDocuments(employeeId);
+      } finally {
+        // Mark initial load as complete regardless of success/failure
+        setInitialLoadComplete(true);
+      }
+    };
+    
+    loadDocuments();
+  }, [employeeId, fetchEmployeeDocuments]);
 
   const handleViewDocument = (documentImage: string) => {
     window.open(documentImage, '_blank');
@@ -33,25 +54,40 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument
   };
 
   const openVerifyDialog = (documentId: string) => {
-    setSelectedDocument(documentId);
-    setVerifyDialogOpen(true);
+    const document = documents.find(doc => doc.id === documentId);
+    if (document) {
+      setSelectedDocument(documentId);
+      setSelectedDocumentType(document.documentType);
+      setSelectedDocumentNumber(document.documentNumber || '');
+      setVerifyDialogOpen(true);
+    }
   };
 
   const handleVerify = async (method: 'api' | 'manual') => {
     if (!selectedDocument) return;
+    
+    // Special handling for Aadhar documents with API verification
+    const isAadhar = selectedDocumentType === 'aadhar' && method === 'api';
+    
+    if (isAadhar) {
+      setVerifyDialogOpen(false);
+      setOtpDialogOpen(true);
+      return;
+    }
     
     setVerifying(true);
     
     try {
       // Simulate verification delay
       setTimeout(() => {
+        const notes = method === 'api' 
+          ? 'Document automatically verified successfully with government database.' 
+          : 'Document manually verified successfully.';
+        
         verifyDocument(
           selectedDocument,
           'verified',
-          method === 'api' 
-            ? 'Document automatically verified successfully.' 
-            : 'Document manually verified successfully.',
-          method
+          notes
         );
         
         toast({
@@ -69,6 +105,27 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument
         variant: "destructive",
       });
       setVerifying(false);
+    }
+  };
+
+  const handleOtpVerificationComplete = (success: boolean, message: string) => {
+    if (success && selectedDocument) {
+      verifyDocument(
+        selectedDocument,
+        'verified',
+        'Document verified successfully via Aadhar OTP verification.'
+      );
+      
+      toast({
+        title: "Document Verified",
+        description: message,
+      });
+    } else {
+      toast({
+        title: "Verification Failed",
+        description: message,
+        variant: "destructive"
+      });
     }
   };
 
@@ -105,6 +162,16 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument
     }
   };
 
+  // Show loading state only during initial load, not for subsequent operations
+  if (isLoading && !initialLoadComplete) {
+    return (
+      <div className="flex flex-col items-center justify-center p-8">
+        <Loader2 className="h-8 w-8 text-primary animate-spin mb-4" />
+        <p className="text-gray-600">Loading documents...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {documents.length === 0 ? (
@@ -124,6 +191,15 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument
         onVerify={handleVerify}
         onReject={rejectDocument}
         isVerifying={verifying}
+        documentType={selectedDocumentType || undefined}
+      />
+
+      <OtpVerificationDialog 
+        open={otpDialogOpen}
+        onOpenChange={setOtpDialogOpen}
+        documentId={selectedDocument || ''}
+        documentNumber={selectedDocumentNumber}
+        onVerificationComplete={handleOtpVerificationComplete}
       />
     </div>
   );

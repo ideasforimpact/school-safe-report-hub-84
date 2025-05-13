@@ -1,51 +1,114 @@
 
-import React, { createContext, useState, useContext, ReactNode } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { Student } from '@/types/student';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface StudentContextType {
   students: Student[];
-  addStudent: (student: Omit<Student, 'id' | 'createdAt' | 'updatedAt'>) => void;
-  updateStudent: (id: string, student: Partial<Student>) => void;
-  deleteStudent: (id: string) => void;
+  addStudent: (student: Omit<Student, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateStudent: (id: string, student: Partial<Student>) => Promise<void>;
+  deleteStudent: (id: string) => Promise<void>;
   getStudent: (id: string) => Student | undefined;
+  isLoading: boolean;
 }
 
 const StudentContext = createContext<StudentContextType | undefined>(undefined);
 
 export const StudentProvider = ({ children }: { children: ReactNode }) => {
-  const [students, setStudents] = useState<Student[]>(() => {
-    const saved = localStorage.getItem('students');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [students, setStudents] = useState<Student[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Save data to localStorage whenever it changes
-  React.useEffect(() => {
-    localStorage.setItem('students', JSON.stringify(students));
-  }, [students]);
+  // Fetch students using the edge function on component mount
+  useEffect(() => {
+    fetchStudents();
+  }, []);
 
-  const addStudent = (student: Omit<Student, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const now = new Date();
-    const newStudent = {
-      ...student,
-      id: Date.now().toString(),
-      createdAt: now,
-      updatedAt: now
-    };
-    setStudents(prev => [...prev, newStudent]);
+  const fetchStudents = async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('student-management', {
+        method: 'GET',
+        headers: { path: 'list' }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      setStudents(data);
+    } catch (error) {
+      console.error('Error fetching students:', error);
+      toast.error('Failed to load students');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const updateStudent = (id: string, updates: Partial<Student>) => {
-    setStudents(prev => 
-      prev.map(student => 
-        student.id === id 
-          ? { ...student, ...updates, updatedAt: new Date() } 
-          : student
-      )
-    );
+  const addStudent = async (student: Omit<Student, 'id' | 'createdAt' | 'updatedAt'>) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('student-management', {
+        body: student,
+        method: 'POST',
+        headers: { path: 'create' }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      setStudents(prev => [data, ...prev]);
+      return data;
+    } catch (error) {
+      console.error('Error adding student:', error);
+      throw error;
+    }
   };
 
-  const deleteStudent = (id: string) => {
-    setStudents(prev => prev.filter(student => student.id !== id));
+  const updateStudent = async (id: string, updates: Partial<Student>) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('student-management', {
+        body: updates,
+        method: 'PUT',
+        headers: { path: `update`, id }
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      setStudents(prev => 
+        prev.map(student => 
+          student.id === id ? data : student
+        )
+      );
+      return data;
+    } catch (error) {
+      console.error('Error updating student:', error);
+      throw error;
+    }
+  };
+
+  const deleteStudent = async (id: string) => {
+    try {
+      // Need to use JSON.stringify with an empty object to ensure we send a valid JSON body
+      // This prevents "Unexpected end of JSON input" errors
+      const { error } = await supabase.functions.invoke('student-management', {
+        body: { id }, // Send the id in the body too as a fallback
+        method: 'DELETE',
+        headers: { path: `delete`, id }
+      });
+
+      if (error) {
+        console.error('Delete error response:', error);
+        throw error;
+      }
+
+      setStudents(prev => prev.filter(student => student.id !== id));
+    } catch (error) {
+      console.error('Error deleting student:', error);
+      throw error;
+    }
   };
 
   const getStudent = (id: string) => {
@@ -57,7 +120,8 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
     addStudent,
     updateStudent,
     deleteStudent,
-    getStudent
+    getStudent,
+    isLoading
   };
 
   return (

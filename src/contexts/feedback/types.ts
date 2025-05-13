@@ -42,9 +42,12 @@ export interface FormSubmission {
 export interface FeedbackContextType {
   forms: FeedbackForm[];
   submissions: FormSubmission[];
+  getFormById: (id: string) => FeedbackForm | undefined;
+  getResponseById: (id: string) => FormSubmission | undefined;
   addForm: (form: FeedbackForm) => void;
   updateForm: (form: FeedbackForm) => void;
   deleteForm: (formId: string) => void;
   addSubmission: (submission: FormSubmission) => void;
   updateSubmissionStatus: (submissionId: string, status: SubmissionStatus) => void;
+  submitFormResponse: (response: Omit<FormSubmission, 'id' | 'createdAt' | 'updatedAt'>) => void;
 }

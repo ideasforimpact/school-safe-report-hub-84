@@ -1,120 +1,109 @@
 
-import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { useIncidents } from '@/contexts/IncidentContext';
-import { useAuth } from '@/contexts/AuthContext';
-import { Action, Comment as IncidentComment, FileItem, IncidentStatus, User as IncidentUser, ContributingFactor } from '@/types/incident';
-import { useIncidentDetail } from '@/hooks/useIncidentDetail';
-import { toast } from "sonner";
-import { compressImageData } from '@/utils/imageCompression';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useIncidents } from '@/contexts/incident/IncidentContext';
+import { useAuth } from '@/contexts/auth/AuthContext';
+import { toast } from 'sonner';
+import { formatUserFullName } from '@/utils/userUtils';
+import { IncidentStatus } from '@/types/incident';
 
-export const useIncidentDetailPage = () => {
-  const { id } = useParams<{ id: string }>();
+export function useIncidentDetailPage(id: string) {
+  const { incidents, updateIncident, addComment } = useIncidents();
+  const { user } = useAuth();
+  const incident = incidents.find(inc => inc.id === id);
   const navigate = useNavigate();
-  const { getIncident, updateIncident, addComment, updateComment, deleteComment, getIncidentActivities } = useIncidents();
-  const { user, isAdmin } = useAuth();
-  const { formatDate, formatDateTime, getStatusColor, getCommentStatusColor, useStatusUpdate } = useIncidentDetail();
+  
+  const [statusOptions, setStatusOptions] = useState<string[]>([]);
+  const [newComment, setNewComment] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Get the incident and check if it exists
-  const incident = id ? getIncident(id) : null;
-  const incidentActivities = incident ? getIncidentActivities(incident.id) : [];
-
-  const { statusUpdate, setStatusUpdate } = useStatusUpdate(incident?.status || 'Open');
-
-  // Comment form state
-  const [commentText, setCommentText] = useState('');
-  const [commentFiles, setCommentFiles] = useState<FileItem[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Convert AuthContext User to IncidentUser
-  const incidentUser: IncidentUser | null = user ? {
-    id: user.id,
-    name: user.name,
-    role: isAdmin ? 'Admin' : 'Staff'
-  } : null;
-
-  const handleStatusChange = () => {
-    if (incident) {
-      updateIncident(incident.id, { status: statusUpdate as IncidentStatus });
+  useEffect(() => {
+    if (!incident) {
+      // navigate('/incidents', { replace: true });
+      return;
     }
-  };
-
-  const handleActionSubmit = (action: Action) => {
-    if (incident) {
-      const newActions = [...(incident.actions || []), action];
-      updateIncident(incident.id, { actions: newActions });
-      toast.success("Action added successfully");
-    }
-  };
-
-  const canEditComment = (item: IncidentComment) => {
-    return isAdmin || item.createdBy.id === user?.id;
-  };
-
-  const handleCommentSubmit = async () => {
-    if (!commentText.trim() || !incident) return;
     
-    setIsSubmitting(true);
+    // Define available status transitions based on current status
+    const availableTransitions: Record<string, string[]> = {
+      'Open': ['In Progress', 'Resolved', 'Closed'],
+      'In Progress': ['Resolved', 'Closed'],
+      'Resolved': ['Closed', 'Reopened'],
+      'Closed': ['Reopened'],
+      'Reopened': ['In Progress', 'Resolved', 'Closed']
+    };
+    
+    if (incident.status && availableTransitions[incident.status]) {
+      setStatusOptions(availableTransitions[incident.status]);
+    } else {
+      setStatusOptions(['Open', 'In Progress', 'Resolved', 'Closed']);
+    }
+  }, [incident, navigate]);
+
+  const handleStatusChange = async (newStatus: string) => {
+    if (!incident) return;
+    
+    setIsLoading(true);
     
     try {
-      // Compress any images before saving
-      const processedFiles: FileItem[] = [];
+      // Update the incident status - Cast to IncidentStatus
+      await updateIncident(incident.id, { status: newStatus as IncidentStatus });
       
-      if (commentFiles.length > 0) {
-        for (const file of commentFiles) {
-          const processedFile = await compressImageData(file);
-          processedFiles.push(processedFile);
-        }
-      }
+      // Auto-generate a comment about the status change
+      const userName = user ? formatUserFullName(user) : 'A user';
+      const statusComment = `${userName} changed status from ${incident.status} to ${newStatus}`;
       
-      const commentData: Omit<IncidentComment, 'id' | 'createdAt' | 'updatedAt'> = {
-        description: commentText,
+      // Add a comment about the status change
+      await addComment(incident.id, {
+        description: statusComment,
         dueDate: new Date(),
-        assignedTo: { id: '', name: '' },
+        assignedTo: { id: user?.id || 'system', name: userName },
         status: 'Pending',
-        createdBy: { id: user?.id || '', name: user?.name || '' },
-        files: processedFiles
-      };
+        createdBy: { id: user?.id || 'system', name: userName },
+      });
       
-      addComment(incident.id, commentData);
-      toast.success("Comment added successfully");
-      
-      // Reset form
-      setCommentText('');
-      setCommentFiles([]);
+      toast.success(`Status updated to ${newStatus}`);
     } catch (error) {
-      console.error("Error adding comment:", error);
-      toast.error("Failed to add comment. Please try again.");
+      toast.error('Failed to update status');
+      console.error(error);
     } finally {
-      setIsSubmitting(false);
+      setIsLoading(false);
+    }
+  };
+  
+  const handleAddComment = async () => {
+    if (!incident || !newComment.trim() || !user) return;
+    
+    setIsLoading(true);
+    
+    try {
+      // Add a new comment to the incident
+      await addComment(incident.id, {
+        description: newComment,
+        dueDate: new Date(),
+        assignedTo: { id: user.id, name: formatUserFullName(user) },
+        status: 'Pending',
+        createdBy: { id: user.id, name: formatUserFullName(user) },
+      });
+      
+      setNewComment('');
+      toast.success('Comment added successfully');
+    } catch (error) {
+      toast.error('Failed to add comment');
+      console.error(error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return {
-    id,
-    navigate,
     incident,
-    incidentActivities,
-    commentText,
-    setCommentText,
-    commentFiles,
-    setCommentFiles,
-    isSubmitting,
-    handleCommentSubmit,
-    handleActionSubmit,
+    statusOptions,
+    newComment,
+    setNewComment,
+    isLoading,
     handleStatusChange,
-    statusUpdate,
-    setStatusUpdate,
-    formatDate,
-    formatDateTime,
-    getStatusColor,
-    getCommentStatusColor,
-    addComment,
-    updateComment,
-    deleteComment,
-    canEditComment,
-    user: incidentUser,
-    isAdmin,
-    updateIncident
+    handleAddComment,
+    incidentId: id,
+    navigate
   };
-};
+}

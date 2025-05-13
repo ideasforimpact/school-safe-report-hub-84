@@ -61,3 +61,6 @@ export interface IncidentContextType {
   updateDesignation: (id: string, name: string) => void;
   deleteDesignation: (id: string) => void;
 }
+
+// Use the IncidentStatus type from types/incident.ts
+export type { IncidentStatus, IncidentType, IncidentLocation } from '@/types/incident';

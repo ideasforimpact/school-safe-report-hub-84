@@ -1,79 +1,48 @@
 
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Incident } from '@/contexts/IncidentContext';
-import { Table, TableBody } from '@/components/ui/table';
 import { useSortedIncidents } from '@/hooks/useSortedIncidents';
 import { usePagination } from '@/hooks/usePagination';
-import { IncidentTableHeader } from './table/IncidentTableHeader';
-import { IncidentTableRow } from './table/IncidentTableRow';
-import { TablePagination } from './table/TablePagination';
+import { useIncidentTableNavigation } from '@/hooks/useIncidentTableNavigation';
+import { TableContainer } from './table/TableContainer';
+import { EmptyState } from './table/EmptyState';
 
 interface IncidentsTableProps {
   incidents: Incident[];
 }
 
 const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
-  const navigate = useNavigate();
-  
   // Sort incidents
   const { sortedIncidents, sortField, sortDirection, handleSort } = useSortedIncidents(incidents);
   
   // Paginate incidents
-  const { currentPage, setCurrentPage, totalPages, paginatedItems } = usePagination(sortedIncidents);
+  const { currentPage, setCurrentPage, totalPages, paginatedItems } = usePagination(sortedIncidents, 10);
 
   // Navigation handlers
-  const handleRowClick = (incidentId: string) => {
-    navigate(`/incident/${incidentId}`);
-  };
+  const { handleRowClick, handleViewClick, handleEditClick } = useIncidentTableNavigation();
 
-  const handleViewClick = (e: React.MouseEvent, incidentId: string) => {
-    e.stopPropagation();
-    navigate(`/incident/${incidentId}`);
-  };
-
-  const handleEditClick = (e: React.MouseEvent, incidentId: string) => {
-    e.stopPropagation();
-    navigate(`/incident/${incidentId}/edit`);
-  };
-
+  // Render the appropriate content based on the incidents
   if (incidents.length === 0) {
-    return (
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-8 text-center">
-          <p className="text-gray-500">No incidents found matching your filters</p>
-        </div>
-      </div>
-    );
+    return <EmptyState hasIncidents={false} hasFilteredIncidents={false} />;
   }
 
   return (
-    <div className="bg-white rounded-lg shadow">
-      <div className="overflow-x-auto">
-        <Table>
-          <IncidentTableHeader 
-            sortField={sortField} 
-            sortDirection={sortDirection} 
-            onSort={handleSort} 
-          />
-          <TableBody>
-            {paginatedItems.map((incident) => (
-              <IncidentTableRow 
-                key={incident.id}
-                incident={incident}
-                onRowClick={handleRowClick}
-                onViewClick={handleViewClick}
-                onEditClick={handleEditClick}
-              />
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+    <div>
+      {sortedIncidents.length === 0 && incidents.length > 0 ? (
+        <EmptyState hasIncidents={true} hasFilteredIncidents={false} />
+      ) : null}
       
-      <TablePagination 
+      <TableContainer 
+        incidents={paginatedItems}
+        sortField={sortField}
+        sortDirection={sortDirection}
+        handleSort={handleSort}
         currentPage={currentPage}
         totalPages={totalPages}
-        onPageChange={setCurrentPage}
+        setCurrentPage={setCurrentPage}
+        onRowClick={handleRowClick}
+        onViewClick={handleViewClick}
+        onEditClick={handleEditClick}
       />
     </div>
   );

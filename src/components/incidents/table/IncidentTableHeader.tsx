@@ -1,10 +1,10 @@
 
 import React from 'react';
 import { TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ChevronUp, ChevronDown } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 
-export type SortField = 'ticketId' | 'date' | 'category' | 'priority' | 'location' | 'facility' | 'status';
 export type SortDirection = 'asc' | 'desc';
+export type SortField = 'ticketId' | 'date' | 'category' | 'priority' | 'facility' | 'status';
 
 interface IncidentTableHeaderProps {
   sortField: SortField;
@@ -17,37 +17,37 @@ export const IncidentTableHeader: React.FC<IncidentTableHeaderProps> = ({
   sortDirection, 
   onSort 
 }) => {
-  // Helper to render column header with sort indicators
-  const getSortableHeader = (field: SortField, label: string) => {
-    return (
-      <div 
-        className="flex items-center cursor-pointer"
-        onClick={() => onSort(field)}
-      >
-        <span>{label}</span>
-        <div className="ml-1 flex flex-col">
-          <ChevronUp 
-            className={`h-3 w-3 ${sortField === field && sortDirection === 'asc' ? 'text-blue-600' : 'text-gray-300'}`}
-          />
-          <ChevronDown 
-            className={`h-3 w-3 mt-[-3px] ${sortField === field && sortDirection === 'desc' ? 'text-blue-600' : 'text-gray-300'}`}
-          />
-        </div>
-      </div>
-    );
+  const getSortIcon = (field: SortField) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="h-4 w-4 ml-1 opacity-50" />;
+    }
+    
+    return sortDirection === 'asc' 
+      ? <ArrowUp className="h-4 w-4 ml-1 text-blue-600" /> 
+      : <ArrowDown className="h-4 w-4 ml-1 text-blue-600" />;
   };
+
+  const createSortableHeader = (label: string, field: SortField) => (
+    <div
+      className="flex items-center cursor-pointer hover:text-blue-700 transition-colors"
+      onClick={() => onSort(field)}
+    >
+      {label}
+      {getSortIcon(field)}
+    </div>
+  );
 
   return (
     <TableHeader>
       <TableRow>
-        <TableHead>{getSortableHeader('ticketId', 'ID')}</TableHead>
-        <TableHead className="text-left">{getSortableHeader('date', 'Date')}</TableHead>
-        <TableHead className="text-left">{getSortableHeader('category', 'Category')}</TableHead>
-        <TableHead className="text-left">{getSortableHeader('priority', 'Priority')}</TableHead>
-        <TableHead className="text-left">{getSortableHeader('location', 'Location')}</TableHead>
-        <TableHead className="text-left">{getSortableHeader('facility', 'Facility')}</TableHead>
-        <TableHead className="text-left">{getSortableHeader('status', 'Status')}</TableHead>
-        <TableHead className="text-left">Actions</TableHead>
+        <TableHead>{createSortableHeader('Ticket', 'ticketId')}</TableHead>
+        <TableHead>{createSortableHeader('Date', 'date')}</TableHead>
+        <TableHead>{createSortableHeader('Category', 'category')}</TableHead>
+        <TableHead>{createSortableHeader('Priority', 'priority')}</TableHead>
+        <TableHead>{createSortableHeader('Facility', 'facility')}</TableHead>
+        <TableHead>{createSortableHeader('Status', 'status')}</TableHead>
+        <TableHead>Owner</TableHead>
+        <TableHead className="text-right">Actions</TableHead>
       </TableRow>
     </TableHeader>
   );

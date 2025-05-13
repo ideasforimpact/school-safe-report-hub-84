@@ -1,99 +1,140 @@
 
 import { User, UserWithPassword } from '@/contexts/auth/types';
-import { toast } from "@/components/ui/sonner";
 import { INITIAL_MOCK_USERS } from '@/contexts/auth/initialData';
+import { toast } from "@/components/ui/sonner";
 
-// Core authentication functions
+// In-memory user storage
+let users: UserWithPassword[] = [...INITIAL_MOCK_USERS];
+
+// Storage helper functions
 export const getUserFromStorage = (): User | null => {
-  const savedUser = localStorage.getItem('user');
-  return savedUser ? JSON.parse(savedUser) : null;
+  const storedUser = localStorage.getItem('currentUser');
+  if (!storedUser) return null;
+  try {
+    return JSON.parse(storedUser);
+  } catch (error) {
+    return null;
+  }
 };
 
 export const getUsersFromStorage = (): UserWithPassword[] => {
-  const savedUsers = localStorage.getItem('users');
-  return savedUsers ? JSON.parse(savedUsers) : INITIAL_MOCK_USERS;
+  const storedUsers = localStorage.getItem('users');
+  if (!storedUsers) return [...INITIAL_MOCK_USERS];
+  try {
+    return JSON.parse(storedUsers);
+  } catch (error) {
+    return [...INITIAL_MOCK_USERS];
+  }
 };
 
 export const saveUserToStorage = (user: User): void => {
-  localStorage.setItem('user', JSON.stringify(user));
+  localStorage.setItem('currentUser', JSON.stringify(user));
 };
 
 export const saveUsersToStorage = (users: UserWithPassword[]): void => {
   localStorage.setItem('users', JSON.stringify(users));
 };
 
-export const loginUser = async (
+// Authentication functions
+export const loginUser = (
   email: string, 
-  password: string, 
-  users: UserWithPassword[],
+  password: string,
+  currentUsers: UserWithPassword[] = users,
   isEmailDomainAllowed?: (email: string, clientId: string) => boolean
-): Promise<User | null> => {
-  // Simulate API call delay
-  await new Promise(resolve => setTimeout(resolve, 800));
-  
+): User | null => {
   console.log("Attempting login with:", email, password);
-  console.log("Available users:", users.map(u => ({ email: u.email, password: u.password })));
+  console.log("Available users:", currentUsers);
   
-  // Reset users to initial data if they got corrupted
-  let usersToCheck = users;
-  if (!users.length || !users.some(u => u.email === "owner@saasplatform.com")) {
-    console.log("Resetting users to initial data");
-    usersToCheck = INITIAL_MOCK_USERS;
-    saveUsersToStorage(usersToCheck);
-  }
-  
-  // Find matching user
-  const foundUser = usersToCheck.find(
-    u => u.email === email && u.password === password
+  // Find user with matching email and password
+  const user = currentUsers.find(
+    (u) => u.email === email && u.password === password && u.isActive !== false
   );
   
-  if (foundUser) {
-    // If user isn't a SaaS Owner, validate their email domain against client's allowed domains
-    if (foundUser.role !== 'saas_owner' && foundUser.clientId && isEmailDomainAllowed) {
-      const isAllowed = isEmailDomainAllowed(email, foundUser.clientId);
-      if (!isAllowed) {
-        toast.error("Your email domain is not allowed to access this client's portal");
-        return null;
-      }
-    }
-
-    // Remove password from user object
-    const { password: _, ...userWithoutPassword } = foundUser;
-    toast.success(`Welcome back, ${userWithoutPassword.name}!`);
-    return userWithoutPassword;
+  if (!user) {
+    console.error("Login failed - user not found or inactive");
+    toast.error("Invalid credentials or account is inactive");
+    return null;
   }
   
-  toast.error("Invalid email or password");
-  return null;
+  console.log("Login successful for user:", user);
+  
+  // Return user without password
+  const { password: _, ...userWithoutPassword } = user;
+  return userWithoutPassword;
 };
 
 export const logoutUser = (): void => {
-  localStorage.removeItem('user');
-  toast.info("You've been logged out");
+  localStorage.removeItem('currentUser');
 };
 
 export const changeUserPassword = (
-  users: UserWithPassword[],
-  userId: string, 
-  currentPassword: string, 
+  currentUsers: UserWithPassword[],
+  userId: string,
+  currentPassword: string,
   newPassword: string
 ): UserWithPassword[] | null => {
-  // Find user record
-  const userRecord = users.find(u => u.id === userId);
+  const userIndex = currentUsers.findIndex(
+    (u) => u.id === userId && u.password === currentPassword
+  );
   
-  if (!userRecord || userRecord.password !== currentPassword) {
+  if (userIndex === -1) {
     toast.error("Current password is incorrect");
     return null;
   }
-
-  // Update password
-  const updatedUsers = users.map(u => {
-    if (u.id === userId) {
-      return { ...u, password: newPassword };
-    }
-    return u;
-  });
-
-  toast.success("Password changed successfully");
+  
+  const updatedUsers = [...currentUsers];
+  updatedUsers[userIndex] = {
+    ...updatedUsers[userIndex],
+    password: newPassword
+  };
+  
+  toast.success("Password updated successfully");
   return updatedUsers;
+};
+
+export const registerUser = (userData: Omit<UserWithPassword, 'id'>): User => {
+  // Create new user with ID
+  const newUser = {
+    id: Date.now().toString(),
+    ...userData,
+    isActive: true
+  };
+  
+  users = [...users, newUser];
+  
+  // Return user without password
+  const { password: _, ...userWithoutPassword } = newUser;
+  return userWithoutPassword;
+};
+
+export const getUsersForClient = (clientId?: string): User[] => {
+  if (!clientId) {
+    return users.map(({ password, ...user }) => user);
+  }
+  
+  return users
+    .filter(user => user.clientId === clientId || user.role === 'saas_owner')
+    .map(({ password, ...user }) => user);
+};
+
+export const getCurrentUserData = (userId: string): User | undefined => {
+  const user = users.find(u => u.id === userId);
+  if (!user) return undefined;
+  
+  // Return user without password
+  const { password: _, ...userWithoutPassword } = user;
+  return userWithoutPassword;
+};
+
+export const getAllUsers = (): User[] => {
+  // Return all users without passwords
+  return users.map(({ password, ...user }) => user);
+};
+
+// Helper to get in-memory users (for testing/debugging)
+export const getUsers = (): UserWithPassword[] => [...users];
+
+// Helper to set in-memory users (for testing/debugging)
+export const setUsers = (newUsers: UserWithPassword[]): void => {
+  users = [...newUsers];
 };

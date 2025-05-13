@@ -13,7 +13,6 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { useIncidents } from '@/contexts/IncidentContext';
 import { 
   Select,
   SelectContent,
@@ -21,6 +20,26 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { Loader2 } from 'lucide-react';
+
+interface Campus {
+  id: string;
+  name: string;
+}
+
+interface Grade {
+  id: string;
+  name: string;
+  campusId: string;
+}
+
+interface Section {
+  id: string;
+  name: string;
+  classId: string;
+}
 
 const formSchema = z.object({
   studentId: z.string().min(1, { message: 'Student ID is required' }),
@@ -39,12 +58,19 @@ interface StudentFormProps {
 }
 
 const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false }: StudentFormProps) => {
-  const { campuses, classes, sections } = useIncidents();
+  // Data states
+  const [campuses, setCampuses] = useState<Campus[]>([]);
+  const [grades, setGrades] = useState<Grade[]>([]);
+  const [sections, setSections] = useState<Section[]>([]);
+  const [dataLoading, setDataLoading] = useState(true);
+  
+  // Selection states
   const [selectedCampus, setSelectedCampus] = useState<string>(defaultValues?.campus || '');
   const [selectedGrade, setSelectedGrade] = useState<string>(defaultValues?.grade || '');
   
-  const [filteredClasses, setFilteredClasses] = useState<Array<{ id: string, name: string, campusId: string }>>([]);
-  const [filteredSections, setFilteredSections] = useState<Array<{ id: string, name: string, classId: string }>>([]);
+  // Filtered lists
+  const [filteredGrades, setFilteredGrades] = useState<Grade[]>([]);
+  const [filteredSections, setFilteredSections] = useState<Section[]>([]);
   
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -57,54 +83,123 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false }: StudentF
     }
   });
 
-  // Filter classes based on selected campus
+  // Fetch campuses, grades, and sections from Supabase
+  useEffect(() => {
+    const fetchEducationalStructure = async () => {
+      setDataLoading(true);
+      try {
+        // Fetch campuses
+        const { data: campusData, error: campusError } = await supabase
+          .from('campuses')
+          .select('id, name');
+        
+        if (campusError) throw campusError;
+        
+        // Fetch grades (classes)
+        const { data: gradeData, error: gradeError } = await supabase
+          .from('grades')
+          .select('id, name, campus_id');
+        
+        if (gradeError) throw gradeError;
+        
+        // Fetch sections
+        const { data: sectionData, error: sectionError } = await supabase
+          .from('sections')
+          .select('id, name, grade_id');
+        
+        if (sectionError) throw sectionError;
+        
+        // Transform and set data
+        setCampuses(campusData);
+        setGrades(gradeData.map(g => ({
+          id: g.id,
+          name: g.name,
+          campusId: g.campus_id
+        })));
+        setSections(sectionData.map(s => ({
+          id: s.id,
+          name: s.name,
+          classId: s.grade_id
+        })));
+
+        // Handle pre-selected values for edit mode
+        if (defaultValues?.campus) {
+          const selectedCampusId = campusData.find(c => c.name === defaultValues.campus)?.id;
+          if (selectedCampusId) {
+            const campusGrades = gradeData
+              .filter(g => g.campus_id === selectedCampusId)
+              .map(g => ({ id: g.id, name: g.name, campusId: g.campus_id }));
+            setFilteredGrades(campusGrades);
+            
+            if (defaultValues.grade) {
+              const selectedGradeId = campusGrades.find(g => g.name === defaultValues.grade)?.id;
+              if (selectedGradeId) {
+                setFilteredSections(sectionData
+                  .filter(s => s.grade_id === selectedGradeId)
+                  .map(s => ({ id: s.id, name: s.name, classId: s.grade_id }))
+                );
+              }
+            }
+          }
+        }
+        
+      } catch (error) {
+        console.error('Error fetching educational structure:', error);
+        toast.error('Failed to load educational structure data');
+      } finally {
+        setDataLoading(false);
+      }
+    };
+    
+    fetchEducationalStructure();
+  }, [defaultValues]);
+
+  // Filter grades based on selected campus
   useEffect(() => {
     if (selectedCampus) {
-      const campusSpecificClasses = classes.filter(cls => {
-        const campus = campuses.find(c => c.name === selectedCampus);
-        return campus && cls.campusId === campus.id;
-      });
-      setFilteredClasses(campusSpecificClasses);
-      // Reset grade and section when campus changes
-      if (!defaultValues?.grade) {
+      const campusObj = campuses.find(c => c.name === selectedCampus);
+      if (campusObj) {
+        const campusGrades = grades.filter(g => g.campusId === campusObj.id);
+        setFilteredGrades(campusGrades);
+      }
+      
+      // Reset grade and section when campus changes (unless in edit mode with matching values)
+      if (!defaultValues?.grade || (defaultValues.campus !== selectedCampus)) {
         form.setValue('grade', '');
         setSelectedGrade('');
+        form.setValue('section', '');
       }
     } else {
-      setFilteredClasses([]);
+      setFilteredGrades([]);
     }
-  }, [selectedCampus, campuses, classes, form, defaultValues]);
+  }, [selectedCampus, campuses, grades, form, defaultValues]);
 
-  // Filter sections based on selected class/grade
+  // Filter sections based on selected grade
   useEffect(() => {
     if (selectedGrade) {
-      const selectedClass = classes.find(c => c.name === selectedGrade);
-      if (selectedClass) {
-        const classSpecificSections = sections.filter(section => section.classId === selectedClass.id);
-        setFilteredSections(classSpecificSections);
-      } else {
-        setFilteredSections([]);
+      const gradeObj = grades.find(g => g.name === selectedGrade);
+      if (gradeObj) {
+        const gradeSections = sections.filter(s => s.classId === gradeObj.id);
+        setFilteredSections(gradeSections);
+      }
+      
+      // Reset section when grade changes (unless in edit mode with matching values)
+      if (!defaultValues?.section || (defaultValues.grade !== selectedGrade)) {
+        form.setValue('section', '');
       }
     } else {
       setFilteredSections([]);
-      // Reset section when grade changes
-      if (!defaultValues?.section) {
-        form.setValue('section', '');
-      }
     }
-  }, [selectedGrade, classes, sections, form, defaultValues]);
+  }, [selectedGrade, grades, sections, form, defaultValues]);
 
-  // Update section value when grade changes
-  useEffect(() => {
-    if (selectedGrade && form.getValues('section')) {
-      const currentSection = form.getValues('section');
-      const sectionExists = filteredSections.some(section => section.name === currentSection);
-      
-      if (!sectionExists) {
-        form.setValue('section', '');
-      }
-    }
-  }, [filteredSections, form, selectedGrade]);
+  if (dataLoading) {
+    return (
+      <div className="flex justify-center items-center py-8">
+        <Loader2 className="h-8 w-8 animate-spin mr-2" />
+        <span>Loading educational structure data...</span>
+      </div>
+    );
+  }
 
   return (
     <Form {...form}>
@@ -179,14 +274,14 @@ const StudentForm = ({ defaultValues, onSubmit, isSubmitting = false }: StudentF
                     field.onChange(value);
                     setSelectedGrade(value);
                   }}
-                  disabled={!selectedCampus || filteredClasses.length === 0}
+                  disabled={!selectedCampus || filteredGrades.length === 0}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder={!selectedCampus ? "Select campus first" : "Select grade"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {filteredClasses.map((cls) => (
-                      <SelectItem key={cls.id} value={cls.name}>{cls.name}</SelectItem>
+                    {filteredGrades.map((grade) => (
+                      <SelectItem key={grade.id} value={grade.name}>{grade.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

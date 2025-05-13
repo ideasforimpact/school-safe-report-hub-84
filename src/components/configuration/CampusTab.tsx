@@ -11,7 +11,7 @@ import {
   TableRow 
 } from '@/components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Loader2 } from 'lucide-react';
 import { CampusItem } from '@/contexts/types';
 import { EditDialog } from './EditDialog';
 import { toast } from 'sonner';
@@ -22,6 +22,7 @@ interface CampusTabProps {
   updateCampus: (id: string, name: string) => void;
   deleteCampus: (id: string) => void;
   classes: Array<{ id: string, name: string, campusId: string }>;
+  loading?: boolean;
 }
 
 export const CampusTab = ({ 
@@ -29,7 +30,8 @@ export const CampusTab = ({
   addCampus, 
   updateCampus, 
   deleteCampus,
-  classes
+  classes,
+  loading = false
 }: CampusTabProps) => {
   const [newCampus, setNewCampus] = useState('');
   const [editingCampus, setEditingCampus] = useState<{id: string, name: string} | null>(null);
@@ -64,8 +66,8 @@ export const CampusTab = ({
       return;
     }
     
+    console.log("Updating campus:", editingCampus.id, editingCampus.name.trim());
     updateCampus(editingCampus.id, editingCampus.name.trim());
-    setEditingCampus(null);
   };
 
   return (
@@ -84,8 +86,16 @@ export const CampusTab = ({
                 onChange={(e) => setNewCampus(e.target.value)}
               />
             </div>
-            <Button type="submit" className="whitespace-nowrap">
-              <Plus className="mr-2 h-4 w-4" /> Add Campus
+            <Button type="submit" className="whitespace-nowrap" disabled={loading}>
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Adding...
+                </>
+              ) : (
+                <>
+                  <Plus className="mr-2 h-4 w-4" /> Add Campus
+                </>
+              )}
             </Button>
           </div>
         </form>
@@ -98,7 +108,16 @@ export const CampusTab = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {campuses.length === 0 ? (
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={2} className="text-center py-4">
+                  <div className="flex items-center justify-center">
+                    <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                    <span>Loading campuses...</span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : campuses.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={2} className="text-center py-4 text-muted-foreground">
                   No campuses available. Add your first campus above.
@@ -121,16 +140,16 @@ export const CampusTab = ({
                               id: campus.id, 
                               name: campus.name
                             });
-                          } else {
-                            setEditingCampus(null);
                           }
                         }}
-                        onChange={(value) => setEditingCampus(prev => 
-                          prev ? {...prev, name: value} : null
-                        )}
+                        onChange={(value) => {
+                          setEditingCampus(prev => 
+                            prev && prev.id === campus.id ? {...prev, name: value} : prev
+                          );
+                        }}
                         onSave={handleCampusUpdate}
                         triggerButton={
-                          <Button variant="ghost" size="icon">
+                          <Button variant="ghost" size="icon" disabled={loading}>
                             <Pencil className="h-4 w-4" />
                           </Button>
                         }
@@ -140,6 +159,7 @@ export const CampusTab = ({
                         variant="ghost" 
                         size="icon" 
                         onClick={() => handleCampusDelete(campus.id)}
+                        disabled={loading}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

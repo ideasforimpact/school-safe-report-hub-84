@@ -5,7 +5,8 @@ import { useAssessment } from '@/contexts/assessment/AssessmentContext';
 import { useAuth } from '@/contexts/auth/AuthContext';
 
 export const useAssignmentData = () => {
-  const { assignmentId } = useParams<{ assignmentId: string }>();
+  const params = useParams<{ assignmentId: string }>();
+  const assignmentId = params.assignmentId;
   const { templates, assignments, responses } = useAssessment();
   const { user } = useAuth();
   
@@ -21,7 +22,7 @@ export const useAssignmentData = () => {
   
   useEffect(() => {
     // Log useful debugging information
-    console.log("Current assignmentId from URL:", assignmentId);
+    console.log("Current assignmentId from URL params:", assignmentId);
     console.log("Available assignments:", assignments);
     console.log("Found assignment:", assignment);
     console.log("Found template:", template);

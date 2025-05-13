@@ -57,7 +57,7 @@ const Header = () => {
               {/* Show Admin Settings Menu for SaaS Owner too */}
               {isSaasOwner && <AdminSettingsMenu />}
 
-              <UserProfileMenu user={user} logout={logout} />
+              <UserProfileMenu />
             </div>
           ) : (
             <Button 
