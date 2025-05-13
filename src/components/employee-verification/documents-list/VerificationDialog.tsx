@@ -385,7 +385,6 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               </Button>
               <Button 
                 onClick={handleOtpSubmit}
-                {/* disabled={!isOtpComplete || !txnId || isVerifying} */}
                 className={isOtpComplete && txnId ? "bg-primary" : ""}
               >
                 Verify
