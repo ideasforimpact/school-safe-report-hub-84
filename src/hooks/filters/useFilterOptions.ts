@@ -1,6 +1,5 @@
-
 import { useState, useEffect } from 'react';
-import { useIncidents } from '@/contexts/IncidentContext';
+import { useIncidents } from '@/contexts/incident';
 import { useLocation } from 'react-router-dom';
 
 export const useFilterOptions = () => {
