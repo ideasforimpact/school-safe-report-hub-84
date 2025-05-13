@@ -41,8 +41,6 @@ const ReportIncident = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Removed mandatory field validation to allow proceeding with any data
-    
     setIsSubmitting(true);
     
     try {
@@ -76,8 +74,8 @@ const ReportIncident = () => {
       
       addIncident({
         type: (formData.type || 'Incident') as IncidentType,
-        category: formData.categoryId as any,
-        subcategory: formData.subcategory || '',
+        category: formData.categoryId,
+        subcategory: formData.subcategory,
         description: formData.description || '',
         date: dateTime,
         location: locationName as any,
@@ -137,8 +135,6 @@ const ReportIncident = () => {
                 onDateTimeChange={handleDateTimeAdapter}
                 supportingFiles={supportingFiles}
                 onFilesChange={handleFilesChange}
-                categories={[]}  // Not used anymore as we fetch directly in CategorySection
-                availableSubcategories={[]} // Not used anymore as we fetch directly in CategorySection
                 locations={locations}
                 facilities={facilities}
                 users={users}

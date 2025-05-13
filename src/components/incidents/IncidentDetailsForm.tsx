@@ -32,8 +32,6 @@ interface IncidentDetailsFormProps {
   onDateTimeChange: (date: Date | undefined, timeString?: string) => void;
   supportingFiles: FileItem[];
   onFilesChange: (files: FileItem[]) => void;
-  categories: ConfigItem[];
-  availableSubcategories: {id: string, name: string}[];
   locations: ConfigItem[];
   facilities: ConfigItem[];
   users: User[];

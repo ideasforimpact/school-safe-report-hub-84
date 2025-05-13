@@ -37,7 +37,7 @@ const CategorySection: React.FC<CategorySectionProps> = ({
   const [loading, setLoading] = useState(true);
   const [availableSubcategories, setAvailableSubcategories] = useState<SubcategoryItem[]>([]);
 
-  // Fetch categories from the database
+  // Fetch categories from the incident_categories table
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -67,7 +67,7 @@ const CategorySection: React.FC<CategorySectionProps> = ({
     fetchCategories();
   }, []);
 
-  // Fetch subcategories from the database
+  // Fetch subcategories from the incident_subcategories table
   useEffect(() => {
     const fetchSubcategories = async () => {
       try {
@@ -104,7 +104,12 @@ const CategorySection: React.FC<CategorySectionProps> = ({
 
     const filtered = subcategories.filter(sub => sub.category_id === categoryId);
     setAvailableSubcategories(filtered);
-  }, [categoryId, subcategories]);
+    
+    // Reset subcategory selection when category changes
+    if (filtered.length > 0 && !filtered.some(sub => sub.id === subcategory)) {
+      onSelectChange('subcategory', '');
+    }
+  }, [categoryId, subcategories, subcategory, onSelectChange]);
 
   return (
     <>
