@@ -28,6 +28,7 @@ import IncidentsList from '@/pages/IncidentsList';
 import IncidentDetail from '@/pages/IncidentDetail';
 import ReportIncident from '@/pages/ReportIncident';
 import EditIncident from '@/pages/EditIncident';
+import Insights from '@/pages/Insights';
 
 // Employee Verification Pages
 import EmployeeVerificationPage from '@/pages/employee-verification/EmployeeVerificationPage';

@@ -1,18 +1,20 @@
-import React, { useState } from 'react';
-import { Download } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
+import React from 'react';
 import Layout from '@/components/layout/Layout';
+import { useInsightsData } from '@/hooks/useInsightsData';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Download } from 'lucide-react';
+import { downloadCSV, prepareIncidentsExport } from '@/utils/insightsUtils';
+import { CHART_COLOR_ARRAY } from '@/utils/chartColorUtils';
 import InsightsFilters from '@/components/insights/InsightsFilters';
 import OverviewTab from '@/components/insights/tabs/OverviewTab';
 import PeopleTab from '@/components/insights/tabs/PeopleTab';
 import LocationTab from '@/components/insights/tabs/LocationTab';
 import RiskAnalysisTab from '@/components/insights/tabs/RiskAnalysisTab';
-import { useInsightsData } from '@/hooks/useInsightsData';
-import { downloadCSV, prepareIncidentsExport } from '@/utils/insightsUtils';
-import { CHART_COLOR_ARRAY } from '@/utils/chartColorUtils';
+
 const Insights = () => {
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = React.useState('overview');
   const {
     facilities,
     isAdmin,
@@ -31,7 +33,9 @@ const Insights = () => {
     const csvContent = prepareIncidentsExport(filteredIncidents);
     downloadCSV(csvContent, `incident-report-${new Date().toISOString().slice(0, 10)}.csv`);
   };
-  return <Layout>
+
+  return (
+    <Layout>
       <div className="space-y-6 w-full">
         <div className="flex flex-col sm:flex-row justify-between items-start gap-4 w-full">
           <div>
@@ -48,7 +52,28 @@ const Insights = () => {
         </div>
 
         {/* Filter section */}
-        <InsightsFilters dateFilter={filters.dateFilter} setDateFilter={value => handleFilterChange('dateFilter', value)} typeFilter={filters.typeFilter} setTypeFilter={value => handleFilterChange('typeFilter', value)} categoryFilter={filters.categoryFilter} setCategoryFilter={value => handleFilterChange('categoryFilter', value)} subcategoryFilter={filters.subcategoryFilter} setSubcategoryFilter={value => handleFilterChange('subcategoryFilter', value)} facilityFilter={filters.facilityFilter} setFacilityFilter={value => handleFilterChange('facilityFilter', value)} personFilter={filters.personFilter} setPersonFilter={value => handleFilterChange('personFilter', value)} roleFilter={filters.roleFilter} setRoleFilter={value => handleFilterChange('roleFilter', value)} dateRange={filters.dateRange} handleDateRangeChange={handleDateRangeChange} availableSubcategories={availableSubcategories} peopleInvolved={peopleInvolved} facilities={facilities} isAdmin={isAdmin} />
+        <InsightsFilters 
+          dateFilter={filters.dateFilter}
+          setDateFilter={value => handleFilterChange('dateFilter', value)}
+          typeFilter={filters.typeFilter}
+          setTypeFilter={value => handleFilterChange('typeFilter', value)}
+          categoryFilter={filters.categoryFilter}
+          setCategoryFilter={value => handleFilterChange('categoryFilter', value)}
+          subcategoryFilter={filters.subcategoryFilter}
+          setSubcategoryFilter={value => handleFilterChange('subcategoryFilter', value)}
+          facilityFilter={filters.facilityFilter}
+          setFacilityFilter={value => handleFilterChange('facilityFilter', value)}
+          personFilter={filters.personFilter}
+          setPersonFilter={value => handleFilterChange('personFilter', value)}
+          roleFilter={filters.roleFilter}
+          setRoleFilter={value => handleFilterChange('roleFilter', value)}
+          dateRange={filters.dateRange}
+          handleDateRangeChange={handleDateRangeChange}
+          availableSubcategories={availableSubcategories}
+          peopleInvolved={peopleInvolved}
+          facilities={facilities}
+          isAdmin={isAdmin}
+        />
 
         {/* Tabs for different chart categories */}
         <div className="w-full">
@@ -61,23 +86,45 @@ const Insights = () => {
             </TabsList>
             
             <TabsContent value="overview" className="w-full">
-              <OverviewTab categoryData={chartData.categoryData} typeData={chartData.typeData} statusData={chartData.statusData} timeSeriesData={chartData.timeSeriesData} colors={CHART_COLOR_ARRAY} />
+              <OverviewTab 
+                categoryData={chartData.categoryData}
+                typeData={chartData.typeData}
+                statusData={chartData.statusData}
+                timeSeriesData={chartData.timeSeriesData}
+                colors={CHART_COLOR_ARRAY}
+              />
             </TabsContent>
             
             <TabsContent value="people" className="w-full">
-              <PeopleTab roleDistributionData={roleDistributionData} assigneeData={chartData.assigneeData} colors={CHART_COLOR_ARRAY} />
+              <PeopleTab 
+                roleDistributionData={roleDistributionData}
+                assigneeData={chartData.assigneeData}
+                colors={CHART_COLOR_ARRAY}
+              />
             </TabsContent>
             
             <TabsContent value="location" className="w-full">
-              <LocationTab locationData={chartData.locationData} facilityData={chartData.facilityData} heatmapData={chartData.heatmapData} isAdmin={isAdmin} colors={CHART_COLOR_ARRAY} />
+              <LocationTab 
+                locationData={chartData.locationData}
+                facilityData={chartData.facilityData}
+                heatmapData={chartData.heatmapData}
+                isAdmin={isAdmin}
+                colors={CHART_COLOR_ARRAY}
+              />
             </TabsContent>
             
             <TabsContent value="risk" className="w-full">
-              <RiskAnalysisTab subcategoryData={chartData.subcategoryData} riskData={chartData.riskData} colors={CHART_COLOR_ARRAY} />
+              <RiskAnalysisTab 
+                subcategoryData={chartData.subcategoryData}
+                riskData={chartData.riskData}
+                colors={CHART_COLOR_ARRAY}
+              />
             </TabsContent>
           </Tabs>
         </div>
       </div>
-    </Layout>;
+    </Layout>
+  );
 };
+
 export default Insights;
