@@ -13,6 +13,7 @@ import {
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface VerificationDialogProps {
   open: boolean;
@@ -102,40 +103,45 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       try {
         console.log("Sending OTP request for document ID:", documentId);
         
-        const response = await fetch(`/api/employee-verification/request-aadhar-otp`, {
+        const { data, error } = await supabase.functions.invoke('employee-verification/request-aadhar-otp', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ 
+          body: { 
             documentId, 
             documentNumber 
-          })
+          }
         });
         
-        if (!response.ok) {
-          const errorData = await response.json();
-          // Handle rate limiting (cooldown period)
-          if (response.status === 429 && errorData.cooldownRemaining) {
-            startCooldownTimer(errorData.cooldownRemaining * 60);
-            throw new Error(`Please wait ${errorData.cooldownRemaining} minutes before requesting another OTP`);
-          }
-          throw new Error(errorData.error || "Failed to send OTP");
-        }
-        
-        const data = await response.json();
-        
-        if (data?.success) {
-          setShowOtpInput(true);
-          // Start a 3-minute countdown for OTP validity
-          startCooldownTimer(3 * 60);
+        if (error) {
+          console.error('Error requesting OTP:', error);
           toast({
-            title: "OTP Sent",
-            description: "A verification code has been sent to your registered mobile number"
+            title: "Error",
+            description: error.message || "Failed to request OTP. Please try again.",
+            variant: "destructive",
           });
-        } else {
-          throw new Error(data?.error || data?.message || "Failed to send OTP");
+          return;
         }
+        
+        if (data.error) {
+          if (data.cooldownRemaining) {
+            // Handle cooldown period
+            startCooldownTimer(data.cooldownRemaining * 60);
+          }
+          
+          toast({
+            title: "Error",
+            description: data.error,
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        setShowOtpInput(true);
+        // Start a 3-minute countdown for OTP validity
+        startCooldownTimer(3 * 60);
+        toast({
+          title: "OTP Sent",
+          description: "A verification code has been sent to your registered mobile number"
+        });
       } catch (err: any) {
         toast({
           title: "Error",
@@ -151,38 +157,43 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const handleOtpSubmit = async () => {
     if (otp.length === 6) {
       try {
-        const response = await fetch(`/api/employee-verification/verify-aadhar-otp`, {
+        const { data, error } = await supabase.functions.invoke('employee-verification/verify-aadhar-otp', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ 
+          body: { 
             documentId, 
             otp 
-          })
+          }
         });
         
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || "OTP verification failed");
+        if (error) {
+          console.error('Error verifying OTP:', error);
+          toast({
+            title: "Error",
+            description: error.message || "Failed to verify OTP. Please try again.",
+            variant: "destructive",
+          });
+          return;
         }
         
-        const data = await response.json();
-        
-        if (data?.success) {
+        if (data.error) {
           toast({
-            title: "Verification Successful",
-            description: "Aadhar verification completed successfully"
+            title: "Verification Failed",
+            description: data.error,
+            variant: "destructive",
           });
-          onVerify('api');
-          setShowOtpInput(false);
-          setOtp("");
-          if (cooldownTimerId !== null) {
-            clearInterval(cooldownTimerId);
-            setCooldownTimerId(null);
-          }
-        } else {
-          throw new Error(data?.error || data?.message || "OTP verification failed");
+          return;
+        }
+        
+        toast({
+          title: "Verification Successful",
+          description: "Aadhar verification completed successfully"
+        });
+        onVerify('api');
+        setShowOtpInput(false);
+        setOtp("");
+        if (cooldownTimerId !== null) {
+          clearInterval(cooldownTimerId);
+          setCooldownTimerId(null);
         }
       } catch (err: any) {
         toast({
