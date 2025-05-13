@@ -18,12 +18,7 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [files, setFiles] = useState<FileItem[]>([]);
   const { toast } = useToast();
-  const { addDocument, fetchEmployeeDocuments, documentTypes, fetchDocumentTypes } = useEmployeeVerification();
-
-  // Fetch document types only once when component mounts
-  useEffect(() => {
-    fetchDocumentTypes();
-  }, [fetchDocumentTypes]);
+  const { addDocument, fetchEmployeeDocuments, documentTypes } = useEmployeeVerification();
 
   // Only fetch employee documents once when the component mounts
   useEffect(() => {
@@ -61,13 +56,12 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
 
     setIsSubmitting(true);
     try {
-      // Fixed the type by using the correct union type for verificationStatus
       const documentData = {
         employeeId,
         documentTypeId: selectedTypeId,
         documentNumber: values.documentNumber,
         documentImage: values.documentImage,
-        verificationStatus: 'pending' as 'pending' | 'verified' | 'failed' // Fixed typing
+        verificationStatus: 'pending' as 'pending' | 'verified' | 'failed'
       };
 
       console.log('Adding document with data:', {

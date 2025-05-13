@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { 
   CreditCard, 
   FileText, 
@@ -30,7 +30,7 @@ const defaultDocumentTypes = [
 const DocumentTypeSelector: React.FC<DocumentTypeSelectorProps> = ({ selectedTypeId, onChange }) => {
   const { documentTypes, isLoading } = useEmployeeVerification();
   
-  // Remove the fetchDocumentTypes call from here as it's now being handled by the parent component
+  // No API calls here - the parent component handles fetching
   
   // Use fetched document types, or fall back to default if still loading
   const typesToDisplay = documentTypes.length > 0 ? documentTypes : defaultDocumentTypes;

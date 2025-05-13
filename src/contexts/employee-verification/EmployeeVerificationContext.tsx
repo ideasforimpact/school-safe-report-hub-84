@@ -19,6 +19,8 @@ export const useEmployeeVerification = () => {
 export const EmployeeVerificationProvider: React.FC<EmployeeVerificationProviderProps> = ({ children }) => {
   const [documentTypes, setDocumentTypes] = useState<DocumentType[]>([]);
   const [documentStatuses, setDocumentStatuses] = useState<DocumentStatus[]>([]);
+  const [documentTypesLoaded, setDocumentTypesLoaded] = useState(false);
+  const [documentStatusesLoaded, setDocumentStatusesLoaded] = useState(false);
   
   const { 
     employees, 
@@ -43,6 +45,11 @@ export const EmployeeVerificationProvider: React.FC<EmployeeVerificationProvider
   });
 
   const fetchDocumentTypes = async (): Promise<DocumentType[]> => {
+    // If document types have already been loaded, don't fetch again
+    if (documentTypesLoaded && documentTypes.length > 0) {
+      return documentTypes;
+    }
+    
     try {
       const { data, error } = await supabase
         .from('employee_document_type')
@@ -62,6 +69,7 @@ export const EmployeeVerificationProvider: React.FC<EmployeeVerificationProvider
       }));
       
       setDocumentTypes(typesData);
+      setDocumentTypesLoaded(true);
       return typesData;
     } catch (error) {
       console.error('Failed to fetch document types:', error);
@@ -70,6 +78,11 @@ export const EmployeeVerificationProvider: React.FC<EmployeeVerificationProvider
   };
 
   const fetchDocumentStatuses = async (): Promise<DocumentStatus[]> => {
+    // If document statuses have already been loaded, don't fetch again
+    if (documentStatusesLoaded && documentStatuses.length > 0) {
+      return documentStatuses;
+    }
+    
     try {
       const { data, error } = await supabase
         .from('document_status')
@@ -89,6 +102,7 @@ export const EmployeeVerificationProvider: React.FC<EmployeeVerificationProvider
       })) as DocumentStatus[];
       
       setDocumentStatuses(statusesData);
+      setDocumentStatusesLoaded(true);
       return statusesData;
     } catch (error) {
       console.error('Failed to fetch document statuses:', error);
