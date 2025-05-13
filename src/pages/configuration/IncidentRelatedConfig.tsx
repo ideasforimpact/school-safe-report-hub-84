@@ -7,6 +7,7 @@ import { SubcategoryTab } from '@/components/configuration/SubcategoryTab';
 import { LocationTab } from '@/components/configuration/LocationTab';
 import { FacilityTab } from '@/components/configuration/FacilityTab';
 import { MapPin, Building2 } from 'lucide-react';
+import { useIncidents } from '@/contexts/IncidentContext';
 
 interface IncidentRelatedConfigProps {
   activeTab: string;
@@ -17,6 +18,19 @@ export const IncidentRelatedConfig: React.FC<IncidentRelatedConfigProps> = ({
   activeTab,
   setActiveTab
 }) => {
+  // Get the necessary data and functions from the context
+  const {
+    locations,
+    facilities,
+    campuses,
+    addLocation,
+    updateLocation,
+    deleteLocation,
+    addFacility,
+    updateFacility,
+    deleteFacility
+  } = useIncidents();
+
   return (
     <Card>
       <CardContent className="pt-6">
@@ -43,11 +57,22 @@ export const IncidentRelatedConfig: React.FC<IncidentRelatedConfigProps> = ({
           </TabsContent>
           
           <TabsContent value="locations">
-            <LocationTab />
+            <LocationTab 
+              locations={locations}
+              addLocation={addLocation}
+              updateLocation={updateLocation}
+              deleteLocation={deleteLocation}
+            />
           </TabsContent>
           
           <TabsContent value="facilities">
-            <FacilityTab />
+            <FacilityTab 
+              facilities={facilities}
+              campuses={campuses}
+              addFacility={addFacility}
+              updateFacility={updateFacility}
+              deleteFacility={deleteFacility}
+            />
           </TabsContent>
         </Tabs>
       </CardContent>
