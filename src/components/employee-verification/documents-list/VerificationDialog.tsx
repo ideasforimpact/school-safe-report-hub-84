@@ -130,8 +130,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         
         if (data?.error) {
           if (data.cooldownRemaining) {
-            // Handle cooldown period
-            startCooldownTimer(data.cooldownRemaining * 60);
+            // Handle cooldown period - now in seconds
+            startCooldownTimer(data.cooldownRemaining);
           }
           
           toast({
@@ -154,7 +154,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         }
         
         setShowOtpInput(true);
-        // Start a 3-minute countdown for OTP validity
+        // Start a 3-minute countdown for OTP validity (in seconds)
         startCooldownTimer(3 * 60);
         toast({
           title: "OTP Sent",
@@ -359,6 +359,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               <Button 
                 onClick={handleOtpSubmit}
                 disabled={otp.length !== 6 || !txnId}
+                className={otp.length === 6 && txnId ? "bg-primary" : ""}
               >
                 Verify
               </Button>

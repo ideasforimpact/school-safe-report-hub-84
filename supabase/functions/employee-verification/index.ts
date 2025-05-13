@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 
@@ -41,33 +42,30 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    // Set up production vs. sandbox environment for the Surepass API
-    const environment = Deno.env.get("ENVIRONMENT") || "development";
+    // For Aadhar OTP actions, always use production URL and key
+    let baseUrl = "https://kyc-api.surepass.io";
+    let apiKey = Deno.env.get("SUREPASS_PRODUCTION_API_KEY");
     
-    // Default base URL for Surepass API and API key
-    let baseUrl = environment === "production" 
-      ? Deno.env.get("SUREPASS_BASE_URL") || "https://sandbox.surepass.io"
-      : "https://sandbox.surepass.io";
-    
-    let apiKey = environment === "production" 
-      ? Deno.env.get("SUREPASS_PRODUCTION_API_KEY") 
-      : Deno.env.get("SUREPASS_SANDBOX_API_KEY");
-    
-    // Override baseUrl and apiKey for specific actions
     if (action === 'requestAadharOtp' || action === 'verifyAadharOtp') {
-      // For these specific actions, always use production URL and key
-      baseUrl = "https://kyc-api.surepass.io";
-      apiKey = Deno.env.get("SUREPASS_PRODUCTION_API_KEY");
-      
       console.log(`Using production API for ${action}: ${baseUrl}`);
+    } else {
+      // For other actions, use environment-based configuration
+      const environment = Deno.env.get("ENVIRONMENT") || "development";
+      baseUrl = environment === "production" 
+        ? Deno.env.get("SUREPASS_BASE_URL") || "https://sandbox.surepass.io"
+        : "https://sandbox.surepass.io";
+      
+      apiKey = environment === "production" 
+        ? Deno.env.get("SUREPASS_PRODUCTION_API_KEY") 
+        : Deno.env.get("SUREPASS_SANDBOX_API_KEY");
     }
     
     // Check if we're testing in development mode
-    const isDevTest = environment === "development" && !apiKey;
+    const isDevTest = !apiKey;
     
     // Handle Aadhar OTP request
     if (action === 'requestAadharOtp') {
-      // Check if document has had an OTP generated in the last 15 minutes
+      // Check if document has had an OTP generated recently
       if (documentId) {
         const { data: document, error: docError } = await supabase
           .from('employee_documents')
@@ -80,13 +78,17 @@ serve(async (req) => {
         } else if (document?.last_otp_generated) {
           const lastOtpTime = new Date(document.last_otp_generated);
           const currentTime = new Date();
-          const timeDiff = (currentTime.getTime() - lastOtpTime.getTime()) / (1000 * 60); // in minutes
+          const timeDiffSeconds = Math.floor((currentTime.getTime() - lastOtpTime.getTime()) / 1000); // in seconds
           
-          // If it's been less than 3 minutes, allow retry with the remaining time
-          // Otherwise, enforce a 15-minute cooldown
-          if (timeDiff < 3) {
-            const cooldownRemaining = Math.ceil(3 - timeDiff);
-            console.log(`OTP still valid. ${cooldownRemaining} minutes remaining for reuse.`);
+          // OTP validity period (3 minutes)
+          const OTP_VALIDITY_SECONDS = 3 * 60;
+          // Cooldown period (15 minutes)
+          const COOLDOWN_SECONDS = 15 * 60;
+          
+          // If it's been less than 3 minutes, OTP is still valid
+          if (timeDiffSeconds < OTP_VALIDITY_SECONDS) {
+            const cooldownRemaining = OTP_VALIDITY_SECONDS - timeDiffSeconds;
+            console.log(`OTP still valid. ${cooldownRemaining} seconds remaining for reuse.`);
             
             return new Response(
               JSON.stringify({ 
@@ -95,9 +97,11 @@ serve(async (req) => {
               }),
               { headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
-          } else if (timeDiff < 15) {
-            const cooldownRemaining = Math.ceil(15 - timeDiff);
-            console.log(`Cooldown period active. ${cooldownRemaining} minutes remaining.`);
+          } 
+          // If it's been less than 15 minutes, enforce cooldown period
+          else if (timeDiffSeconds < COOLDOWN_SECONDS) {
+            const cooldownRemaining = COOLDOWN_SECONDS - timeDiffSeconds;
+            console.log(`Cooldown period active. ${cooldownRemaining} seconds remaining.`);
             
             return new Response(
               JSON.stringify({ 
