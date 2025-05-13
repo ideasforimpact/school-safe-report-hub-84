@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 import { v4 as uuidv4 } from "https://esm.sh/uuid@10.0.0";
@@ -163,31 +162,30 @@ async function handleUpdateVerificationStatus(
   }
   
   try {
-    // Get document status name if documentStatusId is provided
-    let documentStatusName = null;
+    // Prepare update object with only fields that exist in the table
+    const updateObject = {};
+    
+    if (verificationStatus) {
+      updateObject.verification_status = verificationStatus;
+    }
+    
     if (documentStatusId) {
-      const { data: statusData } = await supabase
-        .from('document_status')
-        .select('name')
-        .eq('id', documentStatusId)
-        .single();
-      
-      if (statusData) {
-        documentStatusName = statusData.name;
-      }
+      updateObject.document_status_id = documentStatusId;
+    }
+    
+    // Add other fields that exist in the table
+    updateObject.updated_at = new Date().toISOString();
+    
+    if (verificationNotes) {
+      // Since we don't have a verification_notes column directly, 
+      // we might store this in another way or skip it
+      // For now, we'll skip it since it's not in the schema
     }
     
     // Update individual document record
     const { data: updateData, error: updateError } = await supabase
       .from('employee_documents')
-      .update({ 
-        verification_status: verificationStatus,
-        document_status_id: documentStatusId,
-        document_status_name: documentStatusName,
-        verification_date: new Date().toISOString(),
-        verification_notes: verificationNotes,
-        updated_at: new Date().toISOString()
-      })
+      .update(updateObject)
       .eq('id', documentId)
       .select()
       .single();
@@ -289,13 +287,6 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
     
     console.log("File uploaded successfully:", uploadData);
     
-    // Get document type name
-    const { data: documentTypeData } = await supabase
-      .from('employee_document_type')
-      .select('name')
-      .eq('id', restDocumentData.documentTypeId)
-      .single();
-    
     // Encrypt the document number using the database function
     let encryptedDocNumber = null;
     if (documentNumber) {
@@ -310,13 +301,12 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
       }
     }
     
-    // Insert new document record with only the required fields
+    // Insert new document record with only the columns that exist in the table
     const newDocumentRecord = {
       employee_id: employeeId,
       document_type_id: restDocumentData.documentTypeId,
-      document_type_name: documentTypeData?.name || 'unknown',
-      document_number: encryptedDocNumber, // Store encrypted document number
-      document_url: filePath, // Store only the file path, not the full URL
+      document_number: encryptedDocNumber,
+      document_url: filePath,
       verification_status: 'pending',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
@@ -325,7 +315,6 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
     console.log("Creating document record:", {
       employeeId: newDocumentRecord.employee_id,
       documentTypeId: newDocumentRecord.document_type_id,
-      documentTypeName: newDocumentRecord.document_type_name,
       filePath: newDocumentRecord.document_url,
       hasEncryptedDocNumber: !!encryptedDocNumber
     });
@@ -346,14 +335,17 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
     console.log("Document uploaded and saved successfully");
     
     // Get the masked document number for display
-    let maskedDocNumber = documentNumber ? documentNumber.slice(0, -2).replace(/./g, 'X') + documentNumber.slice(-2) : '';
+    let maskedDocNumber = '';
+    if (documentNumber) {
+      maskedDocNumber = documentNumber.slice(0, -2).replace(/./g, 'X') + documentNumber.slice(-2);
+    }
     
     return new Response(
       JSON.stringify({ 
         success: true, 
         document: {
           id: insertData.id,
-          documentTypeName: insertData.document_type_name,
+          documentTypeId: insertData.document_type_id,
           documentNumber: maskedDocNumber,
           verificationStatus: insertData.verification_status
         }
@@ -374,7 +366,7 @@ async function handleListDocuments(employeeId, supabase, corsHeaders) {
     // First fetch the documents
     const { data, error } = await supabase
       .from('employee_documents')
-      .select('*, document_status:document_status_id(name), document_type:document_type_id(name)')
+      .select('*, document_status:document_status_id(*), document_type:document_type_id(*)')
       .eq('employee_id', employeeId);
     
     if (error) {
@@ -404,16 +396,12 @@ async function handleListDocuments(employeeId, supabase, corsHeaders) {
         id: doc.id,
         employeeId: doc.employee_id,
         documentTypeId: doc.document_type_id,
-        documentTypeName: doc.document_type?.name || doc.document_type_name,
+        documentTypeName: doc.document_type?.name || '',
         documentNumber: maskedDocNumber || '',
         documentImage: doc.document_url ? `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${doc.document_url}` : '',
         verificationStatus: doc.verification_status,
         documentStatusId: doc.document_status_id,
-        documentStatusName: doc.document_status?.name || doc.document_status_name,
-        verificationDate: doc.verification_date,
-        verificationNotes: doc.verification_notes,
-        verificationMethod: doc.verification_method,
-        details: doc.details || {},
+        documentStatusName: doc.document_status?.name || '',
         createdAt: doc.created_at,
         updatedAt: doc.updated_at
       };
@@ -658,15 +646,7 @@ async function handleAadharOtpVerify(body, supabase, corsHeaders) {
       .from('employee_documents')
       .update({
         verification_status: 'verified',
-        verification_date: new Date().toISOString(),
-        verification_notes: 'Document verified via Aadhar OTP verification',
-        verification_method: 'api',
-        details: {
-          ...docData.details,
-          aadhar_api_verification: true,
-          verified_at: new Date().toISOString(),
-          txn_id: txnId
-        }
+        last_otp_generated: new Date().toISOString()
       })
       .eq('id', documentId);
     
