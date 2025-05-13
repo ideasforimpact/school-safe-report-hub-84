@@ -12,12 +12,21 @@ export function useIncidentFilters(incidents: Incident[]): FilterHookReturn {
 
   // Get available options for filters
   const {
-    availableCategories,
-    availableSubcategories,
-    availableLocations,
-    availableFacilities,
-    availableOwners
-  } = useFilterOptions(incidents, filters);
+    categoryOptions: availableCategories,
+    locationOptions: availableLocations,
+    facilityOptions: availableFacilities
+  } = useFilterOptions();
+  
+  // Make an empty array for subcategories since they need to be handled separately
+  const availableSubcategories: string[] = [];
+  
+  // Create available owners array from incidents data
+  const availableOwners = incidents
+    .filter(incident => incident.owner)
+    .map(incident => ({ id: incident.owner!.id, name: incident.owner!.name }))
+    .filter((owner, index, self) => 
+      index === self.findIndex(o => o.id === owner.id)
+    );
 
   // Reset category and subcategory when type changes
   useEffect(() => {

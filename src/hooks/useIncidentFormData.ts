@@ -1,11 +1,9 @@
 
 import { useState } from 'react';
-import { useAuth } from '@/contexts/auth/AuthContext';
+import { User } from '@/types/incident';
 import { IncidentType } from '@/types/incident';
 
-export function useIncidentFormData() {
-  const { user } = useAuth();
-  
+export function useIncidentFormData(currentUser?: User | null) {
   const [formData, setFormData] = useState({
     type: '' as string,
     categoryId: '',
@@ -16,7 +14,7 @@ export function useIncidentFormData() {
     locationId: '',
     facilityId: '',
     priority: 'Medium' as 'Low' | 'Medium' | 'High' | 'Critical',
-    owner: user?.id || '' // Default to current user
+    owner: currentUser?.id || '' // Default to current user
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {

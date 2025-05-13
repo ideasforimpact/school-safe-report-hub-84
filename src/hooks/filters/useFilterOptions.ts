@@ -2,8 +2,24 @@
 import { useState, useEffect } from 'react';
 import { useIncidents } from '@/contexts/IncidentContext';
 import { useLocation } from 'react-router-dom';
+import { ConfigItem } from '@/contexts/types';
 
-export const useFilterOptions = () => {
+export interface FilterOptionsReturn {
+  categoryOptions: string[];
+  locationOptions: string[];
+  facilityOptions: string[];
+  statusOptions: string[];
+  priorityOptions: string[];
+  assigneeOptions: string[];
+  reporterOptions: string[];
+  isInsightsPage: boolean;
+  campuses: any[];
+  classes: any[];
+  sections: any[];
+  designations: ConfigItem[];
+}
+
+export const useFilterOptions = (): FilterOptionsReturn => {
   // Get context values
   const { 
     // Ensure these are properly imported from the IncidentContext

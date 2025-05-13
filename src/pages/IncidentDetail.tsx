@@ -5,9 +5,11 @@ import { useIncidentDetailPage } from '@/hooks/useIncidentDetailPage';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, ArrowLeft } from 'lucide-react';
+import { useParams } from 'react-router-dom';
 
 const IncidentDetail = () => {
-  const incidentDetailProps = useIncidentDetailPage();
+  const { id = '' } = useParams<{ id: string }>();
+  const incidentDetailProps = useIncidentDetailPage(id);
   
   if (!incidentDetailProps.incident) {
     return (
@@ -41,9 +43,33 @@ const IncidentDetail = () => {
     );
   }
 
+  // Let's create a stub for missing props that IncidentDetailContent expects
+  const contentProps = {
+    ...incidentDetailProps,
+    incidentActivities: [],
+    commentText: '',
+    setCommentText: () => {},
+    commentFiles: [],
+    setCommentFiles: () => {},
+    isSubmitting: false,
+    handleCommentSubmit: () => Promise.resolve(),
+    handleActionSubmit: () => Promise.resolve(),
+    formatDate: (date: Date) => new Date(date).toLocaleDateString(),
+    formatDateTime: (date: Date) => new Date(date).toLocaleString(),
+    getStatusColor: () => '',
+    getCommentStatusColor: () => '',
+    addComment: () => Promise.resolve(),
+    updateComment: () => Promise.resolve(),
+    deleteComment: () => Promise.resolve(),
+    canEditComment: () => false,
+    user: { id: '', name: '' },
+    isAdmin: false,
+    updateIncident: () => Promise.resolve()
+  };
+
   return (
     <Layout>
-      <IncidentDetailContent {...incidentDetailProps} />
+      <IncidentDetailContent {...contentProps} />
     </Layout>
   );
 };
