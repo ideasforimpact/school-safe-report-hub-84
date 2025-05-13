@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Upload, Loader2 } from 'lucide-react';
@@ -17,12 +18,19 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [files, setFiles] = useState<FileItem[]>([]);
   const { toast } = useToast();
-  const { addDocument, fetchEmployeeDocuments, documentTypes } = useEmployeeVerification();
+  const { 
+    addDocument, 
+    fetchEmployeeDocuments, 
+    documentTypes, 
+    fetchDocumentStatuses, 
+    documentStatuses 
+  } = useEmployeeVerification();
 
-  // Only fetch employee documents once when the component mounts
+  // Fetch employee documents and document statuses when the component mounts
   useEffect(() => {
     fetchEmployeeDocuments(employeeId);
-  }, [employeeId, fetchEmployeeDocuments]);
+    fetchDocumentStatuses(); // Make sure document statuses are loaded
+  }, [employeeId, fetchEmployeeDocuments, fetchDocumentStatuses]);
 
   const handleFileUploaded = (base64: string) => {
     // This function will be called when a file is uploaded
@@ -55,18 +63,23 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
 
     setIsSubmitting(true);
     try {
+      // Find the pending status ID
+      const pendingStatus = documentStatuses.find(status => status.name.toLowerCase() === 'pending');
+
       const documentData = {
         employeeId,
         documentTypeId: selectedTypeId,
         documentNumber: values.documentNumber,
         documentImage: values.documentImage,
+        documentStatusId: pendingStatus?.id, // Add the document status ID
         verificationStatus: 'pending' as 'pending' | 'verified' | 'failed'
       };
 
       console.log('Adding document with data:', {
         employeeId: documentData.employeeId,
         documentTypeId: documentData.documentTypeId,
-        documentNumber: documentData.documentNumber,
+        documentNumber: documentData.documentNumber ? 'Provided' : 'Not provided',
+        documentStatusId: documentData.documentStatusId || 'Not provided',
         verificationStatus: documentData.verificationStatus,
         // Don't log entire base64 string
         documentImageSize: documentData.documentImage ? documentData.documentImage.length : 0,

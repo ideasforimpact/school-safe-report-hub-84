@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from 'react';
 import { VerificationDocument } from '@/types/employeeVerification';
 import { initialDocuments } from '../initialData';
@@ -57,7 +58,8 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
         employeeId: documentData.employeeId,
         documentTypeId: documentData.documentTypeId,
         hasImage: !!documentData.documentImage,
-        hasDocNumber: !!documentData.documentNumber
+        hasDocNumber: !!documentData.documentNumber,
+        documentStatusId: documentData.documentStatusId || 'Not provided'
       });
       
       setIsLoading(true);
@@ -70,7 +72,8 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
           documentData: {
             documentTypeId: documentData.documentTypeId,
             documentNumber: documentData.documentNumber,
-            documentImage: documentData.documentImage
+            documentImage: documentData.documentImage,
+            documentStatusId: documentData.documentStatusId // Include document status ID
           } 
         }
       });
@@ -90,6 +93,8 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
         documentTypeName: data.document.documentTypeName,
         documentNumber: data.document.documentNumber || '',
         documentImage: data.document.documentImage || '',
+        documentStatusId: data.document.documentStatusId || undefined,
+        documentStatusName: data.document.documentStatusName,
         verificationStatus: data.document.verificationStatus || 'pending',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()

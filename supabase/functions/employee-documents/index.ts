@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 import { v4 as uuidv4 } from "https://esm.sh/uuid@10.0.0";
@@ -287,6 +288,20 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
     
     console.log("File uploaded successfully:", uploadData);
     
+    // Get pending document status ID
+    const { data: statusData, error: statusError } = await supabase
+      .from('document_status')
+      .select('id')
+      .eq('name', 'Pending')
+      .maybeSingle();
+    
+    if (statusError) {
+      console.error("Error getting pending status ID:", statusError);
+    }
+    
+    const pendingStatusId = statusData?.id;
+    console.log("Using pending status ID:", pendingStatusId);
+    
     // Encrypt the document number using the database function
     let encryptedDocNumber = null;
     if (documentNumber) {
@@ -308,6 +323,7 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
       document_number: encryptedDocNumber,
       document_url: filePath,
       verification_status: 'pending',
+      document_status_id: pendingStatusId, // Added document_status_id pointing to pending status
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -316,7 +332,8 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
       employeeId: newDocumentRecord.employee_id,
       documentTypeId: newDocumentRecord.document_type_id,
       filePath: newDocumentRecord.document_url,
-      hasEncryptedDocNumber: !!encryptedDocNumber
+      hasEncryptedDocNumber: !!encryptedDocNumber,
+      documentStatusId: newDocumentRecord.document_status_id
     });
     
     // Insert the document record
@@ -347,7 +364,8 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
           id: insertData.id,
           documentTypeId: insertData.document_type_id,
           documentNumber: maskedDocNumber,
-          verificationStatus: insertData.verification_status
+          verificationStatus: insertData.verification_status,
+          documentStatusId: insertData.document_status_id
         }
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
