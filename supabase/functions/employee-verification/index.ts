@@ -168,6 +168,7 @@ serve(async (req) => {
     // Handle Aadhar OTP verification
     else if (action === 'verifyAadharOtp') {
       if (!otp || !txnId) {
+        console.error("Missing required fields:", { otp, txnId });
         return new Response(
           JSON.stringify({ error: "OTP and transaction ID are required" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }

@@ -116,6 +116,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           }
         });
         
+        console.log("OTP request response:", data, error);
+        
         if (error) {
           console.error('Error requesting OTP:', error);
           toast({
@@ -159,6 +161,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           description: "A verification code has been sent to your registered mobile number"
         });
       } catch (err: any) {
+        console.error("Exception in handleAadharApiClick:", err);
         toast({
           title: "Error",
           description: err.message || "Failed to send OTP",
@@ -171,12 +174,13 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   };
 
   const handleOtpSubmit = async () => {
-    if (otp.length === 6) {
+    if (otp.length === 6 && txnId) {
       try {
-        console.log("Submitting OTP with:", {
+        console.log("Submitting OTP verification with:", {
           otp,
           txnId,
-          clientId
+          clientId,
+          documentId
         });
         
         const requestBody: any = {
@@ -195,6 +199,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           method: 'POST',
           body: requestBody
         });
+        
+        console.log("OTP verification response:", data, error);
         
         if (error) {
           console.error('Error verifying OTP:', error);
@@ -229,6 +235,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           setCooldownTimerId(null);
         }
       } catch (err: any) {
+        console.error("Exception in handleOtpSubmit:", err);
         toast({
           title: "Verification Failed",
           description: err.message || "Failed to verify OTP",
@@ -238,7 +245,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     } else {
       toast({
         title: "Invalid OTP",
-        description: "Please enter a valid 6-digit OTP",
+        description: "Please enter a valid 6-digit OTP and ensure you have a transaction ID",
         variant: "destructive"
       });
     }
@@ -351,7 +358,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               </Button>
               <Button 
                 onClick={handleOtpSubmit}
-                disabled={otp.length !== 6}
+                disabled={otp.length !== 6 || !txnId}
               >
                 Verify
               </Button>
