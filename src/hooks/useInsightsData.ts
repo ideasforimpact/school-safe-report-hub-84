@@ -1,7 +1,7 @@
 
 import { useMemo, useState } from 'react';
 import { useIncidents } from '@/contexts/IncidentContext';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth';
 import { useFacilities } from '@/contexts/FacilityContext';
 import { DateRange } from 'react-day-picker';
 import { DateRangeFilter } from '@/utils/dateRangeUtils';
@@ -34,7 +34,17 @@ export interface InsightsFiltersState {
 export const useInsightsData = () => {
   const { incidents } = useIncidents();
   const { users, isAdmin } = useAuth();
-  const { facilities } = useFacilities();
+  
+  // Get facilities with error handling in case the context is not available
+  let facilities = [];
+  try {
+    const facilityContext = useFacilities();
+    facilities = facilityContext.facilities;
+  } catch (error) {
+    console.warn('Facility context not available:', error);
+    // Set default facilities if context is not available
+    facilities = [];
+  }
   
   // Filters state
   const [filters, setFilters] = useState<InsightsFiltersState>({
