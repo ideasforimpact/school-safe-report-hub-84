@@ -9,6 +9,7 @@ import { documentFormSchema } from './documentFormSchema';
 import DocumentFileUploader from './DocumentFileUploader';
 import { getDocumentPlaceholder } from '../utils/documentUtils';
 import { FileItem } from '@/types/fileTypes';
+import { toast } from '@/components/ui/use-toast';
 
 interface DocumentFormProps {
   employeeId?: string;
@@ -43,7 +44,31 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
   const [selectedFileName, setSelectedFileName] = useState<string>('');
 
   const handleSubmit = (data: any) => {
-    onSubmit(data);
+    if (!data.documentImage) {
+      toast({
+        title: 'Error',
+        description: 'Please upload a document image',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Prepare the upload data - only send essential fields
+    const uploadData = {
+      employeeId: data.employeeId,
+      documentTypeId: selectedTypeId,
+      documentNumber: data.documentNumber,
+      documentImage: data.documentImage,
+    };
+
+    console.log('Submitting document with data:', {
+      employeeId: uploadData.employeeId,
+      documentTypeId: uploadData.documentTypeId,
+      documentNumber: uploadData.documentNumber,
+      imageSize: uploadData.documentImage ? uploadData.documentImage.length : 0,
+    });
+
+    onSubmit(uploadData);
   };
 
   const handleFileChange = (base64: string, filename: string) => {

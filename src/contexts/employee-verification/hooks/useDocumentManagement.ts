@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { VerificationDocument } from '@/types/employeeVerification';
@@ -71,12 +70,25 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
 
   const addDocument = async (documentData: Omit<VerificationDocument, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
+      console.log('Starting document upload process:', {
+        employeeId: documentData.employeeId,
+        documentTypeId: documentData.documentTypeId,
+        hasImage: !!documentData.documentImage
+      });
+      
       setIsLoading(true);
       
-      // Call the edge function to upload the document
+      // Call the edge function to upload the document with only necessary data
       const { data, error } = await supabase.functions.invoke('employee-documents', {
         method: 'POST',
-        body: { employeeId: documentData.employeeId, documentData }
+        body: { 
+          employeeId: documentData.employeeId, 
+          documentData: {
+            documentTypeId: documentData.documentTypeId,
+            documentNumber: documentData.documentNumber,
+            documentImage: documentData.documentImage
+          } 
+        }
       });
       
       if (error) {
@@ -84,12 +96,19 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
         throw new Error('Failed to add document');
       }
       
+      console.log('Document upload successful, response:', data);
+      
       // If upload successful, add to local state
       const newDocument: VerificationDocument = {
         ...documentData,
         id: data.document.id,
-        createdAt: data.document.uploadedAt,
-        updatedAt: data.document.uploadedAt
+        documentTypeName: data.document.documentTypeName,
+        documentImage: data.document.documentImage || '',
+        verificationStatus: data.document.verificationStatus || 'pending',
+        documentStatusId: data.document.documentStatusId,
+        documentStatusName: data.document.documentStatusName || 'pending',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
       };
       
       setDocuments(prev => [...prev, newDocument]);

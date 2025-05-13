@@ -57,17 +57,29 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
 
     setIsSubmitting(true);
     try {
-      await addDocument({
+      // Simplified document data with only essential fields
+      const documentData = {
         employeeId,
         documentTypeId: selectedTypeId,
         documentNumber: values.documentNumber,
-        documentImage: files[0]?.base64 || values.documentImage, 
-        verificationStatus: 'pending',
+        documentImage: values.documentImage,
+      };
+
+      console.log('Adding document with data:', {
+        employeeId: documentData.employeeId,
+        documentTypeId: documentData.documentTypeId,
+        documentNumber: documentData.documentNumber,
+        // Don't log entire base64 string
+        documentImageSize: documentData.documentImage ? documentData.documentImage.length : 0,
       });
+
+      await addDocument(documentData);
+      
       toast({
         title: 'Document Added',
         description: `The ${getDocumentTypeLabel(selectedTypeId)} has been uploaded successfully and is pending verification.`,
       });
+      
       // Reset form
       setSelectedTypeId(null);
       setFiles([]);

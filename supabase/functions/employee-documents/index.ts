@@ -276,16 +276,7 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
   }
   
   try {
-    // Check if document entry exists for this employee
-    const { data: existingEntry, error: fetchError } = await supabase
-      .from('employee_documents')
-      .select('*')
-      .eq('employee_id', employeeId)
-      .single();
-    
-    if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "no rows returned" error
-      throw fetchError;
-    }
+    console.log("Handling document upload for employee:", employeeId);
     
     // Upload the document image to storage first
     const { documentImage, ...restDocumentData } = documentData;
@@ -293,6 +284,8 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
     // Generate a unique file path
     const timestamp = new Date().getTime();
     const filePath = `${employeeId}/${restDocumentData.documentTypeId}_${timestamp}`;
+    
+    console.log("Generated file path:", filePath);
     
     // Extract the base64 content and content type
     const base64Regex = /^data:([^;]+);base64,(.+)$/;
@@ -307,6 +300,7 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
     const binaryData = Uint8Array.from(atob(base64Content), c => c.charCodeAt(0));
     
     // Upload to storage
+    console.log("Uploading file to storage...");
     const { data: uploadData, error: uploadError } = await supabase
       .storage
       .from('employee-documents')
@@ -316,8 +310,11 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
       });
     
     if (uploadError) {
+      console.error("Storage upload error:", uploadError);
       throw uploadError;
     }
+    
+    console.log("File uploaded successfully:", uploadData);
     
     // Get the public URL
     const { data: publicUrlData } = await supabase
@@ -326,6 +323,7 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
       .getPublicUrl(filePath);
     
     const documentUrl = publicUrlData.publicUrl;
+    console.log("Generated public URL:", documentUrl);
     
     // Get document type name
     const { data: documentTypeData } = await supabase
@@ -341,36 +339,45 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
       .eq('name', 'pending')
       .single();
     
-    // Prepare document record
+    // Prepare document record with minimal data
     const documentRecord = {
-      ...restDocumentData,
-      documentNumber: restDocumentData.documentNumber || '',
+      id: crypto.randomUUID(),
+      documentTypeId: restDocumentData.documentTypeId,
       documentTypeName: documentTypeData?.name || 'unknown',
+      documentNumber: restDocumentData.documentNumber || '',
       documentImage: documentUrl,
+      filePath: filePath,
       documentStatusId: pendingStatusData?.id,
       documentStatusName: pendingStatusData?.name || 'pending',
-      filePath: filePath,
+      verificationStatus: 'pending',
       uploadedAt: new Date().toISOString(),
-      verificationStatus: documentData.verificationStatus || 'pending',
-      id: crypto.randomUUID()
     };
     
-    // Create log entry for upload
-    const logEntry = {
-      action: 'upload',
-      documentId: documentRecord.id,
-      documentTypeId: restDocumentData.documentTypeId,
-      performedAt: new Date().toISOString(),
-      details: {
-        documentNumber: restDocumentData.documentNumber || ''
-      }
-    };
+    console.log("Document record created:", {
+      id: documentRecord.id,
+      documentTypeId: documentRecord.documentTypeId,
+      documentTypeName: documentRecord.documentTypeName,
+      filePath: documentRecord.filePath,
+    });
+    
+    // Check if document entry exists for this employee
+    console.log("Checking if employee already has documents...");
+    const { data: existingEntry, error: fetchError } = await supabase
+      .from('employee_documents')
+      .select('*')
+      .eq('employee_id', employeeId)
+      .single();
+    
+    if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "no rows returned" error
+      console.error("Error fetching existing documents:", fetchError);
+      throw fetchError;
+    }
     
     let dbResult;
     if (existingEntry) {
+      console.log("Employee already has documents - updating the array");
       // Employee already has documents - update the array
       const updatedDocuments = [...JSON.parse(JSON.stringify(existingEntry.documents || [])), documentRecord];
-      const updatedLogs = [...JSON.parse(JSON.stringify(existingEntry.employee_docs_log || [])), logEntry];
       
       dbResult = await supabase
         .from('employee_documents')
@@ -378,11 +385,12 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
           documents: updatedDocuments,
           document_type_id: restDocumentData.documentTypeId,
           document_status_id: pendingStatusData?.id,
-          employee_docs_log: updatedLogs,
-          verification_status: documentData.verificationStatus || existingEntry.verification_status || 'pending'
+          verification_status: 'pending',
+          updated_at: new Date().toISOString()
         })
         .eq('employee_id', employeeId);
     } else {
+      console.log("Creating new document record for employee");
       // Create a new record for this employee
       dbResult = await supabase
         .from('employee_documents')
@@ -391,19 +399,30 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
           documents: [documentRecord],
           document_type_id: restDocumentData.documentTypeId,
           document_status_id: pendingStatusData?.id,
-          employee_docs_log: [logEntry],
-          verification_status: documentData.verificationStatus || 'pending'
+          verification_status: 'pending',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         });
     }
     
     if (dbResult.error) {
+      console.error("Database update error:", dbResult.error);
       // If database update fails, try to delete the uploaded file
       await supabase.storage.from('employee-documents').remove([filePath]);
       throw dbResult.error;
     }
     
+    console.log("Document uploaded and saved successfully");
     return new Response(
-      JSON.stringify({ success: true, document: documentRecord }),
+      JSON.stringify({ 
+        success: true, 
+        document: {
+          id: documentRecord.id,
+          documentTypeName: documentRecord.documentTypeName,
+          documentNumber: documentRecord.documentNumber,
+          verificationStatus: documentRecord.verificationStatus
+        }
+      }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
