@@ -89,7 +89,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
         documentTypeId: documentData.documentTypeId,
         documentTypeName: data.document.documentTypeName,
         documentNumber: documentData.documentNumber || '',
-        documentImage: documentData.documentImage || '',
+        documentImage: data.document.documentImage || '',
         verificationStatus: data.document.verificationStatus || 'pending',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()

@@ -165,7 +165,7 @@ export type Database = {
           created_at: string | null
           document_status_id: string | null
           document_type_id: string | null
-          documents: Json
+          document_url: string
           employee_docs_log: Json | null
           employee_id: string
           id: string
@@ -177,7 +177,7 @@ export type Database = {
           created_at?: string | null
           document_status_id?: string | null
           document_type_id?: string | null
-          documents?: Json
+          document_url: string
           employee_docs_log?: Json | null
           employee_id: string
           id?: string
@@ -189,7 +189,7 @@ export type Database = {
           created_at?: string | null
           document_status_id?: string | null
           document_type_id?: string | null
-          documents?: Json
+          document_url?: string
           employee_docs_log?: Json | null
           employee_id?: string
           id?: string

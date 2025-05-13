@@ -304,34 +304,23 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
       .eq('id', restDocumentData.documentTypeId)
       .single();
     
-    // Get document status ID for pending
-    const { data: pendingStatusData } = await supabase
-      .from('document_status')
-      .select('id, name')
-      .eq('name', 'pending')
-      .single();
-    
-    // Insert new document record
+    // Insert new document record with only the required fields
     const newDocumentRecord = {
-      id: uuidv4(),
       employee_id: employeeId,
       document_type_id: restDocumentData.documentTypeId,
       document_type_name: documentTypeData?.name || 'unknown',
       document_number: restDocumentData.documentNumber || '',
-      document_url: documentUrl,
-      file_path: filePath,
-      document_status_id: pendingStatusData?.id,
-      document_status_name: pendingStatusData?.name || 'pending',
+      document_url: filePath, // Store only the file path, not the full URL
       verification_status: 'pending',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
     
     console.log("Creating document record:", {
-      id: newDocumentRecord.id,
+      employeeId: newDocumentRecord.employee_id,
       documentTypeId: newDocumentRecord.document_type_id,
       documentTypeName: newDocumentRecord.document_type_name,
-      filePath: newDocumentRecord.file_path,
+      filePath: newDocumentRecord.document_url,
     });
     
     // Insert the document record
@@ -369,6 +358,49 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
   }
 }
 
+async function handleListDocuments(employeeId, supabase, corsHeaders) {
+  try {
+    const { data, error } = await supabase
+      .from('employee_documents')
+      .select('*, document_status:document_status_id(name), document_type:document_type_id(name)')
+      .eq('employee_id', employeeId);
+    
+    if (error) {
+      throw error;
+    }
+    
+    // Process each document to match the expected structure
+    const processedDocuments = data.map(doc => ({
+      id: doc.id,
+      employeeId: doc.employee_id,
+      documentTypeId: doc.document_type_id,
+      documentTypeName: doc.document_type?.name || doc.document_type_name,
+      documentNumber: doc.document_number,
+      documentImage: doc.document_url ? `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${doc.document_url}` : '',
+      verificationStatus: doc.verification_status,
+      documentStatusId: doc.document_status_id,
+      documentStatusName: doc.document_status?.name || doc.document_status_name,
+      verificationDate: doc.verification_date,
+      verificationNotes: doc.verification_notes,
+      verificationMethod: doc.verification_method,
+      details: doc.details || {},
+      createdAt: doc.created_at,
+      updatedAt: doc.updated_at
+    }));
+    
+    return new Response(
+      JSON.stringify({ documents: processedDocuments }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Error retrieving documents:", error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
 async function handleDocumentDelete(employeeId, documentId, supabase, corsHeaders) {
   if (!employeeId || !documentId) {
     return new Response(
@@ -397,12 +429,12 @@ async function handleDocumentDelete(employeeId, documentId, supabase, corsHeader
       );
     }
     
-    // Delete the file from storage if file_path exists
-    if (documentToDelete.file_path) {
+    // Delete the file from storage if document_url exists
+    if (documentToDelete.document_url) {
       const { error: storageError } = await supabase
         .storage
         .from('employee-documents')
-        .remove([documentToDelete.file_path]);
+        .remove([documentToDelete.document_url]);
       
       if (storageError) {
         console.error("Error deleting file from storage:", storageError);
@@ -420,6 +452,25 @@ async function handleDocumentDelete(employeeId, documentId, supabase, corsHeader
       throw deleteError;
     }
     
+    // Update employee verification status based on remaining documents
+    await updateEmployeeVerificationStatus(employeeId, supabase);
+    
+    return new Response(
+      JSON.stringify({ success: true }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Error deleting document:", error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
+// Add a helper function to update employee verification status
+async function updateEmployeeVerificationStatus(employeeId, supabase) {
+  try {
     // Check remaining documents for verification status
     const { data: remainingDocs } = await supabase
       .from('employee_documents')
@@ -445,60 +496,11 @@ async function handleDocumentDelete(employeeId, documentId, supabase, corsHeader
       .from('employees')
       .update({ status: newStatus })
       .eq('id', employeeId);
-    
-    return new Response(
-      JSON.stringify({ success: true }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+      
+    return newStatus;
   } catch (error) {
-    console.error("Error deleting document:", error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-}
-
-async function handleListDocuments(employeeId, supabase, corsHeaders) {
-  try {
-    const { data, error } = await supabase
-      .from('employee_documents')
-      .select('*, document_status:document_status_id(name), document_type:document_type_id(name)')
-      .eq('employee_id', employeeId);
-    
-    if (error) {
-      throw error;
-    }
-    
-    // Process each document to match the expected structure
-    const processedDocuments = data.map(doc => ({
-      id: doc.id,
-      employeeId: doc.employee_id,
-      documentTypeId: doc.document_type_id,
-      documentTypeName: doc.document_type?.name || doc.document_type_name,
-      documentNumber: doc.document_number,
-      documentImage: doc.document_url,
-      verificationStatus: doc.verification_status,
-      documentStatusId: doc.document_status_id,
-      documentStatusName: doc.document_status?.name || doc.document_status_name,
-      verificationDate: doc.verification_date,
-      verificationNotes: doc.verification_notes,
-      verificationMethod: doc.verification_method,
-      details: doc.details || {},
-      createdAt: doc.created_at,
-      updatedAt: doc.updated_at
-    }));
-    
-    return new Response(
-      JSON.stringify({ documents: processedDocuments }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  } catch (error) {
-    console.error("Error retrieving documents:", error);
-    return new Response(
-      JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    console.error("Error updating employee verification status:", error);
+    throw error;
   }
 }
 
