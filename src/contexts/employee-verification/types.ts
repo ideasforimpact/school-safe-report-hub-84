@@ -16,7 +16,7 @@ export interface EmployeeVerificationContextType {
   
   // Document management functions
   addDocument: (document: Omit<VerificationDocument, 'id' | 'createdAt' | 'updatedAt'>) => Promise<VerificationDocument>;
-  verifyDocument: (documentId: string, status: 'verified' | 'failed', method: 'api' | 'manual', statusId?: string, notes?: string, details?: Record<string, any>) => Promise<void>;
+  verifyDocument: (documentId: string, status: 'verified' | 'failed', notes?: string) => Promise<void>;
   deleteDocument: (id: string) => Promise<void>;
   getEmployeeDocuments: (employeeId: string) => VerificationDocument[];
   fetchEmployeeDocuments: (employeeId: string) => Promise<VerificationDocument[]>;

@@ -1,10 +1,11 @@
+
 import { useState, useCallback, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { VerificationDocument } from '@/types/employeeVerification';
 import { initialDocuments } from '../initialData';
 import { supabase } from '@/integrations/supabase/client';
 
-export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string, status: 'pending' | 'verified' | 'failed') => void) => {
+export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string, status: 'pending' | 'verified' | 'failed') => Promise<void>) => {
   const [documents, setDocuments] = useState<VerificationDocument[]>(initialDocuments);
   const [isLoading, setIsLoading] = useState(false);
   const [fetchedEmployeeIds, setFetchedEmployeeIds] = useState<string[]>([]);
@@ -207,11 +208,11 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
       });
       
       if (anyFailed) {
-        updateEmployeeStatus(employeeId, 'failed');
+        await updateEmployeeStatus(employeeId, 'failed');
       } else if (allVerified) {
-        updateEmployeeStatus(employeeId, 'verified');
+        await updateEmployeeStatus(employeeId, 'verified');
       } else {
-        updateEmployeeStatus(employeeId, 'pending');
+        await updateEmployeeStatus(employeeId, 'pending');
       }
       
     } catch (err) {
