@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 import { v4 as uuidv4 } from "https://esm.sh/uuid@10.0.0";
@@ -306,25 +305,14 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
     
     console.log("Using document status ID:", pendingStatusId);
     
-    // Encrypt the document number using the database function
-    let encryptedDocNumber = null;
-    if (documentNumber) {
-      const { data: encryptResult, error: encryptError } = await supabase
-        .rpc('encrypt_document_number', { doc_number: documentNumber });
-      
-      if (encryptError) {
-        console.error("Error encrypting document number:", encryptError);
-      } else {
-        encryptedDocNumber = encryptResult;
-        console.log("Document number encrypted successfully");
-      }
-    }
+    // Store document number directly in plaintext without encryption
+    const plainTextDocNumber = documentNumber;
     
     // Insert new document record with only the columns that exist in the table
     const newDocumentRecord = {
       employee_id: employeeId,
       document_type_id: restDocumentData.documentTypeId,
-      document_number: encryptedDocNumber,
+      document_number: plainTextDocNumber, // Store as plaintext
       document_url: filePath,
       verification_status: 'pending',
       document_status_id: pendingStatusId, // Added document_status_id pointing to pending status
@@ -336,7 +324,7 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
       employeeId: newDocumentRecord.employee_id,
       documentTypeId: newDocumentRecord.document_type_id,
       filePath: newDocumentRecord.document_url,
-      hasEncryptedDocNumber: !!encryptedDocNumber,
+      hasDocNumber: !!plainTextDocNumber,
       documentStatusId: newDocumentRecord.document_status_id
     });
     
@@ -362,12 +350,6 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
       .eq('id', restDocumentData.documentTypeId)
       .single();
     
-    // Get the masked document number for display
-    let maskedDocNumber = '';
-    if (documentNumber) {
-      maskedDocNumber = documentNumber.slice(0, -2).replace(/./g, 'X') + documentNumber.slice(-2);
-    }
-    
     // Get document status name if available
     let documentStatusName = '';
     if (pendingStatusId) {
@@ -380,6 +362,14 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
       documentStatusName = statusNameData?.name || '';
     }
     
+    // For UI display, prepare a masked version of the document number
+    let displayDocNumber = '';
+    if (documentNumber && documentNumber.length > 2) {
+      displayDocNumber = documentNumber.slice(0, -2).replace(/./g, 'X') + documentNumber.slice(-2);
+    } else {
+      displayDocNumber = documentNumber || '';
+    }
+    
     return new Response(
       JSON.stringify({ 
         success: true, 
@@ -387,7 +377,7 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
           id: insertData.id,
           documentTypeId: insertData.document_type_id,
           documentTypeName: docTypeData?.name || '',
-          documentNumber: maskedDocNumber,
+          documentNumber: displayDocNumber,  // Return the masked version for UI
           documentImage: `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${filePath}`,
           verificationStatus: insertData.verification_status,
           documentStatusId: insertData.document_status_id,
@@ -417,22 +407,15 @@ async function handleListDocuments(employeeId, supabase, corsHeaders) {
       throw error;
     }
     
-    // Get masked document numbers for each document that has one
-    const maskedDocuments = await Promise.all(data.map(async (doc) => {
-      let maskedDocNumber = null;
+    // Process documents to display masked document numbers
+    const processedDocuments = data.map(doc => {
+      let displayDocNumber = '';
       
-      // If document has a document number, get the masked version
-      if (doc.document_number) {
-        try {
-          const { data: maskedData, error: maskedError } = await supabase
-            .rpc('get_masked_document_number', { encrypted_doc_number: doc.document_number });
-          
-          if (!maskedError && maskedData) {
-            maskedDocNumber = maskedData;
-          }
-        } catch (err) {
-          console.error("Error getting masked document number:", err);
-        }
+      // If document has a document number, create a masked version for display
+      if (doc.document_number && doc.document_number.length > 2) {
+        displayDocNumber = doc.document_number.slice(0, -2).replace(/./g, 'X') + doc.document_number.slice(-2);
+      } else {
+        displayDocNumber = doc.document_number || '';
       }
       
       // Process each document to match the expected structure
@@ -441,7 +424,7 @@ async function handleListDocuments(employeeId, supabase, corsHeaders) {
         employeeId: doc.employee_id,
         documentTypeId: doc.document_type_id,
         documentTypeName: doc.document_type?.name || '',
-        documentNumber: maskedDocNumber || '',
+        documentNumber: displayDocNumber,
         documentImage: doc.document_url ? `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${doc.document_url}` : '',
         verificationStatus: doc.verification_status,
         documentStatusId: doc.document_status_id,
@@ -449,10 +432,10 @@ async function handleListDocuments(employeeId, supabase, corsHeaders) {
         createdAt: doc.created_at,
         updatedAt: doc.updated_at
       };
-    }));
+    });
     
     return new Response(
-      JSON.stringify({ documents: maskedDocuments }),
+      JSON.stringify({ documents: processedDocuments }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
