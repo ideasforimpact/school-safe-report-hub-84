@@ -18,7 +18,7 @@ export const useEmployeeManagement = () => {
 
       if (error) {
         console.error('Error fetching employees:', error);
-        return;
+        return initialEmployees;
       }
 
       // Map the database employees to our Employee type
@@ -43,9 +43,13 @@ export const useEmployeeManagement = () => {
         }));
         
         setEmployees(mappedEmployees);
+        return mappedEmployees;
       }
+      
+      return initialEmployees;
     } catch (err) {
       console.error('Failed to fetch employees:', err);
+      return initialEmployees;
     }
   }, []);
 
@@ -54,26 +58,44 @@ export const useEmployeeManagement = () => {
     fetchEmployees();
   }, [fetchEmployees]);
 
-  const addEmployee = (employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt' | 'status'>) => {
-    const now = new Date().toISOString();
-    const newEmployee: Employee = {
-      ...employeeData,
-      id: uuidv4(),
-      status: 'pending',
-      createdAt: now,
-      updatedAt: now
-    };
-    setEmployees([...employees, newEmployee]);
+  const addEmployee = async (employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>) => {
+    try {
+      const now = new Date().toISOString();
+      const newEmployee: Employee = {
+        ...employeeData,
+        id: uuidv4(),
+        status: 'pending',
+        createdAt: now,
+        updatedAt: now
+      };
+      setEmployees([...employees, newEmployee]);
+      return newEmployee;
+    } catch (error) {
+      console.error('Error adding employee:', error);
+      throw error;
+    }
   };
 
-  const updateEmployee = (id: string, updates: Partial<Employee>) => {
-    setEmployees(employees.map(emp => 
-      emp.id === id ? { ...emp, ...updates, updatedAt: new Date().toISOString() } : emp
-    ));
+  const updateEmployee = async (id: string, updates: Partial<Employee>) => {
+    try {
+      setEmployees(employees.map(emp => 
+        emp.id === id ? { ...emp, ...updates, updatedAt: new Date().toISOString() } : emp
+      ));
+      return Promise.resolve();
+    } catch (error) {
+      console.error('Error updating employee:', error);
+      throw error;
+    }
   };
 
-  const deleteEmployee = (id: string) => {
-    setEmployees(employees.filter(emp => emp.id !== id));
+  const deleteEmployee = async (id: string) => {
+    try {
+      setEmployees(employees.filter(emp => emp.id !== id));
+      return Promise.resolve();
+    } catch (error) {
+      console.error('Error deleting employee:', error);
+      throw error;
+    }
   };
 
   const getEmployee = (id: string) => {

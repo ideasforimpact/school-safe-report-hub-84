@@ -37,8 +37,8 @@ export const EmployeeVerificationProvider: React.FC<EmployeeVerificationProvider
     getEmployeeDocuments,
     fetchEmployeeDocuments,
     isLoading
-  } = useDocumentManagement((employeeId, status) => {
-    updateEmployee(employeeId, { status });
+  } = useDocumentManagement(async (employeeId, status) => {
+    await updateEmployee(employeeId, { status });
     return Promise.resolve();
   });
 
