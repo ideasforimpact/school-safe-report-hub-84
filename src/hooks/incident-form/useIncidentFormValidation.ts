@@ -1,75 +1,62 @@
 
 import { useState } from 'react';
 
-type IncidentFormData = {
-  type: string;
-  description: string;
-  date: string;
-  time: string;
-  locationId: string;
-  categoryId: string;
-  subcategory?: string;
-  priority: string;
-  [key: string]: any;
-};
-
-type ValidationErrors = {
-  type?: string;
-  description?: string;
-  date?: string;
-  time?: string;
-  locationId?: string;
-  categoryId?: string;
-  subcategory?: string;
-  priority?: string;
-  [key: string]: string | undefined;
-};
+// Define the structure with an index signature for string keys
+export interface FormErrors {
+  [key: string]: string;
+}
 
 export function useIncidentFormValidation() {
-  const [errors, setErrors] = useState<ValidationErrors>({});
+  const [errors, setErrors] = useState<FormErrors>({});
 
-  const validateForm = (formData: IncidentFormData): boolean => {
-    const newErrors: ValidationErrors = {};
-    let isValid = true;
+  const validateForm = (formData: any) => {
+    const newErrors: FormErrors = {};
 
-    // Required fields
+    // Validate type
     if (!formData.type) {
-      newErrors.type = 'Incident type is required';
-      isValid = false;
+      newErrors.type = 'Please select an incident type';
     }
-
-    if (!formData.description || formData.description.length < 10) {
-      newErrors.description = 'A detailed description (at least 10 characters) is required';
-      isValid = false;
+    
+    // Validate description
+    if (!formData.description.trim()) {
+      newErrors.description = 'Description is required';
+    } else if (formData.description.trim().length < 10) {
+      newErrors.description = 'Description must be at least 10 characters';
     }
-
+    
+    // Validate date
     if (!formData.date) {
       newErrors.date = 'Date is required';
-      isValid = false;
     }
-
+    
+    // Validate time
     if (!formData.time) {
       newErrors.time = 'Time is required';
-      isValid = false;
     }
-
-    if (!formData.locationId) {
-      newErrors.locationId = 'Location is required';
-      isValid = false;
-    }
-
+    
+    // Validate category
     if (!formData.categoryId) {
       newErrors.categoryId = 'Category is required';
-      isValid = false;
     }
-
+    
+    // Validate subcategory
+    if (formData.categoryId && !formData.subcategory) {
+      newErrors.subcategory = 'Subcategory is required';
+    }
+    
+    // Validate location
+    if (!formData.locationId) {
+      newErrors.locationId = 'Location is required';
+    }
+    
+    // Validate priority
     if (!formData.priority) {
       newErrors.priority = 'Priority is required';
-      isValid = false;
     }
-
+    
     setErrors(newErrors);
-    return isValid;
+    
+    return Object.keys(newErrors).length === 0;
   };
 
   return {

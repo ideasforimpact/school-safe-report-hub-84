@@ -5,12 +5,14 @@ import { Input } from '@/components/ui/input';
 
 interface IncidentDescriptionSectionProps {
   description: string;
+  rootCause: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
   errors: Record<string, string>;
 }
 
 const IncidentDescriptionSection: React.FC<IncidentDescriptionSectionProps> = ({
   description,
+  rootCause,
   onChange,
   errors,
 }) => {
@@ -31,6 +33,19 @@ const IncidentDescriptionSection: React.FC<IncidentDescriptionSectionProps> = ({
         {errors.description && (
           <p className="text-red-500 text-sm mt-1">{errors.description}</p>
         )}
+      </div>
+
+      <div className="space-y-2">
+        <label htmlFor="rootCause" className="text-sm font-medium block">
+          Root Cause (if known)
+        </label>
+        <Textarea
+          id="rootCause"
+          name="rootCause"
+          value={rootCause}
+          onChange={onChange}
+          placeholder="Describe the root cause if known"
+        />
       </div>
     </div>
   );

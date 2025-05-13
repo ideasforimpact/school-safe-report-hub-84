@@ -37,15 +37,15 @@ export function useIncidentFormData(user: AuthUser | undefined) {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Fix the handleDateTimeChange function to handle both date and time values
-  const handleDateTimeChange = (field: string, value: Date | string | undefined) => {
-    if (field === 'date' && value instanceof Date) {
+  // Fix the handleDateTimeChange function to handle one argument properly
+  const handleDateTimeChange = (field: string, value: Date | undefined) => {
+    if (field === 'date' && value) {
       setFormData(prev => ({ 
         ...prev, 
         date: value.toISOString().split('T')[0] // Convert Date to string
       }));
-    } else if (typeof value === 'string') {
-      setFormData(prev => ({ ...prev, [field]: value }));
+    } else if (field === 'time' && typeof value === 'string') {
+      setFormData(prev => ({ ...prev, time: value }));
     }
   };
 

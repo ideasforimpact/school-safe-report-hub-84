@@ -1,24 +1,47 @@
 
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, AlertCircle, Clock } from 'lucide-react';
+import { CheckCircle, AlertCircle, Clock, Shield, Building } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { VerificationDocument } from '@/types/employeeVerification';
 
 interface VerificationStatusBadgeProps {
   status: 'verified' | 'failed' | 'pending';
+  verificationMethod?: 'api' | 'manual';
   className?: string;
 }
 
-const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({ status, className }) => {
+const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({ 
+  status, 
+  verificationMethod, 
+  className 
+}) => {
   const getStatusConfig = () => {
     switch (status) {
       case 'verified':
-        return {
-          icon: CheckCircle,
-          text: 'Verified',
-          variant: 'success',
-          bgColor: 'bg-green-100 text-green-800 border-green-200'
-        };
+        // Differentiate between manual and government verification
+        if (verificationMethod === 'manual') {
+          return {
+            icon: Shield,
+            text: 'Manual Verified',
+            variant: 'success',
+            bgColor: 'bg-purple-100 text-purple-800 border-purple-200'
+          };
+        } else if (verificationMethod === 'api') {
+          return {
+            icon: Building,
+            text: 'Govt Verified',
+            variant: 'success',
+            bgColor: 'bg-blue-100 text-blue-800 border-blue-200'
+          };
+        } else {
+          return {
+            icon: CheckCircle,
+            text: 'Verified',
+            variant: 'success',
+            bgColor: 'bg-green-100 text-green-800 border-green-200'
+          };
+        }
       case 'failed':
         return {
           icon: AlertCircle,
