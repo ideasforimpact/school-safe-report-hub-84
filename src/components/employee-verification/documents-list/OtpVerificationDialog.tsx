@@ -1,157 +1,218 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Loader2, AlertTriangle } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from "lucide-react";
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+  InputOTPSeparator,
+} from '@/components/ui/input-otp';
+import { supabase } from '@/integrations/supabase/client';
 
 interface OtpVerificationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onVerify: () => void;
   documentId: string;
   documentNumber: string;
-  txnId?: string;
+  onVerificationComplete: (success: boolean, message: string) => void;
 }
 
 const OtpVerificationDialog: React.FC<OtpVerificationDialogProps> = ({
   open,
   onOpenChange,
-  onVerify,
   documentId,
   documentNumber,
-  txnId
+  onVerificationComplete,
 }) => {
   const [otp, setOtp] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const { toast } = useToast();
+  const [requestingOtp, setRequestingOtp] = useState(false);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [otpRequested, setOtpRequested] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [txnId, setTxnId] = useState<string | null>(null);
 
-  // Log document information when dialog opens
-  useEffect(() => {
-    if (open) {
-      console.log('OTP Verification Dialog opened with:', {
-        documentId,
-        documentNumber,
-        txnId
-      });
-    }
-  }, [open, documentId, documentNumber, txnId]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!otp || otp.length < 6) {
-      toast({
-        title: "Error",
-        description: "Please enter a valid 6-digit OTP",
-        variant: "destructive"
-      });
+  const handleRequestOtp = async () => {
+    if (!documentNumber) {
+      setError('Aadhar number is required for verification');
       return;
     }
-    
-    setIsSubmitting(true);
-    
+
+    setError(null);
+    setRequestingOtp(true);
+
     try {
-      console.log('Verifying OTP with:', {
-        documentId,
-        otp,
-        txnId
-      });
-      
-      const response = await fetch(`/api/employee-verification/verify-aadhar-otp`, {
+      const { data, error: requestError } = await supabase.functions.invoke('employee-documents', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ 
-          documentId, 
-          otp,
-          ...(txnId ? { txnId } : {})
-        })
+        body: {
+          action: 'requestAadharOtp',
+          documentNumber
+        }
       });
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to verify OTP");
+
+      if (requestError) {
+        throw new Error(requestError.message || 'Failed to request OTP');
       }
-      
-      toast({
-        title: "Success",
-        description: "Aadhar verification completed successfully",
-      });
-      
-      onVerify();
-      onOpenChange(false);
-    } catch (error) {
-      console.error('OTP verification error:', error);
-      toast({
-        title: "Verification Failed",
-        description: error instanceof Error ? error.message : "OTP verification failed",
-        variant: "destructive"
-      });
+
+      if (data?.success) {
+        setOtpRequested(true);
+        setTxnId(data.txnId);
+      } else {
+        throw new Error(data?.message || 'OTP request failed');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to request OTP');
     } finally {
-      setIsSubmitting(false);
+      setRequestingOtp(false);
     }
   };
-  
+
+  const handleVerifyOtp = async () => {
+    if (!otp || otp.length < 6) {
+      setError('Please enter a valid OTP');
+      return;
+    }
+
+    if (!txnId) {
+      setError('Transaction ID not found, please request OTP again');
+      return;
+    }
+
+    setError(null);
+    setVerifyingOtp(true);
+
+    try {
+      const { data, error: verifyError } = await supabase.functions.invoke('employee-documents', {
+        method: 'POST',
+        body: {
+          action: 'verifyAadharOtp',
+          otp,
+          txnId,
+          documentId
+        }
+      });
+
+      if (verifyError) {
+        throw new Error(verifyError.message || 'Failed to verify OTP');
+      }
+
+      if (data?.success) {
+        onVerificationComplete(true, 'Aadhar verified successfully');
+        onOpenChange(false);
+        // Reset state for future use
+        setOtp('');
+        setOtpRequested(false);
+        setTxnId(null);
+      } else {
+        throw new Error(data?.message || 'OTP verification failed');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to verify OTP');
+    } finally {
+      setVerifyingOtp(false);
+    }
+  };
+
+  const handleClose = () => {
+    setOtp('');
+    setOtpRequested(false);
+    setTxnId(null);
+    setError(null);
+    onOpenChange(false);
+  };
+
+  // Reset OTP when dialog opens/closes to prevent stale state
+  React.useEffect(() => {
+    if (!open) {
+      setOtp('');
+      setOtpRequested(false);
+      setError(null);
+    }
+  }, [open]);
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle>Enter OTP for Aadhar Verification</DialogTitle>
-            <DialogDescription>
-              An OTP has been sent to the registered mobile number. Please enter it below.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="otp" className="text-right">
-                OTP
-              </Label>
-              <Input
-                id="otp"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value)}
-                className="col-span-3"
-                placeholder="Enter 6-digit OTP"
-                maxLength={6}
-              />
-            </div>
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Aadhar Verification</DialogTitle>
+          <DialogDescription>
+            {!otpRequested
+              ? 'Request an OTP to be sent to the registered mobile number linked with this Aadhar.'
+              : 'Enter the 6-digit OTP sent to your registered mobile number.'}
+          </DialogDescription>
+        </DialogHeader>
+
+        {error && (
+          <div className="bg-red-50 p-3 rounded-md border border-red-200 flex items-center gap-2 text-red-700">
+            <AlertTriangle className="h-4 w-4" />
+            <p className="text-sm">{error}</p>
           </div>
-          
-          <DialogFooter>
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={() => onOpenChange(false)}
-              disabled={isSubmitting}
+        )}
+
+        <div className="flex flex-col items-center justify-center gap-4 py-4">
+          {!otpRequested ? (
+            <Button
+              onClick={handleRequestOtp}
+              disabled={requestingOtp || !documentNumber}
+              className="w-full"
             >
-              Cancel
+              {requestingOtp && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Request OTP
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Verifying...
-                </>
-              ) : (
-                'Verify OTP'
-              )}
-            </Button>
-          </DialogFooter>
-        </form>
+          ) : (
+            <>
+              <div className="flex flex-col items-center space-y-2">
+                <p className="text-sm text-gray-500">Enter the 6-digit verification code</p>
+                <InputOTP
+                  maxLength={6}
+                  value={otp}
+                  onChange={setOtp}
+                  render={({ slots }) => (
+                    <InputOTPGroup>
+                      {slots.map((slot, i) => (
+                        <InputOTPSlot key={i} {...slot} index={i} />
+                      ))}
+                    </InputOTPGroup>
+                  )}
+                />
+              </div>
+
+              <div className="flex flex-col w-full gap-2">
+                <Button
+                  onClick={handleVerifyOtp}
+                  disabled={verifyingOtp || otp.length < 6}
+                  className="w-full"
+                >
+                  {verifyingOtp && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Verify OTP
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleRequestOtp}
+                  disabled={requestingOtp}
+                  className="w-full"
+                >
+                  {requestingOtp && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                  Resend OTP
+                </Button>
+              </div>
+            </>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={handleClose}>
+            Cancel
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
