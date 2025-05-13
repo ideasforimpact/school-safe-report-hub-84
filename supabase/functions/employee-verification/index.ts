@@ -25,14 +25,16 @@ serve(async (req) => {
       documentId, 
       documentNumber, 
       otp, 
-      txnId 
+      txnId,
+      client_id 
     } = requestBody;
     
     console.log(`Received ${action} request`, { 
       documentId, 
       hasDocNumber: !!documentNumber, 
       hasTxnId: !!txnId, 
-      hasOtp: !!otp 
+      hasOtp: !!otp,
+      hasClientId: !!client_id
     });
     
     // Initialize Supabase client
@@ -99,7 +101,8 @@ serve(async (req) => {
           JSON.stringify({ 
             success: true, 
             message: "Development mode: OTP would be sent to the registered mobile", 
-            txnId: "dev-test-txn-" + Date.now()
+            txnId: "dev-test-txn-" + Date.now(),
+            client_id: "dev-test-client-" + Date.now()
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
@@ -142,7 +145,8 @@ serve(async (req) => {
             JSON.stringify({ 
               success: true, 
               message: data.message || "OTP sent successfully", 
-              txnId: data.data?.txn_id || data.txn_id
+              txnId: data.data?.txn_id || data.txn_id,
+              client_id: data.data?.client_id || data.client_id
             }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
@@ -236,16 +240,25 @@ serve(async (req) => {
       try {
         console.log("Making request to Surepass API to verify OTP");
         
+        const requestBody: any = {
+          otp,
+          txn_id: txnId
+        };
+        
+        // Add client_id if provided
+        if (client_id) {
+          requestBody.client_id = client_id;
+        }
+        
+        console.log("Submit OTP request body:", requestBody);
+        
         const response = await fetch(`${baseUrl}/api/v1/aadhaar-v2/submit-otp`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${apiKey}`
           },
-          body: JSON.stringify({ 
-            otp,
-            txn_id: txnId
-          })
+          body: JSON.stringify(requestBody)
         });
         
         const data = await response.json();

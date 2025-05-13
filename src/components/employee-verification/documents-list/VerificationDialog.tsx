@@ -43,6 +43,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const [cooldownSeconds, setCooldownSeconds] = useState<number | null>(null);
   const [cooldownTimerId, setCooldownTimerId] = useState<number | null>(null);
   const [txnId, setTxnId] = useState<string | null>(null);
+  const [clientId, setClientId] = useState<string | null>(null);
 
   // Cleanup timer on unmount
   useEffect(() => {
@@ -59,6 +60,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       setShowOtpInput(false);
       setOtp("");
       setTxnId(null);
+      setClientId(null);
       if (cooldownTimerId !== null) {
         clearInterval(cooldownTimerId);
         setCooldownTimerId(null);
@@ -138,9 +140,15 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           return;
         }
         
-        // Store transaction ID for OTP verification
+        // Store transaction ID and client_id for OTP verification
         if (data?.txnId) {
           setTxnId(data.txnId);
+          console.log("Transaction ID stored:", data.txnId);
+        }
+        
+        if (data?.client_id) {
+          setClientId(data.client_id);
+          console.log("Client ID stored:", data.client_id);
         }
         
         setShowOtpInput(true);
@@ -165,14 +173,27 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const handleOtpSubmit = async () => {
     if (otp.length === 6) {
       try {
+        console.log("Submitting OTP with:", {
+          otp,
+          txnId,
+          clientId
+        });
+        
+        const requestBody: any = {
+          action: 'verifyAadharOtp',
+          documentId,
+          otp,
+          txnId
+        };
+        
+        // Add client_id if available
+        if (clientId) {
+          requestBody.client_id = clientId;
+        }
+        
         const { data, error } = await supabase.functions.invoke('employee-verification', {
           method: 'POST',
-          body: { 
-            action: 'verifyAadharOtp',
-            documentId, 
-            otp,
-            txnId 
-          }
+          body: requestBody
         });
         
         if (error) {
@@ -202,6 +223,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         setShowOtpInput(false);
         setOtp("");
         setTxnId(null);
+        setClientId(null);
         if (cooldownTimerId !== null) {
           clearInterval(cooldownTimerId);
           setCooldownTimerId(null);
@@ -226,6 +248,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     setShowOtpInput(false);
     setOtp("");
     setTxnId(null);
+    setClientId(null);
     if (cooldownTimerId !== null) {
       clearInterval(cooldownTimerId);
       setCooldownTimerId(null);
