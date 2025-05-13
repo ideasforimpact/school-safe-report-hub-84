@@ -151,7 +151,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
             toast({
               title: "OTP Already Sent",
               description: `A verification code has already been sent to your registered mobile number and is still valid for ${formatTime(data.cooldownRemaining)}.`,
-              variant: "info",
+              variant: "default",
             });
           } else {
             toast({
@@ -385,7 +385,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               </Button>
               <Button 
                 onClick={handleOtpSubmit}
-                className={isOtpComplete && txnId ? "bg-primary" : ""}
+                disabled={!isOtpComplete || !txnId}
               >
                 Verify
               </Button>
