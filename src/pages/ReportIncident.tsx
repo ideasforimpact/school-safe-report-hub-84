@@ -10,10 +10,10 @@ import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { useIncidentForm } from '@/hooks/useIncidentForm';
 import IncidentDetailsForm from '@/components/incidents/IncidentDetailsForm';
 import PeopleInvolvedSection from '@/components/incidents/PeopleInvolvedSection';
-import { IncidentType } from '@/types/incident';
+import { IncidentType, IncidentCategory } from '@/types/incident';
 
 const ReportIncident = () => {
-  const { addIncident, users } = useIncidents();
+  const { addIncident, users, categories } = useIncidents();
   const { user } = useAuth();
   const navigate = useNavigate();
   
@@ -72,10 +72,40 @@ const ReportIncident = () => {
         ? { id: selectedOwner.id, name: selectedOwner.id } 
         : undefined;
       
+      // Find the selected category to get its name for IncidentCategory mapping
+      const selectedCategory = categories.find(cat => cat.id === formData.categoryId);
+      let categoryName: IncidentCategory = 'Other' as IncidentCategory; // Default to 'Other'
+      
+      if (selectedCategory) {
+        // Try to map the category name to the IncidentCategory type
+        switch(selectedCategory.name) {
+          case 'Physical Injury':
+            categoryName = 'Physical Injury';
+            break;
+          case 'Bullying':
+            categoryName = 'Bullying';
+            break;
+          case 'Tech Misuse':
+            categoryName = 'Tech Misuse';
+            break;
+          case 'Property Damage':
+            categoryName = 'Property Damage';
+            break;
+          case 'Health Concern':
+            categoryName = 'Health Concern';
+            break;
+          case 'Security Breach':
+            categoryName = 'Security Breach';
+            break;
+          default:
+            categoryName = 'Other';
+        }
+      }
+      
       addIncident({
         type: (formData.type || 'Incident') as IncidentType,
-        category: formData.categoryId,
-        subcategory: formData.subcategory,
+        category: categoryName,
+        subcategory: formData.subcategory || '',
         description: formData.description || '',
         date: dateTime,
         location: locationName as any,
