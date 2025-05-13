@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 
@@ -80,9 +79,23 @@ serve(async (req) => {
           console.error("Error fetching document:", docError);
         } else if (document?.last_otp_generated) {
           const lastOtpTime = new Date(document.last_otp_generated);
-          const timeDiff = (new Date().getTime() - lastOtpTime.getTime()) / (1000 * 60); // in minutes
+          const currentTime = new Date();
+          const timeDiff = (currentTime.getTime() - lastOtpTime.getTime()) / (1000 * 60); // in minutes
           
-          if (timeDiff < 15) {
+          // If it's been less than 3 minutes, allow retry with the remaining time
+          // Otherwise, enforce a 15-minute cooldown
+          if (timeDiff < 3) {
+            const cooldownRemaining = Math.ceil(3 - timeDiff);
+            console.log(`OTP still valid. ${cooldownRemaining} minutes remaining for reuse.`);
+            
+            return new Response(
+              JSON.stringify({ 
+                error: "OTP already sent and still valid", 
+                cooldownRemaining 
+              }),
+              { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          } else if (timeDiff < 15) {
             const cooldownRemaining = Math.ceil(15 - timeDiff);
             console.log(`Cooldown period active. ${cooldownRemaining} minutes remaining.`);
             
