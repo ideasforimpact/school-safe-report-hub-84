@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/auth";
 import { 
   Dialog, 
   DialogContent, 
@@ -20,7 +20,7 @@ interface ChangePasswordDialogProps {
 }
 
 export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialogProps) {
-  const { changePassword } = useAuth();
+  const { changePassword, user } = useAuth();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -39,17 +39,25 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
       return;
     }
     
+    if (!user) {
+      toast.error("User not authenticated");
+      return;
+    }
+
     setIsSubmitting(true);
     
     try {
-      const success = await changePassword(currentPassword, newPassword);
+      const success = await changePassword(user.id, currentPassword, newPassword);
       
       if (success) {
+        toast.success("Password changed successfully");
         onOpenChange(false);
         setCurrentPassword("");
         setNewPassword("");
         setConfirmPassword("");
       }
+    } catch (error) {
+      toast.error("Failed to change password");
     } finally {
       setIsSubmitting(false);
     }
