@@ -3,7 +3,6 @@ import React from 'react';
 import { Eye, Download, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatDistanceToNow } from 'date-fns';
-import { capitalize } from 'lodash';
 import {
   Table,
   TableBody,
@@ -11,11 +10,11 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
+} from "@/components/ui/table";
 import { VerificationDocument } from '@/types/employeeVerification';
 import DocumentDeleteButton from '../document-card/DocumentDeleteButton';
 import VerificationStatusBadge from '../VerificationStatusBadge';
-import { getDocumentIcon } from '../utils/documentUtils';
+import { getDocumentIcon, formatDocumentTypeName } from '../utils/documentUtils';
 
 interface DocumentsTableProps {
   documents: VerificationDocument[];
@@ -30,10 +29,6 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
   onDownloadDocument,
   onVerifyDocument
 }) => {
-  const formatDocumentType = (type: string) => {
-    return capitalize(type.replace('_', ' '));
-  };
-
   return (
     <div className="overflow-x-auto rounded-md border">
       <Table>
@@ -51,8 +46,8 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
             <TableRow key={doc.id}>
               <TableCell>
                 <div className="flex items-center gap-2">
-                  {getDocumentIcon(doc.documentType)}
-                  <span className="capitalize">{doc.documentType.replace('_', ' ')}</span>
+                  {getDocumentIcon(doc.documentTypeName || '')}
+                  <span className="capitalize">{formatDocumentTypeName(doc.documentTypeName || '')}</span>
                 </div>
               </TableCell>
               <TableCell>{doc.documentNumber || '—'}</TableCell>

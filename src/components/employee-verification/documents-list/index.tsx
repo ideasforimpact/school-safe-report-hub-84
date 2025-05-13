@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { useToast } from '@/hooks/use-toast';
@@ -21,7 +20,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument
   const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
   const [otpDialogOpen, setOtpDialogOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<string | null>(null);
-  const [selectedDocumentType, setSelectedDocumentType] = useState<string | null>(null);
+  const [selectedDocumentTypeName, setSelectedDocumentTypeName] = useState<string | null>(null);
   const [selectedDocumentNumber, setSelectedDocumentNumber] = useState<string>('');
   const [verifying, setVerifying] = useState(false);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
@@ -57,7 +56,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument
     const document = documents.find(doc => doc.id === documentId);
     if (document) {
       setSelectedDocument(documentId);
-      setSelectedDocumentType(document.documentType);
+      setSelectedDocumentTypeName(document.documentTypeName || '');
       setSelectedDocumentNumber(document.documentNumber || '');
       setVerifyDialogOpen(true);
     }
@@ -67,7 +66,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument
     if (!selectedDocument) return;
     
     // Special handling for Aadhar documents with API verification
-    const isAadhar = selectedDocumentType === 'aadhar' && method === 'api';
+    const isAadhar = selectedDocumentTypeName === 'aadhar' && method === 'api';
     
     if (isAadhar) {
       setVerifyDialogOpen(false);
@@ -191,7 +190,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument
         onVerify={handleVerify}
         onReject={rejectDocument}
         isVerifying={verifying}
-        documentType={selectedDocumentType || undefined}
+        documentType={selectedDocumentTypeName || undefined}
       />
 
       <OtpVerificationDialog 

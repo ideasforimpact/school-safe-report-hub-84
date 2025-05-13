@@ -14,7 +14,7 @@ export interface Employee {
   status: 'pending' | 'verified' | 'failed';
   createdAt: string;
   updatedAt: string;
-  clientId?: string; // Added clientId field
+  clientId?: string;
 }
 
 export interface DocumentType {
@@ -27,7 +27,7 @@ export interface DocumentType {
 
 export interface DocumentStatus {
   id: string;
-  name: 'pending' | 'governance' | 'manual' | 'rejected';
+  name: string;
   description: string;
   createdAt: string;
   updatedAt: string;
@@ -36,13 +36,13 @@ export interface DocumentStatus {
 export interface VerificationDocument {
   id: string;
   employeeId: string;
-  documentTypeId: string; // Changed from documentType
-  documentTypeName?: string; // For display purposes
+  documentTypeId: string;
+  documentTypeName?: string;
   documentNumber?: string;
   documentImage: string;
   verificationStatus: 'pending' | 'verified' | 'failed';
-  documentStatusId?: string; // Added to reference document_status
-  documentStatusName?: 'pending' | 'governance' | 'manual' | 'rejected'; // For display purposes
+  documentStatusId?: string;
+  documentStatusName?: string;
   verificationDate?: string;
   verificationNotes?: string;
   verificationMethod?: 'api' | 'manual';

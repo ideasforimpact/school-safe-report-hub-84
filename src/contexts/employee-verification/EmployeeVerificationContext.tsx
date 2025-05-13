@@ -85,7 +85,7 @@ export const EmployeeVerificationProvider: React.FC<EmployeeVerificationProvider
         description: status.description,
         createdAt: status.created_at,
         updatedAt: status.updated_at
-      }));
+      })) as DocumentStatus[];
       
       setDocumentStatuses(statusesData);
       return statusesData;
