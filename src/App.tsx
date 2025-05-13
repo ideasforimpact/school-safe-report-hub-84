@@ -24,6 +24,7 @@ import Pricing from '@/pages/Pricing';
 import TransportSafetyPage from '@/pages/transport-safety/TransportSafetyPage';
 import VehicleDetailPage from '@/pages/transport-safety/VehicleDetailPage';
 import DocumentsPage from '@/pages/transport-safety/DocumentsPage';
+import IncidentsList from '@/pages/IncidentsList';  // Import the IncidentsList component
 
 // Employee Verification Pages
 import EmployeeVerificationPage from '@/pages/employee-verification/EmployeeVerificationPage';
@@ -55,6 +56,7 @@ function App() {
                   <Route path="/educational-configuration" element={<EducationalConfiguration />} />
                   <Route path="/other-configuration" element={<OtherConfiguration />} />
                   <Route path="/facilities-configuration" element={<EducationalConfiguration />} />
+                  <Route path="/incidents" element={<IncidentsList />} /> {/* Add the incidents route */}
 
                   {/* Transport Safety routes */}
                   <Route path="/transport-safety" element={<TransportSafetyPage />} />
