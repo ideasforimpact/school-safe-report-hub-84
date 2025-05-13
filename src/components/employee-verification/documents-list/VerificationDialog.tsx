@@ -13,6 +13,7 @@ import {
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface VerificationDialogProps {
   open: boolean;
@@ -41,6 +42,18 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const [otp, setOtp] = useState("");
   const [cooldownSeconds, setCooldownSeconds] = useState<number | null>(null);
   const [cooldownTimerId, setCooldownTimerId] = useState<number | null>(null);
+
+  // When dialog opens, log document information
+  useEffect(() => {
+    if (open) {
+      console.info("Verification Dialog opened with:", {
+        documentType,
+        documentId,
+        documentNumber,
+        isAadhar
+      });
+    }
+  }, [open, documentType, documentId, documentNumber, isAadhar]);
 
   // Cleanup timer on unmount
   useEffect(() => {
@@ -97,35 +110,40 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         });
         return;
       }
+
+      if (!documentId) {
+        console.error("Missing document ID for Aadhar verification");
+        toast({
+          title: "Error",
+          description: "Document ID is required for verification",
+          variant: "destructive"
+        });
+        return;
+      }
       
       // Call the edge function to request OTP
       try {
         console.log("Sending OTP request for document ID:", documentId);
         
-        const response = await fetch(`/api/employee-verification/request-aadhar-otp`, {
+        // First try using the edge function
+        const response = await supabase.functions.invoke('employee-verification', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ 
-            documentId, 
-            documentNumber 
-          })
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          // Handle rate limiting (cooldown period)
-          if (response.status === 429 && errorData.cooldownRemaining) {
-            startCooldownTimer(errorData.cooldownRemaining * 60);
-            throw new Error(`Please wait ${errorData.cooldownRemaining} minutes before requesting another OTP`);
+          body: {
+            action: 'request-aadhar-otp',
+            documentId,
+            documentNumber
           }
-          throw new Error(errorData.error || "Failed to send OTP");
+        });
+
+        if (response.error) {
+          console.error("Edge function error:", response.error);
+          throw new Error(response.error.message || "Failed to send OTP");
         }
-        
-        const data = await response.json();
+
+        const data = response.data;
         
         if (data?.success) {
+          console.log("OTP sent successfully:", data);
           setShowOtpInput(true);
           // Start a 3-minute countdown for OTP validity
           startCooldownTimer(3 * 60);
@@ -137,6 +155,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           throw new Error(data?.error || data?.message || "Failed to send OTP");
         }
       } catch (err: any) {
+        console.error("Error sending OTP:", err);
         toast({
           title: "Error",
           description: err.message || "Failed to send OTP",
@@ -151,25 +170,26 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const handleOtpSubmit = async () => {
     if (otp.length === 6) {
       try {
-        const response = await fetch(`/api/employee-verification/verify-aadhar-otp`, {
+        console.log("Submitting OTP verification for document:", documentId);
+        
+        const response = await supabase.functions.invoke('employee-verification', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ 
-            documentId, 
-            otp 
-          })
+          body: {
+            action: 'verify-aadhar-otp',
+            documentId,
+            otp
+          }
         });
         
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || "OTP verification failed");
+        if (response.error) {
+          console.error("Edge function error:", response.error);
+          throw new Error(response.error.message || "OTP verification failed");
         }
         
-        const data = await response.json();
+        const data = response.data;
         
         if (data?.success) {
+          console.log("OTP verification successful:", data);
           toast({
             title: "Verification Successful",
             description: "Aadhar verification completed successfully"
@@ -185,6 +205,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           throw new Error(data?.error || data?.message || "OTP verification failed");
         }
       } catch (err: any) {
+        console.error("Error verifying OTP:", err);
         toast({
           title: "Verification Failed",
           description: err.message || "Failed to verify OTP",
