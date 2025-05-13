@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 
@@ -277,8 +276,6 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
   }
   
   try {
-    console.log("Handling document upload for employee:", employeeId);
-    
     // Check if document entry exists for this employee
     const { data: existingEntry, error: fetchError } = await supabase
       .from('employee_documents')
@@ -329,7 +326,6 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
       .getPublicUrl(filePath);
     
     const documentUrl = publicUrlData.publicUrl;
-    console.log("Document uploaded successfully, URL:", documentUrl);
     
     // Get document type name
     const { data: documentTypeData } = await supabase
@@ -345,24 +341,19 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
       .eq('name', 'pending')
       .single();
     
-    // Generate a new UUID for the document ID
-    const documentId = crypto.randomUUID();
-    
-    // Prepare document record - ensure we store just the filePath
+    // Prepare document record
     const documentRecord = {
       ...restDocumentData,
-      id: documentId, // Store the generated UUID as the document ID
       documentNumber: restDocumentData.documentNumber || '',
       documentTypeName: documentTypeData?.name || 'unknown',
       documentImage: documentUrl,
       documentStatusId: pendingStatusData?.id,
       documentStatusName: pendingStatusData?.name || 'pending',
-      filePath: filePath, // Store the file path for future reference
+      filePath: filePath,
       uploadedAt: new Date().toISOString(),
-      verificationStatus: documentData.verificationStatus || 'pending'
+      verificationStatus: documentData.verificationStatus || 'pending',
+      id: crypto.randomUUID()
     };
-    
-    console.log("Prepared document record:", JSON.stringify(documentRecord));
     
     // Create log entry for upload
     const logEntry = {
@@ -371,8 +362,7 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
       documentTypeId: restDocumentData.documentTypeId,
       performedAt: new Date().toISOString(),
       details: {
-        documentNumber: restDocumentData.documentNumber || '',
-        filePath: filePath // Include file path in log entry
+        documentNumber: restDocumentData.documentNumber || ''
       }
     };
     
@@ -407,13 +397,10 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
     }
     
     if (dbResult.error) {
-      console.error("Database update error:", dbResult.error);
       // If database update fails, try to delete the uploaded file
       await supabase.storage.from('employee-documents').remove([filePath]);
       throw dbResult.error;
     }
-    
-    console.log("Document added successfully with ID:", documentId);
     
     return new Response(
       JSON.stringify({ success: true, document: documentRecord }),
@@ -554,8 +541,6 @@ async function handleDocumentDelete(employeeId, documentId, supabase, corsHeader
 
 async function handleListDocuments(employeeId, supabase, corsHeaders) {
   try {
-    console.log("Fetching documents for employee:", employeeId);
-    
     const { data, error } = await supabase
       .from('employee_documents')
       .select('*, document_status:document_status_id(name), document_type:document_type_id(name)')
@@ -576,17 +561,6 @@ async function handleListDocuments(employeeId, supabase, corsHeaders) {
         if (data.document_type) {
           doc.documentTypeName = data.document_type.name;
         }
-        // Ensure the document has a valid ID
-        if (!doc.id) {
-          doc.id = crypto.randomUUID();
-        }
-        
-        console.log("Document record:", JSON.stringify({
-          id: doc.id,
-          employeeId: doc.employeeId,
-          documentTypeName: doc.documentTypeName,
-          verificationStatus: doc.verificationStatus
-        }));
       });
     }
     
@@ -611,17 +585,14 @@ async function handleListDocuments(employeeId, supabase, corsHeaders) {
 
 // New function to handle Aadhar OTP requests
 async function handleAadharOtpRequest(body, corsHeaders) {
-  const { documentNumber, documentId } = body;
+  const { documentNumber } = body;
   
-  if (!documentId || !documentNumber) {
-    console.error("Missing required fields for OTP request:", { documentId, documentNumber });
+  if (!documentNumber) {
     return new Response(
-      JSON.stringify({ error: "Document ID and Aadhar number are required" }),
+      JSON.stringify({ error: "Aadhar number is required" }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
-  
-  console.log("Requesting OTP for document ID:", documentId);
   
   try {
     // In a real implementation, this would call the Aadhar API
@@ -647,19 +618,15 @@ async function handleAadharOtpRequest(body, corsHeaders) {
     // });
     // const data = await response.json();
     
-    console.log("OTP requested successfully for document:", documentId);
-    
     return new Response(
       JSON.stringify({ 
         success: true, 
         message: "OTP sent successfully to registered mobile number",
-        txnId,
-        documentId // Include the document ID in the response for tracking
+        txnId
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Error requesting OTP:", error);
     return new Response(
       JSON.stringify({ error: error.message || "Failed to request OTP" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -672,14 +639,11 @@ async function handleAadharOtpVerify(body, supabase, corsHeaders) {
   const { otp, txnId, documentId } = body;
   
   if (!otp || !txnId || !documentId) {
-    console.error("Missing required fields for OTP verification:", { otp: !!otp, txnId: !!txnId, documentId: !!documentId });
     return new Response(
       JSON.stringify({ error: "OTP, transaction ID, and document ID are required" }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
-  
-  console.log("Verifying OTP for document ID:", documentId);
   
   try {
     // In a real implementation, this would verify the OTP with Aadhar API
@@ -710,7 +674,6 @@ async function handleAadharOtpVerify(body, supabase, corsHeaders) {
     const isValidOtp = otpSum % 5 === 0;
     
     if (!isValidOtp) {
-      console.error("Invalid OTP submitted:", otp);
       return new Response(
         JSON.stringify({ 
           success: false, 
@@ -744,14 +707,11 @@ async function handleAadharOtpVerify(body, supabase, corsHeaders) {
     }
     
     if (!employeeId) {
-      console.error("Document not found with ID:", documentId);
       return new Response(
-        JSON.stringify({ error: "Document not found", documentId }),
+        JSON.stringify({ error: "Document not found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
-    
-    console.log("Found document belonging to employee:", employeeId);
     
     // Now update the document status
     const { data: existingEntry, error: fetchDocError } = await supabase
@@ -788,7 +748,6 @@ async function handleAadharOtpVerify(body, supabase, corsHeaders) {
     // Update the document in the array
     const updatedDocuments = existingEntry.documents.map(doc => {
       if (doc.id === documentId) {
-        console.log("Updating document status to verified:", documentId);
         return {
           ...doc,
           verificationStatus: 'verified',
@@ -823,8 +782,6 @@ async function handleAadharOtpVerify(body, supabase, corsHeaders) {
       throw updateError;
     }
     
-    console.log("OTP verification successful for document:", documentId);
-    
     return new Response(
       JSON.stringify({ 
         success: true,
@@ -834,7 +791,6 @@ async function handleAadharOtpVerify(body, supabase, corsHeaders) {
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Error in OTP verification:", error);
     return new Response(
       JSON.stringify({ error: error.message || "Failed to verify OTP" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
