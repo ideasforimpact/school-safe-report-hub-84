@@ -53,6 +53,8 @@ async function handleAadharOtpRequest(req: Request, supabase, corsHeaders) {
   try {
     const { documentId, documentNumber } = await req.json();
     
+    console.log("Received OTP request:", { documentId, documentNumber });
+    
     if (!documentId || !documentNumber) {
       return new Response(
         JSON.stringify({ error: "Document ID and Aadhar number are required" }),
@@ -60,42 +62,45 @@ async function handleAadharOtpRequest(req: Request, supabase, corsHeaders) {
       );
     }
     
-    // Get document information to verify it's an Aadhar and has pending status
-    const { data: docData, error: docError } = await supabase
+    // Get document information to verify it exists and has pending status
+    const { data: employeeDoc, error: docError } = await supabase
       .from('employee_documents')
       .select('*')
       .eq('id', documentId)
       .single();
     
-    if (docError || !docData) {
-      console.error("Error fetching document:", docError);
+    if (docError || !employeeDoc) {
+      console.error("Error fetching employee document:", docError);
       return new Response(
         JSON.stringify({ error: "Document not found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
     
-    // Find the document in the documents array
-    const documents = docData.documents || [];
-    const document = documents.find(doc => doc.id === documentId);
+    console.log("Found employee document:", employeeDoc);
+    
+    // Find the matching document in the documents array
+    const documents = employeeDoc.documents || [];
+    const document = documents.find(doc => doc.documentTypeName === 'aadhar');
     
     if (!document) {
+      console.error("Aadhar document not found in documents array");
       return new Response(
-        JSON.stringify({ error: "Document not found in the employee records" }),
+        JSON.stringify({ error: "Aadhar document not found" }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
     
-    // Verify it's an Aadhar document
-    if (document.documentTypeName !== 'aadhar') {
+    // Verify document is pending verification
+    if (document.verificationStatus !== 'pending') {
       return new Response(
-        JSON.stringify({ error: "This is not an Aadhar document" }),
+        JSON.stringify({ error: "This document is already verified or verification failed" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
     
     // Check OTP cooldown period (3 minutes)
-    const lastOtpGenerated = docData.last_otp_generated;
+    const lastOtpGenerated = employeeDoc.last_otp_generated;
     if (lastOtpGenerated) {
       const lastOtpTime = new Date(lastOtpGenerated).getTime();
       const currentTime = new Date().getTime();
@@ -125,6 +130,7 @@ async function handleAadharOtpRequest(req: Request, supabase, corsHeaders) {
     }
 
     // Call the SurePass API to request OTP
+    console.log("Calling SurePass API to generate OTP");
     const surepassResponse = await fetch(`${baseUrl}/api/v1/aadhaar-v2/generate-otp`, {
       method: 'POST',
       headers: {
@@ -137,6 +143,7 @@ async function handleAadharOtpRequest(req: Request, supabase, corsHeaders) {
     });
     
     const surepassData = await surepassResponse.json();
+    console.log("SurePass API response:", surepassData);
     
     if (!surepassResponse.ok || !surepassData.success) {
       console.error("SurePass API error:", surepassData);
@@ -154,7 +161,7 @@ async function handleAadharOtpRequest(req: Request, supabase, corsHeaders) {
       .update({ 
         last_otp_generated: new Date().toISOString()
       })
-      .eq('id', docData.id);
+      .eq('id', employeeDoc.id);
     
     if (updateError) {
       console.error("Error updating last OTP timestamp:", updateError);
@@ -163,7 +170,7 @@ async function handleAadharOtpRequest(req: Request, supabase, corsHeaders) {
     // Add a log entry
     const logEntry = {
       action: 'request_otp',
-      documentId: documentId,
+      documentId: document.id,
       timestamp: new Date().toISOString(),
       details: {
         client_id: surepassData.data?.client_id || '',
@@ -171,14 +178,14 @@ async function handleAadharOtpRequest(req: Request, supabase, corsHeaders) {
       }
     };
     
-    const updatedLogs = [...(docData.employee_docs_log || []), logEntry];
+    const updatedLogs = [...(employeeDoc.employee_docs_log || []), logEntry];
     
     await supabase
       .from('employee_documents')
       .update({ 
         employee_docs_log: updatedLogs 
       })
-      .eq('id', docData.id);
+      .eq('id', employeeDoc.id);
     
     return new Response(
       JSON.stringify({ 
@@ -213,13 +220,13 @@ async function handleAadharOtpVerify(req: Request, supabase, corsHeaders) {
     }
     
     // Get document information and verify OTP cooldown period
-    const { data: docData, error: docError } = await supabase
+    const { data: employeeDoc, error: docError } = await supabase
       .from('employee_documents')
       .select('*')
       .eq('id', documentId)
       .single();
     
-    if (docError || !docData) {
+    if (docError || !employeeDoc) {
       console.error("Error fetching document:", docError);
       return new Response(
         JSON.stringify({ error: "Document not found" }),
@@ -227,8 +234,19 @@ async function handleAadharOtpVerify(req: Request, supabase, corsHeaders) {
       );
     }
     
+    // Find the matching document in the documents array
+    const documents = employeeDoc.documents || [];
+    const document = documents.find(doc => doc.documentTypeName === 'aadhar');
+    
+    if (!document) {
+      return new Response(
+        JSON.stringify({ error: "Aadhar document not found" }),
+        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
     // Verify OTP is within the 3-minute window
-    const lastOtpGenerated = docData.last_otp_generated;
+    const lastOtpGenerated = employeeDoc.last_otp_generated;
     if (!lastOtpGenerated) {
       return new Response(
         JSON.stringify({ error: "No OTP was requested for this document" }),
@@ -248,7 +266,7 @@ async function handleAadharOtpVerify(req: Request, supabase, corsHeaders) {
     }
 
     // Get the transaction ID from the logs
-    const logs = docData.employee_docs_log || [];
+    const logs = employeeDoc.employee_docs_log || [];
     const lastOtpRequestLog = [...logs]
       .reverse()
       .find(log => log.action === 'request_otp');
@@ -300,9 +318,8 @@ async function handleAadharOtpVerify(req: Request, supabase, corsHeaders) {
     }
     
     // Update document status to verified
-    const documents = docData.documents || [];
     const updatedDocuments = documents.map(doc => {
-      if (doc.id === documentId) {
+      if (doc.documentTypeName === 'aadhar') {
         return {
           ...doc,
           verificationStatus: 'verified',
@@ -317,7 +334,7 @@ async function handleAadharOtpVerify(req: Request, supabase, corsHeaders) {
     // Add verification log entry
     const verificationLogEntry = {
       action: 'verify',
-      documentId: documentId,
+      documentId: document.id,
       timestamp: new Date().toISOString(),
       status: 'verified',
       method: 'api',
@@ -327,7 +344,7 @@ async function handleAadharOtpVerify(req: Request, supabase, corsHeaders) {
       }
     };
     
-    const updatedLogs = [...(docData.employee_docs_log || []), verificationLogEntry];
+    const updatedLogs = [...(employeeDoc.employee_docs_log || []), verificationLogEntry];
     
     // Update the database
     const { error: updateError } = await supabase
@@ -337,7 +354,7 @@ async function handleAadharOtpVerify(req: Request, supabase, corsHeaders) {
         employee_docs_log: updatedLogs,
         verification_status: 'verified'
       })
-      .eq('id', docData.id);
+      .eq('id', employeeDoc.id);
     
     if (updateError) {
       console.error("Error updating document status:", updateError);

@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Label } from '@/components/ui/label';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
 interface VerificationDialogProps {
   open: boolean;
@@ -100,6 +100,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       
       // Call the edge function to request OTP
       try {
+        console.log("Sending OTP request for document ID:", documentId);
+        
         const response = await fetch(`/api/employee-verification/request-aadhar-otp`, {
           method: 'POST',
           headers: {
