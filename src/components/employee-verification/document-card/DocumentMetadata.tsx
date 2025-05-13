@@ -2,22 +2,25 @@
 import React from 'react';
 import { format } from 'date-fns';
 import { ShieldCheck, ShieldX } from 'lucide-react';
+import { getDocumentTypeLabel, getStatusDisplayName } from '../utils/documentUtils';
 
 interface DocumentMetadataProps {
-  documentType: string;
+  documentTypeName: string;
   documentNumber?: string;
   createdAt: string;
   verificationStatus: 'pending' | 'verified' | 'failed';
+  documentStatusName?: string;
   verificationDate?: string;
   verificationNotes?: string;
   verificationMethod?: 'api' | 'manual';
 }
 
 const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
-  documentType,
+  documentTypeName,
   documentNumber,
   createdAt,
   verificationStatus,
+  documentStatusName,
   verificationDate,
   verificationNotes,
   verificationMethod,
@@ -28,19 +31,6 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
       return format(new Date(dateString), 'MMM d, yyyy');
     } catch (error) {
       return dateString;
-    }
-  };
-
-  const getDocumentTypeLabel = (type: string) => {
-    switch (type) {
-      case 'aadhar': return 'Aadhar Card';
-      case 'pan': return 'PAN Card';
-      case 'driving_license': return 'Driving License';
-      case 'passport': return 'Passport';
-      case 'bank_account': return 'Bank Account';
-      case 'voter_id': return 'Voter ID';
-      case 'other': return 'Other Document';
-      default: return type;
     }
   };
 
@@ -67,12 +57,15 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
     );
   };
 
+  // Show document status name if available
+  const displayStatus = documentStatusName ? getStatusDisplayName(documentStatusName) : verificationStatus;
+
   return (
     <div className="space-y-2">
       <div>
-        <h3 className="text-lg font-medium">{getDocumentTypeLabel(documentType)}</h3>
+        <h3 className="text-lg font-medium">{getDocumentTypeLabel(documentTypeName)}</h3>
         <p className="text-sm text-gray-500">
-          {documentType === 'other' ? 
+          {documentTypeName === 'other' ? 
             (documentNumber || 'No reference number') : 
             `#${documentNumber || 'N/A'}`}
         </p>
@@ -94,9 +87,9 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
             verificationStatus === 'verified' ? 'text-green-600' : 
             'text-red-600'
           }>
-            {verificationStatus === 'pending' ? 'Pending' : 
-             verificationStatus === 'verified' ? `Verified ${formatDate(verificationDate)}` : 
-             `Failed ${formatDate(verificationDate)}`}
+            {displayStatus === 'pending' ? 'Pending' : 
+             verificationStatus === 'verified' ? `${displayStatus} ${formatDate(verificationDate)}` : 
+             `${displayStatus} ${formatDate(verificationDate)}`}
           </span>
         </div>
       </div>

@@ -3,14 +3,14 @@ import { FileText, CreditCard, File, Car, FileCheck, Briefcase } from 'lucide-re
 import React from 'react';
 import { VerificationDocumentType } from '@/types/employeeVerification';
 
-export const getDocumentIcon = (documentType: VerificationDocumentType): React.ReactNode => {
+export const getDocumentIcon = (documentType: string): React.ReactNode => {
   switch (documentType) {
     case 'aadhar':
       return <CreditCard className="h-4 w-4 text-blue-600" />;
     case 'pan':
       return <CreditCard className="h-4 w-4 text-orange-600" />;
     case 'passport':
-      return <Briefcase className="h-4 w-4 text-green-600" />; // Changed Passport to Briefcase
+      return <Briefcase className="h-4 w-4 text-green-600" />;
     case 'driving_license':
       return <Car className="h-4 w-4 text-red-600" />;
     case 'voter_id':
@@ -22,14 +22,13 @@ export const getDocumentIcon = (documentType: VerificationDocumentType): React.R
   }
 };
 
-export const getDocumentDisplayName = (documentType: VerificationDocumentType): string => {
+export const getDocumentDisplayName = (documentType: string): string => {
   return documentType.replace('_', ' ').split(' ').map(word => 
     word.charAt(0).toUpperCase() + word.slice(1)
   ).join(' ');
 };
 
-// Add the missing functions
-export const getDocumentTypeLabel = (documentType: VerificationDocumentType): string => {
+export const getDocumentTypeLabel = (documentType: string): string => {
   switch (documentType) {
     case 'aadhar':
       return 'Aadhar Card';
@@ -50,7 +49,7 @@ export const getDocumentTypeLabel = (documentType: VerificationDocumentType): st
   }
 };
 
-export const getDocumentPlaceholder = (documentType: VerificationDocumentType): string => {
+export const getDocumentPlaceholder = (documentType: string): string => {
   switch (documentType) {
     case 'aadhar':
       return 'Enter 12-digit Aadhar number';
@@ -68,5 +67,35 @@ export const getDocumentPlaceholder = (documentType: VerificationDocumentType): 
       return 'Enter document reference (optional)';
     default:
       return 'Enter document number';
+  }
+};
+
+export const getStatusDisplayName = (statusName: string): string => {
+  switch (statusName) {
+    case 'pending':
+      return 'Pending';
+    case 'governance':
+      return 'Governance Verified';
+    case 'manual':
+      return 'Manually Verified';
+    case 'rejected':
+      return 'Rejected';
+    default:
+      return statusName;
+  }
+};
+
+export const getStatusColorClass = (statusName: string): { bg: string; text: string; border: string } => {
+  switch (statusName) {
+    case 'pending':
+      return { bg: 'bg-yellow-50', text: 'text-yellow-600', border: 'border-yellow-200' };
+    case 'governance':
+      return { bg: 'bg-green-50', text: 'text-green-600', border: 'border-green-200' };
+    case 'manual':
+      return { bg: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-200' };
+    case 'rejected':
+      return { bg: 'bg-red-50', text: 'text-red-600', border: 'border-red-200' };
+    default:
+      return { bg: 'bg-gray-50', text: 'text-gray-600', border: 'border-gray-200' };
   }
 };

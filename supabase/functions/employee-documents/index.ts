@@ -35,6 +35,10 @@ serve(async (req) => {
         return await handleAadharOtpRequest(body, corsHeaders);
       } else if (action === 'verifyAadharOtp') {
         return await handleAadharOtpVerify(body, supabase, corsHeaders);
+      } else if (action === 'getDocumentTypes') {
+        return await handleGetDocumentTypes(supabase, corsHeaders);
+      } else if (action === 'getDocumentStatuses') {
+        return await handleGetDocumentStatuses(supabase, corsHeaders);
       }
       
       // If documentData is provided, it's an upload operation
@@ -63,14 +67,15 @@ serve(async (req) => {
     // PUT method for updating document verification status
     if (req.method === "PUT") {
       const body = await req.json();
-      const { employeeId, documentId, verificationStatus, verificationNotes } = body;
+      const { employeeId, documentId, verificationStatus, verificationNotes, documentStatusId } = body;
       
-      if (documentId && verificationStatus) {
+      if (documentId && (verificationStatus || documentStatusId)) {
         return await handleUpdateVerificationStatus(
           employeeId, 
           documentId, 
           verificationStatus, 
-          verificationNotes, 
+          verificationNotes,
+          documentStatusId,
           supabase, 
           corsHeaders
         );
@@ -90,16 +95,65 @@ serve(async (req) => {
   }
 });
 
-// New function to handle updating document verification status
+// New function to handle getting document types
+async function handleGetDocumentTypes(supabase, corsHeaders) {
+  try {
+    const { data, error } = await supabase
+      .from('employee_document_type')
+      .select('*');
+    
+    if (error) {
+      throw error;
+    }
+    
+    return new Response(
+      JSON.stringify({ documentTypes: data }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Error retrieving document types:", error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
+// New function to handle getting document statuses
+async function handleGetDocumentStatuses(supabase, corsHeaders) {
+  try {
+    const { data, error } = await supabase
+      .from('document_status')
+      .select('*');
+    
+    if (error) {
+      throw error;
+    }
+    
+    return new Response(
+      JSON.stringify({ documentStatuses: data }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Error retrieving document statuses:", error);
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
+// Update the verification status function
 async function handleUpdateVerificationStatus(
   employeeId, 
   documentId, 
   verificationStatus, 
-  verificationNotes, 
+  verificationNotes,
+  documentStatusId,
   supabase, 
   corsHeaders
 ) {
-  if (!employeeId || !documentId || !verificationStatus) {
+  if (!employeeId || !documentId || (!verificationStatus && !documentStatusId)) {
     return new Response(
       JSON.stringify({ error: "Missing required fields" }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -134,14 +188,29 @@ async function handleUpdateVerificationStatus(
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Get document status name if documentStatusId is provided
+    let documentStatusName = null;
+    if (documentStatusId) {
+      const { data: statusData } = await supabase
+        .from('document_status')
+        .select('name')
+        .eq('id', documentStatusId)
+        .single();
+      
+      if (statusData) {
+        documentStatusName = statusData.name;
+      }
+    }
     
     // Create log entry for status update
     const logEntry = {
       action: 'verify',
       documentId: documentId,
-      documentType: documentToUpdate.documentType,
+      documentTypeId: documentToUpdate.documentTypeId,
       performedAt: new Date().toISOString(),
-      verificationStatus,
+      verificationStatus: verificationStatus || documentToUpdate.verificationStatus,
+      documentStatusId: documentStatusId || documentToUpdate.documentStatusId,
       details: {
         documentNumber: documentToUpdate.documentNumber,
         notes: verificationNotes || "Status updated"
@@ -156,7 +225,9 @@ async function handleUpdateVerificationStatus(
       if (doc.id === documentId) {
         return {
           ...doc,
-          verificationStatus,
+          verificationStatus: verificationStatus || doc.verificationStatus,
+          documentStatusId: documentStatusId || doc.documentStatusId,
+          documentStatusName: documentStatusName || doc.documentStatusName,
           verificationDate: new Date().toISOString(),
           verificationNotes: verificationNotes || doc.verificationNotes
         };
@@ -170,7 +241,8 @@ async function handleUpdateVerificationStatus(
       .update({ 
         documents: updatedDocuments,
         employee_docs_log: updatedLogs,
-        verification_status: verificationStatus // Update the main verification_status column
+        verification_status: verificationStatus || existingEntry.verification_status, // Update the main verification_status column
+        document_status_id: documentStatusId || existingEntry.document_status_id
       })
       .eq('employee_id', employeeId);
     
@@ -181,7 +253,7 @@ async function handleUpdateVerificationStatus(
     return new Response(
       JSON.stringify({ 
         success: true,
-        status: verificationStatus,
+        status: verificationStatus || existingEntry.verification_status,
         document: updatedDocuments.find(doc => doc.id === documentId)
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -220,7 +292,7 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
     
     // Generate a unique file path
     const timestamp = new Date().getTime();
-    const filePath = `${employeeId}/${documentData.documentType}_${timestamp}`;
+    const filePath = `${employeeId}/${restDocumentData.documentTypeId}_${timestamp}`;
     
     // Extract the base64 content and content type
     const base64Regex = /^data:([^;]+);base64,(.+)$/;
@@ -255,29 +327,42 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
     
     const documentUrl = publicUrlData.publicUrl;
     
+    // Get document type name
+    const { data: documentTypeData } = await supabase
+      .from('employee_document_type')
+      .select('name')
+      .eq('id', restDocumentData.documentTypeId)
+      .single();
+    
+    // Get document status ID for pending
+    const { data: pendingStatusData } = await supabase
+      .from('document_status')
+      .select('id, name')
+      .eq('name', 'pending')
+      .single();
+    
     // Prepare document record
     const documentRecord = {
       ...restDocumentData,
       documentNumber: restDocumentData.documentNumber || '',
+      documentTypeName: documentTypeData?.name || 'unknown',
       documentImage: documentUrl,
+      documentStatusId: pendingStatusData?.id,
+      documentStatusName: pendingStatusData?.name || 'pending',
       filePath: filePath,
       uploadedAt: new Date().toISOString(),
       verificationStatus: documentData.verificationStatus || 'pending',
       id: crypto.randomUUID()
     };
     
-    // Store document_type and document_no in the main row
-    const documentType = documentData.documentType || null;
-    const documentNo = documentData.documentNumber || null;
-    
     // Create log entry for upload
     const logEntry = {
       action: 'upload',
       documentId: documentRecord.id,
-      documentType,
+      documentTypeId: restDocumentData.documentTypeId,
       performedAt: new Date().toISOString(),
       details: {
-        documentNumber: documentNo
+        documentNumber: restDocumentData.documentNumber || ''
       }
     };
     
@@ -291,9 +376,9 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
         .from('employee_documents')
         .update({ 
           documents: updatedDocuments,
-          document_type: documentType, // Update the document_type column
-          document_no: documentNo,     // Update the document_no column
-          employee_docs_log: updatedLogs, // Update the logs
+          document_type_id: restDocumentData.documentTypeId,
+          document_status_id: pendingStatusData?.id,
+          employee_docs_log: updatedLogs,
           verification_status: documentData.verificationStatus || existingEntry.verification_status || 'pending'
         })
         .eq('employee_id', employeeId);
@@ -304,9 +389,9 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
         .insert({
           employee_id: employeeId,
           documents: [documentRecord],
-          document_type: documentType, // Set the document_type column
-          document_no: documentNo,     // Set the document_no column
-          employee_docs_log: [logEntry], // Initialize the logs
+          document_type_id: restDocumentData.documentTypeId,
+          document_status_id: pendingStatusData?.id,
+          employee_docs_log: [logEntry],
           verification_status: documentData.verificationStatus || 'pending'
         });
     }
@@ -371,7 +456,7 @@ async function handleDocumentDelete(employeeId, documentId, supabase, corsHeader
     const logEntry = {
       action: 'delete',
       documentId: documentId,
-      documentType: documentToDelete.documentType,
+      documentTypeId: documentToDelete.documentTypeId,
       performedAt: new Date().toISOString(),
       details: {
         documentNumber: documentToDelete.documentNumber,
@@ -411,13 +496,13 @@ async function handleDocumentDelete(employeeId, documentId, supabase, corsHeader
       throw updateError;
     }
     
-    // If no documents remain, update the document_type and document_no to null
+    // If no documents remain, update the document_type_id and document_status_id to null
     if (updatedDocuments.length === 0) {
       await supabase
         .from('employee_documents')
         .update({ 
-          document_type: null, 
-          document_no: null,
+          document_type_id: null, 
+          document_status_id: null,
           verification_status: null 
         })
         .eq('employee_id', employeeId);
@@ -458,7 +543,7 @@ async function handleListDocuments(employeeId, supabase, corsHeaders) {
   try {
     const { data, error } = await supabase
       .from('employee_documents')
-      .select('*')
+      .select('*, document_status:document_status_id(name), document_type:document_type_id(name)')
       .eq('employee_id', employeeId)
       .single();
     
@@ -466,13 +551,24 @@ async function handleListDocuments(employeeId, supabase, corsHeaders) {
       throw error;
     }
     
+    // Process document records to include type and status names
     const documents = data?.documents || [];
+    if (documents.length > 0 && data) {
+      documents.forEach(doc => {
+        if (data.document_status) {
+          doc.documentStatusName = data.document_status.name;
+        }
+        if (data.document_type) {
+          doc.documentTypeName = data.document_type.name;
+        }
+      });
+    }
     
     return new Response(
       JSON.stringify({ 
         documents,
-        document_type: data?.document_type || null,
-        document_no: data?.document_no || null,
+        document_type_id: data?.document_type_id || null,
+        document_status_id: data?.document_status_id || null,
         logs: data?.employee_docs_log || [],
         verification_status: data?.verification_status || null
       }),

@@ -112,11 +112,59 @@ export type Database = {
         }
         Relationships: []
       }
+      document_status: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      employee_document_type: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       employee_documents: {
         Row: {
           created_at: string | null
-          document_no: string | null
-          document_type: string | null
+          document_status_id: string | null
+          document_type_id: string | null
           documents: Json
           employee_docs_log: Json | null
           employee_id: string
@@ -126,8 +174,8 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
-          document_no?: string | null
-          document_type?: string | null
+          document_status_id?: string | null
+          document_type_id?: string | null
           documents?: Json
           employee_docs_log?: Json | null
           employee_id: string
@@ -137,8 +185,8 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
-          document_no?: string | null
-          document_type?: string | null
+          document_status_id?: string | null
+          document_type_id?: string | null
           documents?: Json
           employee_docs_log?: Json | null
           employee_id?: string
@@ -146,7 +194,22 @@ export type Database = {
           updated_at?: string | null
           verification_status?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "employee_documents_document_status_id_fkey"
+            columns: ["document_status_id"]
+            isOneToOne: false
+            referencedRelation: "document_status"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_documents_document_type_id_fkey"
+            columns: ["document_type_id"]
+            isOneToOne: false
+            referencedRelation: "employee_document_type"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       employee_modules: {
         Row: {

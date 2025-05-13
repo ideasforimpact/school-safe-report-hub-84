@@ -10,8 +10,25 @@ export interface Employee {
   joiningDate: string;
   department: string;
   position: string;
-  employeeType: 'permanent' | 'contract' | 'temporary'; // Added this field
+  employeeType: 'permanent' | 'contract' | 'temporary';
   status: 'pending' | 'verified' | 'failed';
+  createdAt: string;
+  updatedAt: string;
+  clientId?: string; // Added clientId field
+}
+
+export interface DocumentType {
+  id: string;
+  name: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DocumentStatus {
+  id: string;
+  name: 'pending' | 'governance' | 'manual' | 'rejected';
+  description: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -19,10 +36,13 @@ export interface Employee {
 export interface VerificationDocument {
   id: string;
   employeeId: string;
-  documentType: VerificationDocumentType;
-  documentNumber: string;
+  documentTypeId: string; // Changed from documentType
+  documentTypeName?: string; // For display purposes
+  documentNumber?: string;
   documentImage: string;
   verificationStatus: 'pending' | 'verified' | 'failed';
+  documentStatusId?: string; // Added to reference document_status
+  documentStatusName?: 'pending' | 'governance' | 'manual' | 'rejected'; // For display purposes
   verificationDate?: string;
   verificationNotes?: string;
   verificationMethod?: 'api' | 'manual';

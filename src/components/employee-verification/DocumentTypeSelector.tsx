@@ -1,6 +1,5 @@
 
 import React from 'react';
-import { VerificationDocumentType } from '@/types/employeeVerification';
 import { 
   CreditCard, 
   FileText, 
@@ -10,50 +9,85 @@ import {
   Building, 
   Users 
 } from 'lucide-react';
+import { DocumentType } from '@/types/employeeVerification';
+import { useEmployeeVerification } from '@/contexts/employee-verification';
 
 interface DocumentTypeSelectorProps {
-  selectedType: VerificationDocumentType | null;
-  onChange: (type: VerificationDocumentType) => void;
+  selectedTypeId: string | null;
+  onChange: (typeId: string) => void;
 }
 
-type DocumentTypeOption = {
-  value: VerificationDocumentType;
-  label: string;
-  icon: React.ElementType;
-  bgColor: string;
-};
-
-const documentTypes: DocumentTypeOption[] = [
-  { value: 'aadhar', label: 'Aadhar', icon: CreditCard, bgColor: 'bg-blue-50' },
-  { value: 'pan', label: 'PAN', icon: FileText, bgColor: 'bg-yellow-50' },
-  { value: 'bank_account', label: 'Bank', icon: Building, bgColor: 'bg-green-50' },
-  { value: 'driving_license', label: 'License', icon: Car, bgColor: 'bg-purple-50' },
-  { value: 'passport', label: 'Passport', icon: Globe, bgColor: 'bg-cyan-50' },
-  { value: 'voter_id', label: 'Voter ID', icon: Users, bgColor: 'bg-pink-50' },
-  { value: 'other', label: 'Other', icon: Wallet, bgColor: 'bg-orange-50' },
+const defaultDocumentTypes = [
+  { id: '1', name: 'aadhar', description: 'Aadhar Card', icon: CreditCard, bgColor: 'bg-blue-50' },
+  { id: '2', name: 'pan', description: 'PAN Card', icon: FileText, bgColor: 'bg-yellow-50' },
+  { id: '3', name: 'bank_account', description: 'Bank Account', icon: Building, bgColor: 'bg-green-50' },
+  { id: '4', name: 'driving_license', description: 'Driving License', icon: Car, bgColor: 'bg-purple-50' },
+  { id: '5', name: 'passport', description: 'Passport', icon: Globe, bgColor: 'bg-cyan-50' },
+  { id: '6', name: 'voter_id', description: 'Voter ID', icon: Users, bgColor: 'bg-pink-50' },
+  { id: '7', name: 'other', description: 'Other', icon: Wallet, bgColor: 'bg-orange-50' },
 ];
 
-const DocumentTypeSelector: React.FC<DocumentTypeSelectorProps> = ({ selectedType, onChange }) => {
+const DocumentTypeSelector: React.FC<DocumentTypeSelectorProps> = ({ selectedTypeId, onChange }) => {
+  const { documentTypes, fetchDocumentTypes, isLoading } = useEmployeeVerification();
+  
+  React.useEffect(() => {
+    fetchDocumentTypes();
+  }, [fetchDocumentTypes]);
+
+  // Use fetched document types, or fall back to default if still loading
+  const typesToDisplay = documentTypes.length > 0 ? documentTypes : defaultDocumentTypes;
+  
+  // Helper function to get icon for document type
+  const getIconForType = (typeName: string) => {
+    switch (typeName) {
+      case 'aadhar': return CreditCard;
+      case 'pan': return FileText;
+      case 'bank_account': return Building;
+      case 'driving_license': return Car;
+      case 'passport': return Globe;
+      case 'voter_id': return Users;
+      case 'other': default: return Wallet;
+    }
+  };
+  
+  // Helper function to get background color for document type
+  const getBgColorForType = (typeName: string) => {
+    switch (typeName) {
+      case 'aadhar': return 'bg-blue-50';
+      case 'pan': return 'bg-yellow-50';
+      case 'bank_account': return 'bg-green-50';
+      case 'driving_license': return 'bg-purple-50';
+      case 'passport': return 'bg-cyan-50';
+      case 'voter_id': return 'bg-pink-50';
+      case 'other': default: return 'bg-orange-50';
+    }
+  };
+
   return (
-    <div className="grid grid-cols-7 gap-2 w-full">
-      {documentTypes.map((type) => {
-        const Icon = type.icon;
-        const isSelected = selectedType === type.value;
+    <div className="grid grid-cols-4 md:grid-cols-7 gap-2 w-full">
+      {typesToDisplay.map((type) => {
+        const Icon = getIconForType(type.name);
+        const bgColor = getBgColorForType(type.name);
+        const isSelected = selectedTypeId === type.id;
+        
+        const displayLabel = type.description && type.description.length <= 8 ? 
+          type.description : 
+          type.name.replace('_', ' ');
         
         return (
           <div
-            key={type.value}
+            key={type.id}
             className={`
               flex flex-col items-center justify-center p-3 rounded-lg cursor-pointer border transition-colors
               ${isSelected 
-                ? `${type.bgColor} border-primary text-primary` 
-                : `${type.bgColor} border-transparent hover:border-gray-300`
+                ? `${bgColor} border-primary text-primary` 
+                : `${bgColor} border-transparent hover:border-gray-300`
               }
             `}
-            onClick={() => onChange(type.value)}
+            onClick={() => onChange(type.id)}
           >
             <Icon className={`h-6 w-6 mb-1 ${isSelected ? 'text-primary' : 'text-gray-500'}`} />
-            <span className="text-xs font-medium">{type.label}</span>
+            <span className="text-xs font-medium capitalize">{displayLabel}</span>
           </div>
         );
       })}

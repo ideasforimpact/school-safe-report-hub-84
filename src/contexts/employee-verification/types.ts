@@ -1,10 +1,12 @@
 
 import { ReactNode } from 'react';
-import { Employee, VerificationDocument } from '@/types/employeeVerification';
+import { Employee, VerificationDocument, DocumentType, DocumentStatus } from '@/types/employeeVerification';
 
 export interface EmployeeVerificationContextType {
   employees: Employee[];
   documents: VerificationDocument[];
+  documentTypes: DocumentType[];
+  documentStatuses: DocumentStatus[];
   addEmployee: (employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt' | 'status'>) => void;
   updateEmployee: (id: string, updates: Partial<Employee>) => void;
   deleteEmployee: (id: string) => void;
@@ -15,6 +17,8 @@ export interface EmployeeVerificationContextType {
   getEmployee: (id: string) => Employee | undefined;
   fetchEmployees: () => Promise<void>;
   fetchEmployeeDocuments: (employeeId: string) => Promise<VerificationDocument[]>;
+  fetchDocumentTypes: () => Promise<DocumentType[]>;
+  fetchDocumentStatuses: () => Promise<DocumentStatus[]>;
   isLoading: boolean;
 }
 

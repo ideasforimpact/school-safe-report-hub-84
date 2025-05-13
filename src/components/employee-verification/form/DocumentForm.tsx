@@ -1,116 +1,129 @@
 
-import React from 'react';
-import { useForm } from 'react-hook-form';
+import React, { ReactNode } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
+import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
-import { documentFormSchema, DocumentFormValues } from './documentFormSchema';
-import { VerificationDocumentType } from '@/types/employeeVerification';
+import { Input } from '@/components/ui/input';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { DocumentFormSchema, DocumentFormValues } from './documentFormSchema';
 import { FileItem } from '@/types/fileTypes';
-import { getDocumentPlaceholder, getDocumentTypeLabel } from '../utils/documentUtils';
+import { useEmployeeVerification } from '@/contexts/employee-verification';
+import { getDocumentPlaceholder } from '../utils/documentUtils';
 
 interface DocumentFormProps {
-  selectedType: VerificationDocumentType;
+  selectedTypeId: string;
   files: FileItem[];
   isSubmitting: boolean;
   onSubmit: (values: DocumentFormValues) => void;
   onCancel: () => void;
   onFileUploaded: (base64: string) => void;
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
-const DocumentForm: React.FC<DocumentFormProps> = ({ 
-  selectedType, 
-  files, 
-  isSubmitting, 
-  onSubmit, 
+const DocumentForm: React.FC<DocumentFormProps> = ({
+  selectedTypeId,
+  files,
+  isSubmitting,
+  onSubmit,
   onCancel,
-  onFileUploaded,
-  children 
+  children,
 }) => {
+  const { documentTypes } = useEmployeeVerification();
+
+  const getDocumentTypeName = (typeId: string): string => {
+    const docType = documentTypes.find(type => type.id === typeId);
+    return docType?.name || '';
+  };
+
   const form = useForm<DocumentFormValues>({
-    resolver: zodResolver(documentFormSchema),
+    resolver: zodResolver(DocumentFormSchema),
     defaultValues: {
       documentNumber: '',
-      documentImage: '/placeholder.svg', // Using placeholder as default for demo
-      documentType: selectedType, // Pass the selected type to the schema for validation
+      documentImage: '',
     },
   });
 
-  // Update the documentType field value when selectedType changes
-  React.useEffect(() => {
-    form.setValue('documentType', selectedType);
-  }, [selectedType, form]);
-
   const handleSubmit = (values: DocumentFormValues) => {
+    // If there's a file uploaded, attach it to the form values
+    if (files.length > 0 && files[0].base64) {
+      values.documentImage = files[0].base64;
+    }
     onSubmit(values);
   };
 
+  const typeName = getDocumentTypeName(selectedTypeId);
+  const placeholder = getDocumentPlaceholder(typeName as any);
+  const isOptional = typeName === 'other';
+
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-        {selectedType !== 'other' ? (
-          <FormField
-            control={form.control}
-            name="documentNumber"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Document Number</FormLabel>
-                <FormControl>
-                  <Input 
-                    placeholder={getDocumentPlaceholder(selectedType)} 
-                    {...field} 
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        ) : (
-          <FormField
-            control={form.control}
-            name="documentNumber"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Document Description (Optional)</FormLabel>
-                <FormControl>
-                  <Input 
-                    placeholder="E.g., Salary Slip March 2023, CV, etc."
-                    {...field} 
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
-        
-        {children}
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+        <FormField
+          control={form.control}
+          name="documentNumber"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Document Number {isOptional && "(Optional)"}</FormLabel>
+              <FormControl>
+                <Input 
+                  placeholder={placeholder} 
+                  required={!isOptional}
+                  {...field} 
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
-        <div className="flex space-x-3 mt-8">
-          <Button 
-            type="submit" 
-            className="flex-1 bg-gradient-to-r from-primary to-primary-600 hover:from-primary-600 hover:to-primary-700" 
-            disabled={isSubmitting || files.length === 0}
-          >
-            Upload {getDocumentTypeLabel(selectedType)}
-          </Button>
-          
+        <div className="space-y-4">
+          <FormLabel>Document Image</FormLabel>
+          {children}
+          {files.length === 0 && (
+            <FormField
+              control={form.control}
+              name="documentImage"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <Input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            if (typeof reader.result === 'string') {
+                              field.onChange(reader.result);
+                            }
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }} 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          )}
+        </div>
+
+        <div className="flex justify-end gap-3">
           <Button 
             type="button" 
             variant="outline" 
-            className="flex-1"
             onClick={onCancel}
+            disabled={isSubmitting}
           >
             Cancel
+          </Button>
+          <Button 
+            type="submit" 
+            disabled={isSubmitting || (files.length === 0 && !form.watch('documentImage'))}
+          >
+            {isSubmitting ? 'Uploading...' : 'Upload Document'}
           </Button>
         </div>
       </form>

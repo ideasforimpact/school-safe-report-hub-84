@@ -2,15 +2,13 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Upload, Loader2 } from 'lucide-react';
-import { VerificationDocumentType } from '@/types/employeeVerification';
-import DocumentTypeSelector from './DocumentTypeSelector';
 import { useToast } from '@/hooks/use-toast';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { FileItem } from '@/types/fileTypes';
 import DocumentFileUploader from './form/DocumentFileUploader';
 import DocumentForm from './form/DocumentForm';
 import { DocumentFormValues } from './form/documentFormSchema';
-import { getDocumentTypeLabel } from './utils/documentUtils';
+import DocumentTypeSelector from './DocumentTypeSelector';
 
 interface AddDocumentFormProps {
   employeeId: string;
@@ -18,23 +16,29 @@ interface AddDocumentFormProps {
 }
 
 const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess }) => {
-  const [selectedType, setSelectedType] = useState<VerificationDocumentType | null>(null);
+  const [selectedTypeId, setSelectedTypeId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [files, setFiles] = useState<FileItem[]>([]);
   const { toast } = useToast();
-  const { addDocument, fetchEmployeeDocuments } = useEmployeeVerification();
+  const { addDocument, fetchEmployeeDocuments, documentTypes, fetchDocumentTypes } = useEmployeeVerification();
 
-  // Fetch employee documents when component mounts
+  // Fetch employee documents and document types when component mounts
   useEffect(() => {
     fetchEmployeeDocuments(employeeId);
-  }, [employeeId, fetchEmployeeDocuments]);
+    fetchDocumentTypes();
+  }, [employeeId, fetchEmployeeDocuments, fetchDocumentTypes]);
 
   const handleFileUploaded = (base64: string) => {
     // This function will be called when a file is uploaded in the DocumentFileUploader
   };
 
+  const getDocumentTypeLabel = (typeId: string): string => {
+    const docType = documentTypes.find(type => type.id === typeId);
+    return docType?.description || docType?.name || 'Document';
+  };
+
   const handleSubmit = async (values: DocumentFormValues) => {
-    if (!selectedType) {
+    if (!selectedTypeId) {
       toast({
         title: 'Error',
         description: 'Please select a document type',
@@ -47,17 +51,17 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
     try {
       await addDocument({
         employeeId,
-        documentType: selectedType,
+        documentTypeId: selectedTypeId,
         documentNumber: values.documentNumber,
         documentImage: files[0]?.base64 || values.documentImage, // Use the first file's base64 if available
         verificationStatus: 'pending',
       });
       toast({
         title: 'Document Added',
-        description: `The ${getDocumentTypeLabel(selectedType)} has been uploaded successfully and is pending verification.`,
+        description: `The ${getDocumentTypeLabel(selectedTypeId)} has been uploaded successfully and is pending verification.`,
       });
       // Reset form
-      setSelectedType(null);
+      setSelectedTypeId(null);
       setFiles([]);
       if (onSuccess) onSuccess();
     } catch (error) {
@@ -83,14 +87,17 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
           <div>
             <h4 className="text-sm font-medium mb-3">Select Document Type</h4>
             <div className="w-full">
-              <DocumentTypeSelector selectedType={selectedType} onChange={setSelectedType} />
+              <DocumentTypeSelector 
+                selectedTypeId={selectedTypeId} 
+                onChange={setSelectedTypeId} 
+              />
             </div>
-            {!selectedType && <p className="text-xs text-red-500 mt-2">Please select a document type</p>}
+            {!selectedTypeId && <p className="text-xs text-red-500 mt-2">Please select a document type</p>}
           </div>
 
-          {selectedType && (
+          {selectedTypeId && (
             <DocumentForm
-              selectedType={selectedType}
+              selectedTypeId={selectedTypeId}
               files={files}
               isSubmitting={isSubmitting}
               onSubmit={handleSubmit}

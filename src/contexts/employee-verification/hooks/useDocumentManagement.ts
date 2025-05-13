@@ -34,10 +34,13 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
       const mappedDocuments = (data?.documents || []).map((doc: any): VerificationDocument => ({
         id: doc.id,
         employeeId: employeeId,
-        documentType: doc.documentType,
+        documentTypeId: doc.documentTypeId,
+        documentTypeName: doc.documentTypeName,
         documentNumber: doc.documentNumber || '',
         documentImage: doc.documentImage,
         verificationStatus: doc.verificationStatus || 'pending',
+        documentStatusId: doc.documentStatusId,
+        documentStatusName: doc.documentStatusName,
         verificationDate: doc.verificationDate,
         verificationNotes: doc.verificationNotes,
         verificationMethod: doc.verificationMethod,
@@ -119,7 +122,12 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
           employeeId,
           documentId: id,
           verificationStatus: status,
-          verificationNotes: notes
+          verificationNotes: notes,
+          // We'll need to map the status to a document_status_id in the edge function
+          documentStatusId: status === 'verified' ? 
+            // We'll use governance status for verified documents
+            null : // This will be handled in the edge function
+            null   // This will be handled in the edge function
         }
       });
       
@@ -131,46 +139,40 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
       // Generate mock details for government-verified documents
       let details = undefined;
       if (status === 'verified') {
-        switch (documentToVerify.documentType) {
-          case 'aadhar':
-            details = {
-              address: '123 Main St, Apartment 4B, Bangalore, Karnataka 560001',
-              name: documentToVerify.documentNumber ? `Holder of ${documentToVerify.documentNumber}` : 'Document Holder',
-              dob: '1985-05-15'
-            };
-            break;
-          case 'driving_license':
-            details = {
-              address: '45 Park Avenue, Chennai, Tamil Nadu 600001',
-              name: documentToVerify.documentNumber ? `Holder of ${documentToVerify.documentNumber}` : 'Document Holder',
-              issue_date: '2018-03-10',
-              expiry_date: '2028-03-09'
-            };
-            break;
-          case 'passport':
-            details = {
-              address: '78 Diplomatic Enclave, New Delhi, Delhi 110001',
-              name: documentToVerify.documentNumber ? `Holder of ${documentToVerify.documentNumber}` : 'Document Holder',
-              issue_date: '2019-07-22',
-              expiry_date: '2029-07-21'
-            };
-            break;
-          case 'voter_id':
-            details = {
-              address: '56 Democracy Street, Mumbai, Maharashtra 400001',
-              name: documentToVerify.documentNumber ? `Holder of ${documentToVerify.documentNumber}` : 'Document Holder',
-              constituency: 'Mumbai South'
-            };
-            break;
-          case 'pan':
-            details = {
-              name: documentToVerify.documentNumber ? `Holder of ${documentToVerify.documentNumber}` : 'Document Holder',
-              dob: '1982-11-30',
-              father_name: 'Parent Name'
-            };
-            break;
-          default:
-            details = {};
+        if (documentToVerify.documentTypeName === 'aadhar') {
+          details = {
+            address: '123 Main St, Apartment 4B, Bangalore, Karnataka 560001',
+            name: documentToVerify.documentNumber ? `Holder of ${documentToVerify.documentNumber}` : 'Document Holder',
+            dob: '1985-05-15'
+          };
+        } else if (documentToVerify.documentTypeName === 'driving_license') {
+          details = {
+            address: '45 Park Avenue, Chennai, Tamil Nadu 600001',
+            name: documentToVerify.documentNumber ? `Holder of ${documentToVerify.documentNumber}` : 'Document Holder',
+            issue_date: '2018-03-10',
+            expiry_date: '2028-03-09'
+          };
+        } else if (documentToVerify.documentTypeName === 'passport') {
+          details = {
+            address: '78 Diplomatic Enclave, New Delhi, Delhi 110001',
+            name: documentToVerify.documentNumber ? `Holder of ${documentToVerify.documentNumber}` : 'Document Holder',
+            issue_date: '2019-07-22',
+            expiry_date: '2029-07-21'
+          };
+        } else if (documentToVerify.documentTypeName === 'voter_id') {
+          details = {
+            address: '56 Democracy Street, Mumbai, Maharashtra 400001',
+            name: documentToVerify.documentNumber ? `Holder of ${documentToVerify.documentNumber}` : 'Document Holder',
+            constituency: 'Mumbai South'
+          };
+        } else if (documentToVerify.documentTypeName === 'pan') {
+          details = {
+            name: documentToVerify.documentNumber ? `Holder of ${documentToVerify.documentNumber}` : 'Document Holder',
+            dob: '1982-11-30',
+            father_name: 'Parent Name'
+          };
+        } else {
+          details = {};
         }
       }
       
@@ -184,6 +186,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
             verificationNotes: notes || doc.verificationNotes,
             verificationMethod: status === 'verified' ? 'api' : undefined,
             details: details,
+            documentStatusName: status === 'verified' ? 'governance' : 'rejected',
             updatedAt: now
           };
         }
@@ -220,6 +223,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
     }
   };
 
+  // Delete document with updated schema support
   const deleteDocument = async (id: string) => {
     try {
       setIsLoading(true);
