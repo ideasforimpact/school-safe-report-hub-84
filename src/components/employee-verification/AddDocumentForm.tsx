@@ -57,18 +57,20 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
 
     setIsSubmitting(true);
     try {
-      // Simplified document data with only essential fields
+      // Added the missing verificationStatus property
       const documentData = {
         employeeId,
         documentTypeId: selectedTypeId,
         documentNumber: values.documentNumber,
         documentImage: values.documentImage,
+        verificationStatus: 'pending' // Adding the required property
       };
 
       console.log('Adding document with data:', {
         employeeId: documentData.employeeId,
         documentTypeId: documentData.documentTypeId,
         documentNumber: documentData.documentNumber,
+        verificationStatus: documentData.verificationStatus,
         // Don't log entire base64 string
         documentImageSize: documentData.documentImage ? documentData.documentImage.length : 0,
       });
