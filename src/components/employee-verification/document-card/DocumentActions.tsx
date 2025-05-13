@@ -21,10 +21,18 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
     setIsVerifying(true);
     
     try {
+      console.log('Document information to verify:', {
+        documentId: document.id,
+        documentTypeId: document.documentTypeId,
+        documentTypeName: document.documentTypeName,
+        documentNumber: document.documentNumber,
+        employeeId: document.employeeId
+      });
+      
       // Special logic for Aadhar documents
       if (document.documentTypeName === 'aadhar' && method === 'api') {
         // Handle Aadhar API verification logic
-        console.log('Aadhar API verification selected');
+        console.log('Aadhar API verification selected for document:', document.id);
         // This would normally open an OTP dialog or similar
         toast({
           title: "API Verification",
@@ -52,7 +60,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
         description: "An error occurred while verifying the document.",
         variant: "destructive",
       });
-      console.error(error);
+      console.error('Verification error:', error);
     } finally {
       setIsVerifying(false);
     }
@@ -62,6 +70,8 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
     setIsVerifying(true);
     
     try {
+      console.log('Rejecting document:', document.id);
+      
       // When rejecting, we set verification_status to 'failed'
       await verifyDocument(document.id, 'failed', 'Document verification failed. Details do not match records.');
       
@@ -76,7 +86,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
         description: "An error occurred while rejecting the document.",
         variant: "destructive",
       });
-      console.error(error);
+      console.error('Rejection error:', error);
     } finally {
       setIsVerifying(false);
     }

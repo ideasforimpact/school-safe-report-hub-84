@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 
@@ -81,7 +80,7 @@ async function handleAadharOtpRequest(req: Request, supabase, corsHeaders) {
     
     // Find the matching document in the documents array
     const documents = employeeDoc.documents || [];
-    const document = documents.find(doc => doc.documentTypeName === 'aadhar');
+    const document = documents.find(doc => doc.id === documentId);
     
     if (!document) {
       console.error("Aadhar document not found in documents array");
