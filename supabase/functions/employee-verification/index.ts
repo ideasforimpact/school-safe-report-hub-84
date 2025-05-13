@@ -44,12 +44,24 @@ serve(async (req) => {
     
     // Set up production vs. sandbox environment for the Surepass API
     const environment = Deno.env.get("ENVIRONMENT") || "development";
-    const apiKey = environment === "production" 
+    
+    // Default base URL for Surepass API and API key
+    let baseUrl = environment === "production" 
+      ? Deno.env.get("SUREPASS_BASE_URL") || "https://sandbox.surepass.io"
+      : "https://sandbox.surepass.io";
+    
+    let apiKey = environment === "production" 
       ? Deno.env.get("SUREPASS_PRODUCTION_API_KEY") 
       : Deno.env.get("SUREPASS_SANDBOX_API_KEY");
     
-    // Base URL for Surepass API
-    const baseUrl = Deno.env.get("SUREPASS_BASE_URL") || "https://sandbox.surepass.io";
+    // Override baseUrl and apiKey for specific actions
+    if (action === 'requestAadharOtp' || action === 'verifyAadharOtp') {
+      // For these specific actions, always use production URL and key
+      baseUrl = "https://kyc-api.surepass.io";
+      apiKey = Deno.env.get("SUREPASS_PRODUCTION_API_KEY");
+      
+      console.log(`Using production API for ${action}: ${baseUrl}`);
+    }
     
     // Check if we're testing in development mode
     const isDevTest = environment === "development" && !apiKey;
@@ -117,7 +129,7 @@ serve(async (req) => {
           );
         }
         
-        console.log("Making request to Surepass API to generate OTP");
+        console.log("Making request to Surepass API to generate OTP with base URL:", baseUrl);
         
         const response = await fetch(`${baseUrl}/api/v1/aadhaar-v2/generate-otp`, {
           method: 'POST',
@@ -239,7 +251,7 @@ serve(async (req) => {
       
       // Actual API call to verify OTP
       try {
-        console.log("Making request to Surepass API to verify OTP");
+        console.log("Making request to Surepass API to verify OTP with base URL:", baseUrl);
         
         const requestBody: any = {
           otp,
