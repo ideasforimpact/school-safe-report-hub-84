@@ -5,7 +5,7 @@ import {
   FileText, 
   Wallet, 
   Car, 
-  Globe, 
+  Globe2 as Globe, 
   Building, 
   Users 
 } from 'lucide-react';

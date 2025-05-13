@@ -39,6 +39,7 @@ export const EmployeeVerificationProvider: React.FC<EmployeeVerificationProvider
     isLoading
   } = useDocumentManagement((employeeId, status) => {
     updateEmployee(employeeId, { status });
+    return Promise.resolve();
   });
 
   const fetchDocumentTypes = async (): Promise<DocumentType[]> => {

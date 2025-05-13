@@ -5,9 +5,7 @@ import { Upload, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { FileItem } from '@/types/fileTypes';
-import DocumentFileUploader from './form/DocumentFileUploader';
 import DocumentForm from './form/DocumentForm';
-import { DocumentFormValues } from './form/documentFormSchema';
 import DocumentTypeSelector from './DocumentTypeSelector';
 
 interface AddDocumentFormProps {
@@ -37,7 +35,7 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
     return docType?.description || docType?.name || 'Document';
   };
 
-  const handleSubmit = async (values: DocumentFormValues) => {
+  const handleSubmit = async (values: any) => {
     if (!selectedTypeId) {
       toast({
         title: 'Error',
@@ -97,19 +95,14 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
 
           {selectedTypeId && (
             <DocumentForm
+              employeeId={employeeId}
               selectedTypeId={selectedTypeId}
               files={files}
               isSubmitting={isSubmitting}
               onSubmit={handleSubmit}
               onCancel={onSuccess || (() => {})}
               onFileUploaded={handleFileUploaded}
-            >
-              <DocumentFileUploader 
-                files={files}
-                setFiles={setFiles}
-                onFileUploaded={handleFileUploaded}
-              />
-            </DocumentForm>
+            />
           )}
 
           {isSubmitting && (

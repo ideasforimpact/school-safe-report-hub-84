@@ -9,26 +9,38 @@ import { documentFormSchema } from './documentFormSchema';
 import DocumentFileUploader from './DocumentFileUploader';
 import { getDocumentPlaceholder } from '../utils/documentUtils';
 import DocumentTypeSelector from '../DocumentTypeSelector';
+import { FileItem } from '@/types/fileTypes';
 
 interface DocumentFormProps {
-  employeeId: string;
-  onSubmit: (data: any) => void;
+  employeeId?: string;
+  selectedTypeId: string;
+  files: FileItem[];
   isSubmitting: boolean;
+  onSubmit: (data: any) => void;
+  onCancel: () => void;
+  onFileUploaded: (base64: string) => void;
 }
 
-const DocumentForm: React.FC<DocumentFormProps> = ({ employeeId, onSubmit, isSubmitting }) => {
+const DocumentForm: React.FC<DocumentFormProps> = ({ 
+  employeeId, 
+  selectedTypeId, 
+  files, 
+  isSubmitting, 
+  onSubmit, 
+  onCancel,
+  onFileUploaded 
+}) => {
   const form = useForm({
     resolver: zodResolver(documentFormSchema),
     defaultValues: {
-      employeeId,
-      documentTypeId: '',
+      employeeId: employeeId || '',
+      documentTypeId: selectedTypeId,
       documentNumber: '',
       documentImage: '',
     },
   });
 
-  const selectedDocumentType = form.watch('documentTypeId');
-  const placeholder = getDocumentPlaceholder(selectedDocumentType);
+  const placeholder = getDocumentPlaceholder(selectedTypeId);
 
   const handleSubmit = (data: any) => {
     onSubmit(data);
@@ -37,21 +49,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({ employeeId, onSubmit, isSub
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-        <input type="hidden" {...form.register('employeeId')} />
-        
-        <FormField
-          control={form.control}
-          name="documentTypeId"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Document Type</FormLabel>
-              <FormControl>
-                <DocumentTypeSelector value={field.value} onChange={field.onChange} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {employeeId && <input type="hidden" {...form.register('employeeId')} />}
         
         <FormField
           control={form.control}
@@ -78,8 +76,12 @@ const DocumentForm: React.FC<DocumentFormProps> = ({ employeeId, onSubmit, isSub
               <FormLabel>Upload Document</FormLabel>
               <FormControl>
                 <DocumentFileUploader 
-                  value={field.value} 
-                  onChange={field.onChange}
+                  files={files}
+                  setFiles={() => {}} // This will be handled by the parent
+                  onFileUploaded={(base64) => {
+                    field.onChange(base64);
+                    onFileUploaded(base64);
+                  }}
                 />
               </FormControl>
               <FormMessage />
@@ -87,9 +89,14 @@ const DocumentForm: React.FC<DocumentFormProps> = ({ employeeId, onSubmit, isSub
           )}
         />
         
-        <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? 'Uploading...' : 'Upload Document'}
-        </Button>
+        <div className="flex justify-end space-x-2 pt-4">
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Cancel
+          </Button>
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? 'Uploading...' : 'Upload Document'}
+          </Button>
+        </div>
       </form>
     </Form>
   );

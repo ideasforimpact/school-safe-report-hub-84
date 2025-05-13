@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { FileText, CreditCard, Car, Passport, FileCheck, Vote, File } from 'lucide-react';
+import { FileText, CreditCard, Car, Globe2 as Globe, FileCheck, Vote, File } from 'lucide-react';
 
 export const getDocumentIcon = (documentType: string) => {
   switch (documentType) {
@@ -9,7 +9,7 @@ export const getDocumentIcon = (documentType: string) => {
     case 'driving_license':
       return <Car className="h-4 w-4 text-green-500" />;
     case 'passport':
-      return <Passport className="h-4 w-4 text-red-500" />;
+      return <Globe className="h-4 w-4 text-red-500" />;
     case 'pan':
       return <FileText className="h-4 w-4 text-yellow-500" />;
     case 'voter_id':
