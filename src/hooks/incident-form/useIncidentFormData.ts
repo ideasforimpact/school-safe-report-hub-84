@@ -37,9 +37,9 @@ export function useIncidentFormData(user: AuthUser | undefined) {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Fix the handleDateTimeChange function to handle one argument properly
-  const handleDateTimeChange = (field: string, value: Date | undefined) => {
-    if (field === 'date' && value) {
+  // Fix the handleDateTimeChange function to properly handle the parameters
+  const handleDateTimeChange = (field: string, value: Date | string) => {
+    if (field === 'date' && value instanceof Date) {
       setFormData(prev => ({ 
         ...prev, 
         date: value.toISOString().split('T')[0] // Convert Date to string

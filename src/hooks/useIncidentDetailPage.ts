@@ -16,12 +16,15 @@ export function useIncidentDetailPage(id: string) {
   const [statusOptions, setStatusOptions] = useState<string[]>([]);
   const [newComment, setNewComment] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [statusUpdate, setStatusUpdate] = useState<IncidentStatus>(incident?.status || 'Open');
 
   useEffect(() => {
     if (!incident) {
-      // navigate('/incidents', { replace: true });
       return;
     }
+    
+    // Set the initial status update value to match the current incident status
+    setStatusUpdate(incident.status);
     
     // Define available status transitions based on current status
     const availableTransitions: Record<string, string[]> = {
@@ -37,7 +40,7 @@ export function useIncidentDetailPage(id: string) {
     } else {
       setStatusOptions(['Open', 'In Progress', 'Resolved', 'Closed']);
     }
-  }, [incident, navigate]);
+  }, [incident]);
 
   const handleStatusChange = async (newStatus: string) => {
     if (!incident) return;
@@ -47,6 +50,9 @@ export function useIncidentDetailPage(id: string) {
     try {
       // Update the incident status - Cast to IncidentStatus
       await updateIncident(incident.id, { status: newStatus as IncidentStatus });
+      
+      // Update the local state
+      setStatusUpdate(newStatus as IncidentStatus);
       
       // Auto-generate a comment about the status change
       const userName = user ? formatUserFullName(user) : 'A user';
@@ -98,6 +104,8 @@ export function useIncidentDetailPage(id: string) {
   return {
     incident,
     statusOptions,
+    statusUpdate,
+    setStatusUpdate,
     newComment,
     setNewComment,
     isLoading,

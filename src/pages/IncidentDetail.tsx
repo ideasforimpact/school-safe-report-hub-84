@@ -6,10 +6,17 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, ArrowLeft } from 'lucide-react';
 import { useParams } from 'react-router-dom';
+import { useIncidentDetail } from '@/hooks/useIncidentDetail';
 
 const IncidentDetail = () => {
   const { id = '' } = useParams<{ id: string }>();
   const incidentDetailProps = useIncidentDetailPage(id);
+  const { useStatusUpdate, formatDate, formatDateTime, getStatusColor, getCommentStatusColor } = useIncidentDetail();
+  
+  // Initialize status update state
+  const { statusUpdate, setStatusUpdate } = useStatusUpdate(
+    incidentDetailProps.incident?.status || 'Open'
+  );
   
   if (!incidentDetailProps.incident) {
     return (
@@ -46,6 +53,8 @@ const IncidentDetail = () => {
   // Let's create a stub for missing props that IncidentDetailContent expects
   const contentProps = {
     ...incidentDetailProps,
+    statusUpdate,
+    setStatusUpdate,
     incidentActivities: [],
     commentText: '',
     setCommentText: () => {},
@@ -54,10 +63,10 @@ const IncidentDetail = () => {
     isSubmitting: false,
     handleCommentSubmit: () => Promise.resolve(),
     handleActionSubmit: () => Promise.resolve(),
-    formatDate: (date: Date) => new Date(date).toLocaleDateString(),
-    formatDateTime: (date: Date) => new Date(date).toLocaleString(),
-    getStatusColor: () => '',
-    getCommentStatusColor: () => '',
+    formatDate: formatDate,
+    formatDateTime: formatDateTime,
+    getStatusColor: getStatusColor,
+    getCommentStatusColor: getCommentStatusColor,
     addComment: () => Promise.resolve(),
     updateComment: () => Promise.resolve(),
     deleteComment: () => Promise.resolve(),

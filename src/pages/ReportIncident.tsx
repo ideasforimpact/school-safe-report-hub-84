@@ -75,7 +75,7 @@ const ReportIncident = () => {
         : undefined;
         
       const owner = selectedOwner 
-        ? { id: selectedOwner.id, name: selectedOwner.name || selectedOwner.id } 
+        ? { id: selectedOwner.id, name: selectedOwner.id } 
         : undefined;
       
       addIncident({
@@ -91,7 +91,7 @@ const ReportIncident = () => {
         documents: documents,
         reportedBy: {
           id: user?.id || '',
-          name: user?.name || user?.id || ''
+          name: user?.id || ''
         },
         owner: owner
       });
@@ -106,6 +106,12 @@ const ReportIncident = () => {
   };
 
   // Create adapter functions to handle type differences
+  const handleChangeAdapter = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    if (e && e.target) {
+      handleChange(e.target.name, e.target.value);
+    }
+  };
+  
   const handleSelectChangeAdapter = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     if (e && e.target) {
       handleSelectChange(e.target.name, e.target.value);
@@ -113,7 +119,12 @@ const ReportIncident = () => {
   };
   
   const handleDateTimeAdapter = (date: Date, timeString?: string) => {
-    handleDateTimeChange(date, timeString);
+    if (date) {
+      handleDateTimeChange('date', date);
+    }
+    if (timeString) {
+      handleDateTimeChange('time', timeString as any);
+    }
   };
 
   return (
@@ -131,7 +142,7 @@ const ReportIncident = () => {
             <CardContent className="space-y-6 px-6">
               <IncidentDetailsForm
                 formData={formData}
-                onChange={handleChange}
+                onChange={handleChangeAdapter}
                 onSelectChange={handleSelectChangeAdapter}
                 onDateTimeChange={handleDateTimeAdapter}
                 supportingFiles={supportingFiles}

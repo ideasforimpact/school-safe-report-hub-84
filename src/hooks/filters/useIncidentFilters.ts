@@ -12,9 +12,18 @@ export function useIncidentFilters(incidents: Incident[]): FilterHookReturn {
 
   // Get available options for filters
   const {
-    categoryOptions: availableCategories,
-    locationOptions: availableLocations,
-    facilityOptions: availableFacilities
+    categoryOptions,
+    locationOptions,
+    facilityOptions,
+    statusOptions,
+    priorityOptions,
+    assigneeOptions,
+    reporterOptions,
+    isInsightsPage,
+    campuses,
+    classes,
+    sections,
+    designations
   } = useFilterOptions();
   
   // Make an empty array for subcategories since they need to be handled separately
@@ -80,10 +89,10 @@ export function useIncidentFilters(incidents: Incident[]): FilterHookReturn {
   return {
     filters,
     filteredIncidents,
-    availableCategories,
+    availableCategories: categoryOptions,
     availableSubcategories,
-    availableLocations,
-    availableFacilities,
+    availableLocations: locationOptions,
+    availableFacilities: facilityOptions,
     availableOwners,
     handleFilterChange,
     toggleAdvancedFilters,
