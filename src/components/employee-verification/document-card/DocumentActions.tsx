@@ -39,6 +39,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
         ? 'Document automatically verified with government database.' 
         : 'Document manually verified by staff.';
       
+      // Update verification_status to 'success' for manual verification
       await verifyDocument(document.id, 'verified', notes);
       
       toast({
@@ -61,6 +62,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
     setIsVerifying(true);
     
     try {
+      // When rejecting, we set verification_status to 'failed'
       await verifyDocument(document.id, 'failed', 'Document verification failed. Details do not match records.');
       
       toast({

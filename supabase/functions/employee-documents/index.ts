@@ -235,13 +235,13 @@ async function handleUpdateVerificationStatus(
       return doc;
     });
     
-    // Update the database record
+    // Update the database record with the new verification_status column
     const { error: updateError } = await supabase
       .from('employee_documents')
       .update({ 
         documents: updatedDocuments,
         employee_docs_log: updatedLogs,
-        verification_status: verificationStatus || existingEntry.verification_status, // Update the main verification_status column
+        verification_status: verificationStatus || existingEntry.verification_status, // Update the new verification_status column
         document_status_id: documentStatusId || existingEntry.document_status_id
       })
       .eq('employee_id', employeeId);
