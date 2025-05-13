@@ -13,6 +13,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Label } from '@/components/ui/label';
+import { useToast } from '@/components/ui/use-toast';
 
 interface VerificationDialogProps {
   open: boolean;
@@ -21,6 +22,8 @@ interface VerificationDialogProps {
   onReject: () => void;
   isVerifying: boolean;
   documentType?: string;
+  documentId?: string;
+  documentNumber?: string;
 }
 
 const VerificationDialog: React.FC<VerificationDialogProps> = ({
@@ -29,25 +32,106 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   onVerify,
   onReject,
   isVerifying,
-  documentType = ''
+  documentType = '',
+  documentId = '',
+  documentNumber = ''
 }) => {
+  const { toast } = useToast();
   const isAadhar = documentType === 'aadhar';
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [otp, setOtp] = useState("");
 
-  const handleAadharApiClick = () => {
+  const handleAadharApiClick = async () => {
     if (isAadhar) {
-      setShowOtpInput(true);
+      if (!documentNumber) {
+        toast({
+          title: "Error",
+          description: "Aadhar number is required for verification",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Call the edge function to request OTP
+      try {
+        const { data, error } = await fetch(`/api/employee-verification/request-aadhar-otp`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ 
+            documentId, 
+            documentNumber 
+          })
+        }).then(res => res.json());
+        
+        if (error) {
+          throw new Error(error);
+        }
+        
+        if (data?.success) {
+          setShowOtpInput(true);
+          toast({
+            title: "OTP Sent",
+            description: "A verification code has been sent to your registered mobile number"
+          });
+        } else {
+          throw new Error(data?.message || "Failed to send OTP");
+        }
+      } catch (err: any) {
+        toast({
+          title: "Error",
+          description: err.message || "Failed to send OTP",
+          variant: "destructive"
+        });
+      }
     } else {
       onVerify('api');
     }
   };
 
-  const handleOtpSubmit = () => {
-    if (otp.length === 4) {
-      onVerify('api');
-      setShowOtpInput(false);
-      setOtp("");
+  const handleOtpSubmit = async () => {
+    if (otp.length === 6) {
+      try {
+        const { data, error } = await fetch(`/api/employee-verification/verify-aadhar-otp`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ 
+            documentId, 
+            otp 
+          })
+        }).then(res => res.json());
+        
+        if (error) {
+          throw new Error(error);
+        }
+        
+        if (data?.success) {
+          toast({
+            title: "Verification Successful",
+            description: "Aadhar verification completed successfully"
+          });
+          onVerify('api');
+          setShowOtpInput(false);
+          setOtp("");
+        } else {
+          throw new Error(data?.message || "OTP verification failed");
+        }
+      } catch (err: any) {
+        toast({
+          title: "Verification Failed",
+          description: err.message || "Failed to verify OTP",
+          variant: "destructive"
+        });
+      }
+    } else {
+      toast({
+        title: "Invalid OTP",
+        description: "Please enter a valid 6-digit OTP",
+        variant: "destructive"
+      });
     }
   };
 
@@ -104,14 +188,16 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         ) : (
           <div className="flex flex-col gap-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="otp">Enter 4-digit OTP received</Label>
+              <Label htmlFor="otp">Enter 6-digit OTP received</Label>
               <div className="flex justify-center py-4">
-                <InputOTP maxLength={4} value={otp} onChange={setOtp}>
+                <InputOTP maxLength={6} value={otp} onChange={setOtp}>
                   <InputOTPGroup>
                     <InputOTPSlot index={0} />
                     <InputOTPSlot index={1} />
                     <InputOTPSlot index={2} />
                     <InputOTPSlot index={3} />
+                    <InputOTPSlot index={4} />
+                    <InputOTPSlot index={5} />
                   </InputOTPGroup>
                 </InputOTP>
               </div>
@@ -129,7 +215,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               </Button>
               <Button 
                 onClick={handleOtpSubmit}
-                disabled={otp.length !== 4}
+                disabled={otp.length !== 6}
               >
                 Verify
               </Button>

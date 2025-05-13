@@ -5,7 +5,6 @@ import { useToast } from '@/hooks/use-toast';
 import EmptyDocumentsState from './EmptyDocumentsState';
 import DocumentsTable from './DocumentsTable';
 import VerificationDialog from './VerificationDialog';
-import OtpVerificationDialog from './OtpVerificationDialog';
 import { Loader2 } from 'lucide-react';
 
 interface DocumentsListProps {
@@ -19,7 +18,6 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument
   const { toast } = useToast();
   
   const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
-  const [otpDialogOpen, setOtpDialogOpen] = useState(false);
   const [selectedDocument, setSelectedDocument] = useState<string | null>(null);
   const [selectedDocumentTypeName, setSelectedDocumentTypeName] = useState<string | null>(null);
   const [selectedDocumentNumber, setSelectedDocumentNumber] = useState<string>('');
@@ -66,38 +64,27 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument
   const handleVerify = async (method: 'api' | 'manual') => {
     if (!selectedDocument) return;
     
-    // Special handling for Aadhar documents with API verification
-    const isAadhar = selectedDocumentTypeName === 'aadhar' && method === 'api';
-    
-    if (isAadhar) {
-      setVerifyDialogOpen(false);
-      setOtpDialogOpen(true);
-      return;
-    }
-    
     setVerifying(true);
     
     try {
-      // Simulate verification delay
-      setTimeout(() => {
-        const notes = method === 'api' 
-          ? 'Document automatically verified successfully with government database.' 
-          : 'Document manually verified successfully.';
-        
-        verifyDocument(
-          selectedDocument,
-          'verified',
-          notes
-        );
-        
-        toast({
-          title: "Document Verified",
-          description: `The document has been ${method === 'api' ? 'automatically' : 'manually'} verified successfully.`,
-        });
-        
-        setVerifying(false);
-        setVerifyDialogOpen(false);
-      }, 1500); // Simulate API delay
+      // For non-Aadhar documents or manual verification
+      const notes = method === 'api' 
+        ? 'Document automatically verified successfully with government database.' 
+        : 'Document manually verified successfully.';
+      
+      await verifyDocument(
+        selectedDocument,
+        'verified',
+        notes
+      );
+      
+      toast({
+        title: "Document Verified",
+        description: `The document has been ${method === 'api' ? 'automatically' : 'manually'} verified successfully.`,
+      });
+      
+      setVerifying(false);
+      setVerifyDialogOpen(false);
     } catch (error) {
       toast({
         title: "Error",
@@ -105,27 +92,6 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument
         variant: "destructive",
       });
       setVerifying(false);
-    }
-  };
-
-  const handleOtpVerificationComplete = (success: boolean, message: string) => {
-    if (success && selectedDocument) {
-      verifyDocument(
-        selectedDocument,
-        'verified',
-        'Document verified successfully via Aadhar OTP verification.'
-      );
-      
-      toast({
-        title: "Document Verified",
-        description: message,
-      });
-    } else {
-      toast({
-        title: "Verification Failed",
-        description: message,
-        variant: "destructive"
-      });
     }
   };
 
@@ -192,14 +158,8 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument
         onReject={rejectDocument}
         isVerifying={verifying}
         documentType={selectedDocumentTypeName || undefined}
-      />
-
-      <OtpVerificationDialog 
-        open={otpDialogOpen}
-        onOpenChange={setOtpDialogOpen}
-        documentId={selectedDocument || ''}
+        documentId={selectedDocument || undefined}
         documentNumber={selectedDocumentNumber}
-        onVerificationComplete={handleOtpVerificationComplete}
       />
     </div>
   );
