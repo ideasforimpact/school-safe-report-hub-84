@@ -18,6 +18,7 @@ interface FacilityContextType {
   updateFacility: (id: string, facility: Partial<Facility>) => void;
   deleteFacility: (id: string) => void;
   getFacilityById: (id: string) => Facility | undefined;
+  resetFacilities: () => void; // Add the missing function
 }
 
 // Create the context with default values
@@ -58,6 +59,11 @@ export const FacilityProvider: React.FC<{ children: ReactNode }> = ({ children }
   const getFacilityById = (id: string) => {
     return facilities.find((facility) => facility.id === id);
   };
+  
+  // Add the reset facilities function
+  const resetFacilities = () => {
+    setFacilities([]);
+  };
 
   return (
     <FacilityContext.Provider
@@ -67,6 +73,7 @@ export const FacilityProvider: React.FC<{ children: ReactNode }> = ({ children }
         updateFacility,
         deleteFacility,
         getFacilityById,
+        resetFacilities, // Provide the function
       }}
     >
       {children}

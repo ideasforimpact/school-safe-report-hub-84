@@ -30,6 +30,7 @@ import IncidentDetail from '@/pages/IncidentDetail';
 import ReportIncident from '@/pages/ReportIncident';
 import EditIncident from '@/pages/EditIncident';
 import Insights from '@/pages/Insights';
+import FacilityManagement from '@/pages/FacilityManagement';
 
 // Employee Verification Pages
 import EmployeeVerificationPage from '@/pages/employee-verification/EmployeeVerificationPage';
@@ -61,7 +62,8 @@ function App() {
                     <Route path="/students" element={<StudentManagement />} />
                     <Route path="/educational-configuration" element={<EducationalConfiguration />} />
                     <Route path="/other-configuration" element={<OtherConfiguration />} />
-                    <Route path="/facilities-configuration" element={<EducationalConfiguration />} />
+                    <Route path="/facilities-configuration" element={<FacilityManagement />} />
+                    <Route path="/facility-management" element={<FacilityManagement />} />
 
                     {/* Incident routes */}
                     <Route path="/incidents" element={<IncidentsList />} />

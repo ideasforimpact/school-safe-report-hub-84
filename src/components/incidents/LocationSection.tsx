@@ -35,14 +35,14 @@ const LocationSection: React.FC<LocationSectionProps> = ({
   // Create a merged list of facilities
   const allFacilities = [...facilities];
   
-  // Add facilities from context if they don't already exist and aren't empty
-  contextFacilities.forEach(facilityName => {
-    if (facilityName && typeof facilityName === 'string' && facilityName.trim() !== '') {
-      const exists = facilities.some(f => f.name === facilityName);
+  // Add facilities from context if they don't already exist
+  contextFacilities.forEach(facility => {
+    if (facility && facility.name && facility.name.trim() !== '') {
+      const exists = facilities.some(f => f.name === facility.name);
       if (!exists) {
         allFacilities.push({
-          id: `facility-${facilityName}`,
-          name: facilityName
+          id: `facility-${facility.name}`,
+          name: facility.name
         });
       }
     }

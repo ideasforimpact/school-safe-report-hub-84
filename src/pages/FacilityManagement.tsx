@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/components/ui/sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import Layout from "@/components/layout/Layout";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/auth";
 import { useFacilities } from "@/contexts/FacilityContext";
 
 const FacilityManagement = () => {
@@ -33,12 +33,12 @@ const FacilityManagement = () => {
     }
 
     // Check if facility already exists (case-insensitive)
-    if (facilities.some(f => f.toLowerCase() === newFacility.trim().toLowerCase())) {
+    if (facilities.some(f => f.name.toLowerCase() === newFacility.trim().toLowerCase())) {
       toast.error("This facility already exists");
       return;
     }
 
-    addFacility(newFacility.trim());
+    addFacility({ name: newFacility.trim() });
     setNewFacility("");
     toast.success("Facility added successfully");
   };
@@ -116,7 +116,7 @@ const FacilityManagement = () => {
                   <ul className="space-y-1">
                     {facilities.map((facility, index) => (
                       <li key={index} className="p-2 bg-gray-50 rounded-md">
-                        {facility}
+                        {facility.name}
                       </li>
                     ))}
                   </ul>
