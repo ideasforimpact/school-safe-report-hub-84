@@ -44,12 +44,9 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const [cooldownTimerId, setCooldownTimerId] = useState<number | null>(null);
   const [txnId, setTxnId] = useState<string | null>(null);
   const [clientId, setClientId] = useState<string | null>(null);
-  const [isOtpComplete, setIsOtpComplete] = useState(false);
 
-  // Check if OTP is complete (6 digits)
-  useEffect(() => {
-    setIsOtpComplete(otp.length === 6);
-  }, [otp]);
+  // Simple state to track if OTP is complete (6 digits)
+  const isOtpComplete = otp.length === 6;
 
   // Cleanup timer on unmount
   useEffect(() => {
@@ -67,7 +64,6 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       setOtp("");
       setTxnId(null);
       setClientId(null);
-      setIsOtpComplete(false);
       if (cooldownTimerId !== null) {
         clearInterval(cooldownTimerId);
         setCooldownTimerId(null);
@@ -77,6 +73,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   }, [open]);
 
   const startCooldownTimer = (seconds: number) => {
+    console.log(`Starting cooldown timer with seconds: ${seconds}, current time: ${new Date().toISOString()}`);
     setCooldownSeconds(seconds);
     
     // Clear any existing timer
@@ -142,10 +139,16 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           }
           
           toast({
-            title: "Error",
+            title: "Information",
             description: data.error,
-            variant: "destructive",
+            variant: "default",
           });
+          
+          // If OTP is still valid, show the OTP input
+          if (data.error.includes("OTP already sent and still valid")) {
+            setShowOtpInput(true);
+          }
+          
           return;
         }
         
@@ -281,7 +284,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     otp,
     otpLength: otp.length,
     isOtpComplete,
-    hasTxnId: !!txnId
+    hasTxnId: !!txnId,
+    isVerifying
   });
 
   return (
