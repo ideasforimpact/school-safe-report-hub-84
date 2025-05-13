@@ -38,13 +38,13 @@ const VerificationTrends = () => {
 
   // Document types breakdown
   const documentTypeData = [
-    { name: 'Aadhar', value: documents.filter(doc => doc.documentType === 'aadhar').length },
-    { name: 'PAN', value: documents.filter(doc => doc.documentType === 'pan').length },
-    { name: 'Driving License', value: documents.filter(doc => doc.documentType === 'driving_license').length },
-    { name: 'Passport', value: documents.filter(doc => doc.documentType === 'passport').length },
-    { name: 'Bank Account', value: documents.filter(doc => doc.documentType === 'bank_account').length },
-    { name: 'Voter ID', value: documents.filter(doc => doc.documentType === 'voter_id').length },
-    { name: 'Other', value: documents.filter(doc => doc.documentType === 'other').length },
+    { name: 'Aadhar', value: documents.filter(doc => doc.documentTypeName === 'aadhar').length },
+    { name: 'PAN', value: documents.filter(doc => doc.documentTypeName === 'pan').length },
+    { name: 'Driving License', value: documents.filter(doc => doc.documentTypeName === 'driving_license').length },
+    { name: 'Passport', value: documents.filter(doc => doc.documentTypeName === 'passport').length },
+    { name: 'Bank Account', value: documents.filter(doc => doc.documentTypeName === 'bank_account').length },
+    { name: 'Voter ID', value: documents.filter(doc => doc.documentTypeName === 'voter_id').length },
+    { name: 'Other', value: documents.filter(doc => doc.documentTypeName === 'other').length },
   ].filter(item => item.value > 0);
   
   // Employee type breakdown

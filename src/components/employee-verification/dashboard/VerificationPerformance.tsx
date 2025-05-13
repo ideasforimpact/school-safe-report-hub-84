@@ -31,7 +31,7 @@ const VerificationPerformance = () => {
         
         return {
           id: doc.id,
-          documentType: doc.documentType,
+          documentType: doc.documentTypeName,
           verificationMethod: doc.verificationMethod || 'manual',
           days: Math.max(days, 0) // Ensure no negative values
         };

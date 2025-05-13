@@ -27,3 +27,50 @@ export const formatDocumentTypeName = (name: string): string => {
     .map(word => word.charAt(0).toUpperCase() + word.slice(1))
     .join(' ');
 };
+
+// Add the missing functions
+export const getDocumentTypeLabel = (typeName: string): string => {
+  const documentTypeLabels: Record<string, string> = {
+    'aadhar': 'Aadhar Card',
+    'pan': 'PAN Card',
+    'driving_license': 'Driving License',
+    'passport': 'Passport',
+    'voter_id': 'Voter ID',
+    'bank_account': 'Bank Account',
+    'other': 'Other Document'
+  };
+
+  return documentTypeLabels[typeName] || formatDocumentTypeName(typeName);
+};
+
+export const getStatusDisplayName = (status: string): string => {
+  const statusDisplayNames: Record<string, string> = {
+    'pending': 'Pending',
+    'verified': 'Verified',
+    'failed': 'Failed',
+    'rejected': 'Rejected',
+    'expired': 'Expired',
+    'governance': 'Governance Verified',
+  };
+
+  return statusDisplayNames[status] || formatDocumentTypeName(status);
+};
+
+export const getDocumentPlaceholder = (documentType: string): string => {
+  switch (documentType) {
+    case 'aadhar':
+      return 'xxxx xxxx xxxx';
+    case 'pan':
+      return 'ABCDE1234F';
+    case 'driving_license':
+      return 'DL12 20123456789';
+    case 'passport':
+      return 'A1234567';
+    case 'voter_id':
+      return 'ABC1234567';
+    case 'bank_account':
+      return 'Account Number';
+    default:
+      return 'Document Reference Number';
+  }
+};

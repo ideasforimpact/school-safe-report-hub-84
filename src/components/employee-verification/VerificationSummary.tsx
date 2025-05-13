@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
@@ -79,7 +80,7 @@ const VerificationSummary = () => {
             <h4 className="text-sm font-medium mb-2">Documents by Type</h4>
             <div className="space-y-2">
               {['aadhar', 'pan', 'driving_license', 'passport', 'bank_account'].map(type => {
-                const count = documents.filter(doc => doc.documentType === type).length;
+                const count = documents.filter(doc => doc.documentTypeName === type).length;
                 const typeName = type === 'aadhar' ? 'Aadhar Card' :
                                 type === 'pan' ? 'PAN Card' :
                                 type === 'driving_license' ? 'Driving License' :

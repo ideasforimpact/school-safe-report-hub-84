@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
@@ -117,7 +116,7 @@ const RecentVerifications = () => {
                     <TableRow key={doc.id}>
                       <TableCell>
                         <div className="font-medium">
-                          {documentTypeNames[doc.documentType] || doc.documentType}
+                          {documentTypeNames[doc.documentTypeName || ''] || doc.documentTypeName}
                         </div>
                         <div className="text-xs text-gray-500">{doc.documentNumber}</div>
                       </TableCell>
@@ -249,7 +248,7 @@ const ActivityItem = ({ document, employee }: ActivityItemProps) => {
         </div>
         
         <p className="text-sm text-gray-600 mt-1">
-          {documentTypeNames[document.documentType] || document.documentType} for {employee?.name || 'Unknown Employee'}
+          {documentTypeNames[document.documentTypeName || ''] || document.documentTypeName} for {employee?.name || 'Unknown Employee'}
         </p>
         
         <div className="flex items-center mt-2 gap-2">

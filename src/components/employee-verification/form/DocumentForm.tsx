@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { DocumentFormSchema, DocumentFormValues } from './documentFormSchema';
+import { documentFormSchema, DocumentFormValues } from './documentFormSchema';
 import { FileItem } from '@/types/fileTypes';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { getDocumentPlaceholder } from '../utils/documentUtils';

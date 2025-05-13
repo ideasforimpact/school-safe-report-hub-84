@@ -21,7 +21,7 @@ const DocumentExpiryAlerts = () => {
     let expiryDate;
     const creationDate = new Date(doc.createdAt);
     
-    switch (doc.documentType) {
+    switch (doc.documentTypeName) {
       case 'aadhar':
         // Aadhar doesn't expire, but let's say we need to re-verify periodically
         expiryDate = addMonths(creationDate, 60); // 5 years
@@ -70,7 +70,7 @@ const DocumentExpiryAlerts = () => {
       id: doc.id,
       employeeId: doc.employeeId,
       employeeName: employee?.name || 'Unknown Employee',
-      documentType: documentTypeNames[doc.documentType] || doc.documentType,
+      documentType: documentTypeNames[doc.documentTypeName || ''] || doc.documentTypeName,
       documentNumber: doc.documentNumber,
       expiryDate,
       status: isPast(expiryDate) ? 'expired' : 
