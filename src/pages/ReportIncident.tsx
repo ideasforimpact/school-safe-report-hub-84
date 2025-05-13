@@ -112,10 +112,9 @@ const ReportIncident = () => {
     }
   };
   
-  const handleSelectChangeAdapter = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    if (e && e.target) {
-      handleSelectChange(e.target.name, e.target.value);
-    }
+  // Fix: Create a properly typed adapter function for select changes
+  const handleSelectAdapter = (name: string, value: string) => {
+    handleSelectChange(name, value);
   };
   
   const handleDateTimeAdapter = (date: Date, timeString?: string) => {
@@ -123,7 +122,7 @@ const ReportIncident = () => {
       handleDateTimeChange('date', date);
     }
     if (timeString) {
-      handleDateTimeChange('time', timeString as any);
+      handleDateTimeChange('time', timeString);
     }
   };
 
@@ -143,7 +142,7 @@ const ReportIncident = () => {
               <IncidentDetailsForm
                 formData={formData}
                 onChange={handleChangeAdapter}
-                onSelectChange={handleSelectChangeAdapter}
+                onSelectChange={handleSelectAdapter} 
                 onDateTimeChange={handleDateTimeAdapter}
                 supportingFiles={supportingFiles}
                 onFilesChange={handleFilesChange}
