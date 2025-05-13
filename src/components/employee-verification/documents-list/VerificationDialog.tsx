@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,6 +10,8 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+import { Label } from '@/components/ui/label';
 
 interface VerificationDialogProps {
   open: boolean;
@@ -29,6 +31,42 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   documentType = ''
 }) => {
   const isAadhar = documentType === 'aadhar';
+  const [showOtpInput, setShowOtpInput] = useState(false);
+  const [showManualConfirmation, setShowManualConfirmation] = useState(false);
+  const [otp, setOtp] = useState("");
+
+  const handleAadharApiClick = () => {
+    if (isAadhar) {
+      setShowOtpInput(true);
+      setShowManualConfirmation(false);
+    } else {
+      onVerify('api');
+    }
+  };
+  
+  const handleManualVerifyClick = () => {
+    setShowManualConfirmation(true);
+    setShowOtpInput(false);
+  };
+
+  const handleOtpSubmit = () => {
+    if (otp.length === 4) {
+      onVerify('api');
+      setShowOtpInput(false);
+      setOtp("");
+    }
+  };
+
+  const handleManualConfirm = () => {
+    onVerify('manual');
+    setShowManualConfirmation(false);
+  };
+
+  const handleCancel = () => {
+    setShowOtpInput(false);
+    setShowManualConfirmation(false);
+    setOtp("");
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -39,49 +77,108 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
             Choose a verification method for this {documentType || 'document'}.
           </DialogDescription>
         </DialogHeader>
-        <div className="flex flex-col gap-4 py-4">
-          <Button 
-            variant="outline" 
-            className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 justify-start"
-            onClick={() => onVerify('api')}
-            disabled={isVerifying}
-          >
-            <ShieldCheck className="h-4 w-4 mr-2" />
-            {isAadhar ? 'Verify via Aadhar API (Requires OTP)' : 'Verify via API'}
-            <span className="ml-auto text-xs text-blue-500 font-normal">
-              {isAadhar ? 'OTP verification' : 'Automated check'}
-            </span>
-          </Button>
-          <Button 
-            variant="outline" 
-            className="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200 justify-start"
-            onClick={() => onVerify('manual')}
-            disabled={isVerifying}
-          >
-            <ShieldCheck className="h-4 w-4 mr-2" />
-            Verify Manually
-            <span className="ml-auto text-xs text-purple-500 font-normal">Manual review completed</span>
-          </Button>
-          
-          <Button 
-            variant="outline" 
-            className="w-full bg-red-50 hover:bg-red-100 text-red-700 border-red-200 justify-start"
-            onClick={onReject}
-            disabled={isVerifying}
-          >
-            <ShieldCheck className="h-4 w-4 mr-2" />
-            Reject Document
-            <span className="ml-auto text-xs text-red-500 font-normal">Document verification failed</span>
-          </Button>
-        </div>
+        
+        {!showOtpInput && !showManualConfirmation ? (
+          <div className="flex flex-col gap-4 py-4">
+            <Button 
+              variant="outline" 
+              className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 justify-start"
+              onClick={handleAadharApiClick}
+              disabled={isVerifying}
+            >
+              <ShieldCheck className="h-4 w-4 mr-2" />
+              {isAadhar ? 'Verify via Aadhar API (Requires OTP)' : 'Verify via API'}
+              <span className="ml-auto text-xs text-blue-500 font-normal">
+                {isAadhar ? 'OTP verification' : 'Automated check'}
+              </span>
+            </Button>
+            <Button 
+              variant="outline" 
+              className="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200 justify-start"
+              onClick={handleManualVerifyClick}
+              disabled={isVerifying}
+            >
+              <ShieldCheck className="h-4 w-4 mr-2" />
+              Verify Manually
+              <span className="ml-auto text-xs text-purple-500 font-normal">Manual review completed</span>
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              className="w-full bg-red-50 hover:bg-red-100 text-red-700 border-red-200 justify-start"
+              onClick={onReject}
+              disabled={isVerifying}
+            >
+              <ShieldCheck className="h-4 w-4 mr-2" />
+              Reject Document
+              <span className="ml-auto text-xs text-red-500 font-normal">Document verification failed</span>
+            </Button>
+          </div>
+        ) : showOtpInput ? (
+          <div className="flex flex-col gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="otp">Enter 4-digit OTP received</Label>
+              <div className="flex justify-center py-4">
+                <InputOTP maxLength={4} value={otp} onChange={setOtp}>
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} />
+                    <InputOTPSlot index={1} />
+                    <InputOTPSlot index={2} />
+                    <InputOTPSlot index={3} />
+                  </InputOTPGroup>
+                </InputOTP>
+              </div>
+              <p className="text-sm text-muted-foreground text-center">
+                OTP sent to registered mobile number
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-4 py-4">
+            <div className="space-y-4 text-center">
+              <p className="text-base">
+                Are you sure you want to manually verify this document?
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Manual verification confirms that you have physically inspected the document and found it valid.
+              </p>
+            </div>
+          </div>
+        )}
+        
         <DialogFooter>
-          <Button 
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isVerifying}
-          >
-            Cancel
-          </Button>
+          {showOtpInput ? (
+            <>
+              <Button variant="outline" onClick={handleCancel}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleOtpSubmit}
+                disabled={otp.length !== 4}
+              >
+                Verify
+              </Button>
+            </>
+          ) : showManualConfirmation ? (
+            <>
+              <Button variant="outline" onClick={handleCancel}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleManualConfirm}
+              >
+                Confirm
+              </Button>
+            </>
+          ) : (
+            <Button 
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isVerifying}
+            >
+              Cancel
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
