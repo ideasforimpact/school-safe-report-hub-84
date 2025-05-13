@@ -125,7 +125,7 @@ serve(async (req) => {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${apiKey}`
           },
-          body: JSON.stringify({ aadhaar_number: documentNumber })
+          body: JSON.stringify({ id_number: documentNumber })
         });
         
         const data = await response.json();
