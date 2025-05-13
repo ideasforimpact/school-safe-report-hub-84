@@ -9,10 +9,10 @@ import { documentFormSchema } from './documentFormSchema';
 import DocumentFileUploader from './DocumentFileUploader';
 import { getDocumentPlaceholder } from '../utils/documentUtils';
 import { FileItem } from '@/types/fileTypes';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
 
 interface DocumentFormProps {
-  employeeId?: string;
+  employeeId: string;
   selectedTypeId: string;
   files: FileItem[];
   isSubmitting: boolean;
@@ -56,7 +56,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
 
     // Prepare the upload data - only send essential fields
     const uploadData = {
-      employeeId: data.employeeId,
+      employeeId: employeeId,
       documentTypeId: selectedTypeId,
       documentNumber: data.documentNumber,
       documentImage: data.documentImage,
@@ -81,7 +81,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-        {employeeId && <input type="hidden" {...form.register('employeeId')} />}
+        <input type="hidden" {...form.register('employeeId')} value={employeeId} />
         
         <FormField
           control={form.control}

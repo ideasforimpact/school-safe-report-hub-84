@@ -251,7 +251,7 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
     console.log("Handling document upload for employee:", employeeId);
     
     // Upload the document image to storage first
-    const { documentImage, documentNumber, ...restDocumentData } = documentData;
+    const { documentImage, documentNumber, documentStatusId, ...restDocumentData } = documentData;
     
     // Generate a unique file path
     const timestamp = new Date().getTime();
@@ -288,19 +288,23 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
     
     console.log("File uploaded successfully:", uploadData);
     
-    // Get pending document status ID
-    const { data: statusData, error: statusError } = await supabase
-      .from('document_status')
-      .select('id')
-      .eq('name', 'Pending')
-      .maybeSingle();
-    
-    if (statusError) {
-      console.error("Error getting pending status ID:", statusError);
+    // Get pending document status ID if none is provided
+    let pendingStatusId = documentStatusId;
+    if (!pendingStatusId) {
+      const { data: statusData, error: statusError } = await supabase
+        .from('document_status')
+        .select('id')
+        .eq('name', 'pending')
+        .maybeSingle();
+      
+      if (statusError) {
+        console.error("Error getting pending status ID:", statusError);
+      } else {
+        pendingStatusId = statusData?.id;
+      }
     }
     
-    const pendingStatusId = statusData?.id;
-    console.log("Using pending status ID:", pendingStatusId);
+    console.log("Using document status ID:", pendingStatusId);
     
     // Encrypt the document number using the database function
     let encryptedDocNumber = null;
@@ -351,10 +355,29 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
     
     console.log("Document uploaded and saved successfully");
     
+    // Get the document type name
+    const { data: docTypeData } = await supabase
+      .from('employee_document_type')
+      .select('name')
+      .eq('id', restDocumentData.documentTypeId)
+      .single();
+    
     // Get the masked document number for display
     let maskedDocNumber = '';
     if (documentNumber) {
       maskedDocNumber = documentNumber.slice(0, -2).replace(/./g, 'X') + documentNumber.slice(-2);
+    }
+    
+    // Get document status name if available
+    let documentStatusName = '';
+    if (pendingStatusId) {
+      const { data: statusNameData } = await supabase
+        .from('document_status')
+        .select('name')
+        .eq('id', pendingStatusId)
+        .single();
+      
+      documentStatusName = statusNameData?.name || '';
     }
     
     return new Response(
@@ -363,9 +386,12 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
         document: {
           id: insertData.id,
           documentTypeId: insertData.document_type_id,
+          documentTypeName: docTypeData?.name || '',
           documentNumber: maskedDocNumber,
+          documentImage: `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${filePath}`,
           verificationStatus: insertData.verification_status,
-          documentStatusId: insertData.document_status_id
+          documentStatusId: insertData.document_status_id,
+          documentStatusName: documentStatusName
         }
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
