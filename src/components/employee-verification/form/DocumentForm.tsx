@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,6 @@ import { Input } from '@/components/ui/input';
 import { documentFormSchema } from './documentFormSchema';
 import DocumentFileUploader from './DocumentFileUploader';
 import { getDocumentPlaceholder } from '../utils/documentUtils';
-import DocumentTypeSelector from '../DocumentTypeSelector';
 import { FileItem } from '@/types/fileTypes';
 
 interface DocumentFormProps {
@@ -40,10 +39,17 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
     },
   });
 
-  const placeholder = getDocumentPlaceholder(selectedTypeId);
+  const documentPlaceholder = getDocumentPlaceholder(selectedTypeId);
+  const [selectedFileName, setSelectedFileName] = useState<string>('');
 
   const handleSubmit = (data: any) => {
     onSubmit(data);
+  };
+
+  const handleFileChange = (base64: string, filename: string) => {
+    form.setValue('documentImage', base64);
+    setSelectedFileName(filename);
+    onFileUploaded(base64);
   };
 
   return (
@@ -56,10 +62,12 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
           name="documentNumber"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Document Number</FormLabel>
+              <FormLabel>
+                {documentPlaceholder || "Document Number"} <span className="text-red-500">*</span>
+              </FormLabel>
               <FormControl>
                 <Input 
-                  placeholder={placeholder || "Enter document number"} 
+                  placeholder={`Enter ${documentPlaceholder || "document number"}`} 
                   {...field} 
                 />
               </FormControl>
@@ -73,16 +81,32 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
           name="documentImage"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Upload Document</FormLabel>
+              <FormLabel>Document Image <span className="text-red-500">*</span></FormLabel>
               <FormControl>
-                <DocumentFileUploader 
-                  files={files}
-                  setFiles={() => {}} // This will be handled by the parent
-                  onFileUploaded={(base64) => {
-                    field.onChange(base64);
-                    onFileUploaded(base64);
-                  }}
-                />
+                <div className="space-y-2">
+                  {!selectedFileName ? (
+                    <DocumentFileUploader 
+                      files={files}
+                      setFiles={() => {}} // Handled by parent
+                      onFileUploaded={(base64, file) => handleFileChange(base64, file?.name || '')}
+                    />
+                  ) : (
+                    <div className="flex items-center justify-between p-2 bg-gray-50 rounded border">
+                      <span className="text-sm truncate">{selectedFileName}</span>
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => {
+                          form.setValue('documentImage', '');
+                          setSelectedFileName('');
+                        }}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </FormControl>
               <FormMessage />
             </FormItem>

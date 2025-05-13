@@ -27,7 +27,8 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
   }, [employeeId, fetchEmployeeDocuments, fetchDocumentTypes]);
 
   const handleFileUploaded = (base64: string) => {
-    // This function will be called when a file is uploaded in the DocumentFileUploader
+    // This function will be called when a file is uploaded
+    console.log('File uploaded, size:', base64.length);
   };
 
   const getDocumentTypeLabel = (typeId: string): string => {
@@ -45,13 +46,22 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
       return;
     }
 
+    if (!values.documentImage) {
+      toast({
+        title: 'Error',
+        description: 'Please upload a document image',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       await addDocument({
         employeeId,
         documentTypeId: selectedTypeId,
         documentNumber: values.documentNumber,
-        documentImage: files[0]?.base64 || values.documentImage, // Use the first file's base64 if available
+        documentImage: files[0]?.base64 || values.documentImage, 
         verificationStatus: 'pending',
       });
       toast({
@@ -63,6 +73,7 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
       setFiles([]);
       if (onSuccess) onSuccess();
     } catch (error) {
+      console.error('Error adding document:', error);
       toast({
         title: 'Error',
         description: 'Failed to add document. Please try again.',
@@ -83,7 +94,7 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
         
         <div className="space-y-6 w-full">
           <div>
-            <h4 className="text-sm font-medium mb-3">Select Document Type</h4>
+            <h4 className="text-sm font-medium mb-3">Select Document Type <span className="text-red-500">*</span></h4>
             <div className="w-full">
               <DocumentTypeSelector 
                 selectedTypeId={selectedTypeId} 

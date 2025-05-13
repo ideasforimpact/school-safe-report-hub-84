@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { FormLabel } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,7 @@ import { v4 as uuidv4 } from 'uuid';
 interface DocumentFileUploaderProps {
   files: FileItem[];
   setFiles: React.Dispatch<React.SetStateAction<FileItem[]>>;
-  onFileUploaded: (base64: string) => void;
+  onFileUploaded: (base64: string, file?: File) => void;
 }
 
 const DocumentFileUploader: React.FC<DocumentFileUploaderProps> = ({ 
@@ -21,6 +21,7 @@ const DocumentFileUploader: React.FC<DocumentFileUploaderProps> = ({
   onFileUploaded 
 }) => {
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleRemoveFile = (id: string) => {
     setFiles(files.filter(file => file.id !== id));
@@ -61,8 +62,8 @@ const DocumentFileUploader: React.FC<DocumentFileUploaderProps> = ({
       
       setFiles([...files, newFile]);
       
-      // Pass the base64 string up to the parent component
-      onFileUploaded(base64);
+      // Pass the base64 string and original file up to the parent component
+      onFileUploaded(base64, file);
     };
     
     reader.readAsDataURL(file);
@@ -70,35 +71,35 @@ const DocumentFileUploader: React.FC<DocumentFileUploaderProps> = ({
 
   return (
     <div className="space-y-2">
-      <FormLabel>Upload Document Image</FormLabel>
-      <div className="flex flex-col space-y-2">
-        <div className="border-2 border-dashed border-gray-300 rounded-md p-6 flex flex-col items-center justify-center bg-gray-50">
-          <Upload className="h-8 w-8 text-gray-400 mb-2" />
-          <p className="text-sm text-gray-500 mb-2">Drag and drop file here, or click to select file</p>
-          <p className="text-xs text-gray-400">Supported formats: JPG, PNG, PDF • Max file size: 5MB</p>
-          <Input 
-            id="file-upload" 
-            type="file" 
-            className="hidden"
-            accept="image/*,.pdf"
-            onChange={handleFileUpload}
-          />
-          <Button 
-            type="button" 
-            variant="outline" 
-            className="mt-4"
-            onClick={() => document.getElementById('file-upload')?.click()}
-          >
-            Browse Files
-          </Button>
-        </div>
-        
+      <div className="border-2 border-dashed border-gray-300 rounded-md p-6 flex flex-col items-center justify-center bg-gray-50">
+        <Upload className="h-8 w-8 text-gray-400 mb-2" />
+        <p className="text-sm text-gray-500 mb-2">Drag and drop file here, or click to select file</p>
+        <p className="text-xs text-gray-400">Supported formats: JPG, PNG, PDF • Max file size: 5MB</p>
+        <Input 
+          id="file-upload" 
+          type="file" 
+          className="hidden"
+          ref={fileInputRef}
+          accept="image/*,.pdf"
+          onChange={handleFileUpload}
+        />
+        <Button 
+          type="button" 
+          variant="outline" 
+          className="mt-4"
+          onClick={() => fileInputRef.current?.click()}
+        >
+          Browse Files
+        </Button>
+      </div>
+      
+      {files.length > 0 && (
         <FileList 
           files={files} 
           onPreviewFile={handlePreviewFile}
           onRemoveFile={handleRemoveFile}
         />
-      </div>
+      )}
     </div>
   );
 };
