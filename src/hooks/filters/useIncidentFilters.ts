@@ -11,18 +11,13 @@ export function useIncidentFilters(incidents: Incident[]): FilterHookReturn {
   const [filteredIncidents, setFilteredIncidents] = useState<Incident[]>(incidents);
 
   // Get available options for filters
-  const filterOptions = useFilterOptions();
-  
-  // Extract filter options from filterOptions
   const {
-    categoryOptions,
-    locationOptions,
-    facilityOptions
-  } = filterOptions;
-  
-  // Mock subcategories and owners for the interface compatibility
-  const availableSubcategories: string[] = [];
-  const availableOwners: {id: string, name: string}[] = [];
+    availableCategories,
+    availableSubcategories,
+    availableLocations,
+    availableFacilities,
+    availableOwners
+  } = useFilterOptions(incidents, filters);
 
   // Reset category and subcategory when type changes
   useEffect(() => {
@@ -76,10 +71,10 @@ export function useIncidentFilters(incidents: Incident[]): FilterHookReturn {
   return {
     filters,
     filteredIncidents,
-    availableCategories: categoryOptions,
+    availableCategories,
     availableSubcategories,
-    availableLocations: locationOptions,
-    availableFacilities: facilityOptions,
+    availableLocations,
+    availableFacilities,
     availableOwners,
     handleFilterChange,
     toggleAdvancedFilters,
