@@ -26,12 +26,6 @@ export interface VerificationDocument {
   verificationDate?: string;
   verificationNotes?: string;
   verificationMethod?: 'api' | 'manual';
-  details?: {
-    address?: string;
-    name?: string;
-    dob?: string;
-    [key: string]: any;
-  };
   createdAt: string;
   updatedAt: string;
 }

@@ -17,7 +17,8 @@ import {
   GripVertical, 
   AlignLeft, 
   CheckSquare, 
-  CircleDot 
+  CircleDot, 
+  SwitchCamera 
 } from 'lucide-react';
 import { 
   Select, 
@@ -28,8 +29,7 @@ import {
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { useFeedback } from '@/contexts/feedback/FeedbackContext';
-import { FormQuestion, FormQuestionType } from '@/contexts/feedback/types';
-import { FeedbackForm } from '@/types/feedbackTypes';
+import { FormQuestion, FormQuestionType, FeedbackForm } from '@/contexts/feedback/types';
 
 interface FormBuilderProps {
   formId: string | null;

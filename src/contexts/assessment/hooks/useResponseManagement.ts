@@ -70,8 +70,8 @@ export const useResponseManagement = (
       )
     );
 
-    // Update assignment status to 'Submitted'
-    updateAssignment(response.assignmentId, { status: 'Submitted' });
+    // Update assignment status to 'Completed'
+    updateAssignment(response.assignmentId, { status: 'Completed' });
   }, [responses, templates, updateAssignment]);
   
   const getResponsesByAssignment = useCallback((assignmentId: string) => {

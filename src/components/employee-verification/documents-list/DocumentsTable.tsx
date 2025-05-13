@@ -15,7 +15,6 @@ import {
 import { VerificationDocument } from '@/types/employeeVerification';
 import DocumentDeleteButton from '../document-card/DocumentDeleteButton';
 import VerificationStatusBadge from '../VerificationStatusBadge';
-import { getDocumentIcon } from '../utils/documentUtils';
 
 interface DocumentsTableProps {
   documents: VerificationDocument[];
@@ -35,39 +34,34 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
   };
 
   return (
-    <div className="overflow-x-auto rounded-md border">
+    <div className="rounded-md border">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-[100px]">Type</TableHead>
-            <TableHead>Document #</TableHead>
+            <TableHead>Document Type</TableHead>
+            <TableHead>Document Number</TableHead>
             <TableHead>Uploaded</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
+            <TableHead>Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {documents.map((doc) => (
-            <TableRow key={doc.id}>
+          {documents.map((document) => (
+            <TableRow key={document.id}>
+              <TableCell className="font-medium">{formatDocumentType(document.documentType)}</TableCell>
+              <TableCell>{document.documentNumber || 'N/A'}</TableCell>
               <TableCell>
-                <div className="flex items-center gap-2">
-                  {getDocumentIcon(doc.documentType)}
-                  <span className="capitalize">{doc.documentType.replace('_', ' ')}</span>
-                </div>
-              </TableCell>
-              <TableCell>{doc.documentNumber || '—'}</TableCell>
-              <TableCell>
-                {doc.createdAt ? formatDistanceToNow(new Date(doc.createdAt), { addSuffix: true }) : '—'}
+                {formatDistanceToNow(new Date(document.createdAt), { addSuffix: true })}
               </TableCell>
               <TableCell>
-                <VerificationStatusBadge status={doc.verificationStatus} />
+                <VerificationStatusBadge status={document.verificationStatus} />
               </TableCell>
-              <TableCell className="text-right">
-                <div className="flex items-center space-x-2 justify-end">
+              <TableCell>
+                <div className="flex items-center space-x-2">
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    onClick={() => onViewDocument(doc.documentImage)}
+                    onClick={() => onViewDocument(document.documentImage)}
                   >
                     <Eye className="h-4 w-4" />
                     <span className="sr-only">View</span>
@@ -75,23 +69,23 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    onClick={() => onDownloadDocument(doc.documentImage)}
+                    onClick={() => onDownloadDocument(document.documentImage)}
                   >
                     <Download className="h-4 w-4" />
                     <span className="sr-only">Download</span>
                   </Button>
-                  {doc.verificationStatus === 'pending' && (
+                  {document.verificationStatus === 'pending' && (
                     <Button 
                       variant="outline" 
                       size="sm"
                       className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
-                      onClick={() => onVerifyDocument(doc.id)}
+                      onClick={() => onVerifyDocument(document.id)}
                     >
                       <ShieldCheck className="h-4 w-4 mr-1" />
-                      Verify
+                      Verify Now
                     </Button>
                   )}
-                  <DocumentDeleteButton documentId={doc.id} />
+                  <DocumentDeleteButton documentId={document.id} />
                 </div>
               </TableCell>
             </TableRow>

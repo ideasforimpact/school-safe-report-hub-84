@@ -5,13 +5,14 @@ import { AssessmentQuestion, AssessmentTemplate } from '@/types/assessment';
 
 export const useQuestionManagement = (
   templates: AssessmentTemplate[], 
-  setTemplates: React.Dispatch<React.SetStateAction<AssessmentTemplate[]>>
+  setTemplates: React.Dispatch<React.SetStateAction<AssessmentTemplate[]>> | ((templates: AssessmentTemplate[]) => void)
 ) => {
   const addQuestion = useCallback((templateId: string, questionData: Omit<AssessmentQuestion, 'id'>) => {
     const questionId = uuidv4();
     
-    setTemplates(currentTemplates => 
-      currentTemplates.map(template => 
+    if (typeof setTemplates === 'function') {
+      // Handle the custom setter function case
+      const updatedTemplates = templates.map(template => 
         template.id === templateId 
           ? { 
               ...template, 
@@ -21,15 +22,16 @@ export const useQuestionManagement = (
               ] 
             } 
           : template
-      )
-    );
+      );
+      setTemplates(updatedTemplates);
+    }
     
     return questionId;
-  }, [setTemplates]);
+  }, [setTemplates, templates]);
 
   const updateQuestion = useCallback((templateId: string, questionId: string, updates: Partial<Omit<AssessmentQuestion, 'id'>>) => {
-    setTemplates(currentTemplates => 
-      currentTemplates.map(template => 
+    if (typeof setTemplates === 'function') {
+      const updatedTemplates = templates.map(template => 
         template.id === templateId 
           ? { 
               ...template, 
@@ -40,22 +42,24 @@ export const useQuestionManagement = (
               ) 
             } 
           : template
-      )
-    );
-  }, [setTemplates]);
+      );
+      setTemplates(updatedTemplates);
+    }
+  }, [setTemplates, templates]);
 
   const removeQuestion = useCallback((templateId: string, questionId: string) => {
-    setTemplates(currentTemplates => 
-      currentTemplates.map(template => 
+    if (typeof setTemplates === 'function') {
+      const updatedTemplates = templates.map(template => 
         template.id === templateId 
           ? { 
               ...template, 
               questions: template.questions.filter(q => q.id !== questionId) 
             } 
           : template
-      )
-    );
-  }, [setTemplates]);
+      );
+      setTemplates(updatedTemplates);
+    }
+  }, [setTemplates, templates]);
 
   return {
     addQuestion,

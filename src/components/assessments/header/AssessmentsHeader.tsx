@@ -1,22 +1,11 @@
 
 import React from 'react';
-import { useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 
-interface AssessmentsHeaderProps {
-  onCreateTemplate?: () => void;
-}
-
-const AssessmentsHeader: React.FC<AssessmentsHeaderProps> = ({ onCreateTemplate }) => {
-  const location = useLocation();
-
-  const handleCreateTemplate = () => {
-    console.log("Create template button clicked");
-    if (onCreateTemplate) {
-      onCreateTemplate();
-    }
-  };
+const AssessmentsHeader: React.FC = () => {
+  const navigate = useNavigate();
 
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 w-full">
@@ -29,7 +18,7 @@ const AssessmentsHeader: React.FC<AssessmentsHeaderProps> = ({ onCreateTemplate 
       
       <div className="flex space-x-2">
         <Button 
-          onClick={handleCreateTemplate}
+          onClick={() => navigate('/assessments/templates/new')}
           className="whitespace-nowrap"
         >
           <PlusCircle className="h-4 w-4 mr-2" />

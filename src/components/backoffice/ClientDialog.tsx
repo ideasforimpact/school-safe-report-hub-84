@@ -15,8 +15,6 @@ import ModuleAccessTab from './tabs/ModuleAccessTab';
 import AuthTab from './tabs/AuthTab';
 import { OAuthProviderName } from '@/utils/authProviders';
 import { ClientFormData } from '@/hooks/useClientManagement';
-import { ModulePermissions } from '@/contexts/auth/types';
-import { Loader2 } from 'lucide-react'; // Import loading spinner
 
 interface ClientDialogProps {
   isOpen: boolean;
@@ -26,7 +24,6 @@ interface ClientDialogProps {
   onSubmit: () => void;
   onCancel: () => void;
   isEdit?: boolean;
-  isLoading?: boolean;
 }
 
 const ClientDialog: React.FC<ClientDialogProps> = ({
@@ -36,8 +33,7 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
   setFormData,
   onSubmit,
   onCancel,
-  isEdit = false,
-  isLoading = false
+  isEdit = false
 }) => {
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -50,7 +46,7 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
     }
   };
 
-  const handleModuleAccessChange = (module: keyof ModulePermissions, value: boolean) => {
+  const handleModuleAccessChange = (module: string, value: boolean) => {
     setFormData({
       ...formData,
       moduleAccess: {
@@ -133,19 +129,10 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
         </Tabs>
 
         <DialogFooter className="mt-6">
-          <Button variant="outline" onClick={onCancel} disabled={isLoading}>
+          <Button variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button onClick={onSubmit} disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {isEdit ? 'Updating...' : 'Adding...'}
-              </>
-            ) : (
-              isEdit ? 'Update Client' : 'Add Client'
-            )}
-          </Button>
+          <Button onClick={onSubmit}>{isEdit ? 'Update Client' : 'Add Client'}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

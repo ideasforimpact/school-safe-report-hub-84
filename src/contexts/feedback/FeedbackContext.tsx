@@ -1,81 +1,114 @@
 
-import React, { createContext, useContext, useState } from 'react';
-import { FeedbackForm } from '@/types/feedbackTypes';
-import { mockFeedbackForms, mockFormResponses } from '@/data/mockFeedbackData';
-import { FeedbackContextType, FormSubmission, SubmissionStatus, FormResponse } from '@/contexts/feedback/types';
+import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { FeedbackContextType, FeedbackForm, FormSubmission, SubmissionStatus } from './types';
+import { initialForms, initialSubmissions } from './initialData';
 
+// Create the context
 const FeedbackContext = createContext<FeedbackContextType | undefined>(undefined);
 
-export const useFeedback = () => {
-  const context = useContext(FeedbackContext);
-  if (!context) {
-    throw new Error('useFeedback must be used within a FeedbackProvider');
-  }
-  return context;
-};
+// Provider component
+export const FeedbackProvider = ({ children }: { children: ReactNode }) => {
+  const [forms, setForms] = useState<FeedbackForm[]>(() => {
+    try {
+      const storedForms = localStorage.getItem('feedbackForms');
+      return storedForms ? JSON.parse(storedForms) : initialForms;
+    } catch (error) {
+      console.error('Error loading forms from local storage:', error);
+      return initialForms;
+    }
+  });
 
-export const FeedbackProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [forms, setForms] = useState<FeedbackForm[]>(mockFeedbackForms);
-  const [submissions, setSubmissions] = useState<FormSubmission[]>(mockFormResponses as unknown as FormSubmission[]);
+  const [submissions, setSubmissions] = useState<FormSubmission[]>(() => {
+    try {
+      const storedSubmissions = localStorage.getItem('feedbackSubmissions');
+      return storedSubmissions ? JSON.parse(storedSubmissions) : initialSubmissions;
+    } catch (error) {
+      console.error('Error loading submissions from local storage:', error);
+      return initialSubmissions;
+    }
+  });
 
-  const getFormById = (id: string) => {
-    return forms.find(form => form.id === id);
-  };
-  
-  const getResponseById = (id: string) => {
-    return submissions.find(response => response.id === id);
-  };
+  // Save to localStorage whenever state changes
+  React.useEffect(() => {
+    localStorage.setItem('feedbackForms', JSON.stringify(forms));
+  }, [forms]);
 
-  const submitFormResponse = (response: Omit<FormSubmission, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const newResponse: FormSubmission = {
-      ...response,
-      id: `response_${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-    
-    setSubmissions(prev => [...prev, newResponse]);
-  };
+  React.useEffect(() => {
+    localStorage.setItem('feedbackSubmissions', JSON.stringify(submissions));
+  }, [submissions]);
 
-  // Additional methods to fulfill the FeedbackContextType interface
   const addForm = (form: FeedbackForm) => {
-    setForms(prev => [...prev, form]);
+    setForms(prevForms => [...prevForms, form]);
   };
 
-  const updateForm = (form: FeedbackForm) => {
-    setForms(prev => prev.map(f => f.id === form.id ? form : f));
-  };
-
-  const deleteForm = (formId: string) => {
-    setForms(prev => prev.filter(f => f.id !== formId));
-  };
-
-  const addSubmission = (submission: FormSubmission) => {
-    setSubmissions(prev => [...prev, submission]);
-  };
-
-  const updateSubmissionStatus = (submissionId: string, status: SubmissionStatus) => {
-    setSubmissions(prev => 
-      prev.map(sub => sub.id === submissionId ? { ...sub, status } : sub)
+  const updateForm = (updatedForm: FeedbackForm) => {
+    setForms(prevForms => 
+      prevForms.map(form => 
+        form.id === updatedForm.id ? updatedForm : form
+      )
     );
   };
 
+  const deleteForm = (formId: string) => {
+    setForms(prevForms => prevForms.filter(form => form.id !== formId));
+    // Also remove associated submissions
+    setSubmissions(prevSubmissions => 
+      prevSubmissions.filter(submission => submission.formId !== formId)
+    );
+  };
+
+  const addSubmission = (submission: FormSubmission) => {
+    setSubmissions(prevSubmissions => [...prevSubmissions, submission]);
+    
+    // Update form submission count
+    setForms(prevForms => 
+      prevForms.map(form => {
+        if (form.id === submission.formId) {
+          return { ...form, submissions: form.submissions + 1 };
+        }
+        return form;
+      })
+    );
+  };
+
+  const updateSubmissionStatus = (submissionId: string, status: SubmissionStatus) => {
+    setSubmissions(prevSubmissions => 
+      prevSubmissions.map(submission => {
+        if (submission.id === submissionId) {
+          return { 
+            ...submission, 
+            status, 
+            updatedAt: new Date().toISOString() 
+          };
+        }
+        return submission;
+      })
+    );
+  };
+
+  // Context value
+  const value = {
+    forms,
+    submissions,
+    addForm,
+    updateForm,
+    deleteForm,
+    addSubmission,
+    updateSubmissionStatus
+  };
+
   return (
-    <FeedbackContext.Provider 
-      value={{ 
-        forms, 
-        submissions, 
-        getFormById,
-        getResponseById,
-        addForm,
-        updateForm,
-        deleteForm,
-        addSubmission,
-        updateSubmissionStatus,
-        submitFormResponse
-      }}
-    >
+    <FeedbackContext.Provider value={value}>
       {children}
     </FeedbackContext.Provider>
   );
+};
+
+// Custom hook for using the context
+export const useFeedback = (): FeedbackContextType => {
+  const context = useContext(FeedbackContext);
+  if (context === undefined) {
+    throw new Error('useFeedback must be used within a FeedbackProvider');
+  }
+  return context;
 };

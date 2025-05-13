@@ -5,11 +5,10 @@ import { useStudents } from '@/contexts/StudentContext';
 import { Student } from '@/types/student';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, UserSearch, FileUp } from 'lucide-react';
+import { PlusCircle, UserSearch } from 'lucide-react';
 import StudentsList from '@/components/students/StudentsList';
 import AddStudentDialog from '@/components/students/AddStudentDialog';
 import EditStudentDialog from '@/components/students/EditStudentDialog';
-import ImportStudentDialog from '@/components/students/ImportStudentDialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,19 +20,15 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { toast } from 'sonner';
-import { Skeleton } from "@/components/ui/skeleton";
-import { processStudentExcel } from '@/services/student/importStudentService';
 
 const StudentManagement = () => {
-  const { students, deleteStudent, isLoading } = useStudents();
+  const { students, deleteStudent } = useStudents();
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [studentToDelete, setStudentToDelete] = useState<string | null>(null);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleEditClick = (student: Student) => {
     setSelectedStudent(student);
@@ -45,30 +40,12 @@ const StudentManagement = () => {
     setIsDeleteAlertOpen(true);
   };
 
-  const confirmDelete = async () => {
+  const confirmDelete = () => {
     if (studentToDelete) {
-      setIsDeleting(true);
-      try {
-        await deleteStudent(studentToDelete);
-        toast.success('Student deleted successfully');
-      } catch (error) {
-        console.error('Delete error:', error);
-        toast.error('Failed to delete student. Please try again.');
-      } finally {
-        setIsDeleteAlertOpen(false);
-        setStudentToDelete(null);
-        setIsDeleting(false);
-      }
-    }
-  };
-
-  const handleImportStudents = async (file: File) => {
-    try {
-      await processStudentExcel(file);
-      toast.success("Students imported successfully");
-    } catch (error) {
-      console.error("Import process failed:", error);
-      toast.error("Failed to process student import");
+      deleteStudent(studentToDelete);
+      toast.success('Student deleted successfully');
+      setIsDeleteAlertOpen(false);
+      setStudentToDelete(null);
     }
   };
 
@@ -91,19 +68,9 @@ const StudentManagement = () => {
               Manage students in your institution
             </p>
           </div>
-          <div className="flex gap-2">
-            <Button 
-              onClick={() => setIsImportDialogOpen(true)}
-              className="flex items-center gap-2"
-              variant="secondary"
-            >
-              <FileUp className="h-4 w-4" />
-              <span>Import Students</span>
-            </Button>
-            <Button onClick={() => setIsAddDialogOpen(true)}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Student
-            </Button>
-          </div>
+          <Button onClick={() => setIsAddDialogOpen(true)}>
+            <PlusCircle className="mr-2 h-4 w-4" /> Add Student
+          </Button>
         </div>
 
         {/* Search and filter */}
@@ -119,23 +86,12 @@ const StudentManagement = () => {
           </div>
         </div>
 
-        {/* Loading state */}
-        {isLoading ? (
-          <div className="space-y-3">
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-          </div>
-        ) : (
-          /* Students list */
-          <StudentsList
-            students={filteredStudents}
-            onEditClick={handleEditClick}
-            onDeleteStudent={handleDeleteClick}
-          />
-        )}
+        {/* Students list */}
+        <StudentsList
+          students={filteredStudents}
+          onEditClick={handleEditClick}
+          onDeleteStudent={handleDeleteClick}
+        />
 
         {/* Add Student Dialog */}
         <AddStudentDialog
@@ -144,19 +100,10 @@ const StudentManagement = () => {
         />
 
         {/* Edit Student Dialog */}
-        {selectedStudent && (
-          <EditStudentDialog
-            open={isEditDialogOpen}
-            onOpenChange={setIsEditDialogOpen}
-            student={selectedStudent}
-          />
-        )}
-
-        {/* Import Students Dialog */}
-        <ImportStudentDialog
-          open={isImportDialogOpen}
-          onOpenChange={setIsImportDialogOpen}
-          onImportStudents={handleImportStudents}
+        <EditStudentDialog
+          open={isEditDialogOpen}
+          onOpenChange={setIsEditDialogOpen}
+          student={selectedStudent}
         />
 
         {/* Delete Confirmation */}
@@ -166,17 +113,16 @@ const StudentManagement = () => {
               <AlertDialogTitle>Are you sure?</AlertDialogTitle>
               <AlertDialogDescription>
                 This action cannot be undone. This will permanently delete the student record 
-                from the database.
+                from our servers.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 onClick={confirmDelete}
-                disabled={isDeleting}
               >
-                {isDeleting ? 'Deleting...' : 'Delete'}
+                Delete
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

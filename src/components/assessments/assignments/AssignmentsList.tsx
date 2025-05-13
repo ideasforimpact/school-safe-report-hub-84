@@ -14,7 +14,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Eye, AlertTriangle, Clock, FileCheck, FilePlus, Loader } from 'lucide-react';
+import { Eye, AlertTriangle, Clock } from 'lucide-react';
 
 const AssignmentsList = () => {
   const navigate = useNavigate();
@@ -44,7 +44,7 @@ const AssignmentsList = () => {
     const due = new Date(dueDate);
     
     // Check if overdue
-    if (status !== 'Completed' && status !== 'Submitted' && due < now) {
+    if (status !== 'Completed' && due < now) {
       return (
         <Badge variant="outline" className="bg-red-100 text-red-800 border-red-200">
           <AlertTriangle className="h-3 w-3 mr-1" />
@@ -58,29 +58,20 @@ const AssignmentsList = () => {
       case 'Completed':
         return (
           <Badge className="bg-green-100 text-green-800">
-            <FileCheck className="h-3 w-3 mr-1" />
             Completed
           </Badge>
         );
       case 'In Progress':
         return (
           <Badge className="bg-blue-100 text-blue-800">
-            <Loader className="h-3 w-3 mr-1" />
             In Progress
           </Badge>
         );
-      case 'Submitted':
-        return (
-          <Badge className="bg-purple-100 text-purple-800">
-            <FileCheck className="h-3 w-3 mr-1" />
-            Submitted
-          </Badge>
-        );
-      case 'New':
+      case 'Pending':
         return (
           <Badge variant="outline" className="bg-amber-50 text-amber-800 border-amber-200">
-            <FilePlus className="h-3 w-3 mr-1" />
-            New
+            <Clock className="h-3 w-3 mr-1" />
+            Pending
           </Badge>
         );
       default:
@@ -101,11 +92,6 @@ const AssignmentsList = () => {
     if (diffDays < 0) return 'Overdue';
     if (diffDays === 0) return 'Due today';
     return `${diffDays} days remaining`;
-  };
-  
-  const handleRespondClick = (assignmentId: string) => {
-    console.log(`Navigating to assignment response for ID: ${assignmentId}`);
-    navigate(`/assessments/respond/${assignmentId}`);
   };
   
   return (
@@ -170,10 +156,10 @@ const AssignmentsList = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleRespondClick(assignment.id)}
+                        onClick={() => navigate(`/assessments/assignments/${assignment.id}/respond`)}
                       >
                         <Eye className="h-4 w-4 mr-1" />
-                        {assignment.status === 'Completed' || assignment.status === 'Submitted' ? 'View' : 'Respond'}
+                        {assignment.status === 'Completed' ? 'View' : 'Respond'}
                       </Button>
                     </TableCell>
                   </TableRow>

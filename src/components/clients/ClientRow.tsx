@@ -24,7 +24,6 @@ const ClientRow = ({ client, onEditClick, onDeleteClient }: ClientRowProps) => {
         <ClientLogoCell name={client.name} logo={client.logo} />
       </TableCell>
       <TableCell className="font-medium">{client.name}</TableCell>
-      <TableCell>{client.institutionType || 'Other'}</TableCell>
       <TableCell>{client.contactPerson}</TableCell>
       <TableCell>{client.email}</TableCell>
       <TableCell>{client.phone}</TableCell>

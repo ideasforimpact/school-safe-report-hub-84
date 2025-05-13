@@ -1,6 +1,7 @@
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAssessment } from '@/contexts/assessment/AssessmentContext';
+import { useAssessment } from '@/contexts/AssessmentContext';
 import { 
   Table, 
   TableBody, 
@@ -22,11 +23,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import DuplicateTemplateDialog from './DuplicateTemplateDialog';
 
-interface TemplatesListProps {
-  onCreateTemplate?: () => void;
-}
-
-const TemplatesList: React.FC<TemplatesListProps> = ({ onCreateTemplate }) => {
+const TemplatesList = () => {
   const navigate = useNavigate();
   const { templates, deleteTemplate } = useAssessment();
 
@@ -38,12 +35,10 @@ const TemplatesList: React.FC<TemplatesListProps> = ({ onCreateTemplate }) => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">Assessment Templates</h2>
-        {onCreateTemplate && (
-          <Button onClick={onCreateTemplate}>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Template
-          </Button>
-        )}
+        <Button onClick={() => navigate('/assessments/templates/new')}>
+          <Plus className="h-4 w-4 mr-2" />
+          Create Template
+        </Button>
       </div>
 
       {templates.length === 0 ? (
@@ -54,12 +49,10 @@ const TemplatesList: React.FC<TemplatesListProps> = ({ onCreateTemplate }) => {
             <p className="text-gray-500 text-center mb-4">
               Create your first assessment template to start assigning assessments to users.
             </p>
-            {onCreateTemplate && (
-              <Button onClick={onCreateTemplate}>
-                <Plus className="h-4 w-4 mr-2" />
-                Create Template
-              </Button>
-            )}
+            <Button onClick={() => navigate('/assessments/templates/new')}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Template
+            </Button>
           </CardContent>
         </Card>
       ) : (

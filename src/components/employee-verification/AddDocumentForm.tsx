@@ -1,7 +1,7 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
-import { Upload, Loader2 } from 'lucide-react';
+import { Upload } from 'lucide-react';
 import { VerificationDocumentType } from '@/types/employeeVerification';
 import DocumentTypeSelector from './DocumentTypeSelector';
 import { useToast } from '@/hooks/use-toast';
@@ -22,18 +22,15 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [files, setFiles] = useState<FileItem[]>([]);
   const { toast } = useToast();
-  const { addDocument, fetchEmployeeDocuments } = useEmployeeVerification();
-
-  // Fetch employee documents when component mounts
-  useEffect(() => {
-    fetchEmployeeDocuments(employeeId);
-  }, [employeeId, fetchEmployeeDocuments]);
+  const { addDocument } = useEmployeeVerification();
 
   const handleFileUploaded = (base64: string) => {
     // This function will be called when a file is uploaded in the DocumentFileUploader
+    // We set the value to the form
+    // Note: In a real app, you might want to validate the file here
   };
 
-  const handleSubmit = async (values: DocumentFormValues) => {
+  const handleSubmit = (values: DocumentFormValues) => {
     if (!selectedType) {
       toast({
         title: 'Error',
@@ -45,7 +42,7 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
 
     setIsSubmitting(true);
     try {
-      await addDocument({
+      addDocument({
         employeeId,
         documentType: selectedType,
         documentNumber: values.documentNumber,
@@ -103,13 +100,6 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
                 onFileUploaded={handleFileUploaded}
               />
             </DocumentForm>
-          )}
-
-          {isSubmitting && (
-            <div className="flex justify-center items-center py-4">
-              <Loader2 className="h-8 w-8 text-primary animate-spin" />
-              <p className="ml-2 text-gray-600">Uploading document...</p>
-            </div>
           )}
         </div>
       </CardContent>

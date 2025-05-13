@@ -58,12 +58,9 @@ export const EditDialog = ({
   const [open, setOpen] = useState(false);
   const [currentValue, setCurrentValue] = useState(value);
 
-  // Update the internal state when the external value changes or when dialog opens
   useEffect(() => {
-    if (open) {
-      setCurrentValue(value);
-    }
-  }, [value, open]);
+    setCurrentValue(value);
+  }, [value]);
 
   const handleOpenChange = (newOpen: boolean) => {
     setOpen(newOpen);
@@ -71,19 +68,8 @@ export const EditDialog = ({
   };
 
   const handleSave = () => {
-    if (!currentValue.trim()) {
-      return; // Don't save if empty
-    }
-    
-    onChange(currentValue); // Update the parent component with the current value
-    onSave(); // Call the save function in the parent component
-    setOpen(false); // Close the dialog after saving
-  };
-
-  // Handle input change
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value;
-    setCurrentValue(newValue);
+    onSave();
+    setOpen(false);
   };
 
   return (
@@ -100,7 +86,10 @@ export const EditDialog = ({
             <Input
               id="name"
               value={currentValue}
-              onChange={handleInputChange}
+              onChange={(e) => {
+                setCurrentValue(e.target.value);
+                onChange(e.target.value);
+              }}
               className="col-span-3"
             />
           </div>
@@ -127,12 +116,7 @@ export const EditDialog = ({
           )}
         </div>
         <DialogFooter>
-          <Button 
-            onClick={handleSave}
-            disabled={!currentValue.trim()}
-          >
-            Save changes
-          </Button>
+          <Button onClick={handleSave}>Save changes</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

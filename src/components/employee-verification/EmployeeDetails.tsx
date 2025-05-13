@@ -73,9 +73,9 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee }) => {
           </div>
           <div>
             <p className="text-sm text-gray-500 text-left">Verification Status</p>
-            <div className="font-medium text-left">
+            <p className="font-medium text-left">
               <VerificationStatusBadge status={employee.status} />
-            </div>
+            </p>
           </div>
           <div className="md:col-span-2">
             <p className="text-sm text-gray-500 text-left">Address</p>

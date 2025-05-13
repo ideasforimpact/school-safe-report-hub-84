@@ -1,82 +1,100 @@
 
 import { useState, useEffect } from 'react';
-import { useIncidents } from '@/contexts/IncidentContext';
-import { useLocation } from 'react-router-dom';
+import { Incident } from '@/types/incident';
+import { FilterState } from '@/types/filterTypes';
+import { 
+  subcategories,
+  nearMissSubcategories,
+  unsafeConditionSubcategories 
+} from '@/contexts/IncidentContext';
 
-export const useFilterOptions = () => {
-  // Get context values
-  const { 
-    // Ensure these are properly imported from the IncidentContext
-    // or set as empty arrays if they don't exist
-    campuses = [], 
-    classes = [],
-    sections = [],
-    categories = [], 
-    locations = [],
-    facilities = [],
-    designations = []
-  } = useIncidents();
+export function useFilterOptions(incidents: Incident[], filters: FilterState) {
+  const [availableCategories, setAvailableCategories] = useState<string[]>([]);
+  const [availableSubcategories, setAvailableSubcategories] = useState<string[]>([]);
+  const [availableLocations, setAvailableLocations] = useState<string[]>([]);
+  const [availableFacilities, setAvailableFacilities] = useState<string[]>([]);
+  const [availableOwners, setAvailableOwners] = useState<{id: string, name: string}[]>([]);
 
-  // State for various filter options
-  const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
-  const [locationOptions, setLocationOptions] = useState<string[]>([]);
-  const [facilityOptions, setFacilityOptions] = useState<string[]>([]);
-  const [statusOptions, setStatusOptions] = useState<string[]>([]);
-  const [priorityOptions, setPriorityOptions] = useState<string[]>([]);
-  const [assigneeOptions, setAssigneeOptions] = useState<string[]>([]);
-  const [reporterOptions, setReporterOptions] = useState<string[]>([]);
-
-  const location = useLocation();
-  const isInsightsPage = location.pathname.includes('insights');
-
+  // Update available categories when type changes
   useEffect(() => {
-    // Set category options
-    if (Array.isArray(categories)) {
-      const catOptions = categories.map(cat => cat.name);
-      setCategoryOptions(catOptions);
-    } else {
-      setCategoryOptions([]);
+    if (!filters.type) {
+      setAvailableCategories([]);
+      return;
     }
 
-    // Set location options
-    if (Array.isArray(locations)) {
-      const locOptions = locations.map(loc => loc.name);
-      setLocationOptions(locOptions);
+    if (filters.type === 'Incident') {
+      setAvailableCategories(Object.keys(subcategories));
+    } else if (filters.type === 'Near Miss') {
+      setAvailableCategories(Object.keys(nearMissSubcategories));
+    } else if (filters.type === 'Unsafe Condition') {
+      setAvailableCategories(Object.keys(unsafeConditionSubcategories));
     } else {
-      setLocationOptions([]);
+      setAvailableCategories([]);
     }
+  }, [filters.type]);
+
+  // Update available subcategories when type or category changes
+  useEffect(() => {
+    if (!filters.type || !filters.category) {
+      setAvailableSubcategories([]);
+      return;
+    }
+
+    if (filters.type === 'Incident') {
+      setAvailableSubcategories(subcategories[filters.category as keyof typeof subcategories] || []);
+    } else if (filters.type === 'Near Miss') {
+      setAvailableSubcategories(nearMissSubcategories[filters.category] || []);
+    } else if (filters.type === 'Unsafe Condition') {
+      setAvailableSubcategories(unsafeConditionSubcategories[filters.category] || []);
+    } else {
+      setAvailableSubcategories([]);
+    }
+  }, [filters.type, filters.category]);
+
+  // Extract unique locations from incidents
+  useEffect(() => {
+    const locations = new Set<string>();
     
-    // Set facility options
-    if (Array.isArray(facilities)) {
-      const facOptions = facilities.map(fac => fac.name);
-      setFacilityOptions(facOptions);
-    } else {
-      setFacilityOptions([]);
-    }
-
-    // Static options for status and priority
-    setStatusOptions(['Open', 'In Progress', 'Closed', 'Voided']);
-    setPriorityOptions(['Low', 'Medium', 'High', 'Critical']);
+    incidents.forEach(incident => {
+      if (incident.location) {
+        locations.add(incident.location);
+      }
+    });
     
-    // Mock options for assignees and reporters (replace with actual data when available)
-    setAssigneeOptions(['John Smith', 'Jane Doe', 'Bob Johnson']);
-    setReporterOptions(['Sarah Wilson', 'Mike Thomas', 'Emma Brown']);
+    setAvailableLocations(Array.from(locations));
+  }, [incidents]);
 
-  }, [categories, locations, facilities]);
+  // Extract unique facilities from incidents based on selected location
+  useEffect(() => {
+    const facilities = new Set<string>();
+    
+    incidents.forEach(incident => {
+      if ((!filters.location || incident.location === filters.location) && incident.facility) {
+        facilities.add(incident.facility);
+      }
+    });
+    
+    setAvailableFacilities(Array.from(facilities));
+  }, [incidents, filters.location]);
+
+  // Extract unique owners from incidents
+  useEffect(() => {
+    const ownersMap = new Map<string, {id: string, name: string}>();
+    
+    incidents.forEach(incident => {
+      if (incident.owner) {
+        ownersMap.set(incident.owner.id, incident.owner);
+      }
+    });
+    
+    setAvailableOwners(Array.from(ownersMap.values()));
+  }, [incidents]);
 
   return {
-    categoryOptions,
-    locationOptions,
-    facilityOptions,
-    statusOptions,
-    priorityOptions,
-    assigneeOptions,
-    reporterOptions,
-    isInsightsPage,
-    // Add educational structure options
-    campuses: Array.isArray(campuses) ? campuses : [],
-    classes: Array.isArray(classes) ? classes : [],
-    sections: Array.isArray(sections) ? sections : [],
-    designations: Array.isArray(designations) ? designations : [],
+    availableCategories,
+    availableSubcategories,
+    availableLocations,
+    availableFacilities,
+    availableOwners
   };
-};
+}

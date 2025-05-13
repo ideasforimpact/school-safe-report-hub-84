@@ -43,7 +43,6 @@ const AssessmentResponseForm = () => {
 
   // Safety check to prevent rendering without data
   if (!assignment || !template) {
-    console.log("Missing assignment or template data", { assignment, template });
     return null;
   }
 

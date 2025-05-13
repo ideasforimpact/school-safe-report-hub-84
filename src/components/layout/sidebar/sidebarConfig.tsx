@@ -1,3 +1,4 @@
+
 import { 
   Home, 
   AlertTriangle,
@@ -7,13 +8,9 @@ import {
   Settings,
   ClipboardList,
   FileCheck,
-  MessageSquare,
-  Bus,
-  FileText,
-  Upload,
-  Database
+  MessageSquare
 } from 'lucide-react';
-import { ModulePermissions } from '@/contexts/auth/types';
+import { ModulePermissions } from '@/contexts/AuthContext';
 
 // SaaS Owner (Backoffice) Menu Items
 export const getSaasOwnerItems = () => [
@@ -31,14 +28,20 @@ export const getSaasOwnerItems = () => [
   },
   {
     icon: ClipboardList,
-    label: 'Assessment\nTemplates',
-    path: '/backoffice/assessment-templates',
+    label: 'Assessments',
+    path: '/assessments',
     allowed: true,
   },
   {
-    icon: FileText,
-    label: 'EduSafe\nResources',
-    path: '/backoffice/edusafe-resources',
+    icon: FileCheck,
+    label: 'Employee\nVerification',
+    path: '/employee-verification',
+    allowed: true,
+  },
+  {
+    icon: MessageSquare,
+    label: 'Feedback &\nGrievances',
+    path: '/feedback',
     allowed: true,
   },
   {
@@ -67,59 +70,24 @@ export const getClientItems = (permissions: ModulePermissions) => [
     icon: AlertTriangle,
     label: 'Incidents',
     path: '/incidents',
-    allowed: true,  // Always show for admins
+    allowed: permissions.allIncidents,
   },
   {
     icon: ClipboardList,
     label: 'Assessments',
     path: '/assessments',
-    allowed: true,  // Always show for admins
+    allowed: true,
   },
   {
     icon: FileCheck,
     label: 'Employee\nVerification',
     path: '/employee-verification',
-    allowed: true,  // Always show for admins
+    allowed: true,
   },
   {
     icon: MessageSquare,
-    label: 'Grievances',
-    path: '/grievances',
-    allowed: true,  // Always show for admins
-  },
-  {
-    icon: Bus,
-    label: 'Transport\nSafety',
-    path: '/transport-safety',
-    allowed: true,  // Always show for admins
-  },
-  {
-    icon: FileText,
-    label: 'EduSafe\nResources',
-    path: '/edusafe-resources',
-    allowed: true,  // Always show for admins
-  },
-  {
-    icon: Users,
-    label: 'Users',
-    path: '/users',
-    allowed: true,  // Always show for admins
-  },
-  {
-    icon: Settings,
-    label: 'Settings',
-    path: '/configuration',
-    allowed: true,  // Always show for admins
+    label: 'Feedback &\nGrievances',
+    path: '/feedback',
+    allowed: true,
   },
 ];
-
-// Update your sidebar config to include the employee management link
-// Add this to your sidebar items array:
-/*
-{
-  title: 'Employees',
-  path: '/employees',
-  icon: <Users className="h-5 w-5" />,
-  requiredRole: ['admin', 'saas_owner']
-}
-*/

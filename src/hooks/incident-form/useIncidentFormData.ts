@@ -1,7 +1,6 @@
 
 import { useState } from 'react';
 import { User as AuthUser } from '@/contexts/auth/types';
-import { formatUserFullName } from '@/utils/userUtils';
 
 // Initial form data state with updated fields to match what's expected in ReportIncident.tsx
 const initialFormData = {
@@ -20,16 +19,17 @@ const initialFormData = {
   owner: '' // Add owner field
 };
 
-export function useIncidentFormData(user: AuthUser | undefined) {
+export function useIncidentFormData(user: AuthUser | null) {
   // Form data state
   const [formData, setFormData] = useState({
     ...initialFormData,
     reportedById: user?.id || '',
-    reportedBy: user ? formatUserFullName(user) : ''
+    reportedBy: user?.name || ''
   });
 
   // Form change handlers
-  const handleChange = (name: string, value: string) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
@@ -37,15 +37,15 @@ export function useIncidentFormData(user: AuthUser | undefined) {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // Fix the handleDateTimeChange function to handle one argument properly
-  const handleDateTimeChange = (field: string, value: Date | undefined) => {
-    if (field === 'date' && value) {
+  const handleDateTimeChange = (date: Date | undefined, timeString?: string) => {
+    if (date) {
       setFormData(prev => ({ 
         ...prev, 
-        date: value.toISOString().split('T')[0] // Convert Date to string
+        date: date.toISOString().split('T')[0] // Convert Date to string
       }));
-    } else if (field === 'time' && typeof value === 'string') {
-      setFormData(prev => ({ ...prev, time: value }));
+    }
+    if (timeString) {
+      setFormData(prev => ({ ...prev, time: timeString }));
     }
   };
 

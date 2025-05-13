@@ -29,6 +29,10 @@ export function useSortedIncidents(incidents: Incident[]) {
           const priorityA = priorityOrder[a.priority as keyof typeof priorityOrder] || 1;
           const priorityB = priorityOrder[b.priority as keyof typeof priorityOrder] || 1;
           return sortDirection === 'asc' ? priorityA - priorityB : priorityB - priorityA;
+        case 'location':
+          return sortDirection === 'asc'
+            ? (a.location || '').localeCompare(b.location || '')
+            : (b.location || '').localeCompare(a.location || '');
         case 'facility':
           return sortDirection === 'asc'
             ? (a.facility || '').localeCompare(b.facility || '')

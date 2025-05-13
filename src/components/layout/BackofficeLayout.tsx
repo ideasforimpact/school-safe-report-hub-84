@@ -2,8 +2,7 @@
 import { ReactNode } from 'react';
 import { ShieldCheck, LogOut } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '@/contexts/auth/AuthContext';
-import { formatUserFullName } from '@/utils/userUtils';
+import { useAuth } from '@/contexts/AuthContext';
 import { 
   DropdownMenu,
   DropdownMenuContent, 
@@ -35,16 +34,8 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
     navigate('/login');
   };
 
-  // Function to safely get the user's initial
-  const getUserInitial = () => {
-    if (user?.firstName) {
-      return user.firstName.substring(0, 1).toUpperCase();
-    }
-    return 'U'; // Default fallback if firstName is undefined
-  };
-
   return (
-    <div className="flex flex-col min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100">
       {/* Top nav */}
       <div className="bg-white shadow-sm border-b border-gray-200">
         <div className="container mx-auto py-4 px-6">
@@ -60,10 +51,10 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
                     <Button variant="ghost" className="flex items-center space-x-2">
                       <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center">
                         <span className="font-medium text-sm text-primary-700">
-                          {getUserInitial()}
+                          {user.name.substring(0, 1).toUpperCase()}
                         </span>
                       </div>
-                      <span>{formatUserFullName(user)}</span>
+                      <span>{user.name}</span>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
@@ -100,12 +91,10 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
         </div>
       </div>
       
-      {/* Main content - Using flex-col for vertical layout */}
-      <div className="flex-grow">
-        <main className="container mx-auto py-8 px-6">
-          {children}
-        </main>
-      </div>
+      {/* Main content */}
+      <main className="container mx-auto py-8 px-6">
+        {children}
+      </main>
     </div>
   );
 };

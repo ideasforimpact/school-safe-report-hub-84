@@ -20,8 +20,7 @@ export const EmployeeVerificationProvider: React.FC<EmployeeVerificationProvider
     addEmployee, 
     updateEmployee, 
     deleteEmployee, 
-    getEmployee,
-    fetchEmployees
+    getEmployee 
   } = useEmployeeManagement();
 
   const {
@@ -29,9 +28,7 @@ export const EmployeeVerificationProvider: React.FC<EmployeeVerificationProvider
     addDocument,
     verifyDocument,
     deleteDocument,
-    getEmployeeDocuments,
-    fetchEmployeeDocuments,
-    isLoading
+    getEmployeeDocuments
   } = useDocumentManagement((employeeId, status) => {
     updateEmployee(employeeId, { status });
   });
@@ -48,10 +45,7 @@ export const EmployeeVerificationProvider: React.FC<EmployeeVerificationProvider
         verifyDocument,
         deleteDocument,
         getEmployeeDocuments,
-        getEmployee,
-        fetchEmployees,
-        fetchEmployeeDocuments,
-        isLoading
+        getEmployee
       }}
     >
       {children}

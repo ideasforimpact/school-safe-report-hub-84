@@ -24,12 +24,12 @@ const EditStudentDialog = ({ open, onOpenChange, student }: EditStudentDialogPro
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const { updateStudent } = useStudents();
 
-  const handleSubmit = async (data: any) => {
+  const handleSubmit = (data: any) => {
     if (!student) return;
     
     setIsSubmitting(true);
     try {
-      await updateStudent(student.id, data);
+      updateStudent(student.id, data);
       toast.success('Student updated successfully');
       onOpenChange(false);
     } catch (error) {

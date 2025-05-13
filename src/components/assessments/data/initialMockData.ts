@@ -4,287 +4,97 @@ import { AssessmentTemplate, AssessmentAssignment, AssessmentResponse } from '@/
 
 // Create mock template
 const createMockTemplates = (): AssessmentTemplate[] => {
+  const templateId = uuidv4();
+  
   return [
     {
-      id: "template-safety-001",
+      id: templateId,
       title: 'Monthly Safety Inspection',
       description: 'Complete this safety inspection checklist to ensure compliance with safety standards.',
       type: 'Safety',
       questions: [
         {
-          id: "question-001",
+          id: uuidv4(),
           text: 'Are all emergency exits clearly marked and accessible?',
           allowComments: true,
           allowAttachments: true,
           required: true
         },
         {
-          id: "question-002",
+          id: uuidv4(),
           text: 'Are fire extinguishers available and properly maintained?',
           allowComments: true,
           allowAttachments: true,
           required: true
         },
         {
-          id: "question-003",
+          id: uuidv4(),
           text: 'Is the first aid kit fully stocked and easily accessible?',
           allowComments: true,
           allowAttachments: false,
           required: true
         },
         {
-          id: "question-004",
+          id: uuidv4(),
           text: 'Are all hazardous materials properly stored and labeled?',
           allowComments: true,
           allowAttachments: true,
           required: true
         },
         {
-          id: "question-005",
+          id: uuidv4(),
           text: 'Are all walkways and work areas free of trip hazards?',
           allowComments: true,
           allowAttachments: true,
           required: true
-        }
+        },
+        {
+          id: uuidv4(),
+          text: 'Is personal protective equipment available and in good condition?',
+          allowComments: true,
+          allowAttachments: false,
+          required: true
+        },
       ],
       createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days ago
       createdBy: 'admin',
       isActive: true
-    },
-    {
-      id: "template-compliance-001",
-      title: 'Compliance Audit',
-      description: 'This audit ensures all school policies meet regulatory requirements.',
-      type: 'Compliance',
-      questions: [
-        {
-          id: "question-101",
-          text: 'Are all required policies posted in visible locations?',
-          allowComments: true,
-          allowAttachments: true,
-          required: true
-        },
-        {
-          id: "question-102",
-          text: 'Have all staff completed mandatory safety training?',
-          allowComments: true,
-          allowAttachments: false,
-          required: true
-        },
-        {
-          id: "question-103",
-          text: 'Are incident reporting procedures followed consistently?',
-          allowComments: true,
-          allowAttachments: false,
-          required: true
-        }
-      ],
-      createdAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(), // 15 days ago
-      createdBy: 'admin',
-      isActive: true
     }
   ];
 };
 
-// Create mock assignments
-const createMockAssignments = (templates: AssessmentTemplate[]): AssessmentAssignment[] => {
+// Create mock assignments - use a specific ID for demo purposes
+const createMockAssignments = (templateId: string): AssessmentAssignment[] => {
   const today = new Date();
   
-  // Set due dates
-  const dueDateSoon = new Date();
-  dueDateSoon.setDate(today.getDate() + 3);
+  // Set due date to 7 days from now
+  const dueDate = new Date();
+  dueDate.setDate(today.getDate() + 7);
   
-  const dueDateLater = new Date();
-  dueDateLater.setDate(today.getDate() + 14);
-  
-  const pastDueDate = new Date();
-  pastDueDate.setDate(today.getDate() - 5);
-  
+  // Use a specific ID for the first assignment to make it easily accessible
+  // This ID will be predictable for demo purposes: c689a45d-9111-4d77-9d74-416fbd7ca233
   return [
-    // Assignment for current user - New (due soon)
     {
-      id: "assignment-001",
-      templateId: templates[0].id,
-      userId: '3', // Match this to the logged-in user ID for demo purposes
-      userName: 'Jeff Davis',
-      dueDate: dueDateSoon.toISOString(),
+      id: "c689a45d-9111-4d77-9d74-416fbd7ca233",
+      templateId,
+      userId: 'user1',
+      userName: 'John Doe',
+      dueDate: dueDate.toISOString(),
       assignedDate: today.toISOString(),
       assignedBy: 'admin',
-      status: 'New'
+      status: 'Pending'
     },
-    // Assignment for current user - In Progress
     {
-      id: "assignment-002",
-      templateId: templates[1].id,
-      userId: '3', // Match this to the logged-in user ID for demo purposes
-      userName: 'Jeff Davis',
-      dueDate: dueDateLater.toISOString(),
-      assignedDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), // 5 days ago
+      id: uuidv4(),
+      templateId,
+      userId: 'user2',
+      userName: 'Jane Smith',
+      dueDate: dueDate.toISOString(),
+      assignedDate: today.toISOString(),
       assignedBy: 'admin',
-      status: 'In Progress'
-    },
-    // Assignment for current user - Overdue
-    {
-      id: "assignment-003",
-      templateId: templates[0].id, 
-      userId: '3', // Match this to the logged-in user ID for demo purposes
-      userName: 'Jeff Davis',
-      dueDate: pastDueDate.toISOString(),
-      assignedDate: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(), // 15 days ago
-      assignedBy: 'admin',
-      status: 'New' // This will show as overdue due to the past due date
-    },
-    // Assignment for another user - Completed (for admin view)
-    {
-      id: "assignment-004",
-      templateId: templates[0].id,
-      userId: '2',
-      userName: 'John Smith',
-      dueDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
-      assignedDate: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(), // 10 days ago
-      assignedBy: 'admin',
-      status: 'Completed'
-    },
-    // Assignment for current user - Submitted
-    {
-      id: "assignment-005",
-      templateId: templates[0].id,
-      userId: '3', // Match this to the logged-in user ID for demo purposes
-      userName: 'Jeff Davis',
-      dueDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
-      assignedDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days ago
-      assignedBy: 'admin',
-      status: 'Submitted'
+      status: 'Pending'
     }
   ];
-};
-
-// Create partial response for the "In Progress" assignment
-const createMockResponses = (assignments: AssessmentAssignment[]): AssessmentResponse[] => {
-  const inProgressAssignment = assignments.find(a => a.status === 'In Progress');
-  const completedAssignment = assignments.find(a => a.status === 'Completed');
-  const submittedAssignment = assignments.find(a => a.status === 'Submitted');
-  
-  const responses = [];
-  
-  if (inProgressAssignment) {
-    // Partial response for the in-progress assignment
-    responses.push({
-      id: uuidv4(),
-      assignmentId: inProgressAssignment.id,
-      templateId: inProgressAssignment.templateId,
-      userId: inProgressAssignment.userId,
-      completedDate: null,
-      responses: [
-        {
-          questionId: "question-101", // Adjust this to match an actual question ID
-          answer: true,
-          comment: "All policies are posted in the main office and staff room.",
-          attachments: null
-        },
-        {
-          questionId: "question-102", // Adjust this to match an actual question ID
-          answer: false,
-          comment: "Three staff members still need to complete their training.",
-          attachments: null
-        }
-      ],
-      status: 'Draft',
-      score: null
-    });
-  }
-  
-  if (completedAssignment) {
-    // Full response for the completed assignment
-    responses.push({
-      id: uuidv4(),
-      assignmentId: completedAssignment.id,
-      templateId: completedAssignment.templateId,
-      userId: completedAssignment.userId,
-      completedDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days ago
-      responses: [
-        {
-          questionId: "question-001",
-          answer: true,
-          comment: "All exits are properly marked and clear.",
-          attachments: null
-        },
-        {
-          questionId: "question-002",
-          answer: true,
-          comment: "Fire extinguishers were checked last month.",
-          attachments: null
-        },
-        {
-          questionId: "question-003",
-          answer: true,
-          comment: "First aid kit is fully stocked.",
-          attachments: null
-        },
-        {
-          questionId: "question-004",
-          answer: true,
-          comment: "All chemicals properly labeled and stored in locked cabinets.",
-          attachments: null
-        },
-        {
-          questionId: "question-005",
-          answer: true,
-          comment: "No trip hazards observed.",
-          attachments: null
-        }
-      ],
-      status: 'Submitted',
-      score: 100
-    });
-  }
-
-  if (submittedAssignment) {
-    // Full response for the submitted assignment
-    responses.push({
-      id: uuidv4(),
-      assignmentId: submittedAssignment.id,
-      templateId: submittedAssignment.templateId,
-      userId: submittedAssignment.userId,
-      completedDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
-      responses: [
-        {
-          questionId: "question-001",
-          answer: true,
-          comment: "Emergency exits are clearly marked and accessible.",
-          attachments: null
-        },
-        {
-          questionId: "question-002",
-          answer: false,
-          comment: "One fire extinguisher needs to be replaced.",
-          attachments: null
-        },
-        {
-          questionId: "question-003",
-          answer: true,
-          comment: "First aid kit has been recently restocked.",
-          attachments: null
-        },
-        {
-          questionId: "question-004",
-          answer: true,
-          comment: "All hazardous materials are properly stored.",
-          attachments: null
-        },
-        {
-          questionId: "question-005",
-          answer: false,
-          comment: "Identified a trip hazard in the staff area.",
-          attachments: null
-        }
-      ],
-      status: 'Submitted',
-      score: 60
-    });
-  }
-  
-  return responses;
 };
 
 // Initialize mock data if none exists
@@ -298,13 +108,14 @@ export const initializeMockData = () => {
   const templates = createMockTemplates();
   localStorage.setItem('assessmentTemplates', JSON.stringify(templates));
   
-  // Create assignments based on the templates
-  const assignments = createMockAssignments(templates);
-  localStorage.setItem('assessmentAssignments', JSON.stringify(assignments));
+  // Create assignments based on the template
+  if (templates.length > 0) {
+    const assignments = createMockAssignments(templates[0].id);
+    localStorage.setItem('assessmentAssignments', JSON.stringify(assignments));
+  }
   
-  // Create partial responses
-  const responses = createMockResponses(assignments);
-  localStorage.setItem('assessmentResponses', JSON.stringify(responses));
+  // Initialize empty responses array
+  localStorage.setItem('assessmentResponses', JSON.stringify([]));
   
   console.log('Mock assessment data initialized with predictable IDs for demo');
 };

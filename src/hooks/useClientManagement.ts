@@ -1,20 +1,20 @@
-
 import { useState } from 'react';
-import { Client, useClient, InstitutionType } from '@/contexts/ClientContext';
+import { Client, useClient } from '@/contexts/ClientContext';
 import { OAuthProviderName } from '@/utils/authProviders';
-import { ModulePermissions } from '@/contexts/auth/types';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 
 export interface ClientFormData {
   name: string;
   email: string;
   contactPerson: string;
   phone: string;
-  moduleAccess: Partial<ModulePermissions>;
+  moduleAccess: {
+    incidentReporting: boolean;
+    allIncidents: boolean;
+    insights: boolean;
+    benchmarking: boolean;
+  };
   active: boolean;
   logo: string;
-  institutionType: InstitutionType;
   allowedDomains: string[];
   authProviders: {
     [key in OAuthProviderName]?: boolean;
@@ -27,19 +27,13 @@ const initialFormData: ClientFormData = {
   contactPerson: '',
   phone: '',
   moduleAccess: {
-    superAdmin: false,
     incidentReporting: true,
-    incidentAdmin: false,
-    assessmentUser: true,
-    assessmentsAdmin: false,
-    employeeVerificationAdmin: false,
-    grievancesAdmin: false,
-    transportSafetyAdmin: false,
-    eduSafeResourceAccess: true
+    allIncidents: true,
+    insights: true,
+    benchmarking: false
   },
   active: true,
   logo: '',
-  institutionType: 'Other',
   allowedDomains: [],
   authProviders: {
     google: false,
@@ -49,7 +43,7 @@ const initialFormData: ClientFormData = {
 };
 
 export const useClientManagement = () => {
-  const { clients, loading, addClient, updateClient, deleteClient } = useClient();
+  const { clients, addClient, updateClient, deleteClient } = useClient();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [currentClient, setCurrentClient] = useState<Client | null>(null);
@@ -60,8 +54,8 @@ export const useClientManagement = () => {
     setCurrentClient(null);
   };
 
-  const handleAddClient = async () => {
-    await addClient(formData);
+  const handleAddClient = () => {
+    addClient(formData);
     setIsAddDialogOpen(false);
     resetForm();
   };
@@ -74,19 +68,13 @@ export const useClientManagement = () => {
       contactPerson: client.contactPerson,
       phone: client.phone,
       moduleAccess: {
-        superAdmin: client.moduleAccess?.superAdmin ?? false,
         incidentReporting: client.moduleAccess?.incidentReporting ?? true,
-        incidentAdmin: client.moduleAccess?.incidentAdmin ?? false,
-        assessmentUser: client.moduleAccess?.assessmentUser ?? true,
-        assessmentsAdmin: client.moduleAccess?.assessmentsAdmin ?? false,
-        employeeVerificationAdmin: client.moduleAccess?.employeeVerificationAdmin ?? false,
-        grievancesAdmin: client.moduleAccess?.grievancesAdmin ?? false,
-        transportSafetyAdmin: client.moduleAccess?.transportSafetyAdmin ?? false,
-        eduSafeResourceAccess: client.moduleAccess?.eduSafeResourceAccess ?? true
+        allIncidents: client.moduleAccess?.allIncidents ?? true,
+        insights: client.moduleAccess?.insights ?? true,
+        benchmarking: client.moduleAccess?.benchmarking ?? false
       },
       active: client.active,
       logo: client.logo || '',
-      institutionType: (client.institutionType as InstitutionType) || 'Other',
       allowedDomains: client.allowedDomains || [],
       authProviders: {
         google: client.authProviders?.google ?? false,
@@ -97,23 +85,22 @@ export const useClientManagement = () => {
     setIsEditDialogOpen(true);
   };
 
-  const handleUpdateClient = async () => {
+  const handleUpdateClient = () => {
     if (currentClient) {
-      await updateClient(currentClient.id, formData);
+      updateClient(currentClient.id, formData);
       setIsEditDialogOpen(false);
       resetForm();
     }
   };
 
-  const handleDeleteClient = async (id: string) => {
+  const handleDeleteClient = (id: string) => {
     if (confirm('Are you sure you want to delete this client?')) {
-      await deleteClient(id);
+      deleteClient(id);
     }
   };
 
   return {
     clients,
-    loading,
     formData,
     setFormData,
     isAddDialogOpen,

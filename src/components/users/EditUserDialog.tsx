@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { UserRole, ModulePermissions, EmployeeType, DepartmentType } from '@/contexts/auth/types';
+import { UserRole, ModulePermissions } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -16,30 +16,23 @@ interface EditUserDialogProps {
   isOpen: boolean;
   setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
   formData: {
-    firstName: string;
-    lastName: string;
+    name: string;
     email: string;
-    employeeId?: string;
-    employeeType?: EmployeeType;
-    department?: DepartmentType;
-    joiningDate?: string;
+    password: string;
+    designation?: string;
     role: UserRole;
     modulePermissions: ModulePermissions;
   };
   setFormData: React.Dispatch<React.SetStateAction<{
-    firstName: string;
-    lastName: string;
+    name: string;
     email: string;
-    employeeId?: string;
-    employeeType?: EmployeeType;
-    department?: DepartmentType;
-    joiningDate?: string;
+    password: string;
+    designation?: string;
     role: UserRole;
     modulePermissions: ModulePermissions;
   }>>;
   onSubmit: () => void;
   resetForm: () => void;
-  isLoading?: boolean;
 }
 
 const EditUserDialog = ({ 
@@ -48,16 +41,15 @@ const EditUserDialog = ({
   formData, 
   setFormData, 
   onSubmit,
-  resetForm,
-  isLoading = false
+  resetForm 
 }: EditUserDialogProps) => {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
+      <DialogContent>
         <DialogHeader>
-          <DialogTitle>Edit Employee</DialogTitle>
+          <DialogTitle>Edit User</DialogTitle>
           <DialogDescription>
-            Update employee information
+            Update user information
           </DialogDescription>
         </DialogHeader>
         <UserForm formData={formData} setFormData={setFormData} isEditMode={true} />
@@ -65,12 +57,10 @@ const EditUserDialog = ({
           <Button variant="outline" onClick={() => {
             setIsOpen(false);
             resetForm();
-          }} disabled={isLoading}>
+          }}>
             Cancel
           </Button>
-          <Button onClick={onSubmit} disabled={isLoading}>
-            {isLoading ? 'Updating...' : 'Update Employee'}
-          </Button>
+          <Button onClick={onSubmit}>Update User</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

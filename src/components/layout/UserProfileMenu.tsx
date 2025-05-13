@@ -1,65 +1,71 @@
 
-import React from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { LogOut, Settings, User } from 'lucide-react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { formatUserFullName } from '@/utils/userUtils';
+import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { LogOut, Lock, ChevronDown } from 'lucide-react';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { ChangePasswordDialog } from '@/components/ChangePasswordDialog';
+import { User } from '@/contexts/auth/types';
 
-const UserProfileMenu = () => {
-  const { user, logout } = useAuth();
+interface UserProfileMenuProps {
+  user: User;
+  logout: () => void;
+}
+
+const UserProfileMenu = ({ user, logout }: UserProfileMenuProps) => {
   const navigate = useNavigate();
-
-  const getInitials = () => {
-    if (!user || !user.firstName || !user.lastName) return '';
-    return `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.toUpperCase();
-  };
-
-  const handleLogout = async () => {
-    await logout();
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  
+  const handleLogout = () => {
+    logout();
     navigate('/login');
   };
 
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase()
+      .substring(0, 2);
+  };
+
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button className="flex items-center space-x-2 rounded-full p-1 hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary">
-          <Avatar className="h-8 w-8">
-            <AvatarFallback>{getInitials()}</AvatarFallback>
-          </Avatar>
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel>
-          <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{formatUserFullName(user)}</p>
-            <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="flex items-center space-x-2">
+            <Avatar className="h-8 w-8 bg-blue-100">
+              <AvatarFallback className="text-blue-700 text-sm font-medium">
+                {user.name ? getInitials(user.name) : 'U'}
+              </AvatarFallback>
+            </Avatar>
+            <div className="hidden md:block text-left">
+              <div className="text-sm font-medium">{user.name}</div>
+              <div className="text-xs text-gray-500">{user.email}</div>
+            </div>
+            <ChevronDown size={16} className="text-gray-400 hidden md:block" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56 bg-white border-gray-100 shadow-lg">
+          <div className="px-2 py-1.5 text-sm font-medium border-b border-gray-100 md:hidden">
+            <div>{user.name}</div>
+            <div className="text-xs text-gray-500 mt-0.5">{user.email}</div>
           </div>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => navigate('/profile')}>
-          <User className="mr-2 h-4 w-4" />
-          <span>Profile</span>
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => navigate('/settings')}>
-          <Settings className="mr-2 h-4 w-4" />
-          <span>Settings</span>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleLogout}>
-          <LogOut className="mr-2 h-4 w-4" />
-          <span>Log out</span>
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+          <DropdownMenuItem onClick={() => setPasswordDialogOpen(true)} className="cursor-pointer">
+            <Lock size={16} className="mr-2" />
+            <span>Change Password</span>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={handleLogout} className="text-red-600 cursor-pointer">
+            <LogOut size={16} className="mr-2" />
+            <span>Logout</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <ChangePasswordDialog open={passwordDialogOpen} onOpenChange={setPasswordDialogOpen} />
+    </>
   );
 };
 

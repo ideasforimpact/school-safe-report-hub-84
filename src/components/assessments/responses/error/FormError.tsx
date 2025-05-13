@@ -6,11 +6,11 @@ interface FormErrorProps {
   error: string | null;
 }
 
-const FormError: React.FC<FormErrorProps> = ({ error }) => {
+const FormError = ({ error }: FormErrorProps) => {
   if (!error) return null;
   
   return (
-    <div className="mt-4 bg-red-50 border border-red-200 text-red-800 rounded-md p-3 flex items-start">
+    <div className="bg-red-50 border border-red-200 text-red-800 rounded-md p-3 flex items-start">
       <AlertTriangle className="h-5 w-5 mr-2 flex-shrink-0 text-red-500" />
       <p className="text-sm">{error}</p>
     </div>
