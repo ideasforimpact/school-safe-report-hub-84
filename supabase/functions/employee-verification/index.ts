@@ -1,7 +1,8 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 
-// CORS headers
+// CORS headers setup
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -16,365 +17,299 @@ serve(async (req) => {
       status: 204
     });
   }
-
-  const url = new URL(req.url);
-  const pathParts = url.pathname.split('/').filter(Boolean);
-  const action = pathParts[pathParts.length - 1];
   
-  // Initialize Supabase client
-  const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-  
-  const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
   try {
-    if (action === 'request-aadhar-otp') {
-      return await handleAadharOtpRequest(req, supabase, corsHeaders);
-    } else if (action === 'verify-aadhar-otp') {
-      return await handleAadharOtpVerify(req, supabase, corsHeaders);
-    } else {
-      return new Response(
-        JSON.stringify({ error: "Invalid action" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    const { action, documentId, documentNumber, otp, txnId } = await req.json();
+    console.log(`Received ${action} request`, { documentId, hasDocNumber: !!documentNumber, hasTxnId: !!txnId, hasOtp: !!otp });
+    
+    // Initialize Supabase client
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Set up production vs. sandbox environment for the Surepass API
+    const environment = Deno.env.get("ENVIRONMENT") || "development";
+    const apiKey = environment === "production" 
+      ? Deno.env.get("SUREPASS_PRODUCTION_API_KEY") 
+      : Deno.env.get("SUREPASS_SANDBOX_API_KEY");
+    
+    // Base URL for Surepass API
+    const baseUrl = Deno.env.get("SUREPASS_BASE_URL") || "https://sandbox.surepass.io";
+    
+    // Check if we're testing in development mode
+    const isDevTest = environment === "development" && !apiKey;
+    
+    // Handle Aadhar OTP request
+    if (action === 'requestAadharOtp') {
+      // Check if document has had an OTP generated in the last 15 minutes
+      if (documentId) {
+        const { data: document, error: docError } = await supabase
+          .from('employee_documents')
+          .select('last_otp_generated')
+          .eq('id', documentId)
+          .single();
+        
+        if (docError) {
+          console.error("Error fetching document:", docError);
+        } else if (document?.last_otp_generated) {
+          const lastOtpTime = new Date(document.last_otp_generated);
+          const timeDiff = (new Date().getTime() - lastOtpTime.getTime()) / (1000 * 60); // in minutes
+          
+          if (timeDiff < 15) {
+            const cooldownRemaining = Math.ceil(15 - timeDiff);
+            console.log(`Cooldown period active. ${cooldownRemaining} minutes remaining.`);
+            
+            return new Response(
+              JSON.stringify({ 
+                error: "Cooldown period active", 
+                cooldownRemaining 
+              }),
+              { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+        }
+      }
+      
+      // For dev testing or when API key is not set, return a mock response
+      if (isDevTest) {
+        console.log("Development mode: Returning mock OTP response");
+        
+        // Update the document with current timestamp
+        if (documentId) {
+          await supabase
+            .from('employee_documents')
+            .update({ last_otp_generated: new Date().toISOString() })
+            .eq('id', documentId);
+        }
+        
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            message: "Development mode: OTP would be sent to the registered mobile", 
+            txnId: "dev-test-txn-" + Date.now()
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      try {
+        // Actual API call to Surepass
+        if (!documentNumber) {
+          return new Response(
+            JSON.stringify({ error: "Document number is required" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        
+        console.log("Making request to Surepass API to generate OTP");
+        
+        const response = await fetch(`${baseUrl}/api/v1/aadhaar-v2/generate-otp`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({ aadhaar_number: documentNumber })
+        });
+        
+        const data = await response.json();
+        console.log("Surepass API response:", JSON.stringify(data));
+        
+        // Handle API success case
+        if (data.success) {
+          // Update document with timestamp of OTP generation
+          if (documentId) {
+            await supabase
+              .from('employee_documents')
+              .update({ last_otp_generated: new Date().toISOString() })
+              .eq('id', documentId);
+          }
+          
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              message: data.message || "OTP sent successfully", 
+              txnId: data.data?.txn_id || data.txn_id
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        } else {
+          return new Response(
+            JSON.stringify({ error: data.message || "Failed to generate OTP" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      } catch (error) {
+        console.error("Error calling Surepass API:", error);
+        return new Response(
+          JSON.stringify({ error: "Failed to connect to verification service" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
+    
+    // Handle Aadhar OTP verification
+    else if (action === 'verifyAadharOtp') {
+      if (!otp || !txnId) {
+        return new Response(
+          JSON.stringify({ error: "OTP and transaction ID are required" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      // For dev testing or when API key is not set, verify with simple mock logic
+      if (isDevTest) {
+        console.log("Development mode: Simulating OTP verification");
+        
+        // Simple verification - any 6-digit OTP where digits add up to a multiple of 5
+        const isValidOtp = otp.length === 6 && 
+          otp.split('').reduce((sum, digit) => sum + parseInt(digit), 0) % 5 === 0;
+        
+        if (!isValidOtp) {
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              error: "Invalid OTP. For dev testing, enter a 6-digit OTP where digits add up to a multiple of 5." 
+            }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        
+        if (documentId) {
+          await supabase
+            .from('employee_documents')
+            .update({
+              verification_status: 'verified',
+              verification_method: 'api',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', documentId);
+          
+          // Get employee ID from the document
+          const { data: document } = await supabase
+            .from('employee_documents')
+            .select('employee_id')
+            .eq('id', documentId)
+            .single();
+          
+          if (document?.employee_id) {
+            // Check if all employee documents are verified
+            const { data: documents } = await supabase
+              .from('employee_documents')
+              .select('verification_status')
+              .eq('employee_id', document.employee_id);
+            
+            const allVerified = documents?.every(doc => doc.verification_status === 'verified');
+            
+            if (allVerified) {
+              await supabase
+                .from('employees')
+                .update({ status: 'verified' })
+                .eq('id', document.employee_id);
+            }
+          }
+        }
+        
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            message: "Development mode: OTP verification successful" 
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      // Actual API call to verify OTP
+      try {
+        console.log("Making request to Surepass API to verify OTP");
+        
+        const response = await fetch(`${baseUrl}/api/v1/aadhaar-v2/submit-otp`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({ 
+            otp,
+            txn_id: txnId
+          })
+        });
+        
+        const data = await response.json();
+        console.log("Surepass API verification response:", JSON.stringify(data));
+        
+        if (data.success) {
+          // Update document status to verified
+          if (documentId) {
+            await supabase
+              .from('employee_documents')
+              .update({
+                verification_status: 'verified',
+                verification_method: 'api',
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', documentId);
+            
+            // Get employee ID from the document
+            const { data: document } = await supabase
+              .from('employee_documents')
+              .select('employee_id')
+              .eq('id', documentId)
+              .single();
+            
+            if (document?.employee_id) {
+              // Check if all employee documents are verified
+              const { data: documents } = await supabase
+                .from('employee_documents')
+                .select('verification_status')
+                .eq('employee_id', document.employee_id);
+              
+              const allVerified = documents?.every(doc => doc.verification_status === 'verified');
+              
+              if (allVerified) {
+                await supabase
+                  .from('employees')
+                  .update({ status: 'verified' })
+                  .eq('id', document.employee_id);
+              }
+            }
+          }
+          
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              message: "Aadhar verification successful" 
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        } else {
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              error: data.message || "OTP verification failed" 
+            }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      } catch (error) {
+        console.error("Error verifying OTP with Surepass API:", error);
+        return new Response(
+          JSON.stringify({ error: "Failed to connect to verification service" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+    
+    return new Response(
+      JSON.stringify({ error: "Invalid action specified" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+    
   } catch (error) {
     console.error("Error processing request:", error);
     return new Response(
-      JSON.stringify({ error: error.message || "Internal server error" }),
+      JSON.stringify({ error: "Internal server error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
-
-// Handle Aadhar OTP request
-async function handleAadharOtpRequest(req: Request, supabase, corsHeaders) {
-  try {
-    const { documentId, documentNumber } = await req.json();
-    
-    console.log("Received OTP request:", { documentId, documentNumber });
-    
-    if (!documentId || !documentNumber) {
-      return new Response(
-        JSON.stringify({ error: "Document ID and Aadhar number are required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    
-    // Get document information to verify it exists and has pending status
-    const { data: employeeDoc, error: docError } = await supabase
-      .from('employee_documents')
-      .select('*')
-      .eq('id', documentId)
-      .single();
-    
-    if (docError || !employeeDoc) {
-      console.error("Error fetching employee document:", docError);
-      return new Response(
-        JSON.stringify({ error: "Document not found" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    
-    console.log("Found employee document:", employeeDoc);
-    
-    // Find the matching document in the documents array
-    const documents = employeeDoc.documents || [];
-    const document = documents.find(doc => doc.documentTypeName === 'aadhar');
-    
-    if (!document) {
-      console.error("Aadhar document not found in documents array");
-      return new Response(
-        JSON.stringify({ error: "Aadhar document not found" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    
-    // Verify document is pending verification
-    if (document.verificationStatus !== 'pending') {
-      return new Response(
-        JSON.stringify({ error: "This document is already verified or verification failed" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    
-    // Check OTP cooldown period (3 minutes)
-    const lastOtpGenerated = employeeDoc.last_otp_generated;
-    if (lastOtpGenerated) {
-      const lastOtpTime = new Date(lastOtpGenerated).getTime();
-      const currentTime = new Date().getTime();
-      const timeDiff = (currentTime - lastOtpTime) / 1000 / 60; // in minutes
-      
-      if (timeDiff < 3) {
-        return new Response(
-          JSON.stringify({ 
-            error: "Please wait before requesting another OTP",
-            cooldownRemaining: Math.ceil(3 - timeDiff)
-          }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-    }
-
-    // Get SurePass API keys and URL from environment variables
-    const apiKey = Deno.env.get("SUREPASS_API_KEY") || "";
-    const baseUrl = Deno.env.get("SUREPASS_BASE_URL") || "https://kyc-api.surepass.io";
-    
-    if (!apiKey || !baseUrl) {
-      console.error("Missing SurePass API configuration");
-      return new Response(
-        JSON.stringify({ error: "Server configuration error" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Call the SurePass API to request OTP - use the plain document number from the request
-    console.log("Calling SurePass API to generate OTP");
-    const surepassResponse = await fetch(`${baseUrl}/api/v1/aadhaar-v2/generate-otp`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({ 
-        aadhaar_number: documentNumber // Use the plain document number directly
-      })
-    });
-    
-    const surepassData = await surepassResponse.json();
-    console.log("SurePass API response:", surepassData);
-    
-    if (!surepassResponse.ok || !surepassData.success) {
-      console.error("SurePass API error:", surepassData);
-      return new Response(
-        JSON.stringify({ 
-          error: surepassData.message || "Failed to request OTP from verification provider" 
-        }),
-        { status: surepassResponse.status || 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    
-    // Update the last_otp_generated timestamp
-    const { error: updateError } = await supabase
-      .from('employee_documents')
-      .update({ 
-        last_otp_generated: new Date().toISOString()
-      })
-      .eq('id', employeeDoc.id);
-    
-    if (updateError) {
-      console.error("Error updating last OTP timestamp:", updateError);
-    }
-    
-    // Add a log entry
-    const logEntry = {
-      action: 'request_otp',
-      documentId: document.id,
-      timestamp: new Date().toISOString(),
-      details: {
-        client_id: surepassData.data?.client_id || '',
-        txn_id: surepassData.data?.txn_id || ''
-      }
-    };
-    
-    const updatedLogs = [...(employeeDoc.employee_docs_log || []), logEntry];
-    
-    await supabase
-      .from('employee_documents')
-      .update({ 
-        employee_docs_log: updatedLogs 
-      })
-      .eq('id', employeeDoc.id);
-    
-    return new Response(
-      JSON.stringify({ 
-        success: true,
-        message: "OTP sent to registered mobile number",
-        data: {
-          client_id: surepassData.data?.client_id,
-          txn_id: surepassData.data?.txn_id
-        }
-      }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  } catch (error) {
-    console.error("Error in handleAadharOtpRequest:", error);
-    return new Response(
-      JSON.stringify({ error: error.message || "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-}
-
-// Handle Aadhar OTP verification
-async function handleAadharOtpVerify(req: Request, supabase, corsHeaders) {
-  try {
-    const { documentId, otp } = await req.json();
-    
-    if (!documentId || !otp) {
-      return new Response(
-        JSON.stringify({ error: "Document ID and OTP are required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    
-    // Get document information and verify OTP cooldown period
-    const { data: employeeDoc, error: docError } = await supabase
-      .from('employee_documents')
-      .select('*')
-      .eq('id', documentId)
-      .single();
-    
-    if (docError || !employeeDoc) {
-      console.error("Error fetching document:", docError);
-      return new Response(
-        JSON.stringify({ error: "Document not found" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    
-    // Find the matching document in the documents array
-    const documents = employeeDoc.documents || [];
-    const document = documents.find(doc => doc.documentTypeName === 'aadhar');
-    
-    if (!document) {
-      return new Response(
-        JSON.stringify({ error: "Aadhar document not found" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    
-    // Verify OTP is within the 3-minute window
-    const lastOtpGenerated = employeeDoc.last_otp_generated;
-    if (!lastOtpGenerated) {
-      return new Response(
-        JSON.stringify({ error: "No OTP was requested for this document" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    
-    const lastOtpTime = new Date(lastOtpGenerated).getTime();
-    const currentTime = new Date().getTime();
-    const timeDiff = (currentTime - lastOtpTime) / 1000 / 60; // in minutes
-    
-    if (timeDiff > 3) {
-      return new Response(
-        JSON.stringify({ error: "OTP has expired, please request a new one" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Get the transaction ID from the logs
-    const logs = employeeDoc.employee_docs_log || [];
-    const lastOtpRequestLog = [...logs]
-      .reverse()
-      .find(log => log.action === 'request_otp');
-    
-    if (!lastOtpRequestLog || !lastOtpRequestLog.details?.txn_id) {
-      return new Response(
-        JSON.stringify({ error: "Missing transaction information, please request a new OTP" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    
-    const txnId = lastOtpRequestLog.details.txn_id;
-    
-    // Get SurePass API keys and URL from environment variables
-    const apiKey = Deno.env.get("SUREPASS_API_KEY") || "";
-    const baseUrl = Deno.env.get("SUREPASS_BASE_URL") || "https://kyc-api.surepass.io";
-    
-    if (!apiKey || !baseUrl) {
-      console.error("Missing SurePass API configuration");
-      return new Response(
-        JSON.stringify({ error: "Server configuration error" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Call the SurePass API to verify OTP
-    const surepassResponse = await fetch(`${baseUrl}/api/v1/aadhaar-v2/submit-otp`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({ 
-        otp,
-        txn_id: txnId
-      })
-    });
-    
-    const surepassData = await surepassResponse.json();
-    
-    if (!surepassResponse.ok || !surepassData.success) {
-      console.error("SurePass API error:", surepassData);
-      return new Response(
-        JSON.stringify({ 
-          error: surepassData.message || "Failed to verify OTP" 
-        }),
-        { status: surepassResponse.status || 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    
-    // Update document status to verified
-    const updatedDocuments = documents.map(doc => {
-      if (doc.documentTypeName === 'aadhar') {
-        return {
-          ...doc,
-          verificationStatus: 'verified',
-          verificationMethod: 'api',
-          verificationDate: new Date().toISOString(),
-          verificationNotes: 'Verified via Aadhar OTP'
-        };
-      }
-      return doc;
-    });
-    
-    // Add verification log entry
-    const verificationLogEntry = {
-      action: 'verify',
-      documentId: document.id,
-      timestamp: new Date().toISOString(),
-      status: 'verified',
-      method: 'api',
-      notes: 'Verified via Aadhar OTP',
-      details: {
-        verification_data: surepassData.data || {}
-      }
-    };
-    
-    const updatedLogs = [...(employeeDoc.employee_docs_log || []), verificationLogEntry];
-    
-    // Update the database
-    const { error: updateError } = await supabase
-      .from('employee_documents')
-      .update({ 
-        documents: updatedDocuments,
-        employee_docs_log: updatedLogs,
-        verification_status: 'verified'
-      })
-      .eq('id', employeeDoc.id);
-    
-    if (updateError) {
-      console.error("Error updating document status:", updateError);
-      return new Response(
-        JSON.stringify({ error: "Failed to update document verification status" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    
-    return new Response(
-      JSON.stringify({ 
-        success: true,
-        message: "Aadhar verification completed successfully"
-      }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  } catch (error) {
-    console.error("Error in handleAadharOtpVerify:", error);
-    return new Response(
-      JSON.stringify({ error: error.message || "Internal server error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-}

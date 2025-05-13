@@ -395,6 +395,7 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
   }
 }
 
+// Update the function that handles listing documents to not apply masking
 async function handleListDocuments(employeeId, supabase, corsHeaders) {
   try {
     // First fetch the documents
@@ -407,24 +408,15 @@ async function handleListDocuments(employeeId, supabase, corsHeaders) {
       throw error;
     }
     
-    // Process documents to display masked document numbers
+    // Process documents without masking document numbers
     const processedDocuments = data.map(doc => {
-      let displayDocNumber = '';
-      
-      // If document has a document number, create a masked version for display
-      if (doc.document_number && doc.document_number.length > 2) {
-        displayDocNumber = doc.document_number.slice(0, -2).replace(/./g, 'X') + doc.document_number.slice(-2);
-      } else {
-        displayDocNumber = doc.document_number || '';
-      }
-      
       // Process each document to match the expected structure
       return {
         id: doc.id,
         employeeId: doc.employee_id,
         documentTypeId: doc.document_type_id,
         documentTypeName: doc.document_type?.name || '',
-        documentNumber: displayDocNumber,
+        documentNumber: doc.document_number || '',
         documentImage: doc.document_url ? `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${doc.document_url}` : '',
         verificationStatus: doc.verification_status,
         documentStatusId: doc.document_status_id,
