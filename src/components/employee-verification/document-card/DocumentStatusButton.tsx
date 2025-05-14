@@ -11,16 +11,19 @@ import {
 import VerificationStatusBadge from '../VerificationStatusBadge';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { useToast } from '@/hooks/use-toast';
+import { VerificationDocument } from '@/types/employeeVerification';
 
 interface DocumentStatusButtonProps {
-  documentId: string;
-  status: 'pending' | 'verified' | 'failed';
+  documentId?: string;
+  document?: VerificationDocument;
+  status?: 'pending' | 'verified' | 'failed';
   documentStatusName?: string;
   onStatusChange?: () => void;
 }
 
 const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({
   documentId,
+  document,
   status,
   documentStatusName,
   onStatusChange,
@@ -29,13 +32,23 @@ const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({
   const { toast } = useToast();
   const [isUpdating, setIsUpdating] = useState(false);
 
+  // Use document props if available, otherwise use direct props
+  const docId = document?.id || documentId;
+  const docStatus = document?.verificationStatus || status;
+  const docStatusName = document?.documentStatusName || documentStatusName;
+
+  if (!docId) {
+    console.error("DocumentStatusButton requires either document or documentId prop");
+    return null;
+  }
+
   const handleVerify = async () => {
     setIsUpdating(true);
     try {
       const verifiedStatus = documentStatuses.find(status => status.name === 'verified');
       
       await verifyDocument(
-        documentId, 
+        docId, 
         'verified',
         'Document manually verified by administrator.',
         verifiedStatus?.id
@@ -66,7 +79,7 @@ const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({
       const rejectedStatus = documentStatuses.find(status => status.name === 'rejected');
       
       await verifyDocument(
-        documentId, 
+        docId, 
         'failed', 
         'Document rejected by administrator.',
         rejectedStatus?.id
@@ -93,8 +106,8 @@ const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({
   };
 
   // If the document is already verified or failed, just show the badge
-  if (status === 'verified' || status === 'failed') {
-    return <VerificationStatusBadge status={status} documentStatusName={documentStatusName || ''} />;
+  if (docStatus === 'verified' || docStatus === 'failed') {
+    return <VerificationStatusBadge status={docStatus} documentStatusName={docStatusName || ''} />;
   }
 
   // For pending documents, show the dropdown
@@ -106,7 +119,7 @@ const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({
           size="sm" 
           className="h-8 gap-1 border border-gray-200 hover:bg-gray-50"
         >
-          <VerificationStatusBadge status="pending" documentStatusName={documentStatusName || ''} />
+          <VerificationStatusBadge status="pending" documentStatusName={docStatusName || ''} />
           <ChevronDown className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>

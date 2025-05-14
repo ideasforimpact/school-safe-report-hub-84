@@ -7,11 +7,13 @@ import { cn } from '@/lib/utils';
 interface VerificationStatusBadgeProps {
   status: 'pending' | 'verified' | 'failed';
   documentStatusName?: string;
+  className?: string;
 }
 
 const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({ 
   status, 
-  documentStatusName
+  documentStatusName,
+  className
 }) => {
   // Default display text based on status
   let displayText = documentStatusName || status.charAt(0).toUpperCase() + status.slice(1);
@@ -19,14 +21,14 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
   switch (status) {
     case 'verified':
       return (
-        <Badge className="bg-green-100 text-green-800 border-green-200">
+        <Badge className={cn("bg-green-100 text-green-800 border-green-200", className)}>
           <CheckCircle className="h-3 w-3 mr-1" />
           {displayText}
         </Badge>
       );
     case 'failed':
       return (
-        <Badge className="bg-red-100 text-red-800 border-red-200">
+        <Badge className={cn("bg-red-100 text-red-800 border-red-200", className)}>
           <AlertCircle className="h-3 w-3 mr-1" />
           {displayText}
         </Badge>
@@ -36,7 +38,8 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
       return (
         <Badge variant="outline" className={cn(
           "bg-amber-50 text-amber-800 border-amber-200",
-          "flex items-center"
+          "flex items-center",
+          className
         )}>
           <Clock className="h-3 w-3 mr-1" />
           {displayText}
