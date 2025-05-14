@@ -18,15 +18,15 @@ const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({ document })
   
   useEffect(() => {
     const getStatusName = async () => {
-      if (document.document_status_id) {
+      if (document.documentStatusId) {
         const statuses = await fetchDocumentStatuses();
-        const status = statuses.find(s => s.id === document.document_status_id);
+        const status = statuses.find(s => s.id === document.documentStatusId);
         setStatusName(status?.name || null);
       }
     };
     
     getStatusName();
-  }, [document.document_status_id, fetchDocumentStatuses]);
+  }, [document.documentStatusId, fetchDocumentStatuses]);
 
   useEffect(() => {
     if (document.employee_docs_log && Array.isArray(document.employee_docs_log)) {
