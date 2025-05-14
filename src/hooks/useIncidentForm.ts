@@ -1,78 +1,118 @@
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useIncidents } from '@/contexts/IncidentContext';
-import { useAuth } from '@/contexts/auth/AuthContext';
-import { useIncidentFormData } from './incident-form/useIncidentFormData';
-import { usePeopleInvolved } from './incident-form/usePeopleInvolved';
-import { useFilesManagement } from './incident-form/useFilesManagement';
-import { useSubcategories } from './incident-form/useSubcategories';
-import { useTicketId } from './incident-form/useTicketId';
-import { useSelectedValues } from './incident-form/useSelectedValues';
+import { Person } from '@/types/incident';
+import { FileItem } from '@/types/fileTypes';
+import { v4 as uuidv4 } from 'uuid';
+import { useSelectedValues } from '@/hooks/useSelectedValues';
+import { getAllCampuses } from '@/services/campus/campusService';
+
+// Initial person object
+const initialPerson: Person = {
+  name: '',
+  role: 'Student' as const,
+  notes: ''
+};
 
 export function useIncidentForm() {
   const { 
-    generateTicketId,
-    categories,
-    subcategoryMappings,
-    locations,
     facilities,
-    users
+    users,
+    generateTicketId
   } = useIncidents();
 
-  const { user } = useAuth();
+  // State for form data
+  const [formData, setFormData] = useState({
+    type: 'Incident',
+    categoryId: '',
+    subcategory: '',
+    description: '',
+    date: new Date().toISOString().split('T')[0], // Today's date in YYYY-MM-DD
+    time: new Date().toTimeString().slice(0, 5), // Current time in HH:MM
+    locationId: '',
+    facilityId: '',
+    location: '', // Additional location details
+    priority: 'Medium' as 'Low' | 'Medium' | 'High' | 'Critical',
+    owner: ''
+  });
 
-  const {
-    formData,
-    setFormData,
-    handleChange,
-    handleSelectChange,
-    handleDateTimeChange
-  } = useIncidentFormData(user);
+  // State for supporting files
+  const [supportingFiles, setSupportingFiles] = useState<FileItem[]>([]);
+  
+  // State for people involved
+  const [peopleInvolved, setPeopleInvolved] = useState<Person[]>([{ ...initialPerson }]);
+  
+  // State for submission status
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Calculate next ticket ID
+  const nextTicketId = generateTicketId();
 
-  const {
-    peopleInvolved,
-    setPeopleInvolved,
-    handlePersonChange,
-    addPerson,
-    removePerson
-  } = usePeopleInvolved();
-
-  const {
-    supportingFiles,
-    handleFilesChange
-  } = useFilesManagement();
-
-  const { availableSubcategories } = useSubcategories(
-    formData.categoryId,
-    subcategoryMappings,
-    setFormData
-  );
-
-  const { nextTicketId } = useTicketId(generateTicketId);
-
-  const { 
-    getSelectedCategory,
-    getSelectedLocation,
-    getSelectedFacility
-  } = useSelectedValues(
+  const { getSelectedLocation, getSelectedFacility } = useSelectedValues(
     formData.categoryId,
     formData.locationId,
     formData.facilityId,
-    categories,
-    locations,
+    [], // Categories will come from context, not used here
+    [], // Locations will be directly fetched from database
     facilities
   );
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  // Form field update handlers
+  const handleChange = (name: string, value: string) => {
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData(prev => ({ ...prev, [name]: value }));
+
+    // Clear subcategory when category changes
+    if (name === 'categoryId') {
+      setFormData(prev => ({ ...prev, subcategory: '' }));
+    }
+
+    // Clear facility when location changes
+    if (name === 'locationId') {
+      setFormData(prev => ({ ...prev, facilityId: '' }));
+    }
+  };
+
+  const handleDateTimeChange = (date: Date | undefined, timeString?: string) => {
+    if (date) {
+      const dateStr = date.toISOString().split('T')[0];
+      setFormData(prev => ({ ...prev, date: dateStr }));
+    }
+    if (timeString) {
+      setFormData(prev => ({ ...prev, time: timeString }));
+    }
+  };
+
+  // People involved handlers
+  const handlePersonChange = (index: number, field: keyof Person, value: string) => {
+    setPeopleInvolved(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+
+  const addPerson = () => {
+    setPeopleInvolved(prev => [...prev, { ...initialPerson, id: uuidv4() }]);
+  };
+
+  const removePerson = (index: number) => {
+    setPeopleInvolved(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // File change handler
+  const handleFilesChange = useCallback((files: FileItem[]) => {
+    setSupportingFiles(files);
+  }, []);
 
   return {
     nextTicketId,
     formData,
-    setFormData,
     supportingFiles,
-    availableSubcategories,
     peopleInvolved,
-    setPeopleInvolved,
     isSubmitting,
     setIsSubmitting,
     handleChange,
@@ -82,11 +122,8 @@ export function useIncidentForm() {
     addPerson,
     removePerson,
     handleFilesChange,
-    getSelectedCategory,
     getSelectedLocation,
     getSelectedFacility,
-    categories,
-    locations,
     facilities,
     users
   };

@@ -8,6 +8,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
+import { Loader2 } from 'lucide-react';
 
 interface LocationOption {
   value: string;
@@ -24,6 +25,7 @@ interface IncidentLocationSectionProps {
   onLocationChange: (value: string) => void;
   onFacilityChange: (value: string) => void;
   errors: Record<string, string>;
+  loading?: boolean;
 }
 
 const IncidentLocationSection: React.FC<IncidentLocationSectionProps> = ({
@@ -36,27 +38,41 @@ const IncidentLocationSection: React.FC<IncidentLocationSectionProps> = ({
   onLocationChange,
   onFacilityChange,
   errors,
+  loading = false
 }) => {
   return (
     <div className="space-y-4">
       <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
         <div className="space-y-2">
           <label htmlFor="locationId" className="text-sm font-medium block">
-            Location <span className="text-red-500">*</span>
+            Campus <span className="text-red-500">*</span>
           </label>
           <Select 
             value={locationId}
             onValueChange={onLocationIdChange}
           >
             <SelectTrigger className={errors.locationId ? "border-red-500" : ""}>
-              <SelectValue placeholder="Select location" />
+              {loading ? (
+                <div className="flex items-center">
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <span>Loading campuses...</span>
+                </div>
+              ) : (
+                <SelectValue placeholder="Select campus" />
+              )}
             </SelectTrigger>
             <SelectContent>
-              {locationOptions.map(option => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
+              {locationOptions.length === 0 ? (
+                <div className="p-2 text-center text-muted-foreground">
+                  No campuses available
+                </div>
+              ) : (
+                locationOptions.map(option => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))
+              )}
             </SelectContent>
           </Select>
           {errors.locationId && (

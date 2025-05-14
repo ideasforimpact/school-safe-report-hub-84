@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useIncidents } from '@/contexts/incident/IncidentContext';
 import { ConfigItem } from '@/contexts/types';
+import { getAllCampuses } from '@/services/campus/campusService';
 
 interface LocationOption {
   value: string;
@@ -14,19 +15,34 @@ interface FacilityItem extends ConfigItem {
 }
 
 export function useLocationOptions(locationId: string) {
-  const { locations, facilities } = useIncidents();
+  const { facilities } = useIncidents();
   const [locationOptions, setLocationOptions] = useState<LocationOption[]>([]);
   const [facilityOptions, setFacilityOptions] = useState<LocationOption[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  // Transform locations to options format
+  // Fetch locations from the campuses table instead of the context
   useEffect(() => {
-    const options = locations.map(location => ({
-      value: location.id,
-      label: location.name
-    }));
+    const fetchLocations = async () => {
+      setLoading(true);
+      try {
+        const campuses = await getAllCampuses();
+        
+        const options = campuses.map(campus => ({
+          value: campus.id,
+          label: campus.name
+        }));
+        
+        setLocationOptions(options);
+      } catch (error) {
+        console.error("Error fetching campuses:", error);
+        setLocationOptions([]);
+      } finally {
+        setLoading(false);
+      }
+    };
     
-    setLocationOptions(options);
-  }, [locations]);
+    fetchLocations();
+  }, []);
 
   // Update facility options when location changes
   useEffect(() => {
@@ -53,6 +69,7 @@ export function useLocationOptions(locationId: string) {
 
   return {
     locationOptions,
-    facilityOptions
+    facilityOptions,
+    loading
   };
 }
