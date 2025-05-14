@@ -1,11 +1,10 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { EmployeeVerificationContextType, EmployeeVerificationProviderProps } from './types';
 import { useEmployeeManagement } from './hooks/useEmployeeManagement';
 import { useDocumentManagement } from './hooks/useDocumentManagement';
 import { DocumentType, DocumentStatus } from '@/types/employeeVerification';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
 const EmployeeVerificationContext = createContext<EmployeeVerificationContextType | undefined>(undefined);
 
@@ -22,6 +21,7 @@ export const EmployeeVerificationProvider: React.FC<EmployeeVerificationProvider
   const [documentStatuses, setDocumentStatuses] = useState<DocumentStatus[]>([]);
   const [documentTypesLoaded, setDocumentTypesLoaded] = useState(false);
   const [documentStatusesLoaded, setDocumentStatusesLoaded] = useState(false);
+  const { toast } = useToast();
   
   const { 
     employees, 
@@ -47,21 +47,16 @@ export const EmployeeVerificationProvider: React.FC<EmployeeVerificationProvider
 
   // Load document statuses when component mounts
   useEffect(() => {
-    if (!documentStatusesLoaded) {
-      fetchDocumentStatuses()
-        .then((statuses) => {
-          console.log('Document statuses loaded:', statuses);
-        })
-        .catch(error => {
-          console.error('Error loading document statuses:', error);
-          toast({
-            title: "Error",
-            description: "Failed to load document statuses",
-            variant: "destructive"
-          });
+    fetchDocumentStatuses()
+      .catch(error => {
+        console.error('Error loading document statuses:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load document statuses",
+          variant: "destructive"
         });
-    }
-  }, [documentStatusesLoaded]);
+      });
+  }, []);
 
   const fetchDocumentTypes = async (): Promise<DocumentType[]> => {
     // If document types have already been loaded, don't fetch again
@@ -98,7 +93,6 @@ export const EmployeeVerificationProvider: React.FC<EmployeeVerificationProvider
 
   const fetchDocumentStatuses = async (): Promise<DocumentStatus[]> => {
     try {
-      // Always fetch fresh data from the server to ensure we have the latest status information
       console.log('Fetching document statuses from the database...');
       
       const { data, error } = await supabase
@@ -107,7 +101,7 @@ export const EmployeeVerificationProvider: React.FC<EmployeeVerificationProvider
       
       if (error) {
         console.error('Error fetching document statuses:', error);
-        return [];
+        return documentStatuses;
       }
       
       const statusesData = data.map(status => ({
@@ -125,7 +119,7 @@ export const EmployeeVerificationProvider: React.FC<EmployeeVerificationProvider
       return statusesData;
     } catch (error) {
       console.error('Failed to fetch document statuses:', error);
-      return [];
+      return documentStatuses;
     }
   };
 

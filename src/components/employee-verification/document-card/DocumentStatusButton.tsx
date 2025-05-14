@@ -6,7 +6,7 @@ import { ShieldCheck, AlertCircle, Clock } from 'lucide-react';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import AadharDetailsDialog from '../documents-list/AadharDetailsDialog';
 import VerificationStatusBadge from '../VerificationStatusBadge';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
 interface DocumentStatusButtonProps {
   document: VerificationDocument;
@@ -15,37 +15,16 @@ interface DocumentStatusButtonProps {
 const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({ document }) => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [aadharDetails, setAadharDetails] = useState<any>(null);
-  const { fetchDocumentStatuses, documentStatuses } = useEmployeeVerification();
+  const { documentStatuses } = useEmployeeVerification();
   const [statusName, setStatusName] = useState<string | null>(null);
   const { toast } = useToast();
   
-  // Fetch document statuses if needed
-  useEffect(() => {
-    const getStatuses = async () => {
-      if (documentStatuses.length === 0) {
-        await fetchDocumentStatuses();
-      }
-    };
-    
-    getStatuses();
-  }, [fetchDocumentStatuses, documentStatuses]);
-  
   // Get status name from statusId
   useEffect(() => {
-    const getStatusName = () => {
-      if (document.documentStatusId) {
-        const status = documentStatuses.find(s => s.id === document.documentStatusId);
-        setStatusName(status?.name || null);
-        console.log('Document status fetched:', { 
-          documentId: document.id,
-          statusId: document.documentStatusId, 
-          statusName: status?.name,
-          allStatuses: documentStatuses.map(s => ({ id: s.id, name: s.name }))
-        });
-      }
-    };
-    
-    getStatusName();
+    if (document.documentStatusId && documentStatuses.length > 0) {
+      const status = documentStatuses.find(s => s.id === document.documentStatusId);
+      setStatusName(status?.name || null);
+    }
   }, [document.documentStatusId, documentStatuses]);
 
   useEffect(() => {
@@ -57,26 +36,7 @@ const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({ document })
       
       if (verificationLog) {
         setAadharDetails(verificationLog);
-        console.log('Found Aadhar verification log:', { 
-          documentId: document.id,
-          hasVerificationLog: true,
-          timestamp: verificationLog.timestamp
-        });
-      } else {
-        console.log('No Aadhar verification log found:', {
-          documentId: document.id,
-          logsCount: document.employee_docs_log.length,
-          logTypes: document.employee_docs_log.map(log => log.action),
-          allLogs: document.employee_docs_log
-        });
       }
-    } else {
-      console.log('No employee_docs_log available for document:', {
-        documentId: document.id,
-        verificationStatus: document.verificationStatus,
-        hasLogs: !!document.employee_docs_log,
-        documentLogValue: document.employee_docs_log
-      });
     }
   }, [document]);
 
@@ -86,47 +46,21 @@ const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({ document })
         statusName === 'governance' && 
         document.employee_docs_log && 
         document.employee_docs_log.length > 0) {
-      console.log('Opening Aadhar details dialog:', {
-        documentId: document.id,
-        hasAadharDetails: !!aadharDetails,
-        allLogs: document.employee_docs_log
-      });
       setDialogOpen(true);
       toast({
         title: "Viewing Aadhar verification details",
         description: "Showing verification information for this document."
       });
-    } else {
-      console.log('Cannot open dialog - missing requirements:', {
-        documentId: document.id,
-        isVerified: document.verificationStatus === 'verified',
-        isGovernance: statusName === 'governance',
-        hasLogs: !!document.employee_docs_log && document.employee_docs_log.length > 0,
-        statusName,
-        allStatuses: documentStatuses.map(s => ({ id: s.id, name: s.name }))
+    } else if (document.verificationStatus === 'verified' && statusName) {
+      toast({
+        title: "Information",
+        description: `This document is verified with status: ${statusName}`
       });
-      
-      if (document.verificationStatus === 'verified' && statusName) {
-        toast({
-          title: "Information",
-          description: `This document is verified with status: ${statusName}`
-        });
-      }
     }
   };
   
   const isGovernanceVerified = document.verificationStatus === 'verified' && statusName === 'governance';
   const hasLogs = !!document.employee_docs_log && document.employee_docs_log.length > 0;
-  
-  console.log('Document status evaluation:', {
-    documentId: document.id,
-    verificationStatus: document.verificationStatus,
-    statusName,
-    isGovernanceVerified,
-    hasAadharDetails: !!aadharDetails,
-    hasLogs,
-    isClickable: isGovernanceVerified && hasLogs
-  });
 
   return (
     <>
