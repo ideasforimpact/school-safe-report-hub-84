@@ -5,42 +5,38 @@ import { CheckCircle, AlertCircle, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface VerificationStatusBadgeProps {
-  status: 'verified' | 'failed' | 'pending';
+  status: 'pending' | 'verified' | 'failed';
   className?: string;
-  isGovernance?: boolean;
   documentStatusName?: string;
-  onClick?: () => void;
 }
 
 const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({ 
   status, 
-  className, 
-  isGovernance = false,
-  documentStatusName,
-  onClick
+  className = '',
+  documentStatusName
 }) => {
-  const getStatusConfig = () => {
+  const getStatusStyle = () => {
     switch (status) {
+      case 'pending':
+        return {
+          icon: Clock,
+          text: 'Pending',
+          variant: 'warning',
+          bgColor: 'bg-yellow-100 text-yellow-800 border-yellow-200'
+        };
       case 'verified':
         return {
           icon: CheckCircle,
-          text: documentStatusName ? `${status}/${documentStatusName}` : 'Verified',
+          text: documentStatusName ? `Verified - ${documentStatusName}` : 'Verified',
           variant: 'success',
           bgColor: 'bg-green-100 text-green-800 border-green-200'
         };
       case 'failed':
         return {
           icon: AlertCircle,
-          text: 'Failed',
+          text: documentStatusName ? `Failed - ${documentStatusName}` : 'Failed',
           variant: 'destructive',
           bgColor: 'bg-red-100 text-red-800 border-red-200'
-        };
-      case 'pending':
-        return {
-          icon: Clock,
-          text: 'Pending',
-          variant: 'default',
-          bgColor: 'bg-yellow-100 text-yellow-800 border-yellow-200'
         };
       default:
         return {
@@ -51,26 +47,16 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
         };
     }
   };
-
-  const { icon: Icon, text, bgColor } = getStatusConfig();
-
-  const isClickable = !!onClick;
+  
+  const { icon: Icon, text, bgColor } = getStatusStyle();
   
   return (
     <Badge 
-      className={cn(
-        'gap-1 px-2 py-1 font-medium text-xs', 
-        bgColor, 
-        className,
-        isClickable && 'cursor-pointer hover:opacity-80 transition-opacity hover:bg-opacity-80'
-      )}
-      onClick={onClick}
+      variant="outline" 
+      className={cn(`flex items-center gap-1 px-2 py-1 font-medium ${bgColor}`, className)}
     >
-      <Icon className="h-3.5 w-3.5" />
-      {text}
-      {isClickable && (
-        <span className="sr-only">(click to view details)</span>
-      )}
+      <Icon className="h-3 w-3" />
+      <span>{text}</span>
     </Badge>
   );
 };
