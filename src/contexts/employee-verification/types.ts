@@ -1,9 +1,26 @@
 
-// Basic types for employee verification context
+import { DocumentType, DocumentStatus, VerificationDocument, Employee } from "@/types/employeeVerification";
+
 export interface EmployeeVerificationContextType {
-  // Define the minimum required interface for the context
-  employees: any[];
-  documents: any[];
+  employees: Employee[];
+  documents: VerificationDocument[];
+  documentTypes: DocumentType[];
+  documentStatuses: DocumentStatus[];
+  addEmployee: (employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Employee>;
+  updateEmployee: (id: string, updates: Partial<Employee>) => Promise<void>;
+  deleteEmployee: (id: string) => Promise<void>;
+  addDocument: (documentData: Omit<VerificationDocument, 'id' | 'createdAt' | 'updatedAt'>) => Promise<VerificationDocument>;
+  verifyDocument: (id: string, status: 'verified' | 'failed', notes?: string) => Promise<void>;
+  deleteDocument: (id: string) => Promise<void>;
+  getEmployeeDocuments: (employeeId: string) => VerificationDocument[];
+  getEmployee: (id: string) => Employee | undefined;
+  fetchEmployees: (clientId?: string) => Promise<Employee[]>;
+  fetchEmployeeDocuments: (employeeId: string) => Promise<VerificationDocument[]>;
+  fetchDocumentTypes: () => Promise<DocumentType[]>;
+  fetchDocumentStatuses: () => Promise<DocumentStatus[]>;
   isLoading: boolean;
-  error: Error | null;
+}
+
+export interface EmployeeVerificationProviderProps {
+  children: React.ReactNode;
 }

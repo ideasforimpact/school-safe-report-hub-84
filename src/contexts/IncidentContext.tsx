@@ -1,8 +1,6 @@
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { toast } from "sonner";
-import { v4 as uuidv4 } from 'uuid';
-import { ContributingFactor } from '@/hooks/config/useContributingFactorsManagement';
 
 // Define all the types that are needed by other files
 export interface Campus {
@@ -91,8 +89,12 @@ export interface ActionItem {
   updatedAt: Date;
 }
 
-// Re-export the ContributingFactor interface from useContributingFactorsManagement
-export type { ContributingFactor };
+export interface ContributingFactor {
+  id: string;
+  category: string;
+  description: string;
+  weight: 'Low' | 'Medium' | 'High';
+}
 
 export interface Incident {
   id: string;
@@ -152,8 +154,6 @@ export interface SubcategoryItem {
   name: string;
 }
 
-export interface CampusItem extends ConfigItem {}
-
 // Export subcategory data
 export const subcategories = [
   'Cuts and Bruises',
@@ -191,7 +191,6 @@ export interface IncidentContextType {
   locations: ConfigItem[];
   facilities: ConfigItem[];
   designations: ConfigItem[];
-  contributingFactors: ContributingFactor[];
   
   // Methods
   addCategory: (name: string) => void;
@@ -237,10 +236,6 @@ export interface IncidentContextType {
   addComment: (incidentId: string, comment: Omit<Comment, 'id' | 'createdAt' | 'updatedAt'>) => void;
   updateComment: (incidentId: string, commentId: string, updates: Partial<Comment>) => void;
   deleteComment: (incidentId: string, commentId: string) => void;
-  
-  addContributingFactor: (name: string, description: string, weight: 'Low' | 'Medium' | 'High') => void;
-  updateContributingFactor: (id: string, name: string, description: string, weight: 'Low' | 'Medium' | 'High') => void;
-  deleteContributingFactor: (id: string) => void;
   
   getRecentActivities: () => Activity[];
   getIncidentActivities: (incidentId: string) => Activity[];
@@ -309,11 +304,6 @@ export const IncidentProvider: React.FC<{ children: ReactNode }> = ({ children }
     { id: 'des1', name: 'Teacher' },
     { id: 'des2', name: 'Principal' }
   ]);
-  const [contributingFactors, setContributingFactors] = useState<ContributingFactor[]>([
-    { id: 'cf1', name: 'Poor lighting conditions', category: 'Environmental', description: 'Poor lighting conditions', weight: 'Medium' },
-    { id: 'cf2', name: 'Lack of supervision', category: 'Behavioral', description: 'Lack of supervision', weight: 'High' },
-    { id: 'cf3', name: 'Inadequate safety protocols', category: 'Procedural', description: 'Inadequate safety protocols', weight: 'Medium' }
-  ]);
 
   // Mock implementations of methods
   const mockFunction = () => {
@@ -335,32 +325,9 @@ export const IncidentProvider: React.FC<{ children: ReactNode }> = ({ children }
   const getIncidentActivities = (incidentId: string) => {
     return [] as Activity[];
   };
-  
-  // Contributing factor methods
-  const addContributingFactor = (name: string, description: string, weight: 'Low' | 'Medium' | 'High') => {
-    const newFactor: ContributingFactor = {
-      id: uuidv4(),
-      name,
-      category: 'General', // Default category
-      description,
-      weight
-    };
-    setContributingFactors(prev => [...prev, newFactor]);
-    return newFactor;
-  };
-
-  const updateContributingFactor = (id: string, name: string, description: string, weight: 'Low' | 'Medium' | 'High') => {
-    setContributingFactors(prev =>
-      prev.map(factor => factor.id === id ? { ...factor, name, description, weight } : factor)
-    );
-  };
-
-  const deleteContributingFactor = (id: string) => {
-    setContributingFactors(prev => prev.filter(factor => factor.id !== id));
-  };
 
   // Context value
-  const value: IncidentContextType = {
+  const value = {
     campuses,
     classes,
     sections,
@@ -371,7 +338,6 @@ export const IncidentProvider: React.FC<{ children: ReactNode }> = ({ children }
     locations,
     facilities,
     designations,
-    contributingFactors,
     
     addCategory: mockFunction,
     updateCategory: mockFunction,
@@ -416,10 +382,6 @@ export const IncidentProvider: React.FC<{ children: ReactNode }> = ({ children }
     addComment: mockFunction,
     updateComment: mockFunction,
     deleteComment: mockFunction,
-    
-    addContributingFactor,
-    updateContributingFactor,
-    deleteContributingFactor,
     
     getRecentActivities,
     getIncidentActivities,

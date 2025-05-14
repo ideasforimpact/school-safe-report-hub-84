@@ -1,6 +1,5 @@
 import { Incident, User, Activity, ActionItem, Comment } from '@/types/incident';
 import { ConfigItem, SubcategoryItem, SectionItem, ClassItem, CampusItem } from '@/contexts/types';
-import { ContributingFactor } from '@/hooks/config/useContributingFactorsManagement';
 
 export interface IncidentContextType {
   incidents: Incident[];
@@ -40,11 +39,6 @@ export interface IncidentContextType {
   addSection: (classId: string, name: string) => void;
   updateSection: (id: string, classId: string, name: string) => void;
   deleteSection: (id: string) => void;
-  // Contributing factors management
-  contributingFactors: ContributingFactor[];
-  addContributingFactor: (name: string, description: string, weight: 'Low' | 'Medium' | 'High') => void;
-  updateContributingFactor: (id: string, name: string, description: string, weight: 'Low' | 'Medium' | 'High') => void;
-  deleteContributingFactor: (id: string) => void;
   // Existing incident operations
   addIncident: (incident: Omit<Incident, 'id' | 'status' | 'createdAt' | 'updatedAt' | 'ticketId'>) => void;
   updateIncident: (id: string, updates: Partial<Incident>) => void;

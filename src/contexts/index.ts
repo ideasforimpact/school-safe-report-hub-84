@@ -1,21 +1,10 @@
 
-// Re-export all contexts so they can be imported from a single location
-
-// Auth Context
-export * from './AuthContext';
-
-// Incident Context
-export * from './IncidentContext';
-
-// Types
-export type { ContributingFactor } from './IncidentContext';
-export type { User } from './types';
-
-// Employee Verification Context
-export * from './employee-verification';
-
-// Assessment Context
-export * from './AssessmentContext';
-
-// Facility Context
+// Export all context hooks from this index file
+export * from './incident/IncidentContext';
+export * from './auth';
 export * from './FacilityContext';
+export * from './ClientContext';
+export * from './StudentContext';
+export * from './assessment/AssessmentContext';
+export * from './employee-verification';
+export * from './feedback/FeedbackContext';

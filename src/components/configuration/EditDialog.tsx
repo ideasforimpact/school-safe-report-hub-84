@@ -1,151 +1,140 @@
 
-import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-export interface EditDialogProps {
-  title: string;
-  description?: string;
-  isOpen?: boolean;
-  onClose: () => void;
-  defaultValue: string;
-  onSave: (value: string) => void;
-  fieldLabel?: string;
-  children?: React.ReactNode;
-  extraField?: {
-    type: string;
-    label: string;
-    options: { value: string; label: string }[];
-    value: string;
-    onChange: (value: string) => void;
-  };
-  value?: string;
-  onChange?: (value: string) => void;
-  onOpenChange?: (open: boolean) => void;
-  triggerButton?: React.ReactNode;
+interface SelectOption {
+  value: string;
+  label: string;
 }
 
-export const EditDialog: React.FC<EditDialogProps> = ({
+interface ExtraField {
+  type: "select";
+  label: string;
+  options: SelectOption[];
+  value: string;
+  onChange: (value: string) => void;
+}
+
+interface EditDialogProps {
+  title: string;
+  description: string;
+  fieldLabel: string;
+  value: string;
+  extraField?: ExtraField;
+  onOpenChange: (open: boolean) => void;
+  onChange: (value: string) => void;
+  onSave: () => void;
+  triggerButton: React.ReactNode;
+}
+
+export const EditDialog = ({
   title,
   description,
-  isOpen,
-  onClose,
-  defaultValue,
-  onSave,
-  fieldLabel = "Name",
-  children,
+  fieldLabel,
+  value,
   extraField,
-  value: propValue,
-  onChange: propOnChange,
   onOpenChange,
-  triggerButton
-}) => {
-  const [value, setValue] = useState(propValue || defaultValue);
-  const [open, setOpen] = useState(isOpen || false);
+  onChange,
+  onSave,
+  triggerButton,
+}: EditDialogProps) => {
+  const [open, setOpen] = useState(false);
+  const [currentValue, setCurrentValue] = useState(value);
 
+  // Update the internal state when the external value changes or when dialog opens
   useEffect(() => {
-    if (propValue !== undefined) {
-      setValue(propValue);
-    } else {
-      setValue(defaultValue);
+    if (open) {
+      setCurrentValue(value);
     }
-  }, [propValue, defaultValue, open]);
+  }, [value, open]);
 
   const handleOpenChange = (newOpen: boolean) => {
     setOpen(newOpen);
-    if (onOpenChange) {
-      onOpenChange(newOpen);
-    }
-    if (!newOpen) {
-      onClose();
-    }
-  };
-
-  const handleValueChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value;
-    setValue(newValue);
-    if (propOnChange) {
-      propOnChange(newValue);
-    }
+    onOpenChange(newOpen);
   };
 
   const handleSave = () => {
-    onSave(value);
-    setOpen(false);
-    if (onClose) {
-      onClose();
+    if (!currentValue.trim()) {
+      return; // Don't save if empty
     }
+    
+    onChange(currentValue); // Update the parent component with the current value
+    onSave(); // Call the save function in the parent component
+    setOpen(false); // Close the dialog after saving
   };
 
-  const dialogContent = (
+  // Handle input change
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setCurrentValue(newValue);
+  };
+
+  return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <div onClick={() => setOpen(true)}>{triggerButton}</div>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
-          {description && <DialogDescription>{description}</DialogDescription>}
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="name" className="text-right">
-              {fieldLabel}
-            </Label>
+          <div className="grid gap-2">
+            <Label htmlFor="name">{fieldLabel}</Label>
             <Input
               id="name"
-              value={value}
-              onChange={handleValueChange}
+              value={currentValue}
+              onChange={handleInputChange}
               className="col-span-3"
             />
           </div>
           
-          {extraField && (
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="extra-field" className="text-right">
-                {extraField.label}
-              </Label>
-              <div className="col-span-3">
-                <Select value={extraField.value} onValueChange={extraField.onChange}>
-                  <SelectTrigger id="extra-field">
-                    <SelectValue placeholder={`Select ${extraField.label}`} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {extraField.options.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+          {extraField && extraField.type === "select" && (
+            <div className="grid gap-2">
+              <Label htmlFor="extraField">{extraField.label}</Label>
+              <Select 
+                value={extraField.value} 
+                onValueChange={extraField.onChange}
+              >
+                <SelectTrigger id="extraField">
+                  <SelectValue placeholder={`Select ${extraField.label}`} />
+                </SelectTrigger>
+                <SelectContent>
+                  {extraField.options.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
-          
-          {children}
         </div>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button type="button" onClick={handleSave}>
-            Save
+          <Button 
+            onClick={handleSave}
+            disabled={!currentValue.trim()}
+          >
+            Save changes
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
-
-  return (
-    <>
-      {triggerButton ? (
-        <div onClick={() => handleOpenChange(true)}>
-          {triggerButton}
-        </div>
-      ) : (
-        dialogContent
-      )}
-      {triggerButton && open && dialogContent}
-    </>
   );
 };

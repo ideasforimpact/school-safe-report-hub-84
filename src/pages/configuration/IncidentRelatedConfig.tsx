@@ -6,10 +6,8 @@ import { CategoryTab } from '@/components/configuration/CategoryTab';
 import { SubcategoryTab } from '@/components/configuration/SubcategoryTab';
 import { LocationTab } from '@/components/configuration/LocationTab';
 import { FacilityTab } from '@/components/configuration/FacilityTab';
-import { ContributingFactorsTab } from '@/components/configuration/ContributingFactorsTab';
 import { ConfigItem, SubcategoryItem, CampusItem } from '@/contexts/types';
-import { MapPin, Building2, BarChart } from 'lucide-react';
-import { ContributingFactor } from '@/hooks/config/useContributingFactorsManagement';
+import { MapPin, Building2 } from 'lucide-react';
 
 interface IncidentRelatedConfigProps {
   activeTab: string;
@@ -30,11 +28,7 @@ interface IncidentRelatedConfigProps {
   addFacility: (name: string) => void;
   updateFacility: (id: string, name: string) => void;
   deleteFacility: (id: string) => void;
-  campuses: CampusItem[]; 
-  contributingFactors: ContributingFactor[];
-  addContributingFactor: (name: string, description: string, weight: 'Low' | 'Medium' | 'High') => void;
-  updateContributingFactor: (id: string, name: string, description: string, weight: 'Low' | 'Medium' | 'High') => void;
-  deleteContributingFactor: (id: string) => void;
+  campuses: CampusItem[]; // Added campuses to the interface
 }
 
 export const IncidentRelatedConfig: React.FC<IncidentRelatedConfigProps> = ({
@@ -56,11 +50,7 @@ export const IncidentRelatedConfig: React.FC<IncidentRelatedConfigProps> = ({
   addFacility,
   updateFacility,
   deleteFacility,
-  campuses,
-  contributingFactors,
-  addContributingFactor,
-  updateContributingFactor,
-  deleteContributingFactor
+  campuses // Added campuses to the destructured props
 }) => {
   // Check if campuses are available to enable tabs
   const hasCampuses = campuses.length > 0;
@@ -79,14 +69,10 @@ export const IncidentRelatedConfig: React.FC<IncidentRelatedConfigProps> = ({
             <TabsTrigger 
               value="facilities" 
               className="flex items-center gap-2"
-              disabled={!hasCampuses}
+              disabled={!hasCampuses} // Disable if no campuses
             >
               <Building2 className="h-4 w-4" />
               <span>Facilities</span>
-            </TabsTrigger>
-            <TabsTrigger value="contributingFactors" className="flex items-center gap-2">
-              <BarChart className="h-4 w-4" />
-              <span>Contributing Factors</span>
             </TabsTrigger>
           </TabsList>
           
@@ -124,16 +110,7 @@ export const IncidentRelatedConfig: React.FC<IncidentRelatedConfigProps> = ({
               addFacility={addFacility}
               updateFacility={updateFacility}
               deleteFacility={deleteFacility}
-              campuses={campuses}
-            />
-          </TabsContent>
-
-          <TabsContent value="contributingFactors">
-            <ContributingFactorsTab 
-              contributingFactors={contributingFactors}
-              addContributingFactor={addContributingFactor}
-              updateContributingFactor={updateContributingFactor}
-              deleteContributingFactor={deleteContributingFactor}
+              campuses={campuses} // Pass campuses to the FacilityTab component
             />
           </TabsContent>
         </Tabs>

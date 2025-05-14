@@ -1,319 +1,126 @@
-import React from 'react';
-import {
-  ClipboardList,
+
+import { 
+  Home, 
   AlertTriangle,
-  BarChart2,
-  Settings,
-  User,
-  FileSpreadsheet,
-  School,
+  Users,
   Building,
-  LineChart,
-  SquareAsterisk,
-  Building2,
-  UserCheck,
+  BarChart,
+  Settings,
+  ClipboardList,
+  FileCheck,
+  MessageSquare,
   Bus,
-  MessageCircle,
-  ThumbsUp,
-  BookOpen,
-  Home,
-  Users
+  FileText,
+  Upload,
+  Database
 } from 'lucide-react';
 import { ModulePermissions } from '@/contexts/auth/types';
 
-interface SidebarItem {
-  title: string;
-  path: string;
-  icon: React.ReactNode;
-  module?: string;
-  subitems?: SidebarItem[];
-  allowed?: boolean;
-  label?: string;
-}
-
-export const sidebarItems: SidebarItem[] = [
+// SaaS Owner (Backoffice) Menu Items
+export const getSaasOwnerItems = () => [
   {
-    title: 'Dashboard',
+    icon: Home,
+    label: 'Dashboard',
     path: '/dashboard',
-    icon: <Home size={18} />,
-  },
-  {
-    title: 'Incident Management',
-    path: '/incidents',
-    icon: <AlertTriangle size={18} />,
-    module: 'incident-management',
-    subitems: [
-      {
-        title: 'Report Incident',
-        path: '/report-incident',
-        icon: <ClipboardList size={18} />,
-      },
-      {
-        title: 'View Incidents',
-        path: '/incidents',
-        icon: <ClipboardList size={18} />,
-      },
-      {
-        title: 'Insights',
-        path: '/insights',
-        icon: <BarChart2 size={18} />,
-      },
-      {
-        title: 'Benchmarking',
-        path: '/benchmarking',
-        icon: <LineChart size={18} />,
-      },
-      {
-        title: 'Configuration',
-        path: '/incident-configuration',
-        icon: <Settings size={18} />,
-      }
-    ],
-  },
-  {
-    title: 'Employee Verification',
-    path: '/employee-verification',
-    icon: <UserCheck size={18} />,
-    module: 'employee-verification',
-    subitems: [
-      {
-        title: 'Dashboard',
-        path: '/employee-verification',
-        icon: <Home size={18} />,
-      },
-      {
-        title: 'Employees',
-        path: '/employee-verification/employees',
-        icon: <Users size={18} />,
-      },
-      {
-        title: 'Upload Document',
-        path: '/employee-verification/upload-document',
-        icon: <ClipboardList size={18} />,
-      },
-    ],
-  },
-  {
-    title: 'Transport Safety',
-    path: '/transport-safety',
-    icon: <Bus size={18} />,
-    module: 'transport-safety',
-    subitems: [
-      {
-        title: 'Dashboard',
-        path: '/transport-safety',
-        icon: <Home size={18} />,
-      },
-      {
-        title: 'Vehicles',
-        path: '/transport-safety/vehicles',
-        icon: <Bus size={18} />,
-      },
-      {
-        title: 'Documents',
-        path: '/transport-safety/documents',
-        icon: <ClipboardList size={18} />,
-      },
-    ],
-  },
-  {
-    title: 'Feedback System',
-    path: '/feedback',
-    icon: <ThumbsUp size={18} />,
-    module: 'feedback',
-    subitems: [
-      {
-        title: 'Dashboard',
-        path: '/feedback',
-        icon: <Home size={18} />,
-      },
-      {
-        title: 'Forms',
-        path: '/feedback/forms',
-        icon: <ClipboardList size={18} />,
-      },
-      {
-        title: 'Responses',
-        path: '/feedback/responses',
-        icon: <MessageCircle size={18} />,
-      },
-    ],
-  },
-  {
-    title: 'Grievances',
-    path: '/grievances',
-    icon: <MessageCircle size={18} />,
-    module: 'grievances',
-    subitems: [
-      {
-        title: 'Dashboard',
-        path: '/grievances',
-        icon: <Home size={18} />,
-      },
-      {
-        title: 'View Grievances',
-        path: '/grievances/list',
-        icon: <MessageCircle size={18} />,
-      },
-      {
-        title: 'Submit Grievance',
-        path: '/grievances/submit',
-        icon: <ClipboardList size={18} />,
-      },
-    ],
-  },
-  {
-    title: 'EduSafe Resources',
-    path: '/edusafe',
-    icon: <BookOpen size={18} />,
-    module: 'edusafe',
-    subitems: [
-      {
-        title: 'Browse Resources',
-        path: '/edusafe',
-        icon: <BookOpen size={18} />,
-      },
-      {
-        title: 'Upload Resource',
-        path: '/edusafe/upload',
-        icon: <ClipboardList size={18} />,
-      },
-    ],
-  },
-  {
-    title: 'Assessment',
-    path: '/assessments',
-    icon: <FileSpreadsheet size={18} />,
-    module: 'assessment',
-    subitems: [
-      {
-        title: 'Overview',
-        path: '/assessments',
-        icon: <Home size={18} />,
-      },
-      {
-        title: 'Templates',
-        path: '/assessments/templates',
-        icon: <ClipboardList size={18} />,
-      },
-      {
-        title: 'Assignments',
-        path: '/assessments/assignments',
-        icon: <SquareAsterisk size={18} />,
-      },
-    ],
-  },
-  {
-    title: 'Configuration',
-    path: '/configuration/educational',
-    icon: <Settings size={18} />,
-    subitems: [
-      {
-        title: 'Educational Structure',
-        path: '/configuration/educational',
-        icon: <School size={18} />,
-      },
-      {
-        title: 'Other Settings',
-        path: '/configuration/other',
-        icon: <Settings size={18} />,
-      },
-    ],
-  },
-  {
-    title: 'Employees',
-    path: '/employees',
-    icon: <User size={18} />,
-  },
-  {
-    title: 'Students',
-    path: '/students',
-    icon: <School size={18} />,
-  },
-  {
-    title: 'Facilities',
-    path: '/facilities',
-    icon: <Building2 size={18} />,
-  },
-  {
-    title: 'Users',
-    path: '/users',
-    icon: <Users size={18} />,
-  },
-  {
-    title: 'Clients',
-    path: '/clients',
-    icon: <Building size={18} />,
-  },
-];
-
-export const adminSidebarItems: SidebarItem[] = [
-  {
-    title: 'Dashboard',
-    path: '/backoffice',
-    icon: <Home size={18} />,
-  },
-  {
-    title: 'Analytics',
-    path: '/backoffice/analytics',
-    icon: <BarChart2 size={18} />,
-  },
-  {
-    title: 'Assessment Templates',
-    path: '/backoffice/assessment-templates',
-    icon: <FileSpreadsheet size={18} />,
-  },
-  {
-    title: 'EduSafe Resources',
-    path: '/backoffice/edusafe-resources',
-    icon: <BookOpen size={18} />,
-  },
-  {
-    title: 'Settings',
-    path: '/backoffice/settings',
-    icon: <Settings size={18} />,
-  },
-];
-
-export const getSaasOwnerItems = () => {
-  return adminSidebarItems.map(item => ({
-    ...item,
     allowed: true,
-    label: item.title,
-    path: item.path
-  }));
-};
+  },
+  {
+    icon: Building,
+    label: 'Clients',
+    path: '/backoffice/clients',
+    allowed: true,
+  },
+  {
+    icon: ClipboardList,
+    label: 'Assessment\nTemplates',
+    path: '/backoffice/assessment-templates',
+    allowed: true,
+  },
+  {
+    icon: FileText,
+    label: 'EduSafe\nResources',
+    path: '/backoffice/edusafe-resources',
+    allowed: true,
+  },
+  {
+    icon: BarChart,
+    label: 'Analytics',
+    path: '/backoffice/analytics',
+    allowed: true,
+  },
+  {
+    icon: Settings,
+    label: 'Settings',
+    path: '/backoffice/settings',
+    allowed: true,
+  },
+];
 
-export const getClientItems = (permissions: ModulePermissions) => {
-  return sidebarItems.map(item => {
-    // Map each menu item with its allowed status based on permissions
-    let allowed = true;
-    
-    // Check module-specific permissions
-    if (item.module === 'incident-management') {
-      allowed = permissions.incidentReporting || permissions.incidentAdmin;
-    }
-    else if (item.module === 'assessment') {
-      allowed = permissions.assessmentUser || permissions.assessmentsAdmin;
-    }
-    else if (item.module === 'employee-verification') {
-      allowed = permissions.employeeVerificationAdmin;
-    }
-    else if (item.module === 'grievances') {
-      allowed = permissions.grievancesAdmin;
-    }
-    else if (item.module === 'transport-safety') {
-      allowed = permissions.transportSafetyAdmin;
-    }
-    else if (item.module === 'edusafe') {
-      allowed = permissions.eduSafeResourceAccess;
-    }
-    
-    return {
-      ...item,
-      allowed,
-      label: item.title,
-      path: item.path
-    };
-  });
-};
+// Client Admin and User Menu Items
+export const getClientItems = (permissions: ModulePermissions) => [
+  {
+    icon: Home,
+    label: 'Dashboard',
+    path: '/dashboard',
+    allowed: true,
+  },
+  {
+    icon: AlertTriangle,
+    label: 'Incidents',
+    path: '/incidents',
+    allowed: true,  // Always show for admins
+  },
+  {
+    icon: ClipboardList,
+    label: 'Assessments',
+    path: '/assessments',
+    allowed: true,  // Always show for admins
+  },
+  {
+    icon: FileCheck,
+    label: 'Employee\nVerification',
+    path: '/employee-verification',
+    allowed: true,  // Always show for admins
+  },
+  {
+    icon: MessageSquare,
+    label: 'Grievances',
+    path: '/grievances',
+    allowed: true,  // Always show for admins
+  },
+  {
+    icon: Bus,
+    label: 'Transport\nSafety',
+    path: '/transport-safety',
+    allowed: true,  // Always show for admins
+  },
+  {
+    icon: FileText,
+    label: 'EduSafe\nResources',
+    path: '/edusafe-resources',
+    allowed: true,  // Always show for admins
+  },
+  {
+    icon: Users,
+    label: 'Users',
+    path: '/users',
+    allowed: true,  // Always show for admins
+  },
+  {
+    icon: Settings,
+    label: 'Settings',
+    path: '/configuration',
+    allowed: true,  // Always show for admins
+  },
+];
+
+// Update your sidebar config to include the employee management link
+// Add this to your sidebar items array:
+/*
+{
+  title: 'Employees',
+  path: '/employees',
+  icon: <Users className="h-5 w-5" />,
+  requiredRole: ['admin', 'saas_owner']
+}
+*/
