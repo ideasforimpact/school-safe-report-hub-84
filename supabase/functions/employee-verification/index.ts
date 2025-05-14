@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 
@@ -366,67 +365,82 @@ serve(async (req) => {
         const data = await response.json();
         console.log("Surepass API verification response:", JSON.stringify(data));
         
-        if (data.success) {
+        // Check both data.success and response structure
+        if (data && data.success === true) {
+          console.log("Successful Aadhar verification detected, updating document status...");
+          
           // Update document status to verified and store API response in logs
           if (documentId) {
-            // First fetch the current logs
-            const { data: document, error: fetchError } = await supabase
-              .from('employee_documents')
-              .select('employee_docs_log')
-              .eq('id', documentId)
-              .single();
-              
-            if (fetchError) {
-              console.error("Error fetching document for logging:", fetchError);
-            } else {
-              // Get existing logs or initialize empty array
-              const existingLogs = document?.employee_docs_log || [];
-              
-              // Create log entry with timestamp and API response
-              const logEntry = {
-                timestamp: new Date().toISOString(),
-                action: "verify_aadhar_otp",
-                response: data
-              };
-              
-              // Update document with verification status and log entry
-              const { error: updateError } = await supabase
+            try {
+              // First fetch the current logs
+              const { data: document, error: fetchError } = await supabase
                 .from('employee_documents')
-                .update({
-                  verification_status: 'verified',
-                  employee_docs_log: Array.isArray(existingLogs) ? [...existingLogs, logEntry] : [logEntry],
-                  document_status_id: governanceStatusId,
-                  updated_at: new Date().toISOString()
-                })
-                .eq('id', documentId);
+                .select('employee_docs_log')
+                .eq('id', documentId)
+                .single();
                 
-              if (updateError) {
-                console.error("Error updating document with verification data:", updateError);
+              if (fetchError) {
+                console.error("Error fetching document for logging:", fetchError);
+              } else {
+                // Get existing logs or initialize empty array
+                const existingLogs = document?.employee_docs_log || [];
+                
+                // Create log entry with timestamp and API response
+                const logEntry = {
+                  timestamp: new Date().toISOString(),
+                  action: "verify_aadhar_otp",
+                  response: data
+                };
+                
+                // Update document with verification status and log entry
+                const { error: updateError } = await supabase
+                  .from('employee_documents')
+                  .update({
+                    verification_status: 'verified',
+                    employee_docs_log: Array.isArray(existingLogs) ? [...existingLogs, logEntry] : [logEntry],
+                    document_status_id: governanceStatusId,
+                    updated_at: new Date().toISOString()
+                  })
+                  .eq('id', documentId);
+                  
+                if (updateError) {
+                  console.error("Error updating document with verification data:", updateError);
+                } else {
+                  console.log("Document updated successfully with verification status.");
+                }
               }
-            }
-            
-            // Get employee ID from the document
-            const { data: documentData } = await supabase
-              .from('employee_documents')
-              .select('employee_id')
-              .eq('id', documentId)
-              .single();
-            
-            if (documentData?.employee_id) {
-              // Check if all employee documents are verified
-              const { data: documents } = await supabase
+              
+              // Get employee ID from the document
+              const { data: documentData } = await supabase
                 .from('employee_documents')
-                .select('verification_status')
-                .eq('employee_id', documentData.employee_id);
+                .select('employee_id')
+                .eq('id', documentId)
+                .single();
               
-              const allVerified = documents?.every(doc => doc.verification_status === 'verified');
-              
-              if (allVerified) {
-                await supabase
-                  .from('employees')
-                  .update({ status: 'verified' })
-                  .eq('id', documentData.employee_id);
+              if (documentData?.employee_id) {
+                console.log("Checking if all employee documents are verified for employee:", documentData.employee_id);
+                
+                // Check if all employee documents are verified
+                const { data: documents } = await supabase
+                  .from('employee_documents')
+                  .select('verification_status')
+                  .eq('employee_id', documentData.employee_id);
+                
+                const allVerified = documents?.every(doc => doc.verification_status === 'verified');
+                
+                if (allVerified) {
+                  console.log("All documents verified, updating employee status to verified.");
+                  
+                  await supabase
+                    .from('employees')
+                    .update({ status: 'verified' })
+                    .eq('id', documentData.employee_id);
+                } else {
+                  console.log("Not all documents are verified yet.");
+                }
               }
+            } catch (updateError) {
+              console.error("Error in database update after verification:", updateError);
             }
           }
           
@@ -438,6 +452,8 @@ serve(async (req) => {
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         } else {
+          console.log("Verification failed, response did not indicate success.", data);
+          
           // Even for failed verification, we should log the response
           if (documentId) {
             // Fetch current logs
