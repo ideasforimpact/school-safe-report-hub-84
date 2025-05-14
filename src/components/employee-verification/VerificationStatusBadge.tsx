@@ -54,18 +54,23 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
 
   const { icon: Icon, text, bgColor } = getStatusConfig();
 
+  const isClickable = !!onClick;
+  
   return (
     <Badge 
       className={cn(
         'gap-1 px-2 py-1 font-medium text-xs', 
         bgColor, 
         className,
-        onClick && 'cursor-pointer hover:opacity-80 transition-opacity'
+        isClickable && 'cursor-pointer hover:opacity-80 transition-opacity hover:bg-opacity-80'
       )}
       onClick={onClick}
     >
       <Icon className="h-3.5 w-3.5" />
       {text}
+      {isClickable && (
+        <span className="sr-only">(click to view details)</span>
+      )}
     </Badge>
   );
 };

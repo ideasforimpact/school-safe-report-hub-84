@@ -15,26 +15,38 @@ interface DocumentStatusButtonProps {
 const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({ document }) => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [aadharDetails, setAadharDetails] = useState<any>(null);
-  const { fetchDocumentStatuses } = useEmployeeVerification();
+  const { fetchDocumentStatuses, documentStatuses } = useEmployeeVerification();
   const [statusName, setStatusName] = useState<string | null>(null);
   const { toast } = useToast();
   
+  // Fetch document statuses if needed
   useEffect(() => {
-    const getStatusName = async () => {
+    const getStatuses = async () => {
+      if (documentStatuses.length === 0) {
+        await fetchDocumentStatuses();
+      }
+    };
+    
+    getStatuses();
+  }, [fetchDocumentStatuses, documentStatuses]);
+  
+  // Get status name from statusId
+  useEffect(() => {
+    const getStatusName = () => {
       if (document.documentStatusId) {
-        const statuses = await fetchDocumentStatuses();
-        const status = statuses.find(s => s.id === document.documentStatusId);
+        const status = documentStatuses.find(s => s.id === document.documentStatusId);
         setStatusName(status?.name || null);
         console.log('Document status fetched:', { 
           documentId: document.id,
           statusId: document.documentStatusId, 
           statusName: status?.name,
+          allStatuses: documentStatuses.map(s => ({ id: s.id, name: s.name }))
         });
       }
     };
     
     getStatusName();
-  }, [document.documentStatusId, fetchDocumentStatuses]);
+  }, [document.documentStatusId, documentStatuses]);
 
   useEffect(() => {
     if (document.employee_docs_log && Array.isArray(document.employee_docs_log)) {
@@ -54,26 +66,30 @@ const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({ document })
         console.log('No Aadhar verification log found:', {
           documentId: document.id,
           logsCount: document.employee_docs_log.length,
-          logTypes: document.employee_docs_log.map(log => log.action)
+          logTypes: document.employee_docs_log.map(log => log.action),
+          allLogs: document.employee_docs_log
         });
       }
     } else {
       console.log('No employee_docs_log available for document:', {
         documentId: document.id,
         verificationStatus: document.verificationStatus,
-        hasLogs: !!document.employee_docs_log
+        hasLogs: !!document.employee_docs_log,
+        documentLogValue: document.employee_docs_log
       });
     }
-  }, [document.employee_docs_log, document.id]);
+  }, [document]);
 
   const handleClick = () => {
-    // Only open dialog if we have governance verification data
+    // Only open dialog if we have verification data
     if (document.verificationStatus === 'verified' && 
         statusName === 'governance' && 
-        aadharDetails) {
+        document.employee_docs_log && 
+        document.employee_docs_log.length > 0) {
       console.log('Opening Aadhar details dialog:', {
         documentId: document.id,
-        hasAadharDetails: !!aadharDetails
+        hasAadharDetails: !!aadharDetails,
+        allLogs: document.employee_docs_log
       });
       setDialogOpen(true);
       toast({
@@ -85,12 +101,22 @@ const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({ document })
         documentId: document.id,
         isVerified: document.verificationStatus === 'verified',
         isGovernance: statusName === 'governance',
-        hasAadharDetails: !!aadharDetails
+        hasLogs: !!document.employee_docs_log && document.employee_docs_log.length > 0,
+        statusName,
+        allStatuses: documentStatuses.map(s => ({ id: s.id, name: s.name }))
       });
+      
+      if (document.verificationStatus === 'verified' && statusName) {
+        toast({
+          title: "Information",
+          description: `This document is verified with status: ${statusName}`
+        });
+      }
     }
   };
   
   const isGovernanceVerified = document.verificationStatus === 'verified' && statusName === 'governance';
+  const hasLogs = !!document.employee_docs_log && document.employee_docs_log.length > 0;
   
   console.log('Document status evaluation:', {
     documentId: document.id,
@@ -98,7 +124,8 @@ const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({ document })
     statusName,
     isGovernanceVerified,
     hasAadharDetails: !!aadharDetails,
-    isClickable: isGovernanceVerified && !!aadharDetails
+    hasLogs,
+    isClickable: isGovernanceVerified && hasLogs
   });
 
   return (
@@ -107,13 +134,13 @@ const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({ document })
         status={document.verificationStatus} 
         isGovernance={isGovernanceVerified}
         documentStatusName={document.verificationStatus === 'verified' && statusName ? statusName : undefined}
-        onClick={isGovernanceVerified && aadharDetails ? handleClick : undefined}
+        onClick={(isGovernanceVerified && hasLogs) ? handleClick : undefined}
       />
 
       <AadharDetailsDialog 
         open={dialogOpen} 
         onOpenChange={setDialogOpen} 
-        aadharDetails={aadharDetails}
+        aadharDetails={aadharDetails || document.employee_docs_log?.[0]}
       />
     </>
   );

@@ -1,10 +1,11 @@
 
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { EmployeeVerificationContextType, EmployeeVerificationProviderProps } from './types';
 import { useEmployeeManagement } from './hooks/useEmployeeManagement';
 import { useDocumentManagement } from './hooks/useDocumentManagement';
 import { DocumentType, DocumentStatus } from '@/types/employeeVerification';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/components/ui/use-toast';
 
 const EmployeeVerificationContext = createContext<EmployeeVerificationContextType | undefined>(undefined);
 
@@ -44,6 +45,24 @@ export const EmployeeVerificationProvider: React.FC<EmployeeVerificationProvider
     return Promise.resolve();
   });
 
+  // Load document statuses when component mounts
+  useEffect(() => {
+    if (!documentStatusesLoaded) {
+      fetchDocumentStatuses()
+        .then((statuses) => {
+          console.log('Document statuses loaded:', statuses);
+        })
+        .catch(error => {
+          console.error('Error loading document statuses:', error);
+          toast({
+            title: "Error",
+            description: "Failed to load document statuses",
+            variant: "destructive"
+          });
+        });
+    }
+  }, [documentStatusesLoaded]);
+
   const fetchDocumentTypes = async (): Promise<DocumentType[]> => {
     // If document types have already been loaded, don't fetch again
     if (documentTypesLoaded && documentTypes.length > 0) {
@@ -78,12 +97,10 @@ export const EmployeeVerificationProvider: React.FC<EmployeeVerificationProvider
   };
 
   const fetchDocumentStatuses = async (): Promise<DocumentStatus[]> => {
-    // If document statuses have already been loaded, don't fetch again
-    if (documentStatusesLoaded && documentStatuses.length > 0) {
-      return documentStatuses;
-    }
-    
     try {
+      // Always fetch fresh data from the server to ensure we have the latest status information
+      console.log('Fetching document statuses from the database...');
+      
       const { data, error } = await supabase
         .from('document_status')
         .select('*');
@@ -100,6 +117,8 @@ export const EmployeeVerificationProvider: React.FC<EmployeeVerificationProvider
         createdAt: status.created_at,
         updatedAt: status.updated_at
       })) as DocumentStatus[];
+      
+      console.log('Document statuses fetched successfully:', statusesData);
       
       setDocumentStatuses(statusesData);
       setDocumentStatusesLoaded(true);

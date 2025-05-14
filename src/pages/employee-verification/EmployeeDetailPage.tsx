@@ -20,17 +20,36 @@ const EmployeeDetailPage = () => {
   const {
     getEmployee,
     fetchEmployeeDocuments,
+    fetchDocumentStatuses,
     isLoading
   } = useEmployeeVerification();
   const { toast } = useToast();
   const employee = getEmployee(employeeId || '');
 
-  // Fetch documents when component mounts
+  // Fetch data when component mounts
   useEffect(() => {
-    if (employeeId) {
-      fetchEmployeeDocuments(employeeId);
-    }
-  }, [employeeId, fetchEmployeeDocuments]);
+    const loadData = async () => {
+      if (employeeId) {
+        try {
+          // Fetch documents and statuses in parallel
+          await Promise.all([
+            fetchEmployeeDocuments(employeeId),
+            fetchDocumentStatuses()
+          ]);
+          console.log('Initial data loading complete for employee:', employeeId);
+        } catch (error) {
+          console.error('Error loading initial data:', error);
+          toast({
+            title: "Data Loading Error",
+            description: "Failed to load some employee data. Please try refreshing.",
+            variant: "destructive"
+          });
+        }
+      }
+    };
+    
+    loadData();
+  }, [employeeId, fetchEmployeeDocuments, fetchDocumentStatuses, toast]);
 
   if (!employee) {
     return <Layout>
@@ -52,15 +71,20 @@ const EmployeeDetailPage = () => {
   const handleRefreshDocuments = async () => {
     if (employeeId) {
       try {
-        await fetchEmployeeDocuments(employeeId);
+        // Fetch both documents and statuses on refresh
+        await Promise.all([
+          fetchEmployeeDocuments(employeeId),
+          fetchDocumentStatuses()
+        ]);
+        
         toast({
-          title: "Documents Refreshed",
-          description: "The document list has been refreshed.",
+          title: "Data Refreshed",
+          description: "Documents and status information have been refreshed.",
         });
       } catch (error) {
         toast({
           title: "Error",
-          description: "Failed to refresh documents.",
+          description: "Failed to refresh data.",
           variant: "destructive",
         });
       }

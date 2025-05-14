@@ -16,6 +16,7 @@ import DocumentDeleteButton from '../document-card/DocumentDeleteButton';
 import VerificationStatusBadge from '../VerificationStatusBadge';
 import { getDocumentIcon, formatDocumentTypeName } from '../utils/documentUtils';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
+import { useToast } from '@/components/ui/use-toast';
 
 interface DocumentsTableProps {
   documents: VerificationDocument[];
@@ -30,7 +31,22 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
   onDownloadDocument,
   onVerifyDocument
 }) => {
-  const { documentStatuses } = useEmployeeVerification();
+  const { documentStatuses, fetchDocumentStatuses } = useEmployeeVerification();
+  const { toast } = useToast();
+  
+  // Fetch document statuses on component mount
+  useEffect(() => {
+    const loadStatuses = async () => {
+      try {
+        const statuses = await fetchDocumentStatuses();
+        console.log('Document statuses fetched in DocumentsTable:', statuses);
+      } catch (error) {
+        console.error('Failed to fetch document statuses:', error);
+      }
+    };
+    
+    loadStatuses();
+  }, [fetchDocumentStatuses]);
   
   // Log document statuses when component mounts or documents change
   useEffect(() => {
@@ -75,6 +91,15 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
         <TableBody>
           {documents.map((doc) => {
             const statusName = getDocumentStatusName(doc);
+            const hasLogs = !!doc.employee_docs_log && doc.employee_docs_log.length > 0;
+            
+            console.log(`Document ${doc.id} details:`, {
+              statusName,
+              hasLogs,
+              logEntries: hasLogs ? doc.employee_docs_log?.length : 0,
+              verificationStatus: doc.verificationStatus
+            });
+            
             return (
               <TableRow key={doc.id}>
                 <TableCell>
@@ -91,6 +116,16 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                   <VerificationStatusBadge 
                     status={doc.verificationStatus} 
                     documentStatusName={statusName}
+                    isGovernance={statusName === 'governance'}
+                    onClick={doc.verificationStatus === 'verified' && statusName === 'governance' && hasLogs ? 
+                      () => {
+                        console.log('Badge clicked for document:', doc.id);
+                        toast({
+                          title: "Viewing document details",
+                          description: "Opening governance verification details"
+                        });
+                      } : undefined
+                    }
                   />
                 </TableCell>
                 <TableCell className="text-right">
