@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 
@@ -20,34 +21,26 @@ serve(async (req) => {
   // Initialize environment variables
   const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-  const surepassApiKey = Deno.env.get("SUREPASS_SANDBOX_API_KEY") || "";
-  const productionApiKey = Deno.env.get("SUREPASS_PRODUCTION_API_KEY") || "";
   const environment = Deno.env.get("ENVIRONMENT") || "development";
+  
+  // Default API configuration based on environment
+  let apiKey, baseUrl;
+  
+  if (environment === "development") {
+    apiKey = Deno.env.get("SUREPASS_SANDBOX_API_KEY") || "";
+    baseUrl = Deno.env.get("SUREPASS_BASE_URL") || "https://sandbox.surepass.io";
+  } else {
+    apiKey = Deno.env.get("SUREPASS_PRODUCTION_API_KEY") || "";
+    baseUrl = Deno.env.get("SUREPASS_PRODUCTION_BASE_URL") || "https://kyc-api.surepass.io";
+  }
 
   // Log environment variables (masking sensitive parts)
   console.log("Environment variables check:");
   console.log(`SUPABASE_URL: ${supabaseUrl ? "✓ Set" : "✗ Not set"}`);
   console.log(`SUPABASE_SERVICE_ROLE_KEY: ${supabaseServiceKey ? "✓ Set" : "✗ Not set"}`);
-  console.log(`SUREPASS_SANDBOX_API_KEY: ${surepassApiKey ? "✓ Set" : "✗ Not set"}`);
-  console.log(`SUREPASS_PRODUCTION_API_KEY: ${productionApiKey ? "✓ Set" : "✗ Not set"}`);
   console.log(`ENVIRONMENT: ${environment}`);
-
-  // For Aadhar verification, always use production
-  const aadharApiKey = productionApiKey || surepassApiKey;
-  const aadharBaseUrl = "https://kyc-api.surepass.io";
-
-  // For other verifications (like PAN), use environment-based configuration
-  const panApiKey = environment === "production" 
-    ? productionApiKey 
-    : surepassApiKey;
-  const panBaseUrl = "https://kyc-api.surepass.io";
-
-  // Log the selected API keys and base URLs
-  console.log("Selected API configurations:");
-  console.log(`Aadhar API Key: ${aadharApiKey ? "Using " + (productionApiKey ? "production key" : "sandbox key as fallback") : "✗ Not set"}`);
-  console.log(`Aadhar Base URL: ${aadharBaseUrl}`);
-  console.log(`PAN API Key: ${panApiKey ? "Using " + (environment === "production" ? "production key" : "sandbox key") : "✗ Not set"}`);
-  console.log(`PAN Base URL: ${panBaseUrl}`);
+  console.log(`Using API Key: ${apiKey ? "✓ Set" : "✗ Not set"} (${environment} environment)`);
+  console.log(`Using Base URL: ${baseUrl}`);
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -57,17 +50,26 @@ serve(async (req) => {
 
     console.log(`Processing ${action} request`);
 
-    if (action === 'requestAadharOtp') {
-      // Always use production for Aadhar
-      return await handleAadharOtpRequest(body, aadharBaseUrl, aadharApiKey, supabase, corsHeaders);
-    }
-    else if (action === 'verifyAadharOtp') {
-      // Always use production for Aadhar
-      return await handleAadharOtpVerify(body, aadharBaseUrl, aadharApiKey, supabase, corsHeaders);
+    // For Aadhar verification, always use production settings regardless of environment
+    if (action === 'requestAadharOtp' || action === 'verifyAadharOtp') {
+      const aadharApiKey = Deno.env.get("SUREPASS_PRODUCTION_API_KEY") || apiKey;
+      const aadharBaseUrl = Deno.env.get("SUREPASS_PRODUCTION_BASE_URL") || "https://kyc-api.surepass.io";
+      
+      console.log("Using production settings for Aadhar verification:");
+      console.log(`Aadhar API Key: ${aadharApiKey ? "✓ Set" : "✗ Not set"}`);
+      console.log(`Aadhar Base URL: ${aadharBaseUrl}`);
+      
+      if (action === 'requestAadharOtp') {
+        return await handleAadharOtpRequest(body, aadharBaseUrl, aadharApiKey, supabase, corsHeaders);
+      }
+      else if (action === 'verifyAadharOtp') {
+        return await handleAadharOtpVerify(body, aadharBaseUrl, aadharApiKey, supabase, corsHeaders);
+      }
     }
     else if (action === 'verifyPanCard') {
-      // Use environment-specific configuration for PAN
-      return await handlePanVerification(body, panBaseUrl, panApiKey, supabase, corsHeaders);
+      // Use environment-specific settings for PAN (already set in apiKey and baseUrl)
+      console.log(`Using ${environment} settings for PAN verification`);
+      return await handlePanVerification(body, baseUrl, apiKey, supabase, corsHeaders);
     }
 
     return new Response(
@@ -318,6 +320,7 @@ async function handlePanVerification(body, baseUrl, apiKey, supabase, corsHeader
   
   try {
     console.log("Verifying PAN card:", documentNumber);
+    console.log(`Using Base URL: ${baseUrl}`);
     
     // Get document to access logs
     const { data: docData, error: docError } = await supabase
