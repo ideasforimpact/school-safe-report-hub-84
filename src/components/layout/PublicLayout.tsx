@@ -11,20 +11,21 @@ interface PublicLayoutProps {
 const PublicLayout = ({ children }: PublicLayoutProps) => {
   return (
     <div className="min-h-screen bg-gray-100">
-      <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="container mx-auto py-4 px-0">
-          <div className="flex items-center">
-            <Link to="/home" className="flex items-center">
-              <ShieldCheck className="h-7 w-7 text-primary ml-0" />
-              <h1 className="text-2xl font-bold text-primary ml-2">Safe School</h1>
-            </Link>
+      <div className="flex flex-col">
+        <div className="bg-white shadow-sm border-b border-gray-200">
+          <div className="container mx-auto py-4 px-6">
+            <div className="flex items-center">
+              <Link to="/home" className="flex items-center">
+                <ShieldCheck className="h-7 w-7 text-primary ml-0" />
+                <h1 className="text-2xl font-bold text-primary ml-2">Safe School</h1>
+              </Link>
+            </div>
           </div>
         </div>
+        <main className="flex-1 px-4 py-6 md:px-8">
+          {children}
+        </main>
       </div>
-      <Header />
-      <main className="px-4 py-6 md:px-8">
-        {children}
-      </main>
     </div>
   );
 };

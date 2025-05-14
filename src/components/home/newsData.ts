@@ -1,32 +1,27 @@
 
-import { NewsItem } from './NewsSection';
-
-export const newsAndAnnouncements: NewsItem[] = [
+export const newsAndAnnouncements = [
   {
     id: 1,
-    title: "New Safety Guidelines for School Transport",
-    source: "National School Safety Council",
-    date: "May 3, 2025",
-    summary: "Updated guidelines on vehicle safety standards and driver requirements for school transport vehicles.",
-    category: "transport",
-    isNew: true,
+    title: "New Safety Protocols Implemented",
+    summary: "Updated safety guidelines for all schools in the district.",
+    date: "2025-05-01",
+    category: "Safety",
+    imageUrl: "/placeholder.svg"
   },
   {
     id: 2,
-    title: "Mandatory Safety Drills Schedule Released",
-    source: "Department of Education",
-    date: "April 28, 2025",
-    summary: "Schools must conduct quarterly safety drills following the new schedule released by the Department of Education.",
-    category: "policy",
-    isNew: false,
+    title: "Training Session: Incident Reporting",
+    summary: "Learn how to effectively report and track incidents in our platform.",
+    date: "2025-05-10",
+    category: "Training",
+    imageUrl: "/placeholder.svg"
   },
   {
     id: 3,
-    title: "Fire Safety Certificate Requirements Updated",
-    source: "Fire Safety Authority",
-    date: "April 15, 2025",
-    summary: "New requirements for obtaining and renewing fire safety certificates for educational institutions.",
-    category: "compliance",
-    isNew: false,
+    title: "System Update: New Features Added",
+    summary: "Explore the latest features in our incident management system.",
+    date: "2025-04-28",
+    category: "Updates",
+    imageUrl: "/placeholder.svg"
   }
 ];
