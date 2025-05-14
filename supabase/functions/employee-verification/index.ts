@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 
@@ -284,9 +285,6 @@ async function handleAadharOtpVerify(body, baseUrl, apiKey, supabase, corsHeader
       })
       .eq('id', documentId);
       
-    // Check and update employee status if needed
-    await updateEmployeeVerificationStatus(docData.employee_id, supabase);
-    
     return new Response(
       JSON.stringify({ 
         success: true, 
@@ -464,9 +462,6 @@ async function handlePanVerification(body, baseUrl, apiKey, supabase, corsHeader
       })
       .eq('id', documentId);
       
-    // Check and update employee status if needed
-    await updateEmployeeVerificationStatus(docData.employee_id, supabase);
-    
     return new Response(
       JSON.stringify({ 
         success: true, 
@@ -543,41 +538,5 @@ async function logErrorToDocument(supabase, documentId, docData, errorDetails) {
       
   } catch (error) {
     console.error("Failed to log error to document:", error);
-  }
-}
-
-async function updateEmployeeVerificationStatus(employeeId, supabase) {
-  try {
-    // Get all documents for this employee
-    const { data: docs, error: docsError } = await supabase
-      .from('employee_documents')
-      .select('verification_status')
-      .eq('employee_id', employeeId);
-      
-    if (docsError) {
-      throw new Error("Failed to retrieve employee documents: " + docsError.message);
-    }
-    
-    // Determine overall status
-    let overallStatus = 'pending';
-    const allVerified = docs.every(doc => doc.verification_status === 'verified');
-    const anyFailed = docs.some(doc => doc.verification_status === 'failed');
-    
-    if (anyFailed) {
-      overallStatus = 'failed';
-    } else if (allVerified) {
-      overallStatus = 'verified';
-    }
-    
-    // Update employee status
-    await supabase
-      .from('employees')
-      .update({ status: overallStatus })
-      .eq('id', employeeId);
-      
-    return overallStatus;
-  } catch (error) {
-    console.error("Error updating employee verification status:", error);
-    throw error;
   }
 }
