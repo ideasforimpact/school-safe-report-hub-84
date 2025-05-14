@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 
@@ -23,16 +22,12 @@ serve(async (req) => {
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
   const environment = Deno.env.get("ENVIRONMENT") || "development";
   
-  // Default API configuration based on environment
+  // Default API configuration based on environment - using fixed values as requested
   let apiKey, baseUrl;
   
-  if (environment === "development") {
-    apiKey = Deno.env.get("SUREPASS_SANDBOX_API_KEY") || "";
-    baseUrl = Deno.env.get("SUREPASS_BASE_URL") || "https://sandbox.surepass.io";
-  } else {
-    apiKey = Deno.env.get("SUREPASS_PRODUCTION_API_KEY") || "";
-    baseUrl = Deno.env.get("SUREPASS_PRODUCTION_BASE_URL") || "https://kyc-api.surepass.io";
-  }
+  // Using fixed values for baseUrl and apiKey as requested by the user
+  baseUrl = "https://kyc-api.surepass.io";
+  apiKey = Deno.env.get("SUREPASS_PRODUCTION_API_KEY") || "";
 
   // Log environment variables (masking sensitive parts)
   console.log("Environment variables check:");
