@@ -8,16 +8,12 @@ interface VerificationStatusBadgeProps {
   status: 'pending' | 'verified' | 'failed';
   className?: string;
   documentStatusName?: string;
-  isGovernance?: boolean;
-  onClick?: () => void;
 }
 
 const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({ 
   status, 
   className = '',
-  documentStatusName,
-  isGovernance = false,
-  onClick
+  documentStatusName
 }) => {
   const getStatusStyle = () => {
     switch (status) {
@@ -31,8 +27,7 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
       case 'verified':
         return {
           icon: CheckCircle,
-          text: isGovernance ? 'Verified - Governance' : 
-                documentStatusName ? `Verified - ${documentStatusName}` : 'Verified',
+          text: documentStatusName ? `Verified - ${documentStatusName}` : 'Verified',
           variant: 'success',
           bgColor: 'bg-green-100 text-green-800 border-green-200'
         };
@@ -58,8 +53,7 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
   return (
     <Badge 
       variant="outline" 
-      className={cn(`flex items-center gap-1 px-2 py-1 font-medium ${bgColor} cursor-${onClick ? 'pointer' : 'default'}`, className)}
-      onClick={onClick}
+      className={cn(`flex items-center gap-1 px-2 py-1 font-medium ${bgColor}`, className)}
     >
       <Icon className="h-3 w-3" />
       <span>{text}</span>
