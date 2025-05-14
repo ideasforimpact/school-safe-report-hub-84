@@ -21,18 +21,10 @@ serve(async (req) => {
   // Initialize environment variables
   const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-  const surepassApiKey = Deno.env.get("SUREPASS_SANDBOX_API_KEY") || "";
-  const environment = Deno.env.get("ENVIRONMENT") || "development";
-
-  // Determine which API key to use based on environment
-  const apiKey = environment === "production" 
-    ? Deno.env.get("SUREPASS_PRODUCTION_API_KEY") || surepassApiKey
-    : surepassApiKey;
-
-  // Use the appropriate base URL
-  const baseUrl = environment === "production" 
-    ? Deno.env.get("SUREPASS_BASE_URL") || "https://kyc-api.surepass.io"
-    : "https://kyc-api.surepass.io"; // Use sandbox for development
+  
+  // Use production API key and base URL directly
+  const surepassApiKey = Deno.env.get("SUREPASS_PRODUCTION_API_KEY") || "";
+  const baseUrl = "https://kyc-api.surepass.io";
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -43,13 +35,13 @@ serve(async (req) => {
     console.log(`Processing ${action} request`);
 
     if (action === 'requestAadharOtp') {
-      return await handleAadharOtpRequest(body, baseUrl, apiKey, supabase, corsHeaders);
+      return await handleAadharOtpRequest(body, baseUrl, surepassApiKey, supabase, corsHeaders);
     }
     else if (action === 'verifyAadharOtp') {
-      return await handleAadharOtpVerify(body, baseUrl, apiKey, supabase, corsHeaders);
+      return await handleAadharOtpVerify(body, baseUrl, surepassApiKey, supabase, corsHeaders);
     }
     else if (action === 'verifyPanCard') {
-      return await handlePanVerification(body, baseUrl, apiKey, supabase, corsHeaders);
+      return await handlePanVerification(body, baseUrl, surepassApiKey, supabase, corsHeaders);
     }
 
     return new Response(
@@ -312,6 +304,19 @@ async function handlePanVerification(body, baseUrl, apiKey, supabase, corsHeader
       throw new Error("Failed to retrieve document: " + docError.message);
     }
     
+    // Get the governance document status ID for successful verification first
+    const { data: governanceStatus, error: statusError } = await supabase
+      .from('document_status')
+      .select('id')
+      .eq('name', 'governance')
+      .maybeSingle();
+      
+    if (statusError) {
+      throw new Error("Failed to get document status: " + statusError.message);
+    }
+    
+    const governanceStatusId = governanceStatus?.id;
+    
     // Call the Surepass API to verify PAN
     const response = await fetch(`${baseUrl}/api/v1/pan/pan-comprehensive`, {
       method: 'POST',
@@ -351,19 +356,6 @@ async function handlePanVerification(body, baseUrl, apiKey, supabase, corsHeader
       );
     }
     
-    // Get the governance document status ID for successful verification
-    const { data: governanceStatus, error: statusError } = await supabase
-      .from('document_status')
-      .select('id')
-      .eq('name', 'governance')
-      .maybeSingle();
-      
-    if (statusError) {
-      throw new Error("Failed to get document status: " + statusError.message);
-    }
-    
-    const governanceStatusId = governanceStatus?.id;
-    
     // Extract relevant data
     const verificationData = responseData.data || {};
     
@@ -380,7 +372,7 @@ async function handlePanVerification(body, baseUrl, apiKey, supabase, corsHeader
             action: "pan_verification_success",
             response: { 
               method: "api",
-              data: verificationData
+              data: responseData
             }
           }
         }),
