@@ -219,15 +219,56 @@ serve(async (req) => {
           );
         }
         
+        // Mock verification response for development
+        const mockResponse = {
+          success: true,
+          message: "Development mode: OTP verification successful",
+          data: {
+            full_name: "Test User",
+            aadhaar_number: "XXXX1234",
+            dob: "1990-01-01",
+            gender: "M",
+            address: {
+              country: "India",
+              state: "Test State",
+              district: "Test District"
+            }
+          }
+        };
+        
         if (documentId) {
-          await supabase
+          // First store the verification response in employee_docs_log
+          const { data: document, error: fetchError } = await supabase
             .from('employee_documents')
-            .update({
-              verification_status: 'verified',
-              verification_method: 'api',
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', documentId);
+            .select('employee_docs_log')
+            .eq('id', documentId)
+            .single();
+            
+          if (fetchError) {
+            console.error("Error fetching document:", fetchError);
+          } else {
+            // Get existing logs or initialize empty array
+            const existingLogs = document?.employee_docs_log || [];
+            
+            // Create log entry with timestamp and response data
+            const logEntry = {
+              timestamp: new Date().toISOString(),
+              action: "verify_aadhar_otp",
+              response: mockResponse
+            };
+            
+            // Update document with log entry and verification status
+            await supabase
+              .from('employee_documents')
+              .update({
+                verification_status: 'verified',
+                verification_method: 'api',
+                employee_docs_log: [...existingLogs, logEntry],
+                document_status_id: 'e51f334e-1a5e-4afc-a6d2-5595c3294e0b', // Governance status ID
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', documentId);
+          }
           
           // Get employee ID from the document
           const { data: document } = await supabase
@@ -296,16 +337,44 @@ serve(async (req) => {
         console.log("Surepass API verification response:", JSON.stringify(data));
         
         if (data.success) {
-          // Update document status to verified
+          // Update document status to verified and store API response in logs
           if (documentId) {
-            await supabase
+            // First fetch the current logs
+            const { data: document, error: fetchError } = await supabase
               .from('employee_documents')
-              .update({
-                verification_status: 'verified',
-                verification_method: 'api',
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', documentId);
+              .select('employee_docs_log')
+              .eq('id', documentId)
+              .single();
+              
+            if (fetchError) {
+              console.error("Error fetching document for logging:", fetchError);
+            } else {
+              // Get existing logs or initialize empty array
+              const existingLogs = document?.employee_docs_log || [];
+              
+              // Create log entry with timestamp and API response
+              const logEntry = {
+                timestamp: new Date().toISOString(),
+                action: "verify_aadhar_otp",
+                response: data
+              };
+              
+              // Update document with verification status and log entry
+              const { error: updateError } = await supabase
+                .from('employee_documents')
+                .update({
+                  verification_status: 'verified',
+                  verification_method: 'api',
+                  employee_docs_log: [...existingLogs, logEntry],
+                  document_status_id: 'e51f334e-1a5e-4afc-a6d2-5595c3294e0b', // Governance status ID
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', documentId);
+                
+              if (updateError) {
+                console.error("Error updating document with verification data:", updateError);
+              }
+            }
             
             // Get employee ID from the document
             const { data: document } = await supabase
@@ -340,6 +409,35 @@ serve(async (req) => {
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         } else {
+          // Even for failed verification, we should log the response
+          if (documentId) {
+            // Fetch current logs
+            const { data: document } = await supabase
+              .from('employee_documents')
+              .select('employee_docs_log')
+              .eq('id', documentId)
+              .single();
+              
+            if (document) {
+              const existingLogs = document.employee_docs_log || [];
+              
+              // Log failed verification attempt
+              const logEntry = {
+                timestamp: new Date().toISOString(),
+                action: "verify_aadhar_otp_failed",
+                response: data
+              };
+              
+              await supabase
+                .from('employee_documents')
+                .update({
+                  employee_docs_log: [...existingLogs, logEntry],
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', documentId);
+            }
+          }
+          
           return new Response(
             JSON.stringify({ 
               success: false, 
