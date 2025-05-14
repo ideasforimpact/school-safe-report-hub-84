@@ -34,6 +34,7 @@ import Insights from '@/pages/Insights';
 import FacilityManagement from '@/pages/FacilityManagement';
 import AssessmentsPage from '@/pages/AssessmentsPage';
 import AssessmentResponsePage from '@/pages/AssessmentResponsePage';
+import IncidentConfiguration from '@/pages/IncidentConfiguration';
 
 // Employee Verification Pages
 import EmployeeVerificationPage from '@/pages/employee-verification/EmployeeVerificationPage';
@@ -68,6 +69,7 @@ function App() {
                       <Route path="/other-configuration" element={<OtherConfiguration />} />
                       <Route path="/facilities-configuration" element={<FacilityManagement />} />
                       <Route path="/facility-management" element={<FacilityManagement />} />
+                      <Route path="/incident-configuration" element={<IncidentConfiguration />} />
 
                       {/* Incident routes */}
                       <Route path="/incidents" element={<IncidentsList />} />
