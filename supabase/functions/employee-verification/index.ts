@@ -352,9 +352,30 @@ async function handlePanVerification(body, baseUrl, apiKey, supabase, corsHeader
     
     // Check if response is OK (200-299)
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error("API Error response body:", errorText);
-      throw new Error(`API returned status ${response.status}: ${errorText}`);
+      const contentType = response.headers.get('content-type');
+      let errorText;
+      
+      if (contentType && contentType.includes('application/json')) {
+        const errorData = await response.json();
+        errorText = JSON.stringify(errorData);
+      } else {
+        errorText = await response.text();
+        // If error response contains HTML, extract a more user-friendly message
+        if (errorText.includes('<html>')) {
+          errorText = `Server returned HTML response instead of JSON. Status: ${response.status}`;
+        }
+      }
+      
+      console.error("API Error response:", errorText);
+      
+      // Log the error to the document logs
+      await logErrorToDocument(supabase, documentId, docData, {
+        action: "pan_verification_api_error",
+        status: response.status,
+        error: errorText.substring(0, 500) // Limit the size of the error text
+      });
+      
+      throw new Error(`API returned status ${response.status}: ${errorText.substring(0, 100)}...`);
     }
     
     // Handle the response body
@@ -366,6 +387,14 @@ async function handlePanVerification(body, baseUrl, apiKey, supabase, corsHeader
     } else {
       const textResponse = await response.text();
       console.error("Received non-JSON response:", textResponse);
+      
+      // Log the non-JSON response to document logs
+      await logErrorToDocument(supabase, documentId, docData, {
+        action: "pan_verification_invalid_response",
+        error: "Received non-JSON response",
+        response: textResponse.substring(0, 500) // Limit the size
+      });
+      
       throw new Error("API returned non-JSON response");
     }
     
@@ -491,9 +520,34 @@ async function handlePanVerification(body, baseUrl, apiKey, supabase, corsHeader
     }
     
     return new Response(
-      JSON.stringify({ error: err.message || "Failed to verify PAN" }),
+      JSON.stringify({ 
+        error: err.message || "Failed to verify PAN",
+        details: "There was a problem with the verification service. Please try again later."
+      }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
+  }
+}
+
+async function logErrorToDocument(supabase, documentId, docData, errorDetails) {
+  try {
+    if (!documentId) return;
+    
+    await supabase
+      .from('employee_documents')
+      .update({ 
+        employee_docs_log: supabase.rpc('append_to_json_array', { 
+          arr: docData.employee_docs_log || [], 
+          new_element: {
+            timestamp: new Date().toISOString(),
+            ...errorDetails
+          }
+        })
+      })
+      .eq('id', documentId);
+      
+  } catch (error) {
+    console.error("Failed to log error to document:", error);
   }
 }
 
