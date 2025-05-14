@@ -6,6 +6,7 @@ import { useIncidents } from '@/contexts/IncidentContext';
 import { IncidentRelatedConfig } from './configuration/IncidentRelatedConfig';
 import { toast } from '@/components/ui/sonner';
 import { ConfigItem } from '@/contexts/types';
+import { ContributingFactor } from '@/hooks/config/useContributingFactorsManagement';
 
 const IncidentConfiguration = () => {
   const [searchParams] = useSearchParams();
@@ -28,7 +29,11 @@ const IncidentConfiguration = () => {
     addFacility: contextAddFacility,
     deleteFacility: contextDeleteFacility,
     updateFacility: contextUpdateFacility,
-    campuses: contextCampuses // Get campuses from context
+    campuses: contextCampuses,
+    contributingFactors: contextContributingFactors,
+    addContributingFactor: contextAddContributingFactor,
+    updateContributingFactor: contextUpdateContributingFactor,
+    deleteContributingFactor: contextDeleteContributingFactor
   } = useIncidents();
 
   // Local state to track changes
@@ -36,7 +41,8 @@ const IncidentConfiguration = () => {
   const [subcategoryMappings, setSubcategoryMappings] = useState(contextSubcategories);
   const [locations, setLocations] = useState(contextLocations);
   const [facilities, setFacilities] = useState(contextFacilities);
-  const [campuses, setCampuses] = useState(contextCampuses); // Add state for campuses
+  const [campuses, setCampuses] = useState(contextCampuses);
+  const [contributingFactors, setContributingFactors] = useState<ContributingFactor[]>(contextContributingFactors || []);
 
   // Update local state when context changes
   useEffect(() => {
@@ -44,8 +50,9 @@ const IncidentConfiguration = () => {
     setSubcategoryMappings(contextSubcategories);
     setLocations(contextLocations);
     setFacilities(contextFacilities);
-    setCampuses(contextCampuses); // Update campuses state when context changes
-  }, [contextCategories, contextSubcategories, contextLocations, contextFacilities, contextCampuses]);
+    setCampuses(contextCampuses);
+    setContributingFactors(contextContributingFactors || []);
+  }, [contextCategories, contextSubcategories, contextLocations, contextFacilities, contextCampuses, contextContributingFactors]);
 
   // Set initial tab based on URL parameter when component mounts
   useEffect(() => {
@@ -175,13 +182,43 @@ const IncidentConfiguration = () => {
     }
   };
 
+  const handleAddContributingFactor = (name: string, description: string, weight: 'Low' | 'Medium' | 'High') => {
+    try {
+      contextAddContributingFactor(name, description, weight);
+      toast.success("Contributing factor added successfully");
+    } catch (error) {
+      console.error("Error adding contributing factor:", error);
+      toast.error("Failed to add contributing factor");
+    }
+  };
+
+  const handleUpdateContributingFactor = (id: string, name: string, description: string, weight: 'Low' | 'Medium' | 'High') => {
+    try {
+      contextUpdateContributingFactor(id, name, description, weight);
+      toast.success("Contributing factor updated successfully");
+    } catch (error) {
+      console.error("Error updating contributing factor:", error);
+      toast.error("Failed to update contributing factor");
+    }
+  };
+
+  const handleDeleteContributingFactor = (id: string) => {
+    try {
+      contextDeleteContributingFactor(id);
+      toast.success("Contributing factor deleted successfully");
+    } catch (error) {
+      console.error("Error deleting contributing factor:", error);
+      toast.error("Failed to delete contributing factor");
+    }
+  };
+
   return (
     <Layout>
       <div className="space-y-6 max-w-6xl mx-auto p-4">
         <div>
           <h1 className="text-2xl font-bold">Incident Related Configuration</h1>
           <p className="text-gray-600 mt-1">
-            Manage incident categories, subcategories, locations, and facilities
+            Manage incident categories, subcategories, locations, facilities, and contributing factors
           </p>
         </div>
 
@@ -204,7 +241,11 @@ const IncidentConfiguration = () => {
           addFacility={handleAddFacility}
           updateFacility={handleUpdateFacility}
           deleteFacility={handleDeleteFacility}
-          campuses={campuses} // Pass campuses to the IncidentRelatedConfig component
+          campuses={campuses}
+          contributingFactors={contributingFactors}
+          addContributingFactor={handleAddContributingFactor}
+          updateContributingFactor={handleUpdateContributingFactor}
+          deleteContributingFactor={handleDeleteContributingFactor}
         />
       </div>
     </Layout>
