@@ -1,8 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
 import { VerificationDocument } from '@/types/employeeVerification';
-import { ShieldCheck, AlertCircle, Clock } from 'lucide-react';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import AadharDetailsDialog from '../documents-list/AadharDetailsDialog';
 import VerificationStatusBadge from '../VerificationStatusBadge';

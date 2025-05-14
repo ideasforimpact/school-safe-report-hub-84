@@ -35,8 +35,10 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument
       }
     };
     
-    loadDocuments();
-  }, [employeeId, fetchEmployeeDocuments]);
+    if (!initialLoadComplete) {
+      loadDocuments();
+    }
+  }, [employeeId, fetchEmployeeDocuments, initialLoadComplete]);
 
   const handleViewDocument = (documentImage: string) => {
     window.open(documentImage, '_blank');

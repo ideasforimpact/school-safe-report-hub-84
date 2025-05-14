@@ -20,7 +20,6 @@ const EmployeeDetailPage = () => {
   const {
     getEmployee,
     fetchEmployeeDocuments,
-    fetchDocumentStatuses,
     isLoading
   } = useEmployeeVerification();
   const { toast } = useToast();
@@ -31,11 +30,7 @@ const EmployeeDetailPage = () => {
     const loadData = async () => {
       if (employeeId) {
         try {
-          // Fetch documents and statuses in parallel
-          await Promise.all([
-            fetchEmployeeDocuments(employeeId),
-            fetchDocumentStatuses()
-          ]);
+          await fetchEmployeeDocuments(employeeId);
           console.log('Initial data loading complete for employee:', employeeId);
         } catch (error) {
           console.error('Error loading initial data:', error);
@@ -49,7 +44,7 @@ const EmployeeDetailPage = () => {
     };
     
     loadData();
-  }, [employeeId, fetchEmployeeDocuments, fetchDocumentStatuses, toast]);
+  }, [employeeId, fetchEmployeeDocuments, toast]);
 
   if (!employee) {
     return <Layout>
@@ -71,15 +66,11 @@ const EmployeeDetailPage = () => {
   const handleRefreshDocuments = async () => {
     if (employeeId) {
       try {
-        // Fetch both documents and statuses on refresh
-        await Promise.all([
-          fetchEmployeeDocuments(employeeId),
-          fetchDocumentStatuses()
-        ]);
+        await fetchEmployeeDocuments(employeeId);
         
         toast({
           title: "Data Refreshed",
-          description: "Documents and status information have been refreshed.",
+          description: "Documents have been refreshed.",
         });
       } catch (error) {
         toast({
