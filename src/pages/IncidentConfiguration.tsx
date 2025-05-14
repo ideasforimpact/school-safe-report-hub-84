@@ -5,24 +5,10 @@ import Layout from '@/components/layout/Layout';
 import { IncidentRelatedConfig } from './configuration/IncidentRelatedConfig';
 import { toast } from 'sonner';
 import { useIncidentCategories } from '@/hooks/useIncidentCategories';
-import { useIncidents } from '@/contexts/IncidentContext';
 
 const IncidentConfiguration = () => {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('categories');
-
-  // Load context for other data
-  const { 
-    locations: contextLocations,
-    addLocation: contextAddLocation,
-    deleteLocation: contextDeleteLocation,
-    updateLocation: contextUpdateLocation,
-    facilities: contextFacilities,
-    addFacility: contextAddFacility,
-    deleteFacility: contextDeleteFacility,
-    updateFacility: contextUpdateFacility,
-    campuses: contextCampuses
-  } = useIncidents();
 
   // Use the custom hook for categories and subcategories
   const {
@@ -37,18 +23,6 @@ const IncidentConfiguration = () => {
     deleteSubcategory
   } = useIncidentCategories();
 
-  // Local state for locations and facilities
-  const [locations, setLocations] = useState(contextLocations);
-  const [facilities, setFacilities] = useState(contextFacilities);
-  const [campuses, setCampuses] = useState(contextCampuses);
-
-  // Update local state when context changes
-  useEffect(() => {
-    setLocations(contextLocations);
-    setFacilities(contextFacilities);
-    setCampuses(contextCampuses);
-  }, [contextLocations, contextFacilities, contextCampuses]);
-
   // Set initial tab based on URL parameter when component mounts
   useEffect(() => {
     const tab = searchParams.get('tab');
@@ -57,68 +31,7 @@ const IncidentConfiguration = () => {
     }
   }, [searchParams]);
 
-  // Handle operations on locations and facilities using context
-  const handleAddLocation = (name: string) => {
-    try {
-      contextAddLocation(name);
-      toast.success("Location added successfully");
-    } catch (error) {
-      console.error("Error adding location:", error);
-      toast.error("Failed to add location");
-    }
-  };
-
-  const handleUpdateLocation = (id: string, name: string) => {
-    try {
-      contextUpdateLocation(id, name);
-      toast.success("Location updated successfully");
-    } catch (error) {
-      console.error("Error updating location:", error);
-      toast.error("Failed to update location");
-    }
-  };
-
-  const handleDeleteLocation = (id: string) => {
-    try {
-      contextDeleteLocation(id);
-      toast.success("Location deleted successfully");
-    } catch (error) {
-      console.error("Error deleting location:", error);
-      toast.error("Failed to delete location");
-    }
-  };
-
-  const handleAddFacility = (name: string) => {
-    try {
-      contextAddFacility(name);
-      toast.success("Facility added successfully");
-    } catch (error) {
-      console.error("Error adding facility:", error);
-      toast.error("Failed to add facility");
-    }
-  };
-
-  const handleUpdateFacility = (id: string, name: string) => {
-    try {
-      contextUpdateFacility(id, name);
-      toast.success("Facility updated successfully");
-    } catch (error) {
-      console.error("Error updating facility:", error);
-      toast.error("Failed to update facility");
-    }
-  };
-
-  const handleDeleteFacility = (id: string) => {
-    try {
-      contextDeleteFacility(id);
-      toast.success("Facility deleted successfully");
-    } catch (error) {
-      console.error("Error deleting facility:", error);
-      toast.error("Failed to delete facility");
-    }
-  };
-
-  // Handle category and subcategory operations using our new custom hook
+  // Handle category and subcategory operations using our custom hook
   const handleAddCategory = async (name: string) => {
     try {
       await addCategory(name);
@@ -187,7 +100,7 @@ const IncidentConfiguration = () => {
         <div>
           <h1 className="text-2xl font-bold">Incident Related Configuration</h1>
           <p className="text-gray-600 mt-1">
-            Manage incident categories, subcategories, locations, and facilities
+            Manage incident categories and subcategories
           </p>
         </div>
 
@@ -202,15 +115,6 @@ const IncidentConfiguration = () => {
           addSubcategory={handleAddSubcategory}
           updateSubcategory={handleUpdateSubcategory}
           deleteSubcategory={handleDeleteSubcategory}
-          locations={locations}
-          addLocation={handleAddLocation}
-          updateLocation={handleUpdateLocation}
-          deleteLocation={handleDeleteLocation}
-          facilities={facilities}
-          addFacility={handleAddFacility}
-          updateFacility={handleUpdateFacility}
-          deleteFacility={handleDeleteFacility}
-          campuses={campuses}
         />
       </div>
     </Layout>
