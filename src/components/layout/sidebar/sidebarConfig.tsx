@@ -1,4 +1,3 @@
-
 import React from 'react';
 import {
   ClipboardList,
@@ -20,6 +19,7 @@ import {
   Home,
   Users
 } from 'lucide-react';
+import { ModulePermissions } from '@/contexts/auth/types';
 
 interface SidebarItem {
   title: string;
@@ -27,6 +27,8 @@ interface SidebarItem {
   icon: React.ReactNode;
   module?: string;
   subitems?: SidebarItem[];
+  allowed?: boolean;
+  label?: string;
 }
 
 export const sidebarItems: SidebarItem[] = [
@@ -272,3 +274,46 @@ export const adminSidebarItems: SidebarItem[] = [
     icon: <Settings size={18} />,
   },
 ];
+
+export const getSaasOwnerItems = () => {
+  return adminSidebarItems.map(item => ({
+    ...item,
+    allowed: true,
+    label: item.title,
+    path: item.path
+  }));
+};
+
+export const getClientItems = (permissions: ModulePermissions) => {
+  return sidebarItems.map(item => {
+    // Map each menu item with its allowed status based on permissions
+    let allowed = true;
+    
+    // Check module-specific permissions
+    if (item.module === 'incident-management') {
+      allowed = permissions.incidentReporting || permissions.incidentAdmin;
+    }
+    else if (item.module === 'assessment') {
+      allowed = permissions.assessmentUser || permissions.assessmentsAdmin;
+    }
+    else if (item.module === 'employee-verification') {
+      allowed = permissions.employeeVerificationAdmin;
+    }
+    else if (item.module === 'grievances') {
+      allowed = permissions.grievancesAdmin;
+    }
+    else if (item.module === 'transport-safety') {
+      allowed = permissions.transportSafetyAdmin;
+    }
+    else if (item.module === 'edusafe') {
+      allowed = permissions.eduSafeResourceAccess;
+    }
+    
+    return {
+      ...item,
+      allowed,
+      label: item.title,
+      path: item.path
+    };
+  });
+};

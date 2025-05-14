@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
@@ -32,8 +31,8 @@ import BackofficeSettings from './pages/backoffice/BackofficeSettings';
 import AssessmentTemplatesManagementPage from './pages/backoffice/AssessmentTemplatesManagementPage';
 import EduSafeResourcesManagementPage from './pages/backoffice/EduSafeResourcesManagementPage';
 
-// Import routes from modules
-import assessmentRoutes from './routes/assessmentRoutes';
+// Import routes from modules - fix the missing default export 
+import * as assessmentRoutes from './routes/assessmentRoutes';
 import RouteGuard from './components/RouteGuard';
 import PublicLayout from './components/layout/PublicLayout';
 
@@ -42,7 +41,7 @@ const AppRoutes = () => {
     <Router>
       <Routes>
         {/* Public Routes */}
-        <Route element={<PublicLayout />}>
+        <Route element={<PublicLayout children={null} />}>
           <Route path="/" element={<Home />} />
           <Route path="/blog" element={<Blog />} />
           <Route path="/pricing" element={<Pricing />} />
@@ -181,8 +180,8 @@ const AppRoutes = () => {
           }
         />
 
-        {/* Assessment Module Routes */}
-        {assessmentRoutes}
+        {/* Assessment Module Routes - fix the assessmentRoutes usage */}
+        {assessmentRoutes.default}
 
         {/* Backoffice Routes */}
         <Route

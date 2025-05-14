@@ -1,6 +1,7 @@
+
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { toast } from "sonner";
-import { useContributingFactorsManagement } from '@/hooks/config/useContributingFactorsManagement';
+import { useContributingFactorsManagement, ContributingFactor } from '@/hooks/config/useContributingFactorsManagement';
 
 // Define all the types that are needed by other files
 export interface Campus {
@@ -89,11 +90,9 @@ export interface ActionItem {
   updatedAt: Date;
 }
 
-export interface ContributingFactor {
-  id: string;
-  category: string;
-  description: string;
-  weight: 'Low' | 'Medium' | 'High';
+// Make ContributingFactor interface compatible with the one from useContributingFactorsManagement
+export interface IncidentContributingFactor extends ContributingFactor {
+  category?: string; // Make this optional to resolve the compatibility issue
 }
 
 export interface Incident {
@@ -121,7 +120,7 @@ export interface Incident {
   createdAt: Date;
   updatedAt: Date;
   priority?: 'Low' | 'Medium' | 'High' | 'Critical';
-  contributingFactors?: ContributingFactor[];
+  contributingFactors?: IncidentContributingFactor[];
   wasReopened?: boolean;
   isVoided?: boolean;
   voidReason?: string;
@@ -341,7 +340,7 @@ export const IncidentProvider: React.FC<{ children: ReactNode }> = ({ children }
   } = useContributingFactorsManagement();
 
   // Context value
-  const value = {
+  const value: IncidentContextType = {
     campuses,
     classes,
     sections,

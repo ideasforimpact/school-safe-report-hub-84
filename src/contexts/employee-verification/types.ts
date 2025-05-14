@@ -1,26 +1,16 @@
 
-import { DocumentType, DocumentStatus, VerificationDocument, Employee } from "@/types/employeeVerification";
+import { Employee, Document } from './hooks';
 
 export interface EmployeeVerificationContextType {
   employees: Employee[];
-  documents: VerificationDocument[];
-  documentTypes: DocumentType[];
-  documentStatuses: DocumentStatus[];
-  addEmployee: (employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Employee>;
-  updateEmployee: (id: string, updates: Partial<Employee>) => Promise<void>;
-  deleteEmployee: (id: string) => Promise<void>;
-  addDocument: (documentData: Omit<VerificationDocument, 'id' | 'createdAt' | 'updatedAt'>) => Promise<VerificationDocument>;
-  verifyDocument: (id: string, status: 'verified' | 'failed', notes?: string) => Promise<void>;
-  deleteDocument: (id: string) => Promise<void>;
-  getEmployeeDocuments: (employeeId: string) => VerificationDocument[];
-  getEmployee: (id: string) => Employee | undefined;
-  fetchEmployees: (clientId?: string) => Promise<Employee[]>;
-  fetchEmployeeDocuments: (employeeId: string) => Promise<VerificationDocument[]>;
-  fetchDocumentTypes: () => Promise<DocumentType[]>;
-  fetchDocumentStatuses: () => Promise<DocumentStatus[]>;
-  isLoading: boolean;
+  documents: Document[];
+  addEmployee: (employee: Omit<Employee, 'id'>) => any;
+  updateEmployee: (id: string, updates: Partial<Employee>) => void;
+  deleteEmployee: (id: string) => void;
+  addDocument: (document: Omit<Document, 'id'>) => any;
+  updateDocument: (id: string, updates: Partial<Document>) => void;
+  deleteDocument: (id: string) => void;
+  getEmployeeDocuments: (employeeId: string) => Document[];
 }
 
-export interface EmployeeVerificationProviderProps {
-  children: React.ReactNode;
-}
+export type { Employee, Document };

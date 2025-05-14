@@ -1,34 +1,49 @@
 
 import React from 'react';
-import { Route, Routes } from 'react-router-dom';
-import TemplatesList from '@/components/assessments/templates/TemplatesList';
-import TemplateDetail from '@/components/assessments/templates/TemplateDetail';
-import AssignTemplateForm from '@/components/assessments/assignments/AssignTemplateForm';
-import BulkAssignForm from '@/components/assessments/assignments/BulkAssignForm';
-import AssignmentsList from '@/components/assessments/assignments/AssignmentsList';
-import ResultsAnalytics from '@/components/assessments/results/ResultsAnalytics';
+import { Route } from 'react-router-dom';
+import RouteGuard from '../components/RouteGuard';
 
-// This file now serves as a placeholder for the routes structure
-// but the actual rendering is handled by the AssessmentsPage component
+// Import placeholder components
+const AssessmentsList = () => <div>Assessments List</div>;
+const AssessmentDetail = () => <div>Assessment Detail</div>;
+const AssessmentTemplates = () => <div>Assessment Templates</div>;
+const AssessmentAssignments = () => <div>Assessment Assignments</div>;
 
-export const TemplateRoutes = () => (
-  <Routes>
-    <Route index element={<TemplatesList />} />
-    <Route path=":templateId" element={<TemplateDetail />} />
-    <Route path=":templateId/assign" element={<AssignTemplateForm />} />
-    <Route path=":templateId/bulk-assign" element={<BulkAssignForm />} />
-  </Routes>
+const assessmentRoutes = (
+  <>
+    <Route
+      path="/assessments"
+      element={
+        <RouteGuard>
+          <AssessmentsList />
+        </RouteGuard>
+      }
+    />
+    <Route
+      path="/assessments/:id"
+      element={
+        <RouteGuard>
+          <AssessmentDetail />
+        </RouteGuard>
+      }
+    />
+    <Route
+      path="/assessments/templates"
+      element={
+        <RouteGuard>
+          <AssessmentTemplates />
+        </RouteGuard>
+      }
+    />
+    <Route
+      path="/assessments/assignments"
+      element={
+        <RouteGuard>
+          <AssessmentAssignments />
+        </RouteGuard>
+      }
+    />
+  </>
 );
 
-export const AssignmentRoutes = () => (
-  <Routes>
-    <Route index element={<AssignmentsList />} />
-    <Route path="bulk-assign" element={<BulkAssignForm />} />
-  </Routes>
-);
-
-export const ResultsRoutes = () => (
-  <Routes>
-    <Route index element={<ResultsAnalytics />} />
-  </Routes>
-);
+export default assessmentRoutes;

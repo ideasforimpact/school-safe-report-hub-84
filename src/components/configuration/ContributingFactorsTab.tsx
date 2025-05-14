@@ -77,6 +77,15 @@ export const ContributingFactorsTab: React.FC<ContributingFactorsTabProps> = ({
     deleteContributingFactor(id);
   };
 
+  // Fixed the onSave callback to accept a name parameter
+  const handleSave = (name: string) => {
+    if (currentFactor) {
+      const description = (document.getElementById('edit-description') as HTMLTextAreaElement)?.value || '';
+      const weight = (document.getElementById('edit-weight') as HTMLSelectElement)?.value as 'Low' | 'Medium' | 'High' || 'Medium';
+      handleUpdate(currentFactor.id, name, description, weight);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="bg-white p-4 rounded-md shadow">
@@ -191,16 +200,7 @@ export const ContributingFactorsTab: React.FC<ContributingFactorsTabProps> = ({
           title="Edit Contributing Factor"
           isOpen={isEditing}
           onClose={() => setIsEditing(false)}
-          onSave={(name) => {
-            if (currentFactor) {
-              handleUpdate(
-                currentFactor.id, 
-                name, 
-                (document.getElementById('edit-description') as HTMLTextAreaElement)?.value || '',
-                (document.getElementById('edit-weight') as HTMLSelectElement)?.value as 'Low' | 'Medium' | 'High' || 'Medium'
-              );
-            }
-          }}
+          onSave={handleSave}  
           defaultValue={currentFactor.name}
         >
           <div className="space-y-4 pt-4">
