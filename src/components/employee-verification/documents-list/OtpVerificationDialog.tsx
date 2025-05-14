@@ -16,15 +16,15 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 interface OtpVerificationDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   document: VerificationDocument;
-  onVerificationComplete: () => void;
+  onVerificationComplete?: () => void;
 }
 
 const OtpVerificationDialog: React.FC<OtpVerificationDialogProps> = ({
-  isOpen,
-  onClose,
+  open,
+  onOpenChange,
   document,
   onVerificationComplete
 }) => {
@@ -134,7 +134,7 @@ const OtpVerificationDialog: React.FC<OtpVerificationDialogProps> = ({
         return;
       }
       
-      if (data.error) {
+      if (data?.error) {
         toast({
           title: "Verification Failed",
           description: data.error,
@@ -148,7 +148,11 @@ const OtpVerificationDialog: React.FC<OtpVerificationDialogProps> = ({
         description: "Aadhar has been successfully verified.",
       });
       
-      onVerificationComplete();
+      if (onVerificationComplete) {
+        onVerificationComplete();
+      }
+      
+      onOpenChange(false);
     } catch (err) {
       console.error('Exception in verifyOtp:', err);
       toast({
@@ -161,90 +165,80 @@ const OtpVerificationDialog: React.FC<OtpVerificationDialogProps> = ({
     }
   };
 
-  // Clean up interval on unmount
-  React.useEffect(() => {
-    return () => {
-      if (cooldownInterval) {
-        window.clearInterval(cooldownInterval);
-      }
-    };
-  }, [cooldownInterval]);
-
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Shield className="h-5 w-5 text-primary" />
+          <DialogTitle className="flex items-center">
+            <Shield className="mr-2 h-5 w-5 text-primary" />
             Aadhar Verification
           </DialogTitle>
         </DialogHeader>
         
-        <div className="py-4 space-y-4">
-          <div className="text-sm text-muted-foreground">
-            <p>Verify this Aadhar document by sending an OTP to the registered mobile number.</p>
-          </div>
+        <div className="py-4">
+          <p className="text-sm text-gray-600 mb-4">
+            To verify this Aadhar card, we'll send an OTP to the mobile number registered with this Aadhar.
+          </p>
           
-          {!otpSent ? (
+          {otpSent ? (
             <div className="space-y-4">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="documentNumber">Aadhar Number</Label>
-                <div className="flex items-center gap-2">
-                  <Input 
-                    id="documentNumber" 
-                    value={document.documentNumber || ''} 
-                    className="flex-1"
-                    disabled
-                  />
-                  <Button 
-                    onClick={handleRequestOtp} 
-                    disabled={isRequestingOtp || cooldownRemaining > 0}
-                  >
-                    {isRequestingOtp ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : null}
-                    {cooldownRemaining > 0 ? `Wait ${cooldownRemaining}s` : 'Send OTP'}
-                  </Button>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="otp">Enter OTP</Label>
+                <Input 
+                  id="otp" 
+                  value={otp} 
+                  onChange={(e) => setOtp(e.target.value)} 
+                  placeholder="Enter the 6-digit OTP"
+                  maxLength={6}
+                />
               </div>
+              
+              <Button 
+                onClick={handleVerifyOtp} 
+                className="w-full"
+                disabled={!otp || isVerifyingOtp}
+              >
+                {isVerifyingOtp ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Verifying...
+                  </>
+                ) : (
+                  'Verify OTP'
+                )}
+              </Button>
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="otp">Enter OTP</Label>
-                <div className="flex items-center gap-2">
-                  <Input 
-                    id="otp" 
-                    value={otp} 
-                    onChange={(e) => setOtp(e.target.value)}
-                    placeholder="Enter the OTP sent to your mobile"
-                    className="flex-1"
-                  />
-                  <Button onClick={handleVerifyOtp} disabled={isVerifyingOtp}>
-                    {isVerifyingOtp ? (
-                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    ) : null}
-                    Verify
-                  </Button>
-                </div>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Didn't receive the OTP?{' '}
-                <button 
-                  onClick={handleRequestOtp} 
-                  disabled={isRequestingOtp || cooldownRemaining > 0}
-                  className="text-primary hover:underline focus:outline-none disabled:opacity-50"
-                >
-                  Resend
-                  {cooldownRemaining > 0 ? ` (${cooldownRemaining}s)` : ''}
-                </button>
+              <p className="text-sm">
+                Aadhar Number: <strong>{document.documentNumber}</strong>
               </p>
+              
+              <Button 
+                onClick={handleRequestOtp} 
+                className="w-full"
+                disabled={isRequestingOtp || cooldownRemaining > 0}
+              >
+                {isRequestingOtp ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Sending OTP...
+                  </>
+                ) : cooldownRemaining > 0 ? (
+                  `Try again in ${cooldownRemaining} seconds`
+                ) : (
+                  'Send OTP'
+                )}
+              </Button>
             </div>
           )}
         </div>
         
-        <DialogFooter className="sm:justify-start">
-          <Button variant="secondary" onClick={onClose}>
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+          >
             Cancel
           </Button>
         </DialogFooter>

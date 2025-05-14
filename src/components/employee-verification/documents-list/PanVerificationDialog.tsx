@@ -1,20 +1,25 @@
 
 import React, { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Loader2, FileText, ShieldCheck, AlertCircle } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Shield, Loader2, CheckCircle2, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Label } from "@/components/ui/label";
 
 interface PanVerificationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   documentId: string;
   documentNumber: string;
-  onVerificationComplete: () => void;
-  // For backward compatibility
-  isOpen?: boolean;
-  onClose?: () => void;
+  onVerificationComplete?: () => void;
 }
 
 const PanVerificationDialog: React.FC<PanVerificationDialogProps> = ({
@@ -22,78 +27,158 @@ const PanVerificationDialog: React.FC<PanVerificationDialogProps> = ({
   onOpenChange,
   documentId,
   documentNumber,
-  onVerificationComplete,
-  // Handle legacy props
-  isOpen,
-  onClose
+  onVerificationComplete
 }) => {
-  // Use either new or legacy props
-  const isDialogOpen = open || isOpen || false;
-  const handleDialogChange = (newOpen: boolean) => {
-    if (onOpenChange) onOpenChange(newOpen);
-    if (!newOpen && onClose) onClose();
-  };
-  
   const [isLoading, setIsLoading] = useState(false);
+  const [verificationMethod, setVerificationMethod] = useState<'api' | 'manual'>('api');
   const [verificationResult, setVerificationResult] = useState<{
-    success?: boolean;
-    message?: string;
+    success: boolean;
+    message: string;
     details?: any;
-  }>({});
+  } | null>(null);
   const { toast } = useToast();
 
-  const handleVerify = async () => {
+  const handleVerifyPan = async () => {
     setIsLoading(true);
+    setVerificationResult(null);
+    
     try {
-      const { data, error } = await supabase.functions.invoke('employee-verification', {
-        method: 'POST',
-        body: { 
-          action: 'verifyPan',
-          documentId,
-          documentNumber
-        }
-      });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      console.log('PAN verification response:', data);
+      console.log(`Verifying PAN ${documentId} using ${verificationMethod}`);
       
-      setVerificationResult({
-        success: data.success,
-        message: data.message,
-        details: data.details
-      });
-
-      if (data.success) {
+      if (verificationMethod === 'api') {
+        // API Verification - Call Supabase edge function
+        const { data, error } = await supabase.functions.invoke('employee-verification/verify-pan', {
+          method: 'POST',
+          body: { 
+            documentId,
+            documentNumber
+          }
+        });
+        
+        if (error) {
+          console.error('Error verifying PAN:', error);
+          setVerificationResult({
+            success: false,
+            message: error.message || "Failed to verify PAN. Please try again.",
+          });
+          return;
+        }
+        
+        if (data?.error) {
+          setVerificationResult({
+            success: false,
+            message: data.error,
+          });
+          return;
+        }
+        
+        // Success case
+        setVerificationResult({
+          success: true,
+          message: "PAN card verified successfully.",
+          details: data?.details || {}
+        });
+        
         toast({
           title: "Verification Successful",
-          description: "PAN card has been verified successfully.",
+          description: "PAN card has been successfully verified.",
         });
-
-        // Let parent know verification was successful
-        setTimeout(() => {
+        
+        if (onVerificationComplete) {
           onVerificationComplete();
-          handleDialogChange(false);
+        }
+        
+        // Close dialog after successful verification
+        setTimeout(() => {
+          onOpenChange(false);
         }, 2000);
+        
       } else {
-        toast({
-          title: "Verification Failed",
-          description: data.error || "Failed to verify PAN card.",
-          variant: "destructive",
+        // Manual Verification - Just mark as verified without verification
+        const { data, error } = await supabase.functions.invoke('employee-verification/manual-verification', {
+          method: 'POST',
+          body: { 
+            documentId,
+            documentType: 'pan',
+            notes: 'Manually verified by administrator'
+          }
         });
+        
+        if (error) {
+          console.error('Error with manual verification:', error);
+          setVerificationResult({
+            success: false,
+            message: error.message || "Failed to manually verify PAN. Please try again.",
+          });
+          return;
+        }
+        
+        setVerificationResult({
+          success: true,
+          message: "PAN card manually verified.",
+        });
+        
+        toast({
+          title: "Manual Verification Complete",
+          description: "PAN card has been manually verified.",
+        });
+        
+        if (onVerificationComplete) {
+          onVerificationComplete();
+        }
+        
+        // Close dialog after successful verification
+        setTimeout(() => {
+          onOpenChange(false);
+        }, 2000);
       }
-    } catch (error) {
-      console.error('Error verifying PAN card:', error);
+    } catch (err) {
+      console.error('Exception in verifyPan:', err);
       setVerificationResult({
         success: false,
-        message: error instanceof Error ? error.message : "An unexpected error occurred"
+        message: "An unexpected error occurred. Please try again.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleReject = async () => {
+    setIsLoading(true);
+    
+    try {
+      const { error } = await supabase.functions.invoke('employee-verification/reject-verification', {
+        method: 'POST',
+        body: { 
+          documentId
+        }
       });
       
+      if (error) {
+        console.error('Error rejecting document:', error);
+        toast({
+          title: "Error",
+          description: error.message || "Failed to reject document. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      toast({
+        title: "Document Rejected",
+        description: "The document has been marked as failed verification.",
+      });
+      
+      if (onVerificationComplete) {
+        onVerificationComplete();
+      }
+      
+      onOpenChange(false);
+    } catch (err) {
+      console.error('Exception in rejecting document:', err);
       toast({
         title: "Error",
-        description: "Failed to verify PAN card. Please try again.",
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -102,90 +187,112 @@ const PanVerificationDialog: React.FC<PanVerificationDialogProps> = ({
   };
 
   return (
-    <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center">
-            <FileText className="h-5 w-5 mr-2 text-blue-500" />
+            <Shield className="mr-2 h-5 w-5 text-primary" />
             PAN Card Verification
           </DialogTitle>
         </DialogHeader>
         
-        <div className="space-y-4">
-          {!verificationResult.success && !verificationResult.message && (
-            <div className="text-center py-4">
-              <p className="text-sm text-gray-600 mb-4">
-                Verify this PAN card through the government database?
-              </p>
-              <p className="text-xs bg-amber-50 border border-amber-200 rounded-md p-3 text-amber-800">
-                <AlertCircle className="h-4 w-4 inline-block mr-1" />
-                This will validate the PAN card details against official records.
-              </p>
+        <div className="py-4">
+          <p className="text-sm text-gray-600 mb-4">
+            Verify this PAN card with the following number: <strong>{documentNumber}</strong>
+          </p>
+          
+          {!verificationResult ? (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium">Verification Method</h3>
+                <RadioGroup 
+                  value={verificationMethod} 
+                  onValueChange={(value) => setVerificationMethod(value as 'api' | 'manual')} 
+                  className="flex flex-col space-y-1"
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="api" id="api" />
+                    <Label htmlFor="api">API Verification (Recommended)</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="manual" id="manual" />
+                    <Label htmlFor="manual">Manual Verification</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+              
+              <div className="flex gap-2">
+                <Button 
+                  onClick={handleVerifyPan} 
+                  className="flex-1"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Verifying...
+                    </>
+                  ) : (
+                    'Verify PAN'
+                  )}
+                </Button>
+                
+                <Button 
+                  variant="destructive" 
+                  onClick={handleReject}
+                  disabled={isLoading}
+                >
+                  Reject
+                </Button>
+              </div>
             </div>
-          )}
-
-          {isLoading && (
-            <div className="flex flex-col items-center justify-center p-4">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-500 mb-2" />
-              <p className="text-sm text-gray-600">Verifying PAN card...</p>
-            </div>
-          )}
-
-          {verificationResult.success && (
-            <div className="bg-green-50 border border-green-200 rounded-md p-4">
+          ) : (
+            <div className={`p-4 rounded-md ${
+              verificationResult.success ? 'bg-green-50' : 'bg-red-50'
+            }`}>
               <div className="flex items-start">
-                <ShieldCheck className="h-5 w-5 text-green-500 mt-0.5 mr-2" />
+                {verificationResult.success ? (
+                  <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5 mr-2" />
+                ) : (
+                  <X className="h-5 w-5 text-red-600 mt-0.5 mr-2" />
+                )}
                 <div>
-                  <h4 className="font-medium text-green-800">Verification Successful</h4>
-                  <p className="text-sm text-green-700 mt-1">{verificationResult.message}</p>
+                  <h3 className={`font-medium ${
+                    verificationResult.success ? 'text-green-800' : 'text-red-800'
+                  }`}>
+                    {verificationResult.success ? 'Verification Successful' : 'Verification Failed'}
+                  </h3>
+                  <p className="text-sm mt-1">
+                    {verificationResult.message}
+                  </p>
                   
-                  {verificationResult.details && (
-                    <div className="mt-3 pt-3 border-t border-green-200">
-                      <h5 className="text-sm font-medium text-green-800 mb-1">Details verified:</h5>
-                      <ul className="text-xs text-green-700">
-                        {verificationResult.details.name && <li>Name: {verificationResult.details.name}</li>}
-                        {verificationResult.details.father_name && <li>Father's Name: {verificationResult.details.father_name}</li>}
-                        {verificationResult.details.dob && <li>Date of Birth: {verificationResult.details.dob}</li>}
-                        {verificationResult.details.pan_status && <li>Status: {verificationResult.details.pan_status}</li>}
-                      </ul>
+                  {verificationResult.details && verificationResult.success && (
+                    <div className="mt-3 text-sm space-y-1 border-t border-green-200 pt-2">
+                      {verificationResult.details.name && (
+                        <p><span className="font-medium">Name:</span> {verificationResult.details.name}</p>
+                      )}
+                      {verificationResult.details.father_name && (
+                        <p><span className="font-medium">Father's Name:</span> {verificationResult.details.father_name}</p>
+                      )}
+                      {verificationResult.details.dob && (
+                        <p><span className="font-medium">Date of Birth:</span> {verificationResult.details.dob}</p>
+                      )}
                     </div>
                   )}
                 </div>
               </div>
             </div>
           )}
-
-          {verificationResult.success === false && verificationResult.message && (
-            <div className="bg-red-50 border border-red-200 rounded-md p-4">
-              <div className="flex items-start">
-                <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 mr-2" />
-                <div>
-                  <h4 className="font-medium text-red-800">Verification Failed</h4>
-                  <p className="text-sm text-red-700 mt-1">{verificationResult.message}</p>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
-
-        <DialogFooter className="flex justify-between sm:justify-between">
-          <Button 
-            variant="outline" 
-            onClick={() => handleDialogChange(false)}
+        
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
             disabled={isLoading}
           >
-            Cancel
+            {verificationResult && verificationResult.success ? 'Close' : 'Cancel'}
           </Button>
-          {!verificationResult.success && !verificationResult.message && (
-            <Button 
-              onClick={handleVerify}
-              disabled={isLoading}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />}
-              Verify PAN
-            </Button>
-          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
