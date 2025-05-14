@@ -192,10 +192,11 @@ serve(async (req) => {
     
     // Handle Aadhar OTP verification
     else if (action === 'verifyAadharOtp') {
-      if (!otp || !txnId) {
-        console.error("Missing required fields:", { otp, txnId });
+      // Modified check to require otp but make txnId optional
+      if (!otp) {
+        console.error("Missing required field: OTP");
         return new Response(
-          JSON.stringify({ error: "OTP and transaction ID are required" }),
+          JSON.stringify({ error: "OTP is required" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
@@ -267,9 +268,13 @@ serve(async (req) => {
         console.log("Making request to Surepass API to verify OTP with base URL:", baseUrl);
         
         const requestBody: any = {
-          otp,
-          txn_id: txnId
+          otp
         };
+        
+        // Add txn_id if provided
+        if (txnId) {
+          requestBody.txn_id = txnId;
+        }
         
         // Add client_id if provided
         if (client_id) {

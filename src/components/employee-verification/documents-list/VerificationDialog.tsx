@@ -200,17 +200,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     // Start with setting the verifying state to true
     setIsVerifyingOtp(true);
     
-    if (!txnId) {
-      console.error("No transaction ID available for verification");
-      toast({
-        title: "Error",
-        description: "Transaction ID is missing. Please request a new OTP.",
-        variant: "destructive"
-      });
-      setIsVerifyingOtp(false);
-      return;
-    }
-    
+    // Removed the txnId check to allow proceeding with just OTP and client_id
     try {
       console.log("Submitting OTP verification with:", {
         otp,
@@ -222,13 +212,17 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       const requestBody: any = {
         action: 'verifyAadharOtp',
         documentId,
-        otp,
-        txnId
+        otp
       };
       
       // Add client_id if available
       if (clientId) {
         requestBody.client_id = clientId;
+      }
+      
+      // Add txnId if available, but don't require it
+      if (txnId) {
+        requestBody.txnId = txnId;
       }
       
       // Make the API call to verify OTP
