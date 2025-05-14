@@ -44,12 +44,21 @@ const DocumentCard: React.FC<DocumentCardProps> = ({
             Uploaded {formatDistanceToNow(new Date(document.createdAt), { addSuffix: true })}
           </p>
         </div>
-        <DocumentStatusButton document={document} />
+        <DocumentStatusButton status={document.verificationStatus} />
       </div>
       
-      <DocumentImagePreview imageUrl={document.documentImage} />
+      <DocumentImagePreview documentImage={document.documentImage} />
       
-      <DocumentMetadata document={document} />
+      <DocumentMetadata 
+        documentTypeName={document.documentTypeName}
+        documentNumber={document.documentNumber}
+        createdAt={document.createdAt}
+        verificationStatus={document.verificationStatus}
+        documentStatusName={document.documentStatusName}
+        verificationDate={document.verificationDate}
+        verificationNotes={document.verificationNotes}
+        verificationMethod={document.verificationMethod}
+      />
       
       <div className="flex justify-between items-center pt-2">
         <div className="flex space-x-2">

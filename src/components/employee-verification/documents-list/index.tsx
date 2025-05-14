@@ -101,26 +101,25 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument
       
       {selectedDocument && showVerificationDialog && (
         <VerificationDialog
-          isOpen={showVerificationDialog}
-          onClose={() => setShowVerificationDialog(false)}
+          open={showVerificationDialog}
+          onOpenChange={(open) => setShowVerificationDialog(open)}
           document={selectedDocument}
         />
       )}
       
       {selectedDocument && selectedDocument.documentNumber && showOtpDialog && (
         <OtpVerificationDialog 
-          isOpen={showOtpDialog}
-          onClose={() => setShowOtpDialog(false)}
-          documentId={selectedDocument.id}
-          documentNumber={selectedDocument.documentNumber}
+          open={showOtpDialog}
+          onOpenChange={(open) => setShowOtpDialog(open)}
+          document={selectedDocument}
           onVerificationComplete={handleVerificationComplete}
         />
       )}
       
       {selectedDocument && selectedDocument.documentNumber && showPanDialog && (
         <PanVerificationDialog
-          isOpen={showPanDialog}
-          onClose={() => setShowPanDialog(false)}
+          open={showPanDialog}
+          onOpenChange={(open) => setShowPanDialog(open)}
           documentId={selectedDocument.id}
           documentNumber={selectedDocument.documentNumber}
           onVerificationComplete={handleVerificationComplete}

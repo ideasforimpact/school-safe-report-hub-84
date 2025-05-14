@@ -7,20 +7,33 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
 interface PanVerificationDialogProps {
-  isOpen: boolean;
-  onClose: () => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   documentId: string;
   documentNumber: string;
   onVerificationComplete: () => void;
+  // For backward compatibility
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 const PanVerificationDialog: React.FC<PanVerificationDialogProps> = ({
-  isOpen,
-  onClose,
+  open,
+  onOpenChange,
   documentId,
   documentNumber,
-  onVerificationComplete
+  onVerificationComplete,
+  // Handle legacy props
+  isOpen,
+  onClose
 }) => {
+  // Use either new or legacy props
+  const isDialogOpen = open || isOpen || false;
+  const handleDialogChange = (newOpen: boolean) => {
+    if (onOpenChange) onOpenChange(newOpen);
+    if (!newOpen && onClose) onClose();
+  };
+  
   const [isLoading, setIsLoading] = useState(false);
   const [verificationResult, setVerificationResult] = useState<{
     success?: boolean;
@@ -62,7 +75,7 @@ const PanVerificationDialog: React.FC<PanVerificationDialogProps> = ({
         // Let parent know verification was successful
         setTimeout(() => {
           onVerificationComplete();
-          onClose();
+          handleDialogChange(false);
         }, 2000);
       } else {
         toast({
@@ -89,7 +102,7 @@ const PanVerificationDialog: React.FC<PanVerificationDialogProps> = ({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isDialogOpen} onOpenChange={handleDialogChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center">
@@ -158,7 +171,7 @@ const PanVerificationDialog: React.FC<PanVerificationDialogProps> = ({
         <DialogFooter className="flex justify-between sm:justify-between">
           <Button 
             variant="outline" 
-            onClick={onClose}
+            onClick={() => handleDialogChange(false)}
             disabled={isLoading}
           >
             Cancel
