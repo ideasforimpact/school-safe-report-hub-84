@@ -200,7 +200,7 @@ export const ContributingFactorsTab: React.FC<ContributingFactorsTabProps> = ({
           title="Edit Contributing Factor"
           isOpen={isEditing}
           onClose={() => setIsEditing(false)}
-          onSave={handleSave}  
+          onSave={handleSave}
           defaultValue={currentFactor.name}
         >
           <div className="space-y-4 pt-4">
