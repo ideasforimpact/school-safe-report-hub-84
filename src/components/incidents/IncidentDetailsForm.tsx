@@ -32,8 +32,8 @@ interface IncidentDetailsFormProps {
   onDateTimeChange: (date: Date | undefined, timeString?: string) => void;
   supportingFiles: FileItem[];
   onFilesChange: (files: FileItem[]) => void;
-  locations: ConfigItem[];
-  facilities: ConfigItem[];
+  locations?: ConfigItem[];
+  facilities?: ConfigItem[];
   users: Employee[];
   isLoadingUsers?: boolean;
 }
@@ -45,8 +45,6 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
   onDateTimeChange,
   supportingFiles,
   onFilesChange,
-  locations,
-  facilities,
   users,
   isLoadingUsers = false
 }) => {
@@ -74,9 +72,7 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
       <div className="space-y-6">
         <LocationSection
           locationId={formData.locationId}
-          locations={locations}
           facilityId={formData.facilityId}
-          facilities={facilities}
           onSelectChange={onSelectChange}
         />
       </div>

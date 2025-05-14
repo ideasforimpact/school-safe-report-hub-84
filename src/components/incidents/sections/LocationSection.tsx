@@ -11,23 +11,17 @@ import { Loader2 } from 'lucide-react';
 import { getAllCampuses } from '@/services/campus/campusService';
 import { getFacilitiesByCampus, FacilityItem } from '@/services/facility/facilityService';
 import { toast } from 'sonner';
-
-interface ConfigItem {
-  id: string;
-  name: string;
-}
+import { ConfigItem } from '@/contexts/types';
 
 interface LocationSectionProps {
   locationId: string;
   facilityId: string;
-  facilities: ConfigItem[]; // We'll keep this for backward compatibility
   onSelectChange: (name: string, value: string) => void;
 }
 
 const LocationSection: React.FC<LocationSectionProps> = ({
   locationId,
   facilityId,
-  facilities: propFacilities, // Rename to avoid confusion
   onSelectChange,
 }) => {
   const [campuses, setCampuses] = useState<ConfigItem[]>([]);

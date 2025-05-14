@@ -1,112 +1,140 @@
 
-import { useState, useCallback } from 'react';
-import { useIncidents } from '@/contexts/IncidentContext';
-import { Person } from '@/types/incident';
+import { useState, useEffect } from 'react';
+import { useIncidents } from '@/contexts/incident/IncidentContext';
 import { FileItem } from '@/types/fileTypes';
-import { v4 as uuidv4 } from 'uuid';
-import { useSelectedValues } from '@/hooks/useSelectedValues';
+import { Person } from '@/types/incident';
+import { User } from '@/types/incident';
 import { getAllCampuses } from '@/services/campus/campusService';
+import { getFacilitiesByCampus } from '@/services/facility/facilityService';
+import { ConfigItem } from '@/contexts/types';
+import { toast } from 'sonner';
 
-// Initial person object
-const initialPerson: Person = {
-  name: '',
-  role: 'Student' as const,
-  notes: ''
-};
+interface FormData {
+  type: string;
+  categoryId: string;
+  subcategory: string;
+  description: string;
+  date: string;
+  time: string;
+  locationId: string;
+  facilityId: string;
+  priority: 'Low' | 'Medium' | 'High' | 'Critical';
+  owner: string;
+}
 
 export function useIncidentForm() {
-  const { 
-    facilities,
-    users,
-    generateTicketId
-  } = useIncidents();
-
-  // State for form data
-  const [formData, setFormData] = useState({
+  const { ticketCounter, users } = useIncidents();
+  
+  const [nextTicketId, setNextTicketId] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [supportingFiles, setSupportingFiles] = useState<FileItem[]>([]);
+  const [locations, setLocations] = useState<ConfigItem[]>([]);
+  const [facilities, setFacilities] = useState<ConfigItem[]>([]);
+  const [peopleInvolved, setPeopleInvolved] = useState<Person[]>([
+    { name: '', role: 'Student', notes: '' }
+  ]);
+  
+  const [formData, setFormData] = useState<FormData>({
     type: 'Incident',
     categoryId: '',
     subcategory: '',
     description: '',
-    date: new Date().toISOString().split('T')[0], // Today's date in YYYY-MM-DD
-    time: new Date().toTimeString().slice(0, 5), // Current time in HH:MM
+    date: new Date().toISOString().split('T')[0],
+    time: new Date().toTimeString().split(' ')[0].slice(0, 5),
     locationId: '',
     facilityId: '',
-    location: '', // Additional location details
-    priority: 'Medium' as 'Low' | 'Medium' | 'High' | 'Critical',
+    priority: 'Medium',
     owner: ''
   });
 
-  // State for supporting files
-  const [supportingFiles, setSupportingFiles] = useState<FileItem[]>([]);
-  
-  // State for people involved
-  const [peopleInvolved, setPeopleInvolved] = useState<Person[]>([{ ...initialPerson }]);
-  
-  // State for submission status
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Calculate next ticket ID
-  const nextTicketId = generateTicketId();
+  // Fetch locations (campuses) on component mount
+  useEffect(() => {
+    const fetchLocations = async () => {
+      try {
+        const campuses = await getAllCampuses();
+        setLocations(campuses);
+      } catch (error) {
+        console.error('Error fetching campuses:', error);
+        toast.error('Failed to load campuses');
+      }
+    };
 
-  const { getSelectedLocation, getSelectedFacility } = useSelectedValues(
-    formData.categoryId,
-    formData.locationId,
-    formData.facilityId,
-    [], // Categories will come from context, not used here
-    [], // Locations will be directly fetched from database
-    facilities
-  );
+    fetchLocations();
+  }, []);
 
-  // Form field update handlers
+  // Fetch facilities when location changes
+  useEffect(() => {
+    if (!formData.locationId) {
+      setFacilities([]);
+      return;
+    }
+
+    const fetchFacilities = async () => {
+      try {
+        const facilitiesData = await getFacilitiesByCampus(formData.locationId);
+        setFacilities(facilitiesData.map(f => ({ id: f.id, name: f.name })));
+      } catch (error) {
+        console.error('Error fetching facilities:', error);
+        toast.error('Failed to load facilities');
+      }
+    };
+
+    fetchFacilities();
+  }, [formData.locationId]);
+
+  // Set next ticket ID
+  useEffect(() => {
+    const newTicketId = `INC-${String(ticketCounter).padStart(4, '0')}`;
+    setNextTicketId(newTicketId);
+  }, [ticketCounter]);
+
   const handleChange = (name: string, value: string) => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleSelectChange = (name: string, value: string) => {
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
 
-    // Clear subcategory when category changes
-    if (name === 'categoryId') {
-      setFormData(prev => ({ ...prev, subcategory: '' }));
-    }
-
-    // Clear facility when location changes
-    if (name === 'locationId') {
-      setFormData(prev => ({ ...prev, facilityId: '' }));
+  const handleDateTimeChange = (field: string, value: Date | string) => {
+    if (field === 'date' && value instanceof Date) {
+      setFormData(prev => ({ 
+        ...prev, 
+        date: value.toISOString().split('T')[0]
+      }));
+    } else if (field === 'time' && typeof value === 'string') {
+      setFormData(prev => ({ ...prev, time: value }));
     }
   };
 
-  const handleDateTimeChange = (date: Date | undefined, timeString?: string) => {
-    if (date) {
-      const dateStr = date.toISOString().split('T')[0];
-      setFormData(prev => ({ ...prev, date: dateStr }));
-    }
-    if (timeString) {
-      setFormData(prev => ({ ...prev, time: timeString }));
-    }
-  };
-
-  // People involved handlers
   const handlePersonChange = (index: number, field: keyof Person, value: string) => {
-    setPeopleInvolved(prev => {
-      const updated = [...prev];
-      updated[index] = { ...updated[index], [field]: value };
-      return updated;
-    });
+    const newPeople = [...peopleInvolved];
+    newPeople[index] = { ...newPeople[index], [field]: value };
+    setPeopleInvolved(newPeople);
   };
 
   const addPerson = () => {
-    setPeopleInvolved(prev => [...prev, { ...initialPerson, id: uuidv4() }]);
+    setPeopleInvolved([...peopleInvolved, { name: '', role: 'Student', notes: '' }]);
   };
 
   const removePerson = (index: number) => {
-    setPeopleInvolved(prev => prev.filter((_, i) => i !== index));
+    const newPeople = peopleInvolved.filter((_, i) => i !== index);
+    setPeopleInvolved(newPeople);
   };
 
-  // File change handler
-  const handleFilesChange = useCallback((files: FileItem[]) => {
+  const handleFilesChange = (files: FileItem[]) => {
     setSupportingFiles(files);
-  }, []);
+  };
+
+  const getSelectedLocation = (): string => {
+    const selectedLocation = locations.find(loc => loc.id === formData.locationId);
+    return selectedLocation ? selectedLocation.name : '';
+  };
+
+  const getSelectedFacility = (): string => {
+    const selectedFacility = facilities.find(fac => fac.id === formData.facilityId);
+    return selectedFacility ? selectedFacility.name : '';
+  };
 
   return {
     nextTicketId,
@@ -124,7 +152,8 @@ export function useIncidentForm() {
     handleFilesChange,
     getSelectedLocation,
     getSelectedFacility,
+    locations,
     facilities,
-    users
+    users,
   };
 }

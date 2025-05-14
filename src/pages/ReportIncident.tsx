@@ -162,7 +162,7 @@ const ReportIncident = () => {
     }
   };
   
-  const handleDateTimeAdapter = (date: Date, timeString?: string) => {
+  const handleDateTimeAdapter = (date: Date | undefined, timeString?: string) => {
     if (date) {
       handleDateTimeChange('date', date);
     }
@@ -191,8 +191,6 @@ const ReportIncident = () => {
                 onDateTimeChange={handleDateTimeAdapter}
                 supportingFiles={supportingFiles}
                 onFilesChange={handleFilesChange}
-                locations={locations}
-                facilities={facilities}
                 users={employees}
                 isLoadingUsers={isLoadingEmployees}
               />
