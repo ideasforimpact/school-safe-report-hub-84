@@ -24,6 +24,14 @@ serve(async (req) => {
   const productionApiKey = Deno.env.get("SUREPASS_PRODUCTION_API_KEY") || "";
   const environment = Deno.env.get("ENVIRONMENT") || "development";
 
+  // Log environment variables (masking sensitive parts)
+  console.log("Environment variables check:");
+  console.log(`SUPABASE_URL: ${supabaseUrl ? "✓ Set" : "✗ Not set"}`);
+  console.log(`SUPABASE_SERVICE_ROLE_KEY: ${supabaseServiceKey ? "✓ Set" : "✗ Not set"}`);
+  console.log(`SUREPASS_SANDBOX_API_KEY: ${surepassApiKey ? "✓ Set" : "✗ Not set"}`);
+  console.log(`SUREPASS_PRODUCTION_API_KEY: ${productionApiKey ? "✓ Set" : "✗ Not set"}`);
+  console.log(`ENVIRONMENT: ${environment}`);
+
   // For Aadhar verification, always use production
   const aadharApiKey = productionApiKey || surepassApiKey;
   const aadharBaseUrl = "https://kyc-api.surepass.io";
@@ -33,6 +41,13 @@ serve(async (req) => {
     ? productionApiKey 
     : surepassApiKey;
   const panBaseUrl = "https://kyc-api.surepass.io";
+
+  // Log the selected API keys and base URLs
+  console.log("Selected API configurations:");
+  console.log(`Aadhar API Key: ${aadharApiKey ? "Using " + (productionApiKey ? "production key" : "sandbox key as fallback") : "✗ Not set"}`);
+  console.log(`Aadhar Base URL: ${aadharBaseUrl}`);
+  console.log(`PAN API Key: ${panApiKey ? "Using " + (environment === "production" ? "production key" : "sandbox key") : "✗ Not set"}`);
+  console.log(`PAN Base URL: ${panBaseUrl}`);
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
