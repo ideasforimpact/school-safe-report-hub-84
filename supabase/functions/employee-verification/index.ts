@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 
@@ -430,18 +431,18 @@ async function handlePanVerification(body, baseUrl, apiKey, supabase, corsHeader
       );
     }
     
-    // Update document verification status with the governance ID and the exact API response in logs
+    // On success: Update the document with governance status ID and store full API response
     await supabase
       .from('employee_documents')
       .update({ 
         verification_status: 'verified',
-        document_status_id: governanceStatusId, // Use the governance status ID
+        document_status_id: governanceStatusId, // Use governance status ID
         employee_docs_log: supabase.rpc('append_to_json_array', { 
           arr: docData.employee_docs_log || [], 
           new_element: {
             timestamp: new Date().toISOString(),
             action: "pan_verification_success",
-            response: responseData // Store the exact API response without modifications
+            response: responseData // Store the complete API response
           }
         }),
         // Store extracted details
