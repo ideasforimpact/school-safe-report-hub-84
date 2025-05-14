@@ -6,6 +6,7 @@ import { mapDbRecordToEmployee } from './utils/employeeMappers';
 
 export const getAllEmployeesFromApi = async (): Promise<Employee[]> => {
   try {
+    console.log("Calling getAllEmployeesFromApi...");
     // Fetch all employees from the database
     const { data, error } = await supabase
       .from('employees')
@@ -17,6 +18,8 @@ export const getAllEmployeesFromApi = async (): Promise<Employee[]> => {
       throw error;
     }
 
+    console.log(`Successfully fetched ${data.length} employees from API`);
+    
     // Map the database records to our Employee model
     return data.map(record => mapDbRecordToEmployee(record));
   } catch (error) {

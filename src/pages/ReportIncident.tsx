@@ -12,7 +12,7 @@ import IncidentDetailsForm from '@/components/incidents/IncidentDetailsForm';
 import PeopleInvolvedSection from '@/components/incidents/PeopleInvolvedSection';
 import { IncidentType, IncidentCategory } from '@/types/incident';
 import { Employee } from '@/contexts/employee/types';
-import { supabase } from '@/integrations/supabase/client';
+import { getAllEmployeesFromApi } from '@/services/employee/employeeRetrievalService';
 
 const ReportIncident = () => {
   const { addIncident, categories } = useIncidents();
@@ -47,41 +47,14 @@ const ReportIncident = () => {
     const fetchEmployees = async () => {
       try {
         setIsLoadingEmployees(true);
-        console.log("Fetching employees from Supabase...");
-        const { data, error } = await supabase
-          .from('employees')
-          .select('*')
-          .eq('status', 'active');
-
-        if (error) {
-          console.error("Error fetching employees:", error);
-          toast.error("Failed to load staff members");
-          setIsLoadingEmployees(false);
-          return;
-        }
-
-        console.log("Employees fetched successfully:", data);
-        
-        // Map the database employees to our Employee type
-        const mappedEmployees = data.map((emp): Employee => ({
-          id: emp.id,
-          employeeId: emp.employee_id || '',
-          firstName: emp.first_name || '',
-          lastName: emp.last_name || '',
-          email: emp.email || '',
-          employeeType: emp.employee_type as any || 'permanent',
-          department: emp.department as any || 'admin',
-          joiningDate: emp.joining_date || new Date().toISOString(),
-          status: emp.status === 'active' ? 'active' : 'inactive',
-          createdAt: emp.created_at || new Date().toISOString(),
-          updatedAt: emp.updated_at || new Date().toISOString(),
-        }));
-        
-        console.log("Mapped employees:", mappedEmployees);
-        setEmployees(mappedEmployees);
+        console.log("Fetching employees from API service...");
+        const fetchedEmployees = await getAllEmployeesFromApi();
+        console.log(`Fetched ${fetchedEmployees.length} employees successfully:`, fetchedEmployees);
+        setEmployees(fetchedEmployees);
       } catch (error) {
         console.error("Failed to fetch employees:", error);
         toast.error("Could not load staff members");
+        setEmployees([]);
       } finally {
         setIsLoadingEmployees(false);
       }

@@ -32,15 +32,23 @@ const AssignmentSection: React.FC<AssignmentSectionProps> = ({
         onValueChange={(value) => onSelectChange('owner', value)}
         disabled={isLoading}
       >
-        <SelectTrigger>
-          <SelectValue placeholder={isLoading ? "Loading staff..." : "Assign to staff member (optional)"} />
+        <SelectTrigger className="w-full">
+          <SelectValue 
+            placeholder={isLoading ? "Loading staff members..." : "Assign to staff member (optional)"} 
+          />
         </SelectTrigger>
         <SelectContent>
-          {users.map(employee => (
-            <SelectItem key={employee.id} value={employee.id}>
-              {employee.firstName} {employee.lastName} ({employee.department})
+          {users && users.length > 0 ? (
+            users.map(employee => (
+              <SelectItem key={employee.id} value={employee.id}>
+                {employee.firstName} {employee.lastName} ({employee.department})
+              </SelectItem>
+            ))
+          ) : (
+            <SelectItem value="no-staff" disabled>
+              No staff members available
             </SelectItem>
-          ))}
+          )}
         </SelectContent>
       </Select>
     </div>
