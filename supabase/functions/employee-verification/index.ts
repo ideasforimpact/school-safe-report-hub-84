@@ -70,7 +70,7 @@ serve(async (req) => {
     const { data: docStatus, error: statusError } = await supabase
       .from('document_status')
       .select('id')
-      .eq('name', 'Governance')
+      .eq('name', 'governance')
       .single();
     
     if (statusError) {
