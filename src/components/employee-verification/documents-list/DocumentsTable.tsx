@@ -51,15 +51,25 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
     const hasLogs = !!doc.employee_docs_log && doc.employee_docs_log.length > 0;
     
     if (doc.verificationStatus === 'verified' && statusName === 'governance' && hasLogs) {
-      // Find the most recent successful verification log
-      const verificationLog = doc.employee_docs_log
-        .filter(log => log.action === 'verify_aadhar_otp' && log.response?.success === true)
-        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+      let verificationLog;
+      
+      // Find appropriate verification log based on document type
+      if (doc.documentTypeName?.toLowerCase() === 'aadhar') {
+        verificationLog = doc.employee_docs_log
+          .filter(log => log.action === 'verify_aadhar_otp' && log.response?.success === true)
+          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+      } else if (doc.documentTypeName?.toLowerCase() === 'pan') {
+        verificationLog = doc.employee_docs_log
+          .filter(log => log.action === 'pan_verification_success')
+          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+      }
       
       setSelectedDocumentDetails(verificationLog || doc.employee_docs_log[0]);
       setDialogOpen(true);
+      
+      const docType = doc.documentTypeName?.toLowerCase() || 'document';
       toast({
-        title: "Viewing Aadhar verification details",
+        title: `Viewing ${docType} verification details`,
         description: "Showing verification information for this document."
       });
     } else if (doc.verificationStatus === 'verified' && statusName) {

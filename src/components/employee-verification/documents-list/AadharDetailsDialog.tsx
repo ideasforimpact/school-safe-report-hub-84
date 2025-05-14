@@ -6,164 +6,202 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogClose,
-  DialogFooter,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import { format } from 'date-fns';
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { formatDate } from "@/lib/utils";
 
-interface AadharAddress {
-  country?: string;
-  state?: string;
-  dist?: string;
-  po?: string;
-  loc?: string;
-  vtc?: string;
-  subdist?: string;
-  street?: string;
-  house?: string;
-  landmark?: string;
-  zip?: string;
-}
-
-interface AadharResponse {
-  data?: {
-    full_name?: string;
-    aadhaar_number?: string;
-    dob?: string;
-    gender?: string;
-    address?: AadharAddress;
-    care_of?: string;
-    profile_image?: string;
-    has_image?: boolean;
-    mobile_verified?: boolean;
-  };
-  success?: boolean;
-  message?: string;
-  message_code?: string;
-}
-
-interface AadharDetailsDialogProps {
+interface VerificationDetailsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  aadharDetails: {
-    timestamp?: string;
-    action?: string;
-    response?: AadharResponse;
-  } | null;
+  aadharDetails: any | null;
 }
 
-const AadharDetailsDialog: React.FC<AadharDetailsDialogProps> = ({
+// Component is still named AadharDetailsDialog for backward compatibility
+// but now handles both Aadhar and PAN verification details
+const AadharDetailsDialog: React.FC<VerificationDetailsDialogProps> = ({
   open,
   onOpenChange,
-  aadharDetails,
+  aadharDetails
 }) => {
-  if (!aadharDetails?.response?.data) {
+  if (!aadharDetails) {
     return null;
   }
+  
+  const isAadharVerification = aadharDetails.action === 'verify_aadhar_otp';
+  const isPanVerification = aadharDetails.action === 'pan_verification_success';
 
-  const { data } = aadharDetails.response;
-  const address = data.address || {};
-  const formattedAddress = [
-    address.house,
-    address.street,
-    address.landmark,
-    address.loc,
-    address.vtc,
-    address.subdist,
-    address.dist,
-    address.state,
-    address.zip,
-    address.country,
-  ]
-    .filter(Boolean)
-    .join(', ');
-
-  const verificationDate = aadharDetails.timestamp ? 
-    format(new Date(aadharDetails.timestamp), 'PPP p') : 
-    'Unknown';
-
+  let title = 'Verification Details';
+  let responseData = aadharDetails.response?.data || {};
+  
+  if (isAadharVerification) {
+    title = 'Aadhaar Verification Details';
+  } else if (isPanVerification) {
+    title = 'PAN Verification Details';
+  }
+  
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Aadhaar Verification Details</DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
-            Verified through government Aadhaar database on {verificationDate}
+            Verification timestamp: {formatDate(aadharDetails.timestamp)}
           </DialogDescription>
         </DialogHeader>
         
-        <ScrollArea className="max-h-[60vh]">
-          <div className="space-y-4 p-1">
-            {data.profile_image && (
-              <div className="flex justify-center mb-4">
-                <div className="rounded-lg overflow-hidden border border-gray-200 shadow-sm">
-                  <img 
-                    src={data.profile_image} 
-                    alt="Aadhaar Profile" 
-                    className="w-32 h-32 object-cover"
-                  />
+        <ScrollArea className="h-72 rounded border p-4">
+          {isAadharVerification && (
+            <div className="space-y-3">
+              <div>
+                <h3 className="font-medium text-sm">Method:</h3>
+                <p className="text-sm">{aadharDetails.response?.method || "API"}</p>
+              </div>
+              
+              <div>
+                <h3 className="font-medium text-sm">Verification Status:</h3>
+                <p className="text-sm">Successful</p>
+              </div>
+              
+              {responseData.aadhaar_number && (
+                <div>
+                  <h3 className="font-medium text-sm">Aadhaar:</h3>
+                  <p className="text-sm">{responseData.aadhaar_number}</p>
+                </div>
+              )}
+              
+              {responseData.address && responseData.address.full && (
+                <div>
+                  <h3 className="font-medium text-sm">Address:</h3>
+                  <p className="text-sm whitespace-pre-wrap">{responseData.address.full}</p>
+                </div>
+              )}
+              
+              {responseData.dob && (
+                <div>
+                  <h3 className="font-medium text-sm">Date of Birth:</h3>
+                  <p className="text-sm">{responseData.dob}</p>
+                </div>
+              )}
+              
+              {responseData.gender && (
+                <div>
+                  <h3 className="font-medium text-sm">Gender:</h3>
+                  <p className="text-sm">{responseData.gender === 'M' ? 'Male' : responseData.gender === 'F' ? 'Female' : responseData.gender}</p>
+                </div>
+              )}
+              
+              {responseData.name && (
+                <div>
+                  <h3 className="font-medium text-sm">Name:</h3>
+                  <p className="text-sm">{responseData.name}</p>
+                </div>
+              )}
+              
+              {responseData.face_status && (
+                <div>
+                  <h3 className="font-medium text-sm">Face Match:</h3>
+                  <p className="text-sm">{responseData.face_status}</p>
+                </div>
+              )}
+              
+              <div className="pt-2">
+                <div className="text-xs text-muted-foreground">
+                  Verified through Aadhaar OTP verification flow
                 </div>
               </div>
-            )}
-            
-            <div className="grid grid-cols-1 gap-2">
-              <div className="bg-blue-50 p-3 rounded-md">
-                <h4 className="text-sm font-medium text-blue-900">Full Name</h4>
-                <p className="text-base">{data.full_name || 'N/A'}</p>
+            </div>
+          )}
+          
+          {isPanVerification && (
+            <div className="space-y-3">
+              <div>
+                <h3 className="font-medium text-sm">Method:</h3>
+                <p className="text-sm">{aadharDetails.response?.method || "API"}</p>
               </div>
               
-              <div className="bg-blue-50 p-3 rounded-md">
-                <h4 className="text-sm font-medium text-blue-900">Aadhaar Number</h4>
-                <p className="text-base">{data.aadhaar_number || 'N/A'}</p>
+              <div>
+                <h3 className="font-medium text-sm">Verification Status:</h3>
+                <p className="text-sm">Successful</p>
               </div>
               
-              <div className="grid grid-cols-2 gap-2">
-                <div className="bg-blue-50 p-3 rounded-md">
-                  <h4 className="text-sm font-medium text-blue-900">Date of Birth</h4>
-                  <p className="text-base">{data.dob || 'N/A'}</p>
+              {responseData.data?.name && (
+                <div>
+                  <h3 className="font-medium text-sm">Name:</h3>
+                  <p className="text-sm">{responseData.data.name}</p>
                 </div>
-                
-                <div className="bg-blue-50 p-3 rounded-md">
-                  <h4 className="text-sm font-medium text-blue-900">Gender</h4>
-                  <p className="text-base">{data.gender || 'N/A'}</p>
-                </div>
-              </div>
-              
-              <div className="bg-blue-50 p-3 rounded-md">
-                <h4 className="text-sm font-medium text-blue-900">Care of</h4>
-                <p className="text-base">{data.care_of || 'N/A'}</p>
-              </div>
-              
-              <div className="bg-blue-50 p-3 rounded-md">
-                <h4 className="text-sm font-medium text-blue-900">Address</h4>
-                <p className="text-base">{formattedAddress || 'N/A'}</p>
-              </div>
+              )}
 
-              <div className="grid grid-cols-2 gap-2">
-                <div className="bg-blue-50 p-3 rounded-md">
-                  <h4 className="text-sm font-medium text-blue-900">Mobile Verified</h4>
-                  <p className="text-base">{data.mobile_verified ? 'Yes' : 'No'}</p>
+              {responseData.data?.pan_number && (
+                <div>
+                  <h3 className="font-medium text-sm">PAN Number:</h3>
+                  <p className="text-sm">{responseData.data.pan_number}</p>
+                </div>
+              )}
+              
+              {responseData.data?.status && (
+                <div>
+                  <h3 className="font-medium text-sm">PAN Status:</h3>
+                  <p className="text-sm capitalize">{responseData.data.status}</p>
+                </div>
+              )}
+              
+              {responseData.data?.category && (
+                <div>
+                  <h3 className="font-medium text-sm">Category:</h3>
+                  <p className="text-sm capitalize">{responseData.data.category}</p>
+                </div>
+              )}
+
+              {responseData.data?.aadhaar_linked !== undefined && (
+                <div>
+                  <h3 className="font-medium text-sm">Aadhaar Linked:</h3>
+                  <p className="text-sm">{responseData.data.aadhaar_linked ? "Yes" : "No"}</p>
+                </div>
+              )}
+              
+              {responseData.data?.dob && (
+                <div>
+                  <h3 className="font-medium text-sm">Date of Birth:</h3>
+                  <p className="text-sm">{responseData.data.dob}</p>
+                </div>
+              )}
+
+              {responseData.data?.gender && (
+                <div>
+                  <h3 className="font-medium text-sm">Gender:</h3>
+                  <p className="text-sm">{responseData.data.gender === 'M' ? 'Male' : responseData.data.gender === 'F' ? 'Female' : responseData.data.gender}</p>
+                </div>
+              )}
+              
+              <div className="pt-2">
+                <div className="text-xs text-muted-foreground">
+                  Verified through PAN verification API
                 </div>
               </div>
             </div>
-            
-            <Separator />
-            
-            <div className="bg-gray-50 p-3 rounded-md">
-              <h4 className="text-sm font-medium text-gray-700">Verification Method</h4>
-              <p className="text-sm text-gray-600">Government Aadhaar API Verification</p>
+          )}
+          
+          {!isAadharVerification && !isPanVerification && (
+            <div className="space-y-3">
+              <div>
+                <h3 className="font-medium text-sm">Action:</h3>
+                <p className="text-sm">{aadharDetails.action || "Unknown"}</p>
+              </div>
+              
+              <div>
+                <h3 className="font-medium text-sm">Timestamp:</h3>
+                <p className="text-sm">{formatDate(aadharDetails.timestamp)}</p>
+              </div>
+              
+              <div>
+                <h3 className="font-medium text-sm">Data:</h3>
+                <pre className="text-sm bg-gray-50 p-2 rounded overflow-auto">
+                  {JSON.stringify(aadharDetails.response || {}, null, 2)}
+                </pre>
+              </div>
             </div>
-          </div>
+          )}
         </ScrollArea>
-        
-        <DialogFooter>
-          <DialogClose asChild>
-            <Button>Close</Button>
-          </DialogClose>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
