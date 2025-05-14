@@ -152,6 +152,9 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
         }
         return doc;
       }));
+
+      // Update employee status based on all documents
+      await updateEmployeeStatus(employeeId, data.status || status);
       
     } catch (err) {
       console.error('Error in verifyDocument:', err);

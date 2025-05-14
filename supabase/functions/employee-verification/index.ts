@@ -23,8 +23,11 @@ serve(async (req) => {
   const environment = Deno.env.get("ENVIRONMENT") || "development";
   
   // Default API configuration based on environment - using fixed values as requested
-  let baseUrl = "https://kyc-api.surepass.io";
-  let apiKey = Deno.env.get("SUREPASS_PRODUCTION_API_KEY") || "";
+  let apiKey, baseUrl;
+  
+  // Using fixed values for baseUrl and apiKey as requested by the user
+  baseUrl = "https://kyc-api.surepass.io";
+  apiKey = Deno.env.get("SUREPASS_PRODUCTION_API_KEY") || "";
 
   // Log environment variables (masking sensitive parts)
   console.log("Environment variables check:");
@@ -281,6 +284,9 @@ async function handleAadharOtpVerify(body, baseUrl, apiKey, supabase, corsHeader
       })
       .eq('id', documentId);
       
+    // Check and update employee status if needed
+    await updateEmployeeVerificationStatus(docData.employee_id, supabase);
+    
     return new Response(
       JSON.stringify({ 
         success: true, 
@@ -321,23 +327,6 @@ async function handlePanVerification(body, baseUrl, apiKey, supabase, corsHeader
     if (docError) {
       throw new Error("Failed to retrieve document: " + docError.message);
     }
-
-    // Get the governance document status ID first - this should be done before API call
-    // to ensure we have it ready if verification succeeds
-    const { data: governanceStatus, error: statusError } = await supabase
-      .from('document_status')
-      .select('id')
-      .eq('name', 'governance')
-      .maybeSingle();
-      
-    if (statusError) {
-      throw new Error("Failed to get document status: " + statusError.message);
-    }
-    
-    const governanceStatusId = governanceStatus?.id;
-    if (!governanceStatusId) {
-      throw new Error("Governance status ID not found");
-    }
     
     // Call the Surepass API to verify PAN
     const apiEndpoint = `${baseUrl}/api/v1/pan/pan-comprehensive`;
@@ -374,12 +363,14 @@ async function handlePanVerification(body, baseUrl, apiKey, supabase, corsHeader
       
       console.error("API Error response:", errorText);
       
-      return new Response(
-        JSON.stringify({ 
-          error: `API returned status ${response.status}: ${errorText.substring(0, 100)}...`,
-        }),
-        { status: response.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      // Log the error to the document logs
+      await logErrorToDocument(supabase, documentId, docData, {
+        action: "pan_verification_api_error",
+        status: response.status,
+        error: errorText.substring(0, 500) // Limit the size of the error text
+      });
+      
+      throw new Error(`API returned status ${response.status}: ${errorText.substring(0, 100)}...`);
     }
     
     // Handle the response body
@@ -392,17 +383,36 @@ async function handlePanVerification(body, baseUrl, apiKey, supabase, corsHeader
       const textResponse = await response.text();
       console.error("Received non-JSON response:", textResponse);
       
-      return new Response(
-        JSON.stringify({ 
-          error: "API returned non-JSON response",
-        }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      // Log the non-JSON response to document logs
+      await logErrorToDocument(supabase, documentId, docData, {
+        action: "pan_verification_invalid_response",
+        error: "Received non-JSON response",
+        response: textResponse.substring(0, 500) // Limit the size
+      });
+      
+      throw new Error("API returned non-JSON response");
     }
     
     console.log("Surepass PAN verification response:", responseData);
     
     if (!responseData.success) {
+      // Log the failed verification attempt
+      await supabase
+        .from('employee_documents')
+        .update({ 
+          employee_docs_log: supabase.rpc('append_to_json_array', { 
+            arr: docData.employee_docs_log || [], 
+            new_element: {
+              timestamp: new Date().toISOString(),
+              action: "pan_verification_failed",
+              response: { 
+                message: responseData.message || "Verification failed" 
+              }
+            }
+          })
+        })
+        .eq('id', documentId);
+        
       return new Response(
         JSON.stringify({ 
           error: responseData.message || "Failed to verify PAN",
@@ -411,38 +421,98 @@ async function handlePanVerification(body, baseUrl, apiKey, supabase, corsHeader
       );
     }
     
-    // On success: Update the document with governance status ID and store the COMPLETE API response
+    // Get the governance document status ID for successful verification
+    const { data: governanceStatus, error: statusError } = await supabase
+      .from('document_status')
+      .select('id')
+      .eq('name', 'governance')
+      .maybeSingle();
+      
+    if (statusError) {
+      throw new Error("Failed to get document status: " + statusError.message);
+    }
+    
+    const governanceStatusId = governanceStatus?.id;
+    
+    // Extract relevant data
+    const verificationData = responseData.data || {};
+    
+    // Update document verification status
     await supabase
       .from('employee_documents')
       .update({ 
         verification_status: 'verified',
-        document_status_id: governanceStatusId, // Use governance status ID
-        employee_docs_log: responseData, // Store the complete API response
+        document_status_id: governanceStatusId,
+        employee_docs_log: supabase.rpc('append_to_json_array', { 
+          arr: docData.employee_docs_log || [], 
+          new_element: {
+            timestamp: new Date().toISOString(),
+            action: "pan_verification_success",
+            response: { 
+              method: "api",
+              data: verificationData
+            }
+          }
+        }),
         // Store extracted details
         details: {
-          name: responseData.data?.name,
-          panStatus: responseData.data?.status,
-          category: responseData.data?.category,
-          lastUpdated: responseData.data?.last_updated
+          name: verificationData.name,
+          panStatus: verificationData.status,
+          category: verificationData.category,
+          lastUpdated: verificationData.last_updated
         }
       })
       .eq('id', documentId);
       
+    // Check and update employee status if needed
+    await updateEmployeeVerificationStatus(docData.employee_id, supabase);
+    
     return new Response(
       JSON.stringify({ 
         success: true, 
         message: "PAN verification completed successfully",
         details: {
-          name: responseData.data?.name,
-          status: responseData.data?.status,
-          category: responseData.data?.category,
-          lastUpdated: responseData.data?.last_updated
+          name: verificationData.name,
+          status: verificationData.status,
+          category: verificationData.category,
+          lastUpdated: verificationData.last_updated
         }
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (err) {
     console.error("Error in handlePanVerification:", err);
+    
+    // Try to log the error in the document logs
+    try {
+      if (documentId) {
+        const { data } = await supabase
+          .from('employee_documents')
+          .select('employee_docs_log')
+          .eq('id', documentId)
+          .single();
+          
+        if (data) {
+          await supabase
+            .from('employee_documents')
+            .update({ 
+              employee_docs_log: supabase.rpc('append_to_json_array', { 
+                arr: data.employee_docs_log || [], 
+                new_element: {
+                  timestamp: new Date().toISOString(),
+                  action: "pan_verification_error",
+                  response: { 
+                    error: err.message || "Unknown error during verification"
+                  }
+                }
+              })
+            })
+            .eq('id', documentId);
+        }
+      }
+    } catch (logError) {
+      console.error("Failed to log error to document logs:", logError);
+    }
     
     return new Response(
       JSON.stringify({ 
@@ -473,5 +543,41 @@ async function logErrorToDocument(supabase, documentId, docData, errorDetails) {
       
   } catch (error) {
     console.error("Failed to log error to document:", error);
+  }
+}
+
+async function updateEmployeeVerificationStatus(employeeId, supabase) {
+  try {
+    // Get all documents for this employee
+    const { data: docs, error: docsError } = await supabase
+      .from('employee_documents')
+      .select('verification_status')
+      .eq('employee_id', employeeId);
+      
+    if (docsError) {
+      throw new Error("Failed to retrieve employee documents: " + docsError.message);
+    }
+    
+    // Determine overall status
+    let overallStatus = 'pending';
+    const allVerified = docs.every(doc => doc.verification_status === 'verified');
+    const anyFailed = docs.some(doc => doc.verification_status === 'failed');
+    
+    if (anyFailed) {
+      overallStatus = 'failed';
+    } else if (allVerified) {
+      overallStatus = 'verified';
+    }
+    
+    // Update employee status
+    await supabase
+      .from('employees')
+      .update({ status: overallStatus })
+      .eq('id', employeeId);
+      
+    return overallStatus;
+  } catch (error) {
+    console.error("Error updating employee verification status:", error);
+    throw error;
   }
 }

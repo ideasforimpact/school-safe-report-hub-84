@@ -4,7 +4,7 @@ import { VerificationDocument } from '@/types/employeeVerification';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import AadharDetailsDialog from '../documents-list/AadharDetailsDialog';
 import VerificationStatusBadge from '../VerificationStatusBadge';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
 interface DocumentStatusButtonProps {
   document: VerificationDocument;
@@ -12,7 +12,7 @@ interface DocumentStatusButtonProps {
 
 const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({ document }) => {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [verificationDetails, setVerificationDetails] = useState<any>(null);
+  const [aadharDetails, setAadharDetails] = useState<any>(null);
   const { documentStatuses } = useEmployeeVerification();
   const [statusName, setStatusName] = useState<string | null>(null);
   const { toast } = useToast();
@@ -26,34 +26,14 @@ const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({ document })
   }, [document.documentStatusId, documentStatuses]);
 
   useEffect(() => {
-    // For PAN verification, we store the complete API response directly in employee_docs_log
-    if (document.documentTypeName?.toLowerCase() === 'pan' && 
-        document.verificationStatus === 'verified' && 
-        document.employee_docs_log) {
-      
-      // If employee_docs_log is the API response itself (not an array)
-      if (document.employee_docs_log && typeof document.employee_docs_log === 'object' && document.employee_docs_log.success) {
-        setVerificationDetails(document.employee_docs_log);
-        return;
-      }
-    }
-    
-    // For Aadhar or other document types, check the log array
     if (document.employee_docs_log && Array.isArray(document.employee_docs_log)) {
       // Find the most recent successful verification log
-      let verificationLog;
-      
-      if (document.documentTypeName?.toLowerCase() === 'aadhar') {
-        verificationLog = document.employee_docs_log
-          .filter(log => log.action === 'aadhar_verification_success')
-          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
-      }
+      const verificationLog = document.employee_docs_log
+        .filter(log => log.action === 'verify_aadhar_otp' && log.response?.success === true)
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
       
       if (verificationLog) {
-        setVerificationDetails(verificationLog);
-      } else if (document.employee_docs_log.length > 0) {
-        // If no specific verification log found, use the most recent log
-        setVerificationDetails(document.employee_docs_log[document.employee_docs_log.length - 1]);
+        setAadharDetails(verificationLog);
       }
     }
   }, [document]);
@@ -62,12 +42,11 @@ const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({ document })
     // Only open dialog if we have verification data
     if (document.verificationStatus === 'verified' && 
         statusName === 'governance' && 
-        (document.employee_docs_log)) {
+        document.employee_docs_log && 
+        document.employee_docs_log.length > 0) {
       setDialogOpen(true);
-      
-      let docType = document.documentTypeName?.toLowerCase() || '';
       toast({
-        title: `Viewing ${docType} verification details`,
+        title: "Viewing Aadhar verification details",
         description: "Showing verification information for this document."
       });
     } else if (document.verificationStatus === 'verified' && statusName) {
@@ -79,7 +58,7 @@ const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({ document })
   };
   
   const isGovernanceVerified = document.verificationStatus === 'verified' && statusName === 'governance';
-  const hasLogs = !!document.employee_docs_log;
+  const hasLogs = !!document.employee_docs_log && document.employee_docs_log.length > 0;
 
   return (
     <>
@@ -93,7 +72,7 @@ const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({ document })
       <AadharDetailsDialog 
         open={dialogOpen} 
         onOpenChange={setDialogOpen} 
-        aadharDetails={verificationDetails}
+        aadharDetails={aadharDetails || document.employee_docs_log?.[0]}
       />
     </>
   );
