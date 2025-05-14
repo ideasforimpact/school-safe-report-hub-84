@@ -23,7 +23,7 @@ interface FormData {
 }
 
 export function useIncidentForm() {
-  const { ticketCounter, users } = useIncidents();
+  const { users, generateTicketId } = useIncidents();
   
   const [nextTicketId, setNextTicketId] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -84,9 +84,10 @@ export function useIncidentForm() {
 
   // Set next ticket ID
   useEffect(() => {
-    const newTicketId = `INC-${String(ticketCounter).padStart(4, '0')}`;
+    // Use the generateTicketId function from the context
+    const newTicketId = generateTicketId();
     setNextTicketId(newTicketId);
-  }, [ticketCounter]);
+  }, [generateTicketId]);
 
   const handleChange = (name: string, value: string) => {
     setFormData(prev => ({ ...prev, [name]: value }));
