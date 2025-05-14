@@ -5,16 +5,26 @@ import Layout from '@/components/layout/Layout';
 import { IncidentRelatedConfig } from './configuration/IncidentRelatedConfig';
 import { toast } from 'sonner';
 import { useIncidentCategories } from '@/hooks/useIncidentCategories';
+import { supabase } from '@/integrations/supabase/client';
+
+interface ContributingFactor {
+  id: string;
+  name: string;
+  description: string | null;
+  weight: string | null;
+}
 
 const IncidentConfiguration = () => {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('categories');
+  const [contributingFactors, setContributingFactors] = useState<ContributingFactor[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Use the custom hook for categories and subcategories
   const {
     categories,
     subcategoryMappings,
-    loading,
+    loading: categoriesLoading,
     addCategory,
     updateCategory,
     deleteCategory,
@@ -31,57 +41,109 @@ const IncidentConfiguration = () => {
     }
   }, [searchParams]);
 
-  // Handle category and subcategory operations using our custom hook
-  const handleAddCategory = async (name: string) => {
+  // Fetch contributing factors
+  useEffect(() => {
+    async function fetchContributingFactors() {
+      try {
+        const { data, error } = await supabase
+          .from('contributing_factors')
+          .select('id, name, description, weight')
+          .order('name');
+        
+        if (error) {
+          console.error('Error fetching contributing factors:', error);
+          toast.error('Failed to load contributing factors');
+          return;
+        }
+        
+        setContributingFactors(data || []);
+      } catch (error) {
+        console.error('Exception fetching contributing factors:', error);
+        toast.error('An unexpected error occurred');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchContributingFactors();
+  }, []);
+
+  // Handle contributing factors operations
+  const handleAddContributingFactor = async (name: string, description: string, weight: string) => {
     try {
-      await addCategory(name);
+      const { data, error } = await supabase
+        .from('contributing_factors')
+        .insert([
+          { name, description: description || null, weight },
+        ])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error adding contributing factor:', error);
+        toast.error('Failed to add contributing factor');
+        return;
+      }
+
+      setContributingFactors([...contributingFactors, data]);
+      toast.success('Contributing factor added successfully');
     } catch (error) {
-      console.error("Error adding category:", error);
+      console.error('Exception adding contributing factor:', error);
+      toast.error('An unexpected error occurred');
     }
   };
 
-  const handleUpdateCategory = async (id: string, name: string) => {
+  const handleUpdateContributingFactor = async (id: string, name: string, description: string, weight: string) => {
     try {
-      await updateCategory(id, name);
+      const { error } = await supabase
+        .from('contributing_factors')
+        .update({ name, description: description || null, weight })
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error updating contributing factor:', error);
+        toast.error('Failed to update contributing factor');
+        return;
+      }
+
+      setContributingFactors(
+        contributingFactors.map(factor =>
+          factor.id === id
+            ? { ...factor, name, description: description || null, weight }
+            : factor
+        )
+      );
+      
+      toast.success('Contributing factor updated successfully');
     } catch (error) {
-      console.error("Error updating category:", error);
+      console.error('Exception updating contributing factor:', error);
+      toast.error('An unexpected error occurred');
     }
   };
 
-  const handleDeleteCategory = async (id: string) => {
+  const handleDeleteContributingFactor = async (id: string) => {
     try {
-      await deleteCategory(id);
+      const { error } = await supabase
+        .from('contributing_factors')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error deleting contributing factor:', error);
+        toast.error('Failed to delete contributing factor');
+        return;
+      }
+
+      setContributingFactors(contributingFactors.filter(factor => factor.id !== id));
+      toast.success('Contributing factor deleted successfully');
     } catch (error) {
-      console.error("Error deleting category:", error);
+      console.error('Exception deleting contributing factor:', error);
+      toast.error('An unexpected error occurred');
     }
   };
 
-  const handleAddSubcategory = async (categoryId: string, name: string) => {
-    try {
-      await addSubcategory(categoryId, name);
-    } catch (error) {
-      console.error("Error adding subcategory:", error);
-    }
-  };
-
-  const handleUpdateSubcategory = async (categoryId: string, id: string, name: string) => {
-    try {
-      await updateSubcategory(categoryId, id, name);
-    } catch (error) {
-      console.error("Error updating subcategory:", error);
-    }
-  };
-
-  const handleDeleteSubcategory = async (categoryId: string, id: string) => {
-    try {
-      await deleteSubcategory(categoryId, id);
-    } catch (error) {
-      console.error("Error deleting subcategory:", error);
-    }
-  };
-
-  // Wait for categories to load
-  if (loading) {
+  // Wait for data to load
+  if (loading || categoriesLoading) {
     return (
       <Layout>
         <div className="flex items-center justify-center h-screen">
@@ -100,7 +162,7 @@ const IncidentConfiguration = () => {
         <div>
           <h1 className="text-2xl font-bold">Incident Related Configuration</h1>
           <p className="text-gray-600 mt-1">
-            Manage incident categories and subcategories
+            Manage incident categories, subcategories, and contributing factors
           </p>
         </div>
 
@@ -108,13 +170,17 @@ const IncidentConfiguration = () => {
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           categories={categories}
-          addCategory={handleAddCategory}
-          updateCategory={handleUpdateCategory}
-          deleteCategory={handleDeleteCategory}
+          addCategory={addCategory}
+          updateCategory={updateCategory}
+          deleteCategory={deleteCategory}
           subcategoryMappings={subcategoryMappings}
-          addSubcategory={handleAddSubcategory}
-          updateSubcategory={handleUpdateSubcategory}
-          deleteSubcategory={handleDeleteSubcategory}
+          addSubcategory={addSubcategory}
+          updateSubcategory={updateSubcategory}
+          deleteSubcategory={deleteSubcategory}
+          contributingFactors={contributingFactors}
+          addContributingFactor={handleAddContributingFactor}
+          updateContributingFactor={handleUpdateContributingFactor}
+          deleteContributingFactor={handleDeleteContributingFactor}
         />
       </div>
     </Layout>
