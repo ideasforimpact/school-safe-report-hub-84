@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { toast } from "sonner";
 import { v4 as uuidv4 } from 'uuid';
+import { ContributingFactor } from '@/hooks/config/useContributingFactorsManagement';
 
 // Define all the types that are needed by other files
 export interface Campus {
@@ -90,12 +91,8 @@ export interface ActionItem {
   updatedAt: Date;
 }
 
-export interface ContributingFactor {
-  id: string;
-  category: string;
-  description: string;
-  weight: 'Low' | 'Medium' | 'High';
-}
+// Re-export the ContributingFactor interface from useContributingFactorsManagement
+export { ContributingFactor };
 
 export interface Incident {
   id: string;
@@ -313,9 +310,9 @@ export const IncidentProvider: React.FC<{ children: ReactNode }> = ({ children }
     { id: 'des2', name: 'Principal' }
   ]);
   const [contributingFactors, setContributingFactors] = useState<ContributingFactor[]>([
-    { id: 'cf1', category: 'Environmental', description: 'Poor lighting conditions', weight: 'Medium' },
-    { id: 'cf2', category: 'Behavioral', description: 'Lack of supervision', weight: 'High' },
-    { id: 'cf3', category: 'Procedural', description: 'Inadequate safety protocols', weight: 'Medium' }
+    { id: 'cf1', name: 'Poor lighting conditions', category: 'Environmental', description: 'Poor lighting conditions', weight: 'Medium' },
+    { id: 'cf2', name: 'Lack of supervision', category: 'Behavioral', description: 'Lack of supervision', weight: 'High' },
+    { id: 'cf3', name: 'Inadequate safety protocols', category: 'Procedural', description: 'Inadequate safety protocols', weight: 'Medium' }
   ]);
 
   // Mock implementations of methods
@@ -343,8 +340,8 @@ export const IncidentProvider: React.FC<{ children: ReactNode }> = ({ children }
   const addContributingFactor = (name: string, description: string, weight: 'Low' | 'Medium' | 'High') => {
     const newFactor: ContributingFactor = {
       id: uuidv4(),
-      category: 'General', // Default category
       name,
+      category: 'General', // Default category
       description,
       weight
     };

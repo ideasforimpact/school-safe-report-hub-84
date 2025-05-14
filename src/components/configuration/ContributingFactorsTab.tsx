@@ -77,7 +77,6 @@ export const ContributingFactorsTab: React.FC<ContributingFactorsTabProps> = ({
     deleteContributingFactor(id);
   };
 
-  // Fixed the onSave callback to accept a name parameter
   const handleSave = (name: string) => {
     if (currentFactor) {
       const description = (document.getElementById('edit-description') as HTMLTextAreaElement)?.value || '';

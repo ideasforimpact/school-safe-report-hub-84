@@ -5,8 +5,9 @@ export {
   useIncidents,
   subcategories,
   nearMissSubcategories,
-  unsafeConditionSubcategories
-} from './incident/IncidentContext';
+  unsafeConditionSubcategories,
+  ContributingFactor
+} from '@/contexts/IncidentContext';
 
 // Export types from IncidentContext but exclude User to avoid name collision
 export type {
@@ -25,13 +26,12 @@ export type {
   Action,
   Comment,
   ActionItem,
-  IncidentContributingFactor,
   Incident,
   Activity,
   ConfigItem,
   SubcategoryItem,
   IncidentContextType
-} from './incident/IncidentContext';
+} from '@/contexts/IncidentContext';
 
 // Export auth related items
 export * from './auth';
