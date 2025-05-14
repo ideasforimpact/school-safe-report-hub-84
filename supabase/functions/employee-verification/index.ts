@@ -192,7 +192,7 @@ serve(async (req) => {
     
     // Handle Aadhar OTP verification
     else if (action === 'verifyAadharOtp') {
-      // Modified check to require otp but make txnId optional
+      // Only require OTP - txnId is now optional
       if (!otp) {
         console.error("Missing required field: OTP");
         return new Response(
@@ -271,18 +271,18 @@ serve(async (req) => {
           }
           
           // Get employee ID from the document
-          const { data: document } = await supabase
+          const { data: documentData } = await supabase
             .from('employee_documents')
             .select('employee_id')
             .eq('id', documentId)
             .single();
           
-          if (document?.employee_id) {
+          if (documentData?.employee_id) {
             // Check if all employee documents are verified
             const { data: documents } = await supabase
               .from('employee_documents')
               .select('verification_status')
-              .eq('employee_id', document.employee_id);
+              .eq('employee_id', documentData.employee_id);
             
             const allVerified = documents?.every(doc => doc.verification_status === 'verified');
             
@@ -290,7 +290,7 @@ serve(async (req) => {
               await supabase
                 .from('employees')
                 .update({ status: 'verified' })
-                .eq('id', document.employee_id);
+                .eq('id', documentData.employee_id);
             }
           }
         }
@@ -377,18 +377,18 @@ serve(async (req) => {
             }
             
             // Get employee ID from the document
-            const { data: document } = await supabase
+            const { data: documentData } = await supabase
               .from('employee_documents')
               .select('employee_id')
               .eq('id', documentId)
               .single();
             
-            if (document?.employee_id) {
+            if (documentData?.employee_id) {
               // Check if all employee documents are verified
               const { data: documents } = await supabase
                 .from('employee_documents')
                 .select('verification_status')
-                .eq('employee_id', document.employee_id);
+                .eq('employee_id', documentData.employee_id);
               
               const allVerified = documents?.every(doc => doc.verification_status === 'verified');
               
@@ -396,7 +396,7 @@ serve(async (req) => {
                 await supabase
                   .from('employees')
                   .update({ status: 'verified' })
-                  .eq('id', document.employee_id);
+                  .eq('id', documentData.employee_id);
               }
             }
           }
