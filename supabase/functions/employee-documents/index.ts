@@ -69,7 +69,7 @@ serve(async (req) => {
     // PUT method for updating document verification status
     if (req.method === "PUT") {
       const body = await req.json();
-      const { employeeId, documentId, verificationStatus, verificationNotes, documentStatusId } = body;
+      const { employeeId, documentId, verificationStatus, verificationNotes, documentStatusId, skipLogUpdate } = body;
       
       if (documentId && (verificationStatus || documentStatusId)) {
         return await handleUpdateVerificationStatus(
@@ -78,6 +78,7 @@ serve(async (req) => {
           verificationStatus, 
           verificationNotes,
           documentStatusId,
+          skipLogUpdate, // Add this parameter to control log updates
           supabase, 
           corsHeaders
         );
@@ -152,10 +153,11 @@ async function handleUpdateVerificationStatus(
   verificationStatus, 
   verificationNotes,
   documentStatusId,
+  skipLogUpdate,
   supabase, 
   corsHeaders
 ) {
-  if (!employeeId || !documentId || (!verificationStatus && !documentStatusId)) {
+  if (!documentId || (!verificationStatus && !documentStatusId)) {
     return new Response(
       JSON.stringify({ error: "Missing required fields" }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -163,6 +165,28 @@ async function handleUpdateVerificationStatus(
   }
   
   try {
+    // Get document to get employeeId if not provided
+    if (!employeeId) {
+      const { data: docData, error: docError } = await supabase
+        .from('employee_documents')
+        .select('employee_id')
+        .eq('id', documentId)
+        .single();
+        
+      if (docError) {
+        throw docError;
+      }
+      
+      if (!docData) {
+        return new Response(
+          JSON.stringify({ error: "Document not found" }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      employeeId = docData.employee_id;
+    }
+    
     // Prepare update object with only fields that exist in the table
     const updateObject = {};
     
@@ -177,8 +201,8 @@ async function handleUpdateVerificationStatus(
     // Add other fields that exist in the table
     updateObject.updated_at = new Date().toISOString();
     
-    // Add verification notes to employee_docs_log if provided
-    if (verificationNotes) {
+    // Add verification notes to employee_docs_log if provided and not skipping logs
+    if (verificationNotes && !skipLogUpdate) {
       // Get current document to access its log
       const { data: currentDoc, error: fetchError } = await supabase
         .from('employee_documents')
