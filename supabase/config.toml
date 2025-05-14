@@ -4,22 +4,12 @@ project_id = "ybvxkiubnnixntghojyy"
 [api]
 enabled = true
 port = 54321
-schemas = ["public", "storage", "graphql_public"]
+schemas = ["public", "storage"]
 
 [db]
 port = 54322
 shadow_port = 54320
 major_version = 15
-
-[db.pooler]
-enabled = false
-port = 54329
-pool_mode = "transaction"
-default_pool_size = 20
-max_client_conn = 100
-
-[realtime]
-enabled = false
 
 [studio]
 enabled = true
@@ -32,44 +22,19 @@ port = 54324
 
 [storage]
 enabled = true
+file_size_limit = "50MiB"
 
 [auth]
 enabled = true
 site_url = "http://localhost:3000"
-
-[auth.email]
+additional_redirect_urls = ["https://localhost:3000", "localhost:3000"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
 enable_signup = true
-double_confirm_changes = true
-enable_confirmations = false
 
-[auth.sms]
-enable_signup = true
-enable_confirmations = false
-
-[auth.external.github]
-enabled = false
-client_id = ""
-secret = ""
-
-[auth.external.google]
-enabled = false
-client_id = ""
-secret = ""
-
-[analytics]
-enabled = false
-port = 54327
-vector_port = 54328
-backend = "postgres"
-
-[experimental.functions.vehicle-verify]
-verify_jwt = true
-
-[experimental.functions.get-environment]
-verify_jwt = true
-
-[experimental.functions.employee-verification]
-verify_jwt = true
-
-[experimental.functions.employee-documents]
-verify_jwt = true
+[functions]
+[functions.employee-documents]
+verify_jwt = false
+[functions.employee-verification]
+verify_jwt = false

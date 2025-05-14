@@ -29,10 +29,7 @@ const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({ document })
     if (document.employee_docs_log && Array.isArray(document.employee_docs_log)) {
       // Find the most recent successful verification log
       const verificationLog = document.employee_docs_log
-        .filter(log => {
-          return (log.action === 'verify_aadhar_otp' || log.action === 'pan_verification_success') && 
-                 (log.response?.success === true || log.response?.method === 'api');
-        })
+        .filter(log => log.action === 'verify_aadhar_otp' && log.response?.success === true)
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
       
       if (verificationLog) {
@@ -49,7 +46,7 @@ const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({ document })
         document.employee_docs_log.length > 0) {
       setDialogOpen(true);
       toast({
-        title: "Viewing verification details",
+        title: "Viewing Aadhar verification details",
         description: "Showing verification information for this document."
       });
     } else if (document.verificationStatus === 'verified' && statusName) {
@@ -75,7 +72,7 @@ const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({ document })
       <AadharDetailsDialog 
         open={dialogOpen} 
         onOpenChange={setDialogOpen} 
-        aadharDetails={aadharDetails || (document.employee_docs_log?.[0])}
+        aadharDetails={aadharDetails || document.employee_docs_log?.[0]}
       />
     </>
   );

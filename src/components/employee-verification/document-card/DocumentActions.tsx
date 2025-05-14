@@ -46,13 +46,13 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
         title: "Document Verified",
         description: `Document has been ${method === 'api' ? 'automatically' : 'manually'} verified successfully.`,
       });
-    } catch (error: any) {
+    } catch (error) {
       toast({
-        title: "Verification Error",
-        description: error.message || "An error occurred while verifying the document.",
+        title: "Error",
+        description: "An error occurred while verifying the document.",
         variant: "destructive",
       });
-      console.error("Document verification error:", error);
+      console.error(error);
     } finally {
       setIsVerifying(false);
     }
@@ -70,13 +70,13 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
         description: "Document has been marked as failed verification.",
         variant: "destructive",
       });
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Error",
-        description: error.message || "An error occurred while rejecting the document.",
+        description: "An error occurred while rejecting the document.",
         variant: "destructive",
       });
-      console.error("Document rejection error:", error);
+      console.error(error);
     } finally {
       setIsVerifying(false);
     }

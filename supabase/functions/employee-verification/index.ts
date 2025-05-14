@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 
@@ -20,22 +21,18 @@ serve(async (req) => {
   // Initialize environment variables
   const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+  const surepassApiKey = Deno.env.get("SUREPASS_SANDBOX_API_KEY") || "";
   const environment = Deno.env.get("ENVIRONMENT") || "development";
-  
-  // Default API configuration based on environment - using fixed values as requested
-  let apiKey, baseUrl;
-  
-  // Using fixed values for baseUrl and apiKey as requested by the user
-  baseUrl = "https://kyc-api.surepass.io";
-  apiKey = Deno.env.get("SUREPASS_PRODUCTION_API_KEY") || "";
 
-  // Log environment variables (masking sensitive parts)
-  console.log("Environment variables check:");
-  console.log(`SUPABASE_URL: ${supabaseUrl ? "✓ Set" : "✗ Not set"}`);
-  console.log(`SUPABASE_SERVICE_ROLE_KEY: ${supabaseServiceKey ? "✓ Set" : "✗ Not set"}`);
-  console.log(`ENVIRONMENT: ${environment}`);
-  console.log(`Using API Key: ${apiKey ? "✓ Set" : "✗ Not set"} (${environment} environment)`);
-  console.log(`Using Base URL: ${baseUrl}`);
+  // Determine which API key to use based on environment
+  const apiKey = environment === "production" 
+    ? Deno.env.get("SUREPASS_PRODUCTION_API_KEY") || surepassApiKey
+    : surepassApiKey;
+
+  // Use the appropriate base URL
+  const baseUrl = environment === "production" 
+    ? Deno.env.get("SUREPASS_BASE_URL") || "https://kyc-api.surepass.io"
+    : "https://kyc-api.surepass.io"; // Use sandbox for development
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -45,25 +42,13 @@ serve(async (req) => {
 
     console.log(`Processing ${action} request`);
 
-    // For Aadhar verification, always use production settings regardless of environment
-    if (action === 'requestAadharOtp' || action === 'verifyAadharOtp') {
-      const aadharApiKey = Deno.env.get("SUREPASS_PRODUCTION_API_KEY") || apiKey;
-      const aadharBaseUrl = Deno.env.get("SUREPASS_PRODUCTION_BASE_URL") || "https://kyc-api.surepass.io";
-      
-      console.log("Using production settings for Aadhar verification:");
-      console.log(`Aadhar API Key: ${aadharApiKey ? "✓ Set" : "✗ Not set"}`);
-      console.log(`Aadhar Base URL: ${aadharBaseUrl}`);
-      
-      if (action === 'requestAadharOtp') {
-        return await handleAadharOtpRequest(body, aadharBaseUrl, aadharApiKey, supabase, corsHeaders);
-      }
-      else if (action === 'verifyAadharOtp') {
-        return await handleAadharOtpVerify(body, aadharBaseUrl, aadharApiKey, supabase, corsHeaders);
-      }
+    if (action === 'requestAadharOtp') {
+      return await handleAadharOtpRequest(body, baseUrl, apiKey, supabase, corsHeaders);
+    }
+    else if (action === 'verifyAadharOtp') {
+      return await handleAadharOtpVerify(body, baseUrl, apiKey, supabase, corsHeaders);
     }
     else if (action === 'verifyPanCard') {
-      // Use environment-specific settings for PAN (already set in apiKey and baseUrl)
-      console.log(`Using ${environment} settings for PAN verification`);
       return await handlePanVerification(body, baseUrl, apiKey, supabase, corsHeaders);
     }
 
@@ -315,7 +300,6 @@ async function handlePanVerification(body, baseUrl, apiKey, supabase, corsHeader
   
   try {
     console.log("Verifying PAN card:", documentNumber);
-    console.log(`Using Base URL: ${baseUrl}`);
     
     // Get document to access logs
     const { data: docData, error: docError } = await supabase
@@ -329,10 +313,7 @@ async function handlePanVerification(body, baseUrl, apiKey, supabase, corsHeader
     }
     
     // Call the Surepass API to verify PAN
-    const apiEndpoint = `${baseUrl}/api/v1/pan/pan-comprehensive`;
-    console.log(`Calling PAN verification API endpoint: ${apiEndpoint}`);
-    
-    const response = await fetch(apiEndpoint, {
+    const response = await fetch(`${baseUrl}/api/v1/pan/pan-comprehensive`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -341,58 +322,7 @@ async function handlePanVerification(body, baseUrl, apiKey, supabase, corsHeader
       body: JSON.stringify({ id_number: documentNumber })
     });
     
-    // Log the raw response status and headers for debugging
-    console.log("API Response status:", response.status);
-    console.log("API Response headers:", Object.fromEntries(response.headers.entries()));
-    
-    // Check if response is OK (200-299)
-    if (!response.ok) {
-      const contentType = response.headers.get('content-type');
-      let errorText;
-      
-      if (contentType && contentType.includes('application/json')) {
-        const errorData = await response.json();
-        errorText = JSON.stringify(errorData);
-      } else {
-        errorText = await response.text();
-        // If error response contains HTML, extract a more user-friendly message
-        if (errorText.includes('<html>')) {
-          errorText = `Server returned HTML response instead of JSON. Status: ${response.status}`;
-        }
-      }
-      
-      console.error("API Error response:", errorText);
-      
-      // Log the error to the document logs
-      await logErrorToDocument(supabase, documentId, docData, {
-        action: "pan_verification_api_error",
-        status: response.status,
-        error: errorText.substring(0, 500) // Limit the size of the error text
-      });
-      
-      throw new Error(`API returned status ${response.status}: ${errorText.substring(0, 100)}...`);
-    }
-    
-    // Handle the response body
-    let responseData;
-    const contentType = response.headers.get('content-type');
-    
-    if (contentType && contentType.includes('application/json')) {
-      responseData = await response.json();
-    } else {
-      const textResponse = await response.text();
-      console.error("Received non-JSON response:", textResponse);
-      
-      // Log the non-JSON response to document logs
-      await logErrorToDocument(supabase, documentId, docData, {
-        action: "pan_verification_invalid_response",
-        error: "Received non-JSON response",
-        response: textResponse.substring(0, 500) // Limit the size
-      });
-      
-      throw new Error("API returned non-JSON response");
-    }
-    
+    const responseData = await response.json();
     console.log("Surepass PAN verification response:", responseData);
     
     if (!responseData.success) {
@@ -480,69 +410,12 @@ async function handlePanVerification(body, baseUrl, apiKey, supabase, corsHeader
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  } catch (err) {
-    console.error("Error in handlePanVerification:", err);
-    
-    // Try to log the error in the document logs
-    try {
-      if (documentId) {
-        const { data } = await supabase
-          .from('employee_documents')
-          .select('employee_docs_log')
-          .eq('id', documentId)
-          .single();
-          
-        if (data) {
-          await supabase
-            .from('employee_documents')
-            .update({ 
-              employee_docs_log: supabase.rpc('append_to_json_array', { 
-                arr: data.employee_docs_log || [], 
-                new_element: {
-                  timestamp: new Date().toISOString(),
-                  action: "pan_verification_error",
-                  response: { 
-                    error: err.message || "Unknown error during verification"
-                  }
-                }
-              })
-            })
-            .eq('id', documentId);
-        }
-      }
-    } catch (logError) {
-      console.error("Failed to log error to document logs:", logError);
-    }
-    
+  } catch (error) {
+    console.error("Error in handlePanVerification:", error);
     return new Response(
-      JSON.stringify({ 
-        error: err.message || "Failed to verify PAN",
-        details: "There was a problem with the verification service. Please try again later."
-      }),
+      JSON.stringify({ error: error.message || "Failed to verify PAN" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  }
-}
-
-async function logErrorToDocument(supabase, documentId, docData, errorDetails) {
-  try {
-    if (!documentId) return;
-    
-    await supabase
-      .from('employee_documents')
-      .update({ 
-        employee_docs_log: supabase.rpc('append_to_json_array', { 
-          arr: docData.employee_docs_log || [], 
-          new_element: {
-            timestamp: new Date().toISOString(),
-            ...errorDetails
-          }
-        })
-      })
-      .eq('id', documentId);
-      
-  } catch (error) {
-    console.error("Failed to log error to document:", error);
   }
 }
 

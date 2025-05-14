@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { ShieldCheck, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -50,26 +51,6 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [isVerifyingPan, setIsVerifyingPan] = useState(false);
   const [isManualVerifying, setIsManualVerifying] = useState(false);
-  const [environment, setEnvironment] = useState<string>("Loading...");
-
-  // Fetch environment information
-  useEffect(() => {
-    const fetchEnvironment = async () => {
-      try {
-        const { data } = await supabase.functions.invoke('get-environment', {
-          method: 'GET'
-        });
-        setEnvironment(data?.environment || "development");
-      } catch (err) {
-        console.error("Error fetching environment:", err);
-        setEnvironment("unknown");
-      }
-    };
-    
-    if (open) {
-      fetchEnvironment();
-    }
-  }, [open]);
 
   // Logging OTP state for debugging
   useEffect(() => {
@@ -463,16 +444,6 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           <DialogTitle>Verify Document</DialogTitle>
           <DialogDescription>
             Choose a verification method for this {documentType || 'document'}.
-            {isAadhar && (
-              <span className="block mt-1 text-blue-600 font-medium text-xs">
-                Using production API for Aadhar verification
-              </span>
-            )}
-            {isPan && environment && (
-              <span className="block mt-1 text-blue-600 font-medium text-xs">
-                Using {environment === "production" ? "production" : "sandbox"} API for PAN verification
-              </span>
-            )}
           </DialogDescription>
         </DialogHeader>
         {!showOtpInput ? (
