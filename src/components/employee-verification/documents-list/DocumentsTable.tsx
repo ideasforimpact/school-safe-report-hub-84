@@ -3,8 +3,8 @@ import React, { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { VerificationDocument } from '@/types/employeeVerification';
-import { DocumentStatusButton } from '@/components/employee-verification/document-card/DocumentStatusButton';
-import { DocumentDeleteButton } from '@/components/employee-verification/document-card/DocumentDeleteButton';
+import DocumentStatusButton from '@/components/employee-verification/document-card/DocumentStatusButton';
+import DocumentDeleteButton from '@/components/employee-verification/document-card/DocumentDeleteButton';
 import { FileText } from 'lucide-react';
 
 interface DocumentsTableProps {
