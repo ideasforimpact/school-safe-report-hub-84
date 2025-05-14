@@ -46,6 +46,11 @@ export interface VerificationDocument {
   verificationDate?: string;
   verificationNotes?: string;
   verificationMethod?: 'api' | 'manual';
+  employee_docs_log?: Array<{
+    timestamp: string;
+    action: string;
+    response: any;
+  }>;
   details?: {
     address?: string;
     name?: string;

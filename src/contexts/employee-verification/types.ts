@@ -1,6 +1,6 @@
 
+import { Employee, VerificationDocument, DocumentType, DocumentStatus } from '@/types/employeeVerification';
 import { ReactNode } from 'react';
-import { Employee, DocumentType, VerificationDocument, DocumentStatus } from '@/types/employeeVerification';
 
 export interface EmployeeVerificationContextType {
   employees: Employee[];

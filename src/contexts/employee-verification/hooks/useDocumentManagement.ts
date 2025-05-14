@@ -96,6 +96,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
         documentStatusId: data.document.documentStatusId || undefined,
         documentStatusName: data.document.documentStatusName,
         verificationStatus: data.document.verificationStatus || 'pending',
+        employee_docs_log: data.document.employee_docs_log || [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
@@ -146,7 +147,6 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
             verificationStatus: status, 
             verificationDate: new Date().toISOString(),
             verificationNotes: notes || doc.verificationNotes,
-            verificationMethod: status === 'verified' ? 'api' : undefined,
             updatedAt: new Date().toISOString()
           };
         }

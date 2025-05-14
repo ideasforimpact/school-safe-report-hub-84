@@ -65,6 +65,24 @@ serve(async (req) => {
     
     // Check if we're testing in development mode
     const isDevTest = environment === "development" && !apiKey;
+
+    // First, fetch the document_status to get the governance ID
+    const { data: docStatus, error: statusError } = await supabase
+      .from('document_status')
+      .select('id')
+      .eq('name', 'Governance')
+      .single();
+    
+    if (statusError) {
+      console.error("Error fetching governance status:", statusError);
+      return new Response(
+        JSON.stringify({ error: "Could not find governance status" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    const governanceStatusId = docStatus?.id;
+    console.log("Found governance status ID:", governanceStatusId);
     
     // Handle Aadhar OTP request
     if (action === 'requestAadharOtp') {
@@ -263,7 +281,7 @@ serve(async (req) => {
               .update({
                 verification_status: 'verified',
                 employee_docs_log: [...existingLogs, logEntry],
-                document_status_id: 'e51f334e-1a5e-4afc-a6d2-5595c3294e0b', // Governance status ID
+                document_status_id: governanceStatusId,
                 updated_at: new Date().toISOString()
               })
               .eq('id', documentId);
@@ -364,7 +382,7 @@ serve(async (req) => {
                 .update({
                   verification_status: 'verified',
                   employee_docs_log: [...existingLogs, logEntry],
-                  document_status_id: 'e51f334e-1a5e-4afc-a6d2-5595c3294e0b', // Governance status ID
+                  document_status_id: governanceStatusId,
                   updated_at: new Date().toISOString()
                 })
                 .eq('id', documentId);
