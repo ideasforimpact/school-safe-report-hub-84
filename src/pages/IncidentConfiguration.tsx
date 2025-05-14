@@ -2,24 +2,17 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
-import { useIncidents } from '@/contexts/IncidentContext';
 import { IncidentRelatedConfig } from './configuration/IncidentRelatedConfig';
-import { toast } from '@/components/ui/sonner';
-import { ConfigItem } from '@/contexts/types';
+import { toast } from 'sonner';
+import { useIncidentCategories } from '@/hooks/useIncidentCategories';
+import { useIncidents } from '@/contexts/IncidentContext';
 
 const IncidentConfiguration = () => {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('categories');
-  
+
+  // Load context for other data
   const { 
-    categories: contextCategories, 
-    addCategory: contextAddCategory, 
-    deleteCategory: contextDeleteCategory, 
-    updateCategory: contextUpdateCategory,
-    subcategoryMappings: contextSubcategories, 
-    addSubcategory: contextAddSubcategory, 
-    deleteSubcategory: contextDeleteSubcategory, 
-    updateSubcategory: contextUpdateSubcategory,
     locations: contextLocations,
     addLocation: contextAddLocation,
     deleteLocation: contextDeleteLocation,
@@ -28,24 +21,33 @@ const IncidentConfiguration = () => {
     addFacility: contextAddFacility,
     deleteFacility: contextDeleteFacility,
     updateFacility: contextUpdateFacility,
-    campuses: contextCampuses // Get campuses from context
+    campuses: contextCampuses
   } = useIncidents();
 
-  // Local state to track changes
-  const [categories, setCategories] = useState<ConfigItem[]>(contextCategories);
-  const [subcategoryMappings, setSubcategoryMappings] = useState(contextSubcategories);
+  // Use the custom hook for categories and subcategories
+  const {
+    categories,
+    subcategoryMappings,
+    loading,
+    addCategory,
+    updateCategory,
+    deleteCategory,
+    addSubcategory,
+    updateSubcategory,
+    deleteSubcategory
+  } = useIncidentCategories();
+
+  // Local state for locations and facilities
   const [locations, setLocations] = useState(contextLocations);
   const [facilities, setFacilities] = useState(contextFacilities);
-  const [campuses, setCampuses] = useState(contextCampuses); // Add state for campuses
+  const [campuses, setCampuses] = useState(contextCampuses);
 
   // Update local state when context changes
   useEffect(() => {
-    setCategories(contextCategories);
-    setSubcategoryMappings(contextSubcategories);
     setLocations(contextLocations);
     setFacilities(contextFacilities);
-    setCampuses(contextCampuses); // Update campuses state when context changes
-  }, [contextCategories, contextSubcategories, contextLocations, contextFacilities, contextCampuses]);
+    setCampuses(contextCampuses);
+  }, [contextLocations, contextFacilities, contextCampuses]);
 
   // Set initial tab based on URL parameter when component mounts
   useEffect(() => {
@@ -55,66 +57,7 @@ const IncidentConfiguration = () => {
     }
   }, [searchParams]);
 
-  const handleAddCategory = (name: string) => {
-    try {
-      contextAddCategory(name);
-      toast.success("Category added successfully");
-    } catch (error) {
-      console.error("Error adding category:", error);
-      toast.error("Failed to add category");
-    }
-  };
-
-  const handleUpdateCategory = (id: string, name: string) => {
-    try {
-      contextUpdateCategory(id, name);
-      toast.success("Category updated successfully");
-    } catch (error) {
-      console.error("Error updating category:", error);
-      toast.error("Failed to update category");
-    }
-  };
-
-  const handleDeleteCategory = (id: string) => {
-    try {
-      contextDeleteCategory(id);
-      toast.success("Category deleted successfully");
-    } catch (error) {
-      console.error("Error deleting category:", error);
-      toast.error("Failed to delete category");
-    }
-  };
-
-  const handleAddSubcategory = (categoryId: string, name: string) => {
-    try {
-      contextAddSubcategory(categoryId, name);
-      toast.success("Subcategory added successfully");
-    } catch (error) {
-      console.error("Error adding subcategory:", error);
-      toast.error("Failed to add subcategory");
-    }
-  };
-
-  const handleUpdateSubcategory = (categoryId: string, id: string, name: string) => {
-    try {
-      contextUpdateSubcategory(categoryId, id, name);
-      toast.success("Subcategory updated successfully");
-    } catch (error) {
-      console.error("Error updating subcategory:", error);
-      toast.error("Failed to update subcategory");
-    }
-  };
-
-  const handleDeleteSubcategory = (categoryId: string, id: string) => {
-    try {
-      contextDeleteSubcategory(categoryId, id);
-      toast.success("Subcategory deleted successfully");
-    } catch (error) {
-      console.error("Error deleting subcategory:", error);
-      toast.error("Failed to delete subcategory");
-    }
-  };
-
+  // Handle operations on locations and facilities using context
   const handleAddLocation = (name: string) => {
     try {
       contextAddLocation(name);
@@ -175,6 +118,69 @@ const IncidentConfiguration = () => {
     }
   };
 
+  // Handle category and subcategory operations using our new custom hook
+  const handleAddCategory = async (name: string) => {
+    try {
+      await addCategory(name);
+    } catch (error) {
+      console.error("Error adding category:", error);
+    }
+  };
+
+  const handleUpdateCategory = async (id: string, name: string) => {
+    try {
+      await updateCategory(id, name);
+    } catch (error) {
+      console.error("Error updating category:", error);
+    }
+  };
+
+  const handleDeleteCategory = async (id: string) => {
+    try {
+      await deleteCategory(id);
+    } catch (error) {
+      console.error("Error deleting category:", error);
+    }
+  };
+
+  const handleAddSubcategory = async (categoryId: string, name: string) => {
+    try {
+      await addSubcategory(categoryId, name);
+    } catch (error) {
+      console.error("Error adding subcategory:", error);
+    }
+  };
+
+  const handleUpdateSubcategory = async (categoryId: string, id: string, name: string) => {
+    try {
+      await updateSubcategory(categoryId, id, name);
+    } catch (error) {
+      console.error("Error updating subcategory:", error);
+    }
+  };
+
+  const handleDeleteSubcategory = async (categoryId: string, id: string) => {
+    try {
+      await deleteSubcategory(categoryId, id);
+    } catch (error) {
+      console.error("Error deleting subcategory:", error);
+    }
+  };
+
+  // Wait for categories to load
+  if (loading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading configuration...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="space-y-6 max-w-6xl mx-auto p-4">
@@ -204,7 +210,7 @@ const IncidentConfiguration = () => {
           addFacility={handleAddFacility}
           updateFacility={handleUpdateFacility}
           deleteFacility={handleDeleteFacility}
-          campuses={campuses} // Pass campuses to the IncidentRelatedConfig component
+          campuses={campuses}
         />
       </div>
     </Layout>

@@ -12,12 +12,12 @@ import {
 } from '@/components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
-import { ConfigItem } from '@/contexts/types';
 import { EditDialog } from './EditDialog';
 import { toast } from 'sonner';
+import { CategoryItem } from '@/services/incident/categoryService';
 
 interface CategoryTabProps {
-  categories: ConfigItem[];
+  categories: CategoryItem[];
   addCategory: (name: string) => void;
   updateCategory: (id: string, name: string) => void;
   deleteCategory: (id: string) => void;
@@ -42,12 +42,10 @@ export const CategoryTab = ({
     
     addCategory(newCategory.trim());
     setNewCategory('');
-    toast.success("Category added successfully");
   };
 
   const handleCategoryDelete = (id: string) => {
     deleteCategory(id);
-    toast.success("Category deleted successfully");
   };
 
   const handleCategoryUpdate = () => {
@@ -58,7 +56,10 @@ export const CategoryTab = ({
     
     updateCategory(editingCategory.id, editingCategory.name.trim());
     setEditingCategory(null);
-    toast.success("Category updated successfully");
+  };
+
+  const handleEditClose = () => {
+    setEditingCategory(null);
   };
 
   return (
@@ -103,16 +104,18 @@ export const CategoryTab = ({
                         title="Edit Category"
                         description="Update the category name below"
                         fieldLabel="Category name"
-                        value={category.name}
+                        value={editingCategory?.id === category.id ? editingCategory.name : category.name}
+                        defaultValue={category.name}
                         onOpenChange={(open) => {
                           if (open) {
                             setEditingCategory({id: category.id, name: category.name});
-                          } else {
+                          } else if (!open && editingCategory) {
                             setEditingCategory(null);
                           }
                         }}
                         onChange={(value) => setEditingCategory(prev => prev ? {...prev, name: value} : null)}
                         onSave={handleCategoryUpdate}
+                        onClose={handleEditClose}
                         triggerButton={
                           <Button variant="ghost" size="icon">
                             <Pencil className="h-4 w-4" />

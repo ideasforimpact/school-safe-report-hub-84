@@ -1,137 +1,110 @@
 
-import React, { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import React, { useState } from 'react';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-interface SelectOption {
-  value: string;
-  label: string;
-}
-
-interface ExtraField {
-  type: "select";
-  label: string;
-  options: SelectOption[];
-  value: string;
-  onChange: (value: string) => void;
-}
-
-interface EditDialogProps {
+export interface EditDialogProps {
   title: string;
-  description: string;
+  description?: string;
   fieldLabel: string;
   value: string;
-  extraField?: ExtraField;
+  defaultValue?: string;
   onOpenChange: (open: boolean) => void;
   onChange: (value: string) => void;
   onSave: () => void;
+  onClose?: () => void;
   triggerButton: React.ReactNode;
+  extraField?: {
+    type: string;
+    label: string;
+    options?: { value: string; label: string }[];
+    value: any;
+    onChange: (value: string) => void;
+  };
 }
 
-export const EditDialog = ({
+export const EditDialog: React.FC<EditDialogProps> = ({
   title,
   description,
   fieldLabel,
   value,
-  extraField,
+  defaultValue = '',
   onOpenChange,
   onChange,
   onSave,
+  onClose,
   triggerButton,
-}: EditDialogProps) => {
+  extraField,
+}) => {
   const [open, setOpen] = useState(false);
-  const [currentValue, setCurrentValue] = useState(value);
-
-  // Update the internal state when the external value changes or when dialog opens
-  useEffect(() => {
-    if (open) {
-      setCurrentValue(value);
-    }
-  }, [value, open]);
 
   const handleOpenChange = (newOpen: boolean) => {
     setOpen(newOpen);
     onOpenChange(newOpen);
+    if (!newOpen && onClose) {
+      onClose();
+    }
   };
 
   const handleSave = () => {
-    if (!currentValue.trim()) {
-      return; // Don't save if empty
-    }
-    
-    onChange(currentValue); // Update the parent component with the current value
-    onSave(); // Call the save function in the parent component
-    setOpen(false); // Close the dialog after saving
-  };
-
-  // Handle input change
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value;
-    setCurrentValue(newValue);
+    onSave();
+    setOpen(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <div onClick={() => setOpen(true)}>{triggerButton}</div>
-      <DialogContent className="sm:max-w-md">
+      {triggerButton}
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
+          {description && <p className="text-sm text-gray-500">{description}</p>}
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="name">{fieldLabel}</Label>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <label htmlFor="name" className="text-right text-sm font-medium col-span-1">
+              {fieldLabel}
+            </label>
             <Input
               id="name"
-              value={currentValue}
-              onChange={handleInputChange}
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
               className="col-span-3"
             />
           </div>
           
-          {extraField && extraField.type === "select" && (
-            <div className="grid gap-2">
-              <Label htmlFor="extraField">{extraField.label}</Label>
-              <Select 
-                value={extraField.value} 
-                onValueChange={extraField.onChange}
-              >
-                <SelectTrigger id="extraField">
-                  <SelectValue placeholder={`Select ${extraField.label}`} />
-                </SelectTrigger>
-                <SelectContent>
-                  {extraField.options.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {extraField && extraField.type === 'select' && extraField.options && (
+            <div className="grid grid-cols-4 items-center gap-4">
+              <label className="text-right text-sm font-medium col-span-1">
+                {extraField.label}
+              </label>
+              <div className="col-span-3">
+                <Select
+                  value={extraField.value}
+                  onValueChange={extraField.onChange}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={`Select ${extraField.label.toLowerCase()}`} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {extraField.options.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           )}
         </div>
         <DialogFooter>
-          <Button 
-            onClick={handleSave}
-            disabled={!currentValue.trim()}
-          >
-            Save changes
+          <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button type="button" onClick={handleSave}>
+            Save
           </Button>
         </DialogFooter>
       </DialogContent>
