@@ -32,11 +32,11 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
 }) => {
   const { documentStatuses } = useEmployeeVerification();
   
-  const isGovernanceDocument = (document: VerificationDocument): boolean => {
-    if (!document.documentStatusId || document.verificationStatus !== 'verified') return false;
+  const getDocumentStatusName = (document: VerificationDocument): string | undefined => {
+    if (!document.documentStatusId || document.verificationStatus !== 'verified') return undefined;
     
     const status = documentStatuses.find(s => s.id === document.documentStatusId);
-    return status?.name === 'governance';
+    return status?.name;
   };
   
   return (
@@ -67,7 +67,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
               <TableCell>
                 <VerificationStatusBadge 
                   status={doc.verificationStatus} 
-                  isGovernance={isGovernanceDocument(doc)}
+                  documentStatusName={getDocumentStatusName(doc)}
                 />
               </TableCell>
               <TableCell className="text-right">

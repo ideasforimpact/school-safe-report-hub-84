@@ -8,6 +8,7 @@ interface VerificationStatusBadgeProps {
   status: 'verified' | 'failed' | 'pending';
   className?: string;
   isGovernance?: boolean;
+  documentStatusName?: string;
   onClick?: () => void;
 }
 
@@ -15,6 +16,7 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
   status, 
   className, 
   isGovernance = false,
+  documentStatusName,
   onClick
 }) => {
   const getStatusConfig = () => {
@@ -22,7 +24,7 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
       case 'verified':
         return {
           icon: CheckCircle,
-          text: isGovernance ? 'Verified/Governance' : 'Verified',
+          text: documentStatusName ? `Verified/${documentStatusName}` : (isGovernance ? 'Verified/Governance' : 'Verified'),
           variant: 'success',
           bgColor: 'bg-green-100 text-green-800 border-green-200'
         };

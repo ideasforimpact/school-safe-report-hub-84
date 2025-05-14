@@ -58,6 +58,7 @@ const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({ document })
       <VerificationStatusBadge 
         status={document.verificationStatus} 
         isGovernance={isGovernanceVerified}
+        documentStatusName={document.verificationStatus === 'verified' && statusName ? statusName : undefined}
         onClick={isGovernanceVerified && aadharDetails ? handleClick : undefined}
       />
 
