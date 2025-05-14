@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { useToast } from '@/hooks/use-toast';
 import EmptyDocumentsState from './EmptyDocumentsState';
@@ -23,35 +23,43 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument
   const [selectedDocumentNumber, setSelectedDocumentNumber] = useState<string>('');
   const [verifying, setVerifying] = useState(false);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const [isFetching, setIsFetching] = useState(false);
 
-  // Fetch documents when component mounts
+  // Fetch documents only once when component mounts and avoid duplicate fetches
   useEffect(() => {
+    // Skip if documents are already loaded or we're currently fetching
+    if (documents.length > 0 || isFetching || initialLoadComplete) {
+      return;
+    }
+    
     const loadDocuments = async () => {
+      setIsFetching(true);
       try {
         await fetchEmployeeDocuments(employeeId);
       } finally {
         // Mark initial load as complete regardless of success/failure
         setInitialLoadComplete(true);
+        setIsFetching(false);
       }
     };
     
     loadDocuments();
-  }, [employeeId, fetchEmployeeDocuments]);
+  }, [employeeId, fetchEmployeeDocuments, documents.length, isFetching, initialLoadComplete]);
 
-  const handleViewDocument = (documentImage: string) => {
+  const handleViewDocument = useCallback((documentImage: string) => {
     window.open(documentImage, '_blank');
-  };
+  }, []);
 
-  const handleDownloadDocument = (documentImage: string) => {
+  const handleDownloadDocument = useCallback((documentImage: string) => {
     const link = document.createElement('a');
     link.href = documentImage;
     link.download = `document-${new Date().getTime()}.jpg`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
+  }, []);
 
-  const openVerifyDialog = (documentId: string) => {
+  const openVerifyDialog = useCallback((documentId: string) => {
     const document = documents.find(doc => doc.id === documentId);
     if (document) {
       setSelectedDocument(documentId);
@@ -59,9 +67,9 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument
       setSelectedDocumentNumber(document.documentNumber || '');
       setVerifyDialogOpen(true);
     }
-  };
+  }, [documents]);
 
-  const handleVerify = async (method: 'api' | 'manual') => {
+  const handleVerify = useCallback(async (method: 'api' | 'manual') => {
     if (!selectedDocument) return;
     
     setVerifying(true);
@@ -93,9 +101,9 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument
       });
       setVerifying(false);
     }
-  };
+  }, [selectedDocument, verifyDocument, toast]);
 
-  const rejectDocument = async () => {
+  const rejectDocument = useCallback(async () => {
     if (!selectedDocument) return;
     
     setVerifying(true);
@@ -123,7 +131,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument
       });
       setVerifying(false);
     }
-  };
+  }, [selectedDocument, verifyDocument, toast]);
 
   // Show loading state only during initial load, not for subsequent operations
   if (isLoading && !initialLoadComplete) {

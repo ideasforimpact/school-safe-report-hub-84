@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { EmployeeVerificationContextType, EmployeeVerificationProviderProps } from './types';
 import { useEmployeeManagement } from './hooks/useEmployeeManagement';
 import { useDocumentManagement } from './hooks/useDocumentManagement';
@@ -21,6 +22,8 @@ export const EmployeeVerificationProvider: React.FC<EmployeeVerificationProvider
   const [documentStatuses, setDocumentStatuses] = useState<DocumentStatus[]>([]);
   const [documentTypesLoaded, setDocumentTypesLoaded] = useState(false);
   const [documentStatusesLoaded, setDocumentStatusesLoaded] = useState(false);
+  const [isLoadingStatuses, setIsLoadingStatuses] = useState(false);
+  const statusFetchingRef = useRef<boolean>(false);
   const { toast } = useToast();
   
   const { 
@@ -45,20 +48,23 @@ export const EmployeeVerificationProvider: React.FC<EmployeeVerificationProvider
     return Promise.resolve();
   });
 
-  // Load document statuses when component mounts
+  // Load document statuses when component mounts - with debounce protection
   useEffect(() => {
-    fetchDocumentStatuses()
-      .catch(error => {
-        console.error('Error loading document statuses:', error);
-        toast({
-          title: "Error",
-          description: "Failed to load document statuses",
-          variant: "destructive"
+    // Only fetch if we haven't already loaded statuses and we're not currently fetching
+    if (!documentStatusesLoaded && !statusFetchingRef.current) {
+      fetchDocumentStatuses()
+        .catch(error => {
+          console.error('Error loading document statuses:', error);
+          toast({
+            title: "Error",
+            description: "Failed to load document statuses",
+            variant: "destructive"
+          });
         });
-      });
-  }, []);
+    }
+  }, [documentStatusesLoaded, toast]);
 
-  const fetchDocumentTypes = async (): Promise<DocumentType[]> => {
+  const fetchDocumentTypes = useCallback(async (): Promise<DocumentType[]> => {
     // If document types have already been loaded, don't fetch again
     if (documentTypesLoaded && documentTypes.length > 0) {
       return documentTypes;
@@ -89,9 +95,18 @@ export const EmployeeVerificationProvider: React.FC<EmployeeVerificationProvider
       console.error('Failed to fetch document types:', error);
       return [];
     }
-  };
+  }, [documentTypes, documentTypesLoaded]);
 
-  const fetchDocumentStatuses = async (): Promise<DocumentStatus[]> => {
+  const fetchDocumentStatuses = useCallback(async (): Promise<DocumentStatus[]> => {
+    // If we're already loading statuses or they're already loaded, return current state
+    if (isLoadingStatuses || (documentStatusesLoaded && documentStatuses.length > 0)) {
+      return documentStatuses;
+    }
+
+    // Set the loading flag and prevent concurrent fetches
+    setIsLoadingStatuses(true);
+    statusFetchingRef.current = true;
+    
     try {
       console.log('Fetching document statuses from the database...');
       
@@ -120,8 +135,11 @@ export const EmployeeVerificationProvider: React.FC<EmployeeVerificationProvider
     } catch (error) {
       console.error('Failed to fetch document statuses:', error);
       return documentStatuses;
+    } finally {
+      setIsLoadingStatuses(false);
+      statusFetchingRef.current = false;
     }
-  };
+  }, [documentStatuses, documentStatusesLoaded, isLoadingStatuses]);
 
   return (
     <EmployeeVerificationContext.Provider

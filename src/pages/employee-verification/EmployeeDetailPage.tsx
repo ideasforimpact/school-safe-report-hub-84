@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Upload, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -24,32 +24,34 @@ const EmployeeDetailPage = () => {
     isLoading
   } = useEmployeeVerification();
   const { toast } = useToast();
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const employee = getEmployee(employeeId || '');
 
-  // Fetch data when component mounts
+  // Fetch data when component mounts - only once
   useEffect(() => {
+    if (!employeeId || initialLoadComplete) return;
+    
     const loadData = async () => {
-      if (employeeId) {
-        try {
-          // Fetch documents and statuses in parallel
-          await Promise.all([
-            fetchEmployeeDocuments(employeeId),
-            fetchDocumentStatuses()
-          ]);
-          console.log('Initial data loading complete for employee:', employeeId);
-        } catch (error) {
-          console.error('Error loading initial data:', error);
-          toast({
-            title: "Data Loading Error",
-            description: "Failed to load some employee data. Please try refreshing.",
-            variant: "destructive"
-          });
-        }
+      try {
+        // Fetch documents and statuses in parallel
+        await Promise.all([
+          fetchEmployeeDocuments(employeeId),
+          fetchDocumentStatuses()
+        ]);
+        console.log('Initial data loading complete for employee:', employeeId);
+        setInitialLoadComplete(true);
+      } catch (error) {
+        console.error('Error loading initial data:', error);
+        toast({
+          title: "Data Loading Error",
+          description: "Failed to load some employee data. Please try refreshing.",
+          variant: "destructive"
+        });
       }
     };
     
     loadData();
-  }, [employeeId, fetchEmployeeDocuments, fetchDocumentStatuses, toast]);
+  }, [employeeId, fetchEmployeeDocuments, fetchDocumentStatuses, toast, initialLoadComplete]);
 
   if (!employee) {
     return <Layout>
@@ -64,11 +66,13 @@ const EmployeeDetailPage = () => {
       </Layout>;
   }
 
-  const handleAddDocument = () => {
-    navigate(`/employee-verification/${employeeId}/upload-document`);
-  };
+  const handleAddDocument = useCallback(() => {
+    if (employeeId) {
+      navigate(`/employee-verification/${employeeId}/upload-document`);
+    }
+  }, [employeeId, navigate]);
 
-  const handleRefreshDocuments = async () => {
+  const handleRefreshDocuments = useCallback(async () => {
     if (employeeId) {
       try {
         // Fetch both documents and statuses on refresh
@@ -89,7 +93,7 @@ const EmployeeDetailPage = () => {
         });
       }
     }
-  };
+  }, [employeeId, fetchEmployeeDocuments, fetchDocumentStatuses, toast]);
 
   return <Layout>
       <div className="container mx-auto py-6 px-4 sm:px-6 max-w-6xl">
