@@ -13,7 +13,7 @@ interface DocumentsListProps {
 }
 
 const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument }) => {
-  const { getEmployeeDocuments, verifyDocument, fetchEmployeeDocuments, isLoading, documentStatuses } = useEmployeeVerification();
+  const { getEmployeeDocuments, verifyDocument, fetchEmployeeDocuments, isLoading } = useEmployeeVerification();
   const documents = getEmployeeDocuments(employeeId);
   const { toast } = useToast();
   
@@ -69,9 +69,6 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument
     setVerifying(true);
     
     try {
-      // Find the "verified" document status
-      const verifiedStatus = documentStatuses.find(status => status.name === 'verified');
-      
       // For non-Aadhar documents or manual verification
       const notes = method === 'api' 
         ? 'Document automatically verified successfully with government database.' 
@@ -80,8 +77,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument
       await verifyDocument(
         selectedDocument,
         'verified',
-        notes,
-        verifiedStatus?.id
+        notes
       );
       
       toast({
@@ -101,19 +97,12 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument
     }
   };
 
-  const rejectDocument = async (documentStatusId?: string) => {
+  const rejectDocument = async () => {
     if (!selectedDocument) return;
     
     setVerifying(true);
     
     try {
-      // Find the "rejected" document status if not provided
-      let rejectedStatusId = documentStatusId;
-      if (!rejectedStatusId) {
-        const rejectedStatus = documentStatuses.find(status => status.name === 'rejected');
-        rejectedStatusId = rejectedStatus?.id;
-      }
-      
       await verifyDocument(
         selectedDocument,
         'failed',

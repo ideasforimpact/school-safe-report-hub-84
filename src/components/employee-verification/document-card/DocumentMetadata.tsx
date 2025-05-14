@@ -57,6 +57,9 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
     );
   };
 
+  // Show document status name if available
+  const displayStatus = documentStatusName ? getStatusDisplayName(documentStatusName) : verificationStatus;
+
   return (
     <div className="space-y-2">
       <div>
@@ -84,10 +87,9 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
             verificationStatus === 'verified' ? 'text-green-600' : 
             'text-red-600'
           }>
-            {verificationStatus === 'pending' ? 'Pending' : 
-             verificationStatus === 'verified' ? `Verified ${verificationDate ? formatDate(verificationDate) : ''}` : 
-             `Failed ${verificationDate ? formatDate(verificationDate) : ''}`}
-             {documentStatusName && verificationStatus !== 'pending' ? ` - ${documentStatusName}` : ''}
+            {displayStatus === 'pending' ? 'Pending' : 
+             verificationStatus === 'verified' ? `${displayStatus} ${formatDate(verificationDate)}` : 
+             `${displayStatus} ${formatDate(verificationDate)}`}
           </span>
         </div>
       </div>
