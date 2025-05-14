@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { useToast } from '@/hooks/use-toast';
 import EmptyDocumentsState from './EmptyDocumentsState';
@@ -23,21 +22,23 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument
   const [selectedDocumentNumber, setSelectedDocumentNumber] = useState<string>('');
   const [verifying, setVerifying] = useState(false);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const documentsFetched = useRef(false);
 
-  // Fetch documents when component mounts
+  // Fetch documents when component mounts - but only once
   useEffect(() => {
     const loadDocuments = async () => {
-      try {
-        await fetchEmployeeDocuments(employeeId);
-      } finally {
-        // Mark initial load as complete regardless of success/failure
-        setInitialLoadComplete(true);
+      if (!initialLoadComplete && !documentsFetched.current) {
+        try {
+          documentsFetched.current = true; // Mark as fetched before the async operation
+          await fetchEmployeeDocuments(employeeId);
+        } finally {
+          // Mark initial load as complete regardless of success/failure
+          setInitialLoadComplete(true);
+        }
       }
     };
     
-    if (!initialLoadComplete) {
-      loadDocuments();
-    }
+    loadDocuments();
   }, [employeeId, fetchEmployeeDocuments, initialLoadComplete]);
 
   const handleViewDocument = (documentImage: string) => {

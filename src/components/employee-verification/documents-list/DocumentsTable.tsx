@@ -38,7 +38,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
   const [dialogOpen, setDialogOpen] = React.useState(false);
   
   const getDocumentStatusName = (document: VerificationDocument): string | undefined => {
-    if (!document.documentStatusId || document.verificationStatus !== 'verified' || documentStatuses.length === 0) {
+    if (!document.documentStatusId || documentStatuses.length === 0) {
       return undefined;
     }
     
