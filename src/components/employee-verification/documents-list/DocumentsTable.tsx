@@ -15,6 +15,7 @@ import { VerificationDocument } from '@/types/employeeVerification';
 import DocumentDeleteButton from '../document-card/DocumentDeleteButton';
 import VerificationStatusBadge from '../VerificationStatusBadge';
 import { getDocumentIcon, formatDocumentTypeName } from '../utils/documentUtils';
+import { useEmployeeVerification } from '@/contexts/employee-verification';
 
 interface DocumentsTableProps {
   documents: VerificationDocument[];
@@ -29,6 +30,15 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
   onDownloadDocument,
   onVerifyDocument
 }) => {
+  const { documentStatuses } = useEmployeeVerification();
+  
+  const isGovernanceDocument = (document: VerificationDocument): boolean => {
+    if (!document.documentStatusId || document.verificationStatus !== 'verified') return false;
+    
+    const status = documentStatuses.find(s => s.id === document.documentStatusId);
+    return status?.name === 'governance';
+  };
+  
   return (
     <div className="overflow-x-auto rounded-md border">
       <Table>
@@ -55,7 +65,10 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                 {doc.createdAt ? formatDistanceToNow(new Date(doc.createdAt), { addSuffix: true }) : '—'}
               </TableCell>
               <TableCell>
-                <VerificationStatusBadge status={doc.verificationStatus} />
+                <VerificationStatusBadge 
+                  status={doc.verificationStatus} 
+                  isGovernance={isGovernanceDocument(doc)}
+                />
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex items-center space-x-2 justify-end">
