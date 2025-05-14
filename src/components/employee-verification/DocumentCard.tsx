@@ -1,61 +1,78 @@
 
 import React from 'react';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Eye } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
 import { VerificationDocument } from '@/types/employeeVerification';
-import VerificationStatusBadge from './VerificationStatusBadge';
-import DocumentMetadata from './document-card/DocumentMetadata';
 import DocumentImagePreview from './document-card/DocumentImagePreview';
-import DocumentActions from './document-card/DocumentActions';
+import DocumentMetadata from './document-card/DocumentMetadata';
 import DocumentStatusButton from './document-card/DocumentStatusButton';
 import DocumentDeleteButton from './document-card/DocumentDeleteButton';
 
 interface DocumentCardProps {
   document: VerificationDocument;
-  showVerifyButton?: boolean;
+  onView: () => void;
+  onVerifyAadhar?: () => void;
+  onVerifyPan?: () => void;
 }
 
-const DocumentCard: React.FC<DocumentCardProps> = ({ document, showVerifyButton = true }) => {
-  // Different card styles based on verification status
-  const getCardStyle = () => {
-    if (document.verificationStatus === 'verified') {
-      return 'border-green-100 shadow-sm hover:shadow-md';
-    } else if (document.verificationStatus === 'failed') {
-      return 'border-red-100 shadow-sm hover:shadow-md';
-    } else {
-      return 'border-yellow-100 shadow-sm hover:shadow-md';
+const DocumentCard: React.FC<DocumentCardProps> = ({ 
+  document, 
+  onView,
+  onVerifyAadhar,
+  onVerifyPan
+}) => {
+  const showVerificationButton = document.verificationStatus === 'pending' && 
+    (document.documentTypeName === 'aadhar' || document.documentTypeName === 'pan');
+  
+  const handleVerificationClick = () => {
+    if (document.documentTypeName === 'aadhar' && onVerifyAadhar) {
+      onVerifyAadhar();
+    } else if (document.documentTypeName === 'pan' && onVerifyPan) {
+      onVerifyPan();
     }
   };
 
   return (
-    <Card className={`h-full transition-all duration-200 ${getCardStyle()}`}>
-      <div className="absolute top-3 right-3 z-10">
-        <VerificationStatusBadge status={document.verificationStatus} />
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <h4 className="text-sm font-semibold">
+            {document.documentTypeName?.toUpperCase() || 'Document'}
+          </h4>
+          <p className="text-xs text-gray-500">
+            Uploaded {formatDistanceToNow(new Date(document.createdAt), { addSuffix: true })}
+          </p>
+        </div>
+        <DocumentStatusButton document={document} />
       </div>
       
-      <CardContent className="p-4 pt-6">
-        <DocumentImagePreview documentImage={document.documentImage} />
-        <DocumentMetadata 
-          documentTypeName={document.documentTypeName || ''}
-          documentNumber={document.documentNumber}
-          createdAt={document.createdAt}
-          verificationStatus={document.verificationStatus}
-          documentStatusName={document.documentStatusName}
-          verificationDate={document.verificationDate}
-          verificationNotes={document.verificationNotes}
-          verificationMethod={document.verificationMethod}
-        />
-      </CardContent>
+      <DocumentImagePreview imageUrl={document.documentImage} />
       
-      <CardFooter className="border-t p-4 bg-gray-50 flex justify-between">
-        {document.verificationStatus === 'pending' && showVerifyButton ? (
-          <DocumentActions document={document} showVerifyButton={showVerifyButton} />
-        ) : (
-          <DocumentStatusButton document={document} />
-        )}
+      <DocumentMetadata document={document} />
+      
+      <div className="flex justify-between items-center pt-2">
+        <div className="flex space-x-2">
+          <Button variant="outline" size="sm" onClick={onView}>
+            <Eye className="h-4 w-4 mr-1.5" />
+            View
+          </Button>
+          
+          {showVerificationButton && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="text-blue-600 border-blue-200 hover:bg-blue-50"
+              onClick={handleVerificationClick}
+            >
+              Verify Now
+            </Button>
+          )}
+        </div>
         
         <DocumentDeleteButton documentId={document.id} />
-      </CardFooter>
-    </Card>
+      </div>
+    </div>
   );
 };
 

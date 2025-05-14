@@ -1,11 +1,16 @@
 
 import React, { useState, useEffect } from 'react';
+import { VerificationDocument } from '@/types/employeeVerification';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
-import { useToast } from '@/hooks/use-toast';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Plus } from 'lucide-react';
+import DocumentCard from '@/components/employee-verification/DocumentCard';
 import EmptyDocumentsState from './EmptyDocumentsState';
 import DocumentsTable from './DocumentsTable';
+import OtpVerificationDialog from './OtpVerificationDialog';
+import PanVerificationDialog from './PanVerificationDialog';
 import VerificationDialog from './VerificationDialog';
-import { Loader2 } from 'lucide-react';
 
 interface DocumentsListProps {
   employeeId: string;
@@ -13,153 +18,114 @@ interface DocumentsListProps {
 }
 
 const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument }) => {
-  const { getEmployeeDocuments, verifyDocument, fetchEmployeeDocuments, isLoading } = useEmployeeVerification();
+  const { getEmployeeDocuments, fetchEmployeeDocuments } = useEmployeeVerification();
   const documents = getEmployeeDocuments(employeeId);
-  const { toast } = useToast();
   
-  const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
-  const [selectedDocument, setSelectedDocument] = useState<string | null>(null);
-  const [selectedDocumentTypeName, setSelectedDocumentTypeName] = useState<string | null>(null);
-  const [selectedDocumentNumber, setSelectedDocumentNumber] = useState<string>('');
-  const [verifying, setVerifying] = useState(false);
-  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
-
-  // Fetch documents when component mounts
+  const [selectedDocument, setSelectedDocument] = useState<VerificationDocument | null>(null);
+  const [showVerificationDialog, setShowVerificationDialog] = useState(false);
+  const [showOtpDialog, setShowOtpDialog] = useState(false);
+  const [showPanDialog, setShowPanDialog] = useState(false);
+  
   useEffect(() => {
-    const loadDocuments = async () => {
-      try {
-        await fetchEmployeeDocuments(employeeId);
-      } finally {
-        // Mark initial load as complete regardless of success/failure
-        setInitialLoadComplete(true);
-      }
-    };
-    
-    if (!initialLoadComplete) {
-      loadDocuments();
-    }
-  }, [employeeId, fetchEmployeeDocuments, initialLoadComplete]);
+    fetchEmployeeDocuments(employeeId);
+  }, [employeeId, fetchEmployeeDocuments]);
 
-  const handleViewDocument = (documentImage: string) => {
-    window.open(documentImage, '_blank');
+  const handleViewDocument = (doc: VerificationDocument) => {
+    setSelectedDocument(doc);
+    setShowVerificationDialog(true);
   };
 
-  const handleDownloadDocument = (documentImage: string) => {
-    const link = document.createElement('a');
-    link.href = documentImage;
-    link.download = `document-${new Date().getTime()}.jpg`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleVerifyAadhar = (doc: VerificationDocument) => {
+    setSelectedDocument(doc);
+    setShowOtpDialog(true);
   };
 
-  const openVerifyDialog = (documentId: string) => {
-    const document = documents.find(doc => doc.id === documentId);
-    if (document) {
-      setSelectedDocument(documentId);
-      setSelectedDocumentTypeName(document.documentTypeName || '');
-      setSelectedDocumentNumber(document.documentNumber || '');
-      setVerifyDialogOpen(true);
-    }
+  const handleVerifyPan = (doc: VerificationDocument) => {
+    setSelectedDocument(doc);
+    setShowPanDialog(true);
   };
 
-  const handleVerify = async (method: 'api' | 'manual') => {
-    if (!selectedDocument) return;
-    
-    setVerifying(true);
-    
-    try {
-      // For non-Aadhar documents or manual verification
-      const notes = method === 'api' 
-        ? 'Document automatically verified successfully with government database.' 
-        : 'Document manually verified successfully.';
-      
-      await verifyDocument(
-        selectedDocument,
-        'verified',
-        notes
-      );
-      
-      toast({
-        title: "Document Verified",
-        description: `The document has been ${method === 'api' ? 'automatically' : 'manually'} verified successfully.`,
-      });
-      
-      setVerifying(false);
-      setVerifyDialogOpen(false);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "An error occurred during verification.",
-        variant: "destructive",
-      });
-      setVerifying(false);
-    }
+  const handleVerificationComplete = () => {
+    // Refresh documents after verification
+    fetchEmployeeDocuments(employeeId);
   };
 
-  const rejectDocument = async () => {
-    if (!selectedDocument) return;
-    
-    setVerifying(true);
-    
-    try {
-      await verifyDocument(
-        selectedDocument,
-        'failed',
-        'Failed to verify document. Details do not match records.'
-      );
-      
-      toast({
-        title: "Verification Failed",
-        description: "Document verification failed.",
-        variant: "destructive"
-      });
-      
-      setVerifying(false);
-      setVerifyDialogOpen(false);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "An error occurred during verification.",
-        variant: "destructive",
-      });
-      setVerifying(false);
-    }
-  };
-
-  // Show loading state only during initial load, not for subsequent operations
-  if (isLoading && !initialLoadComplete) {
+  if (documents.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center p-8">
-        <Loader2 className="h-8 w-8 text-primary animate-spin mb-4" />
-        <p className="text-gray-600">Loading documents...</p>
-      </div>
+      <EmptyDocumentsState onAddDocument={onAddDocument} />
     );
   }
 
+  // Sort documents by creation date (newest first)
+  const sortedDocuments = [...documents].sort((a, b) => 
+    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+
   return (
-    <div className="space-y-6">
-      {documents.length === 0 ? (
-        <EmptyDocumentsState onAddDocument={onAddDocument} />
-      ) : (
+    <div>
+      <div className="mb-6 flex justify-between items-center">
+        <h3 className="font-semibold text-gray-800">
+          {documents.length} {documents.length === 1 ? 'Document' : 'Documents'}
+        </h3>
+        {onAddDocument && (
+          <Button onClick={onAddDocument} variant="outline" size="sm">
+            <Plus className="h-4 w-4 mr-1" />
+            Add Document
+          </Button>
+        )}
+      </div>
+
+      <div className="space-y-4 mb-8 hidden sm:block">
         <DocumentsTable 
-          documents={documents}
-          onViewDocument={handleViewDocument}
-          onDownloadDocument={handleDownloadDocument}
-          onVerifyDocument={openVerifyDialog}
+          documents={sortedDocuments} 
+          onView={handleViewDocument}
+          onVerifyAadhar={handleVerifyAadhar}
+          onVerifyPan={handleVerifyPan}
+        />
+      </div>
+
+      <div className="space-y-4 sm:hidden">
+        {sortedDocuments.map((document) => (
+          <Card key={document.id} className="overflow-hidden border-gray-200 hover:shadow-md transition-shadow">
+            <CardContent className="p-4">
+              <DocumentCard 
+                document={document} 
+                onView={() => handleViewDocument(document)}
+                onVerifyAadhar={() => handleVerifyAadhar(document)}
+                onVerifyPan={() => handleVerifyPan(document)}
+              />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      
+      {selectedDocument && showVerificationDialog && (
+        <VerificationDialog
+          isOpen={showVerificationDialog}
+          onClose={() => setShowVerificationDialog(false)}
+          document={selectedDocument}
         />
       )}
-
-      <VerificationDialog
-        open={verifyDialogOpen}
-        onOpenChange={setVerifyDialogOpen}
-        onVerify={handleVerify}
-        onReject={rejectDocument}
-        isVerifying={verifying}
-        documentType={selectedDocumentTypeName || undefined}
-        documentId={selectedDocument || undefined}
-        documentNumber={selectedDocumentNumber}
-      />
+      
+      {selectedDocument && selectedDocument.documentNumber && showOtpDialog && (
+        <OtpVerificationDialog 
+          isOpen={showOtpDialog}
+          onClose={() => setShowOtpDialog(false)}
+          documentId={selectedDocument.id}
+          documentNumber={selectedDocument.documentNumber}
+          onVerificationComplete={handleVerificationComplete}
+        />
+      )}
+      
+      {selectedDocument && selectedDocument.documentNumber && showPanDialog && (
+        <PanVerificationDialog
+          isOpen={showPanDialog}
+          onClose={() => setShowPanDialog(false)}
+          documentId={selectedDocument.id}
+          documentNumber={selectedDocument.documentNumber}
+          onVerificationComplete={handleVerificationComplete}
+        />
+      )}
     </div>
   );
 };

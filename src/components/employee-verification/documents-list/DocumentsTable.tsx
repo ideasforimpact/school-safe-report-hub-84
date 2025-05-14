@@ -1,160 +1,122 @@
 
 import React from 'react';
-import { Eye, Download, ShieldCheck } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { formatDistanceToNow } from 'date-fns';
+import { VerificationDocument } from '@/types/employeeVerification';
 import {
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { VerificationDocument } from '@/types/employeeVerification';
+  TableRow
+} from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Eye, Lock, Upload } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { formatDistanceToNow } from 'date-fns';
+import DocumentStatusButton from '../document-card/DocumentStatusButton';
 import DocumentDeleteButton from '../document-card/DocumentDeleteButton';
-import VerificationStatusBadge from '../VerificationStatusBadge';
-import { getDocumentIcon, formatDocumentTypeName } from '../utils/documentUtils';
-import { useEmployeeVerification } from '@/contexts/employee-verification';
-import { useToast } from '@/hooks/use-toast';
-import AadharDetailsDialog from './AadharDetailsDialog';
 
 interface DocumentsTableProps {
   documents: VerificationDocument[];
-  onViewDocument: (documentImage: string) => void;
-  onDownloadDocument: (documentImage: string) => void;
-  onVerifyDocument: (documentId: string) => void;
+  onView: (document: VerificationDocument) => void;
+  onVerifyAadhar: (document: VerificationDocument) => void;
+  onVerifyPan: (document: VerificationDocument) => void;
 }
 
-const DocumentsTable: React.FC<DocumentsTableProps> = ({
-  documents,
-  onViewDocument,
-  onDownloadDocument,
-  onVerifyDocument
-}) => {
-  const { documentStatuses } = useEmployeeVerification();
-  const { toast } = useToast();
-  const [selectedDocumentDetails, setSelectedDocumentDetails] = React.useState<any>(null);
-  const [dialogOpen, setDialogOpen] = React.useState(false);
-  
-  const getDocumentStatusName = (document: VerificationDocument): string | undefined => {
-    if (!document.documentStatusId || document.verificationStatus !== 'verified' || documentStatuses.length === 0) {
-      return undefined;
+const DocumentsTable: React.FC<DocumentsTableProps> = ({ documents, onView, onVerifyAadhar, onVerifyPan }) => {
+  const renderVerificationButton = (document: VerificationDocument) => {
+    if (document.verificationStatus !== 'pending') {
+      return null;
     }
-    
-    const status = documentStatuses.find(s => s.id === document.documentStatusId);
-    return status?.name;
+
+    if (document.documentTypeName === 'aadhar') {
+      return (
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="ml-2 text-blue-600 border-blue-200 hover:bg-blue-50"
+          onClick={() => onVerifyAadhar(document)}
+        >
+          <Upload className="h-3 w-3 mr-1" />
+          Verify
+        </Button>
+      );
+    } else if (document.documentTypeName === 'pan') {
+      return (
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="ml-2 text-blue-600 border-blue-200 hover:bg-blue-50"
+          onClick={() => onVerifyPan(document)}
+        >
+          <Upload className="h-3 w-3 mr-1" />
+          Verify
+        </Button>
+      );
+    }
+
+    return null;
   };
 
-  const handleBadgeClick = (doc: VerificationDocument) => {
-    const statusName = getDocumentStatusName(doc);
-    const hasLogs = !!doc.employee_docs_log && doc.employee_docs_log.length > 0;
-    
-    if (doc.verificationStatus === 'verified' && statusName === 'governance' && hasLogs) {
-      // Find the most recent successful verification log
-      const verificationLog = doc.employee_docs_log
-        .filter(log => log.action === 'verify_aadhar_otp' && log.response?.success === true)
-        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
-      
-      setSelectedDocumentDetails(verificationLog || doc.employee_docs_log[0]);
-      setDialogOpen(true);
-      toast({
-        title: "Viewing Aadhar verification details",
-        description: "Showing verification information for this document."
-      });
-    } else if (doc.verificationStatus === 'verified' && statusName) {
-      toast({
-        title: "Information",
-        description: `This document is verified with status: ${statusName}`
-      });
-    }
-  };
-  
   return (
-    <>
-      <div className="overflow-x-auto rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[100px]">Type</TableHead>
-              <TableHead>Document #</TableHead>
-              <TableHead>Uploaded</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
+    <div className="rounded-md border overflow-hidden">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Document Type</TableHead>
+            <TableHead>Document #</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Date Uploaded</TableHead>
+            <TableHead>Actions</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {documents.map((document) => (
+            <TableRow key={document.id}>
+              <TableCell className="font-medium">
+                <div className="flex items-center">
+                  {document.documentTypeName?.toUpperCase() || 'Document'}
+                  {document.documentStatusName?.toLowerCase() === 'governance' && (
+                    <Badge variant="outline" className="ml-2 py-0 h-5 text-xs border-green-500 text-green-700 bg-green-50">
+                      <Lock className="h-2.5 w-2.5 mr-1" />
+                      Verified
+                    </Badge>
+                  )}
+                </div>
+              </TableCell>
+              <TableCell className="font-mono text-xs">
+                {document.documentNumber ? 
+                  `${document.documentNumber.substring(0, 2)}•••${document.documentNumber.substring(document.documentNumber.length - 2)}` : 
+                  'N/A'}
+              </TableCell>
+              <TableCell>
+                <DocumentStatusButton document={document} />
+              </TableCell>
+              <TableCell className="text-muted-foreground text-xs">
+                {formatDistanceToNow(new Date(document.createdAt), { addSuffix: true })}
+              </TableCell>
+              <TableCell>
+                <div className="flex items-center">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    onClick={() => onView(document)}
+                  >
+                    <Eye className="h-4 w-4" />
+                    <span className="sr-only">View</span>
+                  </Button>
+                  
+                  {renderVerificationButton(document)}
+                  
+                  <DocumentDeleteButton documentId={document.id} className="ml-2" />
+                </div>
+              </TableCell>
             </TableRow>
-          </TableHeader>
-          <TableBody>
-            {documents.map((doc) => {
-              const statusName = getDocumentStatusName(doc);
-              const hasLogs = !!doc.employee_docs_log && doc.employee_docs_log.length > 0;
-              const isGovernanceVerified = doc.verificationStatus === 'verified' && statusName === 'governance';
-              
-              return (
-                <TableRow key={doc.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {getDocumentIcon(doc.documentTypeName || '')}
-                      <span className="capitalize">{formatDocumentTypeName(doc.documentTypeName || '')}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>{doc.documentNumber || '—'}</TableCell>
-                  <TableCell>
-                    {doc.createdAt ? formatDistanceToNow(new Date(doc.createdAt), { addSuffix: true }) : '—'}
-                  </TableCell>
-                  <TableCell>
-                    <VerificationStatusBadge 
-                      status={doc.verificationStatus} 
-                      documentStatusName={statusName}
-                      isGovernance={isGovernanceVerified}
-                      onClick={isGovernanceVerified && hasLogs ? () => handleBadgeClick(doc) : undefined}
-                    />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center space-x-2 justify-end">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => onViewDocument(doc.documentImage)}
-                      >
-                        <Eye className="h-4 w-4" />
-                        <span className="sr-only">View</span>
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => onDownloadDocument(doc.documentImage)}
-                      >
-                        <Download className="h-4 w-4" />
-                        <span className="sr-only">Download</span>
-                      </Button>
-                      {doc.verificationStatus === 'pending' && (
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
-                          onClick={() => onVerifyDocument(doc.id)}
-                        >
-                          <ShieldCheck className="h-4 w-4 mr-1" />
-                          Verify
-                        </Button>
-                      )}
-                      <DocumentDeleteButton documentId={doc.id} />
-                    </div>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </div>
-
-      {/* Common dialog for all document rows */}
-      <AadharDetailsDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        aadharDetails={selectedDocumentDetails}
-      />
-    </>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   );
 };
 
