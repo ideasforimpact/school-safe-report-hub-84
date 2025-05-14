@@ -195,10 +195,13 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   };
 
   const handleOtpSubmit = async () => {
+    console.log("handleOtpSubmit called - starting OTP verification process");
+    
     // Start with setting the verifying state to true
     setIsVerifyingOtp(true);
     
     if (!txnId) {
+      console.error("No transaction ID available for verification");
       toast({
         title: "Error",
         description: "Transaction ID is missing. Please request a new OTP.",
@@ -229,6 +232,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       }
       
       // Make the API call to verify OTP
+      console.log("Invoking employee-verification edge function with requestBody:", requestBody);
       const { data, error } = await supabase.functions.invoke('employee-verification', {
         method: 'POST',
         body: requestBody
@@ -243,6 +247,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           description: error.message || "Failed to verify OTP. Please try again.",
           variant: "destructive",
         });
+        setIsVerifyingOtp(false);
         return;
       }
       
@@ -252,6 +257,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           description: data.error,
           variant: "destructive",
         });
+        setIsVerifyingOtp(false);
         return;
       }
       
