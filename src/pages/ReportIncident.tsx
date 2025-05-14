@@ -5,7 +5,7 @@ import { useIncidents } from '@/contexts/IncidentContext';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
-import { toast } from '@/components/ui/sonner';
+import { toast } from 'sonner';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { useIncidentForm } from '@/hooks/useIncidentForm';
 import IncidentDetailsForm from '@/components/incidents/IncidentDetailsForm';
@@ -47,6 +47,7 @@ const ReportIncident = () => {
     const fetchEmployees = async () => {
       try {
         setIsLoadingEmployees(true);
+        console.log("Fetching employees from Supabase...");
         const { data, error } = await supabase
           .from('employees')
           .select('*')
@@ -54,9 +55,13 @@ const ReportIncident = () => {
 
         if (error) {
           console.error("Error fetching employees:", error);
+          toast.error("Failed to load staff members");
+          setIsLoadingEmployees(false);
           return;
         }
 
+        console.log("Employees fetched successfully:", data);
+        
         // Map the database employees to our Employee type
         const mappedEmployees = data.map((emp): Employee => ({
           id: emp.id,
@@ -67,14 +72,16 @@ const ReportIncident = () => {
           employeeType: emp.employee_type as any || 'permanent',
           department: emp.department as any || 'admin',
           joiningDate: emp.joining_date || new Date().toISOString(),
-          status: 'active',
+          status: emp.status === 'active' ? 'active' : 'inactive',
           createdAt: emp.created_at || new Date().toISOString(),
           updatedAt: emp.updated_at || new Date().toISOString(),
         }));
         
+        console.log("Mapped employees:", mappedEmployees);
         setEmployees(mappedEmployees);
       } catch (error) {
         console.error("Failed to fetch employees:", error);
+        toast.error("Could not load staff members");
       } finally {
         setIsLoadingEmployees(false);
       }
@@ -165,6 +172,7 @@ const ReportIncident = () => {
         owner: owner
       });
       
+      toast.success("Incident reported successfully");
       navigate('/incidents');
     } catch (error) {
       console.error('Error submitting form:', error);
