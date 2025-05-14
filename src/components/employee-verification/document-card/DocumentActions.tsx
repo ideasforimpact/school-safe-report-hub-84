@@ -22,7 +22,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
     
     try {
       // Special logic for Aadhar documents
-      if (document.documentTypeName === 'aadhar' && method === 'api') {
+      if (document.documentTypeName?.toLowerCase() === 'aadhar' && method === 'api') {
         // Handle Aadhar API verification logic
         console.log('Aadhar API verification selected');
         // This would normally open an OTP dialog or similar
