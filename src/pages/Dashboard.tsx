@@ -1,12 +1,17 @@
 
 import React from 'react';
 import Layout from '@/components/layout/Layout';
-import { useIncidents } from '@/contexts/IncidentContext';
+import { useIncidents } from '@/contexts/incident/IncidentContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 import ActivityList from '@/components/ActivityList';
 import { formatDistanceToNow } from 'date-fns';
+import SummaryCards from '@/components/dashboard/SummaryCards';
+import QuickActions from '@/components/dashboard/QuickActions';
+import RecentActivities from '@/components/dashboard/RecentActivities';
+import SafetyResources from '@/components/dashboard/SafetyResources';
+import IntegratedDashboardSection from '@/components/dashboard/IntegratedDashboardSection';
 
 const Dashboard = () => {
   const { incidents, getRecentActivities } = useIncidents();
@@ -46,14 +51,48 @@ const Dashboard = () => {
     return Math.round(totalDays / closedIncidentsWithDates.length);
   };
 
+  // Calculate most common category and category counts
+  const getCategoryCounts = () => {
+    const counts: Record<string, number> = {};
+    incidents.forEach(incident => {
+      const category = incident.category || 'Uncategorized';
+      counts[category] = (counts[category] || 0) + 1;
+    });
+    return counts;
+  };
+
+  const categoryCounts = getCategoryCounts();
+  const mostCommonCategory = Object.keys(categoryCounts).reduce(
+    (a, b) => (categoryCounts[a] > categoryCounts[b] ? a : b),
+    'Uncategorized'
+  );
+
+  // Count total people involved
+  const totalPeopleInvolved = incidents.reduce(
+    (sum, incident) => sum + (incident.peopleInvolved?.length || 0),
+    0
+  );
+
+  // Data for the integrated dashboard section
+  const openIncidentsData = {
+    count: openIncidents,
+    change: -5 // placeholder for % change
+  };
+
+  // Handler for activity clicks
+  const handleActivityClick = (activity: any) => {
+    console.log("Activity clicked:", activity);
+    // Navigate or show details as needed
+  };
+
   return (
     <Layout>
-      <div className="container py-6">
-        <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
+      <div className="container py-6 space-y-8">
+        <h1 className="text-2xl font-bold">Safety Dashboard</h1>
         
         {/* If no incidents yet, show a welcome message */}
         {totalIncidents === 0 && (
-          <Alert className="mb-6">
+          <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Welcome to the Safety Management System</AlertTitle>
             <AlertDescription>
@@ -62,104 +101,30 @@ const Dashboard = () => {
           </Alert>
         )}
         
-        {/* Dashboard Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
-          {/* Incident Status Cards */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Incidents
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{totalIncidents}</div>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Open Incidents
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-red-500">{openIncidents}</div>
-              <p className="text-xs text-muted-foreground">
-                {openIncidents > 0 ? `${Math.round((openIncidents / totalIncidents) * 100) || 0}% of total` : 'No open incidents'}
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                In Progress
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-amber-500">{inProgressIncidents}</div>
-              <p className="text-xs text-muted-foreground">
-                {inProgressIncidents > 0 ? `${Math.round((inProgressIncidents / totalIncidents) * 100) || 0}% of total` : 'No incidents in progress'}
-              </p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Resolved
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-green-500">{closedIncidents}</div>
-              <p className="text-xs text-muted-foreground">
-                {closedIncidents > 0 ? `${Math.round((closedIncidents / totalIncidents) * 100) || 0}% of total` : 'No resolved incidents'}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+        {/* Integrated Dashboard Overview */}
+        <IntegratedDashboardSection openIncidentsData={openIncidentsData} />
         
-        {/* Additional dashboard content would go here */}
-        <div className="grid gap-6 md:grid-cols-2">
-          {/* Recent Activity */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Activity</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {recentActivities.length > 0 ? (
-                <ActivityList 
-                  activities={recentActivities} 
-                  formatDate={formatDate} 
-                />
-              ) : (
-                <p className="text-muted-foreground text-sm">No recent activity to display</p>
-              )}
-            </CardContent>
-          </Card>
+        {/* Dashboard Cards */}
+        <SummaryCards 
+          openIncidents={openIncidents}
+          totalIncidents={totalIncidents}
+          incidentsThisMonth={inProgressIncidents} // Using in progress as placeholder
+          mostCommonCategory={mostCommonCategory}
+          categoryCounts={categoryCounts}
+          totalPeopleInvolved={totalPeopleInvolved}
+        />
+        
+        {/* Quick Actions Section */}
+        <QuickActions />
+        
+        {/* Two column layout for activities and resources */}
+        <div className="grid gap-8 md:grid-cols-2">
+          <RecentActivities 
+            activities={recentActivities}
+            onActivityClick={handleActivityClick}
+          />
           
-          {/* Safety Stats */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Safety Stats</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Days Without Incident</p>
-                <p className="text-2xl font-bold">{incidentFreeStreak}</p>
-              </div>
-              
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Reporting Rate</p>
-                <p className="text-2xl font-bold">{reportRate}%</p>
-              </div>
-              
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Avg. Resolution Time</p>
-                <p className="text-2xl font-bold">{calculateAverageResolutionTime()} days</p>
-              </div>
-            </CardContent>
-          </Card>
+          <SafetyResources />
         </div>
       </div>
     </Layout>
