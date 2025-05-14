@@ -195,84 +195,85 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   };
 
   const handleOtpSubmit = async () => {
-    if (otp.length === 6 && txnId) {
-      try {
-        setIsVerifyingOtp(true);
-        
-        console.log("Submitting OTP verification with:", {
-          otp,
-          txnId,
-          clientId,
-          documentId
-        });
-        
-        const requestBody: any = {
-          action: 'verifyAadharOtp',
-          documentId,
-          otp,
-          txnId
-        };
-        
-        // Add client_id if available
-        if (clientId) {
-          requestBody.client_id = clientId;
-        }
-        
-        const { data, error } = await supabase.functions.invoke('employee-verification', {
-          method: 'POST',
-          body: requestBody
-        });
-        
-        console.log("OTP verification response:", data, error);
-        
-        if (error) {
-          console.error('Error verifying OTP:', error);
-          toast({
-            title: "Error",
-            description: error.message || "Failed to verify OTP. Please try again.",
-            variant: "destructive",
-          });
-          return;
-        }
-        
-        if (data?.error) {
-          toast({
-            title: "Verification Failed",
-            description: data.error,
-            variant: "destructive",
-          });
-          return;
-        }
-        
-        toast({
-          title: "Verification Successful",
-          description: "Aadhar verification completed successfully"
-        });
-        onVerify('api');
-        setShowOtpInput(false);
-        setOtp("");
-        setTxnId(null);
-        setClientId(null);
-        if (cooldownTimerId !== null) {
-          clearInterval(cooldownTimerId);
-          setCooldownTimerId(null);
-        }
-      } catch (err: any) {
-        console.error("Exception in handleOtpSubmit:", err);
-        toast({
-          title: "Verification Failed",
-          description: err.message || "Failed to verify OTP",
-          variant: "destructive"
-        });
-      } finally {
-        setIsVerifyingOtp(false);
-      }
-    } else {
+    if (!txnId) {
       toast({
-        title: "Invalid OTP",
-        description: "Please enter a valid 6-digit OTP and ensure you have a transaction ID",
+        title: "Error",
+        description: "Transaction ID is missing. Please request a new OTP.",
         variant: "destructive"
       });
+      return;
+    }
+    
+    try {
+      setIsVerifyingOtp(true);
+      
+      console.log("Submitting OTP verification with:", {
+        otp,
+        txnId,
+        clientId,
+        documentId
+      });
+      
+      const requestBody: any = {
+        action: 'verifyAadharOtp',
+        documentId,
+        otp,
+        txnId
+      };
+      
+      // Add client_id if available
+      if (clientId) {
+        requestBody.client_id = clientId;
+      }
+      
+      const { data, error } = await supabase.functions.invoke('employee-verification', {
+        method: 'POST',
+        body: requestBody
+      });
+      
+      console.log("OTP verification response:", data, error);
+      
+      if (error) {
+        console.error('Error verifying OTP:', error);
+        toast({
+          title: "Error",
+          description: error.message || "Failed to verify OTP. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (data?.error) {
+        toast({
+          title: "Verification Failed",
+          description: data.error,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      toast({
+        title: "Verification Successful",
+        description: "Aadhar verification completed successfully"
+      });
+      onVerify('api');
+      setShowOtpInput(false);
+      setOtp("");
+      setTxnId(null);
+      setClientId(null);
+      if (cooldownTimerId !== null) {
+        clearInterval(cooldownTimerId);
+        setCooldownTimerId(null);
+      }
+    } catch (err: any) {
+      console.error("Exception in handleOtpSubmit:", err);
+      toast({
+        title: "Verification Failed",
+        description: err.message || "Failed to verify OTP",
+        variant: "destructive"
+      });
+    } finally {
+      setIsVerifyingOtp(false);
     }
   };
 
@@ -389,7 +390,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               </Button>
               <Button 
                 onClick={handleOtpSubmit}
-                disabled={otp.length !== 6 || !txnId || isVerifyingOtp}
+                disabled={isVerifyingOtp}
               >
                 {isVerifyingOtp ? (
                   <>
