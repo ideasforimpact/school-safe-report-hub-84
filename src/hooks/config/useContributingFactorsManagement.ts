@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { ConfigItem } from '@/contexts/types';
 
 export interface ContributingFactor extends ConfigItem {
-  category?: string;
+  category: string;
   description?: string;
   weight?: 'Low' | 'Medium' | 'High';
 }
@@ -17,7 +17,7 @@ export function useContributingFactorsManagement(initialFactors: ContributingFac
     const newFactor = {
       id: Date.now().toString(),
       name,
-      category: "General", // Default category for compatibility
+      category: "General", // Default category
       description,
       weight
     };

@@ -197,6 +197,7 @@ export const ContributingFactorsTab: React.FC<ContributingFactorsTabProps> = ({
       {isEditing && currentFactor && (
         <EditDialog
           title="Edit Contributing Factor"
+          description="Update the contributing factor details"
           isOpen={isEditing}
           onClose={() => setIsEditing(false)}
           onSave={handleSave}

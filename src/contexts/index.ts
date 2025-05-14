@@ -1,45 +1,21 @@
 
-// Export from incident/IncidentContext
-export {
-  IncidentProvider,
-  useIncidents,
-  subcategories,
-  nearMissSubcategories,
-  unsafeConditionSubcategories,
-  ContributingFactor
-} from '@/contexts/IncidentContext';
+// Re-export all contexts so they can be imported from a single location
 
-// Export types from IncidentContext but exclude User to avoid name collision
-export type {
-  Campus,
-  Class,
-  Section,
-  IncidentType,
-  IncidentCategory,
-  IncidentLocation,
-  IncidentStatus,
-  SchoolFacility,
-  Person,
-  UserRef,
-  Document,
-  FileItem,
-  Action,
-  Comment,
-  ActionItem,
-  Incident,
-  Activity,
-  ConfigItem,
-  SubcategoryItem,
-  IncidentContextType
-} from '@/contexts/IncidentContext';
+// Auth Context
+export * from './AuthContext';
 
-// Export auth related items
-export * from './auth';
+// Incident Context
+export * from './IncidentContext';
 
-// Export other contexts
-export * from './FacilityContext';
-export * from './ClientContext';
-export * from './StudentContext';
-export * from './assessment/AssessmentContext';
+// Types
+export type { ContributingFactor } from './IncidentContext';
+export type { User } from './types';
+
+// Employee Verification Context
 export * from './employee-verification';
-export * from './feedback/FeedbackContext';
+
+// Assessment Context
+export * from './AssessmentContext';
+
+// Facility Context
+export * from './FacilityContext';

@@ -92,7 +92,7 @@ export interface ActionItem {
 }
 
 // Re-export the ContributingFactor interface from useContributingFactorsManagement
-export { ContributingFactor };
+export type { ContributingFactor };
 
 export interface Incident {
   id: string;
