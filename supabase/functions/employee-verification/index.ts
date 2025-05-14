@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 
@@ -22,17 +21,18 @@ serve(async (req) => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
   const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
   const surepassApiKey = Deno.env.get("SUREPASS_SANDBOX_API_KEY") || "";
+  const productionApiKey = Deno.env.get("SUREPASS_PRODUCTION_API_KEY") || "";
   const environment = Deno.env.get("ENVIRONMENT") || "development";
 
-  // Determine which API key to use based on environment
-  const apiKey = environment === "production" 
-    ? Deno.env.get("SUREPASS_PRODUCTION_API_KEY") || surepassApiKey
-    : surepassApiKey;
+  // For Aadhar verification, always use production
+  const aadharApiKey = productionApiKey || surepassApiKey;
+  const aadharBaseUrl = "https://kyc-api.surepass.io";
 
-  // Use the appropriate base URL
-  const baseUrl = environment === "production" 
-    ? Deno.env.get("SUREPASS_BASE_URL") || "https://kyc-api.surepass.io"
-    : "https://kyc-api.surepass.io"; // Use sandbox for development
+  // For other verifications (like PAN), use environment-based configuration
+  const panApiKey = environment === "production" 
+    ? productionApiKey 
+    : surepassApiKey;
+  const panBaseUrl = "https://kyc-api.surepass.io";
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -43,13 +43,16 @@ serve(async (req) => {
     console.log(`Processing ${action} request`);
 
     if (action === 'requestAadharOtp') {
-      return await handleAadharOtpRequest(body, baseUrl, apiKey, supabase, corsHeaders);
+      // Always use production for Aadhar
+      return await handleAadharOtpRequest(body, aadharBaseUrl, aadharApiKey, supabase, corsHeaders);
     }
     else if (action === 'verifyAadharOtp') {
-      return await handleAadharOtpVerify(body, baseUrl, apiKey, supabase, corsHeaders);
+      // Always use production for Aadhar
+      return await handleAadharOtpVerify(body, aadharBaseUrl, aadharApiKey, supabase, corsHeaders);
     }
     else if (action === 'verifyPanCard') {
-      return await handlePanVerification(body, baseUrl, apiKey, supabase, corsHeaders);
+      // Use environment-specific configuration for PAN
+      return await handlePanVerification(body, panBaseUrl, panApiKey, supabase, corsHeaders);
     }
 
     return new Response(
