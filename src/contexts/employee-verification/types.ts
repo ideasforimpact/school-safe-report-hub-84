@@ -1,5 +1,5 @@
 
-import { DocumentType, DocumentStatus, VerificationDocument, Employee } from "@/types/employeeVerification";
+import { Employee, VerificationDocument, DocumentType, DocumentStatus, VerificationResult } from '@/types/employeeVerification';
 
 export interface EmployeeVerificationContextType {
   employees: Employee[];
@@ -9,12 +9,12 @@ export interface EmployeeVerificationContextType {
   addEmployee: (employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Employee>;
   updateEmployee: (id: string, updates: Partial<Employee>) => Promise<void>;
   deleteEmployee: (id: string) => Promise<void>;
-  addDocument: (documentData: Omit<VerificationDocument, 'id' | 'createdAt' | 'updatedAt'>) => Promise<VerificationDocument>;
-  verifyDocument: (id: string, status: 'verified' | 'failed', notes?: string) => Promise<void>;
+  addDocument: (document: Omit<VerificationDocument, 'id' | 'createdAt' | 'updatedAt'>) => Promise<VerificationDocument>;
+  verifyDocument: (id: string, status: 'pending' | 'verified' | 'failed', notes?: string) => Promise<void>;
   deleteDocument: (id: string) => Promise<void>;
   getEmployeeDocuments: (employeeId: string) => VerificationDocument[];
   getEmployee: (id: string) => Employee | undefined;
-  fetchEmployees: (clientId?: string) => Promise<Employee[]>;
+  fetchEmployees: () => Promise<Employee[]>;
   fetchEmployeeDocuments: (employeeId: string) => Promise<VerificationDocument[]>;
   fetchDocumentTypes: () => Promise<DocumentType[]>;
   fetchDocumentStatuses: () => Promise<DocumentStatus[]>;
