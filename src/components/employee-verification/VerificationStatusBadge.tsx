@@ -7,15 +7,22 @@ import { cn } from '@/lib/utils';
 interface VerificationStatusBadgeProps {
   status: 'verified' | 'failed' | 'pending';
   className?: string;
+  isGovernance?: boolean;
+  onClick?: () => void;
 }
 
-const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({ status, className }) => {
+const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({ 
+  status, 
+  className, 
+  isGovernance = false,
+  onClick
+}) => {
   const getStatusConfig = () => {
     switch (status) {
       case 'verified':
         return {
           icon: CheckCircle,
-          text: 'Verified',
+          text: isGovernance ? 'Verified/Governance' : 'Verified',
           variant: 'success',
           bgColor: 'bg-green-100 text-green-800 border-green-200'
         };
@@ -46,7 +53,15 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({ statu
   const { icon: Icon, text, bgColor } = getStatusConfig();
 
   return (
-    <Badge className={cn('gap-1 px-2 py-1 font-medium text-xs', bgColor, className)}>
+    <Badge 
+      className={cn(
+        'gap-1 px-2 py-1 font-medium text-xs', 
+        bgColor, 
+        className,
+        onClick && 'cursor-pointer hover:opacity-80 transition-opacity'
+      )}
+      onClick={onClick}
+    >
       <Icon className="h-3.5 w-3.5" />
       {text}
     </Badge>
