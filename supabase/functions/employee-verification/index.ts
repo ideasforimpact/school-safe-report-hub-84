@@ -45,23 +45,9 @@ serve(async (req) => {
     // Set up production vs. sandbox environment for the Surepass API
     const environment = Deno.env.get("ENVIRONMENT") || "development";
     
-    // Default base URL for Surepass API and API key
-    let baseUrl = environment === "production" 
-      ? Deno.env.get("SUREPASS_BASE_URL") || "https://sandbox.surepass.io"
-      : "https://sandbox.surepass.io";
-    
-    let apiKey = environment === "production" 
-      ? Deno.env.get("SUREPASS_PRODUCTION_API_KEY") 
-      : Deno.env.get("SUREPASS_SANDBOX_API_KEY");
-    
-    // Override baseUrl and apiKey for specific actions
-    if (action === 'requestAadharOtp' || action === 'verifyAadharOtp') {
-      // For these specific actions, always use production URL and key
-      baseUrl = "https://kyc-api.surepass.io";
-      apiKey = Deno.env.get("SUREPASS_PRODUCTION_API_KEY");
-      
-      console.log(`Using production API for ${action}: ${baseUrl}`);
-    }
+    // Default base URL for Surepass API and API key - Use production directly
+    let baseUrl = "https://kyc-api.surepass.io";
+    let apiKey = Deno.env.get("SUREPASS_PRODUCTION_API_KEY");
     
     // Check if we're testing in development mode
     const isDevTest = environment === "development" && !apiKey;
@@ -381,7 +367,7 @@ serve(async (req) => {
                 .from('employee_documents')
                 .update({
                   verification_status: 'verified',
-                  employee_docs_log: [...existingLogs, logEntry],
+                  employee_docs_log: Array.isArray(existingLogs) ? [...existingLogs, logEntry] : [logEntry],
                   document_status_id: governanceStatusId,
                   updated_at: new Date().toISOString()
                 })
@@ -447,7 +433,7 @@ serve(async (req) => {
               await supabase
                 .from('employee_documents')
                 .update({
-                  employee_docs_log: [...existingLogs, logEntry],
+                  employee_docs_log: Array.isArray(existingLogs) ? [...existingLogs, logEntry] : [logEntry],
                   updated_at: new Date().toISOString()
                 })
                 .eq('id', documentId);
