@@ -1,25 +1,25 @@
 
 import { Incident } from '@/types/incident';
 
+// Define the filter state
 export interface FilterState {
+  search: string;
   type: string;
   category: string;
   subcategory: string;
   status: string;
-  dateFrom: string;
-  dateTo: string;
-  search: string;
   priority: string;
   location: string;
   facility: string;
   owner: string;
-  isVoided: boolean;
-  wasReopened: boolean;
-  hasAttachments: boolean;
-  involvedRole: string;
+  reportedBy: string;
+  startDate: Date | null;
+  endDate: Date | null;
   showAdvancedFilters: boolean;
+  showClosedIncidents: boolean;
 }
 
+// Define the return type for the filter hook
 export interface FilterHookReturn {
   filters: FilterState;
   filteredIncidents: Incident[];
@@ -27,7 +27,7 @@ export interface FilterHookReturn {
   availableSubcategories: string[];
   availableLocations: string[];
   availableFacilities: string[];
-  availableOwners: {id: string, name: string}[];
+  availableOwners: { id: string; name: string; }[];
   handleFilterChange: (field: string, value: any) => void;
   toggleAdvancedFilters: () => void;
   clearFilters: () => void;

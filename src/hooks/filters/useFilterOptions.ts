@@ -1,84 +1,52 @@
 
 import { useState, useEffect } from 'react';
-import { useIncidents } from '@/contexts/IncidentContext';
+import { useIncidents } from '@/contexts/incident/IncidentContext';
 import { useLocation } from 'react-router-dom';
-import { ConfigItem } from '@/contexts/types';
 
-export interface FilterOptionsReturn {
-  categoryOptions: string[];
-  locationOptions: string[];
-  facilityOptions: string[];
-  statusOptions: string[];
-  priorityOptions: string[];
-  assigneeOptions: string[];
-  reporterOptions: string[];
-  isInsightsPage: boolean;
-  campuses: any[];
-  classes: any[];
-  sections: any[];
-  designations: ConfigItem[];
-}
+// Hook to get filter options for incidents
+export const useFilterOptions = () => {
+  const { incidents, categories, locations, facilities, designations, campuses, classes, sections } = useIncidents();
+  const location = useLocation();
+  const isInsightsPage = location.pathname.includes('/insights');
 
-export const useFilterOptions = (): FilterOptionsReturn => {
-  // Get context values
-  const { 
-    // Ensure these are properly imported from the IncidentContext
-    // or set as empty arrays if they don't exist
-    campuses = [], 
-    classes = [],
-    sections = [],
-    categories = [], 
-    locations = [],
-    facilities = [],
-    designations = []
-  } = useIncidents();
-
-  // State for various filter options
+  // Initialize options arrays
   const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
   const [locationOptions, setLocationOptions] = useState<string[]>([]);
   const [facilityOptions, setFacilityOptions] = useState<string[]>([]);
-  const [statusOptions, setStatusOptions] = useState<string[]>([]);
-  const [priorityOptions, setPriorityOptions] = useState<string[]>([]);
-  const [assigneeOptions, setAssigneeOptions] = useState<string[]>([]);
-  const [reporterOptions, setReporterOptions] = useState<string[]>([]);
+  const [statusOptions, setStatusOptions] = useState<string[]>(['Open', 'In Progress', 'Closed']);
+  const [priorityOptions, setPriorityOptions] = useState<string[]>(['Low', 'Medium', 'High', 'Critical']);
+  const [assigneeOptions, setAssigneeOptions] = useState<{id: string, name: string}[]>([]);
+  const [reporterOptions, setReporterOptions] = useState<{id: string, name: string}[]>([]);
 
-  const location = useLocation();
-  const isInsightsPage = location.pathname.includes('insights');
-
+  // Extract unique values from incidents
   useEffect(() => {
-    // Set category options
-    if (Array.isArray(categories)) {
-      const catOptions = categories.map(cat => cat.name);
-      setCategoryOptions(catOptions);
-    } else {
-      setCategoryOptions([]);
-    }
+    if (incidents && incidents.length > 0) {
+      // Extract categories
+      const uniqueCategories = [...new Set(incidents.map(inc => inc.category))];
+      setCategoryOptions(uniqueCategories);
 
-    // Set location options
-    if (Array.isArray(locations)) {
-      const locOptions = locations.map(loc => loc.name);
-      setLocationOptions(locOptions);
-    } else {
-      setLocationOptions([]);
-    }
-    
-    // Set facility options
-    if (Array.isArray(facilities)) {
-      const facOptions = facilities.map(fac => fac.name);
-      setFacilityOptions(facOptions);
-    } else {
-      setFacilityOptions([]);
-    }
+      // Extract locations
+      const uniqueLocations = [...new Set(incidents.map(inc => inc.location))];
+      setLocationOptions(uniqueLocations);
 
-    // Static options for status and priority
-    setStatusOptions(['Open', 'In Progress', 'Closed', 'Voided']);
-    setPriorityOptions(['Low', 'Medium', 'High', 'Critical']);
-    
-    // Mock options for assignees and reporters (replace with actual data when available)
-    setAssigneeOptions(['John Smith', 'Jane Doe', 'Bob Johnson']);
-    setReporterOptions(['Sarah Wilson', 'Mike Thomas', 'Emma Brown']);
+      // Extract facilities
+      const uniqueFacilities = [...new Set(incidents.map(inc => inc.facility).filter(Boolean) as string[])];
+      setFacilityOptions(uniqueFacilities);
 
-  }, [categories, locations, facilities]);
+      // Extract assignees (owners)
+      const uniqueAssignees = incidents
+        .filter(inc => inc.owner)
+        .map(inc => ({ id: inc.owner!.id, name: inc.owner!.name }))
+        .filter((owner, index, self) => index === self.findIndex(o => o.id === owner.id));
+      setAssigneeOptions(uniqueAssignees);
+
+      // Extract reporters
+      const uniqueReporters = incidents
+        .map(inc => ({ id: inc.reportedBy.id, name: inc.reportedBy.name }))
+        .filter((reporter, index, self) => index === self.findIndex(r => r.id === reporter.id));
+      setReporterOptions(uniqueReporters);
+    }
+  }, [incidents]);
 
   return {
     categoryOptions,
@@ -89,10 +57,9 @@ export const useFilterOptions = (): FilterOptionsReturn => {
     assigneeOptions,
     reporterOptions,
     isInsightsPage,
-    // Add educational structure options
-    campuses: Array.isArray(campuses) ? campuses : [],
-    classes: Array.isArray(classes) ? classes : [],
-    sections: Array.isArray(sections) ? sections : [],
-    designations: Array.isArray(designations) ? designations : [],
+    campuses,
+    classes,
+    sections,
+    designations
   };
 };
