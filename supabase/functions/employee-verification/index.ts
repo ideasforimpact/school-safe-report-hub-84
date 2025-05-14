@@ -164,10 +164,37 @@ serve(async (req) => {
         if (data.success) {
           // Update document with timestamp of OTP generation
           if (documentId) {
-            await supabase
+            // Get existing logs
+            const { data: document, error: docLogError } = await supabase
               .from('employee_documents')
-              .update({ last_otp_generated: new Date().toISOString() })
-              .eq('id', documentId);
+              .select('employee_docs_log')
+              .eq('id', documentId)
+              .single();
+            
+            if (!docLogError) {
+              const existingLogs = document?.employee_docs_log || [];
+              
+              // Create log entry for OTP generation
+              const logEntry = {
+                timestamp: new Date().toISOString(),
+                action: "request_aadhar_otp",
+                response: data
+              };
+              
+              await supabase
+                .from('employee_documents')
+                .update({ 
+                  last_otp_generated: new Date().toISOString(),
+                  employee_docs_log: Array.isArray(existingLogs) ? [...existingLogs, logEntry] : [logEntry]
+                })
+                .eq('id', documentId);
+            } else {
+              // If can't get logs, just update the timestamp
+              await supabase
+                .from('employee_documents')
+                .update({ last_otp_generated: new Date().toISOString() })
+                .eq('id', documentId);
+            }
           }
           
           return new Response(
@@ -266,7 +293,7 @@ serve(async (req) => {
               .from('employee_documents')
               .update({
                 verification_status: 'verified',
-                employee_docs_log: [...existingLogs, logEntry],
+                employee_docs_log: Array.isArray(existingLogs) ? [...existingLogs, logEntry] : [logEntry],
                 document_status_id: governanceStatusId,
                 updated_at: new Date().toISOString()
               })
