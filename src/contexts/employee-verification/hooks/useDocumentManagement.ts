@@ -1,4 +1,5 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+
+import { useState, useCallback, useEffect } from 'react';
 import { VerificationDocument } from '@/types/employeeVerification';
 import { initialDocuments } from '../initialData';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,22 +8,16 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
   const [documents, setDocuments] = useState<VerificationDocument[]>(initialDocuments);
   const [isLoading, setIsLoading] = useState(false);
   const [fetchedEmployeeIds, setFetchedEmployeeIds] = useState<string[]>([]);
-  const pendingRequests = useRef<Record<string, boolean>>({});
 
   // Fetch documents from the database via the edge function
   const fetchEmployeeDocuments = useCallback(async (employeeId: string) => {
-    // Skip if we're already loading this employee's documents or if they've been fetched
-    if (isLoading || fetchedEmployeeIds.includes(employeeId) || pendingRequests.current[employeeId]) {
+    // Skip if we're already loading or if this employee's documents have already been fetched
+    if (isLoading || fetchedEmployeeIds.includes(employeeId)) {
       return [];
     }
     
-    // Mark this employee's request as pending
-    pendingRequests.current[employeeId] = true;
     setIsLoading(true);
-    
     try {
-      console.log(`Fetching documents for employee: ${employeeId}`);
-      
       // For GET requests, we should pass parameters as query strings, not in the body
       const { data, error } = await supabase.functions.invoke('employee-documents', {
         method: 'POST',  // Using POST to send data in body
@@ -54,8 +49,6 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
       return [];
     } finally {
       setIsLoading(false);
-      // Clear pending flag for this employee
-      delete pendingRequests.current[employeeId];
     }
   }, [isLoading, fetchedEmployeeIds]);
 
@@ -214,8 +207,19 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
 
   // Add a new effect to check and fetch documents if needed
   useEffect(() => {
-    // No automatic fetching happens here, we'll rely on explicit calls
-    // from the components when they need the data
+    const checkAndFetchEmployeeDocuments = async (employeeId: string) => {
+      // If we haven't fetched documents for this employee yet and we're not loading
+      if (!fetchedEmployeeIds.includes(employeeId) && !isLoading) {
+        const docsForEmployee = documents.filter(doc => doc.employeeId === employeeId);
+        
+        // Only fetch if we don't have docs for this employee
+        if (docsForEmployee.length === 0) {
+          await fetchEmployeeDocuments(employeeId);
+        }
+      }
+    };
+    
+    // This effect will run when component using getEmployeeDocuments mounts
     return () => {}; // Empty cleanup function
   }, [fetchedEmployeeIds, documents, isLoading, fetchEmployeeDocuments]);
 

@@ -1,4 +1,5 @@
-import React, { useEffect, useRef } from 'react';
+
+import React, { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Upload, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -23,14 +24,12 @@ const EmployeeDetailPage = () => {
   } = useEmployeeVerification();
   const { toast } = useToast();
   const employee = getEmployee(employeeId || '');
-  const initialLoadDone = useRef(false);
 
-  // Fetch data when component mounts - ONLY ONCE
+  // Fetch data when component mounts
   useEffect(() => {
     const loadData = async () => {
-      if (employeeId && !initialLoadDone.current) {
+      if (employeeId) {
         try {
-          initialLoadDone.current = true;
           await fetchEmployeeDocuments(employeeId);
           console.log('Initial data loading complete for employee:', employeeId);
         } catch (error) {
@@ -67,8 +66,6 @@ const EmployeeDetailPage = () => {
   const handleRefreshDocuments = async () => {
     if (employeeId) {
       try {
-        // Reset the initialLoadDone flag to force a refresh
-        initialLoadDone.current = false;
         await fetchEmployeeDocuments(employeeId);
         
         toast({
