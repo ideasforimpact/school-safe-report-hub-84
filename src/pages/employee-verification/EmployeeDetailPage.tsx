@@ -25,6 +25,7 @@ const EmployeeDetailPage = () => {
   } = useEmployeeVerification();
   const { toast } = useToast();
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const employee = getEmployee(employeeId || '');
 
   // Fetch data when component mounts - only once
@@ -73,7 +74,8 @@ const EmployeeDetailPage = () => {
   }, [employeeId, navigate]);
 
   const handleRefreshDocuments = useCallback(async () => {
-    if (employeeId) {
+    if (employeeId && !isRefreshing) {
+      setIsRefreshing(true);
       try {
         // Fetch both documents and statuses on refresh
         await Promise.all([
@@ -91,9 +93,11 @@ const EmployeeDetailPage = () => {
           description: "Failed to refresh data.",
           variant: "destructive",
         });
+      } finally {
+        setIsRefreshing(false);
       }
     }
-  }, [employeeId, fetchEmployeeDocuments, fetchDocumentStatuses, toast]);
+  }, [employeeId, fetchEmployeeDocuments, fetchDocumentStatuses, toast, isRefreshing]);
 
   return <Layout>
       <div className="container mx-auto py-6 px-4 sm:px-6 max-w-6xl">
@@ -114,9 +118,9 @@ const EmployeeDetailPage = () => {
               variant="outline" 
               size="sm"
               onClick={handleRefreshDocuments}
-              disabled={isLoading}
+              disabled={isLoading || isRefreshing}
             >
-              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-4 w-4 ${isLoading || isRefreshing ? 'animate-spin' : ''}`} />
               <span className="sr-only">Refresh</span>
             </Button>
             <Button onClick={handleAddDocument} className="shadow-md">
@@ -141,7 +145,11 @@ const EmployeeDetailPage = () => {
               </div>
             </div>
             
-            <DocumentsList employeeId={employee.id} onAddDocument={handleAddDocument} />
+            <DocumentsList 
+              employeeId={employee.id}
+              onAddDocument={handleAddDocument}
+              initialLoadComplete={initialLoadComplete}
+            />
           </div>
         </div>
       </div>

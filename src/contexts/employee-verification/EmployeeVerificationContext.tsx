@@ -24,6 +24,7 @@ export const EmployeeVerificationProvider: React.FC<EmployeeVerificationProvider
   const [documentStatusesLoaded, setDocumentStatusesLoaded] = useState(false);
   const [isLoadingStatuses, setIsLoadingStatuses] = useState(false);
   const statusFetchingRef = useRef<boolean>(false);
+  const documentStatusFetchPromiseRef = useRef<Promise<DocumentStatus[]> | null>(null);
   const { toast } = useToast();
   
   const { 
@@ -48,10 +49,10 @@ export const EmployeeVerificationProvider: React.FC<EmployeeVerificationProvider
     return Promise.resolve();
   });
 
-  // Load document statuses when component mounts - with debounce protection
+  // Load document statuses when component mounts - with improved caching
   useEffect(() => {
     // Only fetch if we haven't already loaded statuses and we're not currently fetching
-    if (!documentStatusesLoaded && !statusFetchingRef.current) {
+    if (!documentStatusesLoaded && !statusFetchingRef.current && !documentStatusFetchPromiseRef.current) {
       fetchDocumentStatuses()
         .catch(error => {
           console.error('Error loading document statuses:', error);
@@ -98,6 +99,11 @@ export const EmployeeVerificationProvider: React.FC<EmployeeVerificationProvider
   }, [documentTypes, documentTypesLoaded]);
 
   const fetchDocumentStatuses = useCallback(async (): Promise<DocumentStatus[]> => {
+    // If we already have a pending fetch promise, return that instead of making a new request
+    if (documentStatusFetchPromiseRef.current) {
+      return documentStatusFetchPromiseRef.current;
+    }
+    
     // If we're already loading statuses or they're already loaded, return current state
     if (isLoadingStatuses || (documentStatusesLoaded && documentStatuses.length > 0)) {
       return documentStatuses;
@@ -107,38 +113,51 @@ export const EmployeeVerificationProvider: React.FC<EmployeeVerificationProvider
     setIsLoadingStatuses(true);
     statusFetchingRef.current = true;
     
-    try {
-      console.log('Fetching document statuses from the database...');
-      
-      const { data, error } = await supabase
-        .from('document_status')
-        .select('*');
-      
-      if (error) {
-        console.error('Error fetching document statuses:', error);
-        return documentStatuses;
+    // Create a new promise for this fetch operation
+    const fetchPromise = new Promise<DocumentStatus[]>(async (resolve) => {
+      try {
+        console.log('Fetching document statuses from the database...');
+        
+        const { data, error } = await supabase
+          .from('document_status')
+          .select('*');
+        
+        if (error) {
+          console.error('Error fetching document statuses:', error);
+          resolve(documentStatuses);
+          return;
+        }
+        
+        const statusesData = data.map(status => ({
+          id: status.id,
+          name: status.name,
+          description: status.description,
+          createdAt: status.created_at,
+          updatedAt: status.updated_at
+        })) as DocumentStatus[];
+        
+        console.log('Document statuses fetched successfully:', statusesData);
+        
+        setDocumentStatuses(statusesData);
+        setDocumentStatusesLoaded(true);
+        resolve(statusesData);
+      } catch (error) {
+        console.error('Failed to fetch document statuses:', error);
+        resolve(documentStatuses);
+      } finally {
+        setIsLoadingStatuses(false);
+        statusFetchingRef.current = false;
+        // Clear the promise reference after a short delay to allow for potential quick re-requests
+        setTimeout(() => {
+          documentStatusFetchPromiseRef.current = null;
+        }, 500);
       }
-      
-      const statusesData = data.map(status => ({
-        id: status.id,
-        name: status.name,
-        description: status.description,
-        createdAt: status.created_at,
-        updatedAt: status.updated_at
-      })) as DocumentStatus[];
-      
-      console.log('Document statuses fetched successfully:', statusesData);
-      
-      setDocumentStatuses(statusesData);
-      setDocumentStatusesLoaded(true);
-      return statusesData;
-    } catch (error) {
-      console.error('Failed to fetch document statuses:', error);
-      return documentStatuses;
-    } finally {
-      setIsLoadingStatuses(false);
-      statusFetchingRef.current = false;
-    }
+    });
+    
+    // Store the promise in the ref
+    documentStatusFetchPromiseRef.current = fetchPromise;
+    
+    return fetchPromise;
   }, [documentStatuses, documentStatusesLoaded, isLoadingStatuses]);
 
   return (

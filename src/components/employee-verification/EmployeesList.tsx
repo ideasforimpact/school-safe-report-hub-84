@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Table,
   TableBody,
@@ -20,8 +20,17 @@ const EmployeesList = () => {
   const { employees, deleteEmployee, getEmployeeDocuments } = useEmployeeVerification();
   const navigate = useNavigate();
 
+  // Create a memoized map of employee documents to avoid recalculation on each render
+  const employeeDocumentsMap = useMemo(() => {
+    const map = new Map();
+    employees.forEach(employee => {
+      map.set(employee.id, getEmployeeDocuments(employee.id));
+    });
+    return map;
+  }, [employees, getEmployeeDocuments]);
+
   const renderDocumentsInfo = (employeeId: string) => {
-    const documents = getEmployeeDocuments(employeeId);
+    const documents = employeeDocumentsMap.get(employeeId) || [];
     
     // Group by verification status
     const verified = documents.filter(doc => doc.verificationStatus === 'verified');
