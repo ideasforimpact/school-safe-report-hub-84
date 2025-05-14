@@ -22,8 +22,6 @@ const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({ document })
     if (document.documentStatusId && documentStatuses.length > 0) {
       const status = documentStatuses.find(s => s.id === document.documentStatusId);
       setStatusName(status?.name || null);
-    } else {
-      setStatusName(null);
     }
   }, [document.documentStatusId, documentStatuses]);
 
