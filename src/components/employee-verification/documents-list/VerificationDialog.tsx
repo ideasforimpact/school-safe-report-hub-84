@@ -14,7 +14,6 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { useEmployeeVerification } from '@/contexts/employee-verification';
 
 interface VerificationDialogProps {
   open: boolean;
@@ -38,9 +37,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   documentNumber = ''
 }) => {
   const { toast } = useToast();
-  const { verifyDocument } = useEmployeeVerification();
-  const isAadhar = documentType?.toLowerCase() === 'aadhar';
-  const isPan = documentType?.toLowerCase() === 'pan';
+  const isAadhar = documentType === 'aadhar';
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [otp, setOtp] = useState("");
   const [cooldownSeconds, setCooldownSeconds] = useState<number | null>(null);
@@ -49,7 +46,6 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const [clientId, setClientId] = useState<string | null>(null);
   const [isRequestingOtp, setIsRequestingOtp] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
-  const [isVerifyingPan, setIsVerifyingPan] = useState(false);
   const [isManualVerifying, setIsManualVerifying] = useState(false);
 
   // Logging OTP state for debugging
@@ -81,7 +77,6 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       setClientId(null);
       setIsRequestingOtp(false);
       setIsVerifyingOtp(false);
-      setIsVerifyingPan(false);
       setIsManualVerifying(false);
       if (cooldownTimerId !== null) {
         clearInterval(cooldownTimerId);
@@ -115,158 +110,89 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     setCooldownTimerId(timerId);
   };
 
-  const handleApiClick = async () => {
-    if (isAadhar) {
-      handleAadharApiClick();
-    } else if (isPan) {
-      handlePanApiClick();
-    } else {
-      onVerify('api');
-    }
-  };
-
   const handleAadharApiClick = async () => {
-    if (!documentNumber) {
-      toast({
-        title: "Error",
-        description: "Aadhar number is required for verification",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    // Set loading state
-    setIsRequestingOtp(true);
-    
-    // Call the edge function to request OTP
-    try {
-      console.log("Sending OTP request for document ID:", documentId);
-      
-      const { data, error } = await supabase.functions.invoke('employee-verification', {
-        method: 'POST',
-        body: { 
-          action: 'requestAadharOtp',
-          documentId, 
-          documentNumber // Send the plain document number
-        }
-      });
-      
-      console.log("OTP request response:", data, error);
-      
-      if (error) {
-        console.error('Error requesting OTP:', error);
+    if (isAadhar) {
+      if (!documentNumber) {
         toast({
           title: "Error",
-          description: error.message || "Failed to request OTP. Please try again.",
-          variant: "destructive",
+          description: "Aadhar number is required for verification",
+          variant: "destructive"
         });
         return;
       }
       
-      if (data?.error) {
-        if (data.cooldownRemaining) {
-          // Handle cooldown period
-          startCooldownTimer(data.cooldownRemaining);
+      // Set loading state
+      setIsRequestingOtp(true);
+      
+      // Call the edge function to request OTP
+      try {
+        console.log("Sending OTP request for document ID:", documentId);
+        
+        const { data, error } = await supabase.functions.invoke('employee-verification', {
+          method: 'POST',
+          body: { 
+            action: 'requestAadharOtp',
+            documentId, 
+            documentNumber // Send the plain document number
+          }
+        });
+        
+        console.log("OTP request response:", data, error);
+        
+        if (error) {
+          console.error('Error requesting OTP:', error);
+          toast({
+            title: "Error",
+            description: error.message || "Failed to request OTP. Please try again.",
+            variant: "destructive",
+          });
+          return;
         }
         
-        toast({
-          title: "Error",
-          description: data.error,
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      // Store transaction ID and client_id for OTP verification
-      if (data?.txnId) {
-        setTxnId(data.txnId);
-        console.log("Transaction ID stored:", data.txnId);
-      }
-      
-      if (data?.client_id) {
-        setClientId(data.client_id);
-        console.log("Client ID stored:", data.client_id);
-      }
-      
-      setShowOtpInput(true);
-      // Start a 3-minute countdown for OTP validity
-      startCooldownTimer(3 * 60);
-      toast({
-        title: "OTP Sent",
-        description: "A verification code has been sent to your registered mobile number"
-      });
-    } catch (err: any) {
-      console.error("Exception in handleAadharApiClick:", err);
-      toast({
-        title: "Error",
-        description: err.message || "Failed to send OTP",
-        variant: "destructive"
-      });
-    } finally {
-      setIsRequestingOtp(false);
-    }
-  };
-
-  const handlePanApiClick = async () => {
-    if (!documentNumber) {
-      toast({
-        title: "Error",
-        description: "PAN number is required for verification",
-        variant: "destructive"
-      });
-      return;
-    }
-    
-    setIsVerifyingPan(true);
-    
-    try {
-      console.log("Sending PAN verification request for document ID:", documentId);
-      
-      const { data, error } = await supabase.functions.invoke('employee-verification', {
-        method: 'POST',
-        body: { 
-          action: 'verifyPanCard',
-          documentId, 
-          documentNumber
+        if (data?.error) {
+          if (data.cooldownRemaining) {
+            // Handle cooldown period
+            startCooldownTimer(data.cooldownRemaining);
+          }
+          
+          toast({
+            title: "Error",
+            description: data.error,
+            variant: "destructive",
+          });
+          return;
         }
-      });
-      
-      console.log("PAN verification response:", data, error);
-      
-      if (error) {
-        console.error('Error verifying PAN:', error);
+        
+        // Store transaction ID and client_id for OTP verification
+        if (data?.txnId) {
+          setTxnId(data.txnId);
+          console.log("Transaction ID stored:", data.txnId);
+        }
+        
+        if (data?.client_id) {
+          setClientId(data.client_id);
+          console.log("Client ID stored:", data.client_id);
+        }
+        
+        setShowOtpInput(true);
+        // Start a 3-minute countdown for OTP validity
+        startCooldownTimer(3 * 60);
+        toast({
+          title: "OTP Sent",
+          description: "A verification code has been sent to your registered mobile number"
+        });
+      } catch (err: any) {
+        console.error("Exception in handleAadharApiClick:", err);
         toast({
           title: "Error",
-          description: error.message || "Failed to verify PAN. Please try again.",
-          variant: "destructive",
+          description: err.message || "Failed to send OTP",
+          variant: "destructive"
         });
-        return;
+      } finally {
+        setIsRequestingOtp(false);
       }
-      
-      if (data?.error) {
-        toast({
-          title: "Verification Failed",
-          description: data.error,
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      toast({
-        title: "Verification Successful",
-        description: "PAN verification completed successfully"
-      });
-      
+    } else {
       onVerify('api');
-    } catch (err: any) {
-      console.error("Exception in handlePanApiClick:", err);
-      toast({
-        title: "Error",
-        description: err.message || "Failed to verify PAN",
-        variant: "destructive"
-      });
-    } finally {
-      setIsVerifyingPan(false);
     }
   };
 
@@ -451,10 +377,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
             <Button 
               variant="outline" 
               className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 justify-start"
-              onClick={handleApiClick}
-              disabled={isVerifying || cooldownSeconds !== null || isRequestingOtp || isManualVerifying || isVerifyingPan}
+              onClick={handleAadharApiClick}
+              disabled={isVerifying || cooldownSeconds !== null || isRequestingOtp || isManualVerifying}
             >
-              {isRequestingOtp || isVerifyingPan ? (
+              {isRequestingOtp ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : (
                 <ShieldCheck className="h-4 w-4 mr-2" />
@@ -464,16 +390,12 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
                   ? `Retry in ${formatTime(cooldownSeconds)}` 
                   : isRequestingOtp 
                     ? 'Requesting OTP...' 
-                    : 'Verify via Aadhar API (Requires OTP)'
-                : isPan
-                  ? isVerifyingPan
-                    ? 'Verifying PAN...'
-                    : 'Verify via PAN API'
-                  : 'Verify via API'
+                    : 'Verify via Aadhar API (Requires OTP)' 
+                : 'Verify via API'
               }
-              {cooldownSeconds === null && !isRequestingOtp && !isVerifyingPan && (
+              {cooldownSeconds === null && !isRequestingOtp && (
                 <span className="ml-auto text-xs text-blue-500 font-normal">
-                  {isAadhar ? 'OTP verification' : isPan ? 'Direct verification' : 'Automated check'}
+                  {isAadhar ? 'OTP verification' : 'Automated check'}
                 </span>
               )}
             </Button>
@@ -481,7 +403,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               variant="outline" 
               className="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200 justify-start"
               onClick={handleManualVerify}
-              disabled={isVerifying || isRequestingOtp || isManualVerifying || isVerifyingPan}
+              disabled={isVerifying || isRequestingOtp || isManualVerifying}
             >
               {isManualVerifying ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -496,7 +418,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               variant="outline" 
               className="w-full bg-red-50 hover:bg-red-100 text-red-700 border-red-200 justify-start"
               onClick={onReject}
-              disabled={isVerifying || isRequestingOtp || isManualVerifying || isVerifyingPan}
+              disabled={isVerifying || isRequestingOtp || isManualVerifying}
             >
               <ShieldCheck className="h-4 w-4 mr-2" />
               Reject Document
@@ -556,7 +478,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
             <Button 
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={isVerifying || isRequestingOtp || isManualVerifying || isVerifyingPan}
+              disabled={isVerifying || isRequestingOtp || isManualVerifying}
             >
               Cancel
             </Button>

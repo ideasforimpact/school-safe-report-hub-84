@@ -38,7 +38,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
   const [dialogOpen, setDialogOpen] = React.useState(false);
   
   const getDocumentStatusName = (document: VerificationDocument): string | undefined => {
-    if (!document.documentStatusId || document.verificationStatus !== 'verified' || documentStatuses.length === 0) {
+    if (!document.documentStatusId || documentStatuses.length === 0) {
       return undefined;
     }
     
@@ -49,33 +49,19 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
   const handleBadgeClick = (doc: VerificationDocument) => {
     const statusName = getDocumentStatusName(doc);
     const hasLogs = !!doc.employee_docs_log && doc.employee_docs_log.length > 0;
-    const documentType = doc.documentTypeName?.toLowerCase();
     
     if (doc.verificationStatus === 'verified' && statusName === 'governance' && hasLogs) {
       // Find the most recent successful verification log
-      let verificationLog;
+      const verificationLog = doc.employee_docs_log
+        .filter(log => log.action === 'verify_aadhar_otp' && log.response?.success === true)
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
       
-      if (documentType === 'aadhar') {
-        verificationLog = doc.employee_docs_log
-          .filter(log => log.action === "aadhar_verification_success" && log.response?.success !== false)
-          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
-      } else if (documentType === 'pan') {
-        verificationLog = doc.employee_docs_log
-          .filter(log => log.action === "pan_verification_success")
-          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
-      }
-      
-      if (verificationLog) {
-        setSelectedDocumentDetails({
-          ...verificationLog,
-          documentType: documentType
-        });
-        setDialogOpen(true);
-        toast({
-          title: `Viewing ${formatDocumentTypeName(doc.documentTypeName || '')} verification details`,
-          description: "Showing verification information for this document."
-        });
-      }
+      setSelectedDocumentDetails(verificationLog || doc.employee_docs_log[0]);
+      setDialogOpen(true);
+      toast({
+        title: "Viewing Aadhar verification details",
+        description: "Showing verification information for this document."
+      });
     } else if (doc.verificationStatus === 'verified' && statusName) {
       toast({
         title: "Information",
@@ -101,10 +87,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
             {documents.map((doc) => {
               const statusName = getDocumentStatusName(doc);
               const hasLogs = !!doc.employee_docs_log && doc.employee_docs_log.length > 0;
-              const documentType = doc.documentTypeName?.toLowerCase();
               const isGovernanceVerified = doc.verificationStatus === 'verified' && statusName === 'governance';
-              const isClickable = isGovernanceVerified && hasLogs && 
-                (documentType === 'aadhar' || documentType === 'pan');
               
               return (
                 <TableRow key={doc.id}>
@@ -123,7 +106,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                       status={doc.verificationStatus} 
                       documentStatusName={statusName}
                       isGovernance={isGovernanceVerified}
-                      onClick={isClickable ? () => handleBadgeClick(doc) : undefined}
+                      onClick={isGovernanceVerified && hasLogs ? () => handleBadgeClick(doc) : undefined}
                     />
                   </TableCell>
                   <TableCell className="text-right">
