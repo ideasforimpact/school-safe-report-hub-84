@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 
@@ -44,9 +45,23 @@ serve(async (req) => {
     // Set up production vs. sandbox environment for the Surepass API
     const environment = Deno.env.get("ENVIRONMENT") || "development";
     
-    // Default base URL for Surepass API and API key - Use production directly
-    let baseUrl = "https://kyc-api.surepass.io";
-    let apiKey = Deno.env.get("SUREPASS_PRODUCTION_API_KEY");
+    // Default base URL for Surepass API and API key
+    let baseUrl = environment === "production" 
+      ? Deno.env.get("SUREPASS_BASE_URL") || "https://sandbox.surepass.io"
+      : "https://sandbox.surepass.io";
+    
+    let apiKey = environment === "production" 
+      ? Deno.env.get("SUREPASS_PRODUCTION_API_KEY") 
+      : Deno.env.get("SUREPASS_SANDBOX_API_KEY");
+    
+    // Override baseUrl and apiKey for specific actions
+    if (action === 'requestAadharOtp' || action === 'verifyAadharOtp') {
+      // For these specific actions, always use production URL and key
+      baseUrl = "https://kyc-api.surepass.io";
+      apiKey = Deno.env.get("SUREPASS_PRODUCTION_API_KEY");
+      
+      console.log(`Using production API for ${action}: ${baseUrl}`);
+    }
     
     // Check if we're testing in development mode
     const isDevTest = environment === "development" && !apiKey;
@@ -163,37 +178,10 @@ serve(async (req) => {
         if (data.success) {
           // Update document with timestamp of OTP generation
           if (documentId) {
-            // Get existing logs
-            const { data: document, error: docLogError } = await supabase
+            await supabase
               .from('employee_documents')
-              .select('employee_docs_log')
-              .eq('id', documentId)
-              .single();
-            
-            if (!docLogError) {
-              const existingLogs = document?.employee_docs_log || [];
-              
-              // Create log entry for OTP generation
-              const logEntry = {
-                timestamp: new Date().toISOString(),
-                action: "request_aadhar_otp",
-                response: data
-              };
-              
-              await supabase
-                .from('employee_documents')
-                .update({ 
-                  last_otp_generated: new Date().toISOString(),
-                  employee_docs_log: Array.isArray(existingLogs) ? [...existingLogs, logEntry] : [logEntry]
-                })
-                .eq('id', documentId);
-            } else {
-              // If can't get logs, just update the timestamp
-              await supabase
-                .from('employee_documents')
-                .update({ last_otp_generated: new Date().toISOString() })
-                .eq('id', documentId);
-            }
+              .update({ last_otp_generated: new Date().toISOString() })
+              .eq('id', documentId);
           }
           
           return new Response(
@@ -292,7 +280,7 @@ serve(async (req) => {
               .from('employee_documents')
               .update({
                 verification_status: 'verified',
-                employee_docs_log: Array.isArray(existingLogs) ? [...existingLogs, logEntry] : [logEntry],
+                employee_docs_log: [...existingLogs, logEntry],
                 document_status_id: governanceStatusId,
                 updated_at: new Date().toISOString()
               })
@@ -365,82 +353,67 @@ serve(async (req) => {
         const data = await response.json();
         console.log("Surepass API verification response:", JSON.stringify(data));
         
-        // Check both data.success and response structure
-        if (data && data.success === true) {
-          console.log("Successful Aadhar verification detected, updating document status...");
-          
+        if (data.success) {
           // Update document status to verified and store API response in logs
           if (documentId) {
-            try {
-              // First fetch the current logs
-              const { data: document, error: fetchError } = await supabase
-                .from('employee_documents')
-                .select('employee_docs_log')
-                .eq('id', documentId)
-                .single();
-                
-              if (fetchError) {
-                console.error("Error fetching document for logging:", fetchError);
-              } else {
-                // Get existing logs or initialize empty array
-                const existingLogs = document?.employee_docs_log || [];
-                
-                // Create log entry with timestamp and API response
-                const logEntry = {
-                  timestamp: new Date().toISOString(),
-                  action: "verify_aadhar_otp",
-                  response: data
-                };
-                
-                // Update document with verification status and log entry
-                const { error: updateError } = await supabase
-                  .from('employee_documents')
-                  .update({
-                    verification_status: 'verified',
-                    employee_docs_log: Array.isArray(existingLogs) ? [...existingLogs, logEntry] : [logEntry],
-                    document_status_id: governanceStatusId,
-                    updated_at: new Date().toISOString()
-                  })
-                  .eq('id', documentId);
-                  
-                if (updateError) {
-                  console.error("Error updating document with verification data:", updateError);
-                } else {
-                  console.log("Document updated successfully with verification status.");
-                }
-              }
+            // First fetch the current logs
+            const { data: document, error: fetchError } = await supabase
+              .from('employee_documents')
+              .select('employee_docs_log')
+              .eq('id', documentId)
+              .single();
               
-              // Get employee ID from the document
-              const { data: documentData } = await supabase
-                .from('employee_documents')
-                .select('employee_id')
-                .eq('id', documentId)
-                .single();
+            if (fetchError) {
+              console.error("Error fetching document for logging:", fetchError);
+            } else {
+              // Get existing logs or initialize empty array
+              const existingLogs = document?.employee_docs_log || [];
               
-              if (documentData?.employee_id) {
-                console.log("Checking if all employee documents are verified for employee:", documentData.employee_id);
+              // Create log entry with timestamp and API response
+              const logEntry = {
+                timestamp: new Date().toISOString(),
+                action: "verify_aadhar_otp",
+                response: data
+              };
+              
+              // Update document with verification status and log entry
+              const { error: updateError } = await supabase
+                .from('employee_documents')
+                .update({
+                  verification_status: 'verified',
+                  employee_docs_log: [...existingLogs, logEntry],
+                  document_status_id: governanceStatusId,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', documentId);
                 
-                // Check if all employee documents are verified
-                const { data: documents } = await supabase
-                  .from('employee_documents')
-                  .select('verification_status')
-                  .eq('employee_id', documentData.employee_id);
-                
-                const allVerified = documents?.every(doc => doc.verification_status === 'verified');
-                
-                if (allVerified) {
-                  console.log("All documents verified, updating employee status to verified.");
-                  
-                  await supabase
-                    .from('employees')
-                    .update({ status: 'verified' })
-                    .eq('id', documentData.employee_id);
-                } else {
-                  console.log("Not all documents are verified yet.");
-                }
+              if (updateError) {
+                console.error("Error updating document with verification data:", updateError);
               }
-            } catch (updateError) {
-              console.error("Error in database update after verification:", updateError);
+            }
+            
+            // Get employee ID from the document
+            const { data: documentData } = await supabase
+              .from('employee_documents')
+              .select('employee_id')
+              .eq('id', documentId)
+              .single();
+            
+            if (documentData?.employee_id) {
+              // Check if all employee documents are verified
+              const { data: documents } = await supabase
+                .from('employee_documents')
+                .select('verification_status')
+                .eq('employee_id', documentData.employee_id);
+              
+              const allVerified = documents?.every(doc => doc.verification_status === 'verified');
+              
+              if (allVerified) {
+                await supabase
+                  .from('employees')
+                  .update({ status: 'verified' })
+                  .eq('id', documentData.employee_id);
+              }
             }
           }
           
@@ -452,8 +425,6 @@ serve(async (req) => {
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         } else {
-          console.log("Verification failed, response did not indicate success.", data);
-          
           // Even for failed verification, we should log the response
           if (documentId) {
             // Fetch current logs
@@ -476,7 +447,7 @@ serve(async (req) => {
               await supabase
                 .from('employee_documents')
                 .update({
-                  employee_docs_log: Array.isArray(existingLogs) ? [...existingLogs, logEntry] : [logEntry],
+                  employee_docs_log: [...existingLogs, logEntry],
                   updated_at: new Date().toISOString()
                 })
                 .eq('id', documentId);

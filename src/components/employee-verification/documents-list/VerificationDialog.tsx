@@ -46,7 +46,6 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const [clientId, setClientId] = useState<string | null>(null);
   const [isRequestingOtp, setIsRequestingOtp] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
-  const [isManualVerifying, setIsManualVerifying] = useState(false);
 
   // Logging OTP state for debugging
   useEffect(() => {
@@ -77,7 +76,6 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       setClientId(null);
       setIsRequestingOtp(false);
       setIsVerifyingOtp(false);
-      setIsManualVerifying(false);
       if (cooldownTimerId !== null) {
         clearInterval(cooldownTimerId);
         setCooldownTimerId(null);
@@ -193,69 +191,6 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       }
     } else {
       onVerify('api');
-    }
-  };
-
-  const handleManualVerify = async () => {
-    setIsManualVerifying(true);
-    
-    try {
-      // Get the manual status ID from the document_status table
-      const { data: manualStatusData, error: manualStatusError } = await supabase
-        .from('document_status')
-        .select('id')
-        .eq('name', 'manual')
-        .single();
-      
-      if (manualStatusError || !manualStatusData) {
-        toast({
-          title: "Error",
-          description: "Could not find manual document status",
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      const manualStatusId = manualStatusData.id;
-      
-      // Call the edge function to update document status without updating logs
-      const { data, error } = await supabase.functions.invoke('employee-documents', {
-        method: 'PUT',
-        body: { 
-          employeeId: '', // The edge function will retrieve this from the document ID
-          documentId,
-          verificationStatus: 'verified',
-          documentStatusId: manualStatusId,
-          skipLogUpdate: true // Flag to skip updating the employee_docs_log
-        }
-      });
-      
-      if (error || (data && data.error)) {
-        console.error('Error during manual verification:', error || data.error);
-        toast({
-          title: "Verification Failed",
-          description: (error || data?.error)?.message || "Failed to verify document manually",
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      toast({
-        title: "Document Verified",
-        description: "Document has been manually verified successfully"
-      });
-      
-      // Call the parent's onVerify method to update the UI
-      onVerify('manual');
-    } catch (err: any) {
-      console.error("Exception in handleManualVerify:", err);
-      toast({
-        title: "Error",
-        description: err.message || "An unexpected error occurred",
-        variant: "destructive"
-      });
-    } finally {
-      setIsManualVerifying(false);
     }
   };
 
@@ -378,7 +313,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               variant="outline" 
               className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 justify-start"
               onClick={handleAadharApiClick}
-              disabled={isVerifying || cooldownSeconds !== null || isRequestingOtp || isManualVerifying}
+              disabled={isVerifying || cooldownSeconds !== null || isRequestingOtp}
             >
               {isRequestingOtp ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -402,15 +337,11 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
             <Button 
               variant="outline" 
               className="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200 justify-start"
-              onClick={handleManualVerify}
-              disabled={isVerifying || isRequestingOtp || isManualVerifying}
+              onClick={() => onVerify('manual')}
+              disabled={isVerifying || isRequestingOtp}
             >
-              {isManualVerifying ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <ShieldCheck className="h-4 w-4 mr-2" />
-              )}
-              {isManualVerifying ? 'Verifying...' : 'Verify Manually'}
+              <ShieldCheck className="h-4 w-4 mr-2" />
+              Verify Manually
               <span className="ml-auto text-xs text-purple-500 font-normal">Manual review completed</span>
             </Button>
             
@@ -418,7 +349,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               variant="outline" 
               className="w-full bg-red-50 hover:bg-red-100 text-red-700 border-red-200 justify-start"
               onClick={onReject}
-              disabled={isVerifying || isRequestingOtp || isManualVerifying}
+              disabled={isVerifying || isRequestingOtp}
             >
               <ShieldCheck className="h-4 w-4 mr-2" />
               Reject Document
@@ -478,7 +409,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
             <Button 
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={isVerifying || isRequestingOtp || isManualVerifying}
+              disabled={isVerifying || isRequestingOtp}
             >
               Cancel
             </Button>

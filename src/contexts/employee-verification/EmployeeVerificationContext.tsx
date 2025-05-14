@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { EmployeeVerificationContextType, EmployeeVerificationProviderProps } from './types';
 import { useEmployeeManagement } from './hooks/useEmployeeManagement';
@@ -22,7 +21,6 @@ export const EmployeeVerificationProvider: React.FC<EmployeeVerificationProvider
   const [documentStatuses, setDocumentStatuses] = useState<DocumentStatus[]>([]);
   const [documentTypesLoaded, setDocumentTypesLoaded] = useState(false);
   const [documentStatusesLoaded, setDocumentStatusesLoaded] = useState(false);
-  const [isStatusLoading, setIsStatusLoading] = useState(false);
   const { toast } = useToast();
   
   const { 
@@ -47,12 +45,18 @@ export const EmployeeVerificationProvider: React.FC<EmployeeVerificationProvider
     return Promise.resolve();
   });
 
-  // Load document statuses only once when component mounts
+  // Load document statuses when component mounts
   useEffect(() => {
-    if (!documentStatusesLoaded && !isStatusLoading) {
-      fetchDocumentStatuses();
-    }
-  }, [documentStatusesLoaded, isStatusLoading]);
+    fetchDocumentStatuses()
+      .catch(error => {
+        console.error('Error loading document statuses:', error);
+        toast({
+          title: "Error",
+          description: "Failed to load document statuses",
+          variant: "destructive"
+        });
+      });
+  }, []);
 
   const fetchDocumentTypes = async (): Promise<DocumentType[]> => {
     // If document types have already been loaded, don't fetch again
@@ -88,12 +92,7 @@ export const EmployeeVerificationProvider: React.FC<EmployeeVerificationProvider
   };
 
   const fetchDocumentStatuses = async (): Promise<DocumentStatus[]> => {
-    if (documentStatusesLoaded && documentStatuses.length > 0) {
-      return documentStatuses;
-    }
-
     try {
-      setIsStatusLoading(true);
       console.log('Fetching document statuses from the database...');
       
       const { data, error } = await supabase
@@ -102,7 +101,6 @@ export const EmployeeVerificationProvider: React.FC<EmployeeVerificationProvider
       
       if (error) {
         console.error('Error fetching document statuses:', error);
-        setIsStatusLoading(false);
         return documentStatuses;
       }
       
@@ -118,11 +116,9 @@ export const EmployeeVerificationProvider: React.FC<EmployeeVerificationProvider
       
       setDocumentStatuses(statusesData);
       setDocumentStatusesLoaded(true);
-      setIsStatusLoading(false);
       return statusesData;
     } catch (error) {
       console.error('Failed to fetch document statuses:', error);
-      setIsStatusLoading(false);
       return documentStatuses;
     }
   };
