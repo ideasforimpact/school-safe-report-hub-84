@@ -1,5 +1,4 @@
 
-import { ReactNode } from 'react';
 import { Employee, VerificationDocument, DocumentType, DocumentStatus } from '@/types/employeeVerification';
 
 export interface EmployeeVerificationContextType {
@@ -8,14 +7,13 @@ export interface EmployeeVerificationContextType {
   documentTypes: DocumentType[];
   documentStatuses: DocumentStatus[];
   addEmployee: (employee: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Employee>;
-  updateEmployee: (id: string, update: Partial<Employee>) => Promise<void>;
+  updateEmployee: (id: string, updates: Partial<Employee>) => Promise<void>;
   deleteEmployee: (id: string) => Promise<void>;
-  addDocument: (document: Omit<VerificationDocument, 'id' | 'createdAt' | 'updatedAt'>) => Promise<VerificationDocument>;
-  verifyDocument: (id: string, notes?: string) => Promise<VerificationDocument>;
+  addDocument: (documentData: Omit<VerificationDocument, 'id' | 'createdAt' | 'updatedAt'>) => Promise<VerificationDocument>;
+  verifyDocument: (id: string, status: 'verified' | 'failed', notes?: string) => Promise<void>;
   deleteDocument: (id: string) => Promise<void>;
   getEmployeeDocuments: (employeeId: string) => VerificationDocument[];
-  getEmployee: (id: string) => Employee | undefined;
-  getDocument: (id: string) => VerificationDocument;
+  getEmployee: (employeeId: string) => Employee | undefined;
   fetchEmployees: () => Promise<Employee[]>;
   fetchEmployeeDocuments: (employeeId: string) => Promise<VerificationDocument[]>;
   fetchDocumentTypes: () => Promise<DocumentType[]>;
@@ -24,5 +22,5 @@ export interface EmployeeVerificationContextType {
 }
 
 export interface EmployeeVerificationProviderProps {
-  children: ReactNode;
+  children: React.ReactNode;
 }

@@ -16,8 +16,6 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
   const { verifyDocument } = useEmployeeVerification();
   const { toast } = useToast();
   const [isVerifying, setIsVerifying] = React.useState(false);
-  const [showPanVerification, setShowPanVerification] = React.useState(false);
-  const [showAadharVerification, setShowAadharVerification] = React.useState(false);
 
   const handleVerify = async (method: 'api' | 'manual') => {
     setIsVerifying(true);
@@ -25,14 +23,13 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
     try {
       // Special logic for Aadhar documents
       if (document.documentTypeName === 'aadhar' && method === 'api') {
-        setShowAadharVerification(true);
-        setIsVerifying(false);
-        return;
-      }
-      
-      // Special logic for PAN documents
-      if (document.documentTypeName === 'pan' && method === 'api') {
-        setShowPanVerification(true);
+        // Handle Aadhar API verification logic
+        console.log('Aadhar API verification selected');
+        // This would normally open an OTP dialog or similar
+        toast({
+          title: "API Verification",
+          description: "This would trigger the OTP verification flow for Aadhar in a real implementation.",
+        });
         setIsVerifying(false);
         return;
       }
@@ -107,8 +104,6 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
         <XCircle className="h-4 w-4 mr-1" />
         Reject
       </Button>
-      
-      {/* The Aadhar and PAN verification components will be rendered from the parent component */}
     </div>
   );
 };

@@ -1,7 +1,11 @@
 
 import React from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Employee } from '@/types/employeeVerification';
+import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
+import EditEmployeeDialog from './EditEmployeeDialog';
+import { useEmployeeVerification } from '@/contexts/employee-verification';
 import VerificationStatusBadge from './VerificationStatusBadge';
 
 interface EmployeeDetailsProps {
@@ -11,65 +15,75 @@ interface EmployeeDetailsProps {
 const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee }) => {
   const formatDate = (dateString: string) => {
     try {
-      return format(new Date(dateString), 'dd MMM yyyy');
+      return format(new Date(dateString), 'MMM d, yyyy');
     } catch (error) {
       return dateString;
     }
   };
 
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-2xl font-bold">{employee.name}</h2>
-          <p className="text-gray-500">
-            {employee.position} • {employee.department}
-          </p>
-        </div>
-        <VerificationStatusBadge status={employee.status} />
-      </div>
+  const getEmployeeTypeDisplay = (type?: string) => {
+    if (!type) return 'Not Specified';
+    
+    return type.charAt(0).toUpperCase() + type.slice(1);
+  };
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-4">
+  return (
+    <Card>
+      <CardContent className="pt-6 text-left">
+        <div className="flex justify-between items-start mb-4">
           <div>
-            <h3 className="text-sm font-medium text-gray-500">Employee ID</h3>
-            <p>{employee.employeeId}</p>
+            <h2 className="text-2xl font-bold text-left">{employee.name}</h2>
+            <p className="text-gray-500 text-left">{employee.position} · {employee.department}</p>
           </div>
-          
+          <VerificationStatusBadge status={employee.status} className="text-sm px-3 py-1" />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-6 mt-6">
           <div>
-            <h3 className="text-sm font-medium text-gray-500">Email Address</h3>
-            <p>{employee.email}</p>
+            <p className="text-sm text-gray-500 text-left">Employee ID</p>
+            <p className="font-medium text-left">{employee.employeeId}</p>
           </div>
-          
           <div>
-            <h3 className="text-sm font-medium text-gray-500">Phone</h3>
-            <p>{employee.phone || "Not provided"}</p>
+            <p className="text-sm text-gray-500 text-left">Email</p>
+            <p className="font-medium text-left">{employee.email}</p>
           </div>
-          
           <div>
-            <h3 className="text-sm font-medium text-gray-500">Date of Birth</h3>
-            <p>{employee.dateOfBirth ? formatDate(employee.dateOfBirth) : "Not provided"}</p>
+            <p className="text-sm text-gray-500 text-left">Phone</p>
+            <p className="font-medium text-left">{employee.phone}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500 text-left">Date of Birth</p>
+            <p className="font-medium text-left">{formatDate(employee.dateOfBirth)}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500 text-left">Joining Date</p>
+            <p className="font-medium text-left">{formatDate(employee.joiningDate)}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500 text-left">Department</p>
+            <p className="font-medium text-left">{employee.department}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500 text-left">Position</p>
+            <p className="font-medium text-left">{employee.position}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500 text-left">Employee Type</p>
+            <p className="font-medium text-left">{getEmployeeTypeDisplay(employee.employeeType)}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500 text-left">Verification Status</p>
+            <div className="font-medium text-left">
+              <VerificationStatusBadge status={employee.status} />
+            </div>
+          </div>
+          <div className="md:col-span-2">
+            <p className="text-sm text-gray-500 text-left">Address</p>
+            <p className="font-medium text-left">{employee.address}</p>
           </div>
         </div>
-        
-        <div className="space-y-4">
-          <div>
-            <h3 className="text-sm font-medium text-gray-500">Joining Date</h3>
-            <p>{employee.joiningDate ? formatDate(employee.joiningDate) : "Not provided"}</p>
-          </div>
-          
-          <div>
-            <h3 className="text-sm font-medium text-gray-500">Employee Type</h3>
-            <p className="capitalize">{employee.employeeType}</p>
-          </div>
-          
-          <div>
-            <h3 className="text-sm font-medium text-gray-500">Address</h3>
-            <p>{employee.address || "Not provided"}</p>
-          </div>
-        </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 

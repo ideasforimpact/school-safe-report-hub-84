@@ -1,62 +1,76 @@
 
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, XCircle, Clock } from 'lucide-react';
+import { CheckCircle, AlertCircle, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface VerificationStatusBadgeProps {
   status: 'verified' | 'failed' | 'pending';
   className?: string;
+  isGovernance?: boolean;
+  documentStatusName?: string;
+  onClick?: () => void;
 }
 
 const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({ 
-  status,
-  className
+  status, 
+  className, 
+  isGovernance = false,
+  documentStatusName,
+  onClick
 }) => {
   const getStatusConfig = () => {
     switch (status) {
       case 'verified':
         return {
           icon: CheckCircle,
-          label: 'Verified',
-          background: 'bg-green-100',
-          text: 'text-green-800',
-          hover: 'hover:bg-green-200'
+          text: documentStatusName ? `${status}/${documentStatusName}` : 'Verified',
+          variant: 'success',
+          bgColor: 'bg-green-100 text-green-800 border-green-200'
         };
       case 'failed':
         return {
-          icon: XCircle,
-          label: 'Verification Failed',
-          background: 'bg-red-100',
-          text: 'text-red-800',
-          hover: 'hover:bg-red-200'
+          icon: AlertCircle,
+          text: 'Failed',
+          variant: 'destructive',
+          bgColor: 'bg-red-100 text-red-800 border-red-200'
+        };
+      case 'pending':
+        return {
+          icon: Clock,
+          text: 'Pending',
+          variant: 'default',
+          bgColor: 'bg-yellow-100 text-yellow-800 border-yellow-200'
         };
       default:
         return {
           icon: Clock,
-          label: 'Pending Verification',
-          background: 'bg-yellow-100',
-          text: 'text-yellow-800',
-          hover: 'hover:bg-yellow-200'
+          text: 'Unknown',
+          variant: 'default',
+          bgColor: 'bg-gray-100 text-gray-800 border-gray-200'
         };
     }
   };
 
-  const { icon: Icon, label, background, text, hover } = getStatusConfig();
+  const { icon: Icon, text, bgColor } = getStatusConfig();
 
+  const isClickable = !!onClick;
+  
   return (
     <Badge 
-      variant="outline" 
       className={cn(
-        "gap-1 py-1 px-2 border-none", 
-        background, 
-        text,
-        hover,
-        className
+        'gap-1 px-2 py-1 font-medium text-xs', 
+        bgColor, 
+        className,
+        isClickable && 'cursor-pointer hover:opacity-80 transition-opacity hover:bg-opacity-80'
       )}
+      onClick={onClick}
     >
       <Icon className="h-3.5 w-3.5" />
-      <span>{label}</span>
+      {text}
+      {isClickable && (
+        <span className="sr-only">(click to view details)</span>
+      )}
     </Badge>
   );
 };

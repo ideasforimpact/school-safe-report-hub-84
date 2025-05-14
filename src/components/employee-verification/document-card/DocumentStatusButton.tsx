@@ -1,60 +1,80 @@
 
-import React from 'react';
-import {
-  Check,
-  Clock,
-  AlertCircle
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
+import React, { useState, useEffect } from 'react';
+import { VerificationDocument } from '@/types/employeeVerification';
+import { useEmployeeVerification } from '@/contexts/employee-verification';
+import AadharDetailsDialog from '../documents-list/AadharDetailsDialog';
+import VerificationStatusBadge from '../VerificationStatusBadge';
+import { useToast } from '@/hooks/use-toast';
 
 interface DocumentStatusButtonProps {
-  status: 'pending' | 'verified' | 'failed';
+  document: VerificationDocument;
 }
 
-const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({ status }) => {
-  const getStatusConfig = () => {
-    switch (status) {
-      case 'verified':
-        return {
-          icon: Check,
-          text: 'Verified',
-          bgColor: 'bg-green-50',
-          textColor: 'text-green-700',
-          borderColor: 'border-green-200'
-        };
-      case 'failed':
-        return {
-          icon: AlertCircle,
-          text: 'Failed',
-          bgColor: 'bg-red-50',
-          textColor: 'text-red-700',
-          borderColor: 'border-red-200'
-        };
-      default:
-        return {
-          icon: Clock,
-          text: 'Pending',
-          bgColor: 'bg-yellow-50',
-          textColor: 'text-yellow-700',
-          borderColor: 'border-yellow-200'
-        };
+const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({ document }) => {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [aadharDetails, setAadharDetails] = useState<any>(null);
+  const { documentStatuses } = useEmployeeVerification();
+  const [statusName, setStatusName] = useState<string | null>(null);
+  const { toast } = useToast();
+  
+  // Get status name from statusId
+  useEffect(() => {
+    if (document.documentStatusId && documentStatuses.length > 0) {
+      const status = documentStatuses.find(s => s.id === document.documentStatusId);
+      setStatusName(status?.name || null);
+    }
+  }, [document.documentStatusId, documentStatuses]);
+
+  useEffect(() => {
+    if (document.employee_docs_log && Array.isArray(document.employee_docs_log)) {
+      // Find the most recent successful verification log
+      const verificationLog = document.employee_docs_log
+        .filter(log => log.action === 'verify_aadhar_otp' && log.response?.success === true)
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+      
+      if (verificationLog) {
+        setAadharDetails(verificationLog);
+      }
+    }
+  }, [document]);
+
+  const handleClick = () => {
+    // Only open dialog if we have verification data
+    if (document.verificationStatus === 'verified' && 
+        statusName === 'governance' && 
+        document.employee_docs_log && 
+        document.employee_docs_log.length > 0) {
+      setDialogOpen(true);
+      toast({
+        title: "Viewing Aadhar verification details",
+        description: "Showing verification information for this document."
+      });
+    } else if (document.verificationStatus === 'verified' && statusName) {
+      toast({
+        title: "Information",
+        description: `This document is verified with status: ${statusName}`
+      });
     }
   };
-
-  const { icon: Icon, text, bgColor, textColor, borderColor } = getStatusConfig();
+  
+  const isGovernanceVerified = document.verificationStatus === 'verified' && statusName === 'governance';
+  const hasLogs = !!document.employee_docs_log && document.employee_docs_log.length > 0;
 
   return (
-    <div
-      className={cn(
-        'inline-flex items-center px-2 py-1 rounded-full border text-xs font-medium',
-        bgColor,
-        textColor,
-        borderColor
-      )}
-    >
-      <Icon className="h-3 w-3 mr-1" />
-      {text}
-    </div>
+    <>
+      <VerificationStatusBadge 
+        status={document.verificationStatus} 
+        isGovernance={isGovernanceVerified}
+        documentStatusName={document.verificationStatus === 'verified' && statusName ? statusName : undefined}
+        onClick={(isGovernanceVerified && hasLogs) ? handleClick : undefined}
+      />
+
+      <AadharDetailsDialog 
+        open={dialogOpen} 
+        onOpenChange={setDialogOpen} 
+        aadharDetails={aadharDetails || document.employee_docs_log?.[0]}
+      />
+    </>
   );
 };
 

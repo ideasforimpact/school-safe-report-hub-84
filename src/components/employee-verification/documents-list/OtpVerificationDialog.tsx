@@ -5,89 +5,155 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useEmployeeVerification } from '@/contexts/employee-verification';
-import { useToast } from '@/components/ui/use-toast';
-import { LoaderCircle } from 'lucide-react';
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Shield, Loader2 } from 'lucide-react';
+import { VerificationDocument } from '@/types/employeeVerification';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface OtpVerificationDialogProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  documentId: string;
-  documentNumber: string;
+  isOpen: boolean;
+  onClose: () => void;
+  document: VerificationDocument;
   onVerificationComplete: () => void;
 }
 
 const OtpVerificationDialog: React.FC<OtpVerificationDialogProps> = ({
-  open,
-  onOpenChange,
-  documentId,
-  documentNumber,
+  isOpen,
+  onClose,
+  document,
   onVerificationComplete
 }) => {
-  const [otp, setOtp] = useState('');
-  const [isGeneratingOtp, setIsGeneratingOtp] = useState(false);
+  const [isRequestingOtp, setIsRequestingOtp] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
-  const { verifyDocument } = useEmployeeVerification();
+  const [otp, setOtp] = useState('');
+  const [cooldownRemaining, setCooldownRemaining] = useState(0);
+  const [cooldownInterval, setCooldownInterval] = useState<number | null>(null);
   const { toast } = useToast();
 
-  const handleGenerateOtp = async () => {
-    setIsGeneratingOtp(true);
-    // Simulate API call to generate OTP
+  const handleRequestOtp = async () => {
+    setIsRequestingOtp(true);
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      console.log('Sending OTP request for document ID:', document.id);
+      
+      const { data, error } = await supabase.functions.invoke('employee-verification/request-aadhar-otp', {
+        method: 'POST',
+        body: { 
+          documentId: document.id,
+          documentNumber: document.documentNumber // Send the plain document number
+        }
+      });
+      
+      if (error) {
+        console.error('Error requesting OTP:', error);
+        toast({
+          title: "Error",
+          description: error.message || "Failed to request OTP. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (data?.error) {
+        if (data.cooldownRemaining) {
+          // Handle cooldown period
+          setCooldownRemaining(data.cooldownRemaining);
+          
+          // Set up an interval to count down
+          if (cooldownInterval) window.clearInterval(cooldownInterval);
+          const interval = window.setInterval(() => {
+            setCooldownRemaining(prev => {
+              if (prev <= 1) {
+                window.clearInterval(interval);
+                return 0;
+              }
+              return prev - 1;
+            });
+          }, 1000);
+          
+          setCooldownInterval(interval as unknown as number);
+        }
+        
+        toast({
+          title: "Error",
+          description: data.error,
+          variant: "destructive",
+        });
+        return;
+      }
+      
       setOtpSent(true);
       toast({
-        title: "OTP Generated",
-        description: "OTP has been sent to the registered mobile number.",
+        title: "OTP Sent",
+        description: "An OTP has been sent to the registered mobile number.",
       });
-    } catch (error) {
+    } catch (err) {
+      console.error('Exception in requestOtp:', err);
       toast({
         title: "Error",
-        description: "Failed to generate OTP. Please try again later.",
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     } finally {
-      setIsGeneratingOtp(false);
+      setIsRequestingOtp(false);
     }
   };
 
   const handleVerifyOtp = async () => {
-    if (!otp || otp.length < 4) {
+    if (!otp) {
       toast({
-        title: "Invalid OTP",
-        description: "Please enter a valid OTP.",
+        title: "Error",
+        description: "Please enter the OTP",
         variant: "destructive",
       });
       return;
     }
-
+    
     setIsVerifyingOtp(true);
     try {
-      // Simulate OTP verification
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const { data, error } = await supabase.functions.invoke('employee-verification/verify-aadhar-otp', {
+        method: 'POST',
+        body: { 
+          documentId: document.id,
+          otp
+        }
+      });
       
-      // Verify the document in your system
-      await verifyDocument(documentId, "Verified through OTP authentication");
+      if (error) {
+        console.error('Error verifying OTP:', error);
+        toast({
+          title: "Error",
+          description: error.message || "Failed to verify OTP. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (data.error) {
+        toast({
+          title: "Verification Failed",
+          description: data.error,
+          variant: "destructive",
+        });
+        return;
+      }
       
       toast({
-        title: "Success",
-        description: "Aadhar card verified successfully.",
+        title: "Verification Successful",
+        description: "Aadhar has been successfully verified.",
       });
       
       onVerificationComplete();
-      onOpenChange(false);
-    } catch (error) {
-      console.error("Error verifying OTP:", error);
+    } catch (err) {
+      console.error('Exception in verifyOtp:', err);
       toast({
-        title: "Verification Failed",
-        description: "Could not verify the OTP. Please try again.",
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -95,93 +161,90 @@ const OtpVerificationDialog: React.FC<OtpVerificationDialogProps> = ({
     }
   };
 
+  // Clean up interval on unmount
+  React.useEffect(() => {
+    return () => {
+      if (cooldownInterval) {
+        window.clearInterval(cooldownInterval);
+      }
+    };
+  }, [cooldownInterval]);
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Aadhar OTP Verification</DialogTitle>
-          <DialogDescription>
-            Verify Aadhar card through OTP authentication
-          </DialogDescription>
+          <DialogTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5 text-primary" />
+            Aadhar Verification
+          </DialogTitle>
         </DialogHeader>
-
-        <div className="py-4">
-          <div className="mb-4">
-            <Label htmlFor="aadharNumber">Aadhar Number</Label>
-            <Input 
-              id="aadharNumber" 
-              value={documentNumber} 
-              disabled 
-              className="mt-1"
-            />
+        
+        <div className="py-4 space-y-4">
+          <div className="text-sm text-muted-foreground">
+            <p>Verify this Aadhar document by sending an OTP to the registered mobile number.</p>
           </div>
           
           {!otpSent ? (
-            <Button 
-              onClick={handleGenerateOtp} 
-              className="w-full"
-              disabled={isGeneratingOtp}
-            >
-              {isGeneratingOtp ? (
-                <>
-                  <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
-                  Generating OTP...
-                </>
-              ) : (
-                "Generate OTP"
-              )}
-            </Button>
-          ) : (
-            <>
-              <div className="mb-4">
-                <Label htmlFor="otp">Enter OTP</Label>
-                <Input 
-                  id="otp" 
-                  value={otp} 
-                  onChange={(e) => setOtp(e.target.value)}
-                  className="mt-1"
-                  maxLength={6}
-                  placeholder="Enter 6-digit OTP"
-                />
-                <p className="text-xs mt-1 text-gray-500">
-                  OTP has been sent to the registered mobile number
-                </p>
+            <div className="space-y-4">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="documentNumber">Aadhar Number</Label>
+                <div className="flex items-center gap-2">
+                  <Input 
+                    id="documentNumber" 
+                    value={document.documentNumber || ''} 
+                    className="flex-1"
+                    disabled
+                  />
+                  <Button 
+                    onClick={handleRequestOtp} 
+                    disabled={isRequestingOtp || cooldownRemaining > 0}
+                  >
+                    {isRequestingOtp ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : null}
+                    {cooldownRemaining > 0 ? `Wait ${cooldownRemaining}s` : 'Send OTP'}
+                  </Button>
+                </div>
               </div>
-              
-              <Button 
-                onClick={handleVerifyOtp} 
-                className="w-full"
-                disabled={isVerifyingOtp}
-              >
-                {isVerifyingOtp ? (
-                  <>
-                    <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />
-                    Verifying...
-                  </>
-                ) : (
-                  "Verify OTP"
-                )}
-              </Button>
-              
-              <Button 
-                variant="link" 
-                className="w-full mt-2"
-                onClick={handleGenerateOtp}
-                disabled={isGeneratingOtp}
-              >
-                Resend OTP
-              </Button>
-            </>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="otp">Enter OTP</Label>
+                <div className="flex items-center gap-2">
+                  <Input 
+                    id="otp" 
+                    value={otp} 
+                    onChange={(e) => setOtp(e.target.value)}
+                    placeholder="Enter the OTP sent to your mobile"
+                    className="flex-1"
+                  />
+                  <Button onClick={handleVerifyOtp} disabled={isVerifyingOtp}>
+                    {isVerifyingOtp ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : null}
+                    Verify
+                  </Button>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Didn't receive the OTP?{' '}
+                <button 
+                  onClick={handleRequestOtp} 
+                  disabled={isRequestingOtp || cooldownRemaining > 0}
+                  className="text-primary hover:underline focus:outline-none disabled:opacity-50"
+                >
+                  Resend
+                  {cooldownRemaining > 0 ? ` (${cooldownRemaining}s)` : ''}
+                </button>
+              </p>
+            </div>
           )}
         </div>
         
         <DialogFooter className="sm:justify-start">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => onOpenChange(false)}
-            disabled={isGeneratingOtp || isVerifyingOtp}
-          >
+          <Button variant="secondary" onClick={onClose}>
             Cancel
           </Button>
         </DialogFooter>

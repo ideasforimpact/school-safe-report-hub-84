@@ -8,10 +8,9 @@ import { useToast } from '@/hooks/use-toast';
 
 interface DocumentDeleteButtonProps {
   documentId: string;
-  className?: string;
 }
 
-const DocumentDeleteButton: React.FC<DocumentDeleteButtonProps> = ({ documentId, className }) => {
+const DocumentDeleteButton: React.FC<DocumentDeleteButtonProps> = ({ documentId }) => {
   const { deleteDocument } = useEmployeeVerification();
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -41,7 +40,7 @@ const DocumentDeleteButton: React.FC<DocumentDeleteButtonProps> = ({ documentId,
   return (
     <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
       <AlertDialogTrigger asChild>
-        <Button variant="ghost" size="icon" className={`text-gray-500 ${className || ''}`}>
+        <Button variant="ghost" size="icon" className="text-gray-500">
           <Trash2 className="h-4 w-4" />
         </Button>
       </AlertDialogTrigger>
