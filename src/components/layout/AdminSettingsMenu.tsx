@@ -2,7 +2,7 @@
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { Settings, AlertTriangle, School } from 'lucide-react';
+import { Settings, AlertTriangle, School, Users, GraduationCap } from 'lucide-react';
 
 const AdminSettingsMenu = () => {
   const navigate = useNavigate();
@@ -32,12 +32,14 @@ const AdminSettingsMenu = () => {
         
         <DropdownMenuSeparator />
         
-        {/* User management links */}
+        {/* User management links with icons */}
         <DropdownMenuItem onClick={() => navigate('/users')} className="cursor-pointer">
-          User Management
+          <Users className="h-4 w-4 mr-2" />
+          <span>User Management</span>
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => navigate('/students')} className="cursor-pointer">
-          Student Management
+          <GraduationCap className="h-4 w-4 mr-2" />
+          <span>Student Management</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
