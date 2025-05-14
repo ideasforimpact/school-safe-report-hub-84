@@ -117,8 +117,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({ employeeId, onAddDocument
       await verifyDocument(
         selectedDocument,
         'failed',
-        'Failed to verify document. Details do not match records.',
-        rejectedStatusId
+        'Failed to verify document. Details do not match records.'
       );
       
       toast({
