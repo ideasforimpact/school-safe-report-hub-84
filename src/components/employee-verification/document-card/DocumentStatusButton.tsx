@@ -26,6 +26,19 @@ const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({ document })
   }, [document.documentStatusId, documentStatuses]);
 
   useEffect(() => {
+    // For PAN verification, we store the complete API response directly in employee_docs_log
+    if (document.documentTypeName?.toLowerCase() === 'pan' && 
+        document.verificationStatus === 'verified' && 
+        document.employee_docs_log) {
+      
+      // If employee_docs_log is the API response itself (not an array)
+      if (document.employee_docs_log && typeof document.employee_docs_log === 'object' && document.employee_docs_log.success) {
+        setVerificationDetails(document.employee_docs_log);
+        return;
+      }
+    }
+    
+    // For Aadhar or other document types, check the log array
     if (document.employee_docs_log && Array.isArray(document.employee_docs_log)) {
       // Find the most recent successful verification log
       let verificationLog;
@@ -33,10 +46,6 @@ const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({ document })
       if (document.documentTypeName?.toLowerCase() === 'aadhar') {
         verificationLog = document.employee_docs_log
           .filter(log => log.action === 'aadhar_verification_success')
-          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
-      } else if (document.documentTypeName?.toLowerCase() === 'pan') {
-        verificationLog = document.employee_docs_log
-          .filter(log => log.action === 'pan_verification_success')
           .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
       }
       
@@ -53,8 +62,7 @@ const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({ document })
     // Only open dialog if we have verification data
     if (document.verificationStatus === 'verified' && 
         statusName === 'governance' && 
-        document.employee_docs_log && 
-        document.employee_docs_log.length > 0) {
+        (document.employee_docs_log)) {
       setDialogOpen(true);
       
       let docType = document.documentTypeName?.toLowerCase() || '';
@@ -71,7 +79,7 @@ const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({ document })
   };
   
   const isGovernanceVerified = document.verificationStatus === 'verified' && statusName === 'governance';
-  const hasLogs = !!document.employee_docs_log && document.employee_docs_log.length > 0;
+  const hasLogs = !!document.employee_docs_log;
 
   return (
     <>

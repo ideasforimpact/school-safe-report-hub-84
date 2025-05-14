@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 
@@ -375,14 +374,12 @@ async function handlePanVerification(body, baseUrl, apiKey, supabase, corsHeader
       
       console.error("API Error response:", errorText);
       
-      // Log the error to the document logs
-      await logErrorToDocument(supabase, documentId, docData, {
-        action: "pan_verification_api_error",
-        status: response.status,
-        error: errorText.substring(0, 500) // Limit the size of the error text
-      });
-      
-      throw new Error(`API returned status ${response.status}: ${errorText.substring(0, 100)}...`);
+      return new Response(
+        JSON.stringify({ 
+          error: `API returned status ${response.status}: ${errorText.substring(0, 100)}...`,
+        }),
+        { status: response.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
     
     // Handle the response body
@@ -395,34 +392,17 @@ async function handlePanVerification(body, baseUrl, apiKey, supabase, corsHeader
       const textResponse = await response.text();
       console.error("Received non-JSON response:", textResponse);
       
-      // Log the non-JSON response to document logs
-      await logErrorToDocument(supabase, documentId, docData, {
-        action: "pan_verification_invalid_response",
-        error: "Received non-JSON response",
-        response: textResponse.substring(0, 500) // Limit the size
-      });
-      
-      throw new Error("API returned non-JSON response");
+      return new Response(
+        JSON.stringify({ 
+          error: "API returned non-JSON response",
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
     
     console.log("Surepass PAN verification response:", responseData);
     
     if (!responseData.success) {
-      // Log the failed verification attempt - store exactly what we got from the API
-      await supabase
-        .from('employee_documents')
-        .update({ 
-          employee_docs_log: supabase.rpc('append_to_json_array', { 
-            arr: docData.employee_docs_log || [], 
-            new_element: {
-              timestamp: new Date().toISOString(),
-              action: "pan_verification_failed",
-              response: responseData // Store the exact API response
-            }
-          })
-        })
-        .eq('id', documentId);
-        
       return new Response(
         JSON.stringify({ 
           error: responseData.message || "Failed to verify PAN",
@@ -431,20 +411,13 @@ async function handlePanVerification(body, baseUrl, apiKey, supabase, corsHeader
       );
     }
     
-    // On success: Update the document with governance status ID and store full API response
+    // On success: Update the document with governance status ID and store the COMPLETE API response
     await supabase
       .from('employee_documents')
       .update({ 
         verification_status: 'verified',
         document_status_id: governanceStatusId, // Use governance status ID
-        employee_docs_log: supabase.rpc('append_to_json_array', { 
-          arr: docData.employee_docs_log || [], 
-          new_element: {
-            timestamp: new Date().toISOString(),
-            action: "pan_verification_success",
-            response: responseData // Store the complete API response
-          }
-        }),
+        employee_docs_log: responseData, // Store the complete API response
         // Store extracted details
         details: {
           name: responseData.data?.name,
@@ -470,37 +443,6 @@ async function handlePanVerification(body, baseUrl, apiKey, supabase, corsHeader
     );
   } catch (err) {
     console.error("Error in handlePanVerification:", err);
-    
-    // Try to log the error in the document logs
-    try {
-      if (documentId) {
-        const { data } = await supabase
-          .from('employee_documents')
-          .select('employee_docs_log')
-          .eq('id', documentId)
-          .single();
-          
-        if (data) {
-          await supabase
-            .from('employee_documents')
-            .update({ 
-              employee_docs_log: supabase.rpc('append_to_json_array', { 
-                arr: data.employee_docs_log || [], 
-                new_element: {
-                  timestamp: new Date().toISOString(),
-                  action: "pan_verification_error",
-                  response: { 
-                    error: err.message || "Unknown error during verification"
-                  }
-                }
-              })
-            })
-            .eq('id', documentId);
-        }
-      }
-    } catch (logError) {
-      console.error("Failed to log error to document logs:", logError);
-    }
     
     return new Response(
       JSON.stringify({ 
