@@ -262,7 +262,6 @@ serve(async (req) => {
               .from('employee_documents')
               .update({
                 verification_status: 'verified',
-                verification_method: 'api',
                 employee_docs_log: [...existingLogs, logEntry],
                 document_status_id: 'e51f334e-1a5e-4afc-a6d2-5595c3294e0b', // Governance status ID
                 updated_at: new Date().toISOString()
@@ -364,7 +363,6 @@ serve(async (req) => {
                 .from('employee_documents')
                 .update({
                   verification_status: 'verified',
-                  verification_method: 'api',
                   employee_docs_log: [...existingLogs, logEntry],
                   document_status_id: 'e51f334e-1a5e-4afc-a6d2-5595c3294e0b', // Governance status ID
                   updated_at: new Date().toISOString()
