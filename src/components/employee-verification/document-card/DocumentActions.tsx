@@ -47,12 +47,28 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
         description: `Document has been ${method === 'api' ? 'automatically' : 'manually'} verified successfully.`,
       });
     } catch (error) {
+      console.error('Verification error:', error);
+      
+      // Extract error message from the error object or API response
+      let errorMessage = "An error occurred while verifying the document.";
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null) {
+        // Try to extract error message from API response
+        if ('message' in error) {
+          errorMessage = String(error.message);
+        } else if ('error' in error) {
+          errorMessage = String(error.error);
+        }
+      }
+      
+      // Show detailed error in toast for better user feedback
       toast({
-        title: "Error",
-        description: "An error occurred while verifying the document.",
+        title: "Verification Failed",
+        description: errorMessage,
         variant: "destructive",
       });
-      console.error(error);
     } finally {
       setIsVerifying(false);
     }
@@ -71,12 +87,22 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
         variant: "destructive",
       });
     } catch (error) {
+      console.error('Rejection error:', error);
+      
+      // Extract error message for better user feedback
+      let errorMessage = "An error occurred while rejecting the document.";
+      
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      } else if (typeof error === 'object' && error !== null && 'message' in error) {
+        errorMessage = String(error.message);
+      }
+      
       toast({
         title: "Error",
-        description: "An error occurred while rejecting the document.",
+        description: errorMessage,
         variant: "destructive",
       });
-      console.error(error);
     } finally {
       setIsVerifying(false);
     }

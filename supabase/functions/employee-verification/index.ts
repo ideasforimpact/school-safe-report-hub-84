@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 
@@ -354,7 +353,32 @@ async function handlePanVerification(body, baseUrl, apiKey, supabase, corsHeader
     if (!response.ok) {
       const errorText = await response.text();
       console.error("API Error response body:", errorText);
-      throw new Error(`API returned status ${response.status}: ${errorText}`);
+      
+      // Log the error to document logs
+      await supabase
+        .from('employee_documents')
+        .update({ 
+          employee_docs_log: supabase.rpc('append_to_json_array', { 
+            arr: docData.employee_docs_log || [], 
+            new_element: {
+              timestamp: new Date().toISOString(),
+              action: "pan_verification_api_error",
+              response: { 
+                status: response.status,
+                error: errorText.substring(0, 500) // Limit the size of the error text
+              }
+            }
+          })
+        })
+        .eq('id', documentId);
+      
+      return new Response(
+        JSON.stringify({ 
+          error: `API Error: ${response.status} - ${errorText.substring(0, 200)}`,
+          details: "See server logs for more information"
+        }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
     
     // Handle the response body
@@ -366,7 +390,32 @@ async function handlePanVerification(body, baseUrl, apiKey, supabase, corsHeader
     } else {
       const textResponse = await response.text();
       console.error("Received non-JSON response:", textResponse);
-      throw new Error("API returned non-JSON response");
+      
+      // Log the non-JSON response to document logs
+      await supabase
+        .from('employee_documents')
+        .update({ 
+          employee_docs_log: supabase.rpc('append_to_json_array', { 
+            arr: docData.employee_docs_log || [], 
+            new_element: {
+              timestamp: new Date().toISOString(),
+              action: "pan_verification_invalid_response",
+              response: { 
+                contentType: contentType || "unknown",
+                responsePreview: textResponse.substring(0, 500)
+              }
+            }
+          })
+        })
+        .eq('id', documentId);
+      
+      return new Response(
+        JSON.stringify({ 
+          error: "API returned non-JSON response",
+          details: "The verification service returned an invalid response format"
+        }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
     
     console.log("Surepass PAN verification response:", responseData);
@@ -491,7 +540,11 @@ async function handlePanVerification(body, baseUrl, apiKey, supabase, corsHeader
     }
     
     return new Response(
-      JSON.stringify({ error: err.message || "Failed to verify PAN" }),
+      JSON.stringify({ 
+        error: err.message || "Failed to verify PAN",
+        errorCode: "VERIFICATION_PROCESS_FAILED",
+        details: "An error occurred during the verification process. Please check server logs for more information."
+      }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
