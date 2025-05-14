@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -44,6 +44,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const [cooldownTimerId, setCooldownTimerId] = useState<number | null>(null);
   const [txnId, setTxnId] = useState<string | null>(null);
   const [clientId, setClientId] = useState<string | null>(null);
+  const [isRequestingOtp, setIsRequestingOtp] = useState(false);
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
 
   // Logging OTP state for debugging
   useEffect(() => {
@@ -72,6 +74,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       setOtp("");
       setTxnId(null);
       setClientId(null);
+      setIsRequestingOtp(false);
+      setIsVerifyingOtp(false);
       if (cooldownTimerId !== null) {
         clearInterval(cooldownTimerId);
         setCooldownTimerId(null);
@@ -114,6 +118,9 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         });
         return;
       }
+      
+      // Set loading state
+      setIsRequestingOtp(true);
       
       // Call the edge function to request OTP
       try {
@@ -179,6 +186,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           description: err.message || "Failed to send OTP",
           variant: "destructive"
         });
+      } finally {
+        setIsRequestingOtp(false);
       }
     } else {
       onVerify('api');
@@ -188,6 +197,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const handleOtpSubmit = async () => {
     if (otp.length === 6 && txnId) {
       try {
+        setIsVerifyingOtp(true);
+        
         console.log("Submitting OTP verification with:", {
           otp,
           txnId,
@@ -253,6 +264,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           description: err.message || "Failed to verify OTP",
           variant: "destructive"
         });
+      } finally {
+        setIsVerifyingOtp(false);
       }
     } else {
       toast({
@@ -296,16 +309,22 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               variant="outline" 
               className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 justify-start"
               onClick={handleAadharApiClick}
-              disabled={isVerifying || cooldownSeconds !== null}
+              disabled={isVerifying || cooldownSeconds !== null || isRequestingOtp}
             >
-              <ShieldCheck className="h-4 w-4 mr-2" />
+              {isRequestingOtp ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <ShieldCheck className="h-4 w-4 mr-2" />
+              )}
               {isAadhar 
                 ? cooldownSeconds !== null 
                   ? `Retry in ${formatTime(cooldownSeconds)}` 
-                  : 'Verify via Aadhar API (Requires OTP)' 
+                  : isRequestingOtp 
+                    ? 'Requesting OTP...' 
+                    : 'Verify via Aadhar API (Requires OTP)' 
                 : 'Verify via API'
               }
-              {cooldownSeconds === null && (
+              {cooldownSeconds === null && !isRequestingOtp && (
                 <span className="ml-auto text-xs text-blue-500 font-normal">
                   {isAadhar ? 'OTP verification' : 'Automated check'}
                 </span>
@@ -315,7 +334,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               variant="outline" 
               className="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200 justify-start"
               onClick={() => onVerify('manual')}
-              disabled={isVerifying}
+              disabled={isVerifying || isRequestingOtp}
             >
               <ShieldCheck className="h-4 w-4 mr-2" />
               Verify Manually
@@ -326,7 +345,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               variant="outline" 
               className="w-full bg-red-50 hover:bg-red-100 text-red-700 border-red-200 justify-start"
               onClick={onReject}
-              disabled={isVerifying}
+              disabled={isVerifying || isRequestingOtp}
             >
               <ShieldCheck className="h-4 w-4 mr-2" />
               Reject Document
@@ -365,21 +384,28 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         <DialogFooter>
           {showOtpInput ? (
             <>
-              <Button variant="outline" onClick={handleCancel}>
+              <Button variant="outline" onClick={handleCancel} disabled={isVerifyingOtp}>
                 Cancel
               </Button>
               <Button 
                 onClick={handleOtpSubmit}
-                disabled={otp.length !== 6 || !txnId}
+                disabled={otp.length !== 6 || !txnId || isVerifyingOtp}
               >
-                Verify
+                {isVerifyingOtp ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Verifying...
+                  </>
+                ) : (
+                  'Verify'
+                )}
               </Button>
             </>
           ) : (
             <Button 
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={isVerifying}
+              disabled={isVerifying || isRequestingOtp}
             >
               Cancel
             </Button>
