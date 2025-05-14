@@ -34,19 +34,9 @@ const EmployeeDetailPage = () => {
           console.log('Initial data loading complete for employee:', employeeId);
         } catch (error) {
           console.error('Error loading initial data:', error);
-          
-          // Extract error message for better user feedback
-          let errorMessage = "Failed to load some employee data. Please try refreshing.";
-          
-          if (error instanceof Error) {
-            errorMessage = error.message;
-          } else if (typeof error === 'object' && error !== null && 'message' in error) {
-            errorMessage = String(error.message);
-          }
-          
           toast({
             title: "Data Loading Error",
-            description: errorMessage,
+            description: "Failed to load some employee data. Please try refreshing.",
             variant: "destructive"
           });
         }
@@ -83,20 +73,9 @@ const EmployeeDetailPage = () => {
           description: "Documents have been refreshed.",
         });
       } catch (error) {
-        console.error('Error refreshing data:', error);
-        
-        // Extract error message for better user feedback
-        let errorMessage = "Failed to refresh data.";
-        
-        if (error instanceof Error) {
-          errorMessage = error.message;
-        } else if (typeof error === 'object' && error !== null && 'message' in error) {
-          errorMessage = String(error.message);
-        }
-        
         toast({
           title: "Error",
-          description: errorMessage,
+          description: "Failed to refresh data.",
           variant: "destructive",
         });
       }

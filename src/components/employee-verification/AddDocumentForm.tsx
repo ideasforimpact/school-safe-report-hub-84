@@ -98,23 +98,9 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
       if (onSuccess) onSuccess();
     } catch (error) {
       console.error('Error adding document:', error);
-      
-      // Extract error message for better user feedback
-      let errorMessage = 'Failed to add document. Please try again.';
-      
-      if (error instanceof Error) {
-        errorMessage = error.message;
-      } else if (typeof error === 'object' && error !== null) {
-        if ('message' in error) {
-          errorMessage = String(error.message);
-        } else if ('error' in error) {
-          errorMessage = String(error.error);
-        }
-      }
-      
       toast({
         title: 'Error',
-        description: errorMessage,
+        description: 'Failed to add document. Please try again.',
         variant: 'destructive',
       });
     } finally {
