@@ -195,18 +195,20 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   };
 
   const handleOtpSubmit = async () => {
+    // Start with setting the verifying state to true
+    setIsVerifyingOtp(true);
+    
     if (!txnId) {
       toast({
         title: "Error",
         description: "Transaction ID is missing. Please request a new OTP.",
         variant: "destructive"
       });
+      setIsVerifyingOtp(false);
       return;
     }
     
     try {
-      setIsVerifyingOtp(true);
-      
       console.log("Submitting OTP verification with:", {
         otp,
         txnId,
@@ -226,6 +228,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         requestBody.client_id = clientId;
       }
       
+      // Make the API call to verify OTP
       const { data, error } = await supabase.functions.invoke('employee-verification', {
         method: 'POST',
         body: requestBody
