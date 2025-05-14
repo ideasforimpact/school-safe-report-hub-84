@@ -58,8 +58,10 @@ function App() {
                       <Route path="/home" element={<Home />} />
                       <Route path="/pricing" element={<Pricing />} />
                       
+                      {/* Make Home page the default route */}
+                      <Route path="/" element={<Home />} />
+                      
                       {/* Routes that were previously protected - now public */}
-                      <Route path="/" element={<Navigate to="/dashboard" replace />} />
                       <Route path="/dashboard" element={<Dashboard />} />
                       <Route path="/users" element={<UserManagement />} />
                       <Route path="/clients" element={<ClientManagement />} />
