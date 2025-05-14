@@ -334,7 +334,10 @@ async function handlePanVerification(body, baseUrl, apiKey, supabase, corsHeader
     }
     
     // Call the Surepass API to verify PAN
-    const response = await fetch(`${baseUrl}/api/v1/pan/pan-comprehensive`, {
+    const apiEndpoint = `${baseUrl}/api/v1/pan/pan-comprehensive`;
+    console.log(`Calling PAN verification API endpoint: ${apiEndpoint}`);
+    
+    const response = await fetch(apiEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -343,7 +346,29 @@ async function handlePanVerification(body, baseUrl, apiKey, supabase, corsHeader
       body: JSON.stringify({ id_number: documentNumber })
     });
     
-    const responseData = await response.json();
+    // Log the raw response status and headers for debugging
+    console.log("API Response status:", response.status);
+    console.log("API Response headers:", Object.fromEntries(response.headers.entries()));
+    
+    // Check if response is OK (200-299)
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("API Error response body:", errorText);
+      throw new Error(`API returned status ${response.status}: ${errorText}`);
+    }
+    
+    // Handle the response body
+    let responseData;
+    const contentType = response.headers.get('content-type');
+    
+    if (contentType && contentType.includes('application/json')) {
+      responseData = await response.json();
+    } else {
+      const textResponse = await response.text();
+      console.error("Received non-JSON response:", textResponse);
+      throw new Error("API returned non-JSON response");
+    }
+    
     console.log("Surepass PAN verification response:", responseData);
     
     if (!responseData.success) {
@@ -431,10 +456,42 @@ async function handlePanVerification(body, baseUrl, apiKey, supabase, corsHeader
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  } catch (error) {
-    console.error("Error in handlePanVerification:", error);
+  } catch (err) {
+    console.error("Error in handlePanVerification:", err);
+    
+    // Try to log the error in the document logs
+    try {
+      if (documentId) {
+        const { data } = await supabase
+          .from('employee_documents')
+          .select('employee_docs_log')
+          .eq('id', documentId)
+          .single();
+          
+        if (data) {
+          await supabase
+            .from('employee_documents')
+            .update({ 
+              employee_docs_log: supabase.rpc('append_to_json_array', { 
+                arr: data.employee_docs_log || [], 
+                new_element: {
+                  timestamp: new Date().toISOString(),
+                  action: "pan_verification_error",
+                  response: { 
+                    error: err.message || "Unknown error during verification"
+                  }
+                }
+              })
+            })
+            .eq('id', documentId);
+        }
+      }
+    } catch (logError) {
+      console.error("Failed to log error to document logs:", logError);
+    }
+    
     return new Response(
-      JSON.stringify({ error: error.message || "Failed to verify PAN" }),
+      JSON.stringify({ error: err.message || "Failed to verify PAN" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
