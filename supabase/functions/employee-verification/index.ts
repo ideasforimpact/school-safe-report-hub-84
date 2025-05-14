@@ -321,6 +321,23 @@ async function handlePanVerification(body, baseUrl, apiKey, supabase, corsHeader
     if (docError) {
       throw new Error("Failed to retrieve document: " + docError.message);
     }
+
+    // Get the governance document status ID first - this should be done before API call
+    // to ensure we have it ready if verification succeeds
+    const { data: governanceStatus, error: statusError } = await supabase
+      .from('document_status')
+      .select('id')
+      .eq('name', 'governance')
+      .maybeSingle();
+      
+    if (statusError) {
+      throw new Error("Failed to get document status: " + statusError.message);
+    }
+    
+    const governanceStatusId = governanceStatus?.id;
+    if (!governanceStatusId) {
+      throw new Error("Governance status ID not found");
+    }
     
     // Call the Surepass API to verify PAN
     const apiEndpoint = `${baseUrl}/api/v1/pan/pan-comprehensive`;
@@ -413,31 +430,18 @@ async function handlePanVerification(body, baseUrl, apiKey, supabase, corsHeader
       );
     }
     
-    // Get the governance document status ID for successful verification
-    const { data: governanceStatus, error: statusError } = await supabase
-      .from('document_status')
-      .select('id')
-      .eq('name', 'governance')
-      .maybeSingle();
-      
-    if (statusError) {
-      throw new Error("Failed to get document status: " + statusError.message);
-    }
-    
-    const governanceStatusId = governanceStatus?.id;
-    
-    // Update document verification status with the exact API response in logs
+    // Update document verification status with the governance ID and the exact API response in logs
     await supabase
       .from('employee_documents')
       .update({ 
         verification_status: 'verified',
-        document_status_id: governanceStatusId,
+        document_status_id: governanceStatusId, // Use the governance status ID
         employee_docs_log: supabase.rpc('append_to_json_array', { 
           arr: docData.employee_docs_log || [], 
           new_element: {
             timestamp: new Date().toISOString(),
             action: "pan_verification_success",
-            response: responseData // Store the exact API response
+            response: responseData // Store the exact API response without modifications
           }
         }),
         // Store extracted details
