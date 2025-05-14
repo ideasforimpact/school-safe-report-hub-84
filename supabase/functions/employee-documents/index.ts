@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 import { v4 as uuidv4 } from "https://esm.sh/uuid@10.0.0";
@@ -176,10 +177,36 @@ async function handleUpdateVerificationStatus(
     // Add other fields that exist in the table
     updateObject.updated_at = new Date().toISOString();
     
+    // Add verification notes to employee_docs_log if provided
     if (verificationNotes) {
-      // Since we don't have a verification_notes column directly, 
-      // we might store this in another way or skip it
-      // For now, we'll skip it since it's not in the schema
+      // Get current document to access its log
+      const { data: currentDoc, error: fetchError } = await supabase
+        .from('employee_documents')
+        .select('employee_docs_log')
+        .eq('id', documentId)
+        .single();
+      
+      if (fetchError) {
+        throw fetchError;
+      }
+      
+      // Prepare log entry
+      const logEntry = {
+        timestamp: new Date().toISOString(),
+        action: `verification_${verificationStatus}`,
+        response: {
+          notes: verificationNotes,
+          status: verificationStatus
+        }
+      };
+      
+      // Update the logs array
+      let currentLogs = currentDoc.employee_docs_log || [];
+      if (!Array.isArray(currentLogs)) {
+        currentLogs = [];
+      }
+      
+      updateObject.employee_docs_log = [...currentLogs, logEntry];
     }
     
     // Update individual document record
@@ -187,7 +214,7 @@ async function handleUpdateVerificationStatus(
       .from('employee_documents')
       .update(updateObject)
       .eq('id', documentId)
-      .select()
+      .select('*, document_status:document_status_id(*), document_type:document_type_id(*)')
       .single();
     
     if (updateError) {
@@ -221,11 +248,27 @@ async function handleUpdateVerificationStatus(
       .update({ status: overallStatus })
       .eq('id', employeeId);
     
+    // Process the returned document for consistent frontend structure
+    const processedDocument = {
+      id: updateData.id,
+      employeeId: updateData.employee_id,
+      documentTypeId: updateData.document_type_id,
+      documentTypeName: updateData.document_type?.name || '',
+      documentNumber: updateData.document_number || '',
+      documentImage: updateData.document_url ? `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${updateData.document_url}` : '',
+      verificationStatus: updateData.verification_status,
+      documentStatusId: updateData.document_status_id,
+      documentStatusName: updateData.document_status?.name || '',
+      employee_docs_log: updateData.employee_docs_log || [],
+      createdAt: updateData.created_at,
+      updatedAt: updateData.updated_at
+    };
+    
     return new Response(
       JSON.stringify({ 
         success: true,
         status: verificationStatus,
-        document: updateData
+        document: processedDocument
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
@@ -308,6 +351,16 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
     // Store document number directly in plaintext without encryption
     const plainTextDocNumber = documentNumber;
     
+    // Add initial log entry for document creation
+    const initialLogEntry = {
+      timestamp: new Date().toISOString(),
+      action: "document_created",
+      response: {
+        documentTypeId: restDocumentData.documentTypeId,
+        documentStatusId: pendingStatusId
+      }
+    };
+    
     // Insert new document record with only the columns that exist in the table
     const newDocumentRecord = {
       employee_id: employeeId,
@@ -316,6 +369,7 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
       document_url: filePath,
       verification_status: 'pending',
       document_status_id: pendingStatusId, // Added document_status_id pointing to pending status
+      employee_docs_log: [initialLogEntry], // Add initial log entry
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -332,7 +386,7 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
     const { data: insertData, error: insertError } = await supabase
       .from('employee_documents')
       .insert(newDocumentRecord)
-      .select()
+      .select('*, document_status:document_status_id(*), document_type:document_type_id(*)')
       .single();
     
     if (insertError) {
@@ -343,46 +397,26 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
     
     console.log("Document uploaded and saved successfully");
     
-    // Get the document type name
-    const { data: docTypeData } = await supabase
-      .from('employee_document_type')
-      .select('name')
-      .eq('id', restDocumentData.documentTypeId)
-      .single();
-    
-    // Get document status name if available
-    let documentStatusName = '';
-    if (pendingStatusId) {
-      const { data: statusNameData } = await supabase
-        .from('document_status')
-        .select('name')
-        .eq('id', pendingStatusId)
-        .single();
-      
-      documentStatusName = statusNameData?.name || '';
-    }
-    
-    // For UI display, prepare a masked version of the document number
-    let displayDocNumber = '';
-    if (documentNumber && documentNumber.length > 2) {
-      displayDocNumber = documentNumber.slice(0, -2).replace(/./g, 'X') + documentNumber.slice(-2);
-    } else {
-      displayDocNumber = documentNumber || '';
-    }
+    // For UI display, prepare the document object with related data
+    const documentResponse = {
+      id: insertData.id,
+      employeeId: insertData.employee_id,
+      documentTypeId: insertData.document_type_id,
+      documentTypeName: insertData.document_type?.name || '',
+      documentNumber: documentNumber || '',
+      documentImage: `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${filePath}`,
+      verificationStatus: insertData.verification_status,
+      documentStatusId: insertData.document_status_id,
+      documentStatusName: insertData.document_status?.name || '',
+      employee_docs_log: insertData.employee_docs_log || [],
+      createdAt: insertData.created_at,
+      updatedAt: insertData.updated_at
+    };
     
     return new Response(
       JSON.stringify({ 
         success: true, 
-        document: {
-          id: insertData.id,
-          documentTypeId: insertData.document_type_id,
-          documentTypeName: docTypeData?.name || '',
-          documentNumber: displayDocNumber,  // Return the masked version for UI
-          documentImage: `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${filePath}`,
-          verificationStatus: insertData.verification_status,
-          documentStatusId: insertData.document_status_id,
-          documentStatusName: documentStatusName
-        }
+        document: documentResponse
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
@@ -395,10 +429,10 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
   }
 }
 
-// Update the function that handles listing documents to not apply masking
+// Updated function to handle listing documents with full relationship data
 async function handleListDocuments(employeeId, supabase, corsHeaders) {
   try {
-    // First fetch the documents
+    // Fetch the documents with related data for document type and status
     const { data, error } = await supabase
       .from('employee_documents')
       .select('*, document_status:document_status_id(*), document_type:document_type_id(*)')
@@ -408,9 +442,8 @@ async function handleListDocuments(employeeId, supabase, corsHeaders) {
       throw error;
     }
     
-    // Process documents without masking document numbers
+    // Process documents to match the expected structure for frontend
     const processedDocuments = data.map(doc => {
-      // Process each document to match the expected structure
       return {
         id: doc.id,
         employeeId: doc.employee_id,
@@ -421,6 +454,7 @@ async function handleListDocuments(employeeId, supabase, corsHeaders) {
         verificationStatus: doc.verification_status,
         documentStatusId: doc.document_status_id,
         documentStatusName: doc.document_status?.name || '',
+        employee_docs_log: doc.employee_docs_log || [],
         createdAt: doc.created_at,
         updatedAt: doc.updated_at
       };
@@ -542,7 +576,7 @@ async function updateEmployeeVerificationStatus(employeeId, supabase) {
   }
 }
 
-// New function to handle Aadhar OTP requests
+// Function to handle Aadhar OTP requests
 async function handleAadharOtpRequest(body, corsHeaders) {
   const { documentNumber } = body;
   
@@ -593,7 +627,7 @@ async function handleAadharOtpRequest(body, corsHeaders) {
   }
 }
 
-// New function to handle Aadhar OTP verification
+// Function to handle Aadhar OTP verification
 async function handleAadharOtpVerify(body, supabase, corsHeaders) {
   const { otp, txnId, documentId } = body;
   
@@ -660,14 +694,42 @@ async function handleAadharOtpVerify(body, supabase, corsHeaders) {
       );
     }
     
+    // Get the governance document status ID
+    const { data: governanceStatus, error: statusError } = await supabase
+      .from('document_status')
+      .select('id')
+      .eq('name', 'governance')
+      .maybeSingle();
+      
+    const governanceStatusId = governanceStatus?.id;
+    
+    // Create log entry for Aadhar verification
+    const verificationLogEntry = {
+      timestamp: new Date().toISOString(),
+      action: "aadhar_verification",
+      response: {
+        txnId,
+        method: "api",
+        status: "verified"
+      }
+    };
+    
+    // Current logs
+    const currentLogs = docData.employee_docs_log || [];
+    const updatedLogs = Array.isArray(currentLogs) ? [...currentLogs, verificationLogEntry] : [verificationLogEntry];
+    
     // Update the document verification status
-    const { error: updateError } = await supabase
+    const { data: updatedDoc, error: updateError } = await supabase
       .from('employee_documents')
       .update({
         verification_status: 'verified',
-        last_otp_generated: new Date().toISOString()
+        document_status_id: governanceStatusId, // Set to governance status
+        last_otp_generated: new Date().toISOString(),
+        employee_docs_log: updatedLogs
       })
-      .eq('id', documentId);
+      .eq('id', documentId)
+      .select('*, document_status:document_status_id(*), document_type:document_type_id(*)')
+      .single();
     
     if (updateError) {
       throw updateError;
@@ -689,11 +751,27 @@ async function handleAadharOtpVerify(body, supabase, corsHeaders) {
         .eq('id', docData.employee_id);
     }
     
+    // Process the document to match frontend expected structure
+    const processedDocument = {
+      id: updatedDoc.id,
+      employeeId: updatedDoc.employee_id,
+      documentTypeId: updatedDoc.document_type_id,
+      documentTypeName: updatedDoc.document_type?.name || '',
+      documentNumber: updatedDoc.document_number || '',
+      documentImage: updatedDoc.document_url ? `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${updatedDoc.document_url}` : '',
+      verificationStatus: updatedDoc.verification_status,
+      documentStatusId: updatedDoc.document_status_id,
+      documentStatusName: updatedDoc.document_status?.name || '',
+      employee_docs_log: updatedDoc.employee_docs_log,
+      createdAt: updatedDoc.created_at,
+      updatedAt: updatedDoc.updated_at
+    };
+    
     return new Response(
       JSON.stringify({ 
         success: true,
         message: "Aadhar verification completed successfully",
-        documentId
+        document: processedDocument
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
