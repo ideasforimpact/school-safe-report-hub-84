@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 
@@ -24,11 +23,8 @@ serve(async (req) => {
   const environment = Deno.env.get("ENVIRONMENT") || "development";
   
   // Default API configuration based on environment - using fixed values as requested
-  let apiKey, baseUrl;
-  
-  // Using fixed values for baseUrl and apiKey as requested by the user
-  baseUrl = "https://kyc-api.surepass.io";
-  apiKey = Deno.env.get("SUREPASS_PRODUCTION_API_KEY") || "";
+  let baseUrl = "https://kyc-api.surepass.io";
+  let apiKey = Deno.env.get("SUREPASS_PRODUCTION_API_KEY") || "";
 
   // Log environment variables (masking sensitive parts)
   console.log("Environment variables check:");
@@ -394,7 +390,7 @@ async function handlePanVerification(body, baseUrl, apiKey, supabase, corsHeader
     console.log("Surepass PAN verification response:", responseData);
     
     if (!responseData.success) {
-      // Log the failed verification attempt
+      // Log the failed verification attempt - store exactly what we got from the API
       await supabase
         .from('employee_documents')
         .update({ 
@@ -403,9 +399,7 @@ async function handlePanVerification(body, baseUrl, apiKey, supabase, corsHeader
             new_element: {
               timestamp: new Date().toISOString(),
               action: "pan_verification_failed",
-              response: { 
-                message: responseData.message || "Verification failed" 
-              }
+              response: responseData // Store the exact API response
             }
           })
         })
@@ -432,10 +426,7 @@ async function handlePanVerification(body, baseUrl, apiKey, supabase, corsHeader
     
     const governanceStatusId = governanceStatus?.id;
     
-    // Extract relevant data
-    const verificationData = responseData.data || {};
-    
-    // Update document verification status
+    // Update document verification status with the exact API response in logs
     await supabase
       .from('employee_documents')
       .update({ 
@@ -446,18 +437,15 @@ async function handlePanVerification(body, baseUrl, apiKey, supabase, corsHeader
           new_element: {
             timestamp: new Date().toISOString(),
             action: "pan_verification_success",
-            response: { 
-              method: "api",
-              data: verificationData
-            }
+            response: responseData // Store the exact API response
           }
         }),
         // Store extracted details
         details: {
-          name: verificationData.name,
-          panStatus: verificationData.status,
-          category: verificationData.category,
-          lastUpdated: verificationData.last_updated
+          name: responseData.data?.name,
+          panStatus: responseData.data?.status,
+          category: responseData.data?.category,
+          lastUpdated: responseData.data?.last_updated
         }
       })
       .eq('id', documentId);
@@ -467,10 +455,10 @@ async function handlePanVerification(body, baseUrl, apiKey, supabase, corsHeader
         success: true, 
         message: "PAN verification completed successfully",
         details: {
-          name: verificationData.name,
-          status: verificationData.status,
-          category: verificationData.category,
-          lastUpdated: verificationData.last_updated
+          name: responseData.data?.name,
+          status: responseData.data?.status,
+          category: responseData.data?.category,
+          lastUpdated: responseData.data?.last_updated
         }
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }

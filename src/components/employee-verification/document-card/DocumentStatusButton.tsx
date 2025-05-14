@@ -4,7 +4,7 @@ import { VerificationDocument } from '@/types/employeeVerification';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import AadharDetailsDialog from '../documents-list/AadharDetailsDialog';
 import VerificationStatusBadge from '../VerificationStatusBadge';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 
 interface DocumentStatusButtonProps {
   document: VerificationDocument;
@@ -32,7 +32,7 @@ const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({ document })
       
       if (document.documentTypeName?.toLowerCase() === 'aadhar') {
         verificationLog = document.employee_docs_log
-          .filter(log => log.action === 'verify_aadhar_otp' && log.response?.success === true)
+          .filter(log => log.action === 'aadhar_verification_success')
           .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
       } else if (document.documentTypeName?.toLowerCase() === 'pan') {
         verificationLog = document.employee_docs_log
