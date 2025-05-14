@@ -109,7 +109,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                       Verify
                     </Button>
                   )}
-                  <DocumentDeleteButton documentId={doc.id} className="ml-2" />
+                  <DocumentDeleteButton documentId={doc.id} />
                 </div>
               </td>
             </tr>

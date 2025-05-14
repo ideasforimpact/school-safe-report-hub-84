@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { EmployeeVerificationContextType, EmployeeVerificationProviderProps } from './types';
 import { useEmployeeManagement } from './hooks/useEmployeeManagement';
 import { useDocumentManagement } from './hooks/useDocumentManagement';
-import { DocumentType, DocumentStatus } from '@/types/employeeVerification';
+import { DocumentType, DocumentStatus, VerificationDocument } from '@/types/employeeVerification';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -46,6 +46,25 @@ export const EmployeeVerificationProvider: React.FC<EmployeeVerificationProvider
     await updateEmployee(employeeId, { status });
     return Promise.resolve();
   });
+
+  // New function to get a document by ID
+  const getDocument = (documentId: string): VerificationDocument => {
+    const foundDocument = documents.find(doc => doc.id === documentId);
+    if (!foundDocument) {
+      console.error(`Document with ID ${documentId} not found`);
+      // Return a default document to prevent errors
+      return {
+        id: documentId,
+        employeeId: '',
+        documentTypeId: '',
+        documentImage: '',
+        verificationStatus: 'pending',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+    }
+    return foundDocument;
+  };
 
   // Load document statuses only once when component mounts
   useEffect(() => {
@@ -142,6 +161,7 @@ export const EmployeeVerificationProvider: React.FC<EmployeeVerificationProvider
         deleteDocument,
         getEmployeeDocuments,
         getEmployee,
+        getDocument,
         fetchEmployees,
         fetchEmployeeDocuments,
         fetchDocumentTypes,

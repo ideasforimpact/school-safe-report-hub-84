@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import {
   Table,
@@ -11,7 +12,7 @@ import {
 } from "@/components/ui/table"
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Document, File, Copy, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
+import { File, Copy, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { VerificationDocument } from '@/types/employeeVerification';
 import { toast } from 'sonner';
@@ -155,13 +156,15 @@ interface Props {
   documents: VerificationDocument[];
   isLoading: boolean;
   isError: boolean;
+  employeeId?: string;
+  onAddDocument?: () => void;
 }
 
-const DocumentsList: React.FC<Props> = ({ documents, isLoading, isError }) => {
+const DocumentsList: React.FC<Props> = ({ documents, isLoading, isError, employeeId, onAddDocument }) => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedDocument, setSelectedDocument] = useState<VerificationDocument | null>(null);
   const [verifyDialogDocument, setVerifyDialogDocument] = useState<VerificationDocument | null>(null);
-	const [selectedAadharForOtp, setSelectedAadharForOtp] = useState<VerificationDocument | null>(null);
+  const [selectedAadharForOtp, setSelectedAadharForOtp] = useState<VerificationDocument | null>(null);
   const { deleteDocument } = useEmployeeVerification();
   const { toast } = useToast();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -202,7 +205,7 @@ const DocumentsList: React.FC<Props> = ({ documents, isLoading, isError }) => {
     }
   };
 
-	const handleVerificationComplete = useCallback(() => {
+  const handleVerificationComplete = useCallback(() => {
     setSelectedAadharForOtp(null);
   }, [setSelectedAadharForOtp]);
 
@@ -241,7 +244,7 @@ const DocumentsList: React.FC<Props> = ({ documents, isLoading, isError }) => {
                     <Badge variant="outline">Pending</Badge>
                   )}
                   {document.verificationStatus === 'verified' && (
-                    <Badge variant="success">Verified</Badge>
+                    <Badge variant="outline" className="bg-green-50 text-green-600 border-green-200">Verified</Badge>
                   )}
                   {document.verificationStatus === 'failed' && (
                     <Badge variant="destructive">Failed</Badge>
@@ -343,14 +346,14 @@ const DocumentsList: React.FC<Props> = ({ documents, isLoading, isError }) => {
         <VerificationDialog 
           open={!!verifyDialogDocument}
           onOpenChange={(open) => !open && setVerifyDialogDocument(null)}
-          documentId={verifyDialogDocument.id} // Use documentId instead of document
+          documentId={verifyDialogDocument.id}
         />
       )}
 
       {selectedAadharForOtp && (
         <OtpVerificationDialog
-          isOpen={!!selectedAadharForOtp} // Use isOpen for OtpVerificationDialog since it's expecting that prop
-          onClose={() => setSelectedAadharForOtp(null)}
+          open={!!selectedAadharForOtp}
+          onOpenChange={() => setSelectedAadharForOtp(null)}
           documentId={selectedAadharForOtp.id}
           documentNumber={selectedAadharForOtp.documentNumber || ''}
           onVerificationComplete={handleVerificationComplete}

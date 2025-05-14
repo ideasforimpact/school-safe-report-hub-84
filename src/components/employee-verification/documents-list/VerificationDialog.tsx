@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import {
   Dialog,
@@ -10,20 +11,21 @@ import { Button } from "@/components/ui/button";
 import { VerificationDocument } from '@/types/employeeVerification';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { FileText } from 'lucide-react';
+import { useEmployeeVerification } from '@/contexts/employee-verification';
 
 interface VerificationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  documentId: string; // Changed from document: VerificationDocument
+  documentId: string;
 }
 
 const VerificationDialog: React.FC<VerificationDialogProps> = ({
   open,
   onOpenChange,
-  documentId // Changed from document
+  documentId
 }) => {
   const { getDocument } = useEmployeeVerification();
-  const document = getDocument(documentId); // Fetch document using documentId
+  const document = getDocument(documentId);
   
   // In a real implementation, you might want to fetch the document details
   // if only documentId is provided and document is not.

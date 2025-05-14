@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Upload, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import DocumentsList from '@/components/employee-verification/documents-list';
 import Layout from '@/components/layout/Layout';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
+import { VerificationDocument } from '@/types/employeeVerification';
 
 const EmployeeDetailPage = () => {
   const {
@@ -20,10 +21,13 @@ const EmployeeDetailPage = () => {
   const {
     getEmployee,
     fetchEmployeeDocuments,
+    getEmployeeDocuments,
     isLoading
   } = useEmployeeVerification();
   const { toast } = useToast();
   const employee = getEmployee(employeeId || '');
+  const [documents, setDocuments] = useState<VerificationDocument[]>([]);
+  const [isError, setIsError] = useState(false);
 
   // Fetch data when component mounts
   useEffect(() => {
@@ -31,9 +35,11 @@ const EmployeeDetailPage = () => {
       if (employeeId) {
         try {
           await fetchEmployeeDocuments(employeeId);
+          setDocuments(getEmployeeDocuments(employeeId));
           console.log('Initial data loading complete for employee:', employeeId);
         } catch (error) {
           console.error('Error loading initial data:', error);
+          setIsError(true);
           toast({
             title: "Data Loading Error",
             description: "Failed to load some employee data. Please try refreshing.",
@@ -44,7 +50,14 @@ const EmployeeDetailPage = () => {
     };
     
     loadData();
-  }, [employeeId, fetchEmployeeDocuments, toast]);
+  }, [employeeId, fetchEmployeeDocuments, toast, getEmployeeDocuments]);
+
+  // Update documents when they change in the context
+  useEffect(() => {
+    if (employeeId) {
+      setDocuments(getEmployeeDocuments(employeeId));
+    }
+  }, [employeeId, getEmployeeDocuments]);
 
   if (!employee) {
     return <Layout>
@@ -67,6 +80,7 @@ const EmployeeDetailPage = () => {
     if (employeeId) {
       try {
         await fetchEmployeeDocuments(employeeId);
+        setDocuments(getEmployeeDocuments(employeeId));
         
         toast({
           title: "Data Refreshed",
@@ -128,7 +142,12 @@ const EmployeeDetailPage = () => {
               </div>
             </div>
             
-            <DocumentsList employeeId={employee.id} onAddDocument={handleAddDocument} />
+            <DocumentsList 
+              documents={documents} 
+              isLoading={isLoading} 
+              isError={isError}
+              onAddDocument={handleAddDocument} 
+            />
           </div>
         </div>
       </div>
