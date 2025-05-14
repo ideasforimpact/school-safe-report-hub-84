@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIncidents } from '@/contexts/IncidentContext';
 import { useAuth } from '@/contexts/auth/AuthContext';
@@ -11,11 +11,15 @@ import { useIncidentForm } from '@/hooks/useIncidentForm';
 import IncidentDetailsForm from '@/components/incidents/IncidentDetailsForm';
 import PeopleInvolvedSection from '@/components/incidents/PeopleInvolvedSection';
 import { IncidentType, IncidentCategory } from '@/types/incident';
+import { Employee } from '@/contexts/employee/types';
+import { supabase } from '@/integrations/supabase/client';
 
 const ReportIncident = () => {
-  const { addIncident, users, categories } = useIncidents();
+  const { addIncident, categories } = useIncidents();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [isLoadingEmployees, setIsLoadingEmployees] = useState(true);
   
   const {
     nextTicketId,
@@ -37,6 +41,47 @@ const ReportIncident = () => {
     facilities,
     users: incidentUsers
   } = useIncidentForm();
+
+  // Fetch employees from the database
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      try {
+        setIsLoadingEmployees(true);
+        const { data, error } = await supabase
+          .from('employees')
+          .select('*')
+          .eq('status', 'active');
+
+        if (error) {
+          console.error("Error fetching employees:", error);
+          return;
+        }
+
+        // Map the database employees to our Employee type
+        const mappedEmployees = data.map((emp): Employee => ({
+          id: emp.id,
+          employeeId: emp.employee_id || '',
+          firstName: emp.first_name || '',
+          lastName: emp.last_name || '',
+          email: emp.email || '',
+          employeeType: emp.employee_type as any || 'permanent',
+          department: emp.department as any || 'admin',
+          joiningDate: emp.joining_date || new Date().toISOString(),
+          status: 'active',
+          createdAt: emp.created_at || new Date().toISOString(),
+          updatedAt: emp.updated_at || new Date().toISOString(),
+        }));
+        
+        setEmployees(mappedEmployees);
+      } catch (error) {
+        console.error("Failed to fetch employees:", error);
+      } finally {
+        setIsLoadingEmployees(false);
+      }
+    };
+
+    fetchEmployees();
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,11 +110,11 @@ const ReportIncident = () => {
       
       // Get selected owner if any
       const selectedOwner = formData.owner 
-        ? users.find(u => u.id === formData.owner) 
+        ? employees.find(e => e.id === formData.owner) 
         : undefined;
         
       const owner = selectedOwner 
-        ? { id: selectedOwner.id, name: selectedOwner.id } 
+        ? { id: selectedOwner.id, name: `${selectedOwner.firstName} ${selectedOwner.lastName}` } 
         : undefined;
       
       // Find the selected category to get its name for IncidentCategory mapping
@@ -167,7 +212,8 @@ const ReportIncident = () => {
                 onFilesChange={handleFilesChange}
                 locations={locations}
                 facilities={facilities}
-                users={users}
+                users={employees}
+                isLoadingUsers={isLoadingEmployees}
               />
 
               <PeopleInvolvedSection

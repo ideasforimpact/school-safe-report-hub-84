@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { FileItem } from '@/types/fileTypes';
-import { User } from '@/types/incident';
+import { Employee } from '@/contexts/employee/types';
 import IncidentTypeSection from './sections/IncidentTypeSection';
 import CategorySection from './sections/CategorySection';
 import LocationSection from './sections/LocationSection';
@@ -34,7 +34,8 @@ interface IncidentDetailsFormProps {
   onFilesChange: (files: FileItem[]) => void;
   locations: ConfigItem[];
   facilities: ConfigItem[];
-  users: User[];
+  users: Employee[];
+  isLoadingUsers?: boolean;
 }
 
 const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
@@ -46,7 +47,8 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
   onFilesChange,
   locations,
   facilities,
-  users
+  users,
+  isLoadingUsers = false
 }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -94,6 +96,7 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
           owner={formData.owner}
           users={users}
           onSelectChange={onSelectChange}
+          isLoading={isLoadingUsers}
         />
       </div>
 
