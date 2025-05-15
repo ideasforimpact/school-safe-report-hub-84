@@ -52,6 +52,13 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
         if (data?.error) {
           throw new Error(data.error);
         }
+        
+        // Get the document status details from the response
+        const documentStatusId = data?.documentStatusId;
+        const documentStatusName = data?.documentStatusName || 'manual';
+        
+        // Update document with verification status and status information
+        await verifyDocument(document.id, 'verified', 'Document manually verified by staff.', documentStatusId, documentStatusName);
       } else {
         // For other document types or non-aadhar API verification
         const notes = method === 'api' 
@@ -98,6 +105,13 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
       if (data?.error) {
         throw new Error(data.error);
       }
+      
+      // Get the document status details from the response
+      const documentStatusId = data?.documentStatusId;
+      const documentStatusName = data?.documentStatusName || 'rejected';
+      
+      // Update document with rejection status and status information
+      await verifyDocument(document.id, 'failed', 'Document verification rejected by staff.', documentStatusId, documentStatusName);
       
       toast({
         title: "Verification Failed",

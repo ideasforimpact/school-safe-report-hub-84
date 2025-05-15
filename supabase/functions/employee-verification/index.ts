@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 
@@ -117,34 +116,15 @@ serve(async (req) => {
           );
         }
         
-        // Get employee ID from the document
-        const { data: documentData } = await supabase
-          .from('employee_documents')
-          .select('employee_id')
-          .eq('id', documentId)
-          .single();
-        
-        if (documentData?.employee_id) {
-          // Check if all employee documents are verified
-          const { data: documents } = await supabase
-            .from('employee_documents')
-            .select('verification_status')
-            .eq('employee_id', documentData.employee_id);
-          
-          const allVerified = documents?.every(doc => doc.verification_status === 'verified');
-          
-          if (allVerified) {
-            await supabase
-              .from('employees')
-              .update({ status: 'verified' })
-              .eq('id', documentData.employee_id);
-          }
-        }
+        // REMOVED: Do not update the employee table status
+        // We're only updating the document status
         
         return new Response(
           JSON.stringify({ 
             success: true, 
-            message: "Document manually verified successfully" 
+            message: "Document manually verified successfully",
+            documentStatusId: manualStatusId,
+            documentStatusName: "manual"
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
@@ -189,7 +169,9 @@ serve(async (req) => {
         return new Response(
           JSON.stringify({ 
             success: true, 
-            message: "Document verification rejected" 
+            message: "Document verification rejected",
+            documentStatusId: rejectedStatusId,
+            documentStatusName: "rejected"
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
@@ -385,35 +367,16 @@ serve(async (req) => {
               }
             }
             
-            // Get employee ID from the document
-            const { data: documentData } = await supabase
-              .from('employee_documents')
-              .select('employee_id')
-              .eq('id', documentId)
-              .single();
-            
-            if (documentData?.employee_id) {
-              // Check if all employee documents are verified
-              const { data: documents } = await supabase
-                .from('employee_documents')
-                .select('verification_status')
-                .eq('employee_id', documentData.employee_id);
-              
-              const allVerified = documents?.every(doc => doc.verification_status === 'verified');
-              
-              if (allVerified) {
-                await supabase
-                  .from('employees')
-                  .update({ status: 'verified' })
-                  .eq('id', documentData.employee_id);
-              }
-            }
+            // REMOVED: Do not update the employee table status
+            // We're only updating the document status
           }
           
           return new Response(
             JSON.stringify({ 
               success: true, 
-              message: "Aadhar verification successful" 
+              message: "Aadhar verification successful",
+              documentStatusId: governanceStatusId,
+              documentStatusName: "governance"
             }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );

@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from 'react';
 import { VerificationDocument } from '@/types/employeeVerification';
 import { initialDocuments } from '../initialData';
@@ -111,7 +110,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
     }
   };
 
-  const verifyDocument = async (id: string, status: 'verified' | 'failed', notes?: string) => {
+  const verifyDocument = async (id: string, status: 'verified' | 'failed', notes?: string, documentStatusId?: string, documentStatusName?: string) => {
     try {
       setIsLoading(true);
       const documentToVerify = documents.find(doc => doc.id === id);
@@ -123,20 +122,27 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
       // Find the document first to get employeeId
       const employeeId = documentToVerify.employeeId;
       
-      // Call the edge function to update the document verification status
-      const { data, error } = await supabase.functions.invoke('employee-documents', {
-        method: 'PUT',
-        body: { 
-          employeeId,
-          documentId: id,
-          verificationStatus: status,
-          verificationNotes: notes
+      // If documentStatusId is provided, we don't need to call the edge function again
+      // This is for when we've already made the API call in DocumentActions
+      if (!documentStatusId) {
+        // Call the edge function to update the document verification status
+        const { data, error } = await supabase.functions.invoke('employee-documents', {
+          method: 'PUT',
+          body: { 
+            employeeId,
+            documentId: id,
+            verificationStatus: status,
+            verificationNotes: notes
+          }
+        });
+        
+        if (error) {
+          console.error('Error updating document verification status:', error);
+          throw new Error('Failed to update document verification status');
         }
-      });
-      
-      if (error) {
-        console.error('Error updating document verification status:', error);
-        throw new Error('Failed to update document verification status');
+        
+        documentStatusId = data?.documentStatusId;
+        documentStatusName = data?.documentStatusName;
       }
       
       // Update local state with the updated document
@@ -148,18 +154,17 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
             verificationDate: new Date().toISOString(),
             verificationNotes: notes || doc.verificationNotes,
             updatedAt: new Date().toISOString(),
-            documentStatusId: data?.documentStatusId || doc.documentStatusId,
-            documentStatusName: data?.documentStatusName || doc.documentStatusName,
-            employee_docs_log: data?.employee_docs_log || doc.employee_docs_log || []
+            documentStatusId: documentStatusId || doc.documentStatusId,
+            documentStatusName: documentStatusName || doc.documentStatusName
           };
         }
         return doc;
       }));
 
-      // Update employee status based on all documents
-      await updateEmployeeStatus(employeeId, data.status || status);
+      // We no longer update employee status here
+      // This has been removed as per requirement
       
-      return data;
+      return { documentStatusId, documentStatusName };
     } catch (err) {
       console.error('Error in verifyDocument:', err);
       throw err;
