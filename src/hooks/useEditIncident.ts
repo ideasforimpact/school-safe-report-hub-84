@@ -3,8 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useIncidents } from '@/contexts/incident';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { toast } from 'sonner';
-import { Person } from '@/types/incident';
-import { IncidentStatus } from '@/types/incident';
+import { Person, IncidentStatus } from '@/types/incident';
 
 export const useEditIncident = () => {
   const { getIncident, updateIncident, users } = useIncidents();
