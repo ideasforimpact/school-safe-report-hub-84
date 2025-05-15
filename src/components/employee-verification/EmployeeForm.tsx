@@ -32,7 +32,7 @@ const employeeSchema = z.object({
   joiningDate: z.string().min(1, 'Joining date is required'),
   department: z.string().min(1, 'Department is required'),
   position: z.string().min(1, 'Position is required'),
-  employeeType: z.enum(['permanent', 'contract', 'temporary'], {
+  employeeType: z.enum(['permanent', 'contract', 'temporary', 'part_time', 'consultant', 'intern'], {
     required_error: 'Employee type is required',
   }),
 });
@@ -190,6 +190,9 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({
                     <SelectItem value="permanent">Permanent</SelectItem>
                     <SelectItem value="contract">Contract</SelectItem>
                     <SelectItem value="temporary">Temporary</SelectItem>
+                    <SelectItem value="part_time">Part Time</SelectItem>
+                    <SelectItem value="consultant">Consultant</SelectItem>
+                    <SelectItem value="intern">Intern</SelectItem>
                   </SelectContent>
                 </Select>
                 <FormMessage />

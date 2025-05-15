@@ -27,8 +27,8 @@ export const useEmployeeManagement = () => {
           id: emp.id,
           employeeId: emp.employee_id || '',
           name: `${emp.first_name} ${emp.last_name}`,
-          firstName: emp.first_name, // Now required
-          lastName: emp.last_name,   // Now required
+          firstName: emp.first_name,
+          lastName: emp.last_name,
           email: emp.email || '',
           // Use default values for fields that don't exist in the database
           phone: '',
@@ -64,7 +64,7 @@ export const useEmployeeManagement = () => {
                     `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${doc.document_url}` : '',
                   verificationStatus: doc.verification_status as 'pending' | 'verified' | 'failed' || 'pending',
                   documentStatusId: doc.document_status_id,
-                  // Explicitly cast employee_docs_log to the correct type
+                  // Properly cast employee_docs_log to match the expected type
                   employee_docs_log: Array.isArray(doc.employee_docs_log) ? 
                     doc.employee_docs_log.map((log: any) => ({
                       timestamp: log.timestamp || '',

@@ -11,15 +11,15 @@ export interface Employee {
   department: string;
   position: string;
   employeeType: 'permanent' | 'contract' | 'temporary' | 'part_time' | 'consultant' | 'intern';
-  status: boolean; // Changed from string enum to boolean as per database change
+  status: boolean; // Boolean value for active status
   createdAt: string;
   updatedAt: string;
   clientId?: string;
   documents?: VerificationDocument[]; // Added documents property
   
   // Add these fields to make it compatible with the other Employee type
-  firstName: string; // Changed from optional to required to match other Employee type
-  lastName: string;  // Changed from optional to required to match other Employee type
+  firstName: string;
+  lastName: string;
 }
 
 export interface DocumentType {

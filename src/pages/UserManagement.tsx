@@ -246,7 +246,7 @@ const UserManagement = () => {
             joiningDate: employee.joiningDate,
             role: modulePermissions.superAdmin ? 'admin' : 'reporter' as UserRole,
             modulePermissions: modulePermissions,
-            isActive: employee.status === 'active',
+            isActive: employee.status === true, // Compare with boolean true instead of string
             createdAt: employee.createdAt || new Date().toISOString(),
           };
         }));

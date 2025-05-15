@@ -65,7 +65,7 @@ export const getAllEmployeesFromApi = async (): Promise<Employee[]> => {
                 `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${doc.document_url}` : '',
               verificationStatus: doc.verification_status as 'pending' | 'verified' | 'failed' || 'pending',
               documentStatusId: doc.document_status_id,
-              // Explicitly cast employee_docs_log to the correct type
+              // Properly cast employee_docs_log to match the expected type
               employee_docs_log: Array.isArray(doc.employee_docs_log) ? 
                 doc.employee_docs_log.map((log: any) => ({
                   timestamp: log.timestamp || '',
@@ -148,7 +148,7 @@ export const getEmployeeByIdFromApi = async (id: string): Promise<Employee> => {
             `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${doc.document_url}` : '',
           verificationStatus: doc.verification_status as 'pending' | 'verified' | 'failed' || 'pending',
           documentStatusId: doc.document_status_id,
-          // Explicitly cast employee_docs_log to the correct type
+          // Properly cast employee_docs_log to match the expected type
           employee_docs_log: Array.isArray(doc.employee_docs_log) ? 
             doc.employee_docs_log.map((log: any) => ({
               timestamp: log.timestamp || '',

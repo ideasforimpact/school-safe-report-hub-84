@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIncidents } from '@/contexts/incident';
@@ -15,6 +16,24 @@ import { getAllEmployeesFromApi } from '@/services/employee/employeeRetrievalSer
 import { Student } from '@/types/student';
 import { useStudents } from '@/contexts/StudentContext';
 import { supabase } from '@/integrations/supabase/client';
+
+// Create a type adapter function to map from verification Employee to incident context Employee
+type IncidentContextEmployee = {
+  id: string;
+  name: string;
+  firstName: string;
+  lastName: string;
+};
+
+// Helper function to adapt employee types
+const adaptEmployees = (employees: Employee[]): IncidentContextEmployee[] => {
+  return employees.map(employee => ({
+    id: employee.id,
+    name: employee.name,
+    firstName: employee.firstName,
+    lastName: employee.lastName
+  }));
+};
 
 const ReportIncident = () => {
   const { addIncident, categories, isSubmitting: contextIsSubmitting } = useIncidents();
@@ -61,7 +80,7 @@ const ReportIncident = () => {
         console.log("Fetching employees from API service...");
         const fetchedEmployees = await getAllEmployeesFromApi();
         console.log(`Fetched ${fetchedEmployees.length} employees successfully:`, fetchedEmployees);
-        // Here's the fix: we're explicitly using the employees as the verification type
+        // Store the employees with verification type
         setEmployees(fetchedEmployees);
       } catch (error) {
         console.error("Failed to fetch employees:", error);
@@ -322,6 +341,9 @@ const ReportIncident = () => {
     }
   };
 
+  // Adapt employees for use in the form
+  const adaptedEmployees = adaptEmployees(employees);
+
   return (
     <Layout>
       <div className="space-y-4 md:space-y-6 w-full overflow-x-hidden">
@@ -357,7 +379,7 @@ const ReportIncident = () => {
                 onDateTimeChange={handleDateTimeChange}
                 supportingFiles={supportingFiles}
                 onFilesChange={handleFilesChange}
-                users={employees}
+                users={adaptedEmployees}
                 isLoadingUsers={isLoadingEmployees}
               />
 
@@ -367,7 +389,7 @@ const ReportIncident = () => {
                 onAddPerson={addPerson}
                 onRemovePerson={removePerson}
                 students={students}
-                employees={employees}
+                employees={adaptedEmployees}
               />
             </CardContent>
             <CardFooter className="flex justify-between">
