@@ -61,6 +61,20 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
       return;
     }
 
+    // For driving license, validate date of birth
+    const isDrivingLicense = documentTypes.find(type => 
+      type.id === selectedTypeId && type.name === 'driving_license'
+    ) || selectedTypeId === '4';
+
+    if (isDrivingLicense && !values.dateOfBirth) {
+      toast({
+        title: 'Error',
+        description: 'Please provide date of birth for driving license',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       // Find the pending status ID
@@ -72,7 +86,9 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
         documentNumber: values.documentNumber,
         documentImage: values.documentImage,
         documentStatusId: pendingStatus?.id, // Add the document status ID
-        verificationStatus: 'pending' as 'pending' | 'verified' | 'failed'
+        verificationStatus: 'pending' as 'pending' | 'verified' | 'failed',
+        // Include date of birth if provided (for driving license)
+        ...(values.dateOfBirth && { dateOfBirth: values.dateOfBirth })
       };
 
       console.log('Adding document with data:', {
@@ -81,6 +97,7 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
         documentNumber: documentData.documentNumber ? 'Provided' : 'Not provided',
         documentStatusId: documentData.documentStatusId || 'Not provided',
         verificationStatus: documentData.verificationStatus,
+        dateOfBirth: values.dateOfBirth ? 'Provided' : 'Not provided',
         // Don't log entire base64 string
         documentImageSize: documentData.documentImage ? documentData.documentImage.length : 0,
       });

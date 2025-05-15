@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
@@ -37,12 +37,25 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       documentTypeId: selectedTypeId,
       documentNumber: '',
       documentImage: '',
+      dateOfBirth: '',
     },
   });
 
-  const documentPlaceholder = getDocumentPlaceholder(selectedTypeId);
   const [selectedFileName, setSelectedFileName] = useState<string>('');
   const [documentNumberHelp, setDocumentNumberHelp] = useState<string>('For security, only the last 2 digits will be visible after submission');
+  const [documentType, setDocumentType] = useState<string>('');
+  
+  // Get the document type name based on the selected type ID
+  useEffect(() => {
+    // This would ideally come from useEmployeeVerification, but for now we'll check the ID
+    if (selectedTypeId.includes('driving_license') || selectedTypeId === '4') {
+      setDocumentType('driving_license');
+    } else {
+      setDocumentType('');
+    }
+  }, [selectedTypeId]);
+
+  const documentPlaceholder = getDocumentPlaceholder(selectedTypeId);
 
   const handleSubmit = (data: any) => {
     if (!data.documentImage) {
@@ -60,12 +73,15 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       documentTypeId: selectedTypeId,
       documentNumber: data.documentNumber,
       documentImage: data.documentImage,
+      // Include date of birth for driving license
+      ...(documentType === 'driving_license' && data.dateOfBirth && { dateOfBirth: data.dateOfBirth }),
     };
 
     console.log('Submitting document with data:', {
       employeeId: uploadData.employeeId,
       documentTypeId: uploadData.documentTypeId,
       documentNumber: uploadData.documentNumber ? 'Provided' : 'Not provided',
+      dateOfBirth: uploadData.dateOfBirth ? 'Provided' : 'Not provided',
       imageSize: uploadData.documentImage ? uploadData.documentImage.length : 0,
     });
 
@@ -104,6 +120,29 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
             </FormItem>
           )}
         />
+        
+        {/* Date of Birth field for driving license */}
+        {documentType === 'driving_license' && (
+          <FormField
+            control={form.control}
+            name="dateOfBirth"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  Date of Birth <span className="text-red-500">*</span>
+                </FormLabel>
+                <FormControl>
+                  <Input 
+                    type="date"
+                    placeholder="Enter date of birth"
+                    {...field} 
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
         
         <FormField
           control={form.control}
