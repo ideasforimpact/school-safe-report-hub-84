@@ -38,6 +38,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
 }) => {
   const { toast } = useToast();
   const isAadhar = documentType === 'aadhar';
+  const isPan = documentType === 'pan';
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [otp, setOtp] = useState("");
   const [cooldownSeconds, setCooldownSeconds] = useState<number | null>(null);
@@ -108,7 +109,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     setCooldownTimerId(timerId);
   };
 
-  const handleAadharApiClick = async () => {
+  const handleApiClick = async () => {
     if (isAadhar) {
       if (!documentNumber) {
         toast({
@@ -180,7 +181,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           description: "A verification code has been sent to your registered mobile number"
         });
       } catch (err: any) {
-        console.error("Exception in handleAadharApiClick:", err);
+        console.error("Exception in handleApiClick:", err);
         toast({
           title: "Error",
           description: err.message || "Failed to send OTP",
@@ -189,7 +190,11 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       } finally {
         setIsRequestingOtp(false);
       }
+    } else if (isPan) {
+      // Use pan-verification edge function for PAN cards
+      onVerify('api');
     } else {
+      // For other document types
       onVerify('api');
     }
   };
@@ -320,7 +325,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
             <Button 
               variant="outline" 
               className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 justify-start"
-              onClick={handleAadharApiClick}
+              onClick={handleApiClick}
               disabled={isVerifying || cooldownSeconds !== null || isRequestingOtp}
             >
               {isRequestingOtp ? (
@@ -334,11 +339,13 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
                   : isRequestingOtp 
                     ? 'Requesting OTP...' 
                     : 'Verify via Aadhar API (Requires OTP)' 
-                : 'Verify via API'
+                : isPan
+                  ? 'Verify via PAN API'
+                  : 'Verify via API'
               }
               {cooldownSeconds === null && !isRequestingOtp && (
                 <span className="ml-auto text-xs text-blue-500 font-normal">
-                  {isAadhar ? 'OTP verification' : 'Automated check'}
+                  {isAadhar ? 'OTP verification' : isPan ? 'Surepass verification' : 'Automated check'}
                 </span>
               )}
             </Button>
