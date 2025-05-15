@@ -1,6 +1,7 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useIncidents } from '@/contexts/IncidentContext';
+import { useIncidents } from '@/contexts/incident/IncidentContext';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -14,9 +15,6 @@ import { Employee } from '@/contexts/employee/types';
 import { getAllEmployeesFromApi } from '@/services/employee/employeeRetrievalService';
 import { Student } from '@/types/student';
 import { useStudents } from '@/contexts/StudentContext';
-
-// Define the IncidentLocation type if needed
-type IncidentLocation = 'On Campus' | 'Off Campus' | 'In Transit' | 'During Function';
 
 const ReportIncident = () => {
   const { addIncident, categories } = useIncidents();
@@ -155,7 +153,7 @@ const ReportIncident = () => {
       const incidentType = (formData.type || 'Incident') as IncidentType;
       
       // Ensure we have a valid location
-      const locationValue = locationName as any; // Using type assertion to avoid type errors
+      const locationValue = locationName as IncidentLocation; 
       
       await addIncident({
         type: incidentType,
