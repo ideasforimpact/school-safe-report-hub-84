@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+
+import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, RefreshCcw, Upload, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -33,7 +34,6 @@ const EmployeeDetailPage = () => {
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [timeframeFilter, setTimeframeFilter] = useState<string | undefined>(undefined);
-  const isInitialLoad = useRef(true);
   
   // Move all hook calls outside of conditional logic
   const employee = getEmployee(employeeId || '');
@@ -104,21 +104,18 @@ const EmployeeDetailPage = () => {
 
   // Fetch data when component mounts - only once
   useEffect(() => {
-    if (!employeeId || !isInitialLoad.current) return;
+    if (!employeeId || initialLoadComplete) return;
     
     const loadData = async () => {
       try {
         console.log('Initial data loading for employee:', employeeId);
-        
-        // Fetch document statuses first
-        await fetchDocumentStatuses();
-        
-        // Then fetch documents
-        await fetchEmployeeDocuments(employeeId);
-        
+        // Fetch documents and statuses in parallel on initial load
+        await Promise.all([
+          fetchEmployeeDocuments(employeeId),
+          fetchDocumentStatuses()
+        ]);
         console.log('Initial data loading complete for employee:', employeeId);
         setInitialLoadComplete(true);
-        isInitialLoad.current = false;
       } catch (error) {
         console.error('Error loading initial data:', error);
         toast({
@@ -130,7 +127,7 @@ const EmployeeDetailPage = () => {
     };
     
     loadData();
-  }, [employeeId, fetchEmployeeDocuments, fetchDocumentStatuses, toast]);
+  }, [employeeId, fetchEmployeeDocuments, fetchDocumentStatuses, toast, initialLoadComplete]);
 
   // Early return for non-existent employee
   if (!employee) {

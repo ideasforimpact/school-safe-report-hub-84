@@ -29,12 +29,11 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
   const [verifying, setVerifying] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
   const [localLoadComplete, setLocalLoadComplete] = useState(initialLoadComplete);
-  const [hasInitiallyFetched, setHasInitiallyFetched] = useState(false);
 
   // Fetch documents only once when component mounts and avoid duplicate fetches
   useEffect(() => {
-    // Skip if documents are already loaded, we're currently fetching, or we've already completed initial load
-    if (documents.length > 0 || isFetching || hasInitiallyFetched) {
+    // Skip if documents are already loaded or we're currently fetching
+    if (documents.length > 0 || isFetching || localLoadComplete) {
       return;
     }
     
@@ -42,7 +41,6 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
       setIsFetching(true);
       try {
         await fetchEmployeeDocuments(employeeId);
-        setHasInitiallyFetched(true);
       } finally {
         // Mark initial load as complete regardless of success/failure
         setLocalLoadComplete(true);
@@ -51,7 +49,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
     };
     
     loadDocuments();
-  }, [employeeId, fetchEmployeeDocuments, documents.length, isFetching, hasInitiallyFetched]);
+  }, [employeeId, fetchEmployeeDocuments, documents.length, isFetching, localLoadComplete]);
 
   // Update local state when parent passes initialLoadComplete
   useEffect(() => {
