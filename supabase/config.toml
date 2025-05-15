@@ -9,3 +9,6 @@ verify_jwt = false
 
 [functions.pan-verification]
 verify_jwt = true
+
+[functions.voter-verification]
+verify_jwt = true

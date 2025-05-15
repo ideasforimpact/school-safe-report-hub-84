@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { CheckCircle, AlertCircle, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import PanDetailsDialog from './document-card/PanDetailsDialog';
+import VoterIdDetailsDialog from './document-card/VoterIdDetailsDialog';
 
 interface VerificationStatusBadgeProps {
   status: 'verified' | 'failed' | 'pending';
@@ -18,6 +19,7 @@ interface VerificationStatusBadgeProps {
     notes?: string;
   }>;
   documentId?: string;
+  documentType?: string;
 }
 
 const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({ 
@@ -27,7 +29,8 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
   documentStatusName,
   onClick,
   documentLogs,
-  documentId
+  documentId,
+  documentType
 }) => {
   const [dialogOpen, setDialogOpen] = useState(false);
 
@@ -66,12 +69,25 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
 
   const { icon: Icon, text, bgColor } = getStatusConfig();
 
-  const isClickable = !!onClick || (status === 'verified' && documentStatusName === 'governance' && documentLogs && documentLogs.length > 0);
+  // Check if this document has details that can be shown in a dialog
+  const isPanWithGovernance = documentType === 'pan' && 
+                             status === 'verified' && 
+                             documentStatusName === 'governance' && 
+                             documentLogs && 
+                             documentLogs.length > 0;
+                             
+  const isVoterIdWithGovernance = documentType === 'voter_id' && 
+                                status === 'verified' && 
+                                documentStatusName === 'governance' && 
+                                documentLogs && 
+                                documentLogs.length > 0;
+  
+  const isClickable = !!onClick || isPanWithGovernance || isVoterIdWithGovernance;
   
   const handleClick = () => {
     if (onClick) {
       onClick();
-    } else if (status === 'verified' && documentStatusName === 'governance' && documentLogs && documentLogs.length > 0) {
+    } else if (isPanWithGovernance || isVoterIdWithGovernance) {
       setDialogOpen(true);
     }
   };
@@ -79,6 +95,13 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
   // Find PAN verification log if available
   const panVerificationLog = documentLogs?.find(log => 
     log.action === 'verify_pan_api' && 
+    log.response?.success === true && 
+    log.response?.status_code === 200
+  );
+  
+  // Find Voter ID verification log if available
+  const voterIdVerificationLog = documentLogs?.find(log => 
+    log.action === 'verify_voter_id_api' && 
     log.response?.success === true && 
     log.response?.status_code === 200
   );
@@ -102,11 +125,21 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
       </Badge>
 
       {/* Display PAN Details Dialog */}
-      {dialogOpen && panVerificationLog && (
+      {dialogOpen && panVerificationLog && documentType === 'pan' && (
         <PanDetailsDialog 
           open={dialogOpen}
           onOpenChange={setDialogOpen}
           panDetails={panVerificationLog.response}
+          documentId={documentId}
+        />
+      )}
+
+      {/* Display Voter ID Details Dialog */}
+      {dialogOpen && voterIdVerificationLog && documentType === 'voter_id' && (
+        <VoterIdDetailsDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          voterIdDetails={voterIdVerificationLog.response}
           documentId={documentId}
         />
       )}

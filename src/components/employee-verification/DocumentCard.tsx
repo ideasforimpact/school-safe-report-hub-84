@@ -29,7 +29,13 @@ const DocumentCard: React.FC<DocumentCardProps> = ({ document, showVerifyButton 
   return (
     <Card className={`h-full transition-all duration-200 ${getCardStyle()}`}>
       <div className="absolute top-3 right-3 z-10">
-        <VerificationStatusBadge status={document.verificationStatus} />
+        <VerificationStatusBadge 
+          status={document.verificationStatus} 
+          documentStatusName={document.documentStatusName}
+          documentLogs={document.employee_docs_log}
+          documentId={document.id}
+          documentType={document.documentTypeId} // Pass document type ID
+        />
       </div>
       
       <CardContent className="p-4 pt-6">

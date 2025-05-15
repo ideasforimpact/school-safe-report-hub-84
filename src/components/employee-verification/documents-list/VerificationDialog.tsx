@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { ShieldCheck, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -39,6 +38,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const { toast } = useToast();
   const isAadhar = documentType === 'aadhar';
   const isPan = documentType === 'pan';
+  const isVoterId = documentType === 'voter_id';
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [otp, setOtp] = useState("");
   const [cooldownSeconds, setCooldownSeconds] = useState<number | null>(null);
@@ -48,6 +48,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const [isRequestingOtp, setIsRequestingOtp] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [isPanVerifying, setIsPanVerifying] = useState(false);
+  const [isVoterIdVerifying, setIsVoterIdVerifying] = useState(false);
 
   // Logging OTP state for debugging
   useEffect(() => {
@@ -79,6 +80,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       setIsRequestingOtp(false);
       setIsVerifyingOtp(false);
       setIsPanVerifying(false);
+      setIsVoterIdVerifying(false);
       if (cooldownTimerId !== null) {
         clearInterval(cooldownTimerId);
         setCooldownTimerId(null);
@@ -252,6 +254,147 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     }
   };
 
+  // Separate handler for Voter ID API verification
+  const handleVoterIdApiVerification = async () => {
+    setIsVoterIdVerifying(true);
+    
+    try {
+      console.log("Initiating Voter ID verification for document ID:", documentId);
+      
+      const { data, error } = await supabase.functions.invoke('voter-verification', {
+        body: {
+          action: 'apiVerify',
+          documentId,
+          documentNumber
+        }
+      });
+      
+      console.log("Voter ID verification response:", data, error);
+      
+      if (error) {
+        console.error('Error verifying Voter ID:', error);
+        toast({
+          title: "Error",
+          description: error.message || "Failed to verify Voter ID. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (data.success) {
+        toast({
+          title: "Voter ID Verified",
+          description: data.message || "Voter ID has been successfully verified with government database.",
+        });
+        onVerify('api');
+      } else {
+        toast({
+          title: "Verification Failed",
+          description: data.error || "Voter ID verification failed. Please try manual verification.",
+          variant: "destructive",
+        });
+      }
+    } catch (err: any) {
+      console.error("Exception in handleVoterIdApiVerification:", err);
+      toast({
+        title: "Error",
+        description: err.message || "Failed to verify Voter ID",
+        variant: "destructive"
+      });
+    } finally {
+      setIsVoterIdVerifying(false);
+    }
+  };
+
+  // Separate handler for Voter ID manual verification
+  const handleVoterIdManualVerification = async () => {
+    setIsVoterIdVerifying(true);
+    
+    try {
+      console.log("Initiating manual Voter ID verification for document ID:", documentId);
+      
+      const { data, error } = await supabase.functions.invoke('voter-verification', {
+        body: {
+          action: 'manualVerify',
+          documentId,
+          verification_notes: 'Document manually verified by staff.'
+        }
+      });
+      
+      console.log("Voter ID manual verification response:", data, error);
+      
+      if (error) {
+        console.error('Error manually verifying Voter ID:', error);
+        toast({
+          title: "Error",
+          description: error.message || "Failed to manually verify Voter ID. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      toast({
+        title: "Voter ID Manually Verified",
+        description: "The Voter ID has been manually verified successfully.",
+      });
+      onVerify('manual');
+    } catch (err: any) {
+      console.error("Exception in handleVoterIdManualVerification:", err);
+      toast({
+        title: "Error",
+        description: err.message || "Failed to manually verify Voter ID",
+        variant: "destructive"
+      });
+    } finally {
+      setIsVoterIdVerifying(false);
+    }
+  };
+
+  // Separate handler for Voter ID rejection
+  const handleVoterIdRejection = async () => {
+    setIsVoterIdVerifying(true);
+    
+    try {
+      console.log("Rejecting Voter ID verification for document ID:", documentId);
+      
+      const { data, error } = await supabase.functions.invoke('voter-verification', {
+        body: {
+          action: 'reject',
+          documentId,
+          verification_notes: 'Document verification rejected by staff.'
+        }
+      });
+      
+      console.log("Voter ID rejection response:", data, error);
+      
+      if (error) {
+        console.error('Error rejecting Voter ID:', error);
+        toast({
+          title: "Error",
+          description: error.message || "Failed to reject Voter ID. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      toast({
+        title: "Voter ID Rejected",
+        description: "The Voter ID has been marked as failed verification.",
+        variant: "destructive",
+      });
+      onReject();
+    } catch (err: any) {
+      console.error("Exception in handleVoterIdRejection:", err);
+      toast({
+        title: "Error",
+        description: err.message || "Failed to reject Voter ID",
+        variant: "destructive"
+      });
+    } finally {
+      setIsVoterIdVerifying(false);
+    }
+  };
+
   const handleApiClick = async () => {
     if (isAadhar) {
       if (!documentNumber) {
@@ -336,6 +479,9 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     } else if (isPan) {
       // Use dedicated PAN verification handler
       await handlePanApiVerification();
+    } else if (isVoterId) {
+      // Use dedicated Voter ID verification handler
+      await handleVoterIdApiVerification();
     } else {
       // For other document types use the generic handler
       onVerify('api');
@@ -345,6 +491,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const handleManualClick = async () => {
     if (isPan) {
       await handlePanManualVerification();
+    } else if (isVoterId) {
+      await handleVoterIdManualVerification();
     } else {
       // For other document types including Aadhar
       onVerify('manual');
@@ -354,6 +502,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const handleRejectClick = async () => {
     if (isPan) {
       await handlePanRejection();
+    } else if (isVoterId) {
+      await handleVoterIdRejection();
     } else {
       // For other document types including Aadhar
       onReject();
@@ -487,9 +637,9 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               variant="outline" 
               className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 justify-start"
               onClick={handleApiClick}
-              disabled={isVerifying || cooldownSeconds !== null || isRequestingOtp || isPanVerifying}
+              disabled={isVerifying || cooldownSeconds !== null || isRequestingOtp || isPanVerifying || isVoterIdVerifying}
             >
-              {isRequestingOtp || (isPan && isPanVerifying) ? (
+              {isRequestingOtp || (isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : (
                 <ShieldCheck className="h-4 w-4 mr-2" />
@@ -502,11 +652,15 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
                     : 'Verify via Aadhar API (Requires OTP)' 
                 : isPan
                   ? isPanVerifying ? 'Verifying PAN...' : 'Verify via PAN API'
+                  : isVoterId
+                    ? isVoterIdVerifying ? 'Verifying Voter ID...' : 'Verify via Voter ID API'
                   : 'Verify via API'
               }
-              {cooldownSeconds === null && !isRequestingOtp && !isPanVerifying && (
+              {cooldownSeconds === null && !isRequestingOtp && !isPanVerifying && !isVoterIdVerifying && (
                 <span className="ml-auto text-xs text-blue-500 font-normal">
-                  {isAadhar ? 'OTP verification' : isPan ? 'Surepass verification' : 'Automated check'}
+                  {isAadhar ? 'OTP verification' : 
+                   isPan ? 'Surepass verification' : 
+                   isVoterId ? 'Voter ID verification' : 'Automated check'}
                 </span>
               )}
             </Button>
@@ -514,14 +668,14 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               variant="outline" 
               className="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200 justify-start"
               onClick={handleManualClick}
-              disabled={isVerifying || isRequestingOtp || isPanVerifying}
+              disabled={isVerifying || isRequestingOtp || isPanVerifying || isVoterIdVerifying}
             >
-              {isPan && isPanVerifying ? (
+              {(isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : (
                 <ShieldCheck className="h-4 w-4 mr-2" />
               )}
-              {isPan && isPanVerifying ? 'Processing...' : 'Verify Manually'}
+              {(isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) ? 'Processing...' : 'Verify Manually'}
               <span className="ml-auto text-xs text-purple-500 font-normal">Manual review completed</span>
             </Button>
             
@@ -529,14 +683,14 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               variant="outline" 
               className="w-full bg-red-50 hover:bg-red-100 text-red-700 border-red-200 justify-start"
               onClick={handleRejectClick}
-              disabled={isVerifying || isRequestingOtp || isPanVerifying}
+              disabled={isVerifying || isRequestingOtp || isPanVerifying || isVoterIdVerifying}
             >
-              {isPan && isPanVerifying ? (
+              {(isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : (
                 <ShieldCheck className="h-4 w-4 mr-2" />
               )}
-              {isPan && isPanVerifying ? 'Processing...' : 'Reject Document'}
+              {(isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) ? 'Processing...' : 'Reject Document'}
               <span className="ml-auto text-xs text-red-500 font-normal">Document verification failed</span>
             </Button>
           </div>
@@ -593,7 +747,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
             <Button 
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={isVerifying || isRequestingOtp || isPanVerifying}
+              disabled={isVerifying || isRequestingOtp || isPanVerifying || isVoterIdVerifying}
             >
               Cancel
             </Button>
