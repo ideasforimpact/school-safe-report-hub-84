@@ -112,7 +112,11 @@ export const useEditIncidentForm = () => {
   }, [id, getIncident, categories, locations, facilities]);
 
   // Setup subcategory handling
-  const { availableSubcategories } = useSubcategories(formData.categoryId);
+  const { availableSubcategories } = useSubcategories(
+    formData.categoryId,
+    subcategoryMappings,
+    setFormData
+  );
 
   // Form event handlers
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {

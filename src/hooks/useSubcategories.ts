@@ -1,52 +1,36 @@
 
 import { useState, useEffect } from 'react';
 import { SubcategoryItem } from '@/contexts/types';
-import { supabase } from '@/integrations/supabase/client';
 
-export const useSubcategories = (categoryId: string) => {
+export function useSubcategories(
+  categoryId: string, 
+  subcategoryMappings: Record<string, SubcategoryItem[]>,
+  setFormData: React.Dispatch<React.SetStateAction<any>>
+) {
+  // State for available subcategories based on selected category
   const [availableSubcategories, setAvailableSubcategories] = useState<SubcategoryItem[]>([]);
-  const [loading, setLoading] = useState(false);
 
+  // Update available subcategories when category changes
   useEffect(() => {
-    const fetchSubcategories = async () => {
-      if (!categoryId) {
-        setAvailableSubcategories([]);
-        return;
-      }
+    if (!categoryId) {
+      setAvailableSubcategories([]);
+      return;
+    }
 
-      setLoading(true);
-      try {
-        // Fetch subcategories from Supabase
-        const { data, error } = await supabase
-          .from('incident_subcategories')
-          .select('id, name')
-          .eq('category_id', categoryId)
-          .eq('is_active', true)
-          .order('name');
-          
-        if (error) {
-          console.error('Error fetching subcategories:', error);
-          return;
-        }
-        
-        if (data) {
-          setAvailableSubcategories(data.map(subcat => ({
-            id: subcat.id,
-            name: subcat.name
-          })));
-        }
-      } catch (err) {
-        console.error('Error fetching subcategories:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
+    // Get subcategories for this category
+    const subcats = subcategoryMappings[categoryId] || [];
+    setAvailableSubcategories(subcats);
+  }, [categoryId, subcategoryMappings]);
 
-    fetchSubcategories();
-  }, [categoryId]);
+  // Reset subcategory when available subcategories change
+  useEffect(() => {
+    setFormData(prev => ({
+      ...prev,
+      subcategory: ''
+    }));
+  }, [availableSubcategories, setFormData]);
 
   return {
-    availableSubcategories,
-    loading
+    availableSubcategories
   };
-};
+}

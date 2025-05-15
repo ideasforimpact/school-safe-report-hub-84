@@ -1,63 +1,46 @@
 
 import { useState, useEffect } from 'react';
-import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
-interface Priority {
+export interface Priority {
   id: string;
   name: string;
+  description?: string;
   color?: string;
   weight?: number;
+  is_active: boolean;
 }
 
-export const usePriorities = () => {
-  const [priorities, setPriorities] = useState<Priority[]>([
-    { id: 'Low', name: 'Low' },
-    { id: 'Medium', name: 'Medium' },
-    { id: 'High', name: 'High' },
-    { id: 'Critical', name: 'Critical' }
-  ]);
+export function usePriorities() {
+  const [priorities, setPriorities] = useState<Priority[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchPriorities = async () => {
+    async function fetchPriorities() {
       try {
         setLoading(true);
-        
         const { data, error } = await supabase
           .from('incident_priorities')
-          .select('id, name, color, weight')
+          .select('*')
+          .eq('is_active', true)
           .order('weight', { ascending: true });
-          
-        if (error) {
-          throw error;
-        }
+
+        if (error) throw error;
         
-        if (data && data.length > 0) {
-          // Map the data from the database
-          setPriorities(data.map(priority => ({
-            id: priority.name,
-            name: priority.name,
-            color: priority.color || undefined,
-            weight: priority.weight || undefined
-          })));
-        }
-      } catch (error) {
-        console.error('Error fetching priorities:', error);
-        // Fallback to default priorities if fetch fails
-        setPriorities([
-          { id: 'Low', name: 'Low' },
-          { id: 'Medium', name: 'Medium' },
-          { id: 'High', name: 'High' },
-          { id: 'Critical', name: 'Critical' }
-        ]);
+        setPriorities(data || []);
+      } catch (err: any) {
+        console.error("Error fetching priorities:", err);
+        setError(err.message);
+        toast.error("Failed to load priorities");
       } finally {
         setLoading(false);
       }
-    };
+    }
 
     fetchPriorities();
   }, []);
 
-  return { priorities, loading };
-};
+  return { priorities, loading, error };
+}

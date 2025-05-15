@@ -1,94 +1,183 @@
 
-import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { ConfigItem, SubcategoryItem } from '@/contexts/types';
-import { useCategoryManagement } from '@/hooks/config/useCategoryManagement';
+import { useState, useEffect, useCallback } from "react";
+import { categoryService, CategoryItem, SubcategoryItem } from "@/services/incident/categoryService";
+import { toast } from "sonner";
 
-export const useIncidentCategories = () => {
+export function useIncidentCategories() {
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
+  const [subcategoryMappings, setSubcategoryMappings] = useState<Record<string, SubcategoryItem[]>>({});
   const [loading, setLoading] = useState(true);
-  const [initialCategories, setInitialCategories] = useState<ConfigItem[]>([]);
-  const [initialSubcategories, setInitialSubcategories] = useState<Record<string, SubcategoryItem[]>>({});
-  
-  const {
-    categories,
-    subcategoryMappings,
-    addCategory,
-    updateCategory,
-    deleteCategory,
-    addSubcategory,
-    updateSubcategory,
-    deleteSubcategory
-  } = useCategoryManagement(initialCategories, initialSubcategories);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchCategories = useCallback(async () => {
+    try {
+      setLoading(true);
+      const categoriesData = await categoryService.getCategories();
+      setCategories(categoriesData);
+      return categoriesData;
+    } catch (err: any) {
+      setError(err.message);
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchSubcategories = useCallback(async (categoryId?: string) => {
+    try {
+      const subcategories = await categoryService.getSubcategories(categoryId);
+      
+      // Group subcategories by category_id
+      const mappings: Record<string, SubcategoryItem[]> = {};
+      subcategories.forEach(subcategory => {
+        const catId = subcategory.category_id || 'uncategorized';
+        if (!mappings[catId]) {
+          mappings[catId] = [];
+        }
+        mappings[catId].push(subcategory);
+      });
+      
+      setSubcategoryMappings(mappings);
+      return subcategories;
+    } catch (err: any) {
+      setError(err.message);
+      return [];
+    }
+  }, []);
+
+  const fetchAllData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const categoriesData = await fetchCategories();
+      await fetchSubcategories();
+      return categoriesData;
+    } catch (err: any) {
+      setError(err.message);
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchCategories, fetchSubcategories]);
 
   useEffect(() => {
-    async function fetchCategories() {
-      try {
-        setLoading(true);
-        
-        // Fetch categories from Supabase
-        const { data: categoriesData, error: categoriesError } = await supabase
-          .from('incident_categories')
-          .select('id, name, description')
-          .order('name');
-          
-        if (categoriesError) {
-          console.error('Error fetching categories:', categoriesError);
-          return;
-        }
-        
-        if (categoriesData) {
-          const fetchedCategories = categoriesData.map((cat) => ({
-            id: cat.id,
-            name: cat.name
-          }));
-          
-          setInitialCategories(fetchedCategories);
-          
-          // Fetch subcategories for all categories
-          const { data: subcategoriesData, error: subcategoriesError } = await supabase
-            .from('incident_subcategories')
-            .select('id, name, category_id')
-            .order('name');
-            
-          if (subcategoriesError) {
-            console.error('Error fetching subcategories:', subcategoriesError);
-            return;
-          }
-          
-          if (subcategoriesData) {
-            // Group subcategories by category_id
-            const subcatMap: Record<string, SubcategoryItem[]> = {};
-            
-            subcategoriesData.forEach((subcat) => {
-              if (!subcat.category_id) return;
-              
-              if (!subcatMap[subcat.category_id]) {
-                subcatMap[subcat.category_id] = [];
-              }
-              
-              subcatMap[subcat.category_id].push({
-                id: subcat.id,
-                name: subcat.name
-              });
-            });
-            
-            setInitialSubcategories(subcatMap);
-          }
-        }
-      } catch (error) {
-        console.error('Exception in useIncidentCategories:', error);
-      } finally {
-        setLoading(false);
-      }
+    fetchAllData();
+  }, [fetchAllData]);
+
+  const addCategory = async (name: string) => {
+    try {
+      const newCategory = await categoryService.addCategory(name);
+      setCategories(prev => [...prev, newCategory]);
+      
+      // Initialize empty subcategory list for this category
+      setSubcategoryMappings(prev => ({
+        ...prev,
+        [newCategory.id]: []
+      }));
+      
+      toast.success("Category added successfully");
+      return newCategory;
+    } catch (err: any) {
+      toast.error("Failed to add category");
+      setError(err.message);
+      throw err;
     }
-    
-    fetchCategories();
-  }, []);
+  };
+
+  const updateCategory = async (id: string, name: string) => {
+    try {
+      const updatedCategory = await categoryService.updateCategory(id, name);
+      setCategories(prev => 
+        prev.map(cat => cat.id === id ? updatedCategory : cat)
+      );
+      toast.success("Category updated successfully");
+    } catch (err: any) {
+      toast.error("Failed to update category");
+      setError(err.message);
+      throw err;
+    }
+  };
+
+  const deleteCategory = async (id: string) => {
+    try {
+      await categoryService.deleteCategory(id);
+      setCategories(prev => prev.filter(cat => cat.id !== id));
+      
+      // Remove subcategories for this category
+      setSubcategoryMappings(prev => {
+        const { [id]: _, ...rest } = prev;
+        return rest;
+      });
+      
+      toast.success("Category deleted successfully");
+    } catch (err: any) {
+      toast.error("Failed to delete category");
+      setError(err.message);
+      throw err;
+    }
+  };
+
+  const addSubcategory = async (categoryId: string, name: string) => {
+    try {
+      const newSubcategory = await categoryService.addSubcategory(name, categoryId);
+      
+      setSubcategoryMappings(prev => ({
+        ...prev,
+        [categoryId]: [...(prev[categoryId] || []), newSubcategory]
+      }));
+      
+      toast.success("Subcategory added successfully");
+      return newSubcategory;
+    } catch (err: any) {
+      toast.error("Failed to add subcategory");
+      setError(err.message);
+      throw err;
+    }
+  };
+
+  const updateSubcategory = async (categoryId: string, id: string, name: string) => {
+    try {
+      const updatedSubcategory = await categoryService.updateSubcategory(id, name, categoryId);
+      
+      setSubcategoryMappings(prev => ({
+        ...prev,
+        [categoryId]: prev[categoryId]?.map(subcat =>
+          subcat.id === id ? updatedSubcategory : subcat
+        ) || []
+      }));
+      
+      toast.success("Subcategory updated successfully");
+    } catch (err: any) {
+      toast.error("Failed to update subcategory");
+      setError(err.message);
+      throw err;
+    }
+  };
+
+  const deleteSubcategory = async (categoryId: string, id: string) => {
+    try {
+      await categoryService.deleteSubcategory(id);
+      
+      setSubcategoryMappings(prev => ({
+        ...prev,
+        [categoryId]: prev[categoryId]?.filter(subcat => subcat.id !== id) || []
+      }));
+      
+      toast.success("Subcategory deleted successfully");
+    } catch (err: any) {
+      toast.error("Failed to delete subcategory");
+      setError(err.message);
+      throw err;
+    }
+  };
 
   return {
     categories,
     subcategoryMappings,
     loading,
+    error,
+    fetchCategories,
+    fetchSubcategories,
+    fetchAllData,
     addCategory,
     updateCategory,
     deleteCategory,
@@ -96,4 +185,4 @@ export const useIncidentCategories = () => {
     updateSubcategory,
     deleteSubcategory
   };
-};
+}

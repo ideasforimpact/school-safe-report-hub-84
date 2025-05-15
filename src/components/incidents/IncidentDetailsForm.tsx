@@ -36,7 +36,6 @@ interface IncidentDetailsFormProps {
   facilities?: ConfigItem[];
   users: Employee[];
   isLoadingUsers?: boolean;
-  errors?: Record<string, string>;
 }
 
 const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
@@ -47,8 +46,7 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
   supportingFiles,
   onFilesChange,
   users,
-  isLoadingUsers = false,
-  errors = {}
+  isLoadingUsers = false
 }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -58,7 +56,6 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
           type={formData.type}
           priority={formData.priority}
           onSelectChange={onSelectChange}
-          errors={errors}
         />
       </div>
 
@@ -68,7 +65,6 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
           categoryId={formData.categoryId}
           subcategory={formData.subcategory}
           onSelectChange={onSelectChange}
-          errors={errors}
         />
       </div>
 
@@ -78,7 +74,6 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
           locationId={formData.locationId}
           facilityId={formData.facilityId}
           onSelectChange={onSelectChange}
-          errors={errors}
         />
       </div>
 
@@ -88,7 +83,6 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
           date={formData.date}
           time={formData.time}
           onDateTimeChange={onDateTimeChange}
-          errors={errors}
         />
       </div>
 
@@ -99,7 +93,6 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
           users={users}
           onSelectChange={onSelectChange}
           isLoading={isLoadingUsers}
-          errors={errors}
         />
       </div>
 
@@ -113,7 +106,6 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
           supportingFiles={supportingFiles}
           onChange={onChange}
           onFilesChange={onFilesChange}
-          errors={errors}
         />
       </div>
     </div>

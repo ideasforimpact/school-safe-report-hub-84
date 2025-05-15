@@ -1,59 +1,72 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
-interface ReportType {
+export interface ReportType {
   id: string;
   name: string;
-  description?: string;
+  description: string | null;
+  is_active: boolean;
 }
 
-export const useReportTypes = () => {
-  const [reportTypes, setReportTypes] = useState<ReportType[]>([
-    { id: 'Incident', name: 'Incident' },
-    { id: 'Near Miss', name: 'Near Miss' },
-    { id: 'Unsafe Condition', name: 'Unsafe Condition' }
-  ]);
-  const [loading, setLoading] = useState(true);
+// Default report types to use as fallback if database fetch fails
+const DEFAULT_REPORT_TYPES: ReportType[] = [
+  { id: '1', name: 'Incident', description: 'A safety incident', is_active: true },
+  { id: '2', name: 'Near Miss', description: 'A potential incident that was avoided', is_active: true },
+  { id: '3', name: 'Unsafe Condition', description: 'A condition that could lead to an incident', is_active: true }
+];
+
+export function useReportTypes() {
+  const [reportTypes, setReportTypes] = useState<ReportType[]>(DEFAULT_REPORT_TYPES);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  const fetchReportTypes = async (activeOnly: boolean = true) => {
+    try {
+      setLoading(true);
+      
+      if (!supabase) {
+        console.warn('Supabase client not available, using default report types');
+        return;
+      }
+      
+      let query = supabase
+        .from('incident_report_types')
+        .select('*');
+      
+      // Only fetch active report types if specified
+      if (activeOnly) {
+        query = query.eq('is_active', true);
+      }
+      
+      const { data, error } = await query.order('name');
+
+      if (error) {
+        console.error('Error fetching report types:', error);
+        toast.error('Failed to load report types, using defaults');
+        return;
+      }
+      
+      if (data && data.length > 0) {
+        setReportTypes(data);
+      } else {
+        console.warn('No report types found in database, using defaults');
+      }
+    } catch (error) {
+      console.error('Error in useReportTypes hook:', error);
+      toast.error('Failed to load report types, using defaults');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchReportTypes = async () => {
-      try {
-        setLoading(true);
-        
-        const { data, error } = await supabase
-          .from('incident_report_types')
-          .select('id, name, description')
-          .eq('is_active', true)
-          .order('name');
-          
-        if (error) {
-          throw error;
-        }
-        
-        if (data && data.length > 0) {
-          // Map the data from the database
-          setReportTypes(data.map(type => ({
-            id: type.id,
-            name: type.name,
-            description: type.description || undefined
-          })));
-        }
-      } catch (error) {
-        console.error('Error fetching report types:', error);
-        // Fallback to default types if fetch fails
-        setReportTypes([
-          { id: 'Incident', name: 'Incident' },
-          { id: 'Near Miss', name: 'Near Miss' },
-          { id: 'Unsafe Condition', name: 'Unsafe Condition' }
-        ]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchReportTypes();
   }, []);
 
-  return { reportTypes, loading };
-};
+  return {
+    reportTypes,
+    loading,
+    fetchReportTypes
+  };
+}

@@ -94,7 +94,8 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
       
       await verifyDocument(
         selectedDocument,
-        'verified'
+        'verified',
+        notes
       );
       
       toast({
@@ -122,7 +123,8 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
     try {
       await verifyDocument(
         selectedDocument,
-        'failed'
+        'failed',
+        'Failed to verify document. Details do not match records.'
       );
       
       toast({

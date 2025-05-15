@@ -1,89 +1,99 @@
 
 import React from 'react';
 import { format } from 'date-fns';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Button } from '@/components/ui/button';
-import { CalendarIcon } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Calendar as CalendarIcon, Clock } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Calendar } from '@/components/ui/calendar';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { cn } from '@/lib/utils';
 
 interface DateTimeSectionProps {
   date: string;
   time: string;
   onDateTimeChange: (date: Date | undefined, timeString?: string) => void;
-  errors?: Record<string, string>;
 }
 
 const DateTimeSection: React.FC<DateTimeSectionProps> = ({
   date,
   time,
   onDateTimeChange,
-  errors = {}
 }) => {
-  const handleDateSelect = (selectedDate: Date | undefined) => {
-    onDateTimeChange(selectedDate);
-  };
-
-  const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onDateTimeChange(undefined, e.target.value);
-  };
-
+  // Calculate the current selected date from formData if available
   const selectedDate = date ? new Date(date) : undefined;
+  
+  // Local state to manage the time input within the calendar popover
+  const [localTime, setLocalTime] = React.useState(time);
+  
+  // Function to handle time selection
+  const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newTime = e.target.value;
+    setLocalTime(newTime);
+    
+    // If we have a date, update both date and time
+    if (selectedDate) {
+      onDateTimeChange(selectedDate, newTime);
+    }
+  };
+  
+  // Function to handle date selection along with the current time
+  const handleDateSelect = (date: Date | undefined) => {
+    onDateTimeChange(date, localTime);
+  };
+  
+  // Format the datetime for display
+  const formattedDateTime = selectedDate 
+    ? `${format(selectedDate, "PPP")} at ${time}`
+    : "Select date and time";
 
   return (
-    <div>
-      <h3 className="text-lg font-medium mb-3">Date & Time</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <label htmlFor="date" className="text-sm font-medium block">
-            Date <span className="text-red-500">*</span>
-          </label>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  "w-full justify-start text-left font-normal",
-                  errors.date ? "border-red-500" : "",
-                  !selectedDate && "text-muted-foreground"
-                )}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {selectedDate ? format(selectedDate, "PPP") : <span>Select date</span>}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={handleDateSelect}
-                initialFocus
-              />
-            </PopoverContent>
-          </Popover>
-          {errors.date && (
-            <p className="text-red-500 text-sm mt-1">{errors.date}</p>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <label htmlFor="time" className="text-sm font-medium block">
-            Time <span className="text-red-500">*</span>
-          </label>
-          <Input
-            id="time"
-            name="time"
-            type="time"
-            value={time}
-            onChange={handleTimeChange}
-            className={errors.time ? "border-red-500" : ""}
-          />
-          {errors.time && (
-            <p className="text-red-500 text-sm mt-1">{errors.time}</p>
-          )}
-        </div>
-      </div>
+    <div className="space-y-2">
+      <label className="text-sm font-medium text-left block">
+        Date and Time
+      </label>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            className={cn(
+              "w-full justify-start text-left font-normal",
+              !selectedDate && "text-muted-foreground"
+            )}
+          >
+            <CalendarIcon className="mr-2 h-4 w-4" />
+            {formattedDateTime}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <div className="p-3">
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={handleDateSelect}
+              initialFocus
+              disabled={(date) => date > new Date()}
+              className="pointer-events-auto"
+            />
+            
+            <div className="px-3 pb-3 pt-2 border-t mt-3">
+              <div className="flex items-center">
+                <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
+                <span className="text-sm font-medium mr-3">Time:</span>
+                <Input
+                  type="time"
+                  value={localTime}
+                  onChange={handleTimeChange}
+                  className="w-32"
+                />
+              </div>
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
     </div>
   );
 };
