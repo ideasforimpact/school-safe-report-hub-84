@@ -1,5 +1,7 @@
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
+import { useIncidentCategories } from '@/hooks/useIncidentCategories';
+import { useSubcategories } from '@/hooks/useSubcategories';
 import { 
   Select,
   SelectContent,
@@ -7,156 +9,106 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from '@/hooks/use-toast';
+import { Loader2 } from 'lucide-react';
 
 interface CategorySectionProps {
   categoryId: string;
   subcategory: string;
   onSelectChange: (name: string, value: string) => void;
-}
-
-interface CategoryItem {
-  id: string;
-  name: string;
-}
-
-interface SubcategoryItem {
-  id: string;
-  name: string;
-  category_id: string;
+  errors?: Record<string, string>;
 }
 
 const CategorySection: React.FC<CategorySectionProps> = ({
   categoryId,
   subcategory,
   onSelectChange,
+  errors = {}
 }) => {
-  const [categories, setCategories] = useState<CategoryItem[]>([]);
-  const [subcategories, setSubcategories] = useState<SubcategoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [availableSubcategories, setAvailableSubcategories] = useState<SubcategoryItem[]>([]);
+  const { categories, loading: categoriesLoading } = useIncidentCategories();
+  const { 
+    availableSubcategories,
+    loading: subcategoriesLoading
+  } = useSubcategories(categoryId);
 
-  // Fetch categories from the incident_categories table
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('incident_categories')
-          .select('id, name')
-          .eq('is_active', true);
+  const handleCategoryChange = (value: string) => {
+    onSelectChange('categoryId', value);
+    // Reset subcategory when category changes
+    onSelectChange('subcategory', '');
+  };
 
-        if (error) {
-          console.error('Error fetching categories:', error);
-          toast({
-            title: 'Error',
-            description: 'Failed to load categories. Please try again.',
-            variant: 'destructive',
-          });
-          return;
-        }
-
-        setCategories(data || []);
-      } catch (err) {
-        console.error('Exception fetching categories:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCategories();
-  }, []);
-
-  // Fetch subcategories from the incident_subcategories table
-  useEffect(() => {
-    const fetchSubcategories = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('incident_subcategories')
-          .select('id, name, category_id')
-          .eq('is_active', true);
-
-        if (error) {
-          console.error('Error fetching subcategories:', error);
-          toast({
-            title: 'Error',
-            description: 'Failed to load subcategories. Please try again.',
-            variant: 'destructive',
-          });
-          return;
-        }
-
-        setSubcategories(data || []);
-      } catch (err) {
-        console.error('Exception fetching subcategories:', err);
-      }
-    };
-
-    fetchSubcategories();
-  }, []);
-
-  // Filter subcategories based on selected category
-  useEffect(() => {
-    if (!categoryId) {
-      setAvailableSubcategories([]);
-      return;
-    }
-
-    const filtered = subcategories.filter(sub => sub.category_id === categoryId);
-    setAvailableSubcategories(filtered);
-    
-    // Reset subcategory selection when category changes
-    if (filtered.length > 0 && !filtered.some(sub => sub.id === subcategory)) {
-      onSelectChange('subcategory', '');
-    }
-  }, [categoryId, subcategories, subcategory, onSelectChange]);
+  const handleSubcategoryChange = (value: string) => {
+    onSelectChange('subcategory', value);
+  };
 
   return (
-    <>
-      <div className="space-y-2 text-left">
-        <label htmlFor="categoryId" className="text-sm font-medium text-left block">
-          Category
-        </label>
-        <Select 
-          value={categoryId}
-          onValueChange={(value) => onSelectChange('categoryId', value)}
-          disabled={loading}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select category" />
-          </SelectTrigger>
-          <SelectContent>
-            {categories.map(category => (
-              <SelectItem key={category.id} value={category.id}>
-                {category.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+    <div>
+      <h3 className="text-lg font-medium mb-3">Category</h3>
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <label htmlFor="categoryId" className="text-sm font-medium block">
+            Category <span className="text-red-500">*</span>
+          </label>
+          <Select 
+            value={categoryId}
+            onValueChange={handleCategoryChange}
+            disabled={categoriesLoading}
+          >
+            <SelectTrigger className={errors.categoryId ? "border-red-500" : ""}>
+              {categoriesLoading ? (
+                <div className="flex items-center">
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <span>Loading categories...</span>
+                </div>
+              ) : (
+                <SelectValue placeholder="Select category" />
+              )}
+            </SelectTrigger>
+            <SelectContent>
+              {categories.map(category => (
+                <SelectItem key={category.id} value={category.id}>
+                  {category.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {errors.categoryId && (
+            <p className="text-red-500 text-sm mt-1">{errors.categoryId}</p>
+          )}
+        </div>
+        
+        <div className="space-y-2">
+          <label htmlFor="subcategory" className="text-sm font-medium block">
+            Subcategory <span className="text-red-500">*</span>
+          </label>
+          <Select 
+            value={subcategory}
+            onValueChange={handleSubcategoryChange}
+            disabled={!categoryId || subcategoriesLoading}
+          >
+            <SelectTrigger className={errors.subcategory ? "border-red-500" : ""}>
+              {subcategoriesLoading ? (
+                <div className="flex items-center">
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <span>Loading subcategories...</span>
+                </div>
+              ) : (
+                <SelectValue placeholder="Select subcategory" />
+              )}
+            </SelectTrigger>
+            <SelectContent>
+              {availableSubcategories.map(sub => (
+                <SelectItem key={sub.id} value={sub.name}>
+                  {sub.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {errors.subcategory && (
+            <p className="text-red-500 text-sm mt-1">{errors.subcategory}</p>
+          )}
+        </div>
       </div>
-      
-      <div className="space-y-2 text-left">
-        <label htmlFor="subcategory" className="text-sm font-medium text-left block">
-          Subcategory
-        </label>
-        <Select 
-          value={subcategory}
-          onValueChange={(value) => onSelectChange('subcategory', value)}
-          disabled={availableSubcategories.length === 0}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select subcategory" />
-          </SelectTrigger>
-          <SelectContent>
-            {availableSubcategories.map(subcategory => (
-              <SelectItem key={subcategory.id} value={subcategory.id}>
-                {subcategory.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-    </>
+    </div>
   );
 };
 

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIncidents } from '@/contexts/incident/IncidentContext';
 import { useAuth } from '@/contexts/auth/AuthContext';
@@ -11,6 +11,9 @@ import IncidentDetailsForm from '@/components/incidents/IncidentDetailsForm';
 import PeopleInvolvedSection from '@/components/incidents/PeopleInvolvedSection';
 import { IncidentType, IncidentCategory } from '@/types/incident';
 import { Employee } from '@/contexts/employee/types';
+import { useFormValidation } from '@/hooks/incident-form/useFormValidation';
+import { AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface ReportIncidentFormProps {
   employees: Employee[];
@@ -24,6 +27,8 @@ const ReportIncidentForm: React.FC<ReportIncidentFormProps> = ({
   const { addIncident, categories } = useIncidents();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { errors, validateForm } = useFormValidation();
+  const [formValidationTriggered, setFormValidationTriggered] = useState(false);
   
   const {
     nextTicketId,
@@ -45,6 +50,14 @@ const ReportIncidentForm: React.FC<ReportIncidentFormProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    setFormValidationTriggered(true);
+    
+    // Validate the form data
+    if (!validateForm(formData)) {
+      toast.error("Please fix the validation errors before submitting");
+      return;
+    }
     
     setIsSubmitting(true);
     
@@ -154,10 +167,22 @@ const ReportIncidentForm: React.FC<ReportIncidentFormProps> = ({
     }
   };
 
+  // Check if there are any form errors to display
+  const hasErrors = Object.keys(errors).length > 0 && formValidationTriggered;
+
   return (
     <form onSubmit={handleSubmit} className="w-full">
       <Card className="border-none shadow-card pt-6">
         <CardContent className="space-y-6 px-6">
+          {hasErrors && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                Please fix the validation errors below before submitting.
+              </AlertDescription>
+            </Alert>
+          )}
+          
           <IncidentDetailsForm
             formData={formData}
             onChange={handleChangeAdapter}
@@ -167,6 +192,7 @@ const ReportIncidentForm: React.FC<ReportIncidentFormProps> = ({
             onFilesChange={handleFilesChange}
             users={employees}
             isLoadingUsers={isLoadingEmployees}
+            errors={errors}
           />
 
           <PeopleInvolvedSection

@@ -1,46 +1,64 @@
 
 import { useState, useEffect } from 'react';
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
+import { toast } from 'sonner';
+import { createClient } from '@/integrations/supabase/client';
 
-export interface Priority {
+interface Priority {
   id: string;
   name: string;
-  description?: string;
   color?: string;
   weight?: number;
-  is_active: boolean;
 }
 
-export function usePriorities() {
-  const [priorities, setPriorities] = useState<Priority[]>([]);
+export const usePriorities = () => {
+  const [priorities, setPriorities] = useState<Priority[]>([
+    { id: 'Low', name: 'Low' },
+    { id: 'Medium', name: 'Medium' },
+    { id: 'High', name: 'High' },
+    { id: 'Critical', name: 'Critical' }
+  ]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function fetchPriorities() {
+    const fetchPriorities = async () => {
       try {
         setLoading(true);
+        
+        const supabase = createClient();
         const { data, error } = await supabase
           .from('incident_priorities')
-          .select('*')
-          .eq('is_active', true)
+          .select('id, name, color, weight')
           .order('weight', { ascending: true });
-
-        if (error) throw error;
+          
+        if (error) {
+          throw error;
+        }
         
-        setPriorities(data || []);
-      } catch (err: any) {
-        console.error("Error fetching priorities:", err);
-        setError(err.message);
-        toast.error("Failed to load priorities");
+        if (data && data.length > 0) {
+          // Map the data from the database
+          setPriorities(data.map(priority => ({
+            id: priority.name,
+            name: priority.name,
+            color: priority.color,
+            weight: priority.weight
+          })));
+        }
+      } catch (error) {
+        console.error('Error fetching priorities:', error);
+        // Fallback to default priorities if fetch fails
+        setPriorities([
+          { id: 'Low', name: 'Low' },
+          { id: 'Medium', name: 'Medium' },
+          { id: 'High', name: 'High' },
+          { id: 'Critical', name: 'Critical' }
+        ]);
       } finally {
         setLoading(false);
       }
-    }
+    };
 
     fetchPriorities();
   }, []);
 
-  return { priorities, loading, error };
-}
+  return { priorities, loading };
+};

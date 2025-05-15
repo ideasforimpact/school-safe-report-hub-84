@@ -15,7 +15,7 @@ interface IncidentPrioritySectionProps {
   errors: Record<string, string>;
 }
 
-const IncidentPrioritySection: React.FC<IncidentPrioritySectionProps> = ({
+export const IncidentPrioritySection: React.FC<IncidentPrioritySectionProps> = ({
   priority,
   onChange,
   errors,
@@ -25,14 +25,14 @@ const IncidentPrioritySection: React.FC<IncidentPrioritySectionProps> = ({
   return (
     <div className="space-y-2">
       <label className="text-sm font-medium block">
-        Priority
+        Priority <span className="text-red-500">*</span>
       </label>
       <Select 
         value={priority}
         onValueChange={onChange}
         disabled={loading}
       >
-        <SelectTrigger>
+        <SelectTrigger className={errors.priority ? "border-red-500" : ""}>
           <SelectValue placeholder={loading ? "Loading priorities..." : "Select priority"} />
         </SelectTrigger>
         <SelectContent>
@@ -40,7 +40,14 @@ const IncidentPrioritySection: React.FC<IncidentPrioritySectionProps> = ({
             <SelectItem 
               key={priority.id} 
               value={priority.name}
+              className="flex items-center gap-2"
             >
+              {priority.color && (
+                <span 
+                  className="w-3 h-3 rounded-full inline-block" 
+                  style={{ backgroundColor: priority.color }}
+                />
+              )}
               {priority.name}
             </SelectItem>
           ))}
@@ -52,5 +59,3 @@ const IncidentPrioritySection: React.FC<IncidentPrioritySectionProps> = ({
     </div>
   );
 };
-
-export default IncidentPrioritySection;
