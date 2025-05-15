@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIncidents } from '@/contexts/incident';
@@ -28,6 +29,7 @@ const ReportIncident = () => {
   // Add loading state for reference data
   const [isLoadingRefData, setIsLoadingRefData] = useState(false);
   const [dataInitialized, setDataInitialized] = useState(false);
+  const [newStatusId, setNewStatusId] = useState<string | null>(null);
   
   const {
     nextTicketId,
@@ -83,10 +85,15 @@ const ReportIncident = () => {
         const { data: statusData, error: statusError } = await supabase
           .from('incident_status')
           .select('id, name')
-          .limit(1);
+          .eq('name', 'New')
+          .single();
           
         if (statusError) {
           console.error("Error checking incident status data:", statusError);
+        } else if (statusData) {
+          console.log("Found New status with ID:", statusData.id);
+          setNewStatusId(statusData.id);
+          setDataInitialized(true);
           return;
         }
 
@@ -101,8 +108,8 @@ const ReportIncident = () => {
           console.error("Error checking for 'Other' category:", categoryError);
         }
         
-        // If we don't have data or missing Other category, call our initialization function
-        if (!statusData || statusData.length === 0 || !otherCategory || otherCategory.length === 0) {
+        // If we don't have data or missing New status, call our initialization function
+        if (!statusData || !otherCategory || otherCategory.length === 0) {
           console.log("Required reference data not found, initializing...");
           
           try {
@@ -120,6 +127,12 @@ const ReportIncident = () => {
             } else {
               const result = await response.json();
               console.log("Reference data initialization result:", result);
+              
+              if (result.newStatusId) {
+                setNewStatusId(result.newStatusId);
+                console.log("Set new status ID to:", result.newStatusId);
+              }
+              
               toast.success("Incident reference data initialized successfully");
               setDataInitialized(true);
             }
@@ -249,7 +262,8 @@ const ReportIncident = () => {
         facilityId: formData.facilityId,
         priority: formData.priority,
         priorityId: formData.priorityId,
-        owner: owner
+        owner: owner,
+        statusId: newStatusId
       });
       
       await addIncident({
@@ -273,7 +287,8 @@ const ReportIncident = () => {
           id: user?.id || '',
           name: user?.email || ''
         },
-        owner: owner
+        owner: owner,
+        statusId: newStatusId  // Pass the New status ID
       });
       
       // Navigation happens after successful submission

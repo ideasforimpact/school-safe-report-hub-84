@@ -34,20 +34,20 @@ export function useIncidentActions(
     try {
       console.log('Adding incident with data:', incidentData);
       
-      // Fetch the "Open" status ID - this is required
+      // Fetch the "New" status ID - this is our default status
       const { data: statusData, error: statusError } = await supabase
         .from('incident_status')
         .select('id')
-        .eq('name', 'Open')
+        .eq('name', 'New')
         .single();
         
       if (statusError) {
-        console.error('Error fetching Open status:', statusError);
+        console.error('Error fetching New status:', statusError);
         throw new Error('Could not fetch incident status');
       }
       
       if (!statusData) {
-        console.error('Open status not found');
+        console.error('New status not found');
         throw new Error('Required incident status not found');
       }
       
@@ -60,7 +60,6 @@ export function useIncidentActions(
       const { data, error } = await supabase
         .from('incidents')
         .insert({
-          ticket_id: ticketId,
           type_id: incidentData.typeId || null,
           category_id: incidentData.categoryId,
           subcategory_id: incidentData.subcategoryId,
@@ -73,7 +72,8 @@ export function useIncidentActions(
           status_id: statusData.id,
           reported_by_id: incidentData.reportedBy.id,
           owner_id: incidentData.owner?.id || null,
-          documents: incidentData.documents || []
+          documents: incidentData.documents || [],
+          ticket_id: ticketId
         })
         .select();
       
@@ -109,7 +109,7 @@ export function useIncidentActions(
         date: incidentData.date,
         location: incidentData.location,
         peopleInvolved: incidentData.peopleInvolved,
-        status: 'Open',
+        status: 'New', // Set status to New
         reportedBy: incidentData.reportedBy,
         owner: incidentData.owner,
         facility: incidentData.facility,
