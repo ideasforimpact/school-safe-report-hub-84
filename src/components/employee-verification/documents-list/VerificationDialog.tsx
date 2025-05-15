@@ -289,7 +289,57 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   };
 
   const handleManualVerify = async () => {
-    onVerify('manual');
+    // Set loading state
+    const originalOnVerify = onVerify;
+    
+    try {
+      // For manual verification, directly call the edge function without user interaction
+      console.log("Performing manual verification for document ID:", documentId);
+      
+      const { data, error } = await supabase.functions.invoke('employee-verification', {
+        method: 'POST',
+        body: { 
+          action: 'manualVerification',
+          documentId
+        }
+      });
+      
+      console.log("Manual verification response:", data, error);
+      
+      if (error) {
+        console.error('Error in manual verification:', error);
+        toast({
+          title: "Error",
+          description: error.message || "Failed to perform manual verification. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (data?.error) {
+        toast({
+          title: "Verification Failed",
+          description: data.error,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      toast({
+        title: "Manual Verification Successful",
+        description: "Document has been manually verified"
+      });
+      
+      // Call the original onVerify function with 'manual' method
+      originalOnVerify('manual');
+    } catch (err: any) {
+      console.error("Exception in handleManualVerify:", err);
+      toast({
+        title: "Verification Failed",
+        description: err.message || "Failed to perform manual verification",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleCancel = () => {
