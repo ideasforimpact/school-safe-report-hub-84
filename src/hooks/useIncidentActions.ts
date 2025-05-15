@@ -1,9 +1,10 @@
 
 import { useState } from 'react';
-import { Incident, Activity, User, UserRef } from '@/types/incident';
+import { Incident, Activity, User, UserRef, Document } from '@/types/incident';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { v4 as uuidv4 } from 'uuid';
+import { Json } from '@/integrations/supabase/types';
 
 interface IncidentData extends Omit<Incident, 'id' | 'status' | 'createdAt' | 'updatedAt' | 'ticketId'> {
   typeId?: string;
@@ -65,7 +66,7 @@ export function useIncidentActions(
 
       // Create incident record in the database
       // Match exactly the column names in the incidents table and ensure they are valid
-      const dbRecord = {
+      const dbRecord: any = {
         category_id: incidentData.categoryId,
         description: incidentData.description,
         // Convert Date object to ISO string format for PostgreSQL timestamp compatibility
@@ -75,7 +76,8 @@ export function useIncidentActions(
         status_id: statusId,
         reported_by_id: incidentData.reportedBy.id,
         ticket_id: ticketId,
-        documents: incidentData.documents || [],
+        // Convert Document[] to Json compatible format
+        documents: incidentData.documents ? JSON.parse(JSON.stringify(incidentData.documents)) : [],
         owner_id: incidentData.owner?.id || null,
       };
       
