@@ -1,12 +1,7 @@
 
 import { useState, useEffect } from 'react';
+import { SubcategoryItem } from '@/contexts/types';
 import { supabase } from '@/integrations/supabase/client';
-
-export interface SubcategoryItem {
-  id: string;
-  name: string;
-  categoryId?: string;
-}
 
 export const useSubcategories = (categoryId: string) => {
   const [availableSubcategories, setAvailableSubcategories] = useState<SubcategoryItem[]>([]);
@@ -19,9 +14,9 @@ export const useSubcategories = (categoryId: string) => {
         return;
       }
 
+      setLoading(true);
       try {
-        setLoading(true);
-        
+        // Fetch subcategories from Supabase
         const { data, error } = await supabase
           .from('incident_subcategories')
           .select('id, name')
@@ -30,15 +25,18 @@ export const useSubcategories = (categoryId: string) => {
           .order('name');
           
         if (error) {
-          throw error;
+          console.error('Error fetching subcategories:', error);
+          return;
         }
         
         if (data) {
-          setAvailableSubcategories(data);
+          setAvailableSubcategories(data.map(subcat => ({
+            id: subcat.id,
+            name: subcat.name
+          })));
         }
-      } catch (error) {
-        console.error('Error fetching subcategories:', error);
-        setAvailableSubcategories([]);
+      } catch (err) {
+        console.error('Error fetching subcategories:', err);
       } finally {
         setLoading(false);
       }
@@ -47,5 +45,8 @@ export const useSubcategories = (categoryId: string) => {
     fetchSubcategories();
   }, [categoryId]);
 
-  return { availableSubcategories, loading };
+  return {
+    availableSubcategories,
+    loading
+  };
 };

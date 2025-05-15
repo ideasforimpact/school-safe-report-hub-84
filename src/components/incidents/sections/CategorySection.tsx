@@ -1,7 +1,5 @@
 
 import React from 'react';
-import { useIncidentCategories } from '@/hooks/useIncidentCategories';
-import { useSubcategories } from '@/hooks/useSubcategories';
 import { 
   Select,
   SelectContent,
@@ -9,7 +7,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2 } from 'lucide-react';
+import { useIncidentCategories } from '@/hooks/useIncidentCategories';
+import { useSubcategories } from '@/hooks/useSubcategories';
 
 interface CategorySectionProps {
   categoryId: string;
@@ -22,46 +21,27 @@ const CategorySection: React.FC<CategorySectionProps> = ({
   categoryId,
   subcategory,
   onSelectChange,
-  errors = {}
+  errors = {},
 }) => {
-  const { categories, loading: categoriesLoading } = useIncidentCategories();
-  const { 
-    availableSubcategories,
-    loading: subcategoriesLoading
-  } = useSubcategories(categoryId);
-
-  const handleCategoryChange = (value: string) => {
-    onSelectChange('categoryId', value);
-    // Reset subcategory when category changes
-    onSelectChange('subcategory', '');
-  };
-
-  const handleSubcategoryChange = (value: string) => {
-    onSelectChange('subcategory', value);
-  };
+  const { categories, loading: loadingCategories } = useIncidentCategories();
+  const { availableSubcategories, loading: loadingSubcategories } = useSubcategories(categoryId);
 
   return (
     <div>
-      <h3 className="text-lg font-medium mb-3">Category</h3>
-      <div className="space-y-4">
+      <h3 className="text-lg font-medium mb-3">Categorization</h3>
+      <div className="grid grid-cols-1 gap-4">
         <div className="space-y-2">
           <label htmlFor="categoryId" className="text-sm font-medium block">
-            Category <span className="text-red-500">*</span>
+            Category
+            {errors.categoryId && <span className="text-red-500">*</span>}
           </label>
           <Select 
             value={categoryId}
-            onValueChange={handleCategoryChange}
-            disabled={categoriesLoading}
+            onValueChange={(value) => onSelectChange('categoryId', value)}
+            disabled={loadingCategories}
           >
-            <SelectTrigger className={errors.categoryId ? "border-red-500" : ""}>
-              {categoriesLoading ? (
-                <div className="flex items-center">
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  <span>Loading categories...</span>
-                </div>
-              ) : (
-                <SelectValue placeholder="Select category" />
-              )}
+            <SelectTrigger className={`${errors.categoryId ? "border-red-500" : ""}`}>
+              <SelectValue placeholder={loadingCategories ? "Loading..." : "Select category"} />
             </SelectTrigger>
             <SelectContent>
               {categories.map(category => (
@@ -75,30 +55,28 @@ const CategorySection: React.FC<CategorySectionProps> = ({
             <p className="text-red-500 text-sm mt-1">{errors.categoryId}</p>
           )}
         </div>
-        
+
         <div className="space-y-2">
           <label htmlFor="subcategory" className="text-sm font-medium block">
-            Subcategory <span className="text-red-500">*</span>
+            Subcategory
+            {errors.subcategory && <span className="text-red-500">*</span>}
           </label>
           <Select 
             value={subcategory}
-            onValueChange={handleSubcategoryChange}
-            disabled={!categoryId || subcategoriesLoading}
+            onValueChange={(value) => onSelectChange('subcategory', value)}
+            disabled={loadingSubcategories || !categoryId}
           >
-            <SelectTrigger className={errors.subcategory ? "border-red-500" : ""}>
-              {subcategoriesLoading ? (
-                <div className="flex items-center">
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  <span>Loading subcategories...</span>
-                </div>
-              ) : (
-                <SelectValue placeholder="Select subcategory" />
-              )}
+            <SelectTrigger className={`${errors.subcategory ? "border-red-500" : ""}`}>
+              <SelectValue placeholder={
+                loadingSubcategories ? "Loading..." : 
+                !categoryId ? "Select a category first" : 
+                "Select subcategory"
+              } />
             </SelectTrigger>
             <SelectContent>
-              {availableSubcategories.map(sub => (
-                <SelectItem key={sub.id} value={sub.name}>
-                  {sub.name}
+              {availableSubcategories.map(subcat => (
+                <SelectItem key={subcat.id} value={subcat.name}>
+                  {subcat.name}
                 </SelectItem>
               ))}
             </SelectContent>

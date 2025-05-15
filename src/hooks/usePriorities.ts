@@ -38,8 +38,8 @@ export const usePriorities = () => {
           setPriorities(data.map(priority => ({
             id: priority.name,
             name: priority.name,
-            color: priority.color,
-            weight: priority.weight
+            color: priority.color || undefined,
+            weight: priority.weight || undefined
           })));
         }
       } catch (error) {

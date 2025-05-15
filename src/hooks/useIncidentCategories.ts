@@ -1,45 +1,99 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-
-export interface CategoryItem {
-  id: string;
-  name: string;
-}
+import { ConfigItem, SubcategoryItem } from '@/contexts/types';
+import { useCategoryManagement } from '@/hooks/config/useCategoryManagement';
 
 export const useIncidentCategories = () => {
-  const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [initialCategories, setInitialCategories] = useState<ConfigItem[]>([]);
+  const [initialSubcategories, setInitialSubcategories] = useState<Record<string, SubcategoryItem[]>>({});
+  
+  const {
+    categories,
+    subcategoryMappings,
+    addCategory,
+    updateCategory,
+    deleteCategory,
+    addSubcategory,
+    updateSubcategory,
+    deleteSubcategory
+  } = useCategoryManagement(initialCategories, initialSubcategories);
 
   useEffect(() => {
-    const fetchCategories = async () => {
+    async function fetchCategories() {
       try {
         setLoading(true);
         
-        const { data, error } = await supabase
+        // Fetch categories from Supabase
+        const { data: categoriesData, error: categoriesError } = await supabase
           .from('incident_categories')
-          .select('id, name')
-          .eq('is_active', true)
+          .select('id, name, description')
           .order('name');
           
-        if (error) {
-          throw error;
+        if (categoriesError) {
+          console.error('Error fetching categories:', categoriesError);
+          return;
         }
         
-        if (data) {
-          setCategories(data);
+        if (categoriesData) {
+          const fetchedCategories = categoriesData.map((cat) => ({
+            id: cat.id,
+            name: cat.name
+          }));
+          
+          setInitialCategories(fetchedCategories);
+          
+          // Fetch subcategories for all categories
+          const { data: subcategoriesData, error: subcategoriesError } = await supabase
+            .from('incident_subcategories')
+            .select('id, name, category_id')
+            .order('name');
+            
+          if (subcategoriesError) {
+            console.error('Error fetching subcategories:', subcategoriesError);
+            return;
+          }
+          
+          if (subcategoriesData) {
+            // Group subcategories by category_id
+            const subcatMap: Record<string, SubcategoryItem[]> = {};
+            
+            subcategoriesData.forEach((subcat) => {
+              if (!subcat.category_id) return;
+              
+              if (!subcatMap[subcat.category_id]) {
+                subcatMap[subcat.category_id] = [];
+              }
+              
+              subcatMap[subcat.category_id].push({
+                id: subcat.id,
+                name: subcat.name
+              });
+            });
+            
+            setInitialSubcategories(subcatMap);
+          }
         }
       } catch (error) {
-        console.error('Error fetching categories:', error);
-        // Fallback to empty categories if fetch fails
-        setCategories([]);
+        console.error('Exception in useIncidentCategories:', error);
       } finally {
         setLoading(false);
       }
-    };
-
+    }
+    
     fetchCategories();
   }, []);
 
-  return { categories, loading };
+  return {
+    categories,
+    subcategoryMappings,
+    loading,
+    addCategory,
+    updateCategory,
+    deleteCategory,
+    addSubcategory,
+    updateSubcategory,
+    deleteSubcategory
+  };
 };

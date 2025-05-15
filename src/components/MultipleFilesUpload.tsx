@@ -2,7 +2,7 @@
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { FilePlus } from 'lucide-react';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 import { FileItem } from '@/types/fileTypes';
 import { formatFileSize } from '@/utils/fileUtils';
 import FileList from './file/FileList';
@@ -46,7 +46,6 @@ const MultipleFilesUpload = ({
     // Check if adding new files would exceed the maximum
     if (uploadedFiles.length + selectedFiles.length > maxFiles) {
       toast({
-        title: "File limit exceeded",
         description: `You can upload a maximum of ${maxFiles} files.`,
         variant: "destructive"
       });
@@ -60,7 +59,6 @@ const MultipleFilesUpload = ({
     // Validate file size (max 25MB)
     if (file.size > 25 * 1024 * 1024) {
       toast({
-        title: "File too large",
         description: `File "${file.name}" exceeds the 25MB size limit.`,
         variant: "destructive"
       });
@@ -90,14 +88,12 @@ const MultipleFilesUpload = ({
       }
       
       toast({
-        title: "File added",
         description: `File "${file.name}" added successfully`
       });
     };
     
     reader.onerror = () => {
       toast({
-        title: "Error",
         description: `Error reading file "${file.name}".`,
         variant: "destructive"
       });
@@ -119,7 +115,6 @@ const MultipleFilesUpload = ({
     onFilesChange(updatedFiles);
     if (fileToRemove) {
       toast({
-        title: "File removed",
         description: `File "${fileToRemove.name}" removed`
       });
     }
@@ -181,7 +176,7 @@ const MultipleFilesUpload = ({
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
         <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
-            <DialogTitle className="text-lg">{previewFile?.name}</DialogTitle>
+            <DialogTitle>{previewFile?.name}</DialogTitle>
             <DialogDescription>
               {previewFile ? formatFileSize(previewFile.size) : ''}
             </DialogDescription>

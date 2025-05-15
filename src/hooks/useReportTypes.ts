@@ -2,13 +2,14 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-export interface ReportTypeItem {
+interface ReportType {
   id: string;
   name: string;
+  description?: string;
 }
 
 export const useReportTypes = () => {
-  const [reportTypes, setReportTypes] = useState<ReportTypeItem[]>([
+  const [reportTypes, setReportTypes] = useState<ReportType[]>([
     { id: 'Incident', name: 'Incident' },
     { id: 'Near Miss', name: 'Near Miss' },
     { id: 'Unsafe Condition', name: 'Unsafe Condition' }
@@ -22,7 +23,7 @@ export const useReportTypes = () => {
         
         const { data, error } = await supabase
           .from('incident_report_types')
-          .select('id, name')
+          .select('id, name, description')
           .eq('is_active', true)
           .order('name');
           
@@ -31,11 +32,21 @@ export const useReportTypes = () => {
         }
         
         if (data && data.length > 0) {
-          setReportTypes(data);
+          // Map the data from the database
+          setReportTypes(data.map(type => ({
+            id: type.id,
+            name: type.name,
+            description: type.description || undefined
+          })));
         }
       } catch (error) {
         console.error('Error fetching report types:', error);
-        // Use fallback values if fetch fails
+        // Fallback to default types if fetch fails
+        setReportTypes([
+          { id: 'Incident', name: 'Incident' },
+          { id: 'Near Miss', name: 'Near Miss' },
+          { id: 'Unsafe Condition', name: 'Unsafe Condition' }
+        ]);
       } finally {
         setLoading(false);
       }

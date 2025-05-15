@@ -1,6 +1,5 @@
 
-import React from 'react';
-import { useLocationOptions } from '@/hooks/incident-form/useLocationOptions';
+import React, { useEffect } from 'react';
 import { 
   Select,
   SelectContent,
@@ -8,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2 } from 'lucide-react';
+import { useLocationOptions } from '@/hooks/useLocationOptions';
 
 interface LocationSectionProps {
   locationId: string;
@@ -21,51 +20,31 @@ const LocationSection: React.FC<LocationSectionProps> = ({
   locationId,
   facilityId,
   onSelectChange,
-  errors = {}
+  errors = {},
 }) => {
-  const { 
-    locationOptions, 
-    facilityOptions, 
-    loading: locationsLoading 
-  } = useLocationOptions(locationId);
-
-  const handleLocationChange = (value: string) => {
-    onSelectChange('locationId', value);
-    // Reset facility when location changes
-    onSelectChange('facilityId', '');
-  };
-
-  const handleFacilityChange = (value: string) => {
-    onSelectChange('facilityId', value);
-  };
+  const { locationOptions, facilityOptions, loading } = useLocationOptions(locationId);
 
   return (
     <div>
       <h3 className="text-lg font-medium mb-3">Location</h3>
-      <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-4">
         <div className="space-y-2">
           <label htmlFor="locationId" className="text-sm font-medium block">
-            Location <span className="text-red-500">*</span>
+            Campus/Location
+            {errors.locationId && <span className="text-red-500">*</span>}
           </label>
           <Select 
             value={locationId}
-            onValueChange={handleLocationChange}
-            disabled={locationsLoading}
+            onValueChange={(value) => onSelectChange('locationId', value)}
+            disabled={loading}
           >
-            <SelectTrigger className={errors.locationId ? "border-red-500" : ""}>
-              {locationsLoading ? (
-                <div className="flex items-center">
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  <span>Loading locations...</span>
-                </div>
-              ) : (
-                <SelectValue placeholder="Select location" />
-              )}
+            <SelectTrigger className={`${errors.locationId ? "border-red-500" : ""}`}>
+              <SelectValue placeholder={loading ? "Loading..." : "Select location"} />
             </SelectTrigger>
             <SelectContent>
               {locationOptions.map(location => (
-                <SelectItem key={location.value} value={location.value}>
-                  {location.label}
+                <SelectItem key={location.id} value={location.id}>
+                  {location.name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -74,27 +53,35 @@ const LocationSection: React.FC<LocationSectionProps> = ({
             <p className="text-red-500 text-sm mt-1">{errors.locationId}</p>
           )}
         </div>
-        
+
         <div className="space-y-2">
           <label htmlFor="facilityId" className="text-sm font-medium block">
             Facility
+            {errors.facilityId && <span className="text-red-500">*</span>}
           </label>
           <Select 
             value={facilityId}
-            onValueChange={handleFacilityChange}
-            disabled={!locationId || facilityOptions.length === 0}
+            onValueChange={(value) => onSelectChange('facilityId', value)}
+            disabled={loading || !locationId}
           >
-            <SelectTrigger>
-              <SelectValue placeholder="Select facility" />
+            <SelectTrigger className={`${errors.facilityId ? "border-red-500" : ""}`}>
+              <SelectValue placeholder={
+                loading ? "Loading..." : 
+                !locationId ? "Select a location first" : 
+                "Select facility"
+              } />
             </SelectTrigger>
             <SelectContent>
               {facilityOptions.map(facility => (
-                <SelectItem key={facility.value} value={facility.value}>
-                  {facility.label}
+                <SelectItem key={facility.id} value={facility.id}>
+                  {facility.name}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+          {errors.facilityId && (
+            <p className="text-red-500 text-sm mt-1">{errors.facilityId}</p>
+          )}
         </div>
       </div>
     </div>
