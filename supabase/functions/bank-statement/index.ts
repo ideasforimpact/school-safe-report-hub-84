@@ -29,19 +29,11 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    // Set up environment-specific configuration
-    const environment = Deno.env.get("ENVIRONMENT") || "development";
+    // Use production values directly
+    const baseUrl = "https://kyc-api.surepass.io";
+    const apiKey = Deno.env.get("SUREPASS_PRODUCTION_API_KEY") || "";
     
-    // Default base URL and API key based on environment
-    let baseUrl = environment === "production" 
-      ? Deno.env.get("SUREPASS_PRODUCTION_BASE_URL") || "https://kyc-api.surepass.io"
-      : "https://sandbox.surepass.io";
-    
-    let apiKey = environment === "production" 
-      ? Deno.env.get("SUREPASS_PRODUCTION_API_KEY") 
-      : Deno.env.get("SUREPASS_SANDBOX_API_KEY");
-    
-    console.log(`Bank Statement Verification: Using ${environment} environment with base URL: ${baseUrl}`);
+    console.log(`Bank Statement Verification: Using production environment with base URL: ${baseUrl}`);
     
     // First, fetch document status IDs for governance, manual and rejected statuses
     const { data: governanceStatus, error: governanceError } = await supabase
