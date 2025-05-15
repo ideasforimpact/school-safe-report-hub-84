@@ -22,6 +22,11 @@ const DrivingLicenseDetailsDialog: React.FC<DrivingLicenseDetailsDialogProps> = 
   const data = licenseDetails?.data || {};
   const isSuccessful = licenseDetails?.success && licenseDetails?.status_code === 200;
   
+  // For debugging
+  console.log('DrivingLicenseDetailsDialog - licenseDetails:', licenseDetails);
+  console.log('DrivingLicenseDetailsDialog - data:', data);
+  console.log('DrivingLicenseDetailsDialog - isSuccessful:', isSuccessful);
+  
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl">
@@ -35,12 +40,12 @@ const DrivingLicenseDetailsDialog: React.FC<DrivingLicenseDetailsDialogProps> = 
             )}
           </DialogTitle>
           <DialogDescription>
-            Details retrieved from government database for driving license {data?.license_number}
+            Details retrieved from government database for driving license {data?.license_number || 'verification'}
           </DialogDescription>
         </DialogHeader>
         
         <ScrollArea className="h-[400px] rounded-md border">
-          {isSuccessful ? (
+          {isSuccessful || Object.keys(data).length > 0 ? (
             <div className="p-4">
               <Table>
                 <TableHeader>

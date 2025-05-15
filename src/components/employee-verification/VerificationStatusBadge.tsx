@@ -119,6 +119,13 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
     log.response?.success === true &&
     log.response?.status_code === 200
   );
+
+  // If no specific log found, try to find any log with driving license data
+  const fallbackDrivingLicenseLog = !drivingLicenseVerificationLog && documentType === 'driving_license' && documentLogs ? 
+    documentLogs.find(log => 
+      log.response?.data && 
+      (log.action.includes('driving') || log.action.includes('license'))
+    ) : null;
   
   return (
     <>
@@ -159,11 +166,11 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
       )}
 
       {/* Display Driving License Details Dialog */}
-      {dialogOpen && drivingLicenseVerificationLog && documentType === 'driving_license' && (
+      {dialogOpen && documentType === 'driving_license' && (
         <DrivingLicenseDetailsDialog
           open={dialogOpen}
           onOpenChange={setDialogOpen}
-          licenseDetails={drivingLicenseVerificationLog.response}
+          licenseDetails={(drivingLicenseVerificationLog || fallbackDrivingLicenseLog)?.response}
           documentId={documentId}
         />
       )}
