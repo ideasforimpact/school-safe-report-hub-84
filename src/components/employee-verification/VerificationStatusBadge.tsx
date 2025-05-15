@@ -1,76 +1,102 @@
 
-import React from 'react';
-import { Badge } from '@/components/ui/badge';
-import { CheckCircle, AlertCircle, Clock } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ShieldCheck, AlertTriangle, Clock, Info } from "lucide-react";
+
+type Status = 'pending' | 'verified' | 'failed';
 
 interface VerificationStatusBadgeProps {
-  status: 'verified' | 'failed' | 'pending';
-  className?: string;
+  status: Status;
   isGovernance?: boolean;
-  documentStatusName?: string;
+  isManual?: boolean;
+  documentStatusName?: string; 
   onClick?: () => void;
 }
 
-const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({ 
-  status, 
-  className, 
+const VerificationStatusBadge = ({ 
+  status,
   isGovernance = false,
+  isManual = false,
   documentStatusName,
   onClick
-}) => {
-  const getStatusConfig = () => {
-    switch (status) {
-      case 'verified':
-        return {
-          icon: CheckCircle,
-          text: documentStatusName ? `Verified/${documentStatusName}` : 'Verified',
-          variant: 'success',
-          bgColor: 'bg-green-100 text-green-800 border-green-200'
-        };
-      case 'failed':
-        return {
-          icon: AlertCircle,
-          text: 'Failed',
-          variant: 'destructive',
-          bgColor: 'bg-red-100 text-red-800 border-red-200'
-        };
-      case 'pending':
-        return {
-          icon: Clock,
-          text: 'Pending',
-          variant: 'default',
-          bgColor: 'bg-yellow-100 text-yellow-800 border-yellow-200'
-        };
-      default:
-        return {
-          icon: Clock,
-          text: 'Unknown',
-          variant: 'default',
-          bgColor: 'bg-gray-100 text-gray-800 border-gray-200'
-        };
+}: VerificationStatusBadgeProps) => {
+  if (status === 'verified') {
+    const isClickable = typeof onClick === 'function';
+    
+    if (isGovernance) {
+      const BadgeComponent = isClickable ? Button : Badge;
+      
+      return (
+        <BadgeComponent
+          variant={isClickable ? "ghost" : "outline"}
+          size={isClickable ? "sm" : undefined}
+          className={`
+            bg-green-50 hover:bg-green-100 text-green-700 border-green-200
+            ${isClickable ? 'cursor-pointer px-2 py-1' : ''}
+          `}
+          onClick={onClick}
+        >
+          <ShieldCheck className="h-3.5 w-3.5 mr-1" />
+          Verified (Governance)
+        </BadgeComponent>
+      );
+    } 
+    
+    if (isManual) {
+      return (
+        <Badge
+          variant="outline"
+          className="bg-purple-50 hover:bg-purple-50 text-purple-700 border-purple-200"
+        >
+          <Info className="h-3.5 w-3.5 mr-1" />
+          Manually Verified
+        </Badge>
+      );
     }
-  };
-
-  const { icon: Icon, text, bgColor } = getStatusConfig();
-
-  const isClickable = !!onClick;
+    
+    if (documentStatusName) {
+      return (
+        <Badge
+          variant="outline"
+          className="bg-green-50 hover:bg-green-50 text-green-700 border-green-200"
+        >
+          <ShieldCheck className="h-3.5 w-3.5 mr-1" />
+          Verified ({documentStatusName})
+        </Badge>
+      );
+    }
+    
+    return (
+      <Badge
+        variant="outline"
+        className="bg-green-50 hover:bg-green-50 text-green-700 border-green-200"
+      >
+        <ShieldCheck className="h-3.5 w-3.5 mr-1" />
+        Verified
+      </Badge>
+    );
+  }
   
+  if (status === 'failed') {
+    return (
+      <Badge
+        variant="outline"
+        className="bg-red-50 hover:bg-red-50 text-red-700 border-red-200"
+      >
+        <AlertTriangle className="h-3.5 w-3.5 mr-1" />
+        Failed
+      </Badge>
+    );
+  }
+  
+  // Default is 'pending'
   return (
-    <Badge 
-      className={cn(
-        'gap-1 px-2 py-1 font-medium text-xs', 
-        bgColor, 
-        className,
-        isClickable && 'cursor-pointer hover:opacity-80 transition-opacity hover:bg-opacity-80'
-      )}
-      onClick={onClick}
+    <Badge
+      variant="outline"
+      className="bg-yellow-50 hover:bg-yellow-50 text-yellow-700 border-yellow-200"
     >
-      <Icon className="h-3.5 w-3.5" />
-      {text}
-      {isClickable && (
-        <span className="sr-only">(click to view details)</span>
-      )}
+      <Clock className="h-3.5 w-3.5 mr-1" />
+      Pending
     </Badge>
   );
 };

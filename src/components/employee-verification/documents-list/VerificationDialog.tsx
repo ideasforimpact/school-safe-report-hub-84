@@ -288,6 +288,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     }
   };
 
+  const handleManualVerify = async () => {
+    onVerify('manual');
+  };
+
   const handleCancel = () => {
     setShowOtpInput(false);
     setOtp("");
@@ -345,7 +349,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
             <Button 
               variant="outline" 
               className="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200 justify-start"
-              onClick={() => onVerify('manual')}
+              onClick={handleManualVerify}
               disabled={isVerifying || isRequestingOtp}
             >
               <ShieldCheck className="h-4 w-4 mr-2" />

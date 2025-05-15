@@ -147,7 +147,10 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
             verificationStatus: status, 
             verificationDate: new Date().toISOString(),
             verificationNotes: notes || doc.verificationNotes,
-            updatedAt: new Date().toISOString()
+            updatedAt: new Date().toISOString(),
+            documentStatusId: data?.documentStatusId || doc.documentStatusId,
+            documentStatusName: data?.documentStatusName || doc.documentStatusName,
+            employee_docs_log: data?.employee_docs_log || doc.employee_docs_log || []
           };
         }
         return doc;
@@ -156,6 +159,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
       // Update employee status based on all documents
       await updateEmployeeStatus(employeeId, data.status || status);
       
+      return data;
     } catch (err) {
       console.error('Error in verifyDocument:', err);
       throw err;

@@ -24,11 +24,13 @@ const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({ document })
     if (document.documentStatusId && documentStatuses.length > 0) {
       const status = documentStatuses.find(s => s.id === document.documentStatusId);
       setStatusName(status?.name || null);
+    } else {
+      setStatusName(document.documentStatusName || null);
     }
-  }, [document.documentStatusId, documentStatuses]);
+  }, [document.documentStatusId, document.documentStatusName, documentStatuses]);
 
   useEffect(() => {
-    if (document.employee_docs_log && Array.isArray(document.employee_docs_log)) {
+    if (document.employee_docs_log && Array.isArray(document.employee_docs_log) && document.employee_docs_log.length > 0) {
       // Find the most recent successful verification log
       const verificationLog = document.employee_docs_log
         .filter(log => log.action === 'verify_aadhar_otp' && log.response?.success === true)
@@ -41,7 +43,7 @@ const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({ document })
   }, [document]);
 
   const handleClick = () => {
-    // Only open dialog if we have verification data
+    // Only open dialog if we have verification data and it's governance type
     if (document.verificationStatus === 'verified' && 
         statusName === 'governance' && 
         document.employee_docs_log && 
@@ -60,6 +62,7 @@ const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({ document })
   };
   
   const isGovernanceVerified = document.verificationStatus === 'verified' && statusName === 'governance';
+  const isManualVerified = document.verificationStatus === 'verified' && statusName === 'manual';
   const hasLogs = !!document.employee_docs_log && document.employee_docs_log.length > 0;
 
   return (
@@ -67,15 +70,18 @@ const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({ document })
       <VerificationStatusBadge 
         status={document.verificationStatus} 
         isGovernance={isGovernanceVerified}
+        isManual={isManualVerified}
         documentStatusName={document.verificationStatus === 'verified' && statusName ? statusName : undefined}
         onClick={(isGovernanceVerified && hasLogs) ? handleClick : undefined}
       />
 
-      <AadharDetailsDialog 
-        open={dialogOpen} 
-        onOpenChange={setDialogOpen} 
-        aadharDetails={aadharDetails || document.employee_docs_log?.[0]}
-      />
+      {isGovernanceVerified && hasLogs && (
+        <AadharDetailsDialog 
+          open={dialogOpen} 
+          onOpenChange={setDialogOpen} 
+          aadharDetails={aadharDetails || document.employee_docs_log?.[0]}
+        />
+      )}
     </>
   );
 };
