@@ -8,6 +8,7 @@ import LocationSection from './sections/LocationSection';
 import DateTimeSection from './sections/DateTimeSection';
 import DescriptionSection from './sections/DescriptionSection';
 import AssignmentSection from './sections/AssignmentSection';
+import { useIncidentFormData } from '@/hooks/useIncidentFormData';
 
 interface ConfigItem {
   id: string;
@@ -48,6 +49,9 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
   users,
   isLoadingUsers = false
 }) => {
+  // Fetch data from database tables
+  const { formData: dbFormData, loading } = useIncidentFormData();
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       {/* Incident Type and Priority Section */}
@@ -56,6 +60,9 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
           type={formData.type}
           priority={formData.priority}
           onSelectChange={onSelectChange}
+          reportTypes={dbFormData.reportTypes}
+          priorities={dbFormData.priorities}
+          loading={loading}
         />
       </div>
 
@@ -65,6 +72,9 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
           categoryId={formData.categoryId}
           subcategory={formData.subcategory}
           onSelectChange={onSelectChange}
+          categories={dbFormData.categories}
+          subcategories={dbFormData.subcategories}
+          loading={loading}
         />
       </div>
 
@@ -74,6 +84,9 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
           locationId={formData.locationId}
           facilityId={formData.facilityId}
           onSelectChange={onSelectChange}
+          locations={dbFormData.locations}
+          facilities={dbFormData.facilities}
+          loading={loading}
         />
       </div>
 

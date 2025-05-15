@@ -1,4 +1,5 @@
-import React from 'react';
+
+import React, { useEffect, useState } from 'react';
 import {
   Select,
   SelectContent,
@@ -6,37 +7,75 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Loader2 } from 'lucide-react';
 
 interface LocationSectionProps {
   locationId: string;
   facilityId: string;
   onSelectChange: (name: string, value: string) => void;
+  locations?: { id: string; name: string; }[];
+  facilities?: { id: string; name: string; campus_id: string }[];
+  loading?: boolean;
 }
 
 const LocationSection: React.FC<LocationSectionProps> = ({
   locationId,
   facilityId,
-  onSelectChange
+  onSelectChange,
+  locations = [],
+  facilities = [],
+  loading = false
 }) => {
+  const [availableFacilities, setAvailableFacilities] = useState<{id: string, name: string}[]>([]);
+
+  // Filter facilities when location changes
+  useEffect(() => {
+    if (locationId) {
+      const filtered = facilities.filter(facility => facility.campus_id === locationId);
+      setAvailableFacilities(filtered);
+      
+      // Reset facility if current selection isn't available in the new list
+      const currentFacilityExists = filtered.some(facility => facility.id === facilityId);
+      if (facilityId && !currentFacilityExists) {
+        onSelectChange('facilityId', '');
+      }
+    } else {
+      setAvailableFacilities([]);
+    }
+  }, [locationId, facilities, facilityId, onSelectChange]);
+
   return (
     <div className="space-y-4 text-left">
       <div>
         <label htmlFor="locationId" className="text-sm font-medium block">
-          Location <span className="text-red-500">*</span>
+          Where it Happened <span className="text-red-500">*</span>
         </label>
         <Select 
           value={locationId} 
           onValueChange={(value) => onSelectChange('locationId', value)}
           required
+          disabled={loading}
         >
           <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select location" />
+            {loading ? (
+              <div className="flex items-center">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <span>Loading...</span>
+              </div>
+            ) : (
+              <SelectValue placeholder="Select location" />
+            )}
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="1">Main Campus</SelectItem>
-            <SelectItem value="2">North Campus</SelectItem>
-            <SelectItem value="3">South Campus</SelectItem>
-            <SelectItem value="4">West Campus</SelectItem>
+            {locations.length === 0 ? (
+              <SelectItem disabled value="">No locations available</SelectItem>
+            ) : (
+              locations.map(location => (
+                <SelectItem key={location.id} value={location.id}>
+                  {location.name}
+                </SelectItem>
+              ))
+            )}
           </SelectContent>
         </Select>
       </div>
@@ -48,31 +87,28 @@ const LocationSection: React.FC<LocationSectionProps> = ({
         <Select 
           value={facilityId} 
           onValueChange={(value) => onSelectChange('facilityId', value)}
-          disabled={!locationId}
           required
+          disabled={!locationId || availableFacilities.length === 0 || loading}
         >
           <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select facility" />
+            {loading ? (
+              <div className="flex items-center">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <span>Loading...</span>
+              </div>
+            ) : (
+              <SelectValue placeholder="Select facility" />
+            )}
           </SelectTrigger>
           <SelectContent>
-            {locationId === '1' && (
-              <>
-                <SelectItem value="101">Classroom Building</SelectItem>
-                <SelectItem value="102">Administration</SelectItem>
-                <SelectItem value="103">Cafeteria</SelectItem>
-                <SelectItem value="104">Gymnasium</SelectItem>
-              </>
-            )}
-            {locationId === '2' && (
-              <>
-                <SelectItem value="201">Science Lab</SelectItem>
-                <SelectItem value="202">Library</SelectItem>
-                <SelectItem value="203">Auditorium</SelectItem>
-              </>
-            )}
-            {/* Add other facilities based on selected location */}
-            {!['1', '2'].includes(locationId) && locationId && (
-              <SelectItem value="general">Main Building</SelectItem>
+            {availableFacilities.length === 0 ? (
+              <SelectItem disabled value="">No facilities available</SelectItem>
+            ) : (
+              availableFacilities.map(facility => (
+                <SelectItem key={facility.id} value={facility.id}>
+                  {facility.name}
+                </SelectItem>
+              ))
             )}
           </SelectContent>
         </Select>
