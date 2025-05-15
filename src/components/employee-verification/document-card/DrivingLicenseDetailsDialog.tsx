@@ -58,7 +58,7 @@ const DrivingLicenseDetailsDialog: React.FC<DrivingLicenseDetailsDialogProps> = 
             )}
           </DialogTitle>
           <DialogDescription>
-            Details retrieved from government database for driving license {data?.license_number || 'verification'}
+            Details retrieved from government database for driving license {data?.license_number || licenseDetails?.license_number || 'verification'}
           </DialogDescription>
         </DialogHeader>
         

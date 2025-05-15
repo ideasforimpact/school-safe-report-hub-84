@@ -45,14 +45,23 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
   const [selectedFileName, setSelectedFileName] = useState<string>('');
   const [documentNumberHelp, setDocumentNumberHelp] = useState<string>('For security, only the last 2 digits will be visible after submission');
   const [showDateOfBirth, setShowDateOfBirth] = useState(false);
+  const [isBankAccount, setIsBankAccount] = useState(false);
   const { documentTypes } = useEmployeeVerification();
   
-  // Detect if selected document type is driving license
+  // Detect document type and set appropriate flags
   useEffect(() => {
     const docType = documentTypes.find(type => type.id === selectedTypeId);
     const isDrivingLicense = docType?.name === 'driving_license' || selectedTypeId === '4';
+    const isBankAccountDoc = docType?.name === 'bank_account' || selectedTypeId === '3';
+    
     setShowDateOfBirth(isDrivingLicense);
-  }, [selectedTypeId, documentTypes]);
+    setIsBankAccount(isBankAccountDoc);
+    
+    // Set defaults based on document type
+    if (isBankAccountDoc) {
+      form.setValue('documentNumber', 'bank-statement');
+    }
+  }, [selectedTypeId, documentTypes, form]);
 
   const documentPlaceholder = getDocumentPlaceholder(selectedTypeId);
 
@@ -87,7 +96,17 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
     onSubmit(uploadData);
   };
 
-  const handleFileChange = (base64: string, filename: string) => {
+  const handleFileChange = (base64: string, filename: string, fileType?: string) => {
+    // Validate file type for bank account (PDF only)
+    if (isBankAccount && fileType && !fileType.includes('pdf')) {
+      toast({
+        title: 'Invalid file format',
+        description: 'Bank statements must be in PDF format only',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     form.setValue('documentImage', base64);
     setSelectedFileName(filename);
     onFileUploaded(base64);
@@ -98,27 +117,30 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
         <input type="hidden" {...form.register('employeeId')} value={employeeId} />
         
-        <FormField
-          control={form.control}
-          name="documentNumber"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>
-                {documentPlaceholder || "Document Number"} <span className="text-red-500">*</span>
-              </FormLabel>
-              <FormControl>
-                <Input 
-                  placeholder={`Enter ${documentPlaceholder || "document number"}`} 
-                  {...field} 
-                />
-              </FormControl>
-              {documentNumberHelp && (
-                <p className="text-xs text-gray-500 mt-1">{documentNumberHelp}</p>
-              )}
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        {/* Only show document number field if not a bank account */}
+        {!isBankAccount && (
+          <FormField
+            control={form.control}
+            name="documentNumber"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  {documentPlaceholder || "Document Number"} <span className="text-red-500">*</span>
+                </FormLabel>
+                <FormControl>
+                  <Input 
+                    placeholder={`Enter ${documentPlaceholder || "document number"}`} 
+                    {...field} 
+                  />
+                </FormControl>
+                {documentNumberHelp && (
+                  <p className="text-xs text-gray-500 mt-1">{documentNumberHelp}</p>
+                )}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        )}
         
         {/* Date of Birth field for driving license */}
         {showDateOfBirth && (
@@ -148,14 +170,18 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
           name="documentImage"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Document Image <span className="text-red-500">*</span></FormLabel>
+              <FormLabel>
+                {isBankAccount ? 'Bank Statement (PDF only)' : 'Document Image'} <span className="text-red-500">*</span>
+              </FormLabel>
               <FormControl>
                 <div className="space-y-2">
                   {!selectedFileName ? (
                     <DocumentFileUploader 
                       files={files}
                       setFiles={() => {}} // Handled by parent
-                      onFileUploaded={(base64, file) => handleFileChange(base64, file?.name || '')}
+                      onFileUploaded={(base64, file) => handleFileChange(base64, file?.name || '', file?.type)}
+                      acceptedFileTypes={isBankAccount ? 'application/pdf' : 'image/*,.pdf'}
+                      documentType={isBankAccount ? 'bank_account' : undefined}
                     />
                   ) : (
                     <div className="flex items-center justify-between p-2 bg-gray-50 rounded border">

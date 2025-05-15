@@ -13,12 +13,18 @@ interface DocumentFileUploaderProps {
   files: FileItem[];
   setFiles: React.Dispatch<React.SetStateAction<FileItem[]>>;
   onFileUploaded: (base64: string, file?: File) => void;
+  acceptedFileTypes?: string;
+  documentType?: string;
+  maxFileSize?: number; // in MB
 }
 
 const DocumentFileUploader: React.FC<DocumentFileUploaderProps> = ({ 
   files, 
   setFiles, 
-  onFileUploaded 
+  onFileUploaded,
+  acceptedFileTypes = 'image/*,.pdf',
+  documentType,
+  maxFileSize = 5 // Default max size is 5MB
 }) => {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -38,13 +44,26 @@ const DocumentFileUploader: React.FC<DocumentFileUploaderProps> = ({
 
     const file = fileList[0];
     
-    // Simple file validation
-    if (file.size > 5 * 1024 * 1024) {
+    // Special validation for bank account documents
+    if (documentType === 'bank_account' && !file.type.includes('pdf')) {
       toast({
-        title: 'File too large',
-        description: 'Please upload a file smaller than 5MB',
+        title: 'Invalid file type',
+        description: 'Bank statements must be uploaded as PDF files only',
         variant: 'destructive',
       });
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+    
+    // File size validation
+    const maxSizeBytes = maxFileSize * 1024 * 1024;
+    if (file.size > maxSizeBytes) {
+      toast({
+        title: 'File too large',
+        description: `Please upload a file smaller than ${maxFileSize}MB`,
+        variant: 'destructive',
+      });
+      if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
 
@@ -66,7 +85,24 @@ const DocumentFileUploader: React.FC<DocumentFileUploaderProps> = ({
       onFileUploaded(base64, file);
     };
     
+    reader.onerror = () => {
+      toast({
+        title: 'Error reading file',
+        description: 'An error occurred while processing the file',
+        variant: 'destructive',
+      });
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+    
     reader.readAsDataURL(file);
+  };
+
+  // Get helper text based on document type
+  const getHelperText = () => {
+    if (documentType === 'bank_account') {
+      return 'Supported format: PDF only • Max file size: 5MB';
+    }
+    return 'Supported formats: JPG, PNG, PDF • Max file size: 5MB';
   };
 
   return (
@@ -74,13 +110,13 @@ const DocumentFileUploader: React.FC<DocumentFileUploaderProps> = ({
       <div className="border-2 border-dashed border-gray-300 rounded-md p-6 flex flex-col items-center justify-center bg-gray-50">
         <Upload className="h-8 w-8 text-gray-400 mb-2" />
         <p className="text-sm text-gray-500 mb-2">Drag and drop file here, or click to select file</p>
-        <p className="text-xs text-gray-400">Supported formats: JPG, PNG, PDF • Max file size: 5MB</p>
+        <p className="text-xs text-gray-400">{getHelperText()}</p>
         <Input 
           id="file-upload" 
           type="file" 
           className="hidden"
           ref={fileInputRef}
-          accept="image/*,.pdf"
+          accept={acceptedFileTypes}
           onChange={handleFileUpload}
         />
         <Button 
