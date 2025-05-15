@@ -39,20 +39,46 @@ export const useIncidentActions = (
       // Add to the local state first for immediate UI feedback
       setIncidents(prev => [newIncident, ...prev]);
       
-      // Format the data for database insertion - fix the UUID issue
+      // Get UUIDs for status, type, category
+      // Get UUID for status (assuming "Open" = status_id 1)
+      const { data: statusData } = await supabase
+        .from('incident_status')
+        .select('id')
+        .eq('name', 'Open')
+        .single();
+      
+      const { data: typeData } = await supabase
+        .from('incident_report_types')
+        .select('id')
+        .eq('name', incidentData.type)
+        .single();
+      
+      const { data: categoryData } = await supabase
+        .from('incident_categories')
+        .select('id')
+        .eq('name', incidentData.category)
+        .single();
+      
+      const { data: priorityData } = await supabase
+        .from('incident_priorities')
+        .select('id')
+        .eq('name', incidentData.priority || 'Medium')
+        .single();
+      
+      // Format the data for database insertion - using real UUIDs from database
       const dbIncident = {
         ticket_id: ticketId,
         description: incidentData.description,
         date: incidentData.date.toISOString(),
         location_id: incidentData.location ? incidentData.location : null,
         people_involved: JSON.stringify(incidentData.peopleInvolved),
-        status_id: "1", // Use a string ID instead of a number
+        status_id: statusData?.id || null,
         reported_by_id: incidentData.reportedBy.id,
         facility_id: incidentData.facility ? incidentData.facility : null,
         documents: incidentData.documents ? JSON.stringify(incidentData.documents) : null,
-        priority_id: incidentData.priority ? mapPriorityToId(incidentData.priority) : "2", // Map to string ID
-        type_id: mapTypeToId(incidentData.type), // Map type to string ID
-        category_id: mapCategoryToId(incidentData.category), // Map category to string ID
+        priority_id: priorityData?.id || null,
+        type_id: typeData?.id || null,
+        category_id: categoryData?.id || null,
         subcategory_id: incidentData.subcategory || null,
         owner_id: incidentData.owner ? incidentData.owner.id : null
       };
