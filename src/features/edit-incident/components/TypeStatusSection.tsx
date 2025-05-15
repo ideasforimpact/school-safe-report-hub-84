@@ -7,13 +7,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ConfigItem } from '@/contexts/types';
+import { useReportTypes } from '@/hooks/useReportTypes';
 
 interface TypeStatusSectionProps {
   type: string;
   status: string;
   onSelectChange: (name: string, value: string) => void;
-  getCategoriesForType?: (type: string) => ConfigItem[];
+  getCategoriesForType?: (type: string) => any[];
 }
 
 const TypeStatusSection: React.FC<TypeStatusSectionProps> = ({
@@ -22,6 +22,8 @@ const TypeStatusSection: React.FC<TypeStatusSectionProps> = ({
   onSelectChange,
   getCategoriesForType,
 }) => {
+  const { reportTypes, loading } = useReportTypes();
+  
   return (
     <div className="space-y-6">
       <div className="space-y-2">
@@ -32,14 +34,15 @@ const TypeStatusSection: React.FC<TypeStatusSectionProps> = ({
           value={type}
           onValueChange={(value) => onSelectChange('type', value)}
           required
+          disabled={loading}
         >
           <SelectTrigger>
-            <SelectValue placeholder="Select type" />
+            <SelectValue placeholder={loading ? "Loading..." : "Select type"} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="Incident">Incident</SelectItem>
-            <SelectItem value="Near Miss">Near Miss</SelectItem>
-            <SelectItem value="Unsafe Condition">Unsafe Condition</SelectItem>
+            {reportTypes.map(reportType => (
+              <SelectItem key={reportType.id} value={reportType.name}>{reportType.name}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>

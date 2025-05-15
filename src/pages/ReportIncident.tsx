@@ -127,8 +127,11 @@ const ReportIncident = () => {
         }
       }
       
+      // Ensure we have a valid type
+      const incidentType = (formData.type || 'Incident') as IncidentType;
+      
       addIncident({
-        type: (formData.type || 'Incident') as IncidentType,
+        type: incidentType,
         category: categoryName,
         subcategory: formData.subcategory || '',
         description: formData.description || '',

@@ -7,6 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { useReportTypes } from '@/hooks/useReportTypes';
 
 interface IncidentTypeSectionProps {
   type: string;
@@ -17,6 +18,8 @@ const IncidentTypeSection: React.FC<IncidentTypeSectionProps> = ({
   type,
   onChange,
 }) => {
+  const { reportTypes, loading } = useReportTypes();
+
   return (
     <div className="space-y-2">
       <label className="text-sm font-medium block">
@@ -25,14 +28,15 @@ const IncidentTypeSection: React.FC<IncidentTypeSectionProps> = ({
       <Select 
         value={type}
         onValueChange={onChange}
+        disabled={loading}
       >
         <SelectTrigger className="w-full">
-          <SelectValue placeholder="Select type" />
+          <SelectValue placeholder={loading ? "Loading..." : "Select type"} />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="Incident">Incident</SelectItem>
-          <SelectItem value="Near Miss">Near Miss</SelectItem>
-          <SelectItem value="Unsafe Condition">Unsafe Condition</SelectItem>
+          {reportTypes.map(reportType => (
+            <SelectItem key={reportType.id} value={reportType.name}>{reportType.name}</SelectItem>
+          ))}
         </SelectContent>
       </Select>
     </div>
