@@ -7,7 +7,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { documentFormSchema } from './documentFormSchema';
 import DocumentFileUploader from './DocumentFileUploader';
-import { getDocumentPlaceholder } from '../utils/documentUtils';
 import { FileItem } from '@/types/fileTypes';
 import { toast } from '@/hooks/use-toast';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
@@ -47,13 +46,49 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
   const [documentNumberHelp, setDocumentNumberHelp] = useState<string>('For security, only the last 2 digits will be visible after submission');
   const [showDateOfBirth, setShowDateOfBirth] = useState(false);
   const [isBankAccount, setIsBankAccount] = useState(false);
+  const [isFormValid, setIsFormValid] = useState(false);
   const { documentTypes } = useEmployeeVerification();
+  
+  // Get the document type name
+  const getDocumentTypeName = (): string => {
+    const docType = documentTypes.find(type => type.id === selectedTypeId);
+    return docType?.name || '';
+  };
+
+  // Get document label based on document type
+  const getDocumentNumberLabel = (): string => {
+    const docTypeName = getDocumentTypeName();
+    switch (docTypeName) {
+      case 'aadhar': return 'Enter Aadhar Number';
+      case 'pan': return 'Enter PAN Number';
+      case 'voter_id': return 'Enter Voter ID Number';
+      case 'driving_license': return 'Enter Driving License Number';
+      case 'bank_account': return 'Enter Account Number';
+      case 'passport': return 'Enter Passport Number';
+      default: return 'Enter Document Number';
+    }
+  };
+
+  // Get document placeholder based on document type
+  const getDocumentNumberPlaceholder = (): string => {
+    const docTypeName = getDocumentTypeName();
+    switch (docTypeName) {
+      case 'aadhar': return 'XXXX XXXX XXXX';
+      case 'pan': return 'ABCDE1234F';
+      case 'voter_id': return 'ABC1234567';
+      case 'driving_license': return 'DL1234567890123';
+      case 'bank_account': return '12345678901234';
+      case 'passport': return 'A1234567';
+      default: return 'Enter document number';
+    }
+  };
   
   // Detect document type and set appropriate flags
   useEffect(() => {
     const docType = documentTypes.find(type => type.id === selectedTypeId);
-    const isDrivingLicense = docType?.name === 'driving_license' || selectedTypeId === '4';
-    const isBankAccountDoc = docType?.name === 'bank_account' || selectedTypeId === '3';
+    const docTypeName = docType?.name || '';
+    const isDrivingLicense = docTypeName === 'driving_license' || selectedTypeId === '4';
+    const isBankAccountDoc = docTypeName === 'bank_account' || selectedTypeId === '3';
     
     setShowDateOfBirth(isDrivingLicense);
     setIsBankAccount(isBankAccountDoc);
@@ -61,10 +96,37 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
     // Set defaults based on document type
     if (isBankAccountDoc) {
       form.setValue('documentNumber', 'bank-statement');
+    } else {
+      form.setValue('documentNumber', '');
     }
+
+    // Reset file selection when document type changes
+    form.setValue('documentImage', '');
+    setSelectedFileName('');
   }, [selectedTypeId, documentTypes, form]);
 
-  const documentPlaceholder = getDocumentPlaceholder(selectedTypeId);
+  // Check form validity on value changes
+  useEffect(() => {
+    const subscription = form.watch((value) => {
+      const documentNumber = value.documentNumber || '';
+      const documentImage = value.documentImage || '';
+      const dateOfBirth = value.dateOfBirth || '';
+      
+      let valid = documentImage !== '';
+      
+      if (!isBankAccount) {
+        valid = valid && documentNumber !== '';
+      }
+      
+      if (showDateOfBirth) {
+        valid = valid && dateOfBirth !== '';
+      }
+      
+      setIsFormValid(valid);
+    });
+    
+    return () => subscription.unsubscribe();
+  }, [form, form.watch, isBankAccount, showDateOfBirth]);
 
   const handleSubmit = (data: any) => {
     if (!data.documentImage) {
@@ -126,11 +188,11 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
             render={({ field }) => (
               <FormItem>
                 <FormLabel>
-                  {documentPlaceholder || "Document Number"} <span className="text-red-500">*</span>
+                  {getDocumentNumberLabel()} <span className="text-red-500">*</span>
                 </FormLabel>
                 <FormControl>
                   <Input 
-                    placeholder={`Enter ${documentPlaceholder || "document number"}`} 
+                    placeholder={getDocumentNumberPlaceholder()}
                     {...field} 
                   />
                 </FormControl>
@@ -219,7 +281,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancel
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
+          <Button type="submit" disabled={isSubmitting || !isFormValid}>
             {isSubmitting ? 'Uploading...' : 'Upload Document'}
           </Button>
         </div>

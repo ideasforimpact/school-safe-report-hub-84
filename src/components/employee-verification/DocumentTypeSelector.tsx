@@ -17,13 +17,14 @@ interface DocumentTypeSelectorProps {
   onChange: (typeId: string) => void;
 }
 
+// Ordered document types as specified
 const defaultDocumentTypes = [
   { id: '1', name: 'aadhar', description: 'Aadhar Card', icon: CreditCard, bgColor: 'bg-blue-50' },
   { id: '2', name: 'pan', description: 'PAN Card', icon: FileText, bgColor: 'bg-yellow-50' },
-  { id: '3', name: 'bank_account', description: 'Bank Account', icon: Building, bgColor: 'bg-green-50' },
-  { id: '4', name: 'driving_license', description: 'Driving License', icon: Car, bgColor: 'bg-purple-50' },
-  { id: '5', name: 'passport', description: 'Passport', icon: Globe, bgColor: 'bg-cyan-50' },
   { id: '6', name: 'voter_id', description: 'Voter ID', icon: Users, bgColor: 'bg-pink-50' },
+  { id: '4', name: 'driving_license', description: 'Driving License', icon: Car, bgColor: 'bg-purple-50' },
+  { id: '3', name: 'bank_account', description: 'Bank Account', icon: Building, bgColor: 'bg-green-50' },
+  { id: '5', name: 'passport', description: 'Passport', icon: Globe, bgColor: 'bg-cyan-50' },
   { id: '7', name: 'other', description: 'Other', icon: Wallet, bgColor: 'bg-orange-50' },
 ];
 
@@ -33,7 +34,21 @@ const DocumentTypeSelector: React.FC<DocumentTypeSelectorProps> = ({ selectedTyp
   // No API calls here - the parent component handles fetching
   
   // Use fetched document types, or fall back to default if still loading
-  const typesToDisplay = documentTypes.length > 0 ? documentTypes : defaultDocumentTypes;
+  const typesToDisplay = documentTypes.length > 0 ? 
+    // Sort according to the specified order if we have API data
+    [...documentTypes].sort((a, b) => {
+      const orderMap: Record<string, number> = {
+        'aadhar': 1,
+        'pan': 2,
+        'voter_id': 3,
+        'driving_license': 4,
+        'bank_account': 5,
+        'passport': 6,
+        'other': 7
+      };
+      return (orderMap[a.name] || 99) - (orderMap[b.name] || 99);
+    }) : 
+    defaultDocumentTypes;
   
   // Helper function to get icon for document type
   const getIconForType = (typeName: string) => {
