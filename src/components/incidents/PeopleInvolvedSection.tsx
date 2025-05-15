@@ -9,10 +9,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Plus, X, Users } from 'lucide-react';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Plus, X, Users, Check, ChevronsUpDown } from 'lucide-react';
 import { Person } from '@/types/incident';
 import { getAllEmployeesFromApi } from '@/services/employee/employeeRetrievalService';
 import { useStudents } from '@/contexts/StudentContext';
+import { cn } from '@/lib/utils';
 
 interface PeopleInvolvedSectionProps {
   peopleInvolved: Person[];
@@ -30,6 +43,8 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   const [employees, setEmployees] = useState<Array<{ id: string, name: string }>>([]);
   const [loadingEmployees, setLoadingEmployees] = useState(false);
   const { students } = useStudents();
+  const [searchQueries, setSearchQueries] = useState<Record<number, string>>({});
+  const [openPopover, setOpenPopover] = useState<Record<number, boolean>>({});
   
   // Fetch employees on component mount
   useEffect(() => {
@@ -100,6 +115,8 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                   onPersonChange(index, 'role', typedRole);
                   // Clear name when role changes
                   onPersonChange(index, 'name', '');
+                  // Reset popover state
+                  setOpenPopover({...openPopover, [index]: false});
                 }}
               >
                 <SelectTrigger className="h-9">
@@ -116,52 +133,98 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
             {/* Name input/selection based on role */}
             <div>
               {person.role === 'Student' ? (
-                <Select
-                  value={person.name}
-                  onValueChange={(value) => onPersonChange(index, 'name', value)}
+                <Popover 
+                  open={openPopover[index]} 
+                  onOpenChange={(open) => setOpenPopover({...openPopover, [index]: open})}
                 >
-                  <SelectTrigger className="h-9">
-                    <SelectValue placeholder={students.length > 0 ? "Select student" : "Loading students..."} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {students.map((student) => (
-                      <SelectItem key={student.id} value={student.name}>
-                        {student.name} ({student.studentId})
-                      </SelectItem>
-                    ))}
-                    {students.length === 0 && (
-                      <SelectItem value="no-students" disabled>
-                        No students available
-                      </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={openPopover[index]}
+                      className="w-full justify-between h-9"
+                    >
+                      {person.name
+                        ? students.find((student) => student.name === person.name)?.name
+                        : "Select student..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search students..." className="h-9" />
+                      <CommandEmpty>No students found.</CommandEmpty>
+                      <CommandGroup className="max-h-[200px] overflow-y-auto">
+                        {students.map((student) => (
+                          <CommandItem
+                            key={student.id}
+                            value={student.name}
+                            onSelect={() => {
+                              onPersonChange(index, 'name', student.name);
+                              setOpenPopover({...openPopover, [index]: false});
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                person.name === student.name ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {student.name} ({student.studentId}) - {student.grade} {student.section}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               ) : person.role === 'Staff' ? (
-                <Select
-                  value={person.name}
-                  onValueChange={(value) => onPersonChange(index, 'name', value)}
+                <Popover 
+                  open={openPopover[index]} 
+                  onOpenChange={(open) => setOpenPopover({...openPopover, [index]: open})}
                 >
-                  <SelectTrigger className="h-9">
-                    <SelectValue placeholder={loadingEmployees ? "Loading staff..." : "Select staff"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {employees.map((employee) => (
-                      <SelectItem key={employee.id} value={employee.name}>
-                        {employee.name}
-                      </SelectItem>
-                    ))}
-                    {employees.length === 0 && !loadingEmployees && (
-                      <SelectItem value="no-employees" disabled>
-                        No staff members available
-                      </SelectItem>
-                    )}
-                    {loadingEmployees && (
-                      <SelectItem value="loading" disabled>
-                        Loading staff...
-                      </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={openPopover[index]}
+                      className="w-full justify-between h-9"
+                      disabled={loadingEmployees}
+                    >
+                      {person.name
+                        ? employees.find((employee) => employee.name === person.name)?.name
+                        : loadingEmployees 
+                          ? "Loading staff..." 
+                          : "Select staff member..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search staff..." className="h-9" />
+                      <CommandEmpty>No staff found.</CommandEmpty>
+                      <CommandGroup className="max-h-[200px] overflow-y-auto">
+                        {employees.map((employee) => (
+                          <CommandItem
+                            key={employee.id}
+                            value={employee.name}
+                            onSelect={() => {
+                              onPersonChange(index, 'name', employee.name);
+                              setOpenPopover({...openPopover, [index]: false});
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                person.name === employee.name ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {employee.name}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               ) : (
                 <Input
                   value={person.name}
