@@ -15,6 +15,10 @@ export interface Employee {
   updatedAt: string;
   clientId?: string;
   documents?: VerificationDocument[]; // Added documents property
+  
+  // Add these fields to make it compatible with the other Employee type
+  firstName?: string;
+  lastName?: string;
 }
 
 export interface DocumentType {

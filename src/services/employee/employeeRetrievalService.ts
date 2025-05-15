@@ -1,7 +1,7 @@
 
 import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
-import { Employee } from '@/types/employeeVerification';
+import { Employee, VerificationDocument } from '@/types/employeeVerification';
 import { mapDbRecordToEmployee } from './utils/employeeMappers';
 
 export const getAllEmployeesFromApi = async (): Promise<Employee[]> => {
@@ -34,7 +34,7 @@ export const getAllEmployeesFromApi = async (): Promise<Employee[]> => {
             
           if (!docsError && docs) {
             // Add the documents to the employee object
-            employee.documents = docs.map(doc => ({
+            const mappedDocs: VerificationDocument[] = docs.map(doc => ({
               id: doc.id,
               employeeId: doc.employee_id,
               documentTypeId: doc.document_type_id,
@@ -43,10 +43,12 @@ export const getAllEmployeesFromApi = async (): Promise<Employee[]> => {
                 `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${doc.document_url}` : '',
               verificationStatus: doc.verification_status as any || 'pending',
               documentStatusId: doc.document_status_id,
-              employee_docs_log: doc.employee_docs_log || [],
+              employee_docs_log: Array.isArray(doc.employee_docs_log) ? doc.employee_docs_log : [],
               createdAt: doc.created_at || new Date().toISOString(),
               updatedAt: doc.updated_at || new Date().toISOString()
             }));
+            
+            employee.documents = mappedDocs;
           }
         } catch (docError) {
           console.error(`Error fetching documents for employee ${employee.id}:`, docError);
@@ -90,7 +92,7 @@ export const getEmployeeByIdFromApi = async (id: string): Promise<Employee> => {
         
       if (!docsError && docs) {
         // Add the documents to the employee object
-        employee.documents = docs.map(doc => ({
+        const mappedDocs: VerificationDocument[] = docs.map(doc => ({
           id: doc.id,
           employeeId: doc.employee_id,
           documentTypeId: doc.document_type_id,
@@ -99,10 +101,12 @@ export const getEmployeeByIdFromApi = async (id: string): Promise<Employee> => {
             `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${doc.document_url}` : '',
           verificationStatus: doc.verification_status as any || 'pending',
           documentStatusId: doc.document_status_id,
-          employee_docs_log: doc.employee_docs_log || [],
+          employee_docs_log: Array.isArray(doc.employee_docs_log) ? doc.employee_docs_log : [],
           createdAt: doc.created_at || new Date().toISOString(),
           updatedAt: doc.updated_at || new Date().toISOString()
         }));
+        
+        employee.documents = mappedDocs;
       }
     } catch (docError) {
       console.error(`Error fetching documents for employee ${id}:`, docError);

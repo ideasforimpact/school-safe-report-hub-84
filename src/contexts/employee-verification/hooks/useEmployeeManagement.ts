@@ -1,7 +1,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { Employee } from '@/types/employeeVerification';
+import { Employee, VerificationDocument } from '@/types/employeeVerification';
 import { initialEmployees } from '../initialData';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -23,10 +23,12 @@ export const useEmployeeManagement = () => {
 
       // Map the database employees to our Employee type
       if (data && data.length > 0) {
-        const employeesList = data.map((emp): Employee => ({
+        const employeesList: Employee[] = data.map((emp): Employee => ({
           id: emp.id,
           employeeId: emp.employee_id || '',
           name: `${emp.first_name} ${emp.last_name}`,
+          firstName: emp.first_name, // Add firstName
+          lastName: emp.last_name,   // Add lastName
           email: emp.email || '',
           // Use default values for fields that don't exist in the database
           phone: '',
@@ -53,7 +55,7 @@ export const useEmployeeManagement = () => {
                 
               if (!docsError && docs) {
                 // Add the documents to the employee object
-                employee.documents = docs.map(doc => ({
+                const mappedDocs: VerificationDocument[] = docs.map(doc => ({
                   id: doc.id,
                   employeeId: doc.employee_id,
                   documentTypeId: doc.document_type_id,
@@ -62,10 +64,12 @@ export const useEmployeeManagement = () => {
                     `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${doc.document_url}` : '',
                   verificationStatus: doc.verification_status as any || 'pending',
                   documentStatusId: doc.document_status_id,
-                  employee_docs_log: doc.employee_docs_log || [],
+                  employee_docs_log: Array.isArray(doc.employee_docs_log) ? doc.employee_docs_log : [],
                   createdAt: doc.created_at || new Date().toISOString(),
                   updatedAt: doc.updated_at || new Date().toISOString()
                 }));
+                
+                employee.documents = mappedDocs;
               }
             } catch (docError) {
               console.error(`Error fetching documents for employee ${employee.id}:`, docError);
