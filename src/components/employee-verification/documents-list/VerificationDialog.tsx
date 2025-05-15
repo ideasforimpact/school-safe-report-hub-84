@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { ShieldCheck, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -42,6 +41,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const isPan = documentType === 'pan';
   const isVoterId = documentType === 'voter_id';
   const isDrivingLicense = documentType === 'driving_license';
+  const isBankAccount = documentType === 'bank_account';
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [otp, setOtp] = useState("");
   const [cooldownSeconds, setCooldownSeconds] = useState<number | null>(null);
@@ -53,6 +53,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const [isPanVerifying, setIsPanVerifying] = useState(false);
   const [isVoterIdVerifying, setIsVoterIdVerifying] = useState(false);
   const [isDrivingLicenseVerifying, setIsDrivingLicenseVerifying] = useState(false);
+  const [isBankAccountVerifying, setIsBankAccountVerifying] = useState(false);
 
   // Logging OTP state for debugging
   useEffect(() => {
@@ -86,6 +87,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       setIsPanVerifying(false);
       setIsVoterIdVerifying(false);
       setIsDrivingLicenseVerifying(false);
+      setIsBankAccountVerifying(false);
       if (cooldownTimerId !== null) {
         clearInterval(cooldownTimerId);
         setCooldownTimerId(null);
@@ -116,6 +118,128 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     }, 1000);
     
     setCooldownTimerId(timerId);
+  };
+
+  // Separate handler for Bank Account API verification
+  const handleBankAccountApiVerification = async () => {
+    setIsBankAccountVerifying(true);
+    
+    try {
+      console.log("Initiating Bank Statement verification for document ID:", documentId);
+      
+      const { data, error } = await supabase.functions.invoke('bank-statement', {
+        body: {
+          action: 'apiVerify',
+          documentId
+        }
+      });
+      
+      console.log("Bank Statement verification response:", data, error);
+      
+      if (error) {
+        console.error('Error verifying Bank Statement:', error);
+        toast.error("Verification Failed", {
+          description: error.message || "Failed to verify Bank Statement. Please try again."
+        });
+        return;
+      }
+      
+      if (data?.success) {
+        toast.success("Bank Statement Verified", {
+          description: data.message || "Bank Statement has been successfully verified."
+        });
+        onVerify('api');
+      } else {
+        toast.error("Verification Failed", {
+          description: data.error || "Bank Statement verification failed. Please try manual verification."
+        });
+      }
+    } catch (err: any) {
+      console.error("Exception in handleBankAccountApiVerification:", err);
+      toast.error("Verification Error", {
+        description: err.message || "Failed to verify Bank Statement"
+      });
+    } finally {
+      setIsBankAccountVerifying(false);
+    }
+  };
+
+  // Separate handler for Bank Account manual verification
+  const handleBankAccountManualVerification = async () => {
+    setIsBankAccountVerifying(true);
+    
+    try {
+      console.log("Initiating manual Bank Statement verification for document ID:", documentId);
+      
+      const { data, error } = await supabase.functions.invoke('bank-statement', {
+        body: {
+          action: 'manualVerify',
+          documentId,
+          verification_notes: 'Document manually verified by staff.'
+        }
+      });
+      
+      console.log("Bank Statement manual verification response:", data, error);
+      
+      if (error) {
+        console.error('Error manually verifying Bank Statement:', error);
+        toast.error("Verification Failed", {
+          description: error.message || "Failed to manually verify Bank Statement. Please try again."
+        });
+        return;
+      }
+      
+      toast.success("Bank Statement Manually Verified", {
+        description: "The Bank Statement has been manually verified successfully."
+      });
+      onVerify('manual');
+    } catch (err: any) {
+      console.error("Exception in handleBankAccountManualVerification:", err);
+      toast.error("Verification Error", {
+        description: err.message || "Failed to manually verify Bank Statement"
+      });
+    } finally {
+      setIsBankAccountVerifying(false);
+    }
+  };
+
+  // Separate handler for Bank Account rejection
+  const handleBankAccountRejection = async () => {
+    setIsBankAccountVerifying(true);
+    
+    try {
+      console.log("Rejecting Bank Statement verification for document ID:", documentId);
+      
+      const { data, error } = await supabase.functions.invoke('bank-statement', {
+        body: {
+          action: 'reject',
+          documentId,
+          verification_notes: 'Document verification rejected by staff.'
+        }
+      });
+      
+      console.log("Bank Statement rejection response:", data, error);
+      
+      if (error) {
+        console.error('Error rejecting Bank Statement:', error);
+        toast.error("Rejection Failed", {
+          description: error.message || "Failed to reject Bank Statement. Please try again."
+        });
+        return;
+      }
+      
+      toast.error("Bank Statement Rejected", {
+        description: "The Bank Statement has been marked as failed verification."
+      });
+      onReject();
+    } catch (err: any) {
+      console.error("Exception in handleBankAccountRejection:", err);
+      toast.error("Rejection Error", {
+        description: err.message || "Failed to reject Bank Statement"
+      });
+    } finally {
+      setIsBankAccountVerifying(false);
+    }
   };
 
   // Separate handler for PAN API verification
@@ -567,6 +691,9 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     } else if (isDrivingLicense) {
       // Use dedicated Driving License verification handler
       await handleDrivingLicenseApiVerification();
+    } else if (isBankAccount) {
+      // Use dedicated Bank Account verification handler
+      await handleBankAccountApiVerification();
     } else {
       // For other document types use the generic handler
       onVerify('api');
@@ -580,6 +707,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       await handleVoterIdManualVerification();
     } else if (isDrivingLicense) {
       await handleDrivingLicenseManualVerification();
+    } else if (isBankAccount) {
+      await handleBankAccountManualVerification();
     } else {
       // For other document types including Aadhar
       onVerify('manual');
@@ -593,6 +722,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       await handleVoterIdRejection();
     } else if (isDrivingLicense) {
       await handleDrivingLicenseRejection();
+    } else if (isBankAccount) {
+      await handleBankAccountRejection();
     } else {
       // For other document types including Aadhar
       onReject();
@@ -717,9 +848,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               variant="outline" 
               className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 justify-start"
               onClick={handleApiClick}
-              disabled={isVerifying || cooldownSeconds !== null || isRequestingOtp || isPanVerifying || isVoterIdVerifying || isDrivingLicenseVerifying}
+              disabled={isVerifying || cooldownSeconds !== null || isRequestingOtp || isPanVerifying || isVoterIdVerifying || isDrivingLicenseVerifying || isBankAccountVerifying}
             >
-              {isRequestingOtp || (isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) || (isDrivingLicense && isDrivingLicenseVerifying) ? (
+              {isRequestingOtp || (isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) || 
+               (isDrivingLicense && isDrivingLicenseVerifying) || (isBankAccount && isBankAccountVerifying) ? (
                 <Loader2 className="h-4 w-4 mr-3 animate-spin" />
               ) : (
                 <ShieldCheck className="h-4 w-4 mr-3" />
@@ -736,14 +868,18 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
                     ? isVoterIdVerifying ? 'Verifying Voter ID...' : 'Verify via Voter ID API'
                     : isDrivingLicense
                       ? isDrivingLicenseVerifying ? 'Verifying Driving License...' : 'Verify via Driving License API'
-                      : 'Verify via API'
+                      : isBankAccount
+                        ? isBankAccountVerifying ? 'Verifying Bank Statement...' : 'Verify Bank Statement'
+                        : 'Verify via API'
               }
-              {cooldownSeconds === null && !isRequestingOtp && !isPanVerifying && !isVoterIdVerifying && !isDrivingLicenseVerifying && (
+              {cooldownSeconds === null && !isRequestingOtp && !isPanVerifying && !isVoterIdVerifying && 
+               !isDrivingLicenseVerifying && !isBankAccountVerifying && (
                 <span className="ml-auto text-xs text-blue-500 font-normal">
                   {isAadhar ? 'OTP verification' : 
                    isPan ? 'Surepass verification' : 
                    isVoterId ? 'Voter ID verification' : 
                    isDrivingLicense ? 'Driving License verification' :
+                   isBankAccount ? 'Bank Statement verification' :
                    'Automated check'}
                 </span>
               )}
@@ -752,14 +888,18 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               variant="outline" 
               className="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200 justify-start"
               onClick={handleManualClick}
-              disabled={isVerifying || isRequestingOtp || isPanVerifying || isVoterIdVerifying || isDrivingLicenseVerifying}
+              disabled={isVerifying || isRequestingOtp || isPanVerifying || isVoterIdVerifying || 
+                        isDrivingLicenseVerifying || isBankAccountVerifying}
             >
-              {(isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) || (isDrivingLicense && isDrivingLicenseVerifying) ? (
+              {(isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) || 
+               (isDrivingLicense && isDrivingLicenseVerifying) || (isBankAccount && isBankAccountVerifying) ? (
                 <Loader2 className="h-4 w-4 mr-3 animate-spin" />
               ) : (
                 <ShieldCheck className="h-4 w-4 mr-3" />
               )}
-              {(isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) || (isDrivingLicense && isDrivingLicenseVerifying) ? 'Processing...' : 'Verify Manually'}
+              {(isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) || 
+               (isDrivingLicense && isDrivingLicenseVerifying) || (isBankAccount && isBankAccountVerifying) 
+                ? 'Processing...' : 'Verify Manually'}
               <span className="ml-auto text-xs text-purple-500 font-normal">Manual review completed</span>
             </Button>
             
@@ -767,14 +907,18 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               variant="outline" 
               className="w-full bg-red-50 hover:bg-red-100 text-red-700 border-red-200 justify-start"
               onClick={handleRejectClick}
-              disabled={isVerifying || isRequestingOtp || isPanVerifying || isVoterIdVerifying || isDrivingLicenseVerifying}
+              disabled={isVerifying || isRequestingOtp || isPanVerifying || isVoterIdVerifying || 
+                        isDrivingLicenseVerifying || isBankAccountVerifying}
             >
-              {(isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) || (isDrivingLicense && isDrivingLicenseVerifying) ? (
+              {(isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) || 
+               (isDrivingLicense && isDrivingLicenseVerifying) || (isBankAccount && isBankAccountVerifying) ? (
                 <Loader2 className="h-4 w-4 mr-3 animate-spin" />
               ) : (
                 <ShieldCheck className="h-4 w-4 mr-3" />
               )}
-              {(isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) || (isDrivingLicense && isDrivingLicenseVerifying) ? 'Processing...' : 'Reject Document'}
+              {(isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) || 
+               (isDrivingLicense && isDrivingLicenseVerifying) || (isBankAccount && isBankAccountVerifying) 
+                ? 'Processing...' : 'Reject Document'}
               <span className="ml-auto text-xs text-red-500 font-normal">Document verification failed</span>
             </Button>
           </div>
@@ -832,7 +976,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
             <Button 
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={isVerifying || isRequestingOtp || isPanVerifying || isVoterIdVerifying || isDrivingLicenseVerifying}
+              disabled={isVerifying || isRequestingOtp || isPanVerifying || isVoterIdVerifying || 
+                        isDrivingLicenseVerifying || isBankAccountVerifying}
             >
               Cancel
             </Button>

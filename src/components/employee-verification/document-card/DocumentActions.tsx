@@ -7,6 +7,7 @@ import { useToast } from '@/components/ui/use-toast';
 import DocumentVerifyDropdown from './DocumentVerifyDropdown';
 import { supabase } from '@/integrations/supabase/client';
 import VerificationDialog from '../documents-list/VerificationDialog';
+import BankStatementDetailsDialog from '../document-card/BankStatementDetailsDialog';
 
 interface DocumentActionsProps {
   document: VerificationDocument;
@@ -18,13 +19,70 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
   const { toast } = useToast();
   const [isVerifying, setIsVerifying] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [bankStatementDetailsOpen, setBankStatementDetailsOpen] = useState(false);
+  const [bankStatementDetails, setBankStatementDetails] = useState<any>(null);
 
   const handleVerify = async (method: 'api' | 'manual') => {
     setIsVerifying(true);
     
     try {
+      // Special logic for Bank Account documents
+      if (document.documentTypeName === 'bank_account') {
+        if (method === 'api') {
+          const { data, error } = await supabase.functions.invoke('bank-statement', {
+            body: {
+              action: 'apiVerify',
+              documentId: document.id
+            }
+          });
+          
+          console.log("Bank Statement API verification response:", data, error);
+          
+          if (error) {
+            throw new Error(error.message || 'Bank statement verification failed');
+          }
+          
+          toast({
+            title: data.success ? "Bank Statement Verified" : "Verification Failed",
+            description: data.message || (data.success ? "Document has been verified via API." : "Document verification failed."),
+            variant: data.success ? "default" : "destructive",
+          });
+          
+          // If successful, show the details dialog
+          if (data.success) {
+            setBankStatementDetails(data);
+            setBankStatementDetailsOpen(true);
+          }
+          
+          setIsVerifying(false);
+          setDialogOpen(false);
+          return;
+        } else if (method === 'manual') {
+          const { data, error } = await supabase.functions.invoke('bank-statement', {
+            body: {
+              action: 'manualVerify',
+              documentId: document.id,
+              verification_notes: 'Document manually verified by staff.'
+            }
+          });
+          
+          if (error) {
+            throw new Error(error.message || 'Manual verification failed');
+          }
+          
+          toast({
+            title: "Document Verified",
+            description: "Document has been manually verified successfully.",
+          });
+          
+          setIsVerifying(false);
+          setDialogOpen(false);
+          return;
+        }
+      }
+      
       // Special logic for PAN documents
-      if (document.documentTypeName === 'pan') {
+      else if (document.documentTypeName === 'pan') {
         // Handle PAN API verification using our edge function
         if (method === 'api') {
           const { data, error } = await supabase.functions.invoke('pan-verification', {
@@ -164,52 +222,6 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
           return;
         }
       }
-      // Special logic for Bank Account documents
-      else if (document.documentTypeName === 'bank_account') {
-        if (method === 'api') {
-          const { data, error } = await supabase.functions.invoke('bank-statement', {
-            body: {
-              action: 'apiVerify',
-              documentId: document.id
-            }
-          });
-          
-          if (error) {
-            throw new Error(error.message || 'Bank statement verification failed');
-          }
-          
-          toast({
-            title: data.success ? "Bank Statement Verified" : "Verification Failed",
-            description: data.message || (data.success ? "Document has been verified via API." : "Document verification failed."),
-            variant: data.success ? "default" : "destructive",
-          });
-          
-          setIsVerifying(false);
-          setDialogOpen(false);
-          return;
-        } else if (method === 'manual') {
-          const { data, error } = await supabase.functions.invoke('bank-statement', {
-            body: {
-              action: 'manualVerify',
-              documentId: document.id,
-              verification_notes: 'Document manually verified by staff.'
-            }
-          });
-          
-          if (error) {
-            throw new Error(error.message || 'Manual verification failed');
-          }
-          
-          toast({
-            title: "Document Verified",
-            description: "Document has been manually verified successfully.",
-          });
-          
-          setIsVerifying(false);
-          setDialogOpen(false);
-          return;
-        }
-      }
       
       // For other document types or fallback handling
       const notes = method === 'api' 
@@ -241,8 +253,33 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
     setIsVerifying(true);
     
     try {
+      // Special handling for Bank Account
+      if (document.documentTypeName === 'bank_account') {
+        const { data, error } = await supabase.functions.invoke('bank-statement', {
+          body: {
+            action: 'reject',
+            documentId: document.id,
+            verification_notes: 'Document verification rejected by staff.'
+          }
+        });
+        
+        if (error) {
+          throw new Error(error.message || 'Rejection failed');
+        }
+        
+        toast({
+          title: "Verification Rejected",
+          description: "Document has been marked as failed verification.",
+          variant: "destructive",
+        });
+        
+        setIsVerifying(false);
+        setDialogOpen(false);
+        return;
+      }
+      
       // Special handling for PAN documents
-      if (document.documentTypeName === 'pan') {
+      else if (document.documentTypeName === 'pan') {
         const { data, error } = await supabase.functions.invoke('pan-verification', {
           body: {
             action: 'reject',
@@ -292,30 +329,6 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
       // Special handling for Voter ID
       else if (document.documentTypeName === 'voter_id') {
         const { data, error } = await supabase.functions.invoke('voter-verification', {
-          body: {
-            action: 'reject',
-            documentId: document.id,
-            verification_notes: 'Document verification rejected by staff.'
-          }
-        });
-        
-        if (error) {
-          throw new Error(error.message || 'Rejection failed');
-        }
-        
-        toast({
-          title: "Verification Rejected",
-          description: "Document has been marked as failed verification.",
-          variant: "destructive",
-        });
-        
-        setIsVerifying(false);
-        setDialogOpen(false);
-        return;
-      }
-      // Special handling for Bank Account
-      else if (document.documentTypeName === 'bank_account') {
-        const { data, error } = await supabase.functions.invoke('bank-statement', {
           body: {
             action: 'reject',
             documentId: document.id,
@@ -387,6 +400,15 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
         documentId={document.id}
         documentNumber={document.documentNumber}
       />
+
+      {document.documentTypeName === 'bank_account' && (
+        <BankStatementDetailsDialog
+          open={bankStatementDetailsOpen}
+          onOpenChange={setBankStatementDetailsOpen}
+          statementDetails={bankStatementDetails}
+          documentId={document.id}
+        />
+      )}
     </div>
   );
 };
