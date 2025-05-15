@@ -1,5 +1,9 @@
+
 import { Incident, User, Activity, ActionItem, Comment } from '@/types/incident';
 import { ConfigItem, SubcategoryItem, SectionItem, ClassItem, CampusItem } from '@/contexts/types';
+
+// Re-export IncidentStatus from types/incident.ts to ensure consistency
+export type { IncidentStatus, IncidentType, IncidentLocation } from '@/types/incident';
 
 export interface IncidentContextType {
   incidents: Incident[];
@@ -64,6 +68,3 @@ export interface IncidentContextType {
   // Submission state
   isSubmitting?: boolean;
 }
-
-// Define IncidentStatus here for consistency
-export type { IncidentStatus, IncidentType, IncidentLocation } from '@/types/incident';

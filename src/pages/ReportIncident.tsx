@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIncidents } from '@/contexts/incident';
@@ -33,9 +34,9 @@ const ReportIncident = () => {
     formData,
     supportingFiles,
     peopleInvolved,
-    handleChange,
-    handleSelectChange,
-    handleDateTimeChange,
+    handleChange: formHandleChange,
+    handleSelectChange: formHandleSelectChange,
+    handleDateTimeChange: formHandleDateTimeChange,
     handlePersonChange,
     addPerson,
     removePerson,
@@ -249,18 +250,22 @@ const ReportIncident = () => {
   };
 
   // Create adapter functions to handle type differences
-  const handleChangeAdapter = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     if (e && e.target) {
-      handleChange(e.target.name, e.target.value);
+      formHandleChange(e.target.name, e.target.value);
     }
   };
   
-  const handleDateTimeAdapter = (date: Date | undefined, timeString?: string) => {
+  const handleSelectChange = (name: string, value: string) => {
+    formHandleSelectChange(name, value);
+  };
+  
+  const handleDateTimeChange = (date: Date | undefined, timeString?: string) => {
     if (date) {
-      handleDateTimeChange('date', date);
+      formHandleDateTimeChange('date', date);
     }
     if (timeString) {
-      handleDateTimeChange('time', timeString);
+      formHandleDateTimeChange('time', timeString);
     }
   };
 
@@ -294,9 +299,9 @@ const ReportIncident = () => {
             <CardContent className="space-y-6 px-6">
               <IncidentDetailsForm
                 formData={formData}
-                onChange={handleChangeAdapter}
+                onChange={handleChange}
                 onSelectChange={handleSelectChange} 
-                onDateTimeChange={handleDateTimeAdapter}
+                onDateTimeChange={handleDateTimeChange}
                 supportingFiles={supportingFiles}
                 onFilesChange={handleFilesChange}
                 users={employees}
