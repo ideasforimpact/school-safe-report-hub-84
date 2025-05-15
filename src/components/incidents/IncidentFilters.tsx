@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Search, Calendar, ChevronDown, ChevronUp, Filter } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -14,7 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
-import { FilterState } from '@/hooks/useIncidentFilters';
+import { FilterState } from '@/types/filterTypes';
 
 interface IncidentFiltersProps {
   filters: FilterState;
