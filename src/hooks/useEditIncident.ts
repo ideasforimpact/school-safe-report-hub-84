@@ -1,10 +1,11 @@
 
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useIncidents } from '@/contexts/IncidentContext';
-import { useAuth } from '@/contexts/AuthContext';
+import { useIncidents } from '@/contexts/incident';
+import { useAuth } from '@/contexts/auth/AuthContext';
 import { toast } from 'sonner';
-import { IncidentStatus, Person } from '@/types/incident';
+import { Person } from '@/types/incident';
+import { IncidentStatus } from '@/contexts/IncidentContext';
 
 export const useEditIncident = () => {
   const { getIncident, updateIncident, users } = useIncidents();

@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { toast } from "sonner";
 
@@ -24,7 +23,7 @@ export interface Section {
 export type IncidentType = 'Incident' | 'Near Miss' | 'Unsafe Condition';
 export type IncidentCategory = 'Physical Injury' | 'Bullying' | 'Tech Misuse' | 'Property Damage' | 'Health Concern' | 'Security Breach' | 'Other';
 export type IncidentLocation = 'On Campus' | 'Off Campus' | 'In Transit' | 'During Function';
-export type IncidentStatus = 'Open' | 'In Progress' | 'Closed';
+export type IncidentStatus = 'New' | 'Open' | 'In Progress' | 'Closed';
 export type SchoolFacility = string;
 
 export interface Person {

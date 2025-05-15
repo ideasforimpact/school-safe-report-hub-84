@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useIncidents } from '@/contexts/incident'; // Fixed import path
+import { useIncidents } from '@/contexts/incident';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ import { Employee } from '@/contexts/employee/types';
 import { getAllEmployeesFromApi } from '@/services/employee/employeeRetrievalService';
 import { Student } from '@/types/student';
 import { useStudents } from '@/contexts/StudentContext';
-import { supabase } from '@/integrations/supabase/client'; // Add Supabase import
+import { supabase } from '@/integrations/supabase/client';
 
 const ReportIncident = () => {
   const { addIncident, categories, isSubmitting: contextIsSubmitting } = useIncidents();
@@ -332,22 +332,6 @@ const ReportIncident = () => {
       </div>
     </Layout>
   );
-};
-
-// Create adapter functions to handle type differences
-const handleChangeAdapter = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-  if (e && e.target) {
-    handleChange(e.target.name, e.target.value);
-  }
-};
-
-const handleDateTimeAdapter = (date: Date | undefined, timeString?: string) => {
-  if (date) {
-    handleDateTimeChange('date', date);
-  }
-  if (timeString) {
-    handleDateTimeChange('time', timeString);
-  }
 };
 
 export default ReportIncident;
