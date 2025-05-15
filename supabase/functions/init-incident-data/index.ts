@@ -1,166 +1,150 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.21.0";
-import { corsHeaders } from "../_shared/cors.ts";
+import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.8.0";
 
-const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
 
 serve(async (req) => {
-  // Handle CORS
+  // Handle CORS preflight request
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, {
+      headers: corsHeaders,
+      status: 200,
+    });
   }
 
   try {
-    const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
-    console.log("Initializing incident reference data");
-    
-    // Check if we already have incident statuses
-    const { data: existingStatuses, error: statusCheckError } = await supabase
-      .from("incident_status")
-      .select("name")
-      .limit(1);
-    
-    if (statusCheckError) {
-      throw new Error(`Failed to check existing statuses: ${statusCheckError.message}`);
-    }
-    
-    // If no statuses exist, create default ones
-    if (!existingStatuses || existingStatuses.length === 0) {
-      console.log("Creating default incident statuses");
-      
-      const { error: statusError } = await supabase
-        .from("incident_status")
-        .insert([
-          { name: "New", description: "Newly reported incident" },
-          { name: "In Progress", description: "Incident is being addressed" },
-          { name: "On Hold", description: "Incident resolution is paused" },
-          { name: "Closed", description: "Incident has been resolved" },
-        ]);
-        
-      if (statusError) {
-        throw new Error(`Failed to create incident statuses: ${statusError.message}`);
+    // Create a Supabase client with the Auth context of the logged in user
+    const supabaseClient = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+      {
+        global: {
+          headers: { Authorization: req.headers.get("Authorization")! }
+        }
       }
-    } else {
-      console.log("Incident statuses already exist");
-    }
+    );
+
+    // Initialize incident types if they don't exist
+    const reportTypes = [
+      { name: "Incident", description: "A safety incident that has occurred" },
+      { name: "Near Miss", description: "A potential incident that was avoided" },
+      { name: "Unsafe Condition", description: "A condition that could lead to an incident" }
+    ];
     
-    // Check if we have incident report types
-    const { data: existingTypes, error: typesCheckError } = await supabase
-      .from("incident_report_types")
-      .select("name")
-      .limit(1);
+    for (const type of reportTypes) {
+      const { error: typeError } = await supabaseClient
+        .from('incident_report_types')
+        .upsert({ 
+          name: type.name, 
+          description: type.description, 
+          is_active: true
+        }, { 
+          onConflict: 'name'
+        });
       
-    if (typesCheckError) {
-      throw new Error(`Failed to check existing incident types: ${typesCheckError.message}`);
-    }
-    
-    // If no types exist, create default ones
-    if (!existingTypes || existingTypes.length === 0) {
-      console.log("Creating default incident report types");
-      
-      const { error: typeError } = await supabase
-        .from("incident_report_types")
-        .insert([
-          { name: "Incident", description: "An actual incident that occurred" },
-          { name: "Near Miss", description: "A potential incident that was avoided" },
-          { name: "Unsafe Condition", description: "A situation that could lead to incidents" },
-        ]);
-        
       if (typeError) {
-        throw new Error(`Failed to create incident types: ${typeError.message}`);
+        console.error(`Error creating incident type ${type.name}:`, typeError);
       }
-    } else {
-      console.log("Incident report types already exist");
     }
+
+    // Initialize incident status types
+    const statusTypes = [
+      { name: "New", description: "Newly reported incident", color: "#3B82F6" }, // Blue
+      { name: "Open", description: "Incident is open and being addressed", color: "#EF4444" }, // Red 
+      { name: "Progress", description: "Incident is in progress", color: "#F59E0B" }, // Yellow
+      { name: "OnHold", description: "Incident is on hold", color: "#FB923C" }, // Orange
+      { name: "Closed", description: "Incident has been resolved and closed", color: "#10B981" } // Green
+    ];
     
-    // Check if we have incident categories
-    const { data: existingCategories, error: categoriesCheckError } = await supabase
-      .from("incident_categories")
-      .select("name")
-      .limit(1);
+    for (const status of statusTypes) {
+      const { error: statusError } = await supabaseClient
+        .from('incident_status')
+        .upsert({ 
+          name: status.name, 
+          description: status.description,
+          color: status.color,
+          is_active: true
+        }, {
+          onConflict: 'name'
+        });
       
-    if (categoriesCheckError) {
-      throw new Error(`Failed to check existing incident categories: ${categoriesCheckError.message}`);
+      if (statusError) {
+        console.error(`Error creating status ${status.name}:`, statusError);
+      }
     }
+
+    // Initialize incident categories
+    const categories = [
+      { name: "Physical Injury", description: "Incidents involving physical harm or injury" },
+      { name: "Bullying", description: "Incidents involving bullying or harassment" },
+      { name: "Tech Misuse", description: "Incidents involving misuse of technology" },
+      { name: "Property Damage", description: "Incidents involving damage to property" },
+      { name: "Health Concern", description: "Incidents involving health concerns" },
+      { name: "Security Breach", description: "Incidents involving security breaches" },
+      { name: "Other", description: "Other types of incidents not covered by other categories" }
+    ];
     
-    // If no categories exist, create default ones
-    if (!existingCategories || existingCategories.length === 0) {
-      console.log("Creating default incident categories");
+    for (const category of categories) {
+      const { error: categoryError } = await supabaseClient
+        .from('incident_categories')
+        .upsert({
+          name: category.name,
+          description: category.description,
+          is_active: true
+        }, {
+          onConflict: 'name'
+        });
       
-      const { error: categoryError } = await supabase
-        .from("incident_categories")
-        .insert([
-          { name: "Physical Injury", description: "Injuries to body" },
-          { name: "Bullying", description: "Harmful behavior towards others" },
-          { name: "Tech Misuse", description: "Technology misuse incidents" },
-          { name: "Property Damage", description: "Damage to property" },
-          { name: "Health Concern", description: "Health related issues" },
-          { name: "Security Breach", description: "Security related incidents" },
-          { name: "Other", description: "Miscellaneous incidents" },
-        ]);
-        
       if (categoryError) {
-        throw new Error(`Failed to create incident categories: ${categoryError.message}`);
+        console.error(`Error creating category ${category.name}:`, categoryError);
       }
-    } else {
-      console.log("Incident categories already exist");
     }
+
+    // Initialize priorities
+    const priorities = [
+      { name: "Low", description: "Low priority incidents", weight: 1, color: "#10B981" },
+      { name: "Medium", description: "Medium priority incidents", weight: 2, color: "#F59E0B" },
+      { name: "High", description: "High priority incidents", weight: 3, color: "#EF4444" },
+      { name: "Critical", description: "Critical priority incidents", weight: 4, color: "#7F1D1D" }
+    ];
     
-    // Check if we have incident priorities
-    const { data: existingPriorities, error: prioritiesCheckError } = await supabase
-      .from("incident_priorities")
-      .select("name")
-      .limit(1);
+    for (const priority of priorities) {
+      const { error: priorityError } = await supabaseClient
+        .from('incident_priorities')
+        .upsert({
+          name: priority.name,
+          description: priority.description,
+          weight: priority.weight,
+          color: priority.color,
+          is_active: true
+        }, {
+          onConflict: 'name'
+        });
       
-    if (prioritiesCheckError) {
-      throw new Error(`Failed to check existing incident priorities: ${prioritiesCheckError.message}`);
-    }
-    
-    // If no priorities exist, create default ones
-    if (!existingPriorities || existingPriorities.length === 0) {
-      console.log("Creating default incident priorities");
-      
-      const { error: priorityError } = await supabase
-        .from("incident_priorities")
-        .insert([
-          { name: "Low", description: "Minimal impact", color: "#4CAF50", weight: 1 },
-          { name: "Medium", description: "Moderate impact", color: "#FFC107", weight: 2 },
-          { name: "High", description: "Significant impact", color: "#FF9800", weight: 3 },
-          { name: "Critical", description: "Severe impact", color: "#F44336", weight: 4 },
-        ]);
-        
       if (priorityError) {
-        throw new Error(`Failed to create incident priorities: ${priorityError.message}`);
+        console.error(`Error creating priority ${priority.name}:`, priorityError);
       }
-    } else {
-      console.log("Incident priorities already exist");
     }
 
     return new Response(
-      JSON.stringify({
-        message: "Reference data initialized successfully",
-      }),
+      JSON.stringify({ success: true, message: "Incident reference data initialized successfully" }),
       {
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "application/json",
-        },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       }
     );
+    
   } catch (error) {
-    console.error("Error:", error.message);
+    console.error("Error:", error);
+    
     return new Response(
-      JSON.stringify({
-        error: error.message,
-      }),
+      JSON.stringify({ error: error.message }),
       {
-        headers: {
-          ...corsHeaders,
-          "Content-Type": "application/json",
-        },
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 500,
       }
     );

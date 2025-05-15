@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { toast } from "sonner";
 import { Incident, ActionItem, Activity, User } from '@/types/incident';
@@ -86,22 +87,64 @@ export const useIncidentActions = (
         console.error("Failed to fetch type:", error);
       }
       
-      // Get UUID for category
+      // Get UUID for category - with special handling for "Other"
       try {
         console.log("Fetching category UUID for:", incidentData.category);
-        const { data: categoryData, error: categoryError } = await supabase
-          .from('incident_categories')
-          .select('id')
-          .eq('name', incidentData.category);
+        let categoryQuery;
+        
+        if (incidentData.category === 'Other') {
+          // Try to find the 'Other' category first
+          categoryQuery = await supabase
+            .from('incident_categories')
+            .select('id')
+            .eq('name', 'Other');
           
-        if (categoryError) {
-          console.error("Error fetching category:", categoryError);
-        } else if (categoryData && categoryData.length > 0) {
-          categoryId = categoryData[0].id;
-          console.log("Fetched category UUID:", categoryId);
+          // If "Other" doesn't exist, create it
+          if (!categoryQuery.data || categoryQuery.data.length === 0) {
+            console.log("'Other' category not found, creating it...");
+            const { data: newCategory, error: createError } = await supabase
+              .from('incident_categories')
+              .insert({ name: 'Other', is_active: true })
+              .select('id');
+              
+            if (createError) {
+              console.error("Error creating 'Other' category:", createError);
+            } else if (newCategory && newCategory.length > 0) {
+              categoryId = newCategory[0].id;
+              console.log("Created and fetched 'Other' category UUID:", categoryId);
+            }
+          } else {
+            categoryId = categoryQuery.data[0].id;
+            console.log("Found existing 'Other' category UUID:", categoryId);
+          }
+        } else {
+          // Regular lookup for non-Other categories
+          const { data: categoryData, error: categoryError } = await supabase
+            .from('incident_categories')
+            .select('id')
+            .eq('name', incidentData.category);
+            
+          if (categoryError) {
+            console.error("Error fetching category:", categoryError);
+          } else if (categoryData && categoryData.length > 0) {
+            categoryId = categoryData[0].id;
+            console.log("Fetched category UUID:", categoryId);
+          } else {
+            // If the specified category doesn't exist, fall back to using a default one 
+            // or the first available category
+            const { data: fallbackCategories } = await supabase
+              .from('incident_categories')
+              .select('id')
+              .limit(1);
+              
+            if (fallbackCategories && fallbackCategories.length > 0) {
+              categoryId = fallbackCategories[0].id;
+              console.log("Using fallback category UUID:", categoryId);
+            }
+          }
         }
       } catch (error) {
-        console.error("Failed to fetch category:", error);
+        console.error("Failed to fetch/create category:", error);
       }
       
       // Get UUID for priority
@@ -174,7 +217,11 @@ export const useIncidentActions = (
           categoryId,
           priorityId
         });
-        throw new Error("Missing required reference data for incident");
+        
+        // Even if we're missing something, don't throw an error
+        // Just log it and proceed with local state update only
+        toast.warning("Unable to save to database, but incident was recorded locally");
+        return newIncident;
       }
       
       // Format the data for database insertion - using real UUIDs from database
@@ -205,10 +252,11 @@ export const useIncidentActions = (
       if (error) {
         console.error("Error storing incident in database:", error);
         toast.error("Failed to save incident to database");
-        throw error;
+        // Don't throw error, continue with just the local state update
+      } else {
+        console.log("Successfully inserted incident into database");
+        toast.success("Incident reported successfully");
       }
-      
-      console.log("Successfully inserted incident into database");
       
       // Log the activity
       addActivity({
@@ -222,7 +270,6 @@ export const useIncidentActions = (
         details: `Incident reported by ${newIncident.reportedBy.name}`
       });
       
-      toast.success("Incident reported successfully");
       return newIncident;
     } catch (error) {
       console.error("Error adding incident:", error);

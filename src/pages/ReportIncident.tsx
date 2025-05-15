@@ -28,6 +28,7 @@ const ReportIncident = () => {
   
   // Add loading state for reference data
   const [isLoadingRefData, setIsLoadingRefData] = useState(false);
+  const [dataInitialized, setDataInitialized] = useState(false);
   
   const {
     nextTicketId,
@@ -83,33 +84,53 @@ const ReportIncident = () => {
           
         if (statusError) {
           console.error("Error checking incident status data:", statusError);
+          return;
+        }
+
+        // Check for Other category specifically
+        const { data: otherCategory, error: categoryError } = await supabase
+          .from('incident_categories')
+          .select('id, name')
+          .eq('name', 'Other')
+          .limit(1);
+          
+        if (categoryError) {
+          console.error("Error checking for 'Other' category:", categoryError);
         }
         
-        // If we don't have data, call our initialization function
-        if (!statusData || statusData.length === 0) {
-          console.log("No incident reference data found, initializing...");
+        // If we don't have data or missing Other category, call our initialization function
+        if (!statusData || statusData.length === 0 || !otherCategory || otherCategory.length === 0) {
+          console.log("Required reference data not found, initializing...");
           
-          const response = await fetch('https://ybvxkiubnnixntghojyy.supabase.co/functions/v1/init-incident-data', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              // Add authorization if needed
+          try {
+            const response = await fetch('https://ybvxkiubnnixntghojyy.supabase.co/functions/v1/init-incident-data', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              }
+            });
+            
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error("Failed to initialize reference data:", errorText);
+              toast.error("Could not initialize required data");
+            } else {
+              const result = await response.json();
+              console.log("Reference data initialization result:", result);
+              toast.success("Incident reference data initialized successfully");
+              setDataInitialized(true);
             }
-          });
-          
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error("Failed to initialize reference data:", errorText);
-          } else {
-            const result = await response.json();
-            console.log("Reference data initialization result:", result);
-            toast.success("Incident reference data initialized successfully");
+          } catch (initError) {
+            console.error("Error calling initialization function:", initError);
+            toast.error("Could not connect to initialization service");
           }
         } else {
           console.log("Incident reference data exists:", statusData);
+          setDataInitialized(true);
         }
       } catch (error) {
         console.error("Error initializing reference data:", error);
+        toast.error("Could not verify reference data");
       } finally {
         setIsLoadingRefData(false);
       }
@@ -327,9 +348,12 @@ const ReportIncident = () => {
               </Button>
               <Button 
                 type="submit" 
-                disabled={isSubmitting || contextIsSubmitting || isLoadingRefData}
+                disabled={isSubmitting || contextIsSubmitting || isLoadingRefData || !dataInitialized}
               >
-                {isSubmitting || contextIsSubmitting ? "Submitting..." : "Submit Report"}
+                {isSubmitting || contextIsSubmitting ? 
+                  "Submitting..." : 
+                  (isLoadingRefData ? "Initializing..." : "Submit Report")
+                }
               </Button>
             </CardFooter>
           </Card>
