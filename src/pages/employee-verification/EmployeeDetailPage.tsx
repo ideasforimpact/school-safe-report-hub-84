@@ -1,7 +1,6 @@
-
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Upload, RefreshCw } from 'lucide-react';
+import { ArrowLeft, RefreshCcw, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import EmployeeDetails from '@/components/employee-verification/EmployeeDetails';
@@ -120,11 +119,11 @@ const EmployeeDetailPage = () => {
           <div className="flex space-x-2">
             <Button 
               variant="outline" 
-              size="sm"
+              size="icon"
               onClick={handleRefreshDocuments}
               disabled={isLoading || isRefreshing}
             >
-              <RefreshCw className={`h-4 w-4 ${isLoading || isRefreshing ? 'animate-spin' : ''}`} />
+              <RefreshCcw className={`h-4 w-4 ${isLoading || isRefreshing ? 'animate-spin' : ''}`} />
               <span className="sr-only">Refresh</span>
             </Button>
             <Button onClick={handleAddDocument} className="shadow-md">
@@ -154,7 +153,7 @@ const EmployeeDetailPage = () => {
                 disabled={isLoading || isRefreshing}
                 className="ml-2"
               >
-                <RefreshCw className={`h-4 w-4 ${isLoading || isRefreshing ? 'animate-spin' : ''}`} />
+                <RefreshCcw className={`h-4 w-4 ${isLoading || isRefreshing ? 'animate-spin' : ''}`} />
                 <span className="ml-1">Refresh</span>
               </Button>
             </div>
