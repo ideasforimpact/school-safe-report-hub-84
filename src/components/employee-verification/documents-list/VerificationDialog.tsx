@@ -197,10 +197,18 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const handleOtpSubmit = async () => {
     console.log("handleOtpSubmit called - starting OTP verification process");
     
+    if (otp.length !== 6) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid 6-digit OTP",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     // Start with setting the verifying state to true
     setIsVerifyingOtp(true);
     
-    // Removed the txnId check to allow proceeding with just OTP and client_id
     try {
       console.log("Submitting OTP verification with:", {
         otp,
@@ -393,7 +401,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               </Button>
               <Button 
                 onClick={handleOtpSubmit}
-                disabled={isVerifyingOtp}
+                disabled={isVerifyingOtp || otp.length !== 6}
               >
                 {isVerifyingOtp ? (
                   <>

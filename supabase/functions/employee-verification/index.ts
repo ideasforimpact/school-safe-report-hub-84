@@ -63,26 +63,40 @@ serve(async (req) => {
       console.log(`Using production API for ${action}: ${baseUrl}`);
     }
     
-    // Check if we're testing in development mode
-    const isDevTest = environment === "development" && !apiKey;
-
-    // First, fetch the document_status to get the governance ID
-    const { data: docStatus, error: statusError } = await supabase
+    // First, fetch document status IDs for governance and rejected statuses
+    const { data: governanceStatus, error: governanceError } = await supabase
       .from('document_status')
       .select('id')
       .eq('name', 'governance')
       .single();
     
-    if (statusError) {
-      console.error("Error fetching governance status:", statusError);
+    if (governanceError) {
+      console.error("Error fetching governance status:", governanceError);
       return new Response(
         JSON.stringify({ error: "Could not find governance status" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
     
-    const governanceStatusId = docStatus?.id;
+    const { data: rejectedStatus, error: rejectedError } = await supabase
+      .from('document_status')
+      .select('id')
+      .eq('name', 'rejected')
+      .single();
+    
+    if (rejectedError) {
+      console.error("Error fetching rejected status:", rejectedError);
+      return new Response(
+        JSON.stringify({ error: "Could not find rejected status" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    const governanceStatusId = governanceStatus?.id;
+    const rejectedStatusId = rejectedStatus?.id;
+    
     console.log("Found governance status ID:", governanceStatusId);
+    console.log("Found rejected status ID:", rejectedStatusId);
     
     // Handle Aadhar OTP request
     if (action === 'requestAadharOtp') {
@@ -126,29 +140,6 @@ serve(async (req) => {
             console.log("Previous OTP has expired, allowing new OTP request");
           }
         }
-      }
-      
-      // For dev testing or when API key is not set, return a mock response
-      if (isDevTest) {
-        console.log("Development mode: Returning mock OTP response");
-        
-        // Update the document with current timestamp
-        if (documentId) {
-          await supabase
-            .from('employee_documents')
-            .update({ last_otp_generated: new Date().toISOString() })
-            .eq('id', documentId);
-        }
-        
-        return new Response(
-          JSON.stringify({ 
-            success: true, 
-            message: "Development mode: OTP would be sent to the registered mobile", 
-            txnId: "dev-test-txn-" + Date.now(),
-            client_id: "dev-test-client-" + Date.now()
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
       }
       
       try {
@@ -219,109 +210,6 @@ serve(async (req) => {
         );
       }
       
-      // For dev testing or when API key is not set, verify with simple mock logic
-      if (isDevTest) {
-        console.log("Development mode: Simulating OTP verification");
-        
-        // Simple verification - any 6-digit OTP where digits add up to a multiple of 5
-        const isValidOtp = otp.length === 6 && 
-          otp.split('').reduce((sum, digit) => sum + parseInt(digit), 0) % 5 === 0;
-        
-        if (!isValidOtp) {
-          return new Response(
-            JSON.stringify({ 
-              success: false, 
-              error: "Invalid OTP. For dev testing, enter a 6-digit OTP where digits add up to a multiple of 5." 
-            }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-        
-        // Mock verification response for development
-        const mockResponse = {
-          success: true,
-          message: "Development mode: OTP verification successful",
-          data: {
-            full_name: "Test User",
-            aadhaar_number: "XXXX1234",
-            dob: "1990-01-01",
-            gender: "M",
-            address: {
-              country: "India",
-              state: "Test State",
-              district: "Test District"
-            }
-          }
-        };
-        
-        if (documentId) {
-          // First store the verification response in employee_docs_log
-          const { data: document, error: fetchError } = await supabase
-            .from('employee_documents')
-            .select('employee_docs_log')
-            .eq('id', documentId)
-            .single();
-            
-          if (fetchError) {
-            console.error("Error fetching document:", fetchError);
-          } else {
-            // Get existing logs or initialize empty array
-            const existingLogs = document?.employee_docs_log || [];
-            
-            // Create log entry with timestamp and response data
-            const logEntry = {
-              timestamp: new Date().toISOString(),
-              action: "verify_aadhar_otp",
-              response: mockResponse
-            };
-            
-            // Update document with log entry and verification status
-            await supabase
-              .from('employee_documents')
-              .update({
-                verification_status: 'verified',
-                employee_docs_log: [...existingLogs, logEntry],
-                document_status_id: governanceStatusId,
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', documentId);
-          }
-          
-          // Get employee ID from the document
-          const { data: documentData } = await supabase
-            .from('employee_documents')
-            .select('employee_id')
-            .eq('id', documentId)
-            .single();
-          
-          if (documentData?.employee_id) {
-            // Check if all employee documents are verified
-            const { data: documents } = await supabase
-              .from('employee_documents')
-              .select('verification_status')
-              .eq('employee_id', documentData.employee_id);
-            
-            const allVerified = documents?.every(doc => doc.verification_status === 'verified');
-            
-            if (allVerified) {
-              await supabase
-                .from('employees')
-                .update({ status: 'verified' })
-                .eq('id', documentData.employee_id);
-            }
-          }
-        }
-        
-        return new Response(
-          JSON.stringify({ 
-            success: true, 
-            message: "Development mode: OTP verification successful" 
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      
-      // Actual API call to verify OTP
       try {
         console.log("Making request to Surepass API to verify OTP with base URL:", baseUrl);
         
@@ -353,7 +241,8 @@ serve(async (req) => {
         const data = await response.json();
         console.log("Surepass API verification response:", JSON.stringify(data));
         
-        if (data.success) {
+        // Check status_code in API response
+        if (data.success && data.status_code === 200) {
           // Update document status to verified and store API response in logs
           if (documentId) {
             // First fetch the current logs
@@ -376,7 +265,7 @@ serve(async (req) => {
                 response: data
               };
               
-              // Update document with verification status and log entry
+              // Update document with verification status, log entry and governance status
               const { error: updateError } = await supabase
                 .from('employee_documents')
                 .update({
@@ -425,7 +314,7 @@ serve(async (req) => {
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         } else {
-          // Even for failed verification, we should log the response
+          // Failed verification - update document with rejected status
           if (documentId) {
             // Fetch current logs
             const { data: document } = await supabase
@@ -448,6 +337,8 @@ serve(async (req) => {
                 .from('employee_documents')
                 .update({
                   employee_docs_log: [...existingLogs, logEntry],
+                  document_status_id: rejectedStatusId,
+                  verification_status: 'failed',
                   updated_at: new Date().toISOString()
                 })
                 .eq('id', documentId);
