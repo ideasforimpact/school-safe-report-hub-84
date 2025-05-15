@@ -17,7 +17,7 @@ import { Student } from '@/types/student';
 import { useStudents } from '@/contexts/StudentContext';
 
 const ReportIncident = () => {
-  const { addIncident, categories } = useIncidents();
+  const { addIncident, categories, isSubmitting: contextIsSubmitting } = useIncidents();
   const { user } = useAuth();
   const navigate = useNavigate();
   const { students } = useStudents();
@@ -158,6 +158,16 @@ const ReportIncident = () => {
       // Ensure we have a valid location
       const locationValue = locationName as IncidentLocation; 
       
+      console.log("About to submit incident with data:", {
+        type: incidentType,
+        category: categoryName,
+        subcategory: formData.subcategory,
+        description: formData.description,
+        location: locationValue,
+        facility: facilityName,
+        owner: owner
+      });
+      
       await addIncident({
         type: incidentType,
         category: categoryName,
@@ -243,8 +253,8 @@ const ReportIncident = () => {
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? "Submitting..." : "Submit Report"}
+              <Button type="submit" disabled={isSubmitting || contextIsSubmitting}>
+                {isSubmitting || contextIsSubmitting ? "Submitting..." : "Submit Report"}
               </Button>
             </CardFooter>
           </Card>

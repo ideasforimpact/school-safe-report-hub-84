@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { toast } from "sonner";
 import { Incident, ActionItem, Activity, User } from '@/types/incident';
@@ -36,48 +35,107 @@ export const useIncidentActions = (
         priority: incidentData.priority || 'Medium' // Default priority if not provided
       };
       
+      console.log("Creating new incident with data:", JSON.stringify(newIncident, null, 2));
+      
       // Add to the local state first for immediate UI feedback
       setIncidents(prev => [newIncident, ...prev]);
       
       // Get UUIDs for status, type, category
       // Get UUID for status (assuming "Open" = status_id 1)
-      const { data: statusData } = await supabase
+      console.log("Fetching status UUID for 'Open'");
+      const { data: statusData, error: statusError } = await supabase
         .from('incident_status')
         .select('id')
         .eq('name', 'Open')
         .single();
       
-      const { data: typeData } = await supabase
+      if (statusError) {
+        console.error("Error fetching status:", statusError);
+        throw statusError;
+      }
+      
+      console.log("Fetched status UUID:", statusData?.id);
+      
+      console.log("Fetching type UUID for:", incidentData.type);
+      const { data: typeData, error: typeError } = await supabase
         .from('incident_report_types')
         .select('id')
         .eq('name', incidentData.type)
         .single();
       
-      const { data: categoryData } = await supabase
+      if (typeError) {
+        console.error("Error fetching type:", typeError);
+        throw typeError;
+      }
+      
+      console.log("Fetched type UUID:", typeData?.id);
+      
+      console.log("Fetching category UUID for:", incidentData.category);
+      const { data: categoryData, error: categoryError } = await supabase
         .from('incident_categories')
         .select('id')
         .eq('name', incidentData.category)
         .single();
       
-      const { data: priorityData } = await supabase
+      if (categoryError) {
+        console.error("Error fetching category:", categoryError);
+        throw categoryError;
+      }
+      
+      console.log("Fetched category UUID:", categoryData?.id);
+      
+      console.log("Fetching priority UUID for:", incidentData.priority || 'Medium');
+      const { data: priorityData, error: priorityError } = await supabase
         .from('incident_priorities')
         .select('id')
         .eq('name', incidentData.priority || 'Medium')
         .single();
       
-      // Find the facility UUID by name - this is the key fix
+      if (priorityError) {
+        console.error("Error fetching priority:", priorityError);
+        throw priorityError;
+      }
+      
+      console.log("Fetched priority UUID:", priorityData?.id);
+      
+      // Find the facility UUID by name
       let facilityId = null;
       if (incidentData.facility) {
-        const { data: facilityData } = await supabase
+        console.log("Looking up facility by name:", incidentData.facility);
+        const { data: facilityData, error: facilityError } = await supabase
           .from('facilities')
           .select('id')
           .eq('name', incidentData.facility)
           .single();
         
-        facilityId = facilityData?.id || null;
+        if (facilityError) {
+          console.error("Error fetching facility:", facilityError);
+          // Don't throw here, just log the error and continue with null facilityId
+        }
         
-        console.log("Looking up facility:", incidentData.facility);
+        facilityId = facilityData?.id || null;
         console.log("Found facility ID:", facilityId);
+      }
+      
+      // Convert location from string type to UUID if needed
+      let locationId = null;
+      if (incidentData.location) {
+        console.log("Looking up location by name:", incidentData.location);
+        const { data: locationData, error: locationError } = await supabase
+          .from('campuses')  // Assuming locations are stored in campuses table
+          .select('id')
+          .eq('name', incidentData.location)
+          .single();
+          
+        if (locationError) {
+          console.error("Error fetching location:", locationError);
+          // Don't throw here, use the location name as is
+          locationId = incidentData.location;
+        } else {
+          locationId = locationData?.id || incidentData.location;
+        }
+        
+        console.log("Using location ID:", locationId);
       }
       
       // Format the data for database insertion - using real UUIDs from database
@@ -85,20 +143,20 @@ export const useIncidentActions = (
         ticket_id: ticketId,
         description: incidentData.description,
         date: incidentData.date.toISOString(),
-        location_id: incidentData.location ? incidentData.location : null,
+        location_id: locationId,
         people_involved: JSON.stringify(incidentData.peopleInvolved),
-        status_id: statusData?.id || null,
+        status_id: statusData?.id,
         reported_by_id: incidentData.reportedBy.id,
         facility_id: facilityId, // Use the looked up facility UUID
         documents: incidentData.documents ? JSON.stringify(incidentData.documents) : null,
-        priority_id: priorityData?.id || null,
-        type_id: typeData?.id || null,
-        category_id: categoryData?.id || null,
+        priority_id: priorityData?.id,
+        type_id: typeData?.id,
+        category_id: categoryData?.id,
         subcategory_id: incidentData.subcategory || null,
         owner_id: incidentData.owner ? incidentData.owner.id : null
       };
       
-      console.log("Sending incident data to database:", dbIncident);
+      console.log("Sending incident data to database:", JSON.stringify(dbIncident, null, 2));
       
       // Insert into the database
       const { data, error } = await supabase
@@ -110,6 +168,8 @@ export const useIncidentActions = (
         toast.error("Failed to save incident to database");
         throw error;
       }
+      
+      console.log("Successfully inserted incident into database");
       
       // Log the activity
       addActivity({
