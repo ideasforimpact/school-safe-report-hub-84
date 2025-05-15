@@ -34,6 +34,9 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
   documentType
 }) => {
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [panDialogOpen, setPanDialogOpen] = useState(false);
+  const [voterIdDialogOpen, setVoterIdDialogOpen] = useState(false);
+  const [drivingLicenseDialogOpen, setDrivingLicenseDialogOpen] = useState(false);
 
   const getStatusConfig = () => {
     switch (status) {
@@ -107,9 +110,15 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
     if (onClick) {
       console.log('VerificationStatusBadge - Calling provided onClick handler');
       onClick();
-    } else if (isPanWithGovernance || isVoterIdWithGovernance || isDrivingLicenseWithGovernance) {
-      console.log('VerificationStatusBadge - Opening dialog for document type:', documentType);
-      setDialogOpen(true);
+    } else if (isPanWithGovernance) {
+      console.log('VerificationStatusBadge - Opening PAN dialog');
+      setPanDialogOpen(true);
+    } else if (isVoterIdWithGovernance) {
+      console.log('VerificationStatusBadge - Opening Voter ID dialog');
+      setVoterIdDialogOpen(true);
+    } else if (isDrivingLicenseWithGovernance) {
+      console.log('VerificationStatusBadge - Opening Driving License dialog');
+      setDrivingLicenseDialogOpen(true);
     }
   };
 
@@ -170,30 +179,30 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
       </Badge>
 
       {/* Display PAN Details Dialog */}
-      {dialogOpen && panVerificationLog && documentType === 'pan' && (
+      {panDialogOpen && panVerificationLog && documentType === 'pan' && (
         <PanDetailsDialog 
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
+          open={panDialogOpen}
+          onOpenChange={setPanDialogOpen}
           panDetails={panVerificationLog.response}
           documentId={documentId}
         />
       )}
 
       {/* Display Voter ID Details Dialog */}
-      {dialogOpen && voterIdVerificationLog && documentType === 'voter_id' && (
+      {voterIdDialogOpen && voterIdVerificationLog && documentType === 'voter_id' && (
         <VoterIdDetailsDialog
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
+          open={voterIdDialogOpen}
+          onOpenChange={setVoterIdDialogOpen}
           voterIdDetails={voterIdVerificationLog.response}
           documentId={documentId}
         />
       )}
 
       {/* Display Driving License Details Dialog */}
-      {dialogOpen && documentType === 'driving_license' && (
+      {(drivingLicenseDialogOpen) && documentType === 'driving_license' && (
         <DrivingLicenseDetailsDialog
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
+          open={drivingLicenseDialogOpen}
+          onOpenChange={setDrivingLicenseDialogOpen}
           licenseDetails={(drivingLicenseVerificationLog || fallbackDrivingLicenseLog)?.response}
           documentId={documentId}
         />

@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { Eye, Download, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -40,8 +41,10 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [panDialogOpen, setPanDialogOpen] = React.useState(false);
   const [voterIdDialogOpen, setVoterIdDialogOpen] = React.useState(false);
+  const [drivingLicenseDialogOpen, setDrivingLicenseDialogOpen] = React.useState(false);
   const [selectedPanDetails, setSelectedPanDetails] = React.useState<any>(null);
   const [selectedVoterIdDetails, setSelectedVoterIdDetails] = React.useState<any>(null);
+  const [selectedDrivingLicenseDetails, setSelectedDrivingLicenseDetails] = React.useState<any>(null);
   const [selectedDocumentId, setSelectedDocumentId] = React.useState<string | undefined>(undefined);
   
   // Log documents for debugging
@@ -136,14 +139,15 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
       // Attempt to find any log with driving license verification data
       const drivingLicenseLog = doc.employee_docs_log?.find(log => 
         (log.action?.includes('driving') || log.action?.includes('license')) && 
-        log.response?.data
+        log.response
       );
       
       console.log('DocumentsTable - Found driving license log:', drivingLicenseLog);
       
       if (drivingLicenseLog && statusName === 'governance') {
-        setSelectedDocumentDetails(drivingLicenseLog.response);
-        setDialogOpen(true);
+        // Set the driving license details and open the dialog
+        setSelectedDrivingLicenseDetails(drivingLicenseLog.response);
+        setDrivingLicenseDialogOpen(true);
         
         toast({
           title: "Viewing Driving License verification details",
@@ -260,6 +264,13 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
         open={voterIdDialogOpen}
         onOpenChange={setVoterIdDialogOpen}
         voterIdDetails={selectedVoterIdDetails}
+        documentId={selectedDocumentId}
+      />
+      
+      <DrivingLicenseDetailsDialog
+        open={drivingLicenseDialogOpen}
+        onOpenChange={setDrivingLicenseDialogOpen}
+        licenseDetails={selectedDrivingLicenseDetails}
         documentId={selectedDocumentId}
       />
     </>

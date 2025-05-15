@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
@@ -30,7 +30,7 @@ const DrivingLicenseDetailsDialog: React.FC<DrivingLicenseDetailsDialogProps> = 
   console.log('DrivingLicenseDetailsDialog - Is successful:', isSuccessful);
   console.log('DrivingLicenseDetailsDialog - Data keys:', Object.keys(data));
   
-  React.useEffect(() => {
+  useEffect(() => {
     console.log('DrivingLicenseDetailsDialog - Dialog mounted/updated with open:', open);
     
     if (open) {
@@ -63,7 +63,7 @@ const DrivingLicenseDetailsDialog: React.FC<DrivingLicenseDetailsDialogProps> = 
         </DialogHeader>
         
         <ScrollArea className="h-[400px] rounded-md border">
-          {isSuccessful || Object.keys(data).length > 0 ? (
+          {(isSuccessful || Object.keys(data).length > 0) ? (
             <div className="p-4">
               <Table>
                 <TableHeader>
