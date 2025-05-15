@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIncidents } from '@/contexts/incident';
@@ -11,7 +10,7 @@ import { useIncidentForm } from '@/hooks/useIncidentForm';
 import IncidentDetailsForm from '@/components/incidents/IncidentDetailsForm';
 import PeopleInvolvedSection from '@/components/incidents/PeopleInvolvedSection';
 import { IncidentType, IncidentCategory, IncidentLocation } from '@/types/incident';
-import { Employee } from '@/contexts/employee/types';
+import { Employee } from '@/types/employeeVerification';
 import { getAllEmployeesFromApi } from '@/services/employee/employeeRetrievalService';
 import { Student } from '@/types/student';
 import { useStudents } from '@/contexts/StudentContext';
@@ -62,6 +61,7 @@ const ReportIncident = () => {
         console.log("Fetching employees from API service...");
         const fetchedEmployees = await getAllEmployeesFromApi();
         console.log(`Fetched ${fetchedEmployees.length} employees successfully:`, fetchedEmployees);
+        // Here's the fix: we're explicitly using the employees as the verification type
         setEmployees(fetchedEmployees);
       } catch (error) {
         console.error("Failed to fetch employees:", error);
@@ -258,6 +258,7 @@ const ReportIncident = () => {
         description: formData.description,
         location: locationValue,
         locationId: formData.locationId,
+        peopleInvolved: validPeople,
         facility: facilityName,
         facilityId: formData.facilityId,
         priority: formData.priority,

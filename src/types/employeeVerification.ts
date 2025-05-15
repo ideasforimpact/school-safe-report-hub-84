@@ -10,7 +10,7 @@ export interface Employee {
   joiningDate: string;
   department: string;
   position: string;
-  employeeType: 'permanent' | 'contract' | 'temporary';
+  employeeType: 'permanent' | 'contract' | 'temporary' | 'part_time' | 'consultant' | 'intern';
   status: boolean; // Changed from string enum to boolean as per database change
   createdAt: string;
   updatedAt: string;

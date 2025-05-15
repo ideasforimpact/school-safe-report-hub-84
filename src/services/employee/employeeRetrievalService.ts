@@ -21,9 +21,31 @@ export const getAllEmployeesFromApi = async (): Promise<Employee[]> => {
     console.log(`Successfully fetched ${data.length} employees from API`);
     
     // Map the database records to our Employee model
-    const employees = data.map(record => mapDbRecordToEmployee(record));
+    const employees = data.map(record => {
+      // Create a base employee with all required fields
+      const employee: Employee = {
+        id: record.id,
+        employeeId: record.employee_id || '',
+        name: `${record.first_name} ${record.last_name}`,
+        firstName: record.first_name,
+        lastName: record.last_name,
+        email: record.email || '',
+        phone: '',
+        dateOfBirth: '',
+        address: '',
+        joiningDate: record.joining_date || new Date().toISOString(),
+        department: record.department || '',
+        position: record.employee_type || '', // Use employee_type as position since it doesn't exist
+        employeeType: (record.employee_type as Employee['employeeType']) || 'permanent',
+        status: record.status === true, // Convert to boolean
+        createdAt: record.created_at || new Date().toISOString(),
+        updatedAt: record.updated_at || new Date().toISOString(),
+        documents: [] // Initialize empty documents array
+      };
+      return employee;
+    });
     
-    // Now fetch documents separately for each employee
+    // Now fetch documents for each employee
     const employeesWithDocs = await Promise.all(
       employees.map(async (employee) => {
         try {
@@ -87,8 +109,26 @@ export const getEmployeeByIdFromApi = async (id: string): Promise<Employee> => {
       throw error;
     }
 
-    // Convert the response to our Employee type
-    const employee = mapDbRecordToEmployee(data);
+    // Convert the response to our Employee type with all required fields
+    const employee: Employee = {
+      id: data.id,
+      employeeId: data.employee_id || '',
+      name: `${data.first_name} ${data.last_name}`,
+      firstName: data.first_name,
+      lastName: data.last_name,
+      email: data.email || '',
+      phone: '',
+      dateOfBirth: '',
+      address: '',
+      joiningDate: data.joining_date || new Date().toISOString(),
+      department: data.department || '',
+      position: data.employee_type || '',
+      employeeType: (data.employee_type as Employee['employeeType']) || 'permanent',
+      status: data.status === true,
+      createdAt: data.created_at || new Date().toISOString(),
+      updatedAt: data.updated_at || new Date().toISOString(),
+      documents: []
+    };
     
     // Fetch documents separately
     try {
@@ -149,8 +189,26 @@ export const getEmployeeByUserIdFromApi = async (userId: string): Promise<Employ
       throw error;
     }
 
-    // Convert the response to our Employee type
-    return mapDbRecordToEmployee(data);
+    // Convert the response to our Employee type with all required fields
+    return {
+      id: data.id,
+      employeeId: data.employee_id || '',
+      name: `${data.first_name} ${data.last_name}`,
+      firstName: data.first_name,
+      lastName: data.last_name,
+      email: data.email || '',
+      phone: '',
+      dateOfBirth: '',
+      address: '',
+      joiningDate: data.joining_date || new Date().toISOString(),
+      department: data.department || '',
+      position: data.employee_type || '',
+      employeeType: (data.employee_type as Employee['employeeType']) || 'permanent',
+      status: data.status === true,
+      createdAt: data.created_at || new Date().toISOString(),
+      updatedAt: data.updated_at || new Date().toISOString(),
+      documents: []
+    };
   } catch (error) {
     console.error("Error in getEmployeeByUserIdFromApi:", error);
     toast.error("Failed to fetch employee");
