@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { VerificationDocument } from '@/types/employeeVerification';
@@ -72,6 +73,7 @@ const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({ document })
         onClick={isAadhar && isGovernanceVerified && hasLogs ? handleClick : undefined}
         documentLogs={document.employee_docs_log}
         documentId={document.id}
+        documentType={document.documentTypeName?.toLowerCase()}
       />
 
       {/* Keep Aadhar dialog for backward compatibility */}
