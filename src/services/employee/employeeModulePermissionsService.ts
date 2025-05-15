@@ -49,7 +49,7 @@ export const addModulePermissionToApi = async (
       throw employeeCheckError;
     }
     
-    if (employeeData.status !== 'active') {
+    if (employeeData.status !== true) {  // Compare with boolean true
       const error = new Error('Cannot modify permissions for inactive employees');
       console.error(error);
       toast.error(error.message);
@@ -131,7 +131,7 @@ export const updateModulePermissionsInApi = async (
     }
     
     // Check if employee is active before allowing permission changes
-    if (employee.status !== 'active') {
+    if (employee.status !== true) {  // Compare with boolean true
       const error = new Error('Cannot modify permissions for inactive employees');
       console.error(error);
       toast.error(error.message);

@@ -27,7 +27,7 @@ export const addEmployeeToApi = async (
         employee_type: dbEmployee.employee_type,
         department: dbEmployee.department,
         joining_date: dbEmployee.joining_date,
-        status: dbEmployee.status,
+        status: true, // Always set to true (active) for new employees
         client_id: dbEmployee.client_id, // Make sure client_id is included
         user_id: dbEmployee.user_id
       })
@@ -86,10 +86,10 @@ export const updateEmployeeInApi = async (
 
 export const deactivateEmployeeInApi = async (id: string): Promise<Employee> => {
   try {
-    // Update the employee status to 'inactive'
+    // Update the employee status to 'inactive' (false)
     const { data, error } = await supabase
       .from('employees')
-      .update({ status: 'inactive' })
+      .update({ status: false })
       .eq('id', id)
       .select('*')
       .single();

@@ -1,4 +1,3 @@
-
 import { User, UserWithPassword, UserRole } from '../types';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
@@ -15,7 +14,7 @@ import {
   deactivateExistingUser 
 } from '@/services/auth/userManagementService';
 import { excludePasswordFromUser } from '../utils';
-import { checkEmployeeAccess } from './useEmployeeAccess';
+import { useEmployeeAccess } from './useEmployeeAccess';
 
 // List of demo emails that can bypass the employee verification
 const DEMO_EMAILS = [
@@ -23,6 +22,39 @@ const DEMO_EMAILS = [
   'admin@school.edu',
   'reporter@school.edu'
 ];
+
+// Helper function to check employee access
+const checkEmployeeAccess = async (email: string, setAuthError: (error: string | null) => void) => {
+  try {
+    // Check if the employee exists and is active in the employees table
+    const { data, error } = await supabase
+      .from('employees')
+      .select('*')
+      .eq('email', email.toLowerCase())
+      .eq('status', true) // Using boolean status now
+      .single();
+    
+    if (error || !data) {
+      console.log("Employee verification failed:", error?.message || "Employee not found or inactive");
+      setAuthError("Access denied: Only verified employees can login");
+      return false;
+    }
+    
+    // Check if the employee has the necessary department permissions
+    // Here we're checking if they are in the admin department
+    if (data.department.toLowerCase() !== 'admin') {
+      console.log("Employee department check failed: Not in admin department");
+      setAuthError("Access denied: Only admin department employees can login");
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error("Error checking employee access:", error);
+    setAuthError("Error verifying employee status");
+    return false;
+  }
+};
 
 /**
  * Hook for auth operation handlers

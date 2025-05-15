@@ -1,9 +1,10 @@
+
 import { useState, useCallback, useEffect } from 'react';
 import { VerificationDocument } from '@/types/employeeVerification';
 import { initialDocuments } from '../initialData';
 import { supabase } from '@/integrations/supabase/client';
 
-export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string, status: 'pending' | 'verified' | 'failed') => Promise<void>) => {
+export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string, status: boolean) => Promise<void>) => {
   const [documents, setDocuments] = useState<VerificationDocument[]>(initialDocuments);
   const [isLoading, setIsLoading] = useState(false);
   const [fetchedEmployeeIds, setFetchedEmployeeIds] = useState<string[]>([]);
@@ -159,7 +160,8 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
 
       // Only update employee status for verified documents, not for rejected ones
       if (status === 'verified') {
-        await updateEmployeeStatus(employeeId, data.status || status);
+        // Convert status string to boolean (true for verified)
+        await updateEmployeeStatus(employeeId, true);
       }
       
     } catch (err) {
