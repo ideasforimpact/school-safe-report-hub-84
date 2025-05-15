@@ -40,14 +40,16 @@ const EmployeeDetailPage = () => {
     if (employeeId && !isRefreshing) {
       setIsRefreshing(true);
       try {
-        // Only fetch employee documents when refreshing - this is the main change
+        // Only fetch employee documents when refreshing
         await fetchEmployeeDocuments(employeeId);
+        console.log('Documents refreshed for employee:', employeeId);
         
         toast({
           title: "Data Refreshed",
           description: "Employee documents have been refreshed.",
         });
       } catch (error) {
+        console.error('Error refreshing documents:', error);
         toast({
           title: "Error",
           description: "Failed to refresh document data.",
@@ -149,9 +151,9 @@ const EmployeeDetailPage = () => {
                 onClick={handleRefreshDocuments}
                 disabled={isLoading || isRefreshing}
                 className="ml-2"
+                aria-label="Refresh documents"
               >
                 <RefreshCcw className={`h-4 w-4 ${isLoading || isRefreshing ? 'animate-spin' : ''}`} />
-                <span className="sr-only">Refresh</span>
               </Button>
             </div>
             
