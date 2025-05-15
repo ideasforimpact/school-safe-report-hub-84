@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIncidents } from '@/contexts/incident/IncidentContext';
@@ -22,14 +23,13 @@ const ReportIncident = () => {
   const { students } = useStudents();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoadingEmployees, setIsLoadingEmployees] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const {
     nextTicketId,
     formData,
     supportingFiles,
     peopleInvolved,
-    isSubmitting,
-    setIsSubmitting,
     handleChange,
     handleSelectChange,
     handleDateTimeChange,
@@ -65,12 +65,32 @@ const ReportIncident = () => {
     fetchEmployees();
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (isSubmitting) return; // Prevent duplicate submissions
     setIsSubmitting(true);
     
     try {
+      // Validate required fields
+      if (!formData.categoryId) {
+        toast.error("Please select a category");
+        setIsSubmitting(false);
+        return;
+      }
+      
+      if (!formData.locationId) {
+        toast.error("Please select a location");
+        setIsSubmitting(false);
+        return;
+      }
+      
+      if (!formData.description || formData.description.trim() === '') {
+        toast.error("Please provide a description of the incident");
+        setIsSubmitting(false);
+        return;
+      }
+      
       // Combine date and time if both are provided
       const dateTime = formData.date && formData.time 
         ? new Date(`${formData.date}T${formData.time}`) 
@@ -132,25 +152,25 @@ const ReportIncident = () => {
       // Ensure we have a valid type
       const incidentType = (formData.type || 'Incident') as IncidentType;
       
-      addIncident({
+      await addIncident({
         type: incidentType,
         category: categoryName,
         subcategory: formData.subcategory || '',
         description: formData.description || '',
         date: dateTime,
-        location: locationName as any,
+        location: locationName,
         peopleInvolved: validPeople,
         facility: facilityName || '',
-        priority: formData.priority || 'Medium' as 'Low' | 'Medium' | 'High' | 'Critical',
+        priority: formData.priority || 'Medium',
         documents: documents,
         reportedBy: {
           id: user?.id || '',
-          name: user?.id || ''
+          name: user?.displayName || user?.email || ''
         },
         owner: owner
       });
       
-      toast.success("Incident reported successfully");
+      // Navigation happens after successful submission
       navigate('/incidents');
     } catch (error) {
       console.error('Error submitting form:', error);

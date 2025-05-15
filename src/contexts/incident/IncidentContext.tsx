@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, ReactNode } from 'react';
 import { IncidentContextType } from './types';
 import { useConfigManagement } from '@/hooks/useConfigManagement'; 
@@ -86,12 +87,13 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
     initialSections
   );
 
-  // Use the incident actions hook
+  // Use the incident actions hook with enhanced database integration
   const {
     addIncident,
     updateIncident,
     getIncident,
-    addActivity
+    addActivity,
+    isSubmitting
   } = useIncidentActions(incidents, setIncidents, activities, setActivities, users);
 
   // Use the activities hook
@@ -107,7 +109,7 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
     deleteComment
   } = useComments(incidents, setIncidents, activities, setActivities, users);
 
-  // Use the action items hook (stub for now, will be implemented fully later)
+  // Use the action items hook
   const {
     addActionItem,
     updateActionItem,
@@ -160,7 +162,8 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
     deleteComment,
     getRecentActivities,
     getIncidentActivities,
-    generateTicketId
+    generateTicketId,
+    isSubmitting
   };
 
   return (

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { toast } from "sonner";
 import { Incident, ActionItem, Activity, User } from '@/types/incident';
 import { generateTicketId } from '@/utils/incidentUtils';
+import { supabase } from "@/integrations/supabase/client";
 
 export const useIncidentActions = (
   incidents: Incident[],
@@ -11,38 +12,83 @@ export const useIncidentActions = (
   setActivities: React.Dispatch<React.SetStateAction<Activity[]>>,
   users: User[]
 ) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Add a new activity to the log with enhanced audit information
   const addActivity = (activity: Activity) => {
     setActivities(prev => [activity, ...prev]);
   };
 
-  const addIncident = (incidentData: Omit<Incident, 'id' | 'status' | 'createdAt' | 'updatedAt' | 'ticketId'>) => {
+  const addIncident = async (incidentData: Omit<Incident, 'id' | 'status' | 'createdAt' | 'updatedAt' | 'ticketId'>) => {
     const now = new Date();
     const ticketId = generateTicketId();
+    setIsSubmitting(true);
     
-    const newIncident: Incident = {
-      ...incidentData,
-      id: Date.now().toString(),
-      ticketId,
-      status: 'Open', // The status is set here internally
-      createdAt: now,
-      updatedAt: now,
-      priority: incidentData.priority || 'Medium' // Default priority if not provided
-    };
-    
-    setIncidents(prev => [newIncident, ...prev]);
-    addActivity({
-      type: 'incident',
-      activity: 'create',
-      entityId: newIncident.id,
-      entityTitle: `${newIncident.ticketId}: ${newIncident.type}: ${newIncident.category} - ${newIncident.subcategory}`,
-      user: newIncident.reportedBy.name,
-      userId: newIncident.reportedBy.id,
-      date: now,
-      details: `Incident reported by ${newIncident.reportedBy.name}`
-    });
-    toast.success("Incident reported successfully");
+    try {
+      // Create the incident object for local state
+      const newIncident: Incident = {
+        ...incidentData,
+        id: Date.now().toString(),
+        ticketId,
+        status: 'Open', // Default status is Open
+        createdAt: now,
+        updatedAt: now,
+        priority: incidentData.priority || 'Medium' // Default priority if not provided
+      };
+      
+      // Add to the local state first for immediate UI feedback
+      setIncidents(prev => [newIncident, ...prev]);
+      
+      // Format the data for database insertion
+      const dbIncident = {
+        ticket_id: ticketId,
+        description: incidentData.description,
+        date: incidentData.date.toISOString(),
+        location_id: incidentData.location ? incidentData.location : null,
+        people_involved: JSON.stringify(incidentData.peopleInvolved),
+        status_id: 'Open', // We should map this to the correct status ID from the database
+        reported_by_id: incidentData.reportedBy.id,
+        facility_id: incidentData.facility ? incidentData.facility : null,
+        documents: incidentData.documents ? JSON.stringify(incidentData.documents) : null,
+        priority_id: incidentData.priority || 'Medium',
+        type_id: incidentData.type,
+        category_id: incidentData.category,
+        subcategory_id: incidentData.subcategory || null,
+        owner_id: incidentData.owner ? incidentData.owner.id : null
+      };
+      
+      // Insert into the database
+      const { data, error } = await supabase
+        .from('incidents')
+        .insert(dbIncident);
+        
+      if (error) {
+        console.error("Error storing incident in database:", error);
+        toast.error("Failed to save incident to database");
+        throw error;
+      }
+      
+      // Log the activity
+      addActivity({
+        type: 'incident',
+        activity: 'create',
+        entityId: newIncident.id,
+        entityTitle: `${newIncident.ticketId}: ${newIncident.type}: ${newIncident.category} - ${newIncident.subcategory}`,
+        user: newIncident.reportedBy.name,
+        userId: newIncident.reportedBy.id,
+        date: now,
+        details: `Incident reported by ${newIncident.reportedBy.name}`
+      });
+      
+      toast.success("Incident reported successfully");
+      return newIncident;
+    } catch (error) {
+      console.error("Error adding incident:", error);
+      toast.error("There was an error reporting the incident");
+      throw error;
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const updateIncident = (id: string, updates: Partial<Incident>) => {
@@ -178,6 +224,7 @@ export const useIncidentActions = (
     addIncident,
     updateIncident,
     getIncident,
-    addActivity
+    addActivity,
+    isSubmitting
   };
 };

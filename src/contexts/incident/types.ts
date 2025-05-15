@@ -40,7 +40,7 @@ export interface IncidentContextType {
   updateSection: (id: string, classId: string, name: string) => void;
   deleteSection: (id: string) => void;
   // Existing incident operations
-  addIncident: (incident: Omit<Incident, 'id' | 'status' | 'createdAt' | 'updatedAt' | 'ticketId'>) => void;
+  addIncident: (incident: Omit<Incident, 'id' | 'status' | 'createdAt' | 'updatedAt' | 'ticketId'>) => Promise<Incident>;
   updateIncident: (id: string, updates: Partial<Incident>) => void;
   getIncident: (id: string) => Incident | undefined;
   // ActionItems operations (renamed to comments in the UI)
@@ -60,6 +60,9 @@ export interface IncidentContextType {
   addDesignation: (name: string) => void;
   updateDesignation: (id: string, name: string) => void;
   deleteDesignation: (id: string) => void;
+  
+  // Submission state
+  isSubmitting?: boolean;
 }
 
 // Use the IncidentStatus type from types/incident.ts
