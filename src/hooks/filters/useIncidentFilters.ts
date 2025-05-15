@@ -1,98 +1,101 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useCallback } from 'react';
 import { Incident } from '@/types/incident';
-import { FilterState, FilterHookReturn } from '@/types/filterTypes';
-import { useFilterOptions } from './useFilterOptions';
-import { applyFilters, getInitialFilterState } from './filterUtils';
 
-export function useIncidentFilters(incidents: Incident[]): FilterHookReturn {
-  // Filter states
-  const [filters, setFilters] = useState<FilterState>(getInitialFilterState());
-  const [filteredIncidents, setFilteredIncidents] = useState<Incident[]>(incidents);
+export interface FilterState {
+  searchTerm: string;
+  status: string[];
+  priority: string[];
+  category: string[];
+  startDate: Date | null;
+  endDate: Date | null;
+  type: string[];
+}
 
-  // Get available options for filters
-  const {
-    categoryOptions,
-    locationOptions,
-    facilityOptions,
-    statusOptions,
-    priorityOptions,
-    assigneeOptions,
-    reporterOptions,
-    isInsightsPage,
-    campuses,
-    classes,
-    sections,
-    designations
-  } = useFilterOptions();
-  
-  // Create available owners array from incidents data
-  const availableOwners = incidents
-    .filter(incident => incident.owner)
-    .map(incident => ({ id: incident.owner!.id, name: incident.owner!.name }))
-    .filter((owner, index, self) => 
-      index === self.findIndex(o => o.id === owner.id)
-    );
+export const useIncidentFilters = (incidents: Incident[]) => {
+  const [filters, setFilters] = useState<FilterState>({
+    searchTerm: '',
+    status: [],
+    priority: [],
+    category: [],
+    startDate: null,
+    endDate: null,
+    type: []
+  });
 
-  // Reset category and subcategory when type changes
-  useEffect(() => {
+  const filteredIncidents = incidents.filter(incident => {
+    // Search term filter
+    if (filters.searchTerm) {
+      const searchTerm = filters.searchTerm.toLowerCase();
+      const searchMatch = 
+        incident.ticketId.toLowerCase().includes(searchTerm) ||
+        incident.description.toLowerCase().includes(searchTerm) ||
+        (incident.category && incident.category.toLowerCase().includes(searchTerm));
+      
+      if (!searchMatch) return false;
+    }
+    
+    // Status filter
+    if (filters.status.length > 0 && !filters.status.includes(incident.status)) {
+      return false;
+    }
+    
+    // Type filter
+    if (filters.type.length > 0 && !filters.type.includes(incident.type)) {
+      return false;
+    }
+    
+    // Priority filter
+    if (filters.priority.length > 0 && incident.priority && 
+        !filters.priority.includes(incident.priority)) {
+      return false;
+    }
+    
+    // Category filter
+    if (filters.category.length > 0 && 
+        !filters.category.includes(incident.category)) {
+      return false;
+    }
+    
+    // Date range filter
+    if (filters.startDate && new Date(incident.date) < filters.startDate) {
+      return false;
+    }
+    
+    if (filters.endDate) {
+      const endDate = new Date(filters.endDate);
+      endDate.setHours(23, 59, 59, 999); // End of day
+      if (new Date(incident.date) > endDate) {
+        return false;
+      }
+    }
+    
+    return true;
+  });
+
+  const updateFilter = useCallback((key: keyof FilterState, value: any) => {
     setFilters(prev => ({
       ...prev,
-      category: '',
-      subcategory: ''
+      [key]: value
     }));
-  }, [filters.type]);
+  }, []);
 
-  // Reset subcategory when category changes
-  useEffect(() => {
-    setFilters(prev => ({
-      ...prev,
-      subcategory: ''
-    }));
-  }, [filters.category]);
-
-  // Reset facility when location changes
-  useEffect(() => {
-    setFilters(prev => ({
-      ...prev,
-      facility: ''
-    }));
-  }, [filters.location]);
-
-  const handleFilterChange = (field: string, value: any) => {
-    setFilters(prev => ({ ...prev, [field]: value }));
-  };
-
-  const toggleAdvancedFilters = () => {
-    setFilters(prev => ({ 
-      ...prev, 
-      showAdvancedFilters: !prev.showAdvancedFilters 
-    }));
-  };
-
-  const clearFilters = () => {
+  const resetFilters = useCallback(() => {
     setFilters({
-      ...getInitialFilterState(),
-      showAdvancedFilters: filters.showAdvancedFilters
+      searchTerm: '',
+      status: [],
+      priority: [],
+      category: [],
+      startDate: null,
+      endDate: null,
+      type: []
     });
-  };
-
-  // Apply filters to incidents
-  useEffect(() => {
-    const result = applyFilters(incidents, filters);
-    setFilteredIncidents(result);
-  }, [incidents, filters]);
+  }, []);
 
   return {
     filters,
-    filteredIncidents,
-    availableCategories: categoryOptions,
-    availableSubcategories: [],
-    availableLocations: locationOptions,
-    availableFacilities: facilityOptions,
-    availableOwners,
-    handleFilterChange,
-    toggleAdvancedFilters,
-    clearFilters
+    updateFilter,
+    resetFilters,
+    filteredIncidents
   };
-}
+};

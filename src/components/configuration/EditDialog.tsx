@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
 
 export interface EditDialogProps {
   title: string;
@@ -96,6 +97,20 @@ export const EditDialog: React.FC<EditDialogProps> = ({
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+          )}
+
+          {extraField && extraField.type === 'text' && (
+            <div className="grid grid-cols-4 items-start gap-4">
+              <label className="text-right text-sm font-medium col-span-1 pt-2">
+                {extraField.label}
+              </label>
+              <Textarea
+                value={extraField.value}
+                onChange={(e) => extraField.onChange(e.target.value)}
+                className="col-span-3"
+                rows={3}
+              />
             </div>
           )}
         </div>

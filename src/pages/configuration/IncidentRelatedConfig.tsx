@@ -5,7 +5,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CategoryTab } from '@/components/configuration/CategoryTab';
 import { SubcategoryTab } from '@/components/configuration/SubcategoryTab';
 import { ContributingFactorTab } from '@/components/configuration/ContributingFactorTab';
+import { ReportTypeTab } from '@/components/configuration/ReportTypeTab';
 import { ConfigItem, SubcategoryItem } from '@/contexts/types';
+
+interface ReportType {
+  id: string;
+  name: string;
+  description: string | null;
+  is_active: boolean;
+}
 
 interface IncidentRelatedConfigProps {
   activeTab: string;
@@ -27,6 +35,10 @@ interface IncidentRelatedConfigProps {
   addContributingFactor: (name: string, description: string, weight: string) => void;
   updateContributingFactor: (id: string, name: string, description: string, weight: string) => void;
   deleteContributingFactor: (id: string) => void;
+  reportTypes: ReportType[];
+  addReportType: (name: string, description: string) => void;
+  updateReportType: (id: string, name: string, description: string) => void;
+  deleteReportType: (id: string) => void;
 }
 
 export const IncidentRelatedConfig: React.FC<IncidentRelatedConfigProps> = ({
@@ -43,7 +55,11 @@ export const IncidentRelatedConfig: React.FC<IncidentRelatedConfigProps> = ({
   contributingFactors,
   addContributingFactor,
   updateContributingFactor,
-  deleteContributingFactor
+  deleteContributingFactor,
+  reportTypes,
+  addReportType,
+  updateReportType,
+  deleteReportType
 }) => {
   return (
     <Card>
@@ -53,6 +69,7 @@ export const IncidentRelatedConfig: React.FC<IncidentRelatedConfigProps> = ({
             <TabsTrigger value="categories">Categories</TabsTrigger>
             <TabsTrigger value="subcategories">Subcategories</TabsTrigger>
             <TabsTrigger value="contributingFactors">Contributing Factors</TabsTrigger>
+            <TabsTrigger value="reportTypes">Report Types</TabsTrigger>
           </TabsList>
           
           <TabsContent value="categories">
@@ -80,6 +97,15 @@ export const IncidentRelatedConfig: React.FC<IncidentRelatedConfigProps> = ({
               addFactor={addContributingFactor}
               updateFactor={updateContributingFactor}
               deleteFactor={deleteContributingFactor}
+            />
+          </TabsContent>
+
+          <TabsContent value="reportTypes">
+            <ReportTypeTab
+              reportTypes={reportTypes}
+              addReportType={addReportType}
+              updateReportType={updateReportType}
+              deleteReportType={deleteReportType}
             />
           </TabsContent>
         </Tabs>

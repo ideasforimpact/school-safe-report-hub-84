@@ -14,10 +14,18 @@ interface ContributingFactor {
   weight: string | null;
 }
 
+interface ReportType {
+  id: string;
+  name: string;
+  description: string | null;
+  is_active: boolean;
+}
+
 const IncidentConfiguration = () => {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('categories');
   const [contributingFactors, setContributingFactors] = useState<ContributingFactor[]>([]);
+  const [reportTypes, setReportTypes] = useState<ReportType[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Use the custom hook for categories and subcategories
@@ -66,6 +74,31 @@ const IncidentConfiguration = () => {
     }
 
     fetchContributingFactors();
+  }, []);
+
+  // Fetch report types
+  useEffect(() => {
+    async function fetchReportTypes() {
+      try {
+        const { data, error } = await supabase
+          .from('incident_report_types')
+          .select('id, name, description, is_active')
+          .order('name');
+        
+        if (error) {
+          console.error('Error fetching report types:', error);
+          toast.error('Failed to load report types');
+          return;
+        }
+        
+        setReportTypes(data || []);
+      } catch (error) {
+        console.error('Exception fetching report types:', error);
+        toast.error('An unexpected error occurred');
+      }
+    }
+
+    fetchReportTypes();
   }, []);
 
   // Handle contributing factors operations
@@ -142,6 +175,80 @@ const IncidentConfiguration = () => {
     }
   };
 
+  // Handle report types operations
+  const handleAddReportType = async (name: string, description: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('incident_report_types')
+        .insert([
+          { name, description: description || null }
+        ])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error adding report type:', error);
+        toast.error('Failed to add report type');
+        return;
+      }
+
+      setReportTypes([...reportTypes, data]);
+      toast.success('Report type added successfully');
+    } catch (error) {
+      console.error('Exception adding report type:', error);
+      toast.error('An unexpected error occurred');
+    }
+  };
+
+  const handleUpdateReportType = async (id: string, name: string, description: string) => {
+    try {
+      const { error } = await supabase
+        .from('incident_report_types')
+        .update({ name, description: description || null })
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error updating report type:', error);
+        toast.error('Failed to update report type');
+        return;
+      }
+
+      setReportTypes(
+        reportTypes.map(type =>
+          type.id === id
+            ? { ...type, name, description: description || null }
+            : type
+        )
+      );
+      
+      toast.success('Report type updated successfully');
+    } catch (error) {
+      console.error('Exception updating report type:', error);
+      toast.error('An unexpected error occurred');
+    }
+  };
+
+  const handleDeleteReportType = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('incident_report_types')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error deleting report type:', error);
+        toast.error('Failed to delete report type');
+        return;
+      }
+
+      setReportTypes(reportTypes.filter(type => type.id !== id));
+      toast.success('Report type deleted successfully');
+    } catch (error) {
+      console.error('Exception deleting report type:', error);
+      toast.error('An unexpected error occurred');
+    }
+  };
+
   // Wait for data to load
   if (loading || categoriesLoading) {
     return (
@@ -162,7 +269,7 @@ const IncidentConfiguration = () => {
         <div>
           <h1 className="text-2xl font-bold">Incident Related Configuration</h1>
           <p className="text-gray-600 mt-1">
-            Manage incident categories, subcategories, and contributing factors
+            Manage incident categories, subcategories, contributing factors, and report types
           </p>
         </div>
 
@@ -181,6 +288,10 @@ const IncidentConfiguration = () => {
           addContributingFactor={handleAddContributingFactor}
           updateContributingFactor={handleUpdateContributingFactor}
           deleteContributingFactor={handleDeleteContributingFactor}
+          reportTypes={reportTypes}
+          addReportType={handleAddReportType}
+          updateReportType={handleUpdateReportType}
+          deleteReportType={handleDeleteReportType}
         />
       </div>
     </Layout>
