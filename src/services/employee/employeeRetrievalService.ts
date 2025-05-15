@@ -41,9 +41,16 @@ export const getAllEmployeesFromApi = async (): Promise<Employee[]> => {
               documentNumber: doc.document_number || '',
               documentImage: doc.document_url ? 
                 `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${doc.document_url}` : '',
-              verificationStatus: doc.verification_status as any || 'pending',
+              verificationStatus: doc.verification_status as 'pending' | 'verified' | 'failed' || 'pending',
               documentStatusId: doc.document_status_id,
-              employee_docs_log: Array.isArray(doc.employee_docs_log) ? doc.employee_docs_log : [],
+              // Explicitly cast employee_docs_log to the correct type
+              employee_docs_log: Array.isArray(doc.employee_docs_log) ? 
+                doc.employee_docs_log.map((log: any) => ({
+                  timestamp: log.timestamp || '',
+                  action: log.action || '',
+                  response: log.response || {},
+                  notes: log.notes || ''
+                })) : [],
               createdAt: doc.created_at || new Date().toISOString(),
               updatedAt: doc.updated_at || new Date().toISOString()
             }));
@@ -99,9 +106,16 @@ export const getEmployeeByIdFromApi = async (id: string): Promise<Employee> => {
           documentNumber: doc.document_number || '',
           documentImage: doc.document_url ? 
             `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${doc.document_url}` : '',
-          verificationStatus: doc.verification_status as any || 'pending',
+          verificationStatus: doc.verification_status as 'pending' | 'verified' | 'failed' || 'pending',
           documentStatusId: doc.document_status_id,
-          employee_docs_log: Array.isArray(doc.employee_docs_log) ? doc.employee_docs_log : [],
+          // Explicitly cast employee_docs_log to the correct type
+          employee_docs_log: Array.isArray(doc.employee_docs_log) ? 
+            doc.employee_docs_log.map((log: any) => ({
+              timestamp: log.timestamp || '',
+              action: log.action || '',
+              response: log.response || {},
+              notes: log.notes || ''
+            })) : [],
           createdAt: doc.created_at || new Date().toISOString(),
           updatedAt: doc.updated_at || new Date().toISOString()
         }));

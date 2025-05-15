@@ -1,3 +1,4 @@
+
 export interface Employee {
   id: string;
   employeeId: string;
@@ -17,8 +18,8 @@ export interface Employee {
   documents?: VerificationDocument[]; // Added documents property
   
   // Add these fields to make it compatible with the other Employee type
-  firstName?: string;
-  lastName?: string;
+  firstName: string; // Changed from optional to required to match other Employee type
+  lastName: string;  // Changed from optional to required to match other Employee type
 }
 
 export interface DocumentType {
