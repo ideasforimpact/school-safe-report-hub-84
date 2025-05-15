@@ -1,4 +1,3 @@
-
 // Types for Incident Management System
 export type IncidentType = 'Incident' | 'Near Miss' | 'Unsafe Condition';
 export type IncidentCategory = 
@@ -11,7 +10,7 @@ export type IncidentCategory =
   'Other';
 
 export type IncidentLocation = 'On Campus' | 'Off Campus' | 'In Transit' | 'During Function';
-export type IncidentStatus = 'Open' | 'In Progress' | 'Closed';
+export type IncidentStatus = 'New' | 'Open' | 'In Progress' | 'Closed' | 'On Hold';
 
 // School Facilities - dynamically loaded from FacilityContext
 export type SchoolFacility = string;

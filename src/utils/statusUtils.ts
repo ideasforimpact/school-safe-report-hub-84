@@ -1,5 +1,5 @@
 
-import { IncidentStatus } from '@/contexts/IncidentContext';
+import { IncidentStatus } from '@/contexts/incident';
 
 /**
  * Returns CSS class for incident status badges
@@ -10,10 +10,14 @@ export const getStatusBadgeClass = (status: IncidentStatus, isVoided?: boolean) 
   }
   
   switch(status) {
+    case 'New': 
+      return 'bg-blue-100 text-blue-800';
     case 'Open':
       return 'bg-red-100 text-red-800';
     case 'In Progress':
       return 'bg-yellow-100 text-yellow-800';
+    case 'On Hold':
+      return 'bg-orange-100 text-orange-800';
     case 'Closed':
       return 'bg-green-100 text-green-800';
     default:
@@ -29,7 +33,7 @@ export const getStatusDisplayName = (status: string): string => {
     case 'Progress':
       return 'In Progress';
     case 'New':
-      return 'Open';
+      return 'New';
     case 'OnHold':
       return 'On Hold';
     default:
@@ -44,7 +48,7 @@ export const getStatusDatabaseName = (displayName: string): string => {
   switch(displayName) {
     case 'In Progress':
       return 'Progress';
-    case 'Open':
+    case 'New':
       return 'New';
     case 'On Hold':
       return 'OnHold';

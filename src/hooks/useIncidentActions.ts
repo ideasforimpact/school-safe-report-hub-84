@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { toast } from "sonner";
 import { Incident, ActionItem, Activity, User } from '@/types/incident';
@@ -30,7 +29,7 @@ export const useIncidentActions = (
         ...incidentData,
         id: Date.now().toString(),
         ticketId,
-        status: 'Open', // Default status is Open
+        status: 'New', // Changed default status from 'Open' to 'New'
         createdAt: now,
         updatedAt: now,
         priority: incidentData.priority || 'Medium' // Default priority if not provided
@@ -49,13 +48,13 @@ export const useIncidentActions = (
       let facilityId: string | null = null;
       let locationId: string | null = null;
       
-      // Get UUID for status (assuming "Open" = status_id 1)
+      // Get UUID for status (now using "New" instead of "Open")
       try {
-        console.log("Fetching status UUID for 'Open'");
+        console.log("Fetching status UUID for 'New'");
         const { data: statusData, error: statusError } = await supabase
           .from('incident_status')
           .select('id')
-          .eq('name', 'Open');
+          .eq('name', 'New');
           
         if (statusError) {
           console.error("Error fetching status:", statusError);
@@ -63,7 +62,7 @@ export const useIncidentActions = (
           statusId = statusData[0].id;
           console.log("Fetched status UUID:", statusId);
         } else {
-          console.log("No status found for 'Open', using fallback");
+          console.log("No status found for 'New', using fallback");
         }
       } catch (error) {
         console.error("Failed to fetch status:", error);
