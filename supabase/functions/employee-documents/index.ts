@@ -30,7 +30,7 @@ serve(async (req) => {
     // Use POST method for both listing documents and uploading
     if (req.method === "POST") {
       const body = await req.json();
-      const { employeeId, documentData, action } = body;
+      const { employeeId, documentData, action, timeframe } = body;
       
       // Handle Aadhar OTP operations
       if (action === 'requestAadharOtp') {
@@ -49,7 +49,7 @@ serve(async (req) => {
       } 
       // Otherwise it's a list operation
       else if (employeeId) {
-        return await handleListDocuments(employeeId, supabase, corsHeaders);
+        return await handleListDocuments(employeeId, supabase, corsHeaders, timeframe);
       }
       else {
         return new Response(
@@ -429,14 +429,55 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
   }
 }
 
-// Updated function to handle listing documents with full relationship data
-async function handleListDocuments(employeeId, supabase, corsHeaders) {
+// Updated function to handle listing documents with full relationship data and time filtering
+async function handleListDocuments(employeeId, supabase, corsHeaders, timeframe = null) {
   try {
-    // Fetch the documents with related data for document type and status
-    const { data, error } = await supabase
+    // Start with base query
+    let query = supabase
       .from('employee_documents')
       .select('*, document_status:document_status_id(*), document_type:document_type_id(*)')
       .eq('employee_id', employeeId);
+    
+    // Apply time filtering if provided
+    if (timeframe) {
+      const now = new Date();
+      let startDate;
+      
+      // Calculate start date based on timeframe
+      switch(timeframe) {
+        case 'today':
+          startDate = new Date(now.setHours(0, 0, 0, 0));
+          break;
+        case 'week':
+          // get the first day of the current week
+          const day = now.getDay();
+          const diff = now.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is Sunday
+          startDate = new Date(now.setDate(diff));
+          startDate.setHours(0, 0, 0, 0);
+          break;
+        case 'month':
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          break;
+        case 'year':
+          startDate = new Date(now.getFullYear(), 0, 1);
+          break;
+        default:
+          // If timeframe is a number, interpret as days
+          if (!isNaN(Number(timeframe))) {
+            startDate = new Date();
+            startDate.setDate(startDate.getDate() - Number(timeframe));
+          }
+      }
+      
+      if (startDate) {
+        const isoStartDate = startDate.toISOString();
+        console.log(`Filtering documents since: ${isoStartDate}`);
+        query = query.gte('created_at', isoStartDate);
+      }
+    }
+    
+    // Execute the query
+    const { data, error } = await query;
     
     if (error) {
       throw error;

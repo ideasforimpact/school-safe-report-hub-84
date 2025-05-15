@@ -1,6 +1,7 @@
+
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, RefreshCcw, Upload } from 'lucide-react';
+import { ArrowLeft, RefreshCcw, Upload, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import EmployeeDetails from '@/components/employee-verification/EmployeeDetails';
@@ -8,6 +9,13 @@ import DocumentsList from '@/components/employee-verification/documents-list';
 import Layout from '@/components/layout/Layout';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
 
 const EmployeeDetailPage = () => {
   const {
@@ -25,6 +33,7 @@ const EmployeeDetailPage = () => {
   const { toast } = useToast();
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [timeframeFilter, setTimeframeFilter] = useState<string | undefined>(undefined);
   
   // Move all hook calls outside of conditional logic
   const employee = getEmployee(employeeId || '');
@@ -40,13 +49,13 @@ const EmployeeDetailPage = () => {
     if (employeeId && !isRefreshing) {
       setIsRefreshing(true);
       try {
-        // Only fetch employee documents when refreshing
-        await fetchEmployeeDocuments(employeeId);
-        console.log('Documents refreshed for employee:', employeeId);
+        // Fetch employee documents using the selected timeframe filter
+        await fetchEmployeeDocuments(employeeId, timeframeFilter);
+        console.log('Documents refreshed for employee:', employeeId, 'with timeframe:', timeframeFilter || 'all');
         
         toast({
           title: "Data Refreshed",
-          description: "Employee documents have been refreshed.",
+          description: `Employee documents have been refreshed${timeframeFilter ? ` for ${timeframeFilter}` : ''}.`,
         });
       } catch (error) {
         console.error('Error refreshing documents:', error);
@@ -59,7 +68,35 @@ const EmployeeDetailPage = () => {
         setIsRefreshing(false);
       }
     }
-  }, [employeeId, fetchEmployeeDocuments, toast, isRefreshing]);
+  }, [employeeId, fetchEmployeeDocuments, toast, isRefreshing, timeframeFilter]);
+
+  // Handle timeframe filter change
+  const handleTimeframeChange = useCallback(async (value: string) => {
+    setTimeframeFilter(value === 'all' ? undefined : value);
+    
+    // Immediately apply the filter if we have an employee ID
+    if (employeeId) {
+      setIsRefreshing(true);
+      try {
+        const timeframe = value === 'all' ? undefined : value;
+        await fetchEmployeeDocuments(employeeId, timeframe);
+        
+        toast({
+          title: "Filter Applied",
+          description: `Showing documents ${value === 'all' ? 'from all time' : `from ${value}`}.`,
+        });
+      } catch (error) {
+        console.error('Error applying timeframe filter:', error);
+        toast({
+          title: "Error",
+          description: "Failed to apply filter.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsRefreshing(false);
+      }
+    }
+  }, [employeeId, fetchEmployeeDocuments, toast]);
 
   // Fetch data when component mounts - only once
   useEffect(() => {
@@ -140,21 +177,43 @@ const EmployeeDetailPage = () => {
         
         <div className="bg-white rounded-lg border border-gray-100 shadow-sm overflow-hidden">
           <div className="p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6">
+              <div className="flex items-center mb-4 sm:mb-0 flex-1">
                 <h2 className="font-semibold text-xl whitespace-nowrap">Documents & Verification</h2>
-                <Separator className="flex-grow ml-4" />
+                <Separator className="ml-4 flex-grow hidden sm:block" />
               </div>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={handleRefreshDocuments}
-                disabled={isLoading || isRefreshing}
-                className="ml-2"
-                aria-label="Refresh documents"
-              >
-                <RefreshCcw className={`h-4 w-4 ${isLoading || isRefreshing ? 'animate-spin' : ''}`} />
-              </Button>
+              
+              <div className="flex items-center space-x-2 self-end sm:self-auto w-full sm:w-auto">
+                <Select 
+                  value={timeframeFilter || 'all'} 
+                  onValueChange={handleTimeframeChange}
+                >
+                  <SelectTrigger className="w-[180px]">
+                    <Calendar className="h-4 w-4 mr-2" />
+                    <SelectValue placeholder="Filter by time" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All time</SelectItem>
+                    <SelectItem value="today">Today</SelectItem>
+                    <SelectItem value="week">This week</SelectItem>
+                    <SelectItem value="month">This month</SelectItem>
+                    <SelectItem value="year">This year</SelectItem>
+                    <SelectItem value="7">Last 7 days</SelectItem>
+                    <SelectItem value="30">Last 30 days</SelectItem>
+                    <SelectItem value="90">Last 90 days</SelectItem>
+                  </SelectContent>
+                </Select>
+                
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleRefreshDocuments}
+                  disabled={isLoading || isRefreshing}
+                  aria-label="Refresh documents"
+                >
+                  <RefreshCcw className={`h-4 w-4 ${isLoading || isRefreshing ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
             </div>
             
             <DocumentsList 

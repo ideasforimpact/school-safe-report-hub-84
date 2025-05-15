@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from 'react';
 import { VerificationDocument } from '@/types/employeeVerification';
 import { initialDocuments } from '../initialData';
@@ -10,9 +9,9 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
   const [fetchedEmployeeIds, setFetchedEmployeeIds] = useState<string[]>([]);
 
   // Fetch documents from the database via the edge function
-  const fetchEmployeeDocuments = useCallback(async (employeeId: string) => {
+  const fetchEmployeeDocuments = useCallback(async (employeeId: string, timeframe?: string) => {
     // Skip if we're already loading or if this employee's documents have already been fetched
-    if (isLoading || fetchedEmployeeIds.includes(employeeId)) {
+    if (isLoading || (fetchedEmployeeIds.includes(employeeId) && !timeframe)) {
       return [];
     }
     
@@ -21,7 +20,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
       // For GET requests, we should pass parameters as query strings, not in the body
       const { data, error } = await supabase.functions.invoke('employee-documents', {
         method: 'POST',  // Using POST to send data in body
-        body: { employeeId }
+        body: { employeeId, timeframe }
       });
       
       if (error) {
@@ -33,7 +32,12 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
       const mappedDocuments = data?.documents || [];
       
       setDocuments(currentDocuments => {
-        // Merge with existing documents that are not for this employee
+        // If timeframe is specified, we're doing a filtered fetch, don't replace all documents
+        if (timeframe) {
+          return mappedDocuments;
+        }
+        
+        // Otherwise merge with existing documents that are not for this employee
         const otherEmployeeDocs = currentDocuments.filter(doc => doc.employeeId !== employeeId);
         return [...otherEmployeeDocs, ...mappedDocuments];
       });
