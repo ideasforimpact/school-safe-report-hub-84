@@ -1,26 +1,6 @@
 
-import { Employee, VerificationDocument, DocumentType, DocumentStatus, VerificationResult } from '@/types/employeeVerification';
-
 export interface EmployeeVerificationContextType {
-  employees: Employee[];
-  documents: VerificationDocument[];
-  documentTypes: DocumentType[];
-  documentStatuses: DocumentStatus[];
-  addEmployee: (employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Employee>;
-  updateEmployee: (id: string, updates: Partial<Employee>) => Promise<void>;
-  deleteEmployee: (id: string) => Promise<void>;
-  addDocument: (document: Omit<VerificationDocument, 'id' | 'createdAt' | 'updatedAt'>) => Promise<VerificationDocument>;
-  verifyDocument: (id: string, status: 'pending' | 'verified' | 'failed', notes?: string) => Promise<void>;
-  deleteDocument: (id: string) => Promise<void>;
-  getEmployeeDocuments: (employeeId: string) => VerificationDocument[];
-  getEmployee: (id: string) => Employee | undefined;
-  fetchEmployees: () => Promise<Employee[]>;
-  fetchEmployeeDocuments: (employeeId: string) => Promise<VerificationDocument[]>;
-  fetchDocumentTypes: () => Promise<DocumentType[]>;
-  fetchDocumentStatuses: () => Promise<DocumentStatus[]>;
-  isLoading: boolean;
-}
-
-export interface EmployeeVerificationProviderProps {
-  children: React.ReactNode;
+  verifyEmployee: (employeeId: string) => Promise<boolean>;
+  isVerifying: boolean;
+  verificationError: string | null;
 }
