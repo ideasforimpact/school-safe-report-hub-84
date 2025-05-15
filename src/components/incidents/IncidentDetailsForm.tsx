@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { FileItem } from '@/types/fileTypes';
 import { Employee } from '@/contexts/employee/types';
@@ -35,7 +34,13 @@ interface IncidentDetailsFormProps {
   onFilesChange: (files: FileItem[]) => void;
   locations?: ConfigItem[];
   facilities?: ConfigItem[];
-  users: Employee[];
+  users: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    name: string;
+    // Other properties might be used but these are the minimum required
+  }[];
   isLoadingUsers?: boolean;
 }
 

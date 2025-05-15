@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIncidents } from '@/contexts/incident';
@@ -23,6 +22,15 @@ type IncidentContextEmployee = {
   name: string;
   firstName: string;
   lastName: string;
+  // Add missing properties to match Employee type from context
+  employeeId: string;
+  email: string;
+  employeeType: 'permanent' | 'contract' | 'temporary' | 'part_time' | 'consultant' | 'intern';
+  department: string;
+  joiningDate: string;
+  status: boolean;
+  createdAt: string;
+  updatedAt: string;
 };
 
 // Helper function to adapt employee types
@@ -31,7 +39,16 @@ const adaptEmployees = (employees: Employee[]): IncidentContextEmployee[] => {
     id: employee.id,
     name: employee.name,
     firstName: employee.firstName,
-    lastName: employee.lastName
+    lastName: employee.lastName,
+    // Map the rest of the properties to match the required type
+    employeeId: employee.employeeId,
+    email: employee.email,
+    employeeType: employee.employeeType,
+    department: employee.department,
+    joiningDate: employee.joiningDate,
+    status: employee.status,
+    createdAt: employee.createdAt,
+    updatedAt: employee.updatedAt
   }));
 };
 
@@ -379,7 +396,7 @@ const ReportIncident = () => {
                 onDateTimeChange={handleDateTimeChange}
                 supportingFiles={supportingFiles}
                 onFilesChange={handleFilesChange}
-                users={adaptedEmployees}
+                users={adaptedEmployees} // Use the adapted employees that now match the required type
                 isLoadingUsers={isLoadingEmployees}
               />
 
@@ -389,7 +406,7 @@ const ReportIncident = () => {
                 onAddPerson={addPerson}
                 onRemovePerson={removePerson}
                 students={students}
-                employees={adaptedEmployees}
+                employees={adaptedEmployees} // Use the adapted employees that now match the required type
               />
             </CardContent>
             <CardFooter className="flex justify-between">
