@@ -33,7 +33,7 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
   } = useEmployeeManagement();
 
   // Update employee status based on document verifications
-  const updateEmployeeStatus = useCallback(async (employeeId: string, status: 'pending' | 'verified' | 'failed') => {
+  const updateEmployeeStatus = useCallback(async (employeeId: string, status: boolean) => {
     try {
       await updateEmployee(employeeId, { status });
       return Promise.resolve();

@@ -11,8 +11,8 @@ interface DbEmployeeRecord {
   employee_type: string;
   department: string;
   joining_date: string;
-  status: string;
-  client_id?: string; // Updated to be optional to match database schema
+  status: boolean; // Changed to boolean to match database
+  client_id?: string;
   user_id?: string;
   created_at: string;
   updated_at: string;
@@ -29,8 +29,8 @@ export const mapDbRecordToEmployee = (dbRecord: DbEmployeeRecord): Employee => {
     employeeType: dbRecord.employee_type as any,
     department: dbRecord.department as any,
     joiningDate: dbRecord.joining_date,
-    status: dbRecord.status as any,
-    clientId: dbRecord.client_id, // Properly map client_id to clientId
+    status: dbRecord.status as any, // Convert boolean to status
+    clientId: dbRecord.client_id,
     userId: dbRecord.user_id,
     createdAt: dbRecord.created_at,
     updatedAt: dbRecord.updated_at,
@@ -50,7 +50,7 @@ export const mapEmployeeToDbRecord = (employee: Partial<Employee>): Partial<DbEm
   if (employee.employeeType !== undefined) dbRecord.employee_type = employee.employeeType;
   if (employee.department !== undefined) dbRecord.department = employee.department;
   if (employee.joiningDate !== undefined) dbRecord.joining_date = employee.joiningDate;
-  if (employee.status !== undefined) dbRecord.status = employee.status;
+  if (employee.status !== undefined) dbRecord.status = employee.status; // Use boolean value
   if (employee.userId !== undefined) dbRecord.user_id = employee.userId;
   
   // Important: Map clientId to client_id for database schema compatibility

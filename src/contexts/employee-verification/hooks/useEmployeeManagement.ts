@@ -36,8 +36,7 @@ export const useEmployeeManagement = () => {
           department: emp.department || '',
           position: emp.employee_type || '', // Use employee_type as position since it doesn't exist
           employeeType: (emp.employee_type as Employee['employeeType']) || 'permanent',
-          status: emp.status === 'verified' ? 'verified' : 
-                 emp.status === 'failed' ? 'failed' : 'pending', // Map status to our verification status
+          status: emp.status === true, // Convert to boolean
           createdAt: emp.created_at || new Date().toISOString(),
           updatedAt: emp.updated_at || new Date().toISOString(),
         }));
@@ -64,7 +63,7 @@ export const useEmployeeManagement = () => {
       const newEmployee: Employee = {
         ...employeeData,
         id: uuidv4(),
-        status: 'pending',
+        status: true, // Default to true (active)
         createdAt: now,
         updatedAt: now
       };
