@@ -39,23 +39,25 @@ export const useIncidentActions = (
       // Add to the local state first for immediate UI feedback
       setIncidents(prev => [newIncident, ...prev]);
       
-      // Format the data for database insertion
+      // Format the data for database insertion - fix the UUID issue
       const dbIncident = {
         ticket_id: ticketId,
         description: incidentData.description,
         date: incidentData.date.toISOString(),
         location_id: incidentData.location ? incidentData.location : null,
         people_involved: JSON.stringify(incidentData.peopleInvolved),
-        status_id: 'Open', // We should map this to the correct status ID from the database
+        status_id: 1, // Use a numeric ID instead of a string for status
         reported_by_id: incidentData.reportedBy.id,
         facility_id: incidentData.facility ? incidentData.facility : null,
         documents: incidentData.documents ? JSON.stringify(incidentData.documents) : null,
-        priority_id: incidentData.priority || 'Medium',
-        type_id: incidentData.type,
-        category_id: incidentData.category,
+        priority_id: incidentData.priority ? mapPriorityToId(incidentData.priority) : 2, // Map to numeric ID
+        type_id: mapTypeToId(incidentData.type), // Map type to numeric ID
+        category_id: mapCategoryToId(incidentData.category), // Map category to numeric ID
         subcategory_id: incidentData.subcategory || null,
         owner_id: incidentData.owner ? incidentData.owner.id : null
       };
+      
+      console.log("Sending incident data to database:", dbIncident);
       
       // Insert into the database
       const { data, error } = await supabase
@@ -88,6 +90,39 @@ export const useIncidentActions = (
       throw error;
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // Helper functions to map string values to numeric IDs for database
+  const mapPriorityToId = (priority: string): number => {
+    switch (priority) {
+      case 'Low': return 1;
+      case 'Medium': return 2;
+      case 'High': return 3;
+      case 'Critical': return 4;
+      default: return 2; // Default to Medium
+    }
+  };
+  
+  const mapTypeToId = (type: string): number => {
+    switch (type) {
+      case 'Incident': return 1;
+      case 'Near Miss': return 2;
+      case 'Unsafe Condition': return 3;
+      default: return 1; // Default to Incident
+    }
+  };
+  
+  const mapCategoryToId = (category: string): number => {
+    switch (category) {
+      case 'Physical Injury': return 1;
+      case 'Bullying': return 2;
+      case 'Tech Misuse': return 3;
+      case 'Property Damage': return 4;
+      case 'Health Concern': return 5;
+      case 'Security Breach': return 6;
+      case 'Other': return 7;
+      default: return 7; // Default to Other
     }
   };
 
