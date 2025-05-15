@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { ShieldCheck, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -13,6 +14,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface VerificationDialogProps {
   open: boolean;
@@ -35,7 +37,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   documentId = '',
   documentNumber = ''
 }) => {
-  const { toast } = useToast();
+  const { toast: shadcnToast } = useToast();
   const isAadhar = documentType === 'aadhar';
   const isPan = documentType === 'pan';
   const isVoterId = documentType === 'voter_id';
@@ -135,33 +137,26 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       
       if (error) {
         console.error('Error verifying PAN:', error);
-        toast({
-          title: "Error",
-          description: error.message || "Failed to verify PAN. Please try again.",
-          variant: "destructive",
+        toast.error("Verification Failed", {
+          description: error.message || "Failed to verify PAN. Please try again."
         });
         return;
       }
       
       if (data.success) {
-        toast({
-          title: "PAN Verified",
-          description: data.message || "PAN has been successfully verified with government database.",
+        toast.success("PAN Verified", {
+          description: data.message || "PAN has been successfully verified with government database."
         });
         onVerify('api');
       } else {
-        toast({
-          title: "Verification Failed",
-          description: data.error || "PAN verification failed. Please try manual verification.",
-          variant: "destructive",
+        toast.error("Verification Failed", {
+          description: data.error || "PAN verification failed. Please try manual verification."
         });
       }
     } catch (err: any) {
       console.error("Exception in handlePanApiVerification:", err);
-      toast({
-        title: "Error",
-        description: err.message || "Failed to verify PAN",
-        variant: "destructive"
+      toast.error("Verification Error", {
+        description: err.message || "Failed to verify PAN"
       });
     } finally {
       setIsPanVerifying(false);
@@ -186,33 +181,26 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       
       if (error) {
         console.error('Error verifying Driving License:', error);
-        toast({
-          title: "Error",
-          description: error.message || "Failed to verify Driving License. Please try again.",
-          variant: "destructive",
+        toast.error("Verification Failed", {
+          description: error.message || "Failed to verify Driving License. Please try again."
         });
         return;
       }
       
-      if (data.success) {
-        toast({
-          title: "Driving License Verified",
-          description: data.message || "Driving License has been successfully verified with government database.",
+      if (data?.success) {
+        toast.success("Driving License Verified", {
+          description: data.message || "Driving License has been successfully verified with government database."
         });
         onVerify('api');
       } else {
-        toast({
-          title: "Verification Failed",
-          description: data.error || "Driving License verification failed. Please try manual verification.",
-          variant: "destructive",
+        toast.error("Verification Failed", {
+          description: data.error || "Driving License verification failed. Please try manual verification."
         });
       }
     } catch (err: any) {
       console.error("Exception in handleDrivingLicenseApiVerification:", err);
-      toast({
-        title: "Error",
-        description: err.message || "Failed to verify Driving License",
-        variant: "destructive"
+      toast.error("Verification Error", {
+        description: err.message || "Failed to verify Driving License"
       });
     } finally {
       setIsDrivingLicenseVerifying(false);
@@ -238,25 +226,20 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       
       if (error) {
         console.error('Error manually verifying Driving License:', error);
-        toast({
-          title: "Error",
-          description: error.message || "Failed to manually verify Driving License. Please try again.",
-          variant: "destructive",
+        toast.error("Verification Failed", {
+          description: error.message || "Failed to manually verify Driving License. Please try again."
         });
         return;
       }
       
-      toast({
-        title: "Driving License Manually Verified",
-        description: "The Driving License has been manually verified successfully.",
+      toast.success("Driving License Manually Verified", {
+        description: "The Driving License has been manually verified successfully."
       });
       onVerify('manual');
     } catch (err: any) {
       console.error("Exception in handleDrivingLicenseManualVerification:", err);
-      toast({
-        title: "Error",
-        description: err.message || "Failed to manually verify Driving License",
-        variant: "destructive"
+      toast.error("Verification Error", {
+        description: err.message || "Failed to manually verify Driving License"
       });
     } finally {
       setIsDrivingLicenseVerifying(false);
@@ -282,26 +265,20 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       
       if (error) {
         console.error('Error rejecting Driving License:', error);
-        toast({
-          title: "Error",
-          description: error.message || "Failed to reject Driving License. Please try again.",
-          variant: "destructive",
+        toast.error("Rejection Failed", {
+          description: error.message || "Failed to reject Driving License. Please try again."
         });
         return;
       }
       
-      toast({
-        title: "Driving License Rejected",
-        description: "The Driving License has been marked as failed verification.",
-        variant: "destructive",
+      toast.error("Driving License Rejected", {
+        description: "The Driving License has been marked as failed verification."
       });
       onReject();
     } catch (err: any) {
       console.error("Exception in handleDrivingLicenseRejection:", err);
-      toast({
-        title: "Error",
-        description: err.message || "Failed to reject Driving License",
-        variant: "destructive"
+      toast.error("Rejection Error", {
+        description: err.message || "Failed to reject Driving License"
       });
     } finally {
       setIsDrivingLicenseVerifying(false);
@@ -327,25 +304,20 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       
       if (error) {
         console.error('Error manually verifying PAN:', error);
-        toast({
-          title: "Error",
-          description: error.message || "Failed to manually verify PAN. Please try again.",
-          variant: "destructive",
+        toast.error("Verification Failed", {
+          description: error.message || "Failed to manually verify PAN. Please try again."
         });
         return;
       }
       
-      toast({
-        title: "PAN Manually Verified",
-        description: "The PAN card has been manually verified successfully.",
+      toast.success("PAN Manually Verified", {
+        description: "The PAN card has been manually verified successfully."
       });
       onVerify('manual');
     } catch (err: any) {
       console.error("Exception in handlePanManualVerification:", err);
-      toast({
-        title: "Error",
-        description: err.message || "Failed to manually verify PAN",
-        variant: "destructive"
+      toast.error("Verification Error", {
+        description: err.message || "Failed to manually verify PAN"
       });
     } finally {
       setIsPanVerifying(false);
@@ -371,26 +343,20 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       
       if (error) {
         console.error('Error rejecting PAN:', error);
-        toast({
-          title: "Error",
-          description: error.message || "Failed to reject PAN. Please try again.",
-          variant: "destructive",
+        toast.error("Rejection Failed", {
+          description: error.message || "Failed to reject PAN. Please try again."
         });
         return;
       }
       
-      toast({
-        title: "PAN Rejected",
-        description: "The PAN card has been marked as failed verification.",
-        variant: "destructive",
+      toast.error("PAN Rejected", {
+        description: "The PAN card has been marked as failed verification."
       });
       onReject();
     } catch (err: any) {
       console.error("Exception in handlePanRejection:", err);
-      toast({
-        title: "Error",
-        description: err.message || "Failed to reject PAN",
-        variant: "destructive"
+      toast.error("Rejection Error", {
+        description: err.message || "Failed to reject PAN"
       });
     } finally {
       setIsPanVerifying(false);
@@ -416,33 +382,26 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       
       if (error) {
         console.error('Error verifying Voter ID:', error);
-        toast({
-          title: "Error",
-          description: error.message || "Failed to verify Voter ID. Please try again.",
-          variant: "destructive",
+        toast.error("Verification Failed", {
+          description: error.message || "Failed to verify Voter ID. Please try again."
         });
         return;
       }
       
       if (data.success) {
-        toast({
-          title: "Voter ID Verified",
-          description: data.message || "Voter ID has been successfully verified with government database.",
+        toast.success("Voter ID Verified", {
+          description: data.message || "Voter ID has been successfully verified with government database."
         });
         onVerify('api');
       } else {
-        toast({
-          title: "Verification Failed",
-          description: data.error || "Voter ID verification failed. Please try manual verification.",
-          variant: "destructive",
+        toast.error("Verification Failed", {
+          description: data.error || "Voter ID verification failed. Please try manual verification."
         });
       }
     } catch (err: any) {
       console.error("Exception in handleVoterIdApiVerification:", err);
-      toast({
-        title: "Error",
-        description: err.message || "Failed to verify Voter ID",
-        variant: "destructive"
+      toast.error("Verification Error", {
+        description: err.message || "Failed to verify Voter ID"
       });
     } finally {
       setIsVoterIdVerifying(false);
@@ -468,25 +427,20 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       
       if (error) {
         console.error('Error manually verifying Voter ID:', error);
-        toast({
-          title: "Error",
-          description: error.message || "Failed to manually verify Voter ID. Please try again.",
-          variant: "destructive",
+        toast.error("Verification Failed", {
+          description: error.message || "Failed to manually verify Voter ID. Please try again."
         });
         return;
       }
       
-      toast({
-        title: "Voter ID Manually Verified",
-        description: "The Voter ID has been manually verified successfully.",
+      toast.success("Voter ID Manually Verified", {
+        description: "The Voter ID has been manually verified successfully."
       });
       onVerify('manual');
     } catch (err: any) {
       console.error("Exception in handleVoterIdManualVerification:", err);
-      toast({
-        title: "Error",
-        description: err.message || "Failed to manually verify Voter ID",
-        variant: "destructive"
+      toast.error("Verification Error", {
+        description: err.message || "Failed to manually verify Voter ID"
       });
     } finally {
       setIsVoterIdVerifying(false);
@@ -512,26 +466,20 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       
       if (error) {
         console.error('Error rejecting Voter ID:', error);
-        toast({
-          title: "Error",
-          description: error.message || "Failed to reject Voter ID. Please try again.",
-          variant: "destructive",
+        toast.error("Rejection Failed", {
+          description: error.message || "Failed to reject Voter ID. Please try again."
         });
         return;
       }
       
-      toast({
-        title: "Voter ID Rejected",
-        description: "The Voter ID has been marked as failed verification.",
-        variant: "destructive",
+      toast.error("Voter ID Rejected", {
+        description: "The Voter ID has been marked as failed verification."
       });
       onReject();
     } catch (err: any) {
       console.error("Exception in handleVoterIdRejection:", err);
-      toast({
-        title: "Error",
-        description: err.message || "Failed to reject Voter ID",
-        variant: "destructive"
+      toast.error("Rejection Error", {
+        description: err.message || "Failed to reject Voter ID"
       });
     } finally {
       setIsVoterIdVerifying(false);
@@ -541,10 +489,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const handleApiClick = async () => {
     if (isAadhar) {
       if (!documentNumber) {
-        toast({
-          title: "Error",
-          description: "Aadhar number is required for verification",
-          variant: "destructive"
+        toast.error("Verification Failed", {
+          description: "Aadhar number is required for verification"
         });
         return;
       }
@@ -569,10 +515,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         
         if (error) {
           console.error('Error requesting OTP:', error);
-          toast({
-            title: "Error",
-            description: error.message || "Failed to request OTP. Please try again.",
-            variant: "destructive",
+          toast.error("OTP Request Failed", {
+            description: error.message || "Failed to request OTP. Please try again."
           });
           return;
         }
@@ -583,10 +527,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
             startCooldownTimer(data.cooldownRemaining);
           }
           
-          toast({
-            title: "Error",
-            description: data.error,
-            variant: "destructive",
+          toast.error("OTP Request Failed", {
+            description: data.error
           });
           return;
         }
@@ -605,16 +547,13 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         setShowOtpInput(true);
         // Start a 3-minute countdown for OTP validity
         startCooldownTimer(3 * 60);
-        toast({
-          title: "OTP Sent",
+        toast.success("OTP Sent", {
           description: "A verification code has been sent to your registered mobile number"
         });
       } catch (err: any) {
         console.error("Exception in handleApiClick:", err);
-        toast({
-          title: "Error",
-          description: err.message || "Failed to send OTP",
-          variant: "destructive"
+        toast.error("OTP Request Error", {
+          description: err.message || "Failed to send OTP"
         });
       } finally {
         setIsRequestingOtp(false);
@@ -664,10 +603,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     console.log("handleOtpSubmit called - starting OTP verification process");
     
     if (otp.length !== 6) {
-      toast({
-        title: "Error",
-        description: "Please enter a valid 6-digit OTP",
-        variant: "destructive"
+      toast.error("Verification Error", {
+        description: "Please enter a valid 6-digit OTP"
       });
       return;
     }
@@ -710,27 +647,22 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       
       if (error) {
         console.error('Error verifying OTP:', error);
-        toast({
-          title: "Error",
-          description: error.message || "Failed to verify OTP. Please try again.",
-          variant: "destructive",
+        toast.error("Verification Failed", {
+          description: error.message || "Failed to verify OTP. Please try again."
         });
         setIsVerifyingOtp(false);
         return;
       }
       
       if (data?.error) {
-        toast({
-          title: "Verification Failed",
-          description: data.error,
-          variant: "destructive",
+        toast.error("Verification Failed", {
+          description: data.error
         });
         setIsVerifyingOtp(false);
         return;
       }
       
-      toast({
-        title: "Verification Successful",
+      toast.success("Verification Successful", {
         description: "Aadhar verification completed successfully"
       });
       onVerify('api');
@@ -744,10 +676,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       }
     } catch (err: any) {
       console.error("Exception in handleOtpSubmit:", err);
-      toast({
-        title: "Verification Failed",
-        description: err.message || "Failed to verify OTP",
-        variant: "destructive"
+      toast.error("Verification Failed", {
+        description: err.message || "Failed to verify OTP"
       });
     } finally {
       setIsVerifyingOtp(false);
@@ -774,10 +704,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Verify Document</DialogTitle>
-          <DialogDescription>
+      <DialogContent className="max-w-md mx-auto">
+        <DialogHeader className="text-center">
+          <DialogTitle className="text-xl">Verify Document</DialogTitle>
+          <DialogDescription className="text-center text-sm">
             Choose a verification method for this {documentType || 'document'}.
           </DialogDescription>
         </DialogHeader>
@@ -790,9 +720,9 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               disabled={isVerifying || cooldownSeconds !== null || isRequestingOtp || isPanVerifying || isVoterIdVerifying || isDrivingLicenseVerifying}
             >
               {isRequestingOtp || (isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) || (isDrivingLicense && isDrivingLicenseVerifying) ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="h-4 w-4 mr-3 animate-spin" />
               ) : (
-                <ShieldCheck className="h-4 w-4 mr-2" />
+                <ShieldCheck className="h-4 w-4 mr-3" />
               )}
               {isAadhar 
                 ? cooldownSeconds !== null 
@@ -825,9 +755,9 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               disabled={isVerifying || isRequestingOtp || isPanVerifying || isVoterIdVerifying || isDrivingLicenseVerifying}
             >
               {(isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) || (isDrivingLicense && isDrivingLicenseVerifying) ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="h-4 w-4 mr-3 animate-spin" />
               ) : (
-                <ShieldCheck className="h-4 w-4 mr-2" />
+                <ShieldCheck className="h-4 w-4 mr-3" />
               )}
               {(isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) || (isDrivingLicense && isDrivingLicenseVerifying) ? 'Processing...' : 'Verify Manually'}
               <span className="ml-auto text-xs text-purple-500 font-normal">Manual review completed</span>
@@ -840,9 +770,9 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               disabled={isVerifying || isRequestingOtp || isPanVerifying || isVoterIdVerifying || isDrivingLicenseVerifying}
             >
               {(isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) || (isDrivingLicense && isDrivingLicenseVerifying) ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="h-4 w-4 mr-3 animate-spin" />
               ) : (
-                <ShieldCheck className="h-4 w-4 mr-2" />
+                <ShieldCheck className="h-4 w-4 mr-3" />
               )}
               {(isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) || (isDrivingLicense && isDrivingLicenseVerifying) ? 'Processing...' : 'Reject Document'}
               <span className="ml-auto text-xs text-red-500 font-normal">Document verification failed</span>
@@ -850,8 +780,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           </div>
         ) : (
           <div className="flex flex-col gap-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="otp">Enter 6-digit OTP received</Label>
+            <div className="space-y-4">
+              <Label htmlFor="otp" className="text-center block">Enter 6-digit OTP received</Label>
               <div className="flex justify-center py-4">
                 <InputOTP maxLength={6} value={otp} onChange={setOtp}>
                   <InputOTPGroup>
@@ -877,7 +807,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
             </div>
           </div>
         )}
-        <DialogFooter>
+        <DialogFooter className="flex justify-center sm:justify-end mt-4">
           {showOtpInput ? (
             <>
               <Button variant="outline" onClick={handleCancel} disabled={isVerifyingOtp}>
@@ -886,6 +816,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               <Button 
                 onClick={handleOtpSubmit}
                 disabled={isVerifyingOtp || otp.length !== 6}
+                className="ml-2"
               >
                 {isVerifyingOtp ? (
                   <>
