@@ -1,8 +1,9 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, AlertCircle, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import PanDetailsDialog from './document-card/PanDetailsDialog';
 
 interface VerificationStatusBadgeProps {
   status: 'verified' | 'failed' | 'pending';
@@ -10,6 +11,13 @@ interface VerificationStatusBadgeProps {
   isGovernance?: boolean;
   documentStatusName?: string;
   onClick?: () => void;
+  documentLogs?: Array<{
+    timestamp: string;
+    action: string;
+    response: any;
+    notes?: string;
+  }>;
+  documentId?: string;
 }
 
 const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({ 
@@ -17,8 +25,12 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
   className, 
   isGovernance = false,
   documentStatusName,
-  onClick
+  onClick,
+  documentLogs,
+  documentId
 }) => {
+  const [dialogOpen, setDialogOpen] = useState(false);
+
   const getStatusConfig = () => {
     switch (status) {
       case 'verified':
@@ -54,24 +66,51 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
 
   const { icon: Icon, text, bgColor } = getStatusConfig();
 
-  const isClickable = !!onClick;
+  const isClickable = !!onClick || (status === 'verified' && documentStatusName === 'governance' && documentLogs && documentLogs.length > 0);
+  
+  const handleClick = () => {
+    if (onClick) {
+      onClick();
+    } else if (status === 'verified' && documentStatusName === 'governance' && documentLogs && documentLogs.length > 0) {
+      setDialogOpen(true);
+    }
+  };
+
+  // Find PAN verification log if available
+  const panVerificationLog = documentLogs?.find(log => 
+    log.action === 'verify_pan_api' && 
+    log.response?.success === true && 
+    log.response?.status_code === 200
+  );
   
   return (
-    <Badge 
-      className={cn(
-        'gap-1 px-2 py-1 font-medium text-xs', 
-        bgColor, 
-        className,
-        isClickable && 'cursor-pointer hover:opacity-80 transition-opacity hover:bg-opacity-80'
+    <>
+      <Badge 
+        className={cn(
+          'gap-1 px-2 py-1 font-medium text-xs', 
+          bgColor, 
+          className,
+          isClickable && 'cursor-pointer hover:opacity-80 transition-opacity hover:bg-opacity-80'
+        )}
+        onClick={isClickable ? handleClick : undefined}
+      >
+        <Icon className="h-3.5 w-3.5" />
+        {text}
+        {isClickable && (
+          <span className="sr-only">{onClick ? "(click for action)" : "(click to view details)"}</span>
+        )}
+      </Badge>
+
+      {/* Display PAN Details Dialog */}
+      {dialogOpen && panVerificationLog && (
+        <PanDetailsDialog 
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          panDetails={panVerificationLog.response}
+          documentId={documentId}
+        />
       )}
-      onClick={onClick}
-    >
-      <Icon className="h-3.5 w-3.5" />
-      {text}
-      {isClickable && (
-        <span className="sr-only">(click to view details)</span>
-      )}
-    </Badge>
+    </>
   );
 };
 

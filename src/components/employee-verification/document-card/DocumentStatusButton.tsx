@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { VerificationDocument } from '@/types/employeeVerification';
@@ -44,6 +43,7 @@ const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({ document })
     // Only open dialog if we have verification data
     if (document.verificationStatus === 'verified' && 
         statusName === 'governance' && 
+        document.documentTypeName?.toLowerCase().includes('aadhar') &&
         document.employee_docs_log && 
         document.employee_docs_log.length > 0) {
       setDialogOpen(true);
@@ -61,6 +61,7 @@ const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({ document })
   
   const isGovernanceVerified = document.verificationStatus === 'verified' && statusName === 'governance';
   const hasLogs = !!document.employee_docs_log && document.employee_docs_log.length > 0;
+  const isAadhar = document.documentTypeName?.toLowerCase().includes('aadhar');
 
   return (
     <>
@@ -68,9 +69,12 @@ const DocumentStatusButton: React.FC<DocumentStatusButtonProps> = ({ document })
         status={document.verificationStatus} 
         isGovernance={isGovernanceVerified}
         documentStatusName={document.verificationStatus === 'verified' && statusName ? statusName : undefined}
-        onClick={(isGovernanceVerified && hasLogs) ? handleClick : undefined}
+        onClick={isAadhar && isGovernanceVerified && hasLogs ? handleClick : undefined}
+        documentLogs={document.employee_docs_log}
+        documentId={document.id}
       />
 
+      {/* Keep Aadhar dialog for backward compatibility */}
       <AadharDetailsDialog 
         open={dialogOpen} 
         onOpenChange={setDialogOpen} 

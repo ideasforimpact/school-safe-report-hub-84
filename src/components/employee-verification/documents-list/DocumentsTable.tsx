@@ -49,8 +49,9 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
   const handleBadgeClick = (doc: VerificationDocument) => {
     const statusName = getDocumentStatusName(doc);
     const hasLogs = !!doc.employee_docs_log && doc.employee_docs_log.length > 0;
+    const isAadhar = doc.documentTypeName?.toLowerCase().includes('aadhar');
     
-    if (doc.verificationStatus === 'verified' && statusName === 'governance' && hasLogs) {
+    if (doc.verificationStatus === 'verified' && statusName === 'governance' && isAadhar && hasLogs) {
       // Find the most recent successful verification log
       const verificationLog = doc.employee_docs_log
         .filter(log => log.action === 'verify_aadhar_otp' && log.response?.success === true)
@@ -88,6 +89,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
               const statusName = getDocumentStatusName(doc);
               const hasLogs = !!doc.employee_docs_log && doc.employee_docs_log.length > 0;
               const isGovernanceVerified = doc.verificationStatus === 'verified' && statusName === 'governance';
+              const isAadhar = doc.documentTypeName?.toLowerCase().includes('aadhar');
               
               return (
                 <TableRow key={doc.id}>
@@ -106,7 +108,9 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                       status={doc.verificationStatus} 
                       documentStatusName={statusName}
                       isGovernance={isGovernanceVerified}
-                      onClick={isGovernanceVerified && hasLogs ? () => handleBadgeClick(doc) : undefined}
+                      onClick={isAadhar && isGovernanceVerified && hasLogs ? () => handleBadgeClick(doc) : undefined}
+                      documentLogs={doc.employee_docs_log}
+                      documentId={doc.id}
                     />
                   </TableCell>
                   <TableCell className="text-right">
