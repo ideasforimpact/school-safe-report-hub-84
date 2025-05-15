@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button';
 import { CheckCircle, XCircle } from 'lucide-react';
 import { VerificationDocument } from '@/types/employeeVerification';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from '@/components/ui/use-toast';
 import DocumentVerifyDropdown from './DocumentVerifyDropdown';
+import { supabase } from '@/integrations/supabase/client';
 
 interface DocumentActionsProps {
   document: VerificationDocument;
@@ -21,20 +22,55 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
     setIsVerifying(true);
     
     try {
-      // Special logic for Aadhar documents
-      if (document.documentTypeName === 'aadhar' && method === 'api') {
-        // Handle Aadhar API verification logic
-        console.log('Aadhar API verification selected');
-        // This would normally open an OTP dialog or similar
-        toast({
-          title: "API Verification",
-          description: "This would trigger the OTP verification flow for Aadhar in a real implementation.",
-        });
-        setIsVerifying(false);
-        return;
+      // Special logic for PAN documents
+      if (document.documentTypeName === 'pan') {
+        if (method === 'api') {
+          // Handle PAN API verification using our new edge function
+          const { data, error } = await supabase.functions.invoke('pan-verification', {
+            body: {
+              action: 'apiVerify',
+              documentId: document.id,
+              documentNumber: document.documentNumber
+            }
+          });
+          
+          if (error) {
+            throw new Error(error.message || 'PAN verification failed');
+          }
+          
+          toast({
+            title: data.success ? "PAN Verified" : "Verification Failed",
+            description: data.message || (data.success ? "Document has been verified via API." : "Document verification failed."),
+            variant: data.success ? "default" : "destructive",
+          });
+          
+          setIsVerifying(false);
+          return;
+        } else if (method === 'manual') {
+          // Handle PAN manual verification
+          const { data, error } = await supabase.functions.invoke('pan-verification', {
+            body: {
+              action: 'manualVerify',
+              documentId: document.id,
+              verification_notes: 'Document manually verified by staff.'
+            }
+          });
+          
+          if (error) {
+            throw new Error(error.message || 'Manual verification failed');
+          }
+          
+          toast({
+            title: "Document Verified",
+            description: "Document has been manually verified successfully.",
+          });
+          
+          setIsVerifying(false);
+          return;
+        }
       }
       
-      // For other document types or manual verification
+      // For other document types or fallback handling
       const notes = method === 'api' 
         ? 'Document automatically verified with government database.' 
         : 'Document manually verified by staff.';
@@ -49,7 +85,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
     } catch (error) {
       toast({
         title: "Error",
-        description: "An error occurred while verifying the document.",
+        description: error instanceof Error ? error.message : "An error occurred while verifying the document.",
         variant: "destructive",
       });
       console.error(error);
@@ -62,7 +98,32 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
     setIsVerifying(true);
     
     try {
-      // When rejecting, we set verification_status to 'failed'
+      // Special handling for PAN documents
+      if (document.documentTypeName === 'pan') {
+        // Use the pan-verification edge function
+        const { data, error } = await supabase.functions.invoke('pan-verification', {
+          body: {
+            action: 'reject',
+            documentId: document.id,
+            verification_notes: 'Document verification rejected by staff.'
+          }
+        });
+        
+        if (error) {
+          throw new Error(error.message || 'Rejection failed');
+        }
+        
+        toast({
+          title: "Verification Rejected",
+          description: "Document has been marked as failed verification.",
+          variant: "destructive",
+        });
+        
+        setIsVerifying(false);
+        return;
+      }
+      
+      // For other document types
       await verifyDocument(document.id, 'failed', 'Document verification failed. Details do not match records.');
       
       toast({
@@ -73,7 +134,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
     } catch (error) {
       toast({
         title: "Error",
-        description: "An error occurred while rejecting the document.",
+        description: error instanceof Error ? error.message : "An error occurred while rejecting the document.",
         variant: "destructive",
       });
       console.error(error);

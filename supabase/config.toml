@@ -6,3 +6,6 @@ verify_jwt = true
 
 [functions.init-incident-data]
 verify_jwt = false
+
+[functions.pan-verification]
+verify_jwt = true
