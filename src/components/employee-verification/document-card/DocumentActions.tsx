@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, XCircle } from 'lucide-react';
@@ -26,8 +25,8 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
     try {
       // Special logic for PAN documents
       if (document.documentTypeName === 'pan') {
+        // Handle PAN API verification using our edge function
         if (method === 'api') {
-          // Handle PAN API verification using our new edge function
           const { data, error } = await supabase.functions.invoke('pan-verification', {
             body: {
               action: 'apiVerify',
@@ -50,7 +49,6 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
           setDialogOpen(false);
           return;
         } else if (method === 'manual') {
-          // Handle PAN manual verification
           const { data, error } = await supabase.functions.invoke('pan-verification', {
             body: {
               action: 'manualVerify',
@@ -76,7 +74,6 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
       // Special logic for Driving License
       else if (document.documentTypeName === 'driving_license') {
         if (method === 'api') {
-          // Handle Driving License API verification
           const { data, error } = await supabase.functions.invoke('driving-license', {
             body: {
               action: 'apiVerify',
@@ -98,7 +95,6 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
           setDialogOpen(false);
           return;
         } else if (method === 'manual') {
-          // Handle Driving License manual verification
           const { data, error } = await supabase.functions.invoke('driving-license', {
             body: {
               action: 'manualVerify',
@@ -123,7 +119,6 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
       }
       // Special logic for Voter ID documents
       else if (document.documentTypeName === 'voter_id') {
-        // Use dedicated Voter ID verification handler
         if (method === 'api') {
           const { data, error } = await supabase.functions.invoke('voter-verification', {
             body: {
@@ -148,6 +143,52 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
           return;
         } else if (method === 'manual') {
           const { data, error } = await supabase.functions.invoke('voter-verification', {
+            body: {
+              action: 'manualVerify',
+              documentId: document.id,
+              verification_notes: 'Document manually verified by staff.'
+            }
+          });
+          
+          if (error) {
+            throw new Error(error.message || 'Manual verification failed');
+          }
+          
+          toast({
+            title: "Document Verified",
+            description: "Document has been manually verified successfully.",
+          });
+          
+          setIsVerifying(false);
+          setDialogOpen(false);
+          return;
+        }
+      }
+      // Special logic for Bank Account documents
+      else if (document.documentTypeName === 'bank_account') {
+        if (method === 'api') {
+          const { data, error } = await supabase.functions.invoke('bank-statement', {
+            body: {
+              action: 'apiVerify',
+              documentId: document.id
+            }
+          });
+          
+          if (error) {
+            throw new Error(error.message || 'Bank statement verification failed');
+          }
+          
+          toast({
+            title: data.success ? "Bank Statement Verified" : "Verification Failed",
+            description: data.message || (data.success ? "Document has been verified via API." : "Document verification failed."),
+            variant: data.success ? "default" : "destructive",
+          });
+          
+          setIsVerifying(false);
+          setDialogOpen(false);
+          return;
+        } else if (method === 'manual') {
+          const { data, error } = await supabase.functions.invoke('bank-statement', {
             body: {
               action: 'manualVerify',
               documentId: document.id,
@@ -202,7 +243,6 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
     try {
       // Special handling for PAN documents
       if (document.documentTypeName === 'pan') {
-        // Use the pan-verification edge function
         const { data, error } = await supabase.functions.invoke('pan-verification', {
           body: {
             action: 'reject',
@@ -227,7 +267,6 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
       }
       // Special handling for Driving License
       else if (document.documentTypeName === 'driving_license') {
-        // Use the driving-license edge function
         const { data, error } = await supabase.functions.invoke('driving-license', {
           body: {
             action: 'reject',
@@ -252,8 +291,31 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
       }
       // Special handling for Voter ID
       else if (document.documentTypeName === 'voter_id') {
-        // Use the voter-verification edge function
         const { data, error } = await supabase.functions.invoke('voter-verification', {
+          body: {
+            action: 'reject',
+            documentId: document.id,
+            verification_notes: 'Document verification rejected by staff.'
+          }
+        });
+        
+        if (error) {
+          throw new Error(error.message || 'Rejection failed');
+        }
+        
+        toast({
+          title: "Verification Rejected",
+          description: "Document has been marked as failed verification.",
+          variant: "destructive",
+        });
+        
+        setIsVerifying(false);
+        setDialogOpen(false);
+        return;
+      }
+      // Special handling for Bank Account
+      else if (document.documentTypeName === 'bank_account') {
+        const { data, error } = await supabase.functions.invoke('bank-statement', {
           body: {
             action: 'reject',
             documentId: document.id,
