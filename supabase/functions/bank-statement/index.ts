@@ -197,30 +197,12 @@ serve(async (req) => {
               verification_status: 'verified',
               document_status_id: governanceStatusId,
               employee_docs_log: combinedLogs,
-              verification_method: 'api',
               updated_at: new Date().toISOString()
             })
             .eq('id', documentId);
             
           if (updateError) {
             console.error("Error updating document with verified status:", updateError);
-          }
-          
-          // Update employee status to verified if this is the only unverified document
-          if (document.employee_id) {
-            const { data: empDocuments } = await supabase
-              .from('employee_documents')
-              .select('verification_status')
-              .eq('employee_id', document.employee_id);
-            
-            const allVerified = empDocuments?.every(doc => doc.verification_status === 'verified');
-            
-            if (allVerified) {
-              await supabase
-                .from('employees')
-                .update({ status: true })
-                .eq('id', document.employee_id);
-            }
           }
           
           return new Response(
@@ -290,21 +272,6 @@ serve(async (req) => {
     }
     // Handle manual verification
     else if (action === 'manualVerify') {
-      // Get the document to get employee_id
-      const { data: document, error: docError } = await supabase
-        .from('employee_documents')
-        .select('employee_id')
-        .eq('id', documentId)
-        .single();
-      
-      if (docError) {
-        console.error("Error fetching document:", docError);
-        return new Response(
-          JSON.stringify({ error: "Document not found" }),
-          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      
       // Update document with manually verified status
       const { error: updateError } = await supabase
         .from('employee_documents')
@@ -312,8 +279,6 @@ serve(async (req) => {
           verification_status: 'verified',
           document_status_id: manualStatusId,
           employee_docs_log: [],
-          verification_method: 'manual',
-          verification_notes: requestBody.verification_notes || 'Manually verified by staff',
           updated_at: new Date().toISOString()
         })
         .eq('id', documentId);
@@ -324,23 +289,6 @@ serve(async (req) => {
           JSON.stringify({ error: "Failed to update document" }),
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
-      }
-      
-      // Update employee status if needed
-      if (document?.employee_id) {
-        const { data: empDocuments } = await supabase
-          .from('employee_documents')
-          .select('verification_status')
-          .eq('employee_id', document.employee_id);
-        
-        const allVerified = empDocuments?.every(doc => doc.verification_status === 'verified');
-        
-        if (allVerified) {
-          await supabase
-            .from('employees')
-            .update({ status: true })
-            .eq('id', document.employee_id);
-        }
       }
       
       return new Response(
@@ -360,7 +308,6 @@ serve(async (req) => {
           verification_status: 'failed',
           document_status_id: rejectedStatusId,
           employee_docs_log: [],
-          verification_notes: requestBody.verification_notes || 'Document verification rejected by staff',
           updated_at: new Date().toISOString()
         })
         .eq('id', documentId);
