@@ -143,6 +143,16 @@ const EmployeeDetailPage = () => {
                 <h2 className="font-semibold text-xl whitespace-nowrap">Documents & Verification</h2>
                 <Separator className="flex-grow ml-4" />
               </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefreshDocuments}
+                disabled={isLoading || isRefreshing}
+                className="ml-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${isLoading || isRefreshing ? 'animate-spin' : ''}`} />
+                <span className="ml-1">Refresh</span>
+              </Button>
             </div>
             
             <DocumentsList 
