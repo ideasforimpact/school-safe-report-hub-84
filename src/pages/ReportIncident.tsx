@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIncidents } from '@/contexts/IncidentContext';
@@ -10,7 +9,7 @@ import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { useIncidentForm } from '@/hooks/useIncidentForm';
 import IncidentDetailsForm from '@/components/incidents/IncidentDetailsForm';
 import PeopleInvolvedSection from '@/components/incidents/PeopleInvolvedSection';
-import { IncidentType, IncidentCategory } from '@/types/incident';
+import { IncidentType, IncidentCategory, IncidentLocation } from '@/types/incident';
 import { Employee } from '@/contexts/employee/types';
 import { getAllEmployeesFromApi } from '@/services/employee/employeeRetrievalService';
 import { Student } from '@/types/student';

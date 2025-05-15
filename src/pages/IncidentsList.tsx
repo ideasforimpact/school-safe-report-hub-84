@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { useIncidents } from '@/contexts/incident/IncidentContext';
+import { useIncidents } from '@/contexts/IncidentContext';
 import Layout from '@/components/layout/Layout';
 import { useIncidentFilters } from '@/hooks/useIncidentFilters';
 import IncidentsHeader from '@/components/incidents/IncidentsHeader';
