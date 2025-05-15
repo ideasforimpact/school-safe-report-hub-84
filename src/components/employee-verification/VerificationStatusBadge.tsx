@@ -89,12 +89,26 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
                                       documentLogs &&
                                       documentLogs.length > 0;
   
+  console.log('VerificationStatusBadge - Document Type:', documentType);
+  console.log('VerificationStatusBadge - Status:', status);
+  console.log('VerificationStatusBadge - Document Status Name:', documentStatusName);
+  console.log('VerificationStatusBadge - Has Logs:', documentLogs ? documentLogs.length > 0 : false);
+  console.log('VerificationStatusBadge - isDrivingLicenseWithGovernance:', isDrivingLicenseWithGovernance);
+  
   const isClickable = !!onClick || isPanWithGovernance || isVoterIdWithGovernance || isDrivingLicenseWithGovernance;
   
   const handleClick = () => {
+    console.log('VerificationStatusBadge - Badge clicked!');
+    console.log('VerificationStatusBadge - onClick handler exists:', !!onClick);
+    console.log('VerificationStatusBadge - isPanWithGovernance:', isPanWithGovernance);
+    console.log('VerificationStatusBadge - isVoterIdWithGovernance:', isVoterIdWithGovernance);
+    console.log('VerificationStatusBadge - isDrivingLicenseWithGovernance:', isDrivingLicenseWithGovernance);
+    
     if (onClick) {
+      console.log('VerificationStatusBadge - Calling provided onClick handler');
       onClick();
     } else if (isPanWithGovernance || isVoterIdWithGovernance || isDrivingLicenseWithGovernance) {
+      console.log('VerificationStatusBadge - Opening dialog for document type:', documentType);
       setDialogOpen(true);
     }
   };
@@ -126,6 +140,16 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
       log.response?.data && 
       (log.action.includes('driving') || log.action.includes('license'))
     ) : null;
+  
+  // Log detailed information about found logs
+  console.log('VerificationStatusBadge - Found PAN verification log:', !!panVerificationLog);
+  console.log('VerificationStatusBadge - Found Voter ID verification log:', !!voterIdVerificationLog);
+  console.log('VerificationStatusBadge - Found Driving License verification log:', !!drivingLicenseVerificationLog);
+  console.log('VerificationStatusBadge - Found fallback Driving License log:', !!fallbackDrivingLicenseLog);
+  
+  if (documentType === 'driving_license' && documentLogs) {
+    console.log('VerificationStatusBadge - All logs for driving license:', documentLogs);
+  }
   
   return (
     <>

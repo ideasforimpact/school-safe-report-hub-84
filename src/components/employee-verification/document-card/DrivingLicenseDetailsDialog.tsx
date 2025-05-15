@@ -22,13 +22,31 @@ const DrivingLicenseDetailsDialog: React.FC<DrivingLicenseDetailsDialogProps> = 
   const data = licenseDetails?.data || {};
   const isSuccessful = licenseDetails?.success && licenseDetails?.status_code === 200;
   
-  // For debugging
-  console.log('DrivingLicenseDetailsDialog - licenseDetails:', licenseDetails);
-  console.log('DrivingLicenseDetailsDialog - data:', data);
-  console.log('DrivingLicenseDetailsDialog - isSuccessful:', isSuccessful);
+  // Comprehensive debugging logs
+  console.log('DrivingLicenseDetailsDialog - Dialog open state:', open);
+  console.log('DrivingLicenseDetailsDialog - Document ID:', documentId);
+  console.log('DrivingLicenseDetailsDialog - Full license details:', licenseDetails);
+  console.log('DrivingLicenseDetailsDialog - Extracted data:', data);
+  console.log('DrivingLicenseDetailsDialog - Is successful:', isSuccessful);
+  console.log('DrivingLicenseDetailsDialog - Data keys:', Object.keys(data));
+  
+  React.useEffect(() => {
+    console.log('DrivingLicenseDetailsDialog - Dialog mounted/updated with open:', open);
+    
+    if (open) {
+      console.log('DrivingLicenseDetailsDialog - Dialog is now open');
+    }
+    
+    return () => {
+      console.log('DrivingLicenseDetailsDialog - Dialog unmounting');
+    };
+  }, [open]);
   
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(newOpenState) => {
+      console.log('DrivingLicenseDetailsDialog - Dialog open state changing to:', newOpenState);
+      onOpenChange(newOpenState);
+    }}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
