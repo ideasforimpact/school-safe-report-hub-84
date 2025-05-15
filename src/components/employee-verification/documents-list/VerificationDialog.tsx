@@ -288,60 +288,6 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     }
   };
 
-  const handleManualVerify = async () => {
-    // Set loading state
-    const originalOnVerify = onVerify;
-    
-    try {
-      // For manual verification, directly call the edge function without user interaction
-      console.log("Performing manual verification for document ID:", documentId);
-      
-      const { data, error } = await supabase.functions.invoke('employee-verification', {
-        method: 'POST',
-        body: { 
-          action: 'manualVerification',
-          documentId
-        }
-      });
-      
-      console.log("Manual verification response:", data, error);
-      
-      if (error) {
-        console.error('Error in manual verification:', error);
-        toast({
-          title: "Error",
-          description: error.message || "Failed to perform manual verification. Please try again.",
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      if (data?.error) {
-        toast({
-          title: "Verification Failed",
-          description: data.error,
-          variant: "destructive",
-        });
-        return;
-      }
-      
-      toast({
-        title: "Manual Verification Successful",
-        description: "Document has been manually verified"
-      });
-      
-      // Call the original onVerify function with 'manual' method
-      originalOnVerify('manual');
-    } catch (err: any) {
-      console.error("Exception in handleManualVerify:", err);
-      toast({
-        title: "Verification Failed",
-        description: err.message || "Failed to perform manual verification",
-        variant: "destructive"
-      });
-    }
-  };
-
   const handleCancel = () => {
     setShowOtpInput(false);
     setOtp("");
@@ -399,7 +345,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
             <Button 
               variant="outline" 
               className="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200 justify-start"
-              onClick={handleManualVerify}
+              onClick={() => onVerify('manual')}
               disabled={isVerifying || isRequestingOtp}
             >
               <ShieldCheck className="h-4 w-4 mr-2" />

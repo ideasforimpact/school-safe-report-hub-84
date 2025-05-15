@@ -6,7 +6,6 @@ import { VerificationDocument } from '@/types/employeeVerification';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { useToast } from '@/hooks/use-toast';
 import DocumentVerifyDropdown from './DocumentVerifyDropdown';
-import { supabase } from '@/integrations/supabase/client';
 
 interface DocumentActionsProps {
   document: VerificationDocument;
@@ -35,39 +34,13 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
         return;
       }
       
-      if (method === 'manual') {
-        // Call the edge function for manual verification
-        const { data, error } = await supabase.functions.invoke('employee-verification', {
-          method: 'POST',
-          body: { 
-            action: 'manualVerification',
-            documentId: document.id
-          }
-        });
-        
-        if (error) {
-          throw new Error(error.message);
-        }
-        
-        if (data?.error) {
-          throw new Error(data.error);
-        }
-        
-        // Get the document status details from the response
-        const documentStatusId = data?.documentStatusId;
-        const documentStatusName = data?.documentStatusName || 'manual';
-        
-        // Update document with verification status and status information
-        await verifyDocument(document.id, 'verified', 'Document manually verified by staff.', documentStatusId, documentStatusName);
-      } else {
-        // For other document types or non-aadhar API verification
-        const notes = method === 'api' 
-          ? 'Document automatically verified with government database.' 
-          : 'Document manually verified by staff.';
-        
-        // Update verification_status to 'success' for manual verification
-        await verifyDocument(document.id, 'verified', notes);
-      }
+      // For other document types or manual verification
+      const notes = method === 'api' 
+        ? 'Document automatically verified with government database.' 
+        : 'Document manually verified by staff.';
+      
+      // Update verification_status to 'success' for manual verification
+      await verifyDocument(document.id, 'verified', notes);
       
       toast({
         title: "Document Verified",
@@ -89,29 +62,8 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
     setIsVerifying(true);
     
     try {
-      // Call the edge function for rejection
-      const { data, error } = await supabase.functions.invoke('employee-verification', {
-        method: 'POST',
-        body: { 
-          action: 'rejectVerification',
-          documentId: document.id
-        }
-      });
-      
-      if (error) {
-        throw new Error(error.message);
-      }
-      
-      if (data?.error) {
-        throw new Error(data.error);
-      }
-      
-      // Get the document status details from the response
-      const documentStatusId = data?.documentStatusId;
-      const documentStatusName = data?.documentStatusName || 'rejected';
-      
-      // Update document with rejection status and status information
-      await verifyDocument(document.id, 'failed', 'Document verification rejected by staff.', documentStatusId, documentStatusName);
+      // When rejecting, we set verification_status to 'failed'
+      await verifyDocument(document.id, 'failed', 'Document verification failed. Details do not match records.');
       
       toast({
         title: "Verification Failed",

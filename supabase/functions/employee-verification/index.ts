@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 
@@ -25,12 +26,16 @@ serve(async (req) => {
       documentNumber, 
       otp, 
       txnId,
-      client_id,
-      verificationStatus,
-      verificationNotes
+      client_id 
     } = requestBody;
     
-    console.log(`Received ${action} request for document ID: ${documentId}`);
+    console.log(`Received ${action} request`, { 
+      documentId, 
+      hasDocNumber: !!documentNumber, 
+      hasTxnId: !!txnId, 
+      hasOtp: !!otp,
+      hasClientId: !!client_id
+    });
     
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
@@ -58,131 +63,40 @@ serve(async (req) => {
       console.log(`Using production API for ${action}: ${baseUrl}`);
     }
     
-    // Fetch all required document status IDs at once
-    const { data: documentStatuses, error: statusesError } = await supabase
+    // First, fetch document status IDs for governance and rejected statuses
+    const { data: governanceStatus, error: governanceError } = await supabase
       .from('document_status')
-      .select('id, name');
+      .select('id')
+      .eq('name', 'governance')
+      .single();
     
-    if (statusesError) {
-      console.error("Error fetching document statuses:", statusesError);
+    if (governanceError) {
+      console.error("Error fetching governance status:", governanceError);
       return new Response(
-        JSON.stringify({ error: "Could not find document statuses" }),
+        JSON.stringify({ error: "Could not find governance status" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
     
-    // Map status names to IDs for easy lookup
-    const statusIdMap = documentStatuses.reduce((map, status) => {
-      map[status.name] = status.id;
-      return map;
-    }, {});
+    const { data: rejectedStatus, error: rejectedError } = await supabase
+      .from('document_status')
+      .select('id')
+      .eq('name', 'rejected')
+      .single();
     
-    const governanceStatusId = statusIdMap['governance'];
-    const rejectedStatusId = statusIdMap['rejected'];
-    const manualStatusId = statusIdMap['manual'];
-    
-    console.log("Found document status IDs:", {
-      governance: governanceStatusId,
-      rejected: rejectedStatusId,
-      manual: manualStatusId
-    });
-    
-    // Handle Manual verification
-    if (action === 'manualVerification') {
-      if (!documentId) {
-        return new Response(
-          JSON.stringify({ error: "Document ID is required" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      
-      try {
-        // Update document with manual verification status
-        const { error: updateError } = await supabase
-          .from('employee_documents')
-          .update({
-            verification_status: 'verified',
-            employee_docs_log: [], // Clear any existing logs for manual verification
-            document_status_id: manualStatusId,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', documentId);
-          
-        if (updateError) {
-          console.error("Error updating document with manual verification:", updateError);
-          return new Response(
-            JSON.stringify({ error: "Failed to update document with manual verification" }),
-            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-        
-        // REMOVED: Do not update the employee table status
-        // We're only updating the document status
-        
-        return new Response(
-          JSON.stringify({ 
-            success: true, 
-            message: "Document manually verified successfully",
-            documentStatusId: manualStatusId,
-            documentStatusName: "manual"
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      } catch (error) {
-        console.error("Error in manual verification:", error);
-        return new Response(
-          JSON.stringify({ error: "Failed to manually verify document" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
+    if (rejectedError) {
+      console.error("Error fetching rejected status:", rejectedError);
+      return new Response(
+        JSON.stringify({ error: "Could not find rejected status" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
     
-    // Handle Reject verification
-    if (action === 'rejectVerification') {
-      if (!documentId) {
-        return new Response(
-          JSON.stringify({ error: "Document ID is required" }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      
-      try {
-        // Update document with rejected verification status
-        const { error: updateError } = await supabase
-          .from('employee_documents')
-          .update({
-            verification_status: 'failed',
-            employee_docs_log: [], // Clear any existing logs for rejected verification
-            document_status_id: rejectedStatusId,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', documentId);
-          
-        if (updateError) {
-          console.error("Error updating document with rejected verification:", updateError);
-          return new Response(
-            JSON.stringify({ error: "Failed to update document with rejected verification" }),
-            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-        
-        return new Response(
-          JSON.stringify({ 
-            success: true, 
-            message: "Document verification rejected",
-            documentStatusId: rejectedStatusId,
-            documentStatusName: "rejected"
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      } catch (error) {
-        console.error("Error in reject verification:", error);
-        return new Response(
-          JSON.stringify({ error: "Failed to reject document verification" }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-    }
+    const governanceStatusId = governanceStatus?.id;
+    const rejectedStatusId = rejectedStatus?.id;
+    
+    console.log("Found governance status ID:", governanceStatusId);
+    console.log("Found rejected status ID:", rejectedStatusId);
     
     // Handle Aadhar OTP request
     if (action === 'requestAadharOtp') {
@@ -327,7 +241,7 @@ serve(async (req) => {
         const data = await response.json();
         console.log("Surepass API verification response:", JSON.stringify(data));
         
-        // Check status_code in API response - only proceed with status_code 200
+        // Check status_code in API response
         if (data.success && data.status_code === 200) {
           // Update document status to verified and store API response in logs
           if (documentId) {
@@ -367,32 +281,68 @@ serve(async (req) => {
               }
             }
             
-            // REMOVED: Do not update the employee table status
-            // We're only updating the document status
+            // Get employee ID from the document
+            const { data: documentData } = await supabase
+              .from('employee_documents')
+              .select('employee_id')
+              .eq('id', documentId)
+              .single();
+            
+            if (documentData?.employee_id) {
+              // Check if all employee documents are verified
+              const { data: documents } = await supabase
+                .from('employee_documents')
+                .select('verification_status')
+                .eq('employee_id', documentData.employee_id);
+              
+              const allVerified = documents?.every(doc => doc.verification_status === 'verified');
+              
+              if (allVerified) {
+                await supabase
+                  .from('employees')
+                  .update({ status: 'verified' })
+                  .eq('id', documentData.employee_id);
+              }
+            }
           }
           
           return new Response(
             JSON.stringify({ 
               success: true, 
-              message: "Aadhar verification successful",
-              documentStatusId: governanceStatusId,
-              documentStatusName: "governance"
+              message: "Aadhar verification successful" 
             }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         } else {
           // Failed verification - update document with rejected status
           if (documentId) {
-            // Update with rejected status and empty logs
-            await supabase
+            // Fetch current logs
+            const { data: document } = await supabase
               .from('employee_documents')
-              .update({
-                employee_docs_log: [],
-                document_status_id: rejectedStatusId,
-                verification_status: 'failed',
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', documentId);
+              .select('employee_docs_log')
+              .eq('id', documentId)
+              .single();
+              
+            if (document) {
+              const existingLogs = document.employee_docs_log || [];
+              
+              // Log failed verification attempt
+              const logEntry = {
+                timestamp: new Date().toISOString(),
+                action: "verify_aadhar_otp_failed",
+                response: data
+              };
+              
+              await supabase
+                .from('employee_documents')
+                .update({
+                  employee_docs_log: [...existingLogs, logEntry],
+                  document_status_id: rejectedStatusId,
+                  verification_status: 'failed',
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', documentId);
+            }
           }
           
           return new Response(
