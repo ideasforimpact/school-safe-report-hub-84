@@ -11,6 +11,7 @@ interface VerificationStatusBadgeProps {
   isManual?: boolean;
   documentStatusName?: string; 
   onClick?: () => void;
+  className?: string; // Added className prop
 }
 
 const VerificationStatusBadge = ({ 
@@ -18,7 +19,8 @@ const VerificationStatusBadge = ({
   isGovernance = false,
   isManual = false,
   documentStatusName,
-  onClick
+  onClick,
+  className = '' // Default to empty string
 }: VerificationStatusBadgeProps) => {
   if (status === 'verified') {
     const isClickable = typeof onClick === 'function';
@@ -28,11 +30,12 @@ const VerificationStatusBadge = ({
       
       return (
         <BadgeComponent
-          variant={isClickable ? "ghost" : "outline"}
+          variant={isClickable ? "outline" : "outline"} // Changed from "ghost" to "outline"
           size={isClickable ? "sm" : undefined}
           className={`
             bg-green-50 hover:bg-green-100 text-green-700 border-green-200
             ${isClickable ? 'cursor-pointer px-2 py-1' : ''}
+            ${className} // Added className
           `}
           onClick={onClick}
         >
@@ -46,7 +49,7 @@ const VerificationStatusBadge = ({
       return (
         <Badge
           variant="outline"
-          className="bg-purple-50 hover:bg-purple-50 text-purple-700 border-purple-200"
+          className={`bg-purple-50 hover:bg-purple-50 text-purple-700 border-purple-200 ${className}`} // Added className
         >
           <Info className="h-3.5 w-3.5 mr-1" />
           Manually Verified
@@ -58,7 +61,7 @@ const VerificationStatusBadge = ({
       return (
         <Badge
           variant="outline"
-          className="bg-green-50 hover:bg-green-50 text-green-700 border-green-200"
+          className={`bg-green-50 hover:bg-green-50 text-green-700 border-green-200 ${className}`} // Added className
         >
           <ShieldCheck className="h-3.5 w-3.5 mr-1" />
           Verified ({documentStatusName})
@@ -69,7 +72,7 @@ const VerificationStatusBadge = ({
     return (
       <Badge
         variant="outline"
-        className="bg-green-50 hover:bg-green-50 text-green-700 border-green-200"
+        className={`bg-green-50 hover:bg-green-50 text-green-700 border-green-200 ${className}`} // Added className
       >
         <ShieldCheck className="h-3.5 w-3.5 mr-1" />
         Verified
@@ -81,7 +84,7 @@ const VerificationStatusBadge = ({
     return (
       <Badge
         variant="outline"
-        className="bg-red-50 hover:bg-red-50 text-red-700 border-red-200"
+        className={`bg-red-50 hover:bg-red-50 text-red-700 border-red-200 ${className}`} // Added className
       >
         <AlertTriangle className="h-3.5 w-3.5 mr-1" />
         Failed
@@ -93,7 +96,7 @@ const VerificationStatusBadge = ({
   return (
     <Badge
       variant="outline"
-      className="bg-yellow-50 hover:bg-yellow-50 text-yellow-700 border-yellow-200"
+      className={`bg-yellow-50 hover:bg-yellow-50 text-yellow-700 border-yellow-200 ${className}`} // Added className
     >
       <Clock className="h-3.5 w-3.5 mr-1" />
       Pending
