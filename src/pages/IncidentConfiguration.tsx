@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
@@ -21,11 +20,21 @@ interface ReportType {
   is_active: boolean;
 }
 
+interface PriorityItem {
+  id: string;
+  name: string;
+  description: string | null;
+  color: string | null;
+  weight: number | null;
+  is_active: boolean;
+}
+
 const IncidentConfiguration = () => {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('categories');
   const [contributingFactors, setContributingFactors] = useState<ContributingFactor[]>([]);
   const [reportTypes, setReportTypes] = useState<ReportType[]>([]);
+  const [priorities, setPriorities] = useState<PriorityItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Use the custom hook for categories and subcategories
@@ -99,6 +108,31 @@ const IncidentConfiguration = () => {
     }
 
     fetchReportTypes();
+  }, []);
+
+  // Fetch priorities
+  useEffect(() => {
+    async function fetchPriorities() {
+      try {
+        const { data, error } = await supabase
+          .from('incident_priorities')
+          .select('id, name, description, color, weight, is_active')
+          .order('weight');
+        
+        if (error) {
+          console.error('Error fetching priorities:', error);
+          toast.error('Failed to load priorities');
+          return;
+        }
+        
+        setPriorities(data || []);
+      } catch (error) {
+        console.error('Exception fetching priorities:', error);
+        toast.error('An unexpected error occurred');
+      }
+    }
+
+    fetchPriorities();
   }, []);
 
   // Handle contributing factors operations
@@ -277,6 +311,108 @@ const IncidentConfiguration = () => {
     }
   };
 
+  // Handle priorities operations
+  const handleAddPriority = async (name: string, description: string, color: string, weight: number) => {
+    try {
+      const { data, error } = await supabase
+        .from('incident_priorities')
+        .insert([
+          { name, description: description || null, color, weight }
+        ])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error adding priority:', error);
+        toast.error('Failed to add priority');
+        return;
+      }
+
+      setPriorities([...priorities, data]);
+      toast.success('Priority added successfully');
+    } catch (error) {
+      console.error('Exception adding priority:', error);
+      toast.error('An unexpected error occurred');
+    }
+  };
+
+  const handleUpdatePriority = async (id: string, name: string, description: string, color: string, weight: number) => {
+    try {
+      const { error } = await supabase
+        .from('incident_priorities')
+        .update({ name, description: description || null, color, weight })
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error updating priority:', error);
+        toast.error('Failed to update priority');
+        return;
+      }
+
+      setPriorities(
+        priorities.map(priority =>
+          priority.id === id
+            ? { ...priority, name, description: description || null, color, weight }
+            : priority
+        )
+      );
+      
+      toast.success('Priority updated successfully');
+    } catch (error) {
+      console.error('Exception updating priority:', error);
+      toast.error('An unexpected error occurred');
+    }
+  };
+
+  const handleDeletePriority = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('incident_priorities')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error deleting priority:', error);
+        toast.error('Failed to delete priority');
+        return;
+      }
+
+      setPriorities(priorities.filter(priority => priority.id !== id));
+      toast.success('Priority deleted successfully');
+    } catch (error) {
+      console.error('Exception deleting priority:', error);
+      toast.error('An unexpected error occurred');
+    }
+  };
+
+  const handleTogglePriorityStatus = async (id: string, isActive: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('incident_priorities')
+        .update({ is_active: isActive })
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error toggling priority status:', error);
+        toast.error(`Failed to ${isActive ? 'activate' : 'deactivate'} priority`);
+        return;
+      }
+
+      setPriorities(
+        priorities.map(priority =>
+          priority.id === id
+            ? { ...priority, is_active: isActive }
+            : priority
+        )
+      );
+      
+      toast.success(`Priority ${isActive ? 'activated' : 'deactivated'} successfully`);
+    } catch (error) {
+      console.error('Exception toggling priority status:', error);
+      toast.error('An unexpected error occurred');
+    }
+  };
+
   // Wait for data to load
   if (loading || categoriesLoading) {
     return (
@@ -297,7 +433,7 @@ const IncidentConfiguration = () => {
         <div>
           <h1 className="text-2xl font-bold">Incident Related Configuration</h1>
           <p className="text-gray-600 mt-1">
-            Manage incident categories, subcategories, contributing factors, and report types
+            Manage incident categories, subcategories, contributing factors, report types, and priorities
           </p>
         </div>
 
@@ -321,6 +457,11 @@ const IncidentConfiguration = () => {
           updateReportType={handleUpdateReportType}
           deleteReportType={handleDeleteReportType}
           toggleReportTypeStatus={handleToggleReportTypeStatus}
+          priorities={priorities}
+          addPriority={handleAddPriority}
+          updatePriority={handleUpdatePriority}
+          deletePriority={handleDeletePriority}
+          togglePriorityStatus={handleTogglePriorityStatus}
         />
       </div>
     </Layout>

@@ -6,12 +6,22 @@ import { CategoryTab } from '@/components/configuration/CategoryTab';
 import { SubcategoryTab } from '@/components/configuration/SubcategoryTab';
 import { ContributingFactorTab } from '@/components/configuration/ContributingFactorTab';
 import { ReportTypeTab } from '@/components/configuration/ReportTypeTab';
+import { PriorityTab } from '@/components/configuration/PriorityTab';
 import { ConfigItem, SubcategoryItem } from '@/contexts/types';
 
 interface ReportType {
   id: string;
   name: string;
   description: string | null;
+  is_active: boolean;
+}
+
+interface PriorityItem {
+  id: string;
+  name: string;
+  description: string | null;
+  color: string | null;
+  weight: number | null;
   is_active: boolean;
 }
 
@@ -40,6 +50,11 @@ interface IncidentRelatedConfigProps {
   updateReportType: (id: string, name: string, description: string) => void;
   deleteReportType: (id: string) => void;
   toggleReportTypeStatus: (id: string, isActive: boolean) => void;
+  priorities: PriorityItem[];
+  addPriority: (name: string, description: string, color: string, weight: number) => void;
+  updatePriority: (id: string, name: string, description: string, color: string, weight: number) => void;
+  deletePriority: (id: string) => void;
+  togglePriorityStatus: (id: string, isActive: boolean) => void;
 }
 
 export const IncidentRelatedConfig: React.FC<IncidentRelatedConfigProps> = ({
@@ -61,7 +76,12 @@ export const IncidentRelatedConfig: React.FC<IncidentRelatedConfigProps> = ({
   addReportType,
   updateReportType,
   deleteReportType,
-  toggleReportTypeStatus
+  toggleReportTypeStatus,
+  priorities,
+  addPriority,
+  updatePriority,
+  deletePriority,
+  togglePriorityStatus
 }) => {
   return (
     <Card>
@@ -72,6 +92,7 @@ export const IncidentRelatedConfig: React.FC<IncidentRelatedConfigProps> = ({
             <TabsTrigger value="subcategories">Subcategories</TabsTrigger>
             <TabsTrigger value="contributingFactors">Contributing Factors</TabsTrigger>
             <TabsTrigger value="reportTypes">Report Types</TabsTrigger>
+            <TabsTrigger value="priorities">Priorities</TabsTrigger>
           </TabsList>
           
           <TabsContent value="categories">
@@ -109,6 +130,16 @@ export const IncidentRelatedConfig: React.FC<IncidentRelatedConfigProps> = ({
               updateReportType={updateReportType}
               deleteReportType={deleteReportType}
               toggleReportTypeStatus={toggleReportTypeStatus}
+            />
+          </TabsContent>
+
+          <TabsContent value="priorities">
+            <PriorityTab
+              priorities={priorities}
+              addPriority={addPriority}
+              updatePriority={updatePriority}
+              deletePriority={deletePriority}
+              togglePriorityStatus={togglePriorityStatus}
             />
           </TabsContent>
         </Tabs>
