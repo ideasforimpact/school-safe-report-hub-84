@@ -1,31 +1,22 @@
 
+import React from 'react';
 import { Link } from 'react-router-dom';
 
 const HeaderNavLinks = () => {
   return (
-    <nav className="hidden md:block">
-      <ul className="flex space-x-6 items-center">
-        <li>
-          <Link to="/" className="nav-link active">
-            Home
-          </Link>
-        </li>
-        <li>
-          <Link to="/blog" className="nav-link">
-            Blog
-          </Link>
-        </li>
-        <li>
-          <Link to="/pricing" className="nav-link">
-            Pricing
-          </Link>
-        </li>
-        <li>
-          <Link to="/support" className="nav-link">
-            Support
-          </Link>
-        </li>
-      </ul>
+    <nav className="hidden md:flex items-center space-x-4">
+      <Link to="/dashboard" className="text-gray-700 hover:text-primary-500 px-3 py-2 text-sm font-medium transition-colors">
+        Dashboard
+      </Link>
+      <Link to="/incidents" className="text-gray-700 hover:text-primary-500 px-3 py-2 text-sm font-medium transition-colors">
+        Incidents
+      </Link>
+      <Link to="/report-incident" className="text-gray-700 hover:text-primary-500 px-3 py-2 text-sm font-medium transition-colors">
+        Report Incident
+      </Link>
+      <Link to="/insights" className="text-gray-700 hover:text-primary-500 px-3 py-2 text-sm font-medium transition-colors">
+        Insights
+      </Link>
     </nav>
   );
 };

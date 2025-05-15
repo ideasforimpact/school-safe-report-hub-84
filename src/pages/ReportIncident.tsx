@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIncidents } from '@/contexts/incident/IncidentContext';
@@ -12,11 +13,14 @@ import PeopleInvolvedSection from '@/components/incidents/PeopleInvolvedSection'
 import { IncidentType, IncidentCategory } from '@/types/incident';
 import { Employee } from '@/contexts/employee/types';
 import { getAllEmployeesFromApi } from '@/services/employee/employeeRetrievalService';
+import { Student } from '@/types/student';
+import { useStudents } from '@/contexts/StudentContext';
 
 const ReportIncident = () => {
   const { addIncident, categories } = useIncidents();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { students } = useStudents();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoadingEmployees, setIsLoadingEmployees] = useState(true);
   
@@ -202,6 +206,8 @@ const ReportIncident = () => {
                 onPersonChange={handlePersonChange}
                 onAddPerson={addPerson}
                 onRemovePerson={removePerson}
+                students={students}
+                employees={employees}
               />
             </CardContent>
             <CardFooter className="flex justify-between">
