@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Pencil, Trash2, Toggle } from 'lucide-react';
+import { PlusCircle, Pencil } from 'lucide-react';
 import { EditDialog } from './EditDialog';
 import { 
   Table, 
@@ -11,17 +10,6 @@ import {
   TableHeader, 
   TableRow 
 } from '@/components/ui/table';
-import { 
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger
-} from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
@@ -50,7 +38,6 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
 }) => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [newTypeName, setNewTypeName] = useState('');
   const [newTypeDescription, setNewTypeDescription] = useState('');
   const [selectedType, setSelectedType] = useState<ReportType | null>(null);
@@ -87,25 +74,6 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
       }
     } else {
       toast.error('Name is required');
-    }
-  };
-
-  const handleDeleteClick = (type: ReportType) => {
-    setSelectedType(type);
-    setIsDeleteDialogOpen(true);
-  };
-
-  const confirmDelete = () => {
-    if (selectedType) {
-      try {
-        deleteReportType(selectedType.id);
-        setIsDeleteDialogOpen(false);
-        setSelectedType(null);
-        toast.success('Report type deleted successfully');
-      } catch (error) {
-        console.error('Error deleting report type:', error);
-        toast.error('Failed to delete report type');
-      }
     }
   };
 
@@ -149,7 +117,7 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
               <TableHead>Name</TableHead>
               <TableHead>Description</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="w-[150px]">Actions</TableHead>
+              <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -170,26 +138,14 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
                   </div>
                 </TableCell>
                 <TableCell>
-                  <div className="flex space-x-2">
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={() => handleEditClick(type)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                      <span className="sr-only">Edit</span>
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => handleDeleteClick(type)}
-                      disabled={type.is_active}
-                      title={type.is_active ? "Deactivate type before deleting" : "Delete type"}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      <span className="sr-only">Delete</span>
-                    </Button>
-                  </div>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => handleEditClick(type)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                    <span className="sr-only">Edit</span>
+                  </Button>
                 </TableCell>
               </TableRow>
             ))}
@@ -240,23 +196,6 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
           onChange: setEditTypeDescription
         }}
       />
-
-      {/* Delete Confirmation */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete the report type 
-              <strong> {selectedType?.name}</strong>. This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete}>Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 };
