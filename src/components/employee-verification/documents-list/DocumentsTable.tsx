@@ -18,6 +18,8 @@ import { getDocumentIcon, formatDocumentTypeName } from '../utils/documentUtils'
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { useToast } from '@/hooks/use-toast';
 import AadharDetailsDialog from './AadharDetailsDialog';
+import PanDetailsDialog from '../document-card/PanDetailsDialog';
+import VoterIdDetailsDialog from '../document-card/VoterIdDetailsDialog';
 
 interface DocumentsTableProps {
   documents: VerificationDocument[];
@@ -36,6 +38,11 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
   const { toast } = useToast();
   const [selectedDocumentDetails, setSelectedDocumentDetails] = React.useState<any>(null);
   const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [panDialogOpen, setPanDialogOpen] = React.useState(false);
+  const [voterIdDialogOpen, setVoterIdDialogOpen] = React.useState(false);
+  const [selectedPanDetails, setSelectedPanDetails] = React.useState<any>(null);
+  const [selectedVoterIdDetails, setSelectedVoterIdDetails] = React.useState<any>(null);
+  const [selectedDocumentId, setSelectedDocumentId] = React.useState<string | undefined>(undefined);
   
   const getDocumentStatusName = (document: VerificationDocument): string | undefined => {
     if (!document.documentStatusId || document.verificationStatus !== 'verified' || documentStatuses.length === 0) {
@@ -49,10 +56,16 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
   const handleBadgeClick = (doc: VerificationDocument) => {
     const statusName = getDocumentStatusName(doc);
     const hasLogs = !!doc.employee_docs_log && doc.employee_docs_log.length > 0;
-    const isAadhar = doc.documentTypeName?.toLowerCase().includes('aadhar');
     
-    if (doc.verificationStatus === 'verified' && statusName === 'governance' && isAadhar && hasLogs) {
-      // Find the most recent successful verification log
+    if (!hasLogs || !statusName || doc.verificationStatus !== 'verified') {
+      return;
+    }
+    
+    const docType = doc.documentTypeName?.toLowerCase();
+    setSelectedDocumentId(doc.id);
+    
+    if (docType?.includes('aadhar') && statusName === 'governance') {
+      // Find the most recent successful verification log for Aadhar
       const verificationLog = doc.employee_docs_log
         .filter(log => log.action === 'verify_aadhar_otp' && log.response?.success === true)
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
@@ -63,7 +76,42 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
         title: "Viewing Aadhar verification details",
         description: "Showing verification information for this document."
       });
-    } else if (doc.verificationStatus === 'verified' && statusName) {
+    } 
+    else if (docType === 'pan' && statusName === 'governance') {
+      // Find PAN verification log
+      const panVerificationLog = doc.employee_docs_log.find(log => 
+        log.action === 'verify_pan_api' && 
+        log.response?.success === true && 
+        log.response?.status_code === 200
+      );
+      
+      if (panVerificationLog) {
+        setSelectedPanDetails(panVerificationLog.response);
+        setPanDialogOpen(true);
+        toast({
+          title: "Viewing PAN verification details",
+          description: "Showing verification information for this document."
+        });
+      }
+    }
+    else if (docType === 'voter_id' && statusName === 'governance') {
+      // Find Voter ID verification log
+      const voterIdVerificationLog = doc.employee_docs_log.find(log => 
+        log.action === 'verify_voter_id_api' && 
+        log.response?.success === true && 
+        log.response?.status_code === 200
+      );
+      
+      if (voterIdVerificationLog) {
+        setSelectedVoterIdDetails(voterIdVerificationLog.response);
+        setVoterIdDialogOpen(true);
+        toast({
+          title: "Viewing Voter ID verification details",
+          description: "Showing verification information for this document."
+        });
+      }
+    }
+    else if (statusName) {
       toast({
         title: "Information",
         description: `This document is verified with status: ${statusName}`
@@ -89,7 +137,8 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
               const statusName = getDocumentStatusName(doc);
               const hasLogs = !!doc.employee_docs_log && doc.employee_docs_log.length > 0;
               const isGovernanceVerified = doc.verificationStatus === 'verified' && statusName === 'governance';
-              const isAadhar = doc.documentTypeName?.toLowerCase().includes('aadhar');
+              const docType = doc.documentTypeName?.toLowerCase();
+              const isClickable = isGovernanceVerified && hasLogs;
               
               return (
                 <TableRow key={doc.id}>
@@ -108,9 +157,10 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
                       status={doc.verificationStatus} 
                       documentStatusName={statusName}
                       isGovernance={isGovernanceVerified}
-                      onClick={isAadhar && isGovernanceVerified && hasLogs ? () => handleBadgeClick(doc) : undefined}
+                      onClick={isClickable ? () => handleBadgeClick(doc) : undefined}
                       documentLogs={doc.employee_docs_log}
                       documentId={doc.id}
+                      documentType={docType}
                     />
                   </TableCell>
                   <TableCell className="text-right">
@@ -152,11 +202,25 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
         </Table>
       </div>
 
-      {/* Common dialog for all document rows */}
+      {/* Dialogs for document verification details */}
       <AadharDetailsDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         aadharDetails={selectedDocumentDetails}
+      />
+      
+      <PanDetailsDialog
+        open={panDialogOpen}
+        onOpenChange={setPanDialogOpen}
+        panDetails={selectedPanDetails}
+        documentId={selectedDocumentId}
+      />
+      
+      <VoterIdDetailsDialog
+        open={voterIdDialogOpen}
+        onOpenChange={setVoterIdDialogOpen}
+        voterIdDetails={selectedVoterIdDetails}
+        documentId={selectedDocumentId}
       />
     </>
   );

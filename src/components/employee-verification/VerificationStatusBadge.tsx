@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, AlertCircle, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { CheckCircle, AlertCircle, Clock } from 'lucide-react';
 import PanDetailsDialog from './document-card/PanDetailsDialog';
 import VoterIdDetailsDialog from './document-card/VoterIdDetailsDialog';
 
