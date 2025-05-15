@@ -1,4 +1,3 @@
-
 import { Incident } from '@/types/incident';
 import { FilterState } from '@/types/filterTypes';
 
@@ -18,6 +17,14 @@ export const getInitialFilterState = (): FilterState => ({
   endDate: null,
   showAdvancedFilters: false,
   showClosedIncidents: true,
+  
+  // Adding default values for the missing properties
+  isVoided: false,
+  wasReopened: false,
+  hasAttachments: false,
+  involvedRole: '',
+  dateFrom: '',
+  dateTo: ''
 });
 
 // Apply filters to incidents array
@@ -73,11 +80,31 @@ export const applyFilters = (incidents: Incident[], filters: FilterState): Incid
       return false;
     }
 
-    // Date range filter
+    // Date range filter - supporting both new and old date properties
     if (filters.startDate && new Date(incident.date) < filters.startDate) {
       return false;
     }
     if (filters.endDate && new Date(incident.date) > filters.endDate) {
+      return false;
+    }
+    if (filters.dateFrom && new Date(incident.date) < new Date(filters.dateFrom)) {
+      return false;
+    }
+    if (filters.dateTo && new Date(incident.date) > new Date(filters.dateTo)) {
+      return false;
+    }
+
+    // Advanced filters
+    if (filters.isVoided && !incident.isVoided) {
+      return false;
+    }
+    if (filters.wasReopened && !incident.wasReopened) {
+      return false;
+    }
+    if (filters.hasAttachments && !(incident.documents?.length || incident.image || incident.video || incident.document)) {
+      return false;
+    }
+    if (filters.involvedRole && !incident.peopleInvolved.some(p => p.role === filters.involvedRole)) {
       return false;
     }
 

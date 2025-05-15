@@ -17,6 +17,14 @@ export interface FilterState {
   endDate: Date | null;
   showAdvancedFilters: boolean;
   showClosedIncidents: boolean;
+  
+  // Adding the missing properties
+  isVoided: boolean;
+  wasReopened: boolean;
+  hasAttachments: boolean;
+  involvedRole: string;
+  dateFrom: string;
+  dateTo: string;
 }
 
 // Define the return type for the filter hook
