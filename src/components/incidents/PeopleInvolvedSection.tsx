@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
@@ -11,6 +11,8 @@ import {
 } from '@/components/ui/select';
 import { Plus, X, Users } from 'lucide-react';
 import { Person } from '@/types/incident';
+import { getAllEmployeesFromApi } from '@/services/employee/employeeRetrievalService';
+import { useStudents } from '@/contexts/StudentContext';
 
 interface PeopleInvolvedSectionProps {
   peopleInvolved: Person[];
@@ -25,6 +27,31 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   onAddPerson,
   onRemovePerson
 }) => {
+  const [employees, setEmployees] = useState<Array<{ id: string, name: string }>>([]);
+  const [loadingEmployees, setLoadingEmployees] = useState(false);
+  const { students } = useStudents();
+  
+  // Fetch employees on component mount
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      try {
+        setLoadingEmployees(true);
+        const fetchedEmployees = await getAllEmployeesFromApi();
+        const formattedEmployees = fetchedEmployees.map(employee => ({
+          id: employee.id,
+          name: `${employee.firstName} ${employee.lastName}`
+        }));
+        setEmployees(formattedEmployees);
+      } catch (error) {
+        console.error("Failed to fetch employees:", error);
+      } finally {
+        setLoadingEmployees(false);
+      }
+    };
+
+    fetchEmployees();
+  }, []);
+  
   return (
     <div className="pt-4">
       <div className="flex items-center justify-between mb-4">
@@ -71,6 +98,8 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                 onValueChange={(value) => {
                   const typedRole = value as 'Student' | 'Staff' | 'Other';
                   onPersonChange(index, 'role', typedRole);
+                  // Clear name when role changes
+                  onPersonChange(index, 'name', '');
                 }}
               >
                 <SelectTrigger className="h-9">
@@ -84,14 +113,63 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
               </Select>
             </div>
 
-            {/* Name input */}
+            {/* Name input/selection based on role */}
             <div>
-              <Input
-                value={person.name}
-                onChange={(e) => onPersonChange(index, 'name', e.target.value)}
-                placeholder="Name"
-                className="h-9"
-              />
+              {person.role === 'Student' ? (
+                <Select
+                  value={person.name}
+                  onValueChange={(value) => onPersonChange(index, 'name', value)}
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder={students.length > 0 ? "Select student" : "Loading students..."} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {students.map((student) => (
+                      <SelectItem key={student.id} value={student.name}>
+                        {student.name} ({student.studentId})
+                      </SelectItem>
+                    ))}
+                    {students.length === 0 && (
+                      <SelectItem value="no-students" disabled>
+                        No students available
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              ) : person.role === 'Staff' ? (
+                <Select
+                  value={person.name}
+                  onValueChange={(value) => onPersonChange(index, 'name', value)}
+                >
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder={loadingEmployees ? "Loading staff..." : "Select staff"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {employees.map((employee) => (
+                      <SelectItem key={employee.id} value={employee.name}>
+                        {employee.name}
+                      </SelectItem>
+                    ))}
+                    {employees.length === 0 && !loadingEmployees && (
+                      <SelectItem value="no-employees" disabled>
+                        No staff members available
+                      </SelectItem>
+                    )}
+                    {loadingEmployees && (
+                      <SelectItem value="loading" disabled>
+                        Loading staff...
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  value={person.name}
+                  onChange={(e) => onPersonChange(index, 'name', e.target.value)}
+                  placeholder="Name"
+                  className="h-9"
+                />
+              )}
             </div>
 
             {/* Notes field - full width */}
