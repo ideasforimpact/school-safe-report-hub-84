@@ -16,41 +16,13 @@ import { Student } from '@/types/student';
 import { useStudents } from '@/contexts/StudentContext';
 import { supabase } from '@/integrations/supabase/client';
 
-// Create a type adapter function to map from verification Employee to incident context Employee
-type IncidentContextEmployee = {
+// Define a user type that has only the properties needed by the components
+interface UserBasicInfo {
   id: string;
-  name: string;
   firstName: string;
   lastName: string;
-  // Add missing properties to match Employee type from context
-  employeeId: string;
-  email: string;
-  employeeType: 'permanent' | 'contract' | 'temporary' | 'part_time' | 'consultant' | 'intern';
-  department: string;
-  joiningDate: string;
-  status: boolean;
-  createdAt: string;
-  updatedAt: string;
-};
-
-// Helper function to adapt employee types
-const adaptEmployees = (employees: Employee[]): IncidentContextEmployee[] => {
-  return employees.map(employee => ({
-    id: employee.id,
-    name: employee.name,
-    firstName: employee.firstName,
-    lastName: employee.lastName,
-    // Map the rest of the properties to match the required type
-    employeeId: employee.employeeId,
-    email: employee.email,
-    employeeType: employee.employeeType,
-    department: employee.department,
-    joiningDate: employee.joiningDate,
-    status: employee.status,
-    createdAt: employee.createdAt,
-    updatedAt: employee.updatedAt
-  }));
-};
+  name: string;
+}
 
 const ReportIncident = () => {
   const { addIncident, categories, isSubmitting: contextIsSubmitting } = useIncidents();
@@ -358,8 +330,13 @@ const ReportIncident = () => {
     }
   };
 
-  // Adapt employees for use in the form
-  const adaptedEmployees = adaptEmployees(employees);
+  // Map employees to the simplified UserBasicInfo type
+  const mappedEmployees: UserBasicInfo[] = employees.map(employee => ({
+    id: employee.id,
+    firstName: employee.firstName,
+    lastName: employee.lastName,
+    name: `${employee.firstName} ${employee.lastName}`
+  }));
 
   return (
     <Layout>
@@ -396,7 +373,7 @@ const ReportIncident = () => {
                 onDateTimeChange={handleDateTimeChange}
                 supportingFiles={supportingFiles}
                 onFilesChange={handleFilesChange}
-                users={adaptedEmployees} // Use the adapted employees that now match the required type
+                users={mappedEmployees} // Pass the simplified user objects
                 isLoadingUsers={isLoadingEmployees}
               />
 
@@ -406,7 +383,7 @@ const ReportIncident = () => {
                 onAddPerson={addPerson}
                 onRemovePerson={removePerson}
                 students={students}
-                employees={adaptedEmployees} // Use the adapted employees that now match the required type
+                employees={mappedEmployees} // Pass the simplified user objects
               />
             </CardContent>
             <CardFooter className="flex justify-between">

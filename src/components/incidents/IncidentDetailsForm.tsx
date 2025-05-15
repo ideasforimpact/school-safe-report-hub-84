@@ -1,6 +1,6 @@
+
 import React from 'react';
 import { FileItem } from '@/types/fileTypes';
-import { Employee } from '@/contexts/employee/types';
 import IncidentTypeSection from './sections/IncidentTypeSection';
 import CategorySection from './sections/CategorySection';
 import LocationSection from './sections/LocationSection';
@@ -12,6 +12,15 @@ import { useIncidentFormData } from '@/hooks/useIncidentFormData';
 interface ConfigItem {
   id: string;
   name: string;
+}
+
+// Define a more generic user type that only requires the properties actually used
+interface UserBasicInfo {
+  id: string;
+  firstName: string;
+  lastName: string;
+  name: string;
+  // Only include properties that are actually used in the components
 }
 
 interface IncidentDetailsFormProps {
@@ -34,13 +43,7 @@ interface IncidentDetailsFormProps {
   onFilesChange: (files: FileItem[]) => void;
   locations?: ConfigItem[];
   facilities?: ConfigItem[];
-  users: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    name: string;
-    // Other properties might be used but these are the minimum required
-  }[];
+  users: UserBasicInfo[]; // Updated to use the generic user type
   isLoadingUsers?: boolean;
 }
 

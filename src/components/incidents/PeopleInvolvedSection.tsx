@@ -1,6 +1,15 @@
+
 import React from 'react';
 import { Person } from '@/types/incident';
 import { Student } from '@/types/student';
+
+interface UserBasicInfo {
+  id: string;
+  firstName: string;
+  lastName: string;
+  name: string;
+  // Only include properties that are actually used in the component
+}
 
 interface PeopleInvolvedSectionProps {
   peopleInvolved: Person[];
@@ -8,13 +17,7 @@ interface PeopleInvolvedSectionProps {
   onAddPerson: () => void;
   onRemovePerson: (index: number) => void;
   students: Student[];
-  employees: {
-    id: string;
-    firstName: string;
-    lastName: string;
-    name: string;
-    // Other properties might be used but these are the minimum required
-  }[];
+  employees: UserBasicInfo[]; // Updated to use the generic user type
 }
 
 const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
@@ -25,9 +28,6 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   students,
   employees,
 }) => {
-  // Component implementation remains the same
-  // This is just to update the type definition
-  
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -85,8 +85,8 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                   Type
                 </label>
                 <select
-                  value={person.type}
-                  onChange={(e) => onPersonChange(index, 'type', e.target.value)}
+                  value={person.notes || ''} {/* Use notes field instead of type which doesn't exist */}
+                  onChange={(e) => onPersonChange(index, 'notes', e.target.value)}
                   className="w-full p-2 border rounded-md text-sm"
                 >
                   <option value="">Select type</option>
