@@ -40,15 +40,7 @@ export const useIncidentActions = (
       // Add to the local state first for immediate UI feedback
       setIncidents(prev => [newIncident, ...prev]);
       
-      // Prepare IDs for database insertion - with default fallbacks
-      let statusId: string | null = null;
-      let typeId: string | null = null;
-      let categoryId: string | null = null;
-      let priorityId: string | null = null;
-      let facilityId: string | null = null;
-      let locationId: string | null = null;
-      
-      // Try to initialize reference data if needed
+      // Initialize reference data if needed
       try {
         console.log("Checking if reference data needs initialization");
         const response = await fetch('https://ybvxkiubnnixntghojyy.supabase.co/functions/v1/init-incident-data', {
@@ -69,6 +61,14 @@ export const useIncidentActions = (
         console.error("Error checking reference data:", initError);
         // Continue with the submission even if this fails
       }
+      
+      // Prepare IDs for database insertion - with default fallbacks
+      let statusId: string | null = null;
+      let typeId: string | null = null;
+      let categoryId: string | null = null;
+      let priorityId: string | null = null;
+      let facilityId: string | null = null;
+      let locationId: string | null = null;
       
       // Get UUID for status (now using "New" instead of "Open")
       try {
@@ -137,7 +137,6 @@ export const useIncidentActions = (
       // Get UUID for category - with special handling for "Other"
       try {
         console.log("Fetching category UUID for:", incidentData.category);
-        let categoryQuery;
         
         const { data: categoryData, error: categoryError } = await supabase
           .from('incident_categories')
@@ -287,21 +286,24 @@ export const useIncidentActions = (
       }
       
       // Format the data for database insertion - using real UUIDs from database
+      // CRITICAL FIX: Make sure all ID references are valid UUIDs, not simple numeric strings
       const dbIncident = {
         ticket_id: ticketId,
         description: incidentData.description,
         date: incidentData.date.toISOString(),
-        location_id: locationId,
+        location_id: locationId || null,  // Use null if we couldn't find a matching UUID
         people_involved: JSON.stringify(incidentData.peopleInvolved),
         status_id: statusId,
         reported_by_id: incidentData.reportedBy.id,
-        facility_id: facilityId, // Use the looked up facility UUID
+        facility_id: facilityId || null,  // Use null if we couldn't find a matching UUID
         documents: incidentData.documents ? JSON.stringify(incidentData.documents) : null,
-        priority_id: priorityId,
-        type_id: typeId,
+        priority_id: priorityId || null,  // Use null if we couldn't find a matching UUID
+        type_id: typeId || null,  // Use null if we couldn't find a matching UUID  
         category_id: categoryId,
-        subcategory_id: incidentData.subcategory || null,
-        owner_id: incidentData.owner ? incidentData.owner.id : null
+        subcategory_id: null,  // Changed from incidentData.subcategory to null as it expects a UUID
+        owner_id: incidentData.owner && typeof incidentData.owner !== 'string' 
+          ? incidentData.owner.id 
+          : null // Make sure owner_id is a proper UUID
       };
       
       console.log("Sending incident data to database:", JSON.stringify(dbIncident, null, 2));
@@ -325,7 +327,7 @@ export const useIncidentActions = (
         type: 'incident',
         activity: 'create',
         entityId: newIncident.id,
-        entityTitle: `${newIncident.ticketId}: ${newIncident.type}: ${newIncident.category} - ${newIncident.subcategory}`,
+        entityTitle: `${newIncident.ticketId}: ${newIncident.type}: ${newIncident.category} - ${newIncident.subcategory || ''}`,
         user: newIncident.reportedBy.name,
         userId: newIncident.reportedBy.id,
         date: now,
