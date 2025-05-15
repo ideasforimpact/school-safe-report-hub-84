@@ -41,14 +41,14 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
 
       <div className="space-y-2 md:col-span-2">
         <label className="text-sm font-medium block text-left">
-          Supporting Documents <span className="text-red-500">*</span>
+          Supporting Documents
         </label>
         <MultipleFilesUpload
           onFilesChange={onFilesChange}
           initialFiles={supportingFiles}
           maxFiles={5}
           className="w-full"
-          required
+          required={false}
         />
         <p className="text-xs text-gray-500 mt-1 text-left">
           Upload up to 5 files (images, videos, documents) to support this incident report

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIncidents } from '@/contexts/incident/IncidentContext';
@@ -81,7 +80,7 @@ const ReportIncident = () => {
       const locationName = formData.locationId ? getSelectedLocation() : '';
       const facilityName = formData.facilityId ? getSelectedFacility() : '';
       
-      // Filter out empty people
+      // Filter out empty people - now it's optional so we don't need to validate it
       const validPeople = peopleInvolved.filter(p => p.name.trim() !== '');
       
       // Process supporting documents
