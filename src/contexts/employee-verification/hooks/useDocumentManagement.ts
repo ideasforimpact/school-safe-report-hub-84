@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from 'react';
 import { VerificationDocument } from '@/types/employeeVerification';
 import { initialDocuments } from '../initialData';
@@ -64,7 +63,8 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
         documentTypeId: documentData.documentTypeId,
         hasImage: !!documentData.documentImage,
         hasDocNumber: !!documentData.documentNumber,
-        documentStatusId: documentData.documentStatusId || 'Not provided'
+        documentStatusId: documentData.documentStatusId || 'Not provided',
+        params: documentData.params ? JSON.stringify(documentData.params) : 'No params'
       });
       
       setIsLoading(true);
@@ -78,7 +78,8 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
             documentTypeId: documentData.documentTypeId,
             documentNumber: documentData.documentNumber,
             documentImage: documentData.documentImage,
-            documentStatusId: documentData.documentStatusId // Include document status ID
+            documentStatusId: documentData.documentStatusId,
+            params: documentData.params // Include params in the API call
           } 
         }
       });
@@ -102,6 +103,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
         documentStatusName: data.document.documentStatusName,
         verificationStatus: data.document.verificationStatus || 'pending',
         employee_docs_log: data.document.employee_docs_log || [],
+        params: data.document.params || {}, // Include params in the returned document
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };

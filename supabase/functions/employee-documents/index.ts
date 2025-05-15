@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 import { v4 as uuidv4 } from "https://esm.sh/uuid@10.0.0";
@@ -293,7 +292,7 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
     console.log("Handling document upload for employee:", employeeId);
     
     // Upload the document image to storage first
-    const { documentImage, documentNumber, documentStatusId, ...restDocumentData } = documentData;
+    const { documentImage, documentNumber, documentStatusId, params, ...restDocumentData } = documentData;
     
     // Generate a unique file path
     const timestamp = new Date().getTime();
@@ -370,6 +369,7 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
       verification_status: 'pending',
       document_status_id: pendingStatusId, // Added document_status_id pointing to pending status
       employee_docs_log: [initialLogEntry], // Add initial log entry
+      params: params || {}, // Add params with DOB for driving license
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
@@ -379,7 +379,8 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
       documentTypeId: newDocumentRecord.document_type_id,
       filePath: newDocumentRecord.document_url,
       hasDocNumber: !!plainTextDocNumber,
-      documentStatusId: newDocumentRecord.document_status_id
+      documentStatusId: newDocumentRecord.document_status_id,
+      params: JSON.stringify(newDocumentRecord.params)
     });
     
     // Insert the document record
@@ -409,6 +410,7 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
       documentStatusId: insertData.document_status_id,
       documentStatusName: insertData.document_status?.name || '',
       employee_docs_log: insertData.employee_docs_log || [],
+      params: insertData.params || {}, // Include params in the response
       createdAt: insertData.created_at,
       updatedAt: insertData.updated_at
     };
@@ -496,6 +498,7 @@ async function handleListDocuments(employeeId, supabase, corsHeaders, timeframe 
         documentStatusId: doc.document_status_id,
         documentStatusName: doc.document_status?.name || '',
         employee_docs_log: doc.employee_docs_log || [],
+        params: doc.params || {}, // Include params in the response
         createdAt: doc.created_at,
         updatedAt: doc.updated_at
       };
@@ -804,6 +807,7 @@ async function handleAadharOtpVerify(body, supabase, corsHeaders) {
       documentStatusId: updatedDoc.document_status_id,
       documentStatusName: updatedDoc.document_status?.name || '',
       employee_docs_log: updatedDoc.employee_docs_log,
+      params: updatedDoc.params || {}, // Include params in the response
       createdAt: updatedDoc.created_at,
       updatedAt: updatedDoc.updated_at
     };

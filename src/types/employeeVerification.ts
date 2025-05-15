@@ -57,6 +57,10 @@ export interface VerificationDocument {
     dob?: string;
     [key: string]: any;
   };
+  params?: {
+    DOB?: string;
+    [key: string]: any;
+  };
   createdAt: string;
   updatedAt: string;
 }

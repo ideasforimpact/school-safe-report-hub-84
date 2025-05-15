@@ -82,15 +82,19 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
       // Find the pending status ID
       const pendingStatus = documentStatuses.find(status => status.name.toLowerCase() === 'pending');
 
+      // Prepare params object for driving license with DOB
+      const params = isDrivingLicense(selectedTypeId) && values.dateOfBirth 
+        ? { DOB: values.dateOfBirth } 
+        : undefined;
+
       const documentData = {
         employeeId,
         documentTypeId: selectedTypeId,
         documentNumber: values.documentNumber,
         documentImage: values.documentImage,
-        documentStatusId: pendingStatus?.id, // Add the document status ID
+        documentStatusId: pendingStatus?.id,
         verificationStatus: 'pending' as 'pending' | 'verified' | 'failed',
-        // Include date of birth if provided (for driving license)
-        ...(isDrivingLicense(selectedTypeId) && values.dateOfBirth && { dateOfBirth: values.dateOfBirth })
+        params: params // Add params object with DOB for driving license
       };
 
       console.log('Adding document with data:', {
@@ -99,7 +103,7 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
         documentNumber: documentData.documentNumber ? 'Provided' : 'Not provided',
         documentStatusId: documentData.documentStatusId || 'Not provided',
         verificationStatus: documentData.verificationStatus,
-        dateOfBirth: values.dateOfBirth ? 'Provided' : 'Not provided',
+        params: params ? JSON.stringify(params) : 'Not provided',
         // Don't log entire base64 string
         documentImageSize: documentData.documentImage ? documentData.documentImage.length : 0,
       });
