@@ -40,7 +40,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   const [open, setOpen] = useState<{ [key: number]: boolean }>({});
 
   const handleSelectStudent = (index: number, student: Student) => {
-    onPersonChange(index, 'name', `${student.firstName} ${student.lastName}`);
+    onPersonChange(index, 'name', student.name);
     setOpen({ ...open, [index]: false });
   };
 
@@ -113,12 +113,12 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                             className="flex items-center justify-between"
                           >
                             <div>
-                              {student.firstName} {student.lastName}
+                              {student.name}
                               <span className="text-xs text-gray-500 ml-2">
                                 ({student.grade || 'No Grade'})
                               </span>
                             </div>
-                            {person.name === `${student.firstName} ${student.lastName}` && (
+                            {person.name === student.name && (
                               <Check className="h-4 w-4" />
                             )}
                           </CommandItem>
