@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { useToast } from '@/hooks/use-toast';
@@ -19,7 +18,6 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
   initialLoadComplete = false 
 }) => {
   const { getEmployeeDocuments, verifyDocument, fetchEmployeeDocuments, isLoading } = useEmployeeVerification();
-  const documents = useMemo(() => getEmployeeDocuments(employeeId), [getEmployeeDocuments, employeeId]);
   const { toast } = useToast();
   
   const [verifyDialogOpen, setVerifyDialogOpen] = useState(false);
@@ -29,6 +27,17 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
   const [verifying, setVerifying] = useState(false);
   const [isFetching, setIsFetching] = useState(false);
   const [localLoadComplete, setLocalLoadComplete] = useState(initialLoadComplete);
+
+  // Get documents and sort by created date (newest first)
+  const documents = useMemo(() => {
+    const docs = getEmployeeDocuments(employeeId);
+    // Sort documents by createdAt (most recent first)
+    return [...docs].sort((a, b) => {
+      const dateA = new Date(a.createdAt).getTime();
+      const dateB = new Date(b.createdAt).getTime();
+      return dateB - dateA; // Descending order (newest first)
+    });
+  }, [getEmployeeDocuments, employeeId]);
 
   // Fetch documents only once when component mounts and avoid duplicate fetches
   useEffect(() => {

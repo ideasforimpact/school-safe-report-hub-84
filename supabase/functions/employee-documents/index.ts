@@ -478,6 +478,9 @@ async function handleListDocuments(employeeId, supabase, corsHeaders, timeframe 
       }
     }
     
+    // Sort by created_at in descending order (newest first)
+    query = query.order('created_at', { ascending: false });
+    
     // Execute the query
     const { data, error } = await query;
     
