@@ -76,22 +76,41 @@ export const useEmployeeManagement = () => {
     }
   };
 
-  const updateEmployee = async (id: string, updates: Partial<Employee>) => {
+  const updateEmployee = async (id: string, updates: Partial<Employee>): Promise<Employee> => {
     try {
+      const employeeToUpdate = employees.find(emp => emp.id === id);
+      
+      if (!employeeToUpdate) {
+        throw new Error(`Employee with id ${id} not found`);
+      }
+      
+      const updatedEmployee = { 
+        ...employeeToUpdate, 
+        ...updates, 
+        updatedAt: new Date().toISOString() 
+      };
+      
       setEmployees(employees.map(emp => 
-        emp.id === id ? { ...emp, ...updates, updatedAt: new Date().toISOString() } : emp
+        emp.id === id ? updatedEmployee : emp
       ));
-      return Promise.resolve();
+      
+      return updatedEmployee;
     } catch (error) {
       console.error('Error updating employee:', error);
       throw error;
     }
   };
 
-  const deleteEmployee = async (id: string) => {
+  const deleteEmployee = async (id: string): Promise<boolean> => {
     try {
+      const employeeExists = employees.some(emp => emp.id === id);
+      
+      if (!employeeExists) {
+        return false;
+      }
+      
       setEmployees(employees.filter(emp => emp.id !== id));
-      return Promise.resolve();
+      return true;
     } catch (error) {
       console.error('Error deleting employee:', error);
       throw error;

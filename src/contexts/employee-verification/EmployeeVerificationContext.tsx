@@ -26,7 +26,7 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
   const { 
     employees, 
     addEmployee,
-    updateEmployee: updateEmployeeData,
+    updateEmployee,
     deleteEmployee,
     getEmployee,
     fetchEmployees
@@ -35,13 +35,13 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
   // Update employee status based on document verifications
   const updateEmployeeStatus = useCallback(async (employeeId: string, status: 'pending' | 'verified' | 'failed') => {
     try {
-      await updateEmployeeData(employeeId, { status });
+      await updateEmployee(employeeId, { status });
       return Promise.resolve();
     } catch (error) {
       console.error('Error updating employee status:', error);
       throw error;
     }
-  }, [updateEmployeeData]);
+  }, [updateEmployee]);
 
   // Use the document management hook
   const { 
@@ -169,7 +169,7 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
     // Employee management
     employees,
     addEmployee,
-    updateEmployee: updateEmployeeData,
+    updateEmployee,
     deleteEmployee,
     getEmployee,
     fetchEmployees,
