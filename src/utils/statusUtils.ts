@@ -11,10 +11,8 @@ export const getStatusBadgeClass = (status: IncidentStatus, isVoided?: boolean) 
   
   switch(status) {
     case 'Open':
-    case 'New':
       return 'bg-red-100 text-red-800';
     case 'In Progress':
-    case 'Progress':
       return 'bg-yellow-100 text-yellow-800';
     case 'OnHold':
       return 'bg-blue-100 text-blue-800';

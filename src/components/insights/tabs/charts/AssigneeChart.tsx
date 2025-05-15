@@ -1,30 +1,30 @@
 
-import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import CategoryChart from '../../charts/category-chart';
+import React, { useMemo } from 'react';
+import CategoryChart from '@/components/insights/charts/category-chart';
+import { useInsightsContext } from '@/contexts/InsightsContext';
 
-interface AssigneeChartProps {
-  data: Array<{name: string, value: number}>;
-  colors: string[];
-}
+const AssigneeChart = () => {
+  const { incidents } = useInsightsContext();
 
-const AssigneeChart: React.FC<AssigneeChartProps> = ({ data, colors }) => {
+  const assigneeData = useMemo(() => {
+    const assigneeCounts: Record<string, number> = {};
+    
+    incidents.forEach(incident => {
+      const assignee = incident.owner_id ? 'Assigned' : 'Unassigned';
+      assigneeCounts[assignee] = (assigneeCounts[assignee] || 0) + 1;
+    });
+    
+    return Object.entries(assigneeCounts).map(([name, value]) => ({ name, value }));
+  }, [incidents]);
+
   return (
-    <Card className="w-full">
-      <CardHeader className="flex flex-col items-start">
-        <CardTitle className="text-left">Incident Ownership</CardTitle>
-        <CardDescription className="text-left">
-          Distribution of incidents by assigned owner
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="h-[500px]">
-        <CategoryChart 
-          data={data} 
-          colors={colors}
-          title=""
-        />
-      </CardContent>
-    </Card>
+    <div className="mb-6">
+      <CategoryChart 
+        data={assigneeData}
+        colors={['#22c55e', '#f59e0b', '#06b6d4']}
+        title="Assignees"
+      />
+    </div>
   );
 };
 
