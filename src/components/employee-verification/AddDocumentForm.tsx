@@ -42,6 +42,12 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
     return docType?.description || docType?.name || 'Document';
   };
 
+  // Check if selected type is driving license
+  const isDrivingLicense = (typeId: string): boolean => {
+    const docType = documentTypes.find(type => type.id === typeId);
+    return docType?.name === 'driving_license' || typeId === '4';
+  };
+
   const handleSubmit = async (values: any) => {
     if (!selectedTypeId) {
       toast({
@@ -62,11 +68,7 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
     }
 
     // For driving license, validate date of birth
-    const isDrivingLicense = documentTypes.find(type => 
-      type.id === selectedTypeId && type.name === 'driving_license'
-    ) || selectedTypeId === '4';
-
-    if (isDrivingLicense && !values.dateOfBirth) {
+    if (isDrivingLicense(selectedTypeId) && !values.dateOfBirth) {
       toast({
         title: 'Error',
         description: 'Please provide date of birth for driving license',
@@ -88,7 +90,7 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
         documentStatusId: pendingStatus?.id, // Add the document status ID
         verificationStatus: 'pending' as 'pending' | 'verified' | 'failed',
         // Include date of birth if provided (for driving license)
-        ...(values.dateOfBirth && { dateOfBirth: values.dateOfBirth })
+        ...(isDrivingLicense(selectedTypeId) && values.dateOfBirth && { dateOfBirth: values.dateOfBirth })
       };
 
       console.log('Adding document with data:', {

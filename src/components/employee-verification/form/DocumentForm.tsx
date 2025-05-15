@@ -10,6 +10,7 @@ import DocumentFileUploader from './DocumentFileUploader';
 import { getDocumentPlaceholder } from '../utils/documentUtils';
 import { FileItem } from '@/types/fileTypes';
 import { toast } from '@/hooks/use-toast';
+import { useEmployeeVerification } from '@/contexts/employee-verification';
 
 interface DocumentFormProps {
   employeeId: string;
@@ -43,17 +44,15 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
 
   const [selectedFileName, setSelectedFileName] = useState<string>('');
   const [documentNumberHelp, setDocumentNumberHelp] = useState<string>('For security, only the last 2 digits will be visible after submission');
-  const [documentType, setDocumentType] = useState<string>('');
+  const [showDateOfBirth, setShowDateOfBirth] = useState(false);
+  const { documentTypes } = useEmployeeVerification();
   
-  // Get the document type name based on the selected type ID
+  // Detect if selected document type is driving license
   useEffect(() => {
-    // This would ideally come from useEmployeeVerification, but for now we'll check the ID
-    if (selectedTypeId.includes('driving_license') || selectedTypeId === '4') {
-      setDocumentType('driving_license');
-    } else {
-      setDocumentType('');
-    }
-  }, [selectedTypeId]);
+    const docType = documentTypes.find(type => type.id === selectedTypeId);
+    const isDrivingLicense = docType?.name === 'driving_license' || selectedTypeId === '4';
+    setShowDateOfBirth(isDrivingLicense);
+  }, [selectedTypeId, documentTypes]);
 
   const documentPlaceholder = getDocumentPlaceholder(selectedTypeId);
 
@@ -74,7 +73,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       documentNumber: data.documentNumber,
       documentImage: data.documentImage,
       // Include date of birth for driving license
-      ...(documentType === 'driving_license' && data.dateOfBirth && { dateOfBirth: data.dateOfBirth }),
+      ...(showDateOfBirth && data.dateOfBirth && { dateOfBirth: data.dateOfBirth }),
     };
 
     console.log('Submitting document with data:', {
@@ -122,7 +121,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
         />
         
         {/* Date of Birth field for driving license */}
-        {documentType === 'driving_license' && (
+        {showDateOfBirth && (
           <FormField
             control={form.control}
             name="dateOfBirth"
