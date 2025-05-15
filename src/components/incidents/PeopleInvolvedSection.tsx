@@ -85,7 +85,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                   Type
                 </label>
                 <select
-                  value={person.notes || ''} {/* Use notes field instead of type which doesn't exist */}
+                  value={person.notes || ''}
                   onChange={(e) => onPersonChange(index, 'notes', e.target.value)}
                   className="w-full p-2 border rounded-md text-sm"
                 >
