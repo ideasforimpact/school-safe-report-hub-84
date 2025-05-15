@@ -4,7 +4,7 @@ import { Person } from '@/types/incident';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { X, Plus } from 'lucide-react';
+import { X, Plus, Check, Search } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -14,11 +14,7 @@ import {
 } from '@/components/ui/select';
 import { Student } from '@/types/student';
 import { Employee } from '@/contexts/employee/types';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { Check } from 'lucide-react';
 
 interface PeopleInvolvedSectionProps {
   peopleInvolved: Person[];
@@ -37,23 +33,46 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   students = [],
   employees = []
 }) => {
-  const [open, setOpen] = useState<{ [key: number]: boolean }>({});
+  const [searchInputs, setSearchInputs] = useState<{ [key: number]: string }>({});
+
+  const handleStudentSearch = (index: number, search: string) => {
+    setSearchInputs(prev => ({ ...prev, [index]: search }));
+    // Allow manual entry even if not in dropdown
+    onPersonChange(index, 'name', search);
+  };
+
+  const handleEmployeeSearch = (index: number, search: string) => {
+    setSearchInputs(prev => ({ ...prev, [index]: search }));
+    // Allow manual entry even if not in dropdown
+    onPersonChange(index, 'name', search);
+  };
 
   const handleSelectStudent = (index: number, student: Student) => {
     onPersonChange(index, 'name', student.name);
-    setOpen({ ...open, [index]: false });
+    setSearchInputs(prev => ({ ...prev, [index]: student.name }));
   };
 
   const handleSelectEmployee = (index: number, employee: Employee) => {
     onPersonChange(index, 'name', `${employee.firstName} ${employee.lastName}`);
-    setOpen({ ...open, [index]: false });
+    setSearchInputs(prev => ({ ...prev, [index]: `${employee.firstName} ${employee.lastName}` }));
   };
 
-  const toggleOpen = (index: number) => {
-    setOpen(prev => ({
-      ...prev,
-      [index]: !prev[index]
-    }));
+  // Filter students based on search input
+  const getFilteredStudents = (index: number) => {
+    const search = searchInputs[index]?.toLowerCase() || '';
+    if (!search) return students;
+    
+    return students.filter(student => 
+      student.name.toLowerCase().includes(search));
+  };
+
+  // Filter employees based on search input
+  const getFilteredEmployees = (index: number) => {
+    const search = searchInputs[index]?.toLowerCase() || '';
+    if (!search) return employees;
+    
+    return employees.filter(employee => 
+      `${employee.firstName} ${employee.lastName}`.toLowerCase().includes(search));
   };
 
   return (
@@ -88,87 +107,83 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
               Name <span className="text-red-500">*</span>
             </label>
             {person.role === 'Student' ? (
-              <Popover open={open[index]} onOpenChange={() => toggleOpen(index)}>
-                <PopoverTrigger asChild>
-                  <div className="relative w-full">
-                    <Input
-                      value={person.name}
-                      onChange={(e) => onPersonChange(index, 'name', e.target.value)}
-                      placeholder="Search and select a student"
-                      onClick={() => setOpen({ ...open, [index]: true })}
-                      className="w-full"
-                    />
+              <div className="relative w-full">
+                <div className="relative">
+                  <Input
+                    value={searchInputs[index] || person.name}
+                    onChange={(e) => handleStudentSearch(index, e.target.value)}
+                    placeholder="Search for a student"
+                    className="w-full pr-8"
+                  />
+                  <Search className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                </div>
+                
+                {searchInputs[index] && getFilteredStudents(index).length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
+                    <ul className="py-1 text-sm">
+                      {getFilteredStudents(index).map((student) => (
+                        <li 
+                          key={student.id} 
+                          onClick={() => handleSelectStudent(index, student)}
+                          className={cn(
+                            "flex items-center justify-between px-4 py-2 cursor-pointer hover:bg-gray-100",
+                            person.name === student.name && "bg-gray-100"
+                          )}
+                        >
+                          <div>
+                            {student.name}
+                            <span className="text-xs text-gray-500 ml-2">
+                              ({student.grade || 'No Grade'})
+                            </span>
+                          </div>
+                          {person.name === student.name && (
+                            <Check className="h-4 w-4" />
+                          )}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-0" align="start">
-                  <Command>
-                    <CommandInput placeholder="Search students..." />
-                    <CommandEmpty>No students found.</CommandEmpty>
-                    <ScrollArea className="max-h-52">
-                      <CommandGroup>
-                        {students.map((student) => (
-                          <CommandItem
-                            key={student.id}
-                            onSelect={() => handleSelectStudent(index, student)}
-                            className="flex items-center justify-between"
-                          >
-                            <div>
-                              {student.name}
-                              <span className="text-xs text-gray-500 ml-2">
-                                ({student.grade || 'No Grade'})
-                              </span>
-                            </div>
-                            {person.name === student.name && (
-                              <Check className="h-4 w-4" />
-                            )}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </ScrollArea>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+                )}
+              </div>
             ) : person.role === 'Staff' ? (
-              <Popover open={open[index]} onOpenChange={() => toggleOpen(index)}>
-                <PopoverTrigger asChild>
-                  <div className="relative w-full">
-                    <Input
-                      value={person.name}
-                      onChange={(e) => onPersonChange(index, 'name', e.target.value)}
-                      placeholder="Search and select staff member"
-                      onClick={() => setOpen({ ...open, [index]: true })}
-                      className="w-full"
-                    />
+              <div className="relative w-full">
+                <div className="relative">
+                  <Input
+                    value={searchInputs[index] || person.name}
+                    onChange={(e) => handleEmployeeSearch(index, e.target.value)}
+                    placeholder="Search for staff member"
+                    className="w-full pr-8"
+                  />
+                  <Search className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                </div>
+                
+                {searchInputs[index] && getFilteredEmployees(index).length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
+                    <ul className="py-1 text-sm">
+                      {getFilteredEmployees(index).map((employee) => (
+                        <li 
+                          key={employee.id} 
+                          onClick={() => handleSelectEmployee(index, employee)}
+                          className={cn(
+                            "flex items-center justify-between px-4 py-2 cursor-pointer hover:bg-gray-100",
+                            person.name === `${employee.firstName} ${employee.lastName}` && "bg-gray-100"
+                          )}
+                        >
+                          <div>
+                            {employee.firstName} {employee.lastName}
+                            <span className="text-xs text-gray-500 ml-2">
+                              ({employee.department || 'No Department'})
+                            </span>
+                          </div>
+                          {person.name === `${employee.firstName} ${employee.lastName}` && (
+                            <Check className="h-4 w-4" />
+                          )}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-0" align="start">
-                  <Command>
-                    <CommandInput placeholder="Search staff..." />
-                    <CommandEmpty>No staff members found.</CommandEmpty>
-                    <ScrollArea className="max-h-52">
-                      <CommandGroup>
-                        {employees.map((employee) => (
-                          <CommandItem
-                            key={employee.id}
-                            onSelect={() => handleSelectEmployee(index, employee)}
-                            className="flex items-center justify-between"
-                          >
-                            <div>
-                              {employee.firstName} {employee.lastName}
-                              <span className="text-xs text-gray-500 ml-2">
-                                ({employee.department || 'No Department'})
-                              </span>
-                            </div>
-                            {person.name === `${employee.firstName} ${employee.lastName}` && (
-                              <Check className="h-4 w-4" />
-                            )}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </ScrollArea>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+                )}
+              </div>
             ) : (
               <Input
                 value={person.name}
