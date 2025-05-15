@@ -52,7 +52,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
     }
   }, [isLoading, fetchedEmployeeIds]);
 
-  const addDocument = async (documentData: Omit<VerificationDocument, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const addDocument = useCallback(async (documentData: Omit<VerificationDocument, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
       console.log('Starting document upload process:', {
         employeeId: documentData.employeeId,
@@ -109,7 +109,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   const verifyDocument = async (id: string, status: 'verified' | 'failed', notes?: string) => {
     try {
@@ -153,8 +153,10 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
         return doc;
       }));
 
-      // Update employee status based on all documents
-      await updateEmployeeStatus(employeeId, data.status || status);
+      // Only update employee status for verified documents, not for rejected ones
+      if (status === 'verified') {
+        await updateEmployeeStatus(employeeId, data.status || status);
+      }
       
     } catch (err) {
       console.error('Error in verifyDocument:', err);
