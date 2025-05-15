@@ -12,6 +12,7 @@ interface IncidentData extends Omit<Incident, 'id' | 'status' | 'createdAt' | 'u
   locationId: string;
   facilityId?: string;
   priorityId?: string;
+  statusId?: string | null;
 }
 
 export function useIncidentActions(
@@ -34,42 +35,49 @@ export function useIncidentActions(
     try {
       console.log('Adding incident with data:', incidentData);
       
-      // Fetch the "New" status ID - this is our default status
-      const { data: statusData, error: statusError } = await supabase
-        .from('incident_status')
-        .select('id')
-        .eq('name', 'New')
-        .single();
+      // Use provided status_id or fetch the "New" status ID as default
+      let statusId = incidentData.statusId;
+      
+      if (!statusId) {
+        // Fetch the "New" status ID if not provided
+        const { data: statusData, error: statusError } = await supabase
+          .from('incident_status')
+          .select('id')
+          .eq('name', 'New')
+          .single();
+          
+        if (statusError) {
+          console.error('Error fetching New status:', statusError);
+          throw new Error('Could not fetch incident status');
+        }
         
-      if (statusError) {
-        console.error('Error fetching New status:', statusError);
-        throw new Error('Could not fetch incident status');
+        if (!statusData) {
+          console.error('New status not found');
+          throw new Error('Required incident status not found');
+        }
+        
+        statusId = statusData.id;
+        console.log('Got status ID:', statusId);
       }
-      
-      if (!statusData) {
-        console.error('New status not found');
-        throw new Error('Required incident status not found');
-      }
-      
-      console.log('Got status ID:', statusData.id);
       
       // Generate a new ticket ID
       const ticketId = generateTicketId();
 
       // Create incident record in the database
+      // Match exactly the column names in the incidents table
       const { data, error } = await supabase
         .from('incidents')
         .insert({
           type_id: incidentData.typeId || null,
           category_id: incidentData.categoryId,
-          subcategory_id: incidentData.subcategoryId,
+          subcategory_id: incidentData.subcategoryId || null,
           description: incidentData.description,
           date: incidentData.date,
           location_id: incidentData.locationId,
           facility_id: incidentData.facilityId || null,
           priority_id: incidentData.priorityId || null,
           people_involved: incidentData.peopleInvolved,
-          status_id: statusData.id,
+          status_id: statusId,
           reported_by_id: incidentData.reportedBy.id,
           owner_id: incidentData.owner?.id || null,
           documents: incidentData.documents || [],
