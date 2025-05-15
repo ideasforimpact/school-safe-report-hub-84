@@ -6,121 +6,65 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 
-export interface EditDialogProps {
-  title: string;
-  description?: string;
-  fieldLabel: string;
-  value: string;
-  defaultValue?: string;
-  open?: boolean;
-  onOpenChange: (open: boolean) => void;
-  onChange: (value: string) => void;
-  onSave: () => void;
-  onClose?: () => void;
-  triggerButton: React.ReactNode;
-  extraField?: {
-    type: string;
-    label: string;
-    options?: { value: string; label: string }[];
-    value: any;
-    onChange: (value: string) => void;
-  };
+interface Field {
+  name: string;
+  label: string;
+  required?: boolean;
+  type?: 'text' | 'color' | 'number';
+}
+
+interface EditDialogProps {
+  onSave: (formData: Record<string, string>) => void;
+  onCancel: () => void;
+  fields: Field[];
+  initialValues: Record<string, string>;
 }
 
 export const EditDialog: React.FC<EditDialogProps> = ({
-  title,
-  description,
-  fieldLabel,
-  value,
-  defaultValue = '',
-  open,
-  onOpenChange,
-  onChange,
   onSave,
-  onClose,
-  triggerButton,
-  extraField,
+  onCancel,
+  fields,
+  initialValues,
 }) => {
-  const handleOpenChange = (newOpen: boolean) => {
-    onOpenChange(newOpen);
-    if (!newOpen && onClose) {
-      onClose();
-    }
+  const [formData, setFormData] = React.useState<Record<string, string>>(initialValues);
+
+  const handleChange = (name: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSave = () => {
-    onSave();
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave(formData);
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      {triggerButton}
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          {description && <p className="text-sm text-gray-500">{description}</p>}
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid grid-cols-4 items-center gap-4">
-            <label htmlFor="name" className="text-right text-sm font-medium col-span-1">
-              {fieldLabel}
+    <form onSubmit={handleSubmit}>
+      <div className="space-y-4 py-4">
+        {fields.map((field) => (
+          <div className="grid grid-cols-4 items-center gap-4" key={field.name}>
+            <label htmlFor={field.name} className="text-right text-sm font-medium col-span-1">
+              {field.label}{field.required && <span className="text-red-500">*</span>}
             </label>
-            <Input
-              id="name"
-              value={value}
-              onChange={(e) => onChange(e.target.value)}
-              className="col-span-3"
-            />
-          </div>
-          
-          {extraField && extraField.type === 'select' && extraField.options && (
-            <div className="grid grid-cols-4 items-center gap-4">
-              <label className="text-right text-sm font-medium col-span-1">
-                {extraField.label}
-              </label>
-              <div className="col-span-3">
-                <Select
-                  value={extraField.value}
-                  onValueChange={extraField.onChange}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={`Select ${extraField.label.toLowerCase()}`} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {extraField.options.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          )}
-
-          {extraField && extraField.type === 'text' && (
-            <div className="grid grid-cols-4 items-start gap-4">
-              <label className="text-right text-sm font-medium col-span-1 pt-2">
-                {extraField.label}
-              </label>
-              <Textarea
-                value={extraField.value}
-                onChange={(e) => extraField.onChange(e.target.value)}
-                className="col-span-3"
-                rows={3}
+            <div className="col-span-3">
+              <Input
+                id={field.name}
+                name={field.name}
+                type={field.type || 'text'}
+                value={formData[field.name] || ''}
+                onChange={(e) => handleChange(field.name, e.target.value)}
+                required={field.required}
+                className="w-full"
               />
             </div>
-          )}
-        </div>
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button type="button" onClick={handleSave}>
-            Save
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          </div>
+        ))}
+      </div>
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button type="submit">Save</Button>
+      </DialogFooter>
+    </form>
   );
 };
