@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Textarea } from '@/components/ui/textarea';
-import { MultipleFilesUpload } from '@/components/MultipleFilesUpload';
+import MultipleFilesUpload from '@/components/MultipleFilesUpload';
 import { FileItem } from '@/types/fileTypes';
 
 interface DescriptionSectionProps {

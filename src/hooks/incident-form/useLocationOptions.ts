@@ -1,75 +1,90 @@
 
 import { useState, useEffect } from 'react';
-import { useIncidents } from '@/contexts/incident/IncidentContext';
-import { ConfigItem } from '@/contexts/types';
-import { getAllCampuses } from '@/services/campus/campusService';
+import { supabase } from '@/integrations/supabase/client';
 
-interface LocationOption {
+export interface LocationOption {
   value: string;
   label: string;
 }
 
-// Extend the ConfigItem interface to include the locationId property
-interface FacilityItem extends ConfigItem {
-  locationId?: string;
-}
-
-export function useLocationOptions(locationId: string) {
-  const { facilities } = useIncidents();
+export const useLocationOptions = (selectedLocationId: string = '') => {
   const [locationOptions, setLocationOptions] = useState<LocationOption[]>([]);
   const [facilityOptions, setFacilityOptions] = useState<LocationOption[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // Fetch locations from the campuses table instead of the context
+  // Fetch locations
   useEffect(() => {
     const fetchLocations = async () => {
-      setLoading(true);
       try {
-        const campuses = await getAllCampuses();
+        setLoading(true);
         
-        const options = campuses.map(campus => ({
-          value: campus.id,
-          label: campus.name
-        }));
+        const { data, error } = await supabase
+          .from('campuses')
+          .select('id, name')
+          .order('name');
+          
+        if (error) {
+          throw error;
+        }
         
-        setLocationOptions(options);
+        if (data) {
+          setLocationOptions(
+            data.map(location => ({
+              value: location.id,
+              label: location.name
+            }))
+          );
+        }
       } catch (error) {
-        console.error("Error fetching campuses:", error);
+        console.error('Error fetching locations:', error);
         setLocationOptions([]);
       } finally {
         setLoading(false);
       }
     };
-    
+
     fetchLocations();
   }, []);
 
-  // Update facility options when location changes
+  // Fetch facilities for the selected location
   useEffect(() => {
-    if (!locationId) {
-      setFacilityOptions([]);
-      return;
-    }
+    const fetchFacilities = async () => {
+      if (!selectedLocationId) {
+        setFacilityOptions([]);
+        return;
+      }
 
-    // Since the ConfigItem type doesn't include locationId,
-    // we need to use a more appropriate filter method
-    // that doesn't assume all facilities have a locationId
-    const filteredFacilities = facilities.filter((facility: any) => {
-      // Check if the facility has a locationId property
-      return facility.locationId === locationId;
-    });
+      try {
+        setLoading(true);
+        
+        const { data, error } = await supabase
+          .from('facilities')
+          .select('id, name')
+          .eq('campus_id', selectedLocationId)
+          .order('name');
+          
+        if (error) {
+          throw error;
+        }
+        
+        if (data) {
+          setFacilityOptions(
+            data.map(facility => ({
+              value: facility.id,
+              label: facility.name
+            }))
+          );
+        }
+      } catch (error) {
+        console.error('Error fetching facilities:', error);
+        setFacilityOptions([]);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    const options = filteredFacilities.map(facility => ({
-      value: facility.id,
-      label: facility.name
-    }));
-    
-    setFacilityOptions(options);
-  }, [locationId, facilities]);
+    fetchFacilities();
+  }, [selectedLocationId]);
 
-  return {
-    locationOptions,
-    facilityOptions,
-    loading
-  };
-}
+  return { locationOptions, facilityOptions, loading };
+};

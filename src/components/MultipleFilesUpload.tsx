@@ -2,7 +2,7 @@
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { FilePlus } from 'lucide-react';
-import { toast } from '@/components/ui/sonner';
+import { toast } from '@/components/ui/use-toast';
 import { FileItem } from '@/types/fileTypes';
 import { formatFileSize } from '@/utils/fileUtils';
 import FileList from './file/FileList';
@@ -15,19 +15,23 @@ import {
 } from '@/components/ui/dialog';
 
 interface MultipleFilesUploadProps {
+  files?: FileItem[];
   onFilesChange: (files: FileItem[]) => void;
   initialFiles?: FileItem[];
   maxFiles?: number;
   className?: string;
+  acceptedFileTypes?: string;
 }
 
 const MultipleFilesUpload = ({ 
+  files = [], 
   onFilesChange, 
   initialFiles = [], 
   maxFiles = 5,
-  className = '' 
+  className = '',
+  acceptedFileTypes = "image/*,video/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
 }: MultipleFilesUploadProps) => {
-  const [files, setFiles] = useState<FileItem[]>(initialFiles);
+  const [uploadedFiles, setUploadedFiles] = useState<FileItem[]>(files.length > 0 ? files : initialFiles);
   const [isUploading, setIsUploading] = useState(false);
   const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -40,8 +44,12 @@ const MultipleFilesUpload = ({
     setIsUploading(true);
     
     // Check if adding new files would exceed the maximum
-    if (files.length + selectedFiles.length > maxFiles) {
-      toast.error(`You can upload a maximum of ${maxFiles} files.`);
+    if (uploadedFiles.length + selectedFiles.length > maxFiles) {
+      toast({
+        title: "File limit exceeded",
+        description: `You can upload a maximum of ${maxFiles} files.`,
+        variant: "destructive"
+      });
       setIsUploading(false);
       return;
     }
@@ -51,7 +59,11 @@ const MultipleFilesUpload = ({
     
     // Validate file size (max 25MB)
     if (file.size > 25 * 1024 * 1024) {
-      toast.error(`File "${file.name}" exceeds the 25MB size limit.`);
+      toast({
+        title: "File too large",
+        description: `File "${file.name}" exceeds the 25MB size limit.`,
+        variant: "destructive"
+      });
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
@@ -67,8 +79,8 @@ const MultipleFilesUpload = ({
         base64: reader.result as string
       };
       
-      const updatedFiles = [...files, newFile];
-      setFiles(updatedFiles);
+      const updatedFiles = [...uploadedFiles, newFile];
+      setUploadedFiles(updatedFiles);
       onFilesChange(updatedFiles);
       setIsUploading(false);
       
@@ -77,11 +89,18 @@ const MultipleFilesUpload = ({
         fileInputRef.current.value = '';
       }
       
-      toast.success(`File "${file.name}" added successfully`);
+      toast({
+        title: "File added",
+        description: `File "${file.name}" added successfully`
+      });
     };
     
     reader.onerror = () => {
-      toast.error(`Error reading file "${file.name}".`);
+      toast({
+        title: "Error",
+        description: `Error reading file "${file.name}".`,
+        variant: "destructive"
+      });
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     };
@@ -94,12 +113,15 @@ const MultipleFilesUpload = ({
   };
 
   const removeFile = (id: string) => {
-    const fileToRemove = files.find(file => file.id === id);
-    const updatedFiles = files.filter(file => file.id !== id);
-    setFiles(updatedFiles);
+    const fileToRemove = uploadedFiles.find(file => file.id === id);
+    const updatedFiles = uploadedFiles.filter(file => file.id !== id);
+    setUploadedFiles(updatedFiles);
     onFilesChange(updatedFiles);
     if (fileToRemove) {
-      toast.success(`File "${fileToRemove.name}" removed`);
+      toast({
+        title: "File removed",
+        description: `File "${fileToRemove.name}" removed`
+      });
     }
   };
 
@@ -115,19 +137,19 @@ const MultipleFilesUpload = ({
         ref={fileInputRef} 
         onChange={handleFileChange} 
         className="hidden" 
-        accept="image/*,video/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
+        accept={acceptedFileTypes}
       />
       
       <div className="border rounded-md p-4 bg-white">
         {/* File List */}
         <FileList 
-          files={files}
+          files={uploadedFiles}
           onPreviewFile={openPreview}
           onRemoveFile={removeFile}
         />
 
         {/* Add Button - Only shown if under max files */}
-        {files.length < maxFiles && (
+        {uploadedFiles.length < maxFiles && (
           <Button 
             type="button" 
             variant="outline" 
@@ -143,7 +165,7 @@ const MultipleFilesUpload = ({
         )}
         
         {/* Description text below the button */}
-        {files.length < maxFiles && (
+        {uploadedFiles.length < maxFiles && (
           <p className="text-xs text-gray-500 mt-2 text-center">
             Images, videos, documents up to 25MB
           </p>
@@ -151,7 +173,7 @@ const MultipleFilesUpload = ({
         
         {/* Counter showing files added */}
         <div className="mt-2 text-xs text-right text-gray-500">
-          {files.length} of {maxFiles} files added
+          {uploadedFiles.length} of {maxFiles} files added
         </div>
       </div>
 
@@ -179,4 +201,5 @@ const MultipleFilesUpload = ({
   );
 };
 
+export { MultipleFilesUpload };
 export default MultipleFilesUpload;

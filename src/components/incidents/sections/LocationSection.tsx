@@ -24,8 +24,8 @@ const LocationSection: React.FC<LocationSectionProps> = ({
   errors = {}
 }) => {
   const { 
-    locations, 
-    facilities, 
+    locationOptions, 
+    facilityOptions, 
     loading: locationsLoading 
   } = useLocationOptions(locationId);
 
@@ -63,9 +63,9 @@ const LocationSection: React.FC<LocationSectionProps> = ({
               )}
             </SelectTrigger>
             <SelectContent>
-              {locations.map(location => (
-                <SelectItem key={location.id} value={location.id}>
-                  {location.name}
+              {locationOptions.map(location => (
+                <SelectItem key={location.value} value={location.value}>
+                  {location.label}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -82,15 +82,15 @@ const LocationSection: React.FC<LocationSectionProps> = ({
           <Select 
             value={facilityId}
             onValueChange={handleFacilityChange}
-            disabled={!locationId || facilities.length === 0}
+            disabled={!locationId || facilityOptions.length === 0}
           >
             <SelectTrigger>
               <SelectValue placeholder="Select facility" />
             </SelectTrigger>
             <SelectContent>
-              {facilities.map(facility => (
-                <SelectItem key={facility.id} value={facility.id}>
-                  {facility.name}
+              {facilityOptions.map(facility => (
+                <SelectItem key={facility.value} value={facility.value}>
+                  {facility.label}
                 </SelectItem>
               ))}
             </SelectContent>

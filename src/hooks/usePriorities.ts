@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { createClient } from '@/integrations/supabase/client';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Priority {
   id: string;
@@ -24,7 +24,6 @@ export const usePriorities = () => {
       try {
         setLoading(true);
         
-        const supabase = createClient();
         const { data, error } = await supabase
           .from('incident_priorities')
           .select('id, name, color, weight')

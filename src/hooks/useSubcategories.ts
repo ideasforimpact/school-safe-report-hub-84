@@ -1,36 +1,51 @@
 
 import { useState, useEffect } from 'react';
-import { SubcategoryItem } from '@/contexts/types';
+import { supabase } from '@/integrations/supabase/client';
 
-export function useSubcategories(
-  categoryId: string, 
-  subcategoryMappings: Record<string, SubcategoryItem[]>,
-  setFormData: React.Dispatch<React.SetStateAction<any>>
-) {
-  // State for available subcategories based on selected category
-  const [availableSubcategories, setAvailableSubcategories] = useState<SubcategoryItem[]>([]);
-
-  // Update available subcategories when category changes
-  useEffect(() => {
-    if (!categoryId) {
-      setAvailableSubcategories([]);
-      return;
-    }
-
-    // Get subcategories for this category
-    const subcats = subcategoryMappings[categoryId] || [];
-    setAvailableSubcategories(subcats);
-  }, [categoryId, subcategoryMappings]);
-
-  // Reset subcategory when available subcategories change
-  useEffect(() => {
-    setFormData(prev => ({
-      ...prev,
-      subcategory: ''
-    }));
-  }, [availableSubcategories, setFormData]);
-
-  return {
-    availableSubcategories
-  };
+export interface SubcategoryItem {
+  id: string;
+  name: string;
+  categoryId?: string;
 }
+
+export const useSubcategories = (categoryId: string) => {
+  const [availableSubcategories, setAvailableSubcategories] = useState<SubcategoryItem[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchSubcategories = async () => {
+      if (!categoryId) {
+        setAvailableSubcategories([]);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        
+        const { data, error } = await supabase
+          .from('incident_subcategories')
+          .select('id, name')
+          .eq('category_id', categoryId)
+          .eq('is_active', true)
+          .order('name');
+          
+        if (error) {
+          throw error;
+        }
+        
+        if (data) {
+          setAvailableSubcategories(data);
+        }
+      } catch (error) {
+        console.error('Error fetching subcategories:', error);
+        setAvailableSubcategories([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSubcategories();
+  }, [categoryId]);
+
+  return { availableSubcategories, loading };
+};
