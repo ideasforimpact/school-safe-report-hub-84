@@ -39,6 +39,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const isAadhar = documentType === 'aadhar';
   const isPan = documentType === 'pan';
   const isVoterId = documentType === 'voter_id';
+  const isDrivingLicense = documentType === 'driving_license';
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [otp, setOtp] = useState("");
   const [cooldownSeconds, setCooldownSeconds] = useState<number | null>(null);
@@ -49,6 +50,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [isPanVerifying, setIsPanVerifying] = useState(false);
   const [isVoterIdVerifying, setIsVoterIdVerifying] = useState(false);
+  const [isDrivingLicenseVerifying, setIsDrivingLicenseVerifying] = useState(false);
 
   // Logging OTP state for debugging
   useEffect(() => {
@@ -81,6 +83,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       setIsVerifyingOtp(false);
       setIsPanVerifying(false);
       setIsVoterIdVerifying(false);
+      setIsDrivingLicenseVerifying(false);
       if (cooldownTimerId !== null) {
         clearInterval(cooldownTimerId);
         setCooldownTimerId(null);
@@ -162,6 +165,146 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       });
     } finally {
       setIsPanVerifying(false);
+    }
+  };
+
+  // Separate handler for Driving License API verification
+  const handleDrivingLicenseApiVerification = async () => {
+    setIsDrivingLicenseVerifying(true);
+    
+    try {
+      console.log("Initiating Driving License verification for document ID:", documentId);
+      
+      const { data, error } = await supabase.functions.invoke('driving-license', {
+        body: {
+          action: 'apiVerify',
+          documentId
+        }
+      });
+      
+      console.log("Driving License verification response:", data, error);
+      
+      if (error) {
+        console.error('Error verifying Driving License:', error);
+        toast({
+          title: "Error",
+          description: error.message || "Failed to verify Driving License. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (data.success) {
+        toast({
+          title: "Driving License Verified",
+          description: data.message || "Driving License has been successfully verified with government database.",
+        });
+        onVerify('api');
+      } else {
+        toast({
+          title: "Verification Failed",
+          description: data.error || "Driving License verification failed. Please try manual verification.",
+          variant: "destructive",
+        });
+      }
+    } catch (err: any) {
+      console.error("Exception in handleDrivingLicenseApiVerification:", err);
+      toast({
+        title: "Error",
+        description: err.message || "Failed to verify Driving License",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDrivingLicenseVerifying(false);
+    }
+  };
+
+  // Separate handler for Driving License manual verification
+  const handleDrivingLicenseManualVerification = async () => {
+    setIsDrivingLicenseVerifying(true);
+    
+    try {
+      console.log("Initiating manual Driving License verification for document ID:", documentId);
+      
+      const { data, error } = await supabase.functions.invoke('driving-license', {
+        body: {
+          action: 'manualVerify',
+          documentId,
+          verification_notes: 'Document manually verified by staff.'
+        }
+      });
+      
+      console.log("Driving License manual verification response:", data, error);
+      
+      if (error) {
+        console.error('Error manually verifying Driving License:', error);
+        toast({
+          title: "Error",
+          description: error.message || "Failed to manually verify Driving License. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      toast({
+        title: "Driving License Manually Verified",
+        description: "The Driving License has been manually verified successfully.",
+      });
+      onVerify('manual');
+    } catch (err: any) {
+      console.error("Exception in handleDrivingLicenseManualVerification:", err);
+      toast({
+        title: "Error",
+        description: err.message || "Failed to manually verify Driving License",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDrivingLicenseVerifying(false);
+    }
+  };
+
+  // Separate handler for Driving License rejection
+  const handleDrivingLicenseRejection = async () => {
+    setIsDrivingLicenseVerifying(true);
+    
+    try {
+      console.log("Rejecting Driving License verification for document ID:", documentId);
+      
+      const { data, error } = await supabase.functions.invoke('driving-license', {
+        body: {
+          action: 'reject',
+          documentId,
+          verification_notes: 'Document verification rejected by staff.'
+        }
+      });
+      
+      console.log("Driving License rejection response:", data, error);
+      
+      if (error) {
+        console.error('Error rejecting Driving License:', error);
+        toast({
+          title: "Error",
+          description: error.message || "Failed to reject Driving License. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      toast({
+        title: "Driving License Rejected",
+        description: "The Driving License has been marked as failed verification.",
+        variant: "destructive",
+      });
+      onReject();
+    } catch (err: any) {
+      console.error("Exception in handleDrivingLicenseRejection:", err);
+      toast({
+        title: "Error",
+        description: err.message || "Failed to reject Driving License",
+        variant: "destructive"
+      });
+    } finally {
+      setIsDrivingLicenseVerifying(false);
     }
   };
 
@@ -482,6 +625,9 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     } else if (isVoterId) {
       // Use dedicated Voter ID verification handler
       await handleVoterIdApiVerification();
+    } else if (isDrivingLicense) {
+      // Use dedicated Driving License verification handler
+      await handleDrivingLicenseApiVerification();
     } else {
       // For other document types use the generic handler
       onVerify('api');
@@ -493,6 +639,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       await handlePanManualVerification();
     } else if (isVoterId) {
       await handleVoterIdManualVerification();
+    } else if (isDrivingLicense) {
+      await handleDrivingLicenseManualVerification();
     } else {
       // For other document types including Aadhar
       onVerify('manual');
@@ -504,6 +652,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       await handlePanRejection();
     } else if (isVoterId) {
       await handleVoterIdRejection();
+    } else if (isDrivingLicense) {
+      await handleDrivingLicenseRejection();
     } else {
       // For other document types including Aadhar
       onReject();
@@ -637,9 +787,9 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               variant="outline" 
               className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 justify-start"
               onClick={handleApiClick}
-              disabled={isVerifying || cooldownSeconds !== null || isRequestingOtp || isPanVerifying || isVoterIdVerifying}
+              disabled={isVerifying || cooldownSeconds !== null || isRequestingOtp || isPanVerifying || isVoterIdVerifying || isDrivingLicenseVerifying}
             >
-              {isRequestingOtp || (isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) ? (
+              {isRequestingOtp || (isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) || (isDrivingLicense && isDrivingLicenseVerifying) ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : (
                 <ShieldCheck className="h-4 w-4 mr-2" />
@@ -654,13 +804,17 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
                   ? isPanVerifying ? 'Verifying PAN...' : 'Verify via PAN API'
                   : isVoterId
                     ? isVoterIdVerifying ? 'Verifying Voter ID...' : 'Verify via Voter ID API'
-                  : 'Verify via API'
+                    : isDrivingLicense
+                      ? isDrivingLicenseVerifying ? 'Verifying Driving License...' : 'Verify via Driving License API'
+                      : 'Verify via API'
               }
-              {cooldownSeconds === null && !isRequestingOtp && !isPanVerifying && !isVoterIdVerifying && (
+              {cooldownSeconds === null && !isRequestingOtp && !isPanVerifying && !isVoterIdVerifying && !isDrivingLicenseVerifying && (
                 <span className="ml-auto text-xs text-blue-500 font-normal">
                   {isAadhar ? 'OTP verification' : 
                    isPan ? 'Surepass verification' : 
-                   isVoterId ? 'Voter ID verification' : 'Automated check'}
+                   isVoterId ? 'Voter ID verification' : 
+                   isDrivingLicense ? 'Driving License verification' :
+                   'Automated check'}
                 </span>
               )}
             </Button>
@@ -668,14 +822,14 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               variant="outline" 
               className="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200 justify-start"
               onClick={handleManualClick}
-              disabled={isVerifying || isRequestingOtp || isPanVerifying || isVoterIdVerifying}
+              disabled={isVerifying || isRequestingOtp || isPanVerifying || isVoterIdVerifying || isDrivingLicenseVerifying}
             >
-              {(isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) ? (
+              {(isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) || (isDrivingLicense && isDrivingLicenseVerifying) ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : (
                 <ShieldCheck className="h-4 w-4 mr-2" />
               )}
-              {(isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) ? 'Processing...' : 'Verify Manually'}
+              {(isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) || (isDrivingLicense && isDrivingLicenseVerifying) ? 'Processing...' : 'Verify Manually'}
               <span className="ml-auto text-xs text-purple-500 font-normal">Manual review completed</span>
             </Button>
             
@@ -683,14 +837,14 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               variant="outline" 
               className="w-full bg-red-50 hover:bg-red-100 text-red-700 border-red-200 justify-start"
               onClick={handleRejectClick}
-              disabled={isVerifying || isRequestingOtp || isPanVerifying || isVoterIdVerifying}
+              disabled={isVerifying || isRequestingOtp || isPanVerifying || isVoterIdVerifying || isDrivingLicenseVerifying}
             >
-              {(isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) ? (
+              {(isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) || (isDrivingLicense && isDrivingLicenseVerifying) ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : (
                 <ShieldCheck className="h-4 w-4 mr-2" />
               )}
-              {(isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) ? 'Processing...' : 'Reject Document'}
+              {(isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) || (isDrivingLicense && isDrivingLicenseVerifying) ? 'Processing...' : 'Reject Document'}
               <span className="ml-auto text-xs text-red-500 font-normal">Document verification failed</span>
             </Button>
           </div>
@@ -747,7 +901,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
             <Button 
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={isVerifying || isRequestingOtp || isPanVerifying || isVoterIdVerifying}
+              disabled={isVerifying || isRequestingOtp || isPanVerifying || isVoterIdVerifying || isDrivingLicenseVerifying}
             >
               Cancel
             </Button>

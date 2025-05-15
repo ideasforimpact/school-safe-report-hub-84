@@ -50,6 +50,7 @@ export interface VerificationDocument {
     timestamp: string;
     action: string;
     response: any;
+    notes?: string;
   }>;
   details?: {
     address?: string;

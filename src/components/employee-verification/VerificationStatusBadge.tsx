@@ -1,10 +1,10 @@
-
 import React, { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { CheckCircle, AlertCircle, Clock } from 'lucide-react';
 import PanDetailsDialog from './document-card/PanDetailsDialog';
 import VoterIdDetailsDialog from './document-card/VoterIdDetailsDialog';
+import DrivingLicenseDetailsDialog from './document-card/DrivingLicenseDetailsDialog';
 
 interface VerificationStatusBadgeProps {
   status: 'verified' | 'failed' | 'pending';
@@ -81,13 +81,19 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
                                 documentStatusName === 'governance' && 
                                 documentLogs && 
                                 documentLogs.length > 0;
+
+  const isDrivingLicenseWithGovernance = documentType === 'driving_license' &&
+                                      status === 'verified' &&
+                                      documentStatusName === 'governance' &&
+                                      documentLogs &&
+                                      documentLogs.length > 0;
   
-  const isClickable = !!onClick || isPanWithGovernance || isVoterIdWithGovernance;
+  const isClickable = !!onClick || isPanWithGovernance || isVoterIdWithGovernance || isDrivingLicenseWithGovernance;
   
   const handleClick = () => {
     if (onClick) {
       onClick();
-    } else if (isPanWithGovernance || isVoterIdWithGovernance) {
+    } else if (isPanWithGovernance || isVoterIdWithGovernance || isDrivingLicenseWithGovernance) {
       setDialogOpen(true);
     }
   };
@@ -103,6 +109,13 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
   const voterIdVerificationLog = documentLogs?.find(log => 
     log.action === 'verify_voter_id_api' && 
     log.response?.success === true && 
+    log.response?.status_code === 200
+  );
+
+  // Find Driving License verification log if available
+  const drivingLicenseVerificationLog = documentLogs?.find(log =>
+    log.action === 'verify_driving_license_api' &&
+    log.response?.success === true &&
     log.response?.status_code === 200
   );
   
@@ -140,6 +153,16 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
           open={dialogOpen}
           onOpenChange={setDialogOpen}
           voterIdDetails={voterIdVerificationLog.response}
+          documentId={documentId}
+        />
+      )}
+
+      {/* Display Driving License Details Dialog */}
+      {dialogOpen && drivingLicenseVerificationLog && documentType === 'driving_license' && (
+        <DrivingLicenseDetailsDialog
+          open={dialogOpen}
+          onOpenChange={setDialogOpen}
+          licenseDetails={drivingLicenseVerificationLog.response}
           documentId={documentId}
         />
       )}

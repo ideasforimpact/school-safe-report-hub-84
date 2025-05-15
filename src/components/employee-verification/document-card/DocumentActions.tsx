@@ -73,6 +73,102 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
           return;
         }
       }
+      // Special logic for Driving License
+      else if (document.documentTypeName === 'driving_license') {
+        if (method === 'api') {
+          // Handle Driving License API verification
+          const { data, error } = await supabase.functions.invoke('driving-license', {
+            body: {
+              action: 'apiVerify',
+              documentId: document.id
+            }
+          });
+          
+          if (error) {
+            throw new Error(error.message || 'Driving license verification failed');
+          }
+          
+          toast({
+            title: data.success ? "Driving License Verified" : "Verification Failed",
+            description: data.message || (data.success ? "Document has been verified via API." : "Document verification failed."),
+            variant: data.success ? "default" : "destructive",
+          });
+          
+          setIsVerifying(false);
+          setDialogOpen(false);
+          return;
+        } else if (method === 'manual') {
+          // Handle Driving License manual verification
+          const { data, error } = await supabase.functions.invoke('driving-license', {
+            body: {
+              action: 'manualVerify',
+              documentId: document.id,
+              verification_notes: 'Document manually verified by staff.'
+            }
+          });
+          
+          if (error) {
+            throw new Error(error.message || 'Manual verification failed');
+          }
+          
+          toast({
+            title: "Document Verified",
+            description: "Document has been manually verified successfully.",
+          });
+          
+          setIsVerifying(false);
+          setDialogOpen(false);
+          return;
+        }
+      }
+      // Special logic for Voter ID documents
+      else if (document.documentTypeName === 'voter_id') {
+        // Use dedicated Voter ID verification handler
+        if (method === 'api') {
+          const { data, error } = await supabase.functions.invoke('voter-verification', {
+            body: {
+              action: 'apiVerify',
+              documentId: document.id,
+              documentNumber: document.documentNumber
+            }
+          });
+          
+          if (error) {
+            throw new Error(error.message || 'Voter ID verification failed');
+          }
+          
+          toast({
+            title: data.success ? "Voter ID Verified" : "Verification Failed",
+            description: data.message || (data.success ? "Document has been verified via API." : "Document verification failed."),
+            variant: data.success ? "default" : "destructive",
+          });
+          
+          setIsVerifying(false);
+          setDialogOpen(false);
+          return;
+        } else if (method === 'manual') {
+          const { data, error } = await supabase.functions.invoke('voter-verification', {
+            body: {
+              action: 'manualVerify',
+              documentId: document.id,
+              verification_notes: 'Document manually verified by staff.'
+            }
+          });
+          
+          if (error) {
+            throw new Error(error.message || 'Manual verification failed');
+          }
+          
+          toast({
+            title: "Document Verified",
+            description: "Document has been manually verified successfully.",
+          });
+          
+          setIsVerifying(false);
+          setDialogOpen(false);
+          return;
+        }
+      }
       
       // For other document types or fallback handling
       const notes = method === 'api' 
@@ -108,6 +204,56 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
       if (document.documentTypeName === 'pan') {
         // Use the pan-verification edge function
         const { data, error } = await supabase.functions.invoke('pan-verification', {
+          body: {
+            action: 'reject',
+            documentId: document.id,
+            verification_notes: 'Document verification rejected by staff.'
+          }
+        });
+        
+        if (error) {
+          throw new Error(error.message || 'Rejection failed');
+        }
+        
+        toast({
+          title: "Verification Rejected",
+          description: "Document has been marked as failed verification.",
+          variant: "destructive",
+        });
+        
+        setIsVerifying(false);
+        setDialogOpen(false);
+        return;
+      }
+      // Special handling for Driving License
+      else if (document.documentTypeName === 'driving_license') {
+        // Use the driving-license edge function
+        const { data, error } = await supabase.functions.invoke('driving-license', {
+          body: {
+            action: 'reject',
+            documentId: document.id,
+            verification_notes: 'Document verification rejected by staff.'
+          }
+        });
+        
+        if (error) {
+          throw new Error(error.message || 'Rejection failed');
+        }
+        
+        toast({
+          title: "Verification Rejected",
+          description: "Document has been marked as failed verification.",
+          variant: "destructive",
+        });
+        
+        setIsVerifying(false);
+        setDialogOpen(false);
+        return;
+      }
+      // Special handling for Voter ID
+      else if (document.documentTypeName === 'voter_id') {
+        // Use the voter-verification edge function
+        const { data, error } = await supabase.functions.invoke('voter-verification', {
           body: {
             action: 'reject',
             documentId: document.id,
