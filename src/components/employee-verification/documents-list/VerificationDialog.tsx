@@ -54,6 +54,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const [isVoterIdVerifying, setIsVoterIdVerifying] = useState(false);
   const [isDrivingLicenseVerifying, setIsDrivingLicenseVerifying] = useState(false);
   const [isBankAccountVerifying, setIsBankAccountVerifying] = useState(false);
+  const [isAadharManualVerifying, setIsAadharManualVerifying] = useState(false);
 
   // Logging OTP state for debugging
   useEffect(() => {
@@ -711,7 +712,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       await handleBankAccountManualVerification();
     } else {
       // For Aadhar or other document types
-      setIsVerifying(true);
+      setIsAadharManualVerifying(true);
       try {
         console.log("Initiating manual verification for document ID:", documentId);
         
@@ -744,7 +745,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           description: err.message || "Failed to manually verify document"
         });
       } finally {
-        setIsVerifying(false);
+        setIsAadharManualVerifying(false);
       }
     }
   };
@@ -882,7 +883,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               variant="outline" 
               className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 justify-start"
               onClick={handleApiClick}
-              disabled={isVerifying || cooldownSeconds !== null || isRequestingOtp || isPanVerifying || isVoterIdVerifying || isDrivingLicenseVerifying || isBankAccountVerifying}
+              disabled={isVerifying || cooldownSeconds !== null || isRequestingOtp || isPanVerifying || isVoterIdVerifying || isDrivingLicenseVerifying || isBankAccountVerifying || isAadharManualVerifying}
             >
               {isRequestingOtp || (isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) || 
                (isDrivingLicense && isDrivingLicenseVerifying) || (isBankAccount && isBankAccountVerifying) ? (
@@ -923,16 +924,18 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               className="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200 justify-start"
               onClick={handleManualClick}
               disabled={isVerifying || isRequestingOtp || isPanVerifying || isVoterIdVerifying || 
-                        isDrivingLicenseVerifying || isBankAccountVerifying}
+                        isDrivingLicenseVerifying || isBankAccountVerifying || isAadharManualVerifying}
             >
               {(isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) || 
-               (isDrivingLicense && isDrivingLicenseVerifying) || (isBankAccount && isBankAccountVerifying) ? (
+               (isDrivingLicense && isDrivingLicenseVerifying) || (isBankAccount && isBankAccountVerifying) || 
+               isAadharManualVerifying ? (
                 <Loader2 className="h-4 w-4 mr-3 animate-spin" />
               ) : (
                 <ShieldCheck className="h-4 w-4 mr-3" />
               )}
               {(isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) || 
-               (isDrivingLicense && isDrivingLicenseVerifying) || (isBankAccount && isBankAccountVerifying) 
+               (isDrivingLicense && isDrivingLicenseVerifying) || (isBankAccount && isBankAccountVerifying) || 
+               isAadharManualVerifying
                 ? 'Processing...' : 'Verify Manually'}
               <span className="ml-auto text-xs text-purple-500 font-normal">Manual review completed</span>
             </Button>
@@ -942,7 +945,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               className="w-full bg-red-50 hover:bg-red-100 text-red-700 border-red-200 justify-start"
               onClick={handleRejectClick}
               disabled={isVerifying || isRequestingOtp || isPanVerifying || isVoterIdVerifying || 
-                        isDrivingLicenseVerifying || isBankAccountVerifying}
+                        isDrivingLicenseVerifying || isBankAccountVerifying || isAadharManualVerifying}
             >
               {(isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) || 
                (isDrivingLicense && isDrivingLicenseVerifying) || (isBankAccount && isBankAccountVerifying) ? (
@@ -1011,7 +1014,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={isVerifying || isRequestingOtp || isPanVerifying || isVoterIdVerifying || 
-                        isDrivingLicenseVerifying || isBankAccountVerifying}
+                        isDrivingLicenseVerifying || isBankAccountVerifying || isAadharManualVerifying}
             >
               Cancel
             </Button>
