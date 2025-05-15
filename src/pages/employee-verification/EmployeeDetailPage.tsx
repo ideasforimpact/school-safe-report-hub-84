@@ -26,47 +26,11 @@ const EmployeeDetailPage = () => {
   const { toast } = useToast();
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  // Move all hook calls outside of conditional logic
   const employee = getEmployee(employeeId || '');
 
-  // Fetch data when component mounts - only once
-  useEffect(() => {
-    if (!employeeId || initialLoadComplete) return;
-    
-    const loadData = async () => {
-      try {
-        // Fetch documents and statuses in parallel
-        await Promise.all([
-          fetchEmployeeDocuments(employeeId),
-          fetchDocumentStatuses()
-        ]);
-        console.log('Initial data loading complete for employee:', employeeId);
-        setInitialLoadComplete(true);
-      } catch (error) {
-        console.error('Error loading initial data:', error);
-        toast({
-          title: "Data Loading Error",
-          description: "Failed to load some employee data. Please try refreshing.",
-          variant: "destructive"
-        });
-      }
-    };
-    
-    loadData();
-  }, [employeeId, fetchEmployeeDocuments, fetchDocumentStatuses, toast, initialLoadComplete]);
-
-  if (!employee) {
-    return <Layout>
-        <div className="p-8 text-left">
-          <h2 className="text-2xl font-bold mb-4">Employee Not Found</h2>
-          <p className="text-gray-600 mb-6">The employee you're looking for doesn't exist or has been removed.</p>
-          <Button onClick={() => navigate('/employee-verification')}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Employees
-          </Button>
-        </div>
-      </Layout>;
-  }
-
+  // Define all callback functions before any conditional returns
   const handleAddDocument = useCallback(() => {
     if (employeeId) {
       navigate(`/employee-verification/${employeeId}/upload-document`);
@@ -98,6 +62,46 @@ const EmployeeDetailPage = () => {
       }
     }
   }, [employeeId, fetchEmployeeDocuments, fetchDocumentStatuses, toast, isRefreshing]);
+
+  // Fetch data when component mounts - only once
+  useEffect(() => {
+    if (!employeeId || initialLoadComplete) return;
+    
+    const loadData = async () => {
+      try {
+        // Fetch documents and statuses in parallel
+        await Promise.all([
+          fetchEmployeeDocuments(employeeId),
+          fetchDocumentStatuses()
+        ]);
+        console.log('Initial data loading complete for employee:', employeeId);
+        setInitialLoadComplete(true);
+      } catch (error) {
+        console.error('Error loading initial data:', error);
+        toast({
+          title: "Data Loading Error",
+          description: "Failed to load some employee data. Please try refreshing.",
+          variant: "destructive"
+        });
+      }
+    };
+    
+    loadData();
+  }, [employeeId, fetchEmployeeDocuments, fetchDocumentStatuses, toast, initialLoadComplete]);
+
+  // Early return for non-existent employee
+  if (!employee) {
+    return <Layout>
+        <div className="p-8 text-left">
+          <h2 className="text-2xl font-bold mb-4">Employee Not Found</h2>
+          <p className="text-gray-600 mb-6">The employee you're looking for doesn't exist or has been removed.</p>
+          <Button onClick={() => navigate('/employee-verification')}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Employees
+          </Button>
+        </div>
+      </Layout>;
+  }
 
   return <Layout>
       <div className="container mx-auto py-6 px-4 sm:px-6 max-w-6xl">
