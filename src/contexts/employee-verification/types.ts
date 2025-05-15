@@ -1,95 +1,26 @@
-
-export interface Employee {
-  id: string;
-  employeeId: string;
-  name: string;
-  email: string;
-  phone: string;
-  dateOfBirth: string;
-  address: string;
-  joiningDate: string;
-  department: string;
-  position: string;
-  employeeType: 'permanent' | 'contract' | 'temporary';
-  status: boolean;
-  createdAt: string;
-  updatedAt: string;
-  clientId?: string;
-}
-
-export interface DocumentType {
-  id: string;
-  name: string;
-  description: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface DocumentStatus {
-  id: string;
-  name: string;
-  description: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface VerificationDocument {
-  id: string;
-  employeeId: string;
-  documentTypeId: string;
-  documentTypeName?: string;
-  documentNumber?: string;
-  documentImage: string;
-  verificationStatus: 'pending' | 'verified' | 'failed';
-  documentStatusId?: string;
-  documentStatusName?: string;
-  verificationDate?: string;
-  verificationNotes?: string;
-  verificationMethod?: 'api' | 'manual';
-  employee_docs_log?: Array<{
-    timestamp: string;
-    action: string;
-    response: any;
-  }>;
-  details?: {
-    address?: string;
-    name?: string;
-    dob?: string;
-    [key: string]: any;
-  };
-  params?: Record<string, any>;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export type VerificationDocumentType = 'aadhar' | 'pan' | 'driving_license' | 'passport' | 'bank_account' | 'voter_id' | 'other';
-
-export interface VerificationResult {
-  success: boolean;
-  message: string;
-  details?: Record<string, any>;
-}
+import { Employee, DocumentType, DocumentStatus, VerificationDocument } from '@/types/employeeVerification';
 
 export interface EmployeeVerificationContextType {
+  // Original verification context values
   verifyEmployee: (employeeId: string) => Promise<boolean>;
   isVerifying: boolean;
   verificationError: string | null;
   
   // Employee management
   employees: Employee[];
-  addEmployee: (employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Employee>;
-  updateEmployee: (id: string, updates: Partial<Employee>) => Promise<Employee>;
+  addEmployee: (employee: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Employee>;
+  updateEmployee: (id: string, employee: Partial<Employee>) => Promise<Employee>;
   deleteEmployee: (id: string) => Promise<boolean>;
   getEmployee: (id: string) => Employee | undefined;
   fetchEmployees: () => Promise<Employee[]>;
   
   // Document management
   documents: VerificationDocument[];
-  addDocument: (documentData: Omit<VerificationDocument, 'id' | 'createdAt' | 'updatedAt'>) => Promise<VerificationDocument>;
-  verifyDocument: (documentId: string, result: VerificationResult) => Promise<void>;
-  deleteDocument: (documentId: string) => Promise<void>;
+  addDocument: (document: Omit<VerificationDocument, 'id' | 'createdAt' | 'updatedAt'>) => Promise<VerificationDocument>;
+  verifyDocument: (id: string, status: 'verified' | 'failed', notes?: string) => Promise<void>;
+  deleteDocument: (id: string) => Promise<void>;
   getEmployeeDocuments: (employeeId: string) => VerificationDocument[];
-  fetchEmployeeDocuments: (employeeId: string) => Promise<VerificationDocument[]>;
+  fetchEmployeeDocuments: (employeeId: string, timeframe?: string) => Promise<VerificationDocument[]>;
   
   // Document types and statuses
   documentTypes: DocumentType[];
@@ -100,3 +31,6 @@ export interface EmployeeVerificationContextType {
   // Loading state
   isLoading: boolean;
 }
+
+// Re-export types to avoid import confusion
+export type { Employee, DocumentType, DocumentStatus, VerificationDocument } from '@/types/employeeVerification';

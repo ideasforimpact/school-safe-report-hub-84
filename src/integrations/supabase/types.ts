@@ -209,7 +209,6 @@ export type Database = {
           employee_id: string
           id: string
           last_otp_generated: string | null
-          params: Json | null
           updated_at: string | null
           verification_status: string | null
         }
@@ -223,7 +222,6 @@ export type Database = {
           employee_id: string
           id?: string
           last_otp_generated?: string | null
-          params?: Json | null
           updated_at?: string | null
           verification_status?: string | null
         }
@@ -237,7 +235,6 @@ export type Database = {
           employee_id?: string
           id?: string
           last_otp_generated?: string | null
-          params?: Json | null
           updated_at?: string | null
           verification_status?: string | null
         }
@@ -309,7 +306,7 @@ export type Database = {
           id: string
           joining_date: string
           last_name: string
-          status: boolean
+          status: string
           updated_at: string
           user_id: string | null
         }
@@ -324,7 +321,7 @@ export type Database = {
           id?: string
           joining_date: string
           last_name: string
-          status?: boolean
+          status: string
           updated_at?: string
           user_id?: string | null
         }
@@ -339,7 +336,7 @@ export type Database = {
           id?: string
           joining_date?: string
           last_name?: string
-          status?: boolean
+          status?: string
           updated_at?: string
           user_id?: string | null
         }

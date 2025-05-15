@@ -2,8 +2,10 @@
 import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Employee } from '@/types/employeeVerification';
+import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 import EditEmployeeDialog from './EditEmployeeDialog';
+import { useEmployeeVerification } from '@/contexts/employee-verification';
 import VerificationStatusBadge from './VerificationStatusBadge';
 
 interface EmployeeDetailsProps {
@@ -70,7 +72,7 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee }) => {
             <p className="font-medium text-left">{getEmployeeTypeDisplay(employee.employeeType)}</p>
           </div>
           <div>
-            <p className="text-sm text-gray-500 text-left">Status</p>
+            <p className="text-sm text-gray-500 text-left">Verification Status</p>
             <div className="font-medium text-left">
               <VerificationStatusBadge status={employee.status} />
             </div>

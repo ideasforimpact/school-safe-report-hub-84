@@ -33,12 +33,9 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
   } = useEmployeeManagement();
 
   // Update employee status based on document verifications
-  const updateEmployeeStatus = useCallback(async (employeeId: string, verificationStatus: 'pending' | 'verified' | 'failed') => {
+  const updateEmployeeStatus = useCallback(async (employeeId: string, status: 'pending' | 'verified' | 'failed') => {
     try {
-      // Convert verification status to boolean for employee status
-      // In this case, only 'verified' will be considered as true, others as false
-      const booleanStatus = verificationStatus === 'verified';
-      await updateEmployee(employeeId, { status: booleanStatus });
+      await updateEmployee(employeeId, { status });
       return Promise.resolve();
     } catch (error) {
       console.error('Error updating employee status:', error);
