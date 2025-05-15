@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { toast } from "sonner";
 import { Incident, ActionItem, Activity, User } from '@/types/incident';
@@ -49,6 +48,28 @@ export const useIncidentActions = (
       let facilityId: string | null = null;
       let locationId: string | null = null;
       
+      // Try to initialize reference data if needed
+      try {
+        console.log("Checking if reference data needs initialization");
+        const response = await fetch('https://ybvxkiubnnixntghojyy.supabase.co/functions/v1/init-incident-data', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("Warning: Reference data initialization failed:", errorText);
+          // Continue with the submission even if this fails
+        } else {
+          console.log("Reference data initialization check completed");
+        }
+      } catch (initError) {
+        console.error("Error checking reference data:", initError);
+        // Continue with the submission even if this fails
+      }
+      
       // Get UUID for status (now using "New" instead of "Open")
       try {
         console.log("Fetching status UUID for 'New'");
@@ -63,7 +84,20 @@ export const useIncidentActions = (
           statusId = statusData[0].id;
           console.log("Fetched status UUID:", statusId);
         } else {
-          console.log("No status found for 'New', using fallback");
+          console.log("No status found for 'New', trying to create it");
+          
+          // Try to create the status if it doesn't exist
+          const { data: newStatus, error: createError } = await supabase
+            .from('incident_status')
+            .insert([{ name: 'New', description: 'Newly reported incident' }])
+            .select('id');
+            
+          if (createError) {
+            console.error("Error creating 'New' status:", createError);
+          } else if (newStatus && newStatus.length > 0) {
+            statusId = newStatus[0].id;
+            console.log("Created and fetched 'New' status UUID:", statusId);
+          }
         }
       } catch (error) {
         console.error("Failed to fetch status:", error);
@@ -82,6 +116,19 @@ export const useIncidentActions = (
         } else if (typeData && typeData.length > 0) {
           typeId = typeData[0].id;
           console.log("Fetched type UUID:", typeId);
+        } else {
+          // Try to create the type if it doesn't exist
+          const { data: newType, error: createError } = await supabase
+            .from('incident_report_types')
+            .insert([{ name: incidentData.type, description: `${incidentData.type} report` }])
+            .select('id');
+            
+          if (createError) {
+            console.error(`Error creating type ${incidentData.type}:`, createError);
+          } else if (newType && newType.length > 0) {
+            typeId = newType[0].id;
+            console.log("Created and fetched type UUID:", typeId);
+          }
         }
       } catch (error) {
         console.error("Failed to fetch type:", error);
@@ -92,54 +139,56 @@ export const useIncidentActions = (
         console.log("Fetching category UUID for:", incidentData.category);
         let categoryQuery;
         
-        if (incidentData.category === 'Other') {
-          // Try to find the 'Other' category first
-          categoryQuery = await supabase
+        const { data: categoryData, error: categoryError } = await supabase
+          .from('incident_categories')
+          .select('id')
+          .eq('name', incidentData.category);
+            
+        if (categoryError) {
+          console.error("Error fetching category:", categoryError);
+        } else if (categoryData && categoryData.length > 0) {
+          categoryId = categoryData[0].id;
+          console.log("Fetched category UUID:", categoryId);
+        } else {
+          // Try to create the category if it doesn't exist
+          const { data: newCategory, error: createError } = await supabase
+            .from('incident_categories')
+            .insert([{ name: incidentData.category, description: `${incidentData.category} incidents`, is_active: true }])
+            .select('id');
+              
+          if (createError) {
+            console.error(`Error creating category ${incidentData.category}:`, createError);
+          } else if (newCategory && newCategory.length > 0) {
+            categoryId = newCategory[0].id;
+            console.log(`Created and fetched '${incidentData.category}' category UUID:`, categoryId);
+          }
+        }
+        
+        // If we still don't have a category ID, try using "Other" as fallback
+        if (!categoryId) {
+          // Check for "Other" category
+          const { data: otherData, error: otherError } = await supabase
             .from('incident_categories')
             .select('id')
             .eq('name', 'Other');
-          
-          // If "Other" doesn't exist, create it
-          if (!categoryQuery.data || categoryQuery.data.length === 0) {
-            console.log("'Other' category not found, creating it...");
-            const { data: newCategory, error: createError } = await supabase
+              
+          if (otherError) {
+            console.error("Error fetching 'Other' category:", otherError);
+          } else if (otherData && otherData.length > 0) {
+            categoryId = otherData[0].id;
+            console.log("Using 'Other' category as fallback:", categoryId);
+          } else {
+            // Create "Other" category as last resort
+            const { data: newOther, error: createOtherError } = await supabase
               .from('incident_categories')
-              .insert({ name: 'Other', is_active: true })
+              .insert([{ name: 'Other', description: 'Other incidents', is_active: true }])
               .select('id');
-              
-            if (createError) {
-              console.error("Error creating 'Other' category:", createError);
-            } else if (newCategory && newCategory.length > 0) {
-              categoryId = newCategory[0].id;
-              console.log("Created and fetched 'Other' category UUID:", categoryId);
-            }
-          } else {
-            categoryId = categoryQuery.data[0].id;
-            console.log("Found existing 'Other' category UUID:", categoryId);
-          }
-        } else {
-          // Regular lookup for non-Other categories
-          const { data: categoryData, error: categoryError } = await supabase
-            .from('incident_categories')
-            .select('id')
-            .eq('name', incidentData.category);
-            
-          if (categoryError) {
-            console.error("Error fetching category:", categoryError);
-          } else if (categoryData && categoryData.length > 0) {
-            categoryId = categoryData[0].id;
-            console.log("Fetched category UUID:", categoryId);
-          } else {
-            // If the specified category doesn't exist, fall back to using a default one 
-            // or the first available category
-            const { data: fallbackCategories } = await supabase
-              .from('incident_categories')
-              .select('id')
-              .limit(1);
-              
-            if (fallbackCategories && fallbackCategories.length > 0) {
-              categoryId = fallbackCategories[0].id;
-              console.log("Using fallback category UUID:", categoryId);
+                
+            if (createOtherError) {
+              console.error("Error creating 'Other' category:", createOtherError);
+            } else if (newOther && newOther.length > 0) {
+              categoryId = newOther[0].id;
+              console.log("Created and using 'Other' category as fallback:", categoryId);
             }
           }
         }
@@ -160,6 +209,24 @@ export const useIncidentActions = (
         } else if (priorityData && priorityData.length > 0) {
           priorityId = priorityData[0].id;
           console.log("Fetched priority UUID:", priorityId);
+        } else {
+          // Try to create the priority if it doesn't exist
+          const { data: newPriority, error: createError } = await supabase
+            .from('incident_priorities')
+            .insert([{ 
+              name: incidentData.priority || 'Medium', 
+              description: `${incidentData.priority || 'Medium'} priority incidents`, 
+              weight: getPriorityWeight(incidentData.priority || 'Medium'),
+              color: getPriorityColor(incidentData.priority || 'Medium')
+            }])
+            .select('id');
+            
+          if (createError) {
+            console.error(`Error creating priority ${incidentData.priority || 'Medium'}:`, createError);
+          } else if (newPriority && newPriority.length > 0) {
+            priorityId = newPriority[0].id;
+            console.log("Created and fetched priority UUID:", priorityId);
+          }
         }
       } catch (error) {
         console.error("Failed to fetch priority:", error);
@@ -209,19 +276,14 @@ export const useIncidentActions = (
         }
       }
 
-      // Make sure all data are valid for insertion
-      if (!statusId || !typeId || !categoryId || !priorityId) {
+      // Ensure we have the minimum required data
+      if (!statusId || !categoryId) {
         console.error("Missing required data for database insertion:", {
           statusId,
-          typeId,
-          categoryId,
-          priorityId
+          categoryId
         });
         
-        // Even if we're missing something, don't throw an error
-        // Just log it and proceed with local state update only
-        toast.warning("Unable to save to database, but incident was recorded locally");
-        return newIncident;
+        throw new Error("Could not create required reference data. Please try again.");
       }
       
       // Format the data for database insertion - using real UUIDs from database
@@ -251,8 +313,8 @@ export const useIncidentActions = (
         
       if (error) {
         console.error("Error storing incident in database:", error);
-        toast.error("Failed to save incident to database");
-        // Don't throw error, continue with just the local state update
+        toast.error("Failed to save incident to database: " + error.message);
+        throw error; // Let the parent handle this error
       } else {
         console.log("Successfully inserted incident into database");
         toast.success("Incident reported successfully");
@@ -273,10 +335,31 @@ export const useIncidentActions = (
       return newIncident;
     } catch (error) {
       console.error("Error adding incident:", error);
-      toast.error("There was an error reporting the incident");
+      toast.error("There was an error reporting the incident: " + error.message);
       throw error;
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // Helper functions for priority handling
+  const getPriorityWeight = (priority: string): number => {
+    switch (priority) {
+      case 'Low': return 1;
+      case 'Medium': return 2;
+      case 'High': return 3;
+      case 'Critical': return 4;
+      default: return 2; // Default to Medium
+    }
+  };
+  
+  const getPriorityColor = (priority: string): string => {
+    switch (priority) {
+      case 'Low': return '#22c55e';
+      case 'Medium': return '#fbbf24';
+      case 'High': return '#f97316';
+      case 'Critical': return '#dc2626';
+      default: return '#fbbf24'; // Default to Medium (yellow/amber)
     }
   };
 
@@ -315,7 +398,7 @@ export const useIncidentActions = (
 
   const updateIncident = (id: string, updates: Partial<Incident>) => {
     const now = new Date();
-    const currentIncident = incidents.find(inc => inc.id === id);
+    const currentIncident = incidents.find(incident => incident.id === id);
     
     // Skip if no changes or incident not found
     if (!currentIncident) return;
@@ -444,7 +527,124 @@ export const useIncidentActions = (
 
   return {
     addIncident,
-    updateIncident,
+    updateIncident: (id: string, updates: Partial<Incident>) => {
+      const now = new Date();
+      const currentIncident = incidents.find(incident => incident.id === id);
+      
+      // Skip if no changes or incident not found
+      if (!currentIncident) return;
+      
+      // Check if incident is being voided
+      const isBeingVoided = updates.isVoided === true && !currentIncident.isVoided;
+      
+      // Don't allow updates to voided incidents unless it's an admin action
+      if (currentIncident.isVoided && !isBeingVoided) {
+        toast.error("Cannot update a voided incident");
+        return;
+      }
+      
+      // Check if this is a reopened ticket (was previously closed and now being reopened)
+      if (updates.status && 
+          updates.status !== 'Closed' && 
+          currentIncident.status === 'Closed') {
+        updates.wasReopened = true;
+      }
+      
+      setIncidents(prev => 
+        prev.map(incident => 
+          incident.id === id 
+            ? { ...incident, ...updates, updatedAt: now } 
+            : incident
+        )
+      );
+      
+      // Handle voiding an incident
+      if (isBeingVoided) {
+        const user = updates.reportedBy?.name || currentIncident.reportedBy.name;
+        const userId = updates.reportedBy?.id || currentIncident.reportedBy.id;
+        
+        addActivity({
+          type: 'incident',
+          activity: 'void',
+          entityId: id,
+          entityTitle: `${currentIncident.ticketId}: ${currentIncident.type}: ${currentIncident.category} - ${currentIncident.subcategory}`,
+          user,
+          userId,
+          date: now,
+          details: `Incident voided by ${user}. Reason: ${updates.voidReason}`
+        });
+        
+        toast.warning("Incident has been marked as void");
+        return;
+      }
+      
+      // Log status change specifically
+      if (updates.status && updates.status !== currentIncident.status) {
+        const user = updates.reportedBy?.name || currentIncident.reportedBy.name;
+        const userId = updates.reportedBy?.id || currentIncident.reportedBy.id;
+        
+        // Special handling for reopening
+        if (updates.status !== 'Closed' && currentIncident.status === 'Closed') {
+          addActivity({
+            type: 'status',
+            activity: 'reopen',
+            entityId: id,
+            entityTitle: `${currentIncident.type}: ${currentIncident.category} - ${currentIncident.subcategory}`,
+            user,
+            userId,
+            date: now,
+            details: `Incident reopened by ${user}`
+          });
+          toast.warning("Incident has been reopened");
+        } 
+        else {
+          addActivity({
+            type: 'status',
+            activity: updates.status === 'Closed' ? 'close' : 'update',
+            entityId: id,
+            entityTitle: `${currentIncident.type}: ${currentIncident.category} - ${currentIncident.subcategory}`,
+            user,
+            userId,
+            date: now,
+            details: `Status changed from ${currentIncident.status} to ${updates.status} by ${user}`
+          });
+        }
+      } 
+      // Log owner assignment
+      else if (updates.owner && (!currentIncident.owner || updates.owner.id !== currentIncident.owner.id)) {
+        const user = updates.reportedBy?.name || currentIncident.reportedBy.name;
+        const userId = updates.reportedBy?.id || currentIncident.reportedBy.id;
+        
+        addActivity({
+          type: 'incident',
+          activity: 'update',
+          entityId: id,
+          entityTitle: `${currentIncident.type}: ${currentIncident.category} - ${currentIncident.subcategory}`,
+          user,
+          userId,
+          date: now,
+          details: `Incident assigned to ${updates.owner.name} by ${user}`
+        });
+      }
+      // Log other updates
+      else if (Object.keys(updates).length > 0) {
+        const user = updates.reportedBy?.name || currentIncident.reportedBy.name;
+        const userId = updates.reportedBy?.id || currentIncident.reportedBy.id;
+        
+        addActivity({
+          type: 'incident',
+          activity: 'update',
+          entityId: id,
+          entityTitle: `${currentIncident.type}: ${currentIncident.category} - ${currentIncident.subcategory}`,
+          user,
+          userId,
+          date: now,
+          details: `Incident details updated by ${user}`
+        });
+      }
+      
+      toast.success("Incident updated");
+    },
     getIncident,
     addActivity,
     isSubmitting

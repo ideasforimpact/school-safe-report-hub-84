@@ -264,7 +264,7 @@ const ReportIncident = () => {
       navigate('/incidents');
     } catch (error) {
       console.error('Error submitting form:', error);
-      toast.error("An error occurred while submitting the report");
+      toast.error("An error occurred while submitting the report: " + (error.message || "Please try again"));
     } finally {
       setIsSubmitting(false);
     }
