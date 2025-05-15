@@ -1,12 +1,18 @@
 
 import React, { useState } from 'react';
-import { Employee } from '@/contexts/employee/types';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
+interface UserBasicInfo {
+  id: string;
+  firstName: string;
+  lastName: string;
+  name: string;
+}
+
 interface AssignmentSectionProps {
   owner: string;
-  users: Employee[];
+  users: UserBasicInfo[];
   onSelectChange: (name: string, value: string) => void;
   isLoading?: boolean;
 }
@@ -31,7 +37,7 @@ const AssignmentSection: React.FC<AssignmentSectionProps> = ({
     setIsSearching(true);
   };
 
-  const handleSelectEmployee = (employee: Employee) => {
+  const handleSelectEmployee = (employee: UserBasicInfo) => {
     onSelectChange('owner', employee.id);
     setIsSearching(false);
     setSearchQuery('');
@@ -40,7 +46,7 @@ const AssignmentSection: React.FC<AssignmentSectionProps> = ({
   // Filter employees based on search query
   const filteredEmployees = searchQuery
     ? users.filter(employee => 
-        `${employee.firstName} ${employee.lastName} (${employee.department})`.toLowerCase().includes(searchQuery.toLowerCase()))
+        `${employee.firstName} ${employee.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()))
     : users;
 
   return (
@@ -82,7 +88,7 @@ const AssignmentSection: React.FC<AssignmentSectionProps> = ({
                   onClick={() => handleSelectEmployee(employee)}
                   onMouseDown={(e) => e.preventDefault()} // Prevents input blur before click
                 >
-                  {employee.firstName} {employee.lastName} ({employee.department})
+                  {employee.firstName} {employee.lastName}
                 </li>
               ))}
             </ul>
