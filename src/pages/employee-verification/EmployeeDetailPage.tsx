@@ -26,6 +26,41 @@ const EmployeeDetailPage = () => {
   const { toast } = useToast();
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  
+  // Define all callback hooks before any conditional logic
+  const handleAddDocument = useCallback(() => {
+    if (employeeId) {
+      navigate(`/employee-verification/${employeeId}/upload-document`);
+    }
+  }, [employeeId, navigate]);
+
+  const handleRefreshDocuments = useCallback(async () => {
+    if (employeeId && !isRefreshing) {
+      setIsRefreshing(true);
+      try {
+        // Fetch both documents and statuses on refresh
+        await Promise.all([
+          fetchEmployeeDocuments(employeeId),
+          fetchDocumentStatuses()
+        ]);
+        
+        toast({
+          title: "Data Refreshed",
+          description: "Documents and status information have been refreshed.",
+        });
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to refresh data.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsRefreshing(false);
+      }
+    }
+  }, [employeeId, fetchEmployeeDocuments, fetchDocumentStatuses, toast, isRefreshing]);
+  
+  // Get employee data after hooks are defined
   const employee = getEmployee(employeeId || '');
 
   // Fetch data when component mounts - only once
@@ -66,38 +101,6 @@ const EmployeeDetailPage = () => {
         </div>
       </Layout>;
   }
-
-  const handleAddDocument = useCallback(() => {
-    if (employeeId) {
-      navigate(`/employee-verification/${employeeId}/upload-document`);
-    }
-  }, [employeeId, navigate]);
-
-  const handleRefreshDocuments = useCallback(async () => {
-    if (employeeId && !isRefreshing) {
-      setIsRefreshing(true);
-      try {
-        // Fetch both documents and statuses on refresh
-        await Promise.all([
-          fetchEmployeeDocuments(employeeId),
-          fetchDocumentStatuses()
-        ]);
-        
-        toast({
-          title: "Data Refreshed",
-          description: "Documents and status information have been refreshed.",
-        });
-      } catch (error) {
-        toast({
-          title: "Error",
-          description: "Failed to refresh data.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsRefreshing(false);
-      }
-    }
-  }, [employeeId, fetchEmployeeDocuments, fetchDocumentStatuses, toast, isRefreshing]);
 
   return <Layout>
       <div className="container mx-auto py-6 px-4 sm:px-6 max-w-6xl">
