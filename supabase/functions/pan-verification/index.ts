@@ -152,8 +152,8 @@ serve(async (req) => {
         const data = await response.json();
         console.log("Surepass API response:", JSON.stringify(data));
         
-        // Create log entry with timestamp and API response
-        const logEntry = {
+        // Create an API log entry with timestamp
+        const apiLogEntry = {
           timestamp: new Date().toISOString(),
           action: "verify_pan_api",
           response: data
@@ -161,12 +161,12 @@ serve(async (req) => {
         
         // Check if API verification was successful (status_code 200)
         if (data.success && data.status_code === 200) {
-          // Update document with verification status, log entry and governance status
+          // Update document with verification status, API response in log, and governance status
           const { error: updateError } = await supabase
             .from('employee_documents')
             .update({
               verification_status: 'verified',
-              employee_docs_log: [...existingLogs, logEntry],
+              employee_docs_log: [...existingLogs, apiLogEntry],
               document_status_id: governanceStatusId,
               updated_at: new Date().toISOString()
             })
@@ -191,7 +191,7 @@ serve(async (req) => {
           );
         } else {
           // Failed verification - update document with rejected status
-          const logEntry = {
+          const apiLogEntry = {
             timestamp: new Date().toISOString(),
             action: "verify_pan_api_failed",
             response: data
@@ -200,7 +200,7 @@ serve(async (req) => {
           await supabase
             .from('employee_documents')
             .update({
-              employee_docs_log: [...existingLogs, logEntry],
+              employee_docs_log: [...existingLogs, apiLogEntry],
               document_status_id: rejectedStatusId,
               verification_status: 'failed',
               updated_at: new Date().toISOString()
