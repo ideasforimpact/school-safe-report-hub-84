@@ -1,14 +1,12 @@
 
 import React from 'react';
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { useReportTypes } from '@/hooks/useReportTypes';
-import { usePriorities } from '@/hooks/usePriorities';
 
 interface IncidentTypeSectionProps {
   type: string;
@@ -19,55 +17,51 @@ interface IncidentTypeSectionProps {
 const IncidentTypeSection: React.FC<IncidentTypeSectionProps> = ({
   type,
   priority,
-  onSelectChange,
+  onSelectChange
 }) => {
-  const { reportTypes, loading: loadingReportTypes } = useReportTypes();
-  const { priorities, loading: loadingPriorities } = usePriorities();
-
   return (
-    <>
-      <div className="space-y-2 w-full">
-        <label htmlFor="type" className="text-sm font-medium block text-left">
-          Report Type
+    <div className="space-y-4 text-left">
+      <div>
+        <label htmlFor="type" className="text-sm font-medium block">
+          Report Type <span className="text-red-500">*</span>
         </label>
         <Select 
-          value={type}
+          value={type} 
           onValueChange={(value) => onSelectChange('type', value)}
-          disabled={loadingReportTypes}
+          required
         >
           <SelectTrigger className="w-full">
-            <SelectValue placeholder={loadingReportTypes ? "Loading..." : "Select type"} />
+            <SelectValue placeholder="Select type" />
           </SelectTrigger>
           <SelectContent>
-            {reportTypes.map(reportType => (
-              <SelectItem key={reportType.id} value={reportType.name}>{reportType.name}</SelectItem>
-            ))}
+            <SelectItem value="Incident">Incident</SelectItem>
+            <SelectItem value="Near Miss">Near Miss</SelectItem>
+            <SelectItem value="Unsafe Condition">Unsafe Condition</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
-      <div className="space-y-2 w-full">
-        <label htmlFor="priority" className="text-sm font-medium block text-left">
-          Priority
+      <div>
+        <label htmlFor="priority" className="text-sm font-medium block">
+          Priority <span className="text-red-500">*</span>
         </label>
         <Select 
-          value={priority}
-          onValueChange={(value) => onSelectChange('priority', value)}
-          disabled={loadingPriorities}
+          value={priority} 
+          onValueChange={(value) => onSelectChange('priority', value as 'Low' | 'Medium' | 'High' | 'Critical')}
+          required
         >
           <SelectTrigger className="w-full">
-            <SelectValue placeholder={loadingPriorities ? "Loading priorities..." : "Select priority"} />
+            <SelectValue placeholder="Select priority" />
           </SelectTrigger>
           <SelectContent>
-            {priorities.map(priority => (
-              <SelectItem key={priority.id} value={priority.name}>
-                {priority.name}
-              </SelectItem>
-            ))}
+            <SelectItem value="Low">Low</SelectItem>
+            <SelectItem value="Medium">Medium</SelectItem>
+            <SelectItem value="High">High</SelectItem>
+            <SelectItem value="Critical">Critical</SelectItem>
           </SelectContent>
         </Select>
       </div>
-    </>
+    </div>
   );
 };
 

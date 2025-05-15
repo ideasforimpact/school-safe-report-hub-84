@@ -22,6 +22,8 @@ export function useIncidentFormValidation() {
       newErrors.description = 'Description is required';
     } else if (formData.description.trim().length < 10) {
       newErrors.description = 'Description must be at least 10 characters';
+    } else if (formData.description.trim().length > 250) {
+      newErrors.description = 'Description must be maximum 250 characters';
     }
     
     // Validate date
@@ -49,9 +51,19 @@ export function useIncidentFormValidation() {
       newErrors.locationId = 'Location is required';
     }
     
+    // Validate facility
+    if (!formData.facilityId) {
+      newErrors.facilityId = 'Facility is required';
+    }
+    
     // Validate priority
     if (!formData.priority) {
       newErrors.priority = 'Priority is required';
+    }
+    
+    // Validate owner
+    if (!formData.owner) {
+      newErrors.owner = 'Assignment is required';
     }
     
     setErrors(newErrors);

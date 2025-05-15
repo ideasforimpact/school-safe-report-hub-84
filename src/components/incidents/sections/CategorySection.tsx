@@ -1,14 +1,11 @@
-
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { 
-  Select,
-  SelectContent,
-  SelectItem,
+  Select, 
+  SelectContent, 
+  SelectItem, 
   SelectTrigger,
-  SelectValue,
+  SelectValue 
 } from '@/components/ui/select';
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from '@/hooks/use-toast';
 
 interface CategorySectionProps {
   categoryId: string;
@@ -16,147 +13,80 @@ interface CategorySectionProps {
   onSelectChange: (name: string, value: string) => void;
 }
 
-interface CategoryItem {
-  id: string;
-  name: string;
-}
-
-interface SubcategoryItem {
-  id: string;
-  name: string;
-  category_id: string;
-}
-
 const CategorySection: React.FC<CategorySectionProps> = ({
   categoryId,
   subcategory,
-  onSelectChange,
+  onSelectChange
 }) => {
-  const [categories, setCategories] = useState<CategoryItem[]>([]);
-  const [subcategories, setSubcategories] = useState<SubcategoryItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [availableSubcategories, setAvailableSubcategories] = useState<SubcategoryItem[]>([]);
-
-  // Fetch categories from the incident_categories table
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('incident_categories')
-          .select('id, name')
-          .eq('is_active', true);
-
-        if (error) {
-          console.error('Error fetching categories:', error);
-          toast({
-            title: 'Error',
-            description: 'Failed to load categories. Please try again.',
-            variant: 'destructive',
-          });
-          return;
-        }
-
-        setCategories(data || []);
-      } catch (err) {
-        console.error('Exception fetching categories:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCategories();
-  }, []);
-
-  // Fetch subcategories from the incident_subcategories table
-  useEffect(() => {
-    const fetchSubcategories = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('incident_subcategories')
-          .select('id, name, category_id')
-          .eq('is_active', true);
-
-        if (error) {
-          console.error('Error fetching subcategories:', error);
-          toast({
-            title: 'Error',
-            description: 'Failed to load subcategories. Please try again.',
-            variant: 'destructive',
-          });
-          return;
-        }
-
-        setSubcategories(data || []);
-      } catch (err) {
-        console.error('Exception fetching subcategories:', err);
-      }
-    };
-
-    fetchSubcategories();
-  }, []);
-
-  // Filter subcategories based on selected category
-  useEffect(() => {
-    if (!categoryId) {
-      setAvailableSubcategories([]);
-      return;
-    }
-
-    const filtered = subcategories.filter(sub => sub.category_id === categoryId);
-    setAvailableSubcategories(filtered);
-    
-    // Reset subcategory selection when category changes
-    if (filtered.length > 0 && !filtered.some(sub => sub.id === subcategory)) {
-      onSelectChange('subcategory', '');
-    }
-  }, [categoryId, subcategories, subcategory, onSelectChange]);
-
   return (
-    <>
-      <div className="space-y-2 text-left">
-        <label htmlFor="categoryId" className="text-sm font-medium text-left block">
-          Category
+    <div className="space-y-4 text-left">
+      <div>
+        <label htmlFor="categoryId" className="text-sm font-medium block">
+          Category <span className="text-red-500">*</span>
         </label>
         <Select 
-          value={categoryId}
+          value={categoryId} 
           onValueChange={(value) => onSelectChange('categoryId', value)}
-          disabled={loading}
+          required
         >
-          <SelectTrigger>
+          <SelectTrigger className="w-full">
             <SelectValue placeholder="Select category" />
           </SelectTrigger>
           <SelectContent>
-            {categories.map(category => (
-              <SelectItem key={category.id} value={category.id}>
-                {category.name}
-              </SelectItem>
-            ))}
+            <SelectItem value="1">Physical Injury</SelectItem>
+            <SelectItem value="2">Bullying</SelectItem>
+            <SelectItem value="3">Property Damage</SelectItem>
+            <SelectItem value="4">Security Breach</SelectItem>
+            <SelectItem value="5">Health Concern</SelectItem>
+            <SelectItem value="6">Tech Misuse</SelectItem>
+            <SelectItem value="7">Other</SelectItem>
           </SelectContent>
         </Select>
       </div>
-      
-      <div className="space-y-2 text-left">
-        <label htmlFor="subcategory" className="text-sm font-medium text-left block">
-          Subcategory
+
+      <div>
+        <label htmlFor="subcategory" className="text-sm font-medium block">
+          Subcategory <span className="text-red-500">*</span>
         </label>
         <Select 
-          value={subcategory}
+          value={subcategory} 
           onValueChange={(value) => onSelectChange('subcategory', value)}
-          disabled={availableSubcategories.length === 0}
+          disabled={!categoryId}
+          required
         >
-          <SelectTrigger>
+          <SelectTrigger className="w-full">
             <SelectValue placeholder="Select subcategory" />
           </SelectTrigger>
           <SelectContent>
-            {availableSubcategories.map(subcategory => (
-              <SelectItem key={subcategory.id} value={subcategory.id}>
-                {subcategory.name}
-              </SelectItem>
-            ))}
+            {categoryId === '1' && (
+              <>
+                <SelectItem value="minor_injury">Minor Injury</SelectItem>
+                <SelectItem value="major_injury">Major Injury</SelectItem>
+                <SelectItem value="first_aid">First Aid Required</SelectItem>
+              </>
+            )}
+            {categoryId === '2' && (
+              <>
+                <SelectItem value="verbal">Verbal Bullying</SelectItem>
+                <SelectItem value="physical">Physical Bullying</SelectItem>
+                <SelectItem value="cyber">Cyberbullying</SelectItem>
+              </>
+            )}
+            {categoryId === '3' && (
+              <>
+                <SelectItem value="vandalism">Vandalism</SelectItem>
+                <SelectItem value="accidental">Accidental</SelectItem>
+                <SelectItem value="natural">Natural Causes</SelectItem>
+              </>
+            )}
+            {/* Add other subcategories based on selected category */}
+            {!['1', '2', '3'].includes(categoryId) && categoryId && (
+              <SelectItem value="general">General</SelectItem>
+            )}
           </SelectContent>
         </Select>
       </div>
-    </>
+    </div>
   );
 };
 

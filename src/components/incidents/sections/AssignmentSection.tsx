@@ -3,13 +3,6 @@ import React, { useState } from 'react';
 import { Employee } from '@/contexts/employee/types';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 
 interface AssignmentSectionProps {
   owner: string;
@@ -52,7 +45,7 @@ const AssignmentSection: React.FC<AssignmentSectionProps> = ({
   return (
     <div className="space-y-2 text-left">
       <label htmlFor="owner" className="text-sm font-medium text-left block">
-        Assigned to
+        Assigned to <span className="text-red-500">*</span>
       </label>
       
       {/* Search input for employees */}
@@ -62,9 +55,10 @@ const AssignmentSection: React.FC<AssignmentSectionProps> = ({
             value={searchQuery || selectedEmployeeName}
             onChange={(e) => handleEmployeeSearch(e.target.value)}
             onFocus={() => setShowDropdown(true)}
-            placeholder={isLoading ? "Loading staff members..." : "Assign to staff member (optional)"}
+            placeholder={isLoading ? "Loading staff members..." : "Select a staff member"}
             className="w-full pr-8"
             disabled={isLoading}
+            required
           />
           <Search className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
         </div>
