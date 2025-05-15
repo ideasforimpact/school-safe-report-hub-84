@@ -20,17 +20,10 @@ const EmployeesList = () => {
   const { employees, deleteEmployee, getEmployeeDocuments } = useEmployeeVerification();
   const navigate = useNavigate();
 
-  // Create a memoized map of employee documents to avoid recalculation on each render
-  const employeeDocumentsMap = useMemo(() => {
-    const map = new Map();
-    employees.forEach(employee => {
-      map.set(employee.id, getEmployeeDocuments(employee.id));
-    });
-    return map;
-  }, [employees, getEmployeeDocuments]);
-
-  const renderDocumentsInfo = (employeeId: string) => {
-    const documents = employeeDocumentsMap.get(employeeId) || [];
+  // Use both sources of employee documents - direct from API and from context
+  const renderDocumentsInfo = (employee) => {
+    // First check if we have documents directly on the employee (from API)
+    const documents = employee.documents || getEmployeeDocuments(employee.id) || [];
     
     // Group by verification status
     const verified = documents.filter(doc => doc.verificationStatus === 'verified');
@@ -100,7 +93,7 @@ const EmployeesList = () => {
                     <TableCell>{employee.name}</TableCell>
                     <TableCell>{employee.department}</TableCell>
                     <TableCell className="max-w-md">
-                      {renderDocumentsInfo(employee.id)}
+                      {renderDocumentsInfo(employee)}
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
