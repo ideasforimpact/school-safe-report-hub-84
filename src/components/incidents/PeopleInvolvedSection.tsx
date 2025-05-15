@@ -34,27 +34,36 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   employees = []
 }) => {
   const [searchInputs, setSearchInputs] = useState<{ [key: number]: string }>({});
+  const [showDropdowns, setShowDropdowns] = useState<{ [key: number]: boolean }>({});
 
   const handleStudentSearch = (index: number, search: string) => {
     setSearchInputs(prev => ({ ...prev, [index]: search }));
     // Allow manual entry even if not in dropdown
     onPersonChange(index, 'name', search);
+    // Show dropdown when typing
+    setShowDropdowns(prev => ({ ...prev, [index]: true }));
   };
 
   const handleEmployeeSearch = (index: number, search: string) => {
     setSearchInputs(prev => ({ ...prev, [index]: search }));
     // Allow manual entry even if not in dropdown
     onPersonChange(index, 'name', search);
+    // Show dropdown when typing
+    setShowDropdowns(prev => ({ ...prev, [index]: true }));
   };
 
   const handleSelectStudent = (index: number, student: Student) => {
     onPersonChange(index, 'name', student.name);
     setSearchInputs(prev => ({ ...prev, [index]: student.name }));
+    // Hide dropdown when a student is selected
+    setShowDropdowns(prev => ({ ...prev, [index]: false }));
   };
 
   const handleSelectEmployee = (index: number, employee: Employee) => {
     onPersonChange(index, 'name', `${employee.firstName} ${employee.lastName}`);
     setSearchInputs(prev => ({ ...prev, [index]: `${employee.firstName} ${employee.lastName}` }));
+    // Hide dropdown when an employee is selected
+    setShowDropdowns(prev => ({ ...prev, [index]: false }));
   };
 
   // Filter students based on search input
@@ -73,6 +82,11 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
     
     return employees.filter(employee => 
       `${employee.firstName} ${employee.lastName}`.toLowerCase().includes(search));
+  };
+
+  // Handle input focus to show dropdown
+  const handleInputFocus = (index: number) => {
+    setShowDropdowns(prev => ({ ...prev, [index]: true }));
   };
 
   return (
@@ -112,13 +126,14 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                   <Input
                     value={searchInputs[index] || person.name}
                     onChange={(e) => handleStudentSearch(index, e.target.value)}
+                    onFocus={() => handleInputFocus(index)}
                     placeholder="Search for a student"
                     className="w-full pr-8"
                   />
                   <Search className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 </div>
                 
-                {searchInputs[index] && getFilteredStudents(index).length > 0 && (
+                {showDropdowns[index] && searchInputs[index] && getFilteredStudents(index).length > 0 && (
                   <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
                     <ul className="py-1 text-sm">
                       {getFilteredStudents(index).map((student) => (
@@ -151,13 +166,14 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                   <Input
                     value={searchInputs[index] || person.name}
                     onChange={(e) => handleEmployeeSearch(index, e.target.value)}
+                    onFocus={() => handleInputFocus(index)}
                     placeholder="Search for staff member"
                     className="w-full pr-8"
                   />
                   <Search className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                 </div>
                 
-                {searchInputs[index] && getFilteredEmployees(index).length > 0 && (
+                {showDropdowns[index] && searchInputs[index] && getFilteredEmployees(index).length > 0 && (
                   <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
                     <ul className="py-1 text-sm">
                       {getFilteredEmployees(index).map((employee) => (
