@@ -11,12 +11,17 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
   // Fetch documents from the database via the edge function
   const fetchEmployeeDocuments = useCallback(async (employeeId: string, timeframe?: string) => {
     // Skip if we're already loading or if this employee's documents have already been fetched
-    if (isLoading || (fetchedEmployeeIds.includes(employeeId) && !timeframe)) {
+    if (isLoading) {
+      console.log('Skipping fetchEmployeeDocuments - already loading');
       return [];
     }
     
+    // Always fetch documents when explicitly called (don't skip even if already fetched)
+    console.log('Fetching documents for employee:', employeeId, 'with timeframe:', timeframe || 'all');
+    
     setIsLoading(true);
     try {
+      console.log('Making API call to employee-documents edge function');
       // For GET requests, we should pass parameters as query strings, not in the body
       const { data, error } = await supabase.functions.invoke('employee-documents', {
         method: 'POST',  // Using POST to send data in body
@@ -30,21 +35,25 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
       
       // Documents are now returned directly from the edge function
       const mappedDocuments = data?.documents || [];
+      console.log('Documents fetched successfully:', mappedDocuments.length);
       
       setDocuments(currentDocuments => {
         // If timeframe is specified, we're doing a filtered fetch, don't replace all documents
         if (timeframe) {
+          console.log('Timeframe specified, replacing documents with filtered results');
           return mappedDocuments;
         }
         
         // Otherwise merge with existing documents that are not for this employee
         const otherEmployeeDocs = currentDocuments.filter(doc => doc.employeeId !== employeeId);
+        console.log(`Merging ${otherEmployeeDocs.length} existing docs with ${mappedDocuments.length} new docs`);
         return [...otherEmployeeDocs, ...mappedDocuments];
       });
       
       // Mark this employee ID as fetched
       if (!fetchedEmployeeIds.includes(employeeId)) {
         setFetchedEmployeeIds(prev => [...prev, employeeId]);
+        console.log('Marked employee as fetched:', employeeId);
       }
       
       return mappedDocuments;

@@ -47,11 +47,13 @@ const EmployeeDetailPage = () => {
 
   const handleRefreshDocuments = useCallback(async () => {
     if (employeeId && !isRefreshing) {
+      console.log('Refresh button clicked for employee:', employeeId, 'with timeframe:', timeframeFilter || 'all');
       setIsRefreshing(true);
       try {
         // Fetch employee documents using the selected timeframe filter
-        await fetchEmployeeDocuments(employeeId, timeframeFilter);
+        const result = await fetchEmployeeDocuments(employeeId, timeframeFilter);
         console.log('Documents refreshed for employee:', employeeId, 'with timeframe:', timeframeFilter || 'all');
+        console.log('Refresh result:', result);
         
         toast({
           title: "Data Refreshed",
@@ -73,13 +75,15 @@ const EmployeeDetailPage = () => {
   // Handle timeframe filter change
   const handleTimeframeChange = useCallback(async (value: string) => {
     setTimeframeFilter(value === 'all' ? undefined : value);
+    console.log('Timeframe filter changed to:', value);
     
     // Immediately apply the filter if we have an employee ID
     if (employeeId) {
       setIsRefreshing(true);
       try {
         const timeframe = value === 'all' ? undefined : value;
-        await fetchEmployeeDocuments(employeeId, timeframe);
+        const result = await fetchEmployeeDocuments(employeeId, timeframe);
+        console.log('Filter applied, documents fetched:', result);
         
         toast({
           title: "Filter Applied",
@@ -104,6 +108,7 @@ const EmployeeDetailPage = () => {
     
     const loadData = async () => {
       try {
+        console.log('Initial data loading for employee:', employeeId);
         // Fetch documents and statuses in parallel on initial load
         await Promise.all([
           fetchEmployeeDocuments(employeeId),
@@ -158,6 +163,7 @@ const EmployeeDetailPage = () => {
               size="icon"
               onClick={handleRefreshDocuments}
               disabled={isLoading || isRefreshing}
+              aria-label="Refresh documents"
             >
               <RefreshCcw className={`h-4 w-4 ${isLoading || isRefreshing ? 'animate-spin' : ''}`} />
               <span className="sr-only">Refresh</span>
