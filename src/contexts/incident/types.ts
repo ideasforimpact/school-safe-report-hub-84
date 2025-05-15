@@ -1,4 +1,3 @@
-
 import { Incident, User, Activity, ActionItem, Comment } from '@/types/incident';
 import { ConfigItem, SubcategoryItem, SectionItem, ClassItem, CampusItem } from '@/contexts/types';
 
@@ -44,7 +43,14 @@ export interface IncidentContextType {
   updateSection: (id: string, classId: string, name: string) => void;
   deleteSection: (id: string) => void;
   // Existing incident operations
-  addIncident: (incident: Omit<Incident, 'id' | 'status' | 'createdAt' | 'updatedAt' | 'ticketId'>) => Promise<Incident>;
+  addIncident: (incident: Omit<Incident, 'id' | 'status' | 'createdAt' | 'updatedAt' | 'ticketId'> & {
+    typeId?: string;
+    categoryId: string;
+    subcategoryId?: string | null;
+    locationId: string;
+    facilityId?: string;
+    priorityId?: string;
+  }) => Promise<Incident>;
   updateIncident: (id: string, updates: Partial<Incident>) => void;
   getIncident: (id: string) => Incident | undefined;
   // ActionItems operations (renamed to comments in the UI)

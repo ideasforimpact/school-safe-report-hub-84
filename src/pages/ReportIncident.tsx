@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIncidents } from '@/contexts/incident';
@@ -46,6 +45,10 @@ const ReportIncident = () => {
     getSelectedFacility,
     locations,
     facilities,
+    reportTypes,
+    categories: formCategories,
+    subcategories,
+    priorities,
     users: incidentUsers
   } = useIncidentForm();
 
@@ -197,7 +200,7 @@ const ReportIncident = () => {
         : undefined;
       
       // Find the selected category to get its name for IncidentCategory mapping
-      const selectedCategory = categories.find(cat => cat.id === formData.categoryId);
+      const selectedCategory = formCategories.find(cat => cat.id === formData.categoryId);
       let categoryName: IncidentCategory = 'Other';
       
       if (selectedCategory) {
@@ -234,24 +237,37 @@ const ReportIncident = () => {
       
       console.log("About to submit incident with data:", {
         type: incidentType,
+        typeId: formData.typeId,
         category: categoryName,
+        categoryId: formData.categoryId,
         subcategory: formData.subcategory,
+        subcategoryId: formData.subcategoryId || null, // Ensure null if empty
         description: formData.description,
         location: locationValue,
+        locationId: formData.locationId,
         facility: facilityName,
+        facilityId: formData.facilityId,
+        priority: formData.priority,
+        priorityId: formData.priorityId,
         owner: owner
       });
       
       await addIncident({
         type: incidentType,
+        typeId: formData.typeId,
         category: categoryName,
+        categoryId: formData.categoryId,
         subcategory: formData.subcategory || '',
+        subcategoryId: formData.subcategoryId || null, // Ensure null if empty
         description: formData.description || '',
         date: dateTime,
         location: locationValue,
+        locationId: formData.locationId,
         peopleInvolved: validPeople,
         facility: facilityName || '',
+        facilityId: formData.facilityId,
         priority: formData.priority || 'Medium',
+        priorityId: formData.priorityId,
         documents: documents,
         reportedBy: {
           id: user?.id || '',
