@@ -249,6 +249,34 @@ const IncidentConfiguration = () => {
     }
   };
 
+  const handleToggleReportTypeStatus = async (id: string, isActive: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('incident_report_types')
+        .update({ is_active: isActive })
+        .eq('id', id);
+
+      if (error) {
+        console.error('Error toggling report type status:', error);
+        toast.error(`Failed to ${isActive ? 'activate' : 'deactivate'} report type`);
+        return;
+      }
+
+      setReportTypes(
+        reportTypes.map(type =>
+          type.id === id
+            ? { ...type, is_active: isActive }
+            : type
+        )
+      );
+      
+      toast.success(`Report type ${isActive ? 'activated' : 'deactivated'} successfully`);
+    } catch (error) {
+      console.error('Exception toggling report type status:', error);
+      toast.error('An unexpected error occurred');
+    }
+  };
+
   // Wait for data to load
   if (loading || categoriesLoading) {
     return (
@@ -292,6 +320,7 @@ const IncidentConfiguration = () => {
           addReportType={handleAddReportType}
           updateReportType={handleUpdateReportType}
           deleteReportType={handleDeleteReportType}
+          toggleReportTypeStatus={handleToggleReportTypeStatus}
         />
       </div>
     </Layout>

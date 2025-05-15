@@ -39,6 +39,7 @@ interface IncidentRelatedConfigProps {
   addReportType: (name: string, description: string) => void;
   updateReportType: (id: string, name: string, description: string) => void;
   deleteReportType: (id: string) => void;
+  toggleReportTypeStatus: (id: string, isActive: boolean) => void;
 }
 
 export const IncidentRelatedConfig: React.FC<IncidentRelatedConfigProps> = ({
@@ -59,7 +60,8 @@ export const IncidentRelatedConfig: React.FC<IncidentRelatedConfigProps> = ({
   reportTypes,
   addReportType,
   updateReportType,
-  deleteReportType
+  deleteReportType,
+  toggleReportTypeStatus
 }) => {
   return (
     <Card>
@@ -106,6 +108,7 @@ export const IncidentRelatedConfig: React.FC<IncidentRelatedConfigProps> = ({
               addReportType={addReportType}
               updateReportType={updateReportType}
               deleteReportType={deleteReportType}
+              toggleReportTypeStatus={toggleReportTypeStatus}
             />
           </TabsContent>
         </Tabs>

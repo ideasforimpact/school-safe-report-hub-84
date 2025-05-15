@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Pencil, Trash2 } from 'lucide-react';
+import { PlusCircle, Pencil, Trash2, Toggle } from 'lucide-react';
 import { EditDialog } from './EditDialog';
 import { 
   Table, 
@@ -23,6 +23,7 @@ import {
   AlertDialogTrigger
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 
 interface ReportType {
@@ -37,13 +38,15 @@ interface ReportTypeTabProps {
   addReportType: (name: string, description: string) => void;
   updateReportType: (id: string, name: string, description: string) => void;
   deleteReportType: (id: string) => void;
+  toggleReportTypeStatus: (id: string, isActive: boolean) => void;
 }
 
 export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
   reportTypes,
   addReportType,
   updateReportType,
-  deleteReportType
+  deleteReportType,
+  toggleReportTypeStatus
 }) => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -113,6 +116,17 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
     setIsEditDialogOpen(true);
   };
 
+  const handleToggleStatus = (type: ReportType) => {
+    const newStatus = !type.is_active;
+    try {
+      toggleReportTypeStatus(type.id, newStatus);
+      toast.success(`Report type ${newStatus ? 'activated' : 'deactivated'} successfully`);
+    } catch (error) {
+      console.error('Error toggling report type status:', error);
+      toast.error(`Failed to ${newStatus ? 'activate' : 'deactivate'} report type`);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -135,18 +149,25 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
               <TableHead>Name</TableHead>
               <TableHead>Description</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="w-[100px]">Actions</TableHead>
+              <TableHead className="w-[150px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {reportTypes.map((type) => (
-              <TableRow key={type.id}>
+              <TableRow key={type.id} className={!type.is_active ? "opacity-60" : ""}>
                 <TableCell className="font-medium">{type.name}</TableCell>
                 <TableCell>{type.description || '-'}</TableCell>
                 <TableCell>
-                  <Badge variant={type.is_active ? "success" : "destructive"}>
-                    {type.is_active ? "Active" : "Inactive"}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Switch 
+                      checked={type.is_active} 
+                      onCheckedChange={() => handleToggleStatus(type)}
+                      aria-label={`${type.is_active ? 'Deactivate' : 'Activate'} ${type.name}`}
+                    />
+                    <Badge variant={type.is_active ? "success" : "destructive"}>
+                      {type.is_active ? "Active" : "Inactive"}
+                    </Badge>
+                  </div>
                 </TableCell>
                 <TableCell>
                   <div className="flex space-x-2">
@@ -156,13 +177,17 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
                       onClick={() => handleEditClick(type)}
                     >
                       <Pencil className="h-4 w-4" />
+                      <span className="sr-only">Edit</span>
                     </Button>
                     <Button 
                       variant="ghost" 
                       size="sm"
                       onClick={() => handleDeleteClick(type)}
+                      disabled={type.is_active}
+                      title={type.is_active ? "Deactivate type before deleting" : "Delete type"}
                     >
                       <Trash2 className="h-4 w-4" />
+                      <span className="sr-only">Delete</span>
                     </Button>
                   </div>
                 </TableCell>
