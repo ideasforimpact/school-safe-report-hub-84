@@ -15,6 +15,7 @@ import { Employee } from '@/contexts/employee/types';
 import { getAllEmployeesFromApi } from '@/services/employee/employeeRetrievalService';
 import { Student } from '@/types/student';
 import { useStudents } from '@/contexts/StudentContext';
+import { supabase } from '@/integrations/supabase/client'; // Add Supabase import
 
 const ReportIncident = () => {
   const { addIncident, categories, isSubmitting: contextIsSubmitting } = useIncidents();
@@ -24,6 +25,9 @@ const ReportIncident = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoadingEmployees, setIsLoadingEmployees] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Add loading state for reference data
+  const [isLoadingRefData, setIsLoadingRefData] = useState(false);
   
   const {
     nextTicketId,
@@ -64,11 +68,60 @@ const ReportIncident = () => {
 
     fetchEmployees();
   }, []);
+  
+  // Initialize reference data if needed
+  useEffect(() => {
+    const initializeReferenceData = async () => {
+      try {
+        setIsLoadingRefData(true);
+        
+        // First check if we have the required data in incident_status
+        const { data: statusData, error: statusError } = await supabase
+          .from('incident_status')
+          .select('id, name')
+          .limit(1);
+          
+        if (statusError) {
+          console.error("Error checking incident status data:", statusError);
+        }
+        
+        // If we don't have data, call our initialization function
+        if (!statusData || statusData.length === 0) {
+          console.log("No incident reference data found, initializing...");
+          
+          const response = await fetch('https://ybvxkiubnnixntghojyy.supabase.co/functions/v1/init-incident-data', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              // Add authorization if needed
+            }
+          });
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error("Failed to initialize reference data:", errorText);
+          } else {
+            const result = await response.json();
+            console.log("Reference data initialization result:", result);
+            toast.success("Incident reference data initialized successfully");
+          }
+        } else {
+          console.log("Incident reference data exists:", statusData);
+        }
+      } catch (error) {
+        console.error("Error initializing reference data:", error);
+      } finally {
+        setIsLoadingRefData(false);
+      }
+    };
+    
+    initializeReferenceData();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (isSubmitting) return; // Prevent duplicate submissions
+    if (isSubmitting || contextIsSubmitting) return; // Prevent duplicate submissions
     setIsSubmitting(true);
     
     try {
@@ -222,6 +275,21 @@ const ReportIncident = () => {
           </p>
         </div>
 
+        {isLoadingRefData && (
+          <div className="rounded-md bg-blue-50 p-4 mt-4">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.75.75 0 00.736-.599L10.882 7.5H9.75A.75.75 0 009 8.25v.75z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="ml-3 flex-1 md:flex md:justify-between">
+                <p className="text-sm text-blue-700">Initializing reference data, please wait...</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="w-full">
           <Card className="border-none shadow-card pt-6">
             <CardContent className="space-y-6 px-6">
@@ -253,7 +321,10 @@ const ReportIncident = () => {
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting || contextIsSubmitting}>
+              <Button 
+                type="submit" 
+                disabled={isSubmitting || contextIsSubmitting || isLoadingRefData}
+              >
                 {isSubmitting || contextIsSubmitting ? "Submitting..." : "Submit Report"}
               </Button>
             </CardFooter>
@@ -262,6 +333,22 @@ const ReportIncident = () => {
       </div>
     </Layout>
   );
+};
+
+// Create adapter functions to handle type differences
+const handleChangeAdapter = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  if (e && e.target) {
+    handleChange(e.target.name, e.target.value);
+  }
+};
+
+const handleDateTimeAdapter = (date: Date | undefined, timeString?: string) => {
+  if (date) {
+    handleDateTimeChange('date', date);
+  }
+  if (timeString) {
+    handleDateTimeChange('time', timeString);
+  }
 };
 
 export default ReportIncident;

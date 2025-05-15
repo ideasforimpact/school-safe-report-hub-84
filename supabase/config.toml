@@ -3,3 +3,6 @@ project_id = "ybvxkiubnnixntghojyy"
 
 [functions.employee-verification]
 verify_jwt = true
+
+[functions.init-incident-data]
+verify_jwt = false

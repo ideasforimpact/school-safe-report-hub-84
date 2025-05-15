@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { toast } from "sonner";
 import { Incident, ActionItem, Activity, User } from '@/types/incident';
@@ -40,102 +41,141 @@ export const useIncidentActions = (
       // Add to the local state first for immediate UI feedback
       setIncidents(prev => [newIncident, ...prev]);
       
-      // Get UUIDs for status, type, category
+      // Prepare IDs for database insertion - with default fallbacks
+      let statusId: string | null = null;
+      let typeId: string | null = null;
+      let categoryId: string | null = null;
+      let priorityId: string | null = null;
+      let facilityId: string | null = null;
+      let locationId: string | null = null;
+      
       // Get UUID for status (assuming "Open" = status_id 1)
-      console.log("Fetching status UUID for 'Open'");
-      const { data: statusData, error: statusError } = await supabase
-        .from('incident_status')
-        .select('id')
-        .eq('name', 'Open')
-        .single();
-      
-      if (statusError) {
-        console.error("Error fetching status:", statusError);
-        throw statusError;
+      try {
+        console.log("Fetching status UUID for 'Open'");
+        const { data: statusData, error: statusError } = await supabase
+          .from('incident_status')
+          .select('id')
+          .eq('name', 'Open');
+          
+        if (statusError) {
+          console.error("Error fetching status:", statusError);
+        } else if (statusData && statusData.length > 0) {
+          statusId = statusData[0].id;
+          console.log("Fetched status UUID:", statusId);
+        } else {
+          console.log("No status found for 'Open', using fallback");
+        }
+      } catch (error) {
+        console.error("Failed to fetch status:", error);
       }
       
-      console.log("Fetched status UUID:", statusData?.id);
-      
-      console.log("Fetching type UUID for:", incidentData.type);
-      const { data: typeData, error: typeError } = await supabase
-        .from('incident_report_types')
-        .select('id')
-        .eq('name', incidentData.type)
-        .single();
-      
-      if (typeError) {
-        console.error("Error fetching type:", typeError);
-        throw typeError;
+      // Get UUID for type
+      try {
+        console.log("Fetching type UUID for:", incidentData.type);
+        const { data: typeData, error: typeError } = await supabase
+          .from('incident_report_types')
+          .select('id')
+          .eq('name', incidentData.type);
+          
+        if (typeError) {
+          console.error("Error fetching type:", typeError);
+        } else if (typeData && typeData.length > 0) {
+          typeId = typeData[0].id;
+          console.log("Fetched type UUID:", typeId);
+        }
+      } catch (error) {
+        console.error("Failed to fetch type:", error);
       }
       
-      console.log("Fetched type UUID:", typeData?.id);
-      
-      console.log("Fetching category UUID for:", incidentData.category);
-      const { data: categoryData, error: categoryError } = await supabase
-        .from('incident_categories')
-        .select('id')
-        .eq('name', incidentData.category)
-        .single();
-      
-      if (categoryError) {
-        console.error("Error fetching category:", categoryError);
-        throw categoryError;
+      // Get UUID for category
+      try {
+        console.log("Fetching category UUID for:", incidentData.category);
+        const { data: categoryData, error: categoryError } = await supabase
+          .from('incident_categories')
+          .select('id')
+          .eq('name', incidentData.category);
+          
+        if (categoryError) {
+          console.error("Error fetching category:", categoryError);
+        } else if (categoryData && categoryData.length > 0) {
+          categoryId = categoryData[0].id;
+          console.log("Fetched category UUID:", categoryId);
+        }
+      } catch (error) {
+        console.error("Failed to fetch category:", error);
       }
       
-      console.log("Fetched category UUID:", categoryData?.id);
-      
-      console.log("Fetching priority UUID for:", incidentData.priority || 'Medium');
-      const { data: priorityData, error: priorityError } = await supabase
-        .from('incident_priorities')
-        .select('id')
-        .eq('name', incidentData.priority || 'Medium')
-        .single();
-      
-      if (priorityError) {
-        console.error("Error fetching priority:", priorityError);
-        throw priorityError;
+      // Get UUID for priority
+      try {
+        console.log("Fetching priority UUID for:", incidentData.priority || 'Medium');
+        const { data: priorityData, error: priorityError } = await supabase
+          .from('incident_priorities')
+          .select('id')
+          .eq('name', incidentData.priority || 'Medium');
+          
+        if (priorityError) {
+          console.error("Error fetching priority:", priorityError);
+        } else if (priorityData && priorityData.length > 0) {
+          priorityId = priorityData[0].id;
+          console.log("Fetched priority UUID:", priorityId);
+        }
+      } catch (error) {
+        console.error("Failed to fetch priority:", error);
       }
-      
-      console.log("Fetched priority UUID:", priorityData?.id);
       
       // Find the facility UUID by name
-      let facilityId = null;
       if (incidentData.facility) {
-        console.log("Looking up facility by name:", incidentData.facility);
-        const { data: facilityData, error: facilityError } = await supabase
-          .from('facilities')
-          .select('id')
-          .eq('name', incidentData.facility)
-          .single();
-        
-        if (facilityError) {
-          console.error("Error fetching facility:", facilityError);
-          // Don't throw here, just log the error and continue with null facilityId
+        try {
+          console.log("Looking up facility by name:", incidentData.facility);
+          const { data: facilityData, error: facilityError } = await supabase
+            .from('facilities')
+            .select('id')
+            .eq('name', incidentData.facility);
+            
+          if (facilityError) {
+            console.error("Error fetching facility:", facilityError);
+          } else if (facilityData && facilityData.length > 0) {
+            facilityId = facilityData[0].id;
+            console.log("Found facility ID:", facilityId);
+          } else {
+            console.log("No facility found with name:", incidentData.facility);
+          }
+        } catch (error) {
+          console.error("Failed to fetch facility:", error);
         }
-        
-        facilityId = facilityData?.id || null;
-        console.log("Found facility ID:", facilityId);
       }
       
       // Convert location from string type to UUID if needed
-      let locationId = null;
       if (incidentData.location) {
-        console.log("Looking up location by name:", incidentData.location);
-        const { data: locationData, error: locationError } = await supabase
-          .from('campuses')  // Assuming locations are stored in campuses table
-          .select('id')
-          .eq('name', incidentData.location)
-          .single();
-          
-        if (locationError) {
-          console.error("Error fetching location:", locationError);
-          // Don't throw here, use the location name as is
-          locationId = incidentData.location;
-        } else {
-          locationId = locationData?.id || incidentData.location;
+        try {
+          console.log("Looking up location by name:", incidentData.location);
+          const { data: locationData, error: locationError } = await supabase
+            .from('campuses')  // Assuming locations are stored in campuses table
+            .select('id')
+            .eq('name', incidentData.location);
+            
+          if (locationError) {
+            console.error("Error fetching location:", locationError);
+          } else if (locationData && locationData.length > 0) {
+            locationId = locationData[0].id;
+            console.log("Found location ID:", locationId);
+          } else {
+            console.log("No location found with name:", incidentData.location);
+          }
+        } catch (error) {
+          console.error("Failed to fetch location:", error);
         }
-        
-        console.log("Using location ID:", locationId);
+      }
+
+      // Make sure all data are valid for insertion
+      if (!statusId || !typeId || !categoryId || !priorityId) {
+        console.error("Missing required data for database insertion:", {
+          statusId,
+          typeId,
+          categoryId,
+          priorityId
+        });
+        throw new Error("Missing required reference data for incident");
       }
       
       // Format the data for database insertion - using real UUIDs from database
@@ -145,13 +185,13 @@ export const useIncidentActions = (
         date: incidentData.date.toISOString(),
         location_id: locationId,
         people_involved: JSON.stringify(incidentData.peopleInvolved),
-        status_id: statusData?.id,
+        status_id: statusId,
         reported_by_id: incidentData.reportedBy.id,
         facility_id: facilityId, // Use the looked up facility UUID
         documents: incidentData.documents ? JSON.stringify(incidentData.documents) : null,
-        priority_id: priorityData?.id,
-        type_id: typeData?.id,
-        category_id: categoryData?.id,
+        priority_id: priorityId,
+        type_id: typeId,
+        category_id: categoryId,
         subcategory_id: incidentData.subcategory || null,
         owner_id: incidentData.owner ? incidentData.owner.id : null
       };
