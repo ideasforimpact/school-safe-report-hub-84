@@ -1,149 +1,122 @@
 
-import React, { useState } from 'react';
-import { Badge } from '@/components/ui/badge';
+import React from 'react';
 import { cn } from '@/lib/utils';
-import { CheckCircle, AlertCircle, Clock } from 'lucide-react';
-import PanDetailsDialog from './document-card/PanDetailsDialog';
-import VoterIdDetailsDialog from './document-card/VoterIdDetailsDialog';
+import { Badge } from '@/components/ui/badge';
+import { 
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface VerificationStatusBadgeProps {
-  status: 'verified' | 'failed' | 'pending';
-  className?: string;
-  isGovernance?: boolean;
+  status: 'pending' | 'verified' | 'failed' | boolean;
   documentStatusName?: string;
-  onClick?: () => void;
   documentLogs?: Array<{
     timestamp: string;
     action: string;
     response: any;
-    notes?: string;
   }>;
   documentId?: string;
   documentType?: string;
+  className?: string;
 }
 
 const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({ 
-  status, 
-  className, 
-  isGovernance = false,
-  documentStatusName,
-  onClick,
+  status,
+  documentStatusName, 
   documentLogs,
+  className,
   documentId,
   documentType
 }) => {
-  const [dialogOpen, setDialogOpen] = useState(false);
+  // Convert boolean status (from employee) to verification status string
+  const displayStatus = typeof status === 'boolean' 
+    ? (status ? 'verified' : 'failed') 
+    : status;
 
-  const getStatusConfig = () => {
-    switch (status) {
-      case 'verified':
-        return {
-          icon: CheckCircle,
-          text: documentStatusName ? `Verified/${documentStatusName}` : 'Verified',
-          variant: 'success',
-          bgColor: 'bg-green-100 text-green-800 border-green-200'
-        };
-      case 'failed':
-        return {
-          icon: AlertCircle,
-          text: 'Failed',
-          variant: 'destructive',
-          bgColor: 'bg-red-100 text-red-800 border-red-200'
-        };
-      case 'pending':
-        return {
-          icon: Clock,
-          text: 'Pending',
-          variant: 'default',
-          bgColor: 'bg-yellow-100 text-yellow-800 border-yellow-200'
-        };
-      default:
-        return {
-          icon: Clock,
-          text: 'Unknown',
-          variant: 'default',
-          bgColor: 'bg-gray-100 text-gray-800 border-gray-200'
-        };
-    }
-  };
-
-  const { icon: Icon, text, bgColor } = getStatusConfig();
-
-  // Check if this document has details that can be shown in a dialog
-  const isPanWithGovernance = documentType === 'pan' && 
-                             status === 'verified' && 
-                             documentStatusName === 'governance' && 
-                             documentLogs && 
-                             documentLogs.length > 0;
-                             
-  const isVoterIdWithGovernance = documentType === 'voter_id' && 
-                                status === 'verified' && 
-                                documentStatusName === 'governance' && 
-                                documentLogs && 
-                                documentLogs.length > 0;
+  let variant: 'default' | 'secondary' | 'destructive' | 'outline' = 'default';
+  let text = 'Unknown';
   
-  const isClickable = !!onClick || isPanWithGovernance || isVoterIdWithGovernance;
+  switch (displayStatus) {
+    case 'verified':
+      variant = 'default';
+      text = documentStatusName || 'Verified';
+      break;
+    case 'pending':
+      variant = 'secondary';
+      text = 'Pending';
+      break;
+    case 'failed':
+      variant = 'destructive';
+      text = documentStatusName || 'Failed';
+      break;
+    default:
+      variant = 'outline';
+      text = 'Unknown';
+  }
   
-  const handleClick = () => {
-    if (onClick) {
-      onClick();
-    } else if (isPanWithGovernance || isVoterIdWithGovernance) {
-      setDialogOpen(true);
-    }
-  };
-
-  // Find PAN verification log if available
-  const panVerificationLog = documentLogs?.find(log => 
-    log.action === 'verify_pan_api' && 
-    log.response?.success === true && 
-    log.response?.status_code === 200
-  );
+  const hasLogs = documentLogs && documentLogs.length > 0;
   
-  // Find Voter ID verification log if available
-  const voterIdVerificationLog = documentLogs?.find(log => 
-    log.action === 'verify_voter_id_api' && 
-    log.response?.success === true && 
-    log.response?.status_code === 200
-  );
+  if (!hasLogs) {
+    return (
+      <Badge 
+        variant={variant} 
+        className={cn(
+          "px-2 py-1 text-xs font-medium rounded", 
+          displayStatus === 'pending' && "bg-yellow-100 text-yellow-800 hover:bg-yellow-200",
+          displayStatus === 'failed' && "bg-red-100 text-red-800 hover:bg-red-200",
+          displayStatus === 'verified' && "bg-green-100 text-green-800 hover:bg-green-200",
+          className
+        )}
+      >
+        {text}
+      </Badge>
+    );
+  }
   
   return (
-    <>
-      <Badge 
-        className={cn(
-          'gap-1 px-2 py-1 font-medium text-xs', 
-          bgColor, 
-          className,
-          isClickable && 'cursor-pointer hover:opacity-80 transition-opacity hover:bg-opacity-80'
-        )}
-        onClick={isClickable ? handleClick : undefined}
-      >
-        <Icon className="h-3.5 w-3.5" />
-        {text}
-        {isClickable && (
-          <span className="sr-only">{onClick ? "(click for action)" : "(click to view details)"}</span>
-        )}
-      </Badge>
-
-      {/* Display PAN Details Dialog */}
-      {dialogOpen && panVerificationLog && documentType === 'pan' && (
-        <PanDetailsDialog 
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          panDetails={panVerificationLog.response}
-          documentId={documentId}
-        />
-      )}
-
-      {/* Display Voter ID Details Dialog */}
-      {dialogOpen && voterIdVerificationLog && documentType === 'voter_id' && (
-        <VoterIdDetailsDialog
-          open={dialogOpen}
-          onOpenChange={setDialogOpen}
-          voterIdDetails={voterIdVerificationLog.response}
-          documentId={documentId}
-        />
-      )}
-    </>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Badge 
+            variant={variant} 
+            className={cn(
+              "px-2 py-1 text-xs font-medium rounded cursor-help", 
+              displayStatus === 'pending' && "bg-yellow-100 text-yellow-800 hover:bg-yellow-200",
+              displayStatus === 'failed' && "bg-red-100 text-red-800 hover:bg-red-200",
+              displayStatus === 'verified' && "bg-green-100 text-green-800 hover:bg-green-200",
+              className
+            )}
+          >
+            {text}
+          </Badge>
+        </TooltipTrigger>
+        <TooltipContent side="right" className="w-80 p-0">
+          <div className="p-2">
+            <h4 className="font-bold mb-1">Verification History</h4>
+            {documentLogs?.map((log, index) => (
+              <div key={index} className="text-xs mb-2 pb-2 border-b border-gray-200 last:border-0 last:mb-0 last:pb-0">
+                <div className="flex justify-between text-gray-500">
+                  <span>{new Date(log.timestamp).toLocaleString()}</span>
+                  <span>{log.action}</span>
+                </div>
+                {log.response && typeof log.response === 'object' && (
+                  <div className="mt-1 text-gray-700">
+                    {Object.entries(log.response).map(([key, value]) => (
+                      <div key={key}>
+                        <span className="font-medium">{key}:</span>{' '}
+                        {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 };
 
