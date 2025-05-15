@@ -64,25 +64,42 @@ export function useIncidentActions(
       const ticketId = generateTicketId();
 
       // Create incident record in the database
-      // Match exactly the column names in the incidents table
+      // Match exactly the column names in the incidents table and ensure they are valid
+      const dbRecord = {
+        category_id: incidentData.categoryId,
+        description: incidentData.description,
+        date: incidentData.date,
+        location_id: incidentData.locationId,
+        people_involved: incidentData.peopleInvolved,
+        status_id: statusId,
+        reported_by_id: incidentData.reportedBy.id,
+        ticket_id: ticketId,
+        documents: incidentData.documents || [],
+        owner_id: incidentData.owner?.id || null,
+      };
+      
+      // Add optional fields only if they have values
+      if (incidentData.typeId) {
+        dbRecord['type_id'] = incidentData.typeId;
+      }
+      
+      if (incidentData.subcategoryId) {
+        dbRecord['subcategory_id'] = incidentData.subcategoryId;
+      }
+      
+      if (incidentData.facilityId) {
+        dbRecord['facility_id'] = incidentData.facilityId;
+      }
+      
+      if (incidentData.priorityId) {
+        dbRecord['priority_id'] = incidentData.priorityId;
+      }
+      
+      console.log('Submitting record to database:', dbRecord);
+      
       const { data, error } = await supabase
         .from('incidents')
-        .insert({
-          type_id: incidentData.typeId || null,
-          category_id: incidentData.categoryId,
-          subcategory_id: incidentData.subcategoryId || null,
-          description: incidentData.description,
-          date: incidentData.date,
-          location_id: incidentData.locationId,
-          facility_id: incidentData.facilityId || null,
-          priority_id: incidentData.priorityId || null,
-          people_involved: incidentData.peopleInvolved,
-          status_id: statusId,
-          reported_by_id: incidentData.reportedBy.id,
-          owner_id: incidentData.owner?.id || null,
-          documents: incidentData.documents || [],
-          ticket_id: ticketId
-        })
+        .insert(dbRecord)
         .select();
       
       if (error) {
