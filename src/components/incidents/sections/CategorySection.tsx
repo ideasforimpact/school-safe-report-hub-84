@@ -112,7 +112,7 @@ const CategorySection: React.FC<CategorySectionProps> = ({
   }, [categoryId, subcategories, subcategory, onSelectChange]);
 
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <>
       <div className="space-y-2 text-left">
         <label htmlFor="categoryId" className="text-sm font-medium text-left block">
           Category
@@ -156,7 +156,7 @@ const CategorySection: React.FC<CategorySectionProps> = ({
           </SelectContent>
         </Select>
       </div>
-    </div>
+    </>
   );
 };
 
