@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,7 @@ export interface EditDialogProps {
   fieldLabel: string;
   value: string;
   defaultValue?: string;
+  open?: boolean;
   onOpenChange: (open: boolean) => void;
   onChange: (value: string) => void;
   onSave: () => void;
@@ -32,6 +33,7 @@ export const EditDialog: React.FC<EditDialogProps> = ({
   fieldLabel,
   value,
   defaultValue = '',
+  open,
   onOpenChange,
   onChange,
   onSave,
@@ -39,10 +41,7 @@ export const EditDialog: React.FC<EditDialogProps> = ({
   triggerButton,
   extraField,
 }) => {
-  const [open, setOpen] = useState(false);
-
   const handleOpenChange = (newOpen: boolean) => {
-    setOpen(newOpen);
     onOpenChange(newOpen);
     if (!newOpen && onClose) {
       onClose();
@@ -51,7 +50,6 @@ export const EditDialog: React.FC<EditDialogProps> = ({
 
   const handleSave = () => {
     onSave();
-    setOpen(false);
   };
 
   return (

@@ -19,9 +19,11 @@ import {
   AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
-  AlertDialogTitle
+  AlertDialogTitle,
+  AlertDialogTrigger
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
 
 interface ReportType {
   id: string;
@@ -44,6 +46,7 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
   deleteReportType
 }) => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [newTypeName, setNewTypeName] = useState('');
   const [newTypeDescription, setNewTypeDescription] = useState('');
@@ -53,17 +56,34 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
 
   const handleAddReportType = () => {
     if (newTypeName.trim()) {
-      addReportType(newTypeName.trim(), newTypeDescription.trim());
-      setNewTypeName('');
-      setNewTypeDescription('');
-      setIsAddDialogOpen(false);
+      try {
+        addReportType(newTypeName.trim(), newTypeDescription.trim());
+        setNewTypeName('');
+        setNewTypeDescription('');
+        setIsAddDialogOpen(false);
+        toast.success('Report type added successfully');
+      } catch (error) {
+        console.error('Error adding report type:', error);
+        toast.error('Failed to add report type');
+      }
+    } else {
+      toast.error('Name is required');
     }
   };
 
   const handleEditReportType = () => {
     if (selectedType && editTypeName.trim()) {
-      updateReportType(selectedType.id, editTypeName.trim(), editTypeDescription.trim());
-      setSelectedType(null);
+      try {
+        updateReportType(selectedType.id, editTypeName.trim(), editTypeDescription.trim());
+        setIsEditDialogOpen(false);
+        setSelectedType(null);
+        toast.success('Report type updated successfully');
+      } catch (error) {
+        console.error('Error updating report type:', error);
+        toast.error('Failed to update report type');
+      }
+    } else {
+      toast.error('Name is required');
     }
   };
 
@@ -74,9 +94,15 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
 
   const confirmDelete = () => {
     if (selectedType) {
-      deleteReportType(selectedType.id);
-      setIsDeleteDialogOpen(false);
-      setSelectedType(null);
+      try {
+        deleteReportType(selectedType.id);
+        setIsDeleteDialogOpen(false);
+        setSelectedType(null);
+        toast.success('Report type deleted successfully');
+      } catch (error) {
+        console.error('Error deleting report type:', error);
+        toast.error('Failed to delete report type');
+      }
     }
   };
 
@@ -84,6 +110,7 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
     setSelectedType(type);
     setEditTypeName(type.name);
     setEditTypeDescription(type.description || '');
+    setIsEditDialogOpen(true);
   };
 
   return (
@@ -156,6 +183,7 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
         fieldLabel="Name"
         value={newTypeName}
         defaultValue=""
+        open={isAddDialogOpen}
         onOpenChange={setIsAddDialogOpen}
         onChange={setNewTypeName}
         onSave={handleAddReportType}
@@ -169,26 +197,24 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
       />
 
       {/* Edit Dialog */}
-      {selectedType && (
-        <EditDialog
-          title="Edit Report Type"
-          fieldLabel="Name"
-          value={editTypeName}
-          defaultValue={selectedType.name}
-          onOpenChange={(open) => {
-            if (!open) setSelectedType(null);
-          }}
-          onChange={setEditTypeName}
-          onSave={handleEditReportType}
-          triggerButton={<Button className="hidden">Edit</Button>}
-          extraField={{
-            type: 'text',
-            label: 'Description',
-            value: editTypeDescription,
-            onChange: setEditTypeDescription
-          }}
-        />
-      )}
+      <EditDialog
+        title="Edit Report Type"
+        description="Update the report type details."
+        fieldLabel="Name"
+        value={editTypeName}
+        defaultValue={selectedType?.name || ''}
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+        onChange={setEditTypeName}
+        onSave={handleEditReportType}
+        triggerButton={<Button className="hidden">Edit</Button>}
+        extraField={{
+          type: 'text',
+          label: 'Description',
+          value: editTypeDescription,
+          onChange: setEditTypeDescription
+        }}
+      />
 
       {/* Delete Confirmation */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
