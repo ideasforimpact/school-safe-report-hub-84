@@ -18,7 +18,7 @@ const AssignmentSection: React.FC<AssignmentSectionProps> = ({
   isLoading = false
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [showDropdown, setShowDropdown] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   
   // Find the selected employee
   const selectedEmployee = users.find(emp => emp.id === owner);
@@ -28,12 +28,13 @@ const AssignmentSection: React.FC<AssignmentSectionProps> = ({
 
   const handleEmployeeSearch = (value: string) => {
     setSearchQuery(value);
-    setShowDropdown(true);
+    setIsSearching(true);
   };
 
   const handleSelectEmployee = (employee: Employee) => {
     onSelectChange('owner', employee.id);
-    setShowDropdown(false);
+    setIsSearching(false);
+    setSearchQuery('');
   };
 
   // Filter employees based on search query
@@ -52,9 +53,17 @@ const AssignmentSection: React.FC<AssignmentSectionProps> = ({
       <div className="relative">
         <div className="relative">
           <Input
-            value={searchQuery || selectedEmployeeName}
+            value={searchQuery || (isSearching ? '' : selectedEmployeeName)}
             onChange={(e) => handleEmployeeSearch(e.target.value)}
-            onFocus={() => setShowDropdown(true)}
+            onFocus={() => setIsSearching(true)}
+            onBlur={() => {
+              // Small delay to allow clicking on dropdown items
+              setTimeout(() => {
+                if (!searchQuery) {
+                  setIsSearching(false);
+                }
+              }, 200);
+            }}
             placeholder={isLoading ? "Loading staff members..." : "Select a staff member"}
             className="w-full pr-8"
             disabled={isLoading}
@@ -63,7 +72,7 @@ const AssignmentSection: React.FC<AssignmentSectionProps> = ({
           <Search className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
         </div>
         
-        {showDropdown && filteredEmployees.length > 0 && (
+        {isSearching && filteredEmployees.length > 0 && (
           <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
             <ul className="py-1 text-sm">
               {filteredEmployees.map((employee) => (
@@ -71,6 +80,7 @@ const AssignmentSection: React.FC<AssignmentSectionProps> = ({
                   key={employee.id}
                   className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
                   onClick={() => handleSelectEmployee(employee)}
+                  onMouseDown={(e) => e.preventDefault()} // Prevents input blur before click
                 >
                   {employee.firstName} {employee.lastName} ({employee.department})
                 </li>
@@ -79,7 +89,7 @@ const AssignmentSection: React.FC<AssignmentSectionProps> = ({
           </div>
         )}
 
-        {showDropdown && searchQuery && filteredEmployees.length === 0 && (
+        {isSearching && searchQuery && filteredEmployees.length === 0 && (
           <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg">
             <p className="p-3 text-sm text-gray-500">No staff members found</p>
           </div>
