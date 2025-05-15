@@ -1,62 +1,43 @@
 
-import { supabase } from '@/integrations/supabase/client';
+import { useCallback, useMemo } from 'react';
+import { useAuth } from '@/contexts/auth/AuthContext';
+import { useEmployeeVerification } from '@/contexts/employee-verification';
 
 /**
- * Hook for checking employee access permissions
+ * Hook to check if employee is verified and active
  */
-export async function checkEmployeeAccess(email: string, setAuthError: (error: string | null) => void): Promise<boolean> {
-  try {
-    console.log("Checking access for:", email);
+export const useEmployeeAccess = () => {
+  const { user } = useAuth();
+  const { employees } = useEmployeeVerification();
+
+  // Find employee associated with current user
+  const employee = useMemo(() => {
+    if (!user) return null;
     
-    // First try with exact email match
-    const { data, error } = await supabase
-      .from('employees')
-      .select('*')
-      .ilike('email', email)
-      .single();
-    
-    if (error || !data) {
-      console.log("Exact email match not found, trying with case-insensitive match");
-      
-      // Try with case-insensitive email comparison
-      const { data: caseInsensitiveData, error: caseInsensitiveError } = await supabase
-        .from('employees')
-        .select('*')
-        .ilike('email', email);
-      
-      if (caseInsensitiveError || !caseInsensitiveData || caseInsensitiveData.length === 0) {
-        console.error("Employee access check error:", error || caseInsensitiveError);
-        setAuthError(`Access denied: No employee found with email ${email}`);
-        return false;
-      }
-      
-      // Find the first active admin
-      const adminEmployee = caseInsensitiveData.find(emp => 
-        emp.department === 'admin' && emp.status === 'active'
-      );
-      
-      if (!adminEmployee) {
-        console.error("No active admin employee found with email:", email);
-        setAuthError("Access denied: Only active admin department employees can login");
-        return false;
-      }
-      
-      console.log("Found admin employee via case-insensitive search:", adminEmployee);
-      return true;
-    }
-    
-    // Check if employee is in admin department and active
-    if (data.department !== 'admin' || data.status !== 'active') {
-      console.error("Employee not in admin department or not active:", data);
-      setAuthError("Access denied: Only active admin department employees can login");
-      return false;
-    }
-    
-    console.log("Active admin employee found:", data);
-    return true;
-  } catch (error) {
-    console.error("Error checking employee access:", error);
-    setAuthError("Error verifying employee access");
-    return false;
-  }
-}
+    return employees.find(emp => emp.email.toLowerCase() === user.email?.toLowerCase());
+  }, [user, employees]);
+
+  // Check if employee is active
+  const isActiveEmployee = useMemo(() => {
+    if (!employee) return false;
+    return employee.status === true; // Using boolean status
+  }, [employee]);
+
+  // Check if employee is verified
+  const isVerifiedEmployee = useMemo(() => {
+    if (!employee) return false;
+    return employee.status === true; // Using boolean status
+  }, [employee]);
+
+  // Get employee id if available
+  const getEmployeeId = useCallback(() => {
+    return employee?.id || null;
+  }, [employee]);
+
+  return {
+    employee,
+    isActiveEmployee,
+    isVerifiedEmployee,
+    getEmployeeId
+  };
+};

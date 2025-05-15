@@ -1,3 +1,4 @@
+
 import { Employee, DocumentType, DocumentStatus, VerificationDocument } from '@/types/employeeVerification';
 
 export interface EmployeeVerificationContextType {

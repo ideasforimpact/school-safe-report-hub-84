@@ -11,7 +11,7 @@ export interface Employee {
   department: string;
   position: string;
   employeeType: 'permanent' | 'contract' | 'temporary';
-  status: 'pending' | 'verified' | 'failed';
+  status: boolean; // Changed from string enum to boolean as per database change
   createdAt: string;
   updatedAt: string;
   clientId?: string;

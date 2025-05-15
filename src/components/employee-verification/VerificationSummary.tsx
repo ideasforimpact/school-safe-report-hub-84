@@ -8,9 +8,9 @@ const VerificationSummary = () => {
 
   // Calculate statistics
   const totalEmployees = employees.length;
-  const verifiedEmployees = employees.filter(emp => emp.status === 'verified').length;
-  const pendingEmployees = employees.filter(emp => emp.status === 'pending').length;
-  const failedEmployees = employees.filter(emp => emp.status === 'failed').length;
+  const verifiedEmployees = employees.filter(emp => emp.status === true).length;
+  const pendingEmployees = employees.filter(emp => emp.status === false).length;
+  const failedEmployees = employees.filter(emp => emp.status === false).length;
   
   const totalDocuments = documents.length;
   const verifiedDocuments = documents.filter(doc => doc.verificationStatus === 'verified').length;
