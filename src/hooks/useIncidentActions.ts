@@ -68,7 +68,8 @@ export function useIncidentActions(
       const dbRecord = {
         category_id: incidentData.categoryId,
         description: incidentData.description,
-        date: incidentData.date,
+        // Convert Date object to ISO string format for PostgreSQL timestamp compatibility
+        date: incidentData.date instanceof Date ? incidentData.date.toISOString() : incidentData.date,
         location_id: incidentData.locationId,
         people_involved: incidentData.peopleInvolved,
         status_id: statusId,
