@@ -1,12 +1,10 @@
 
-// Re-export context providers
-export * from './auth/AuthProvider';
-export * from './auth/useAuth';
-export { type User as AuthUser } from './auth/types';
-export * from './ClientContext';
-export * from './IncidentContext';
+// Re-export contexts for easier imports
+export * from './auth';
+export * from './ClientContext'; 
 export * from './employee/EmployeeContext';
 export * from './StudentContext';
-export * from './FacilityContext';
+export * from './incident';
 export * from './employee-verification';
+export * from './FacilityContext';
 export * from './assessment/AssessmentContext';
