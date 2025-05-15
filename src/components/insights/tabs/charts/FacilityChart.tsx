@@ -21,7 +21,8 @@ const FacilityChart: React.FC<FacilityChartProps> = ({ data, colors }) => {
         <CategoryChart 
           data={data} 
           colors={colors}
-          title=""
+          title="Incidents by Facility"
+          description="Distribution of incidents across different facilities"
         />
       </CardContent>
     </Card>

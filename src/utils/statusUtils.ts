@@ -34,6 +34,8 @@ export const getStatusDisplayName = (status: string): string => {
       return 'In Progress';
     case 'New':
       return 'Open';
+    case 'OnHold':
+      return 'On Hold';
     default:
       return status;
   }
@@ -48,6 +50,8 @@ export const getStatusDatabaseName = (displayName: string): string => {
       return 'Progress';
     case 'Open':
       return 'New';
+    case 'On Hold':
+      return 'OnHold';
     default:
       return displayName;
   }
