@@ -19,13 +19,15 @@ interface MultipleFilesUploadProps {
   initialFiles?: FileItem[];
   maxFiles?: number;
   className?: string;
+  required?: boolean;
 }
 
 const MultipleFilesUpload = ({ 
   onFilesChange, 
   initialFiles = [], 
   maxFiles = 5,
-  className = '' 
+  className = '',
+  required = false 
 }: MultipleFilesUploadProps) => {
   const [files, setFiles] = useState<FileItem[]>(initialFiles);
   const [isUploading, setIsUploading] = useState(false);
@@ -116,6 +118,7 @@ const MultipleFilesUpload = ({
         onChange={handleFileChange} 
         className="hidden" 
         accept="image/*,video/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" 
+        required={required}
       />
       
       <div className="border rounded-md p-4 bg-white">
@@ -153,6 +156,13 @@ const MultipleFilesUpload = ({
         <div className="mt-2 text-xs text-right text-gray-500">
           {files.length} of {maxFiles} files added
         </div>
+
+        {/* Required indicator if prop is true */}
+        {required && files.length === 0 && (
+          <p className="text-xs text-red-500 mt-1">
+            At least one file is required
+          </p>
+        )}
       </div>
 
       {/* Image Preview Dialog */}
