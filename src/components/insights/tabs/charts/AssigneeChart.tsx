@@ -1,31 +1,32 @@
 
-import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import CategoryChart from '../../charts/category-chart';
+import React, { useState } from 'react';
+import CategoryChart from '@/components/insights/charts/CategoryChart';
 
 interface AssigneeChartProps {
-  data: Array<{name: string, value: number}>;
-  colors: string[];
+  data?: { name: string; value: number }[];
+  colors?: string[];
 }
 
-const AssigneeChart: React.FC<AssigneeChartProps> = ({ data, colors }) => {
+const AssigneeChart: React.FC<AssigneeChartProps> = ({ data = [], colors = [] }) => {
+  const [chartData] = useState(data || [
+    { name: 'John Smith', value: 35 },
+    { name: 'Sarah Johnson', value: 22 },
+    { name: 'Robert Lee', value: 18 },
+    { name: 'Maria Garcia', value: 15 },
+    { name: 'Others', value: 10 },
+  ]);
+
+  const [chartColors] = useState(colors || [
+    '#4C6FFF', '#28C76F', '#FF9F43', '#EA5455', '#A8AAAE'
+  ]);
+
   return (
-    <Card className="w-full">
-      <CardHeader className="flex flex-col items-start">
-        <CardTitle className="text-left">Incident Ownership</CardTitle>
-        <CardDescription className="text-left">
-          Distribution of incidents by assigned owner
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="h-[500px]">
-        <CategoryChart 
-          data={data} 
-          colors={colors}
-          title="Incident Ownership"
-          description="Distribution of incidents by assigned owner"
-        />
-      </CardContent>
-    </Card>
+    <CategoryChart 
+      data={chartData}
+      colors={chartColors}
+      title="Incidents by Assignee"
+      description="Distribution of incidents by assigned staff member"
+    />
   );
 };
 

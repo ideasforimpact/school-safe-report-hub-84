@@ -59,7 +59,7 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
     setIsLoading(true);
     try {
       const { data, error } = await supabase
-        .from('document_types')
+        .from('employee_document_type')
         .select('*')
         .order('name', { ascending: true });
       
@@ -90,7 +90,7 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
     setIsLoading(true);
     try {
       const { data, error } = await supabase
-        .from('document_statuses')
+        .from('document_status')
         .select('*')
         .order('name', { ascending: true });
       

@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useIncidents } from '@/contexts/incident/IncidentContext';
+import { useIncidents, IncidentLocation } from '@/contexts/IncidentContext';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -121,7 +121,7 @@ const ReportIncident = () => {
       
       // Find the selected category to get its name for IncidentCategory mapping
       const selectedCategory = categories.find(cat => cat.id === formData.categoryId);
-      let categoryName: IncidentCategory = 'Other' as IncidentCategory; // Default to 'Other'
+      let categoryName: IncidentCategory = 'Other';
       
       if (selectedCategory) {
         // Try to map the category name to the IncidentCategory type
@@ -152,20 +152,23 @@ const ReportIncident = () => {
       // Ensure we have a valid type
       const incidentType = (formData.type || 'Incident') as IncidentType;
       
+      // Ensure we have a valid location
+      const locationValue = locationName as IncidentLocation;
+      
       await addIncident({
         type: incidentType,
         category: categoryName,
         subcategory: formData.subcategory || '',
         description: formData.description || '',
         date: dateTime,
-        location: locationName,
+        location: locationValue,
         peopleInvolved: validPeople,
         facility: facilityName || '',
         priority: formData.priority || 'Medium',
         documents: documents,
         reportedBy: {
           id: user?.id || '',
-          name: user?.displayName || user?.email || ''
+          name: user?.email || ''
         },
         owner: owner
       });

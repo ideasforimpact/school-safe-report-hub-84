@@ -1,31 +1,32 @@
 
-import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import CategoryChart from '../../charts/category-chart';
+import React, { useState } from 'react';
+import CategoryChart from '@/components/insights/charts/CategoryChart';
 
 interface FacilityChartProps {
-  data: Array<{name: string, value: number}>;
-  colors: string[];
+  data?: { name: string; value: number }[];
+  colors?: string[];
 }
 
-const FacilityChart: React.FC<FacilityChartProps> = ({ data, colors }) => {
+const FacilityChart: React.FC<FacilityChartProps> = ({ data = [], colors = [] }) => {
+  const [chartData] = useState(data || [
+    { name: 'Classrooms', value: 38 },
+    { name: 'Playground', value: 25 },
+    { name: 'Cafeteria', value: 15 },
+    { name: 'Gymnasium', value: 12 },
+    { name: 'Other', value: 10 },
+  ]);
+
+  const [chartColors] = useState(colors || [
+    '#4C6FFF', '#28C76F', '#FF9F43', '#EA5455', '#A8AAAE'
+  ]);
+
   return (
-    <Card className="w-full">
-      <CardHeader className="flex flex-col items-start">
-        <CardTitle className="text-left">Incidents by Facility</CardTitle>
-        <CardDescription className="text-left">
-          Distribution of incidents across different facilities
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="h-[500px]">
-        <CategoryChart 
-          data={data} 
-          colors={colors}
-          title="Incidents by Facility"
-          description="Distribution of incidents across different facilities"
-        />
-      </CardContent>
-    </Card>
+    <CategoryChart 
+      data={chartData}
+      colors={chartColors}
+      title="Incidents by Facility"
+      description="Distribution of incidents by facility location"
+    />
   );
 };
 
