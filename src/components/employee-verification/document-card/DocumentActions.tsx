@@ -1,84 +1,72 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { CheckCircle, XCircle } from 'lucide-react';
-import { VerificationDocument } from '@/types/employeeVerification';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { useToast } from '@/hooks/use-toast';
-import DocumentVerifyDropdown from './DocumentVerifyDropdown';
+import { VerificationDocument } from '@/types/employeeVerification';
+import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 
 interface DocumentActionsProps {
   document: VerificationDocument;
-  showVerifyButton: boolean;
+  showVerifyButton?: boolean;
 }
 
-const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyButton }) => {
+const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyButton = true }) => {
   const { verifyDocument } = useEmployeeVerification();
   const { toast } = useToast();
-  const [isVerifying, setIsVerifying] = React.useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isRejecting, setIsRejecting] = useState(false);
 
-  const handleVerify = async (method: 'api' | 'manual') => {
-    setIsVerifying(true);
+  const handleVerify = async () => {
+    if (isVerifying) return;
     
+    setIsVerifying(true);
     try {
-      // Special logic for Aadhar documents
-      if (document.documentTypeName === 'aadhar' && method === 'api') {
-        // Handle Aadhar API verification logic
-        console.log('Aadhar API verification selected');
-        // This would normally open an OTP dialog or similar
-        toast({
-          title: "API Verification",
-          description: "This would trigger the OTP verification flow for Aadhar in a real implementation.",
-        });
-        setIsVerifying(false);
-        return;
-      }
-      
-      // For other document types or manual verification
-      const notes = method === 'api' 
-        ? 'Document automatically verified with government database.' 
-        : 'Document manually verified by staff.';
-      
-      // Update verification_status to 'success' for manual verification
-      await verifyDocument(document.id, 'verified', notes);
+      await verifyDocument(
+        document.id, 
+        'verified'
+      );
       
       toast({
-        title: "Document Verified",
-        description: `Document has been ${method === 'api' ? 'automatically' : 'manually'} verified successfully.`,
+        title: 'Document Verified',
+        description: 'The document has been successfully verified.',
       });
     } catch (error) {
+      console.error('Error verifying document:', error);
       toast({
-        title: "Error",
-        description: "An error occurred while verifying the document.",
-        variant: "destructive",
+        title: 'Verification Failed',
+        description: 'There was an error verifying this document.',
+        variant: 'destructive',
       });
-      console.error(error);
     } finally {
       setIsVerifying(false);
     }
   };
 
   const handleReject = async () => {
-    setIsVerifying(true);
+    if (isRejecting) return;
     
+    setIsRejecting(true);
     try {
-      // When rejecting, we set verification_status to 'failed'
-      await verifyDocument(document.id, 'failed', 'Document verification failed. Details do not match records.');
+      await verifyDocument(
+        document.id, 
+        'failed'
+      );
       
       toast({
-        title: "Verification Failed",
-        description: "Document has been marked as failed verification.",
-        variant: "destructive",
+        title: 'Document Rejected',
+        description: 'The document has been marked as rejected.',
+        variant: 'destructive',
       });
     } catch (error) {
+      console.error('Error rejecting document:', error);
       toast({
-        title: "Error",
-        description: "An error occurred while rejecting the document.",
-        variant: "destructive",
+        title: 'Rejection Failed',
+        description: 'There was an error rejecting this document.',
+        variant: 'destructive',
       });
-      console.error(error);
     } finally {
-      setIsVerifying(false);
+      setIsRejecting(false);
     }
   };
 
@@ -87,21 +75,34 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
   }
 
   return (
-    <div className="flex space-x-2">
-      <DocumentVerifyDropdown 
-        onVerify={handleVerify} 
-        documentTypeName={document.documentTypeName || ''}
-        isDisabled={isVerifying}
-      />
-      
-      <Button 
-        variant="outline" 
-        size="sm" 
-        className="text-red-600 border-red-200 hover:bg-red-50"
-        onClick={handleReject}
+    <div className="flex gap-2">
+      <Button
+        variant="outline"
+        size="sm"
+        className="text-green-600 hover:text-green-700 hover:bg-green-50"
+        onClick={handleVerify}
         disabled={isVerifying}
       >
-        <XCircle className="h-4 w-4 mr-1" />
+        {isVerifying ? (
+          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+        ) : (
+          <CheckCircle className="h-4 w-4 mr-1" />
+        )}
+        Verify
+      </Button>
+      
+      <Button
+        variant="outline"
+        size="sm"
+        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+        onClick={handleReject}
+        disabled={isRejecting}
+      >
+        {isRejecting ? (
+          <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+        ) : (
+          <XCircle className="h-4 w-4 mr-1" />
+        )}
         Reject
       </Button>
     </div>

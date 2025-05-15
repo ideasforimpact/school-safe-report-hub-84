@@ -11,7 +11,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from '@/components/ui/dialog';
 
 interface MultipleFilesUploadProps {
@@ -45,10 +44,7 @@ const MultipleFilesUpload = ({
     
     // Check if adding new files would exceed the maximum
     if (uploadedFiles.length + selectedFiles.length > maxFiles) {
-      toast({
-        description: `You can upload a maximum of ${maxFiles} files.`,
-        variant: "destructive"
-      });
+      toast("You can upload a maximum of " + maxFiles + " files.");
       setIsUploading(false);
       return;
     }
@@ -58,10 +54,7 @@ const MultipleFilesUpload = ({
     
     // Validate file size (max 25MB)
     if (file.size > 25 * 1024 * 1024) {
-      toast({
-        description: `File "${file.name}" exceeds the 25MB size limit.`,
-        variant: "destructive"
-      });
+      toast("File \"" + file.name + "\" exceeds the 25MB size limit.");
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
@@ -87,16 +80,11 @@ const MultipleFilesUpload = ({
         fileInputRef.current.value = '';
       }
       
-      toast({
-        description: `File "${file.name}" added successfully`
-      });
+      toast("File \"" + file.name + "\" added successfully");
     };
     
     reader.onerror = () => {
-      toast({
-        description: `Error reading file "${file.name}".`,
-        variant: "destructive"
-      });
+      toast("Error reading file \"" + file.name + "\".");
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     };
@@ -114,9 +102,7 @@ const MultipleFilesUpload = ({
     setUploadedFiles(updatedFiles);
     onFilesChange(updatedFiles);
     if (fileToRemove) {
-      toast({
-        description: `File "${fileToRemove.name}" removed`
-      });
+      toast("File \"" + fileToRemove.name + "\" removed");
     }
   };
 
@@ -177,9 +163,6 @@ const MultipleFilesUpload = ({
         <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle>{previewFile?.name}</DialogTitle>
-            <DialogDescription>
-              {previewFile ? formatFileSize(previewFile.size) : ''}
-            </DialogDescription>
           </DialogHeader>
           <div className="flex justify-center items-center py-4">
             {previewFile?.type.startsWith('image/') && (
