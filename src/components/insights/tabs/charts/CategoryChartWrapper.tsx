@@ -1,18 +1,16 @@
 
 import React from 'react';
-import CategoryChart from '@/components/insights/charts/category-chart';
-import { useCategoryData } from '@/hooks/insights/useCategoryData';
+import CategoryChart from '../../charts/category-chart';
 
-const CategoryChartWrapper = () => {
-  const { categoryData, colors } = useCategoryData();
-  
+interface CategoryChartWrapperProps {
+  data: Array<{name: string, value: number}>;
+  colors: string[];
+}
+
+const CategoryChartWrapper: React.FC<CategoryChartWrapperProps> = ({ data, colors }) => {
   return (
-    <div className="mb-6">
-      <CategoryChart 
-        data={categoryData}
-        colors={colors}
-        title="Categories"
-      />
+    <div className="h-[400px] shadow-sm rounded-xl overflow-hidden w-full">
+      <CategoryChart data={data} colors={colors} />
     </div>
   );
 };

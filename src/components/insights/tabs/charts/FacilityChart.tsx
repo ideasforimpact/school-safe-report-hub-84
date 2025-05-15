@@ -1,34 +1,30 @@
 
-import React, { useMemo } from 'react';
-import CategoryChart from '@/components/insights/charts/category-chart';
-import { useInsightsContext } from '@/contexts/InsightsContext';
+import React from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import CategoryChart from '../../charts/category-chart';
 
-const FacilityChart = () => {
-  const { incidents, facilities } = useInsightsContext();
+interface FacilityChartProps {
+  data: Array<{name: string, value: number}>;
+  colors: string[];
+}
 
-  const facilityData = useMemo(() => {
-    const facilityCounts: Record<string, number> = {};
-    
-    incidents.forEach(incident => {
-      if (!incident.facility_id) return;
-      
-      const facility = facilities.find(f => f.id === incident.facility_id);
-      const facilityName = facility ? facility.name : 'Unknown';
-      
-      facilityCounts[facilityName] = (facilityCounts[facilityName] || 0) + 1;
-    });
-    
-    return Object.entries(facilityCounts).map(([name, value]) => ({ name, value }));
-  }, [incidents, facilities]);
-
+const FacilityChart: React.FC<FacilityChartProps> = ({ data, colors }) => {
   return (
-    <div className="mb-6">
-      <CategoryChart 
-        data={facilityData}
-        colors={['#22c55e', '#f59e0b', '#06b6d4', '#a855f7', '#f43f5e']}
-        title="Facilities"
-      />
-    </div>
+    <Card className="w-full">
+      <CardHeader className="flex flex-col items-start">
+        <CardTitle className="text-left">Incidents by Facility</CardTitle>
+        <CardDescription className="text-left">
+          Distribution of incidents across different facilities
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="h-[500px]">
+        <CategoryChart 
+          data={data} 
+          colors={colors}
+          title=""
+        />
+      </CardContent>
+    </Card>
   );
 };
 
