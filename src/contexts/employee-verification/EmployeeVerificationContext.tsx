@@ -1,5 +1,4 @@
-
-import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { 
@@ -21,6 +20,12 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
   const [documentTypes, setDocumentTypes] = useState<DocumentType[]>(initialDocumentTypes);
   const [documentStatuses, setDocumentStatuses] = useState<DocumentStatus[]>(initialDocumentStatuses);
   const [isLoading, setIsLoading] = useState(false);
+  const [fetchingDocStatuses, setFetchingDocStatuses] = useState(false);
+  const [fetchingDocTypes, setFetchingDocTypes] = useState(false);
+  
+  // Refs to track if we've already fetched document types and statuses
+  const hasInitiallyFetchedDocTypes = useRef(false);
+  const hasInitiallyFetchedDocStatuses = useRef(false);
 
   // Use the employee management hook
   const { 
@@ -56,10 +61,19 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
 
   // Fetch document types from the database
   const fetchDocumentTypes = useCallback(async () => {
+    // If we're already fetching or have already fetched, don't fetch again
+    if (fetchingDocTypes || hasInitiallyFetchedDocTypes.current) {
+      console.log('Skipping fetchDocumentTypes - already fetched or fetching');
+      return;
+    }
+    
+    console.log('Fetching document types');
+    setFetchingDocTypes(true);
     setIsLoading(true);
+    
     try {
       const { data, error } = await supabase
-        .from('employee_document_type')  // Use the correct table name
+        .from('employee_document_type')
         .select('*')
         .order('name', { ascending: true });
       
@@ -67,6 +81,8 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
         console.error('Error fetching document types:', error);
         return;
       }
+      
+      console.log('Document types fetched successfully:', data?.length);
       
       // Map database fields to our DocumentType interface
       const mappedDocumentTypes: DocumentType[] = data.map(type => ({
@@ -78,19 +94,30 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
       }));
       
       setDocumentTypes(mappedDocumentTypes.length > 0 ? mappedDocumentTypes : initialDocumentTypes);
+      hasInitiallyFetchedDocTypes.current = true;
     } catch (err) {
       console.error('Failed to fetch document types:', err);
     } finally {
       setIsLoading(false);
+      setFetchingDocTypes(false);
     }
-  }, []);
+  }, [fetchingDocTypes]);
 
   // Fetch document statuses from the database
   const fetchDocumentStatuses = useCallback(async () => {
+    // If we're already fetching or have already fetched, don't fetch again
+    if (fetchingDocStatuses || hasInitiallyFetchedDocStatuses.current) {
+      console.log('Skipping fetchDocumentStatuses - already fetched or fetching');
+      return;
+    }
+    
+    console.log('Fetching document statuses');
+    setFetchingDocStatuses(true);
     setIsLoading(true);
+    
     try {
       const { data, error } = await supabase
-        .from('document_status')  // Use the correct table name
+        .from('document_status')
         .select('*')
         .order('name', { ascending: true });
       
@@ -98,6 +125,8 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
         console.error('Error fetching document statuses:', error);
         return;
       }
+      
+      console.log('Document statuses fetched successfully:', data?.length);
       
       // Map database fields to our DocumentStatus interface
       const mappedDocumentStatuses: DocumentStatus[] = data.map(status => ({
@@ -109,12 +138,14 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
       }));
       
       setDocumentStatuses(mappedDocumentStatuses.length > 0 ? mappedDocumentStatuses : initialDocumentStatuses);
+      hasInitiallyFetchedDocStatuses.current = true;
     } catch (err) {
       console.error('Failed to fetch document statuses:', err);
     } finally {
       setIsLoading(false);
+      setFetchingDocStatuses(false);
     }
-  }, []);
+  }, [fetchingDocStatuses]);
 
   // Verify employee (this is the original function from the context)
   const verifyEmployee = async (employeeId: string): Promise<boolean> => {
@@ -153,10 +184,15 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
     }
   };
 
-  // Fetch initial data when the context mounts
+  // Fetch initial data when the context mounts only once
   useEffect(() => {
-    fetchDocumentTypes();
-    fetchDocumentStatuses();
+    if (!hasInitiallyFetchedDocTypes.current) {
+      fetchDocumentTypes();
+    }
+    
+    if (!hasInitiallyFetchedDocStatuses.current) {
+      fetchDocumentStatuses();
+    }
   }, [fetchDocumentTypes, fetchDocumentStatuses]);
 
   // Create the context value

@@ -7,19 +7,21 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
   const [documents, setDocuments] = useState<VerificationDocument[]>(initialDocuments);
   const [isLoading, setIsLoading] = useState(false);
   const [fetchedEmployeeIds, setFetchedEmployeeIds] = useState<string[]>([]);
+  const [isFetchingDocuments, setIsFetchingDocuments] = useState(false);
 
   // Fetch documents from the database via the edge function
   const fetchEmployeeDocuments = useCallback(async (employeeId: string, timeframe?: string) => {
-    // Skip if we're already loading or if this employee's documents have already been fetched
-    if (isLoading) {
-      console.log('Skipping fetchEmployeeDocuments - already loading');
+    // Skip if we're already in the process of fetching documents
+    if (isFetchingDocuments) {
+      console.log('Skipping fetchEmployeeDocuments - already fetching documents');
       return [];
     }
     
-    // Always fetch documents when explicitly called (don't skip even if already fetched)
     console.log('Fetching documents for employee:', employeeId, 'with timeframe:', timeframe || 'all');
     
+    setIsFetchingDocuments(true);
     setIsLoading(true);
+    
     try {
       console.log('Making API call to employee-documents edge function');
       // For GET requests, we should pass parameters as query strings, not in the body
@@ -62,8 +64,9 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
       return [];
     } finally {
       setIsLoading(false);
+      setIsFetchingDocuments(false);
     }
-  }, [isLoading, fetchedEmployeeIds]);
+  }, [fetchedEmployeeIds, isFetchingDocuments]);
 
   const addDocument = useCallback(async (documentData: Omit<VerificationDocument, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {

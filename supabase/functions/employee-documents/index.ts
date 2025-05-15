@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 import { v4 as uuidv4 } from "https://esm.sh/uuid@10.0.0";
@@ -68,6 +69,7 @@ serve(async (req) => {
     // PUT method for updating document verification status
     if (req.method === "PUT") {
       const body = await req.json();
+      console.log("PUT body received:", body);
       const { employeeId, documentId, verificationStatus, verificationNotes, documentStatusId } = body;
       
       if (documentId && (verificationStatus || documentStatusId)) {
@@ -162,6 +164,30 @@ async function handleUpdateVerificationStatus(
   }
   
   try {
+    console.log(`Updating verification status for document ${documentId}:`, {
+      employeeId,
+      documentId,
+      verificationStatus,
+      documentStatusId
+    });
+    
+    // If documentStatusId is not provided and verificationStatus is "verified",
+    // fetch the "manual" status ID
+    if (verificationStatus === "verified" && !documentStatusId) {
+      const { data: statusData, error: statusError } = await supabase
+        .from('document_status')
+        .select('id')
+        .eq('name', 'manual')
+        .maybeSingle();
+      
+      if (statusError) {
+        console.error("Error fetching manual status ID:", statusError);
+      } else if (statusData?.id) {
+        documentStatusId = statusData.id;
+        console.log("Using manual document status ID:", documentStatusId);
+      }
+    }
+    
     // Prepare update object with only fields that exist in the table
     const updateObject = {};
     
@@ -171,6 +197,7 @@ async function handleUpdateVerificationStatus(
     
     if (documentStatusId) {
       updateObject.document_status_id = documentStatusId;
+      console.log("Setting document_status_id to:", documentStatusId);
     }
     
     // Add other fields that exist in the table
@@ -195,7 +222,8 @@ async function handleUpdateVerificationStatus(
         action: `verification_${verificationStatus}`,
         response: {
           notes: verificationNotes,
-          status: verificationStatus
+          status: verificationStatus,
+          documentStatusId: documentStatusId
         }
       };
       
@@ -208,6 +236,8 @@ async function handleUpdateVerificationStatus(
       updateObject.employee_docs_log = [...currentLogs, logEntry];
     }
     
+    console.log("Final update object:", updateObject);
+    
     // Update individual document record
     const { data: updateData, error: updateError } = await supabase
       .from('employee_documents')
@@ -219,6 +249,8 @@ async function handleUpdateVerificationStatus(
     if (updateError) {
       throw updateError;
     }
+    
+    console.log("Document updated successfully:", updateData);
     
     // Check all employee documents to update overall status
     const { data: employeeDocs, error: fetchError } = await supabase
