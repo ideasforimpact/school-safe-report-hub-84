@@ -26,7 +26,8 @@ serve(async (req) => {
       documentNumber, 
       otp, 
       txnId,
-      client_id 
+      client_id,
+      verification_notes 
     } = requestBody;
     
     console.log(`Received ${action} request`, { 
@@ -34,7 +35,8 @@ serve(async (req) => {
       hasDocNumber: !!documentNumber, 
       hasTxnId: !!txnId, 
       hasOtp: !!otp,
-      hasClientId: !!client_id
+      hasClientId: !!client_id,
+      hasVerificationNotes: !!verification_notes
     });
     
     // Initialize Supabase client
@@ -63,7 +65,9 @@ serve(async (req) => {
       console.log(`Using production API for ${action}: ${baseUrl}`);
     }
     
-    // First, fetch document status IDs for governance and rejected statuses
+    // First, fetch document status IDs for governance, manual and rejected statuses
+    console.log("Fetching document status IDs");
+    
     const { data: governanceStatus, error: governanceError } = await supabase
       .from('document_status')
       .select('id')
@@ -74,6 +78,20 @@ serve(async (req) => {
       console.error("Error fetching governance status:", governanceError);
       return new Response(
         JSON.stringify({ error: "Could not find governance status" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    const { data: manualStatus, error: manualError } = await supabase
+      .from('document_status')
+      .select('id')
+      .eq('name', 'manual')
+      .single();
+    
+    if (manualError) {
+      console.error("Error fetching manual status:", manualError);
+      return new Response(
+        JSON.stringify({ error: "Could not find manual status" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -93,10 +111,136 @@ serve(async (req) => {
     }
     
     const governanceStatusId = governanceStatus?.id;
+    const manualStatusId = manualStatus?.id;
     const rejectedStatusId = rejectedStatus?.id;
     
-    console.log("Found governance status ID:", governanceStatusId);
-    console.log("Found rejected status ID:", rejectedStatusId);
+    console.log("Found status IDs:", {
+      governance: governanceStatusId,
+      manual: manualStatusId,
+      rejected: rejectedStatusId
+    });
+    
+    // Handle manual verification
+    if (action === 'manualVerify') {
+      if (!documentId) {
+        console.error("Missing required field: documentId for manual verification");
+        return new Response(
+          JSON.stringify({ error: "Document ID is required for manual verification" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      try {
+        console.log(`Processing manual verification for document ID: ${documentId}`);
+        
+        // First fetch the current logs
+        const { data: document, error: fetchError } = await supabase
+          .from('employee_documents')
+          .select('employee_docs_log, employee_id')
+          .eq('id', documentId)
+          .single();
+          
+        if (fetchError) {
+          console.error("Error fetching document for manual verification:", fetchError);
+          return new Response(
+            JSON.stringify({ error: "Failed to fetch document data" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        
+        // Get existing logs or initialize empty array
+        const existingLogs = document?.employee_docs_log || [];
+        const employeeId = document?.employee_id;
+        
+        if (!employeeId) {
+          console.error("Document does not have an associated employee ID");
+          return new Response(
+            JSON.stringify({ error: "Document does not have an associated employee ID" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        
+        // Create log entry with timestamp
+        const logEntry = {
+          timestamp: new Date().toISOString(),
+          action: "manual_verification",
+          response: {
+            status: "verified",
+            notes: verification_notes || "Document manually verified by staff."
+          }
+        };
+        
+        console.log("Updating document with manual verification status and log entry");
+        console.log("Using manual status ID:", manualStatusId);
+        
+        // Update document with verification status, log entry, and manual status ID
+        const { data: updateData, error: updateError } = await supabase
+          .from('employee_documents')
+          .update({
+            verification_status: 'verified',
+            employee_docs_log: [...existingLogs, logEntry],
+            document_status_id: manualStatusId, // Use manual status ID
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', documentId)
+          .select();
+          
+        if (updateError) {
+          console.error("Error updating document with manual verification:", updateError);
+          return new Response(
+            JSON.stringify({ error: "Failed to update document with verification data" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        
+        console.log("Manual verification successful. Updated document:", updateData);
+        
+        // Check if all documents are verified for this employee
+        const { data: employeeDocs, error: docsError } = await supabase
+          .from('employee_documents')
+          .select('verification_status')
+          .eq('employee_id', employeeId);
+        
+        if (docsError) {
+          console.error("Error fetching employee documents:", docsError);
+        } else {
+          const allVerified = employeeDocs?.every(doc => doc.verification_status === 'verified');
+          
+          if (allVerified) {
+            console.log("All documents verified for employee:", employeeId);
+            console.log("Updating employee status to true");
+            
+            const { error: employeeError } = await supabase
+              .from('employees')
+              .update({ status: true })
+              .eq('id', employeeId);
+              
+            if (employeeError) {
+              console.error("Error updating employee status:", employeeError);
+            } else {
+              console.log("Employee status updated to verified");
+            }
+          }
+        }
+        
+        return new Response(
+          JSON.stringify({
+            success: true,
+            message: "Document manually verified successfully",
+            status: "verified",
+            documentId
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+        
+      } catch (err) {
+        console.error("Exception in manual verification:", err);
+        return new Response(
+          JSON.stringify({ error: "Internal server error during manual verification" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
     
     // Handle Aadhar OTP request
     if (action === 'requestAadharOtp') {
@@ -300,7 +444,7 @@ serve(async (req) => {
               if (allVerified) {
                 await supabase
                   .from('employees')
-                  .update({ status: 'verified' })
+                  .update({ status: true })
                   .eq('id', documentData.employee_id);
               }
             }

@@ -710,8 +710,42 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     } else if (isBankAccount) {
       await handleBankAccountManualVerification();
     } else {
-      // For other document types including Aadhar
-      onVerify('manual');
+      // For Aadhar or other document types
+      setIsVerifying(true);
+      try {
+        console.log("Initiating manual verification for document ID:", documentId);
+        
+        const { data, error } = await supabase.functions.invoke('employee-verification', {
+          method: 'POST',
+          body: { 
+            action: 'manualVerify',
+            documentId,
+            verification_notes: 'Document manually verified by staff.'
+          }
+        });
+        
+        console.log("Manual verification response:", data, error);
+        
+        if (error) {
+          console.error('Error manually verifying document:', error);
+          toast.error("Verification Failed", {
+            description: error.message || "Failed to manually verify document. Please try again."
+          });
+          return;
+        }
+        
+        toast.success("Document Manually Verified", {
+          description: "The document has been manually verified successfully."
+        });
+        onVerify('manual');
+      } catch (err: any) {
+        console.error("Exception in manual verification:", err);
+        toast.error("Verification Error", {
+          description: err.message || "Failed to manually verify document"
+        });
+      } finally {
+        setIsVerifying(false);
+      }
     }
   };
 
