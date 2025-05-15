@@ -8,6 +8,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useReportTypes } from '@/hooks/useReportTypes';
+import { usePriorities } from '@/hooks/usePriorities';
 
 interface IncidentTypeSectionProps {
   type: string;
@@ -20,7 +21,8 @@ const IncidentTypeSection: React.FC<IncidentTypeSectionProps> = ({
   priority,
   onSelectChange,
 }) => {
-  const { reportTypes, loading } = useReportTypes();
+  const { reportTypes, loading: loadingReportTypes } = useReportTypes();
+  const { priorities, loading: loadingPriorities } = usePriorities();
 
   return (
     <>
@@ -31,10 +33,10 @@ const IncidentTypeSection: React.FC<IncidentTypeSectionProps> = ({
         <Select 
           value={type}
           onValueChange={(value) => onSelectChange('type', value)}
-          disabled={loading}
+          disabled={loadingReportTypes}
         >
           <SelectTrigger className="w-full">
-            <SelectValue placeholder={loading ? "Loading..." : "Select type"} />
+            <SelectValue placeholder={loadingReportTypes ? "Loading..." : "Select type"} />
           </SelectTrigger>
           <SelectContent>
             {reportTypes.map(reportType => (
@@ -51,15 +53,17 @@ const IncidentTypeSection: React.FC<IncidentTypeSectionProps> = ({
         <Select 
           value={priority}
           onValueChange={(value) => onSelectChange('priority', value)}
+          disabled={loadingPriorities}
         >
           <SelectTrigger className="w-full">
-            <SelectValue placeholder="Select priority" />
+            <SelectValue placeholder={loadingPriorities ? "Loading priorities..." : "Select priority"} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="Low">Low</SelectItem>
-            <SelectItem value="Medium">Medium</SelectItem>
-            <SelectItem value="High">High</SelectItem>
-            <SelectItem value="Critical">Critical</SelectItem>
+            {priorities.map(priority => (
+              <SelectItem key={priority.id} value={priority.name}>
+                {priority.name}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>

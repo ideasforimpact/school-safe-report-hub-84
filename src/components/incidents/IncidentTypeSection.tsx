@@ -7,6 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { usePriorities } from '@/hooks/usePriorities';
 
 interface IncidentTypeSectionProps {
   type: string;
@@ -19,6 +20,8 @@ const IncidentTypeSection: React.FC<IncidentTypeSectionProps> = ({
   priority,
   onSelectChange,
 }) => {
+  const { priorities, loading } = usePriorities();
+
   return (
     <>
       <div className="space-y-2">
@@ -49,15 +52,19 @@ const IncidentTypeSection: React.FC<IncidentTypeSectionProps> = ({
           value={priority}
           onValueChange={(value) => onSelectChange('priority', value)}
           required
+          disabled={loading}
         >
           <SelectTrigger>
-            <SelectValue placeholder="Select priority" />
+            <SelectValue placeholder={loading ? "Loading priorities..." : "Select priority"} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="Low">Low</SelectItem>
-            <SelectItem value="Medium">Medium</SelectItem>
-            <SelectItem value="High">High</SelectItem>
-            <SelectItem value="Critical">Critical</SelectItem>
+            {loading ? (
+              <SelectItem value="" disabled>Loading...</SelectItem>
+            ) : (
+              priorities.map(priority => (
+                <SelectItem key={priority.id} value={priority.name}>{priority.name}</SelectItem>
+              ))
+            )}
           </SelectContent>
         </Select>
       </div>
