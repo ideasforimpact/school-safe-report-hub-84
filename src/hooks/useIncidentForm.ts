@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { useIncidents } from '@/contexts/incident/IncidentContext';
+import { useIncidents } from '@/contexts/IncidentContext';
 import { FileItem } from '@/types/fileTypes';
 import { Person } from '@/types/incident';
 import { User } from '@/types/incident';
