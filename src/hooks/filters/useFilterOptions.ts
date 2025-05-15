@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { useIncidents } from '@/contexts/incident/IncidentContext';
+import { useIncidents } from '@/contexts/incident'; // Fixed import path
 import { useLocation } from 'react-router-dom';
 
 // Hook to get filter options for incidents

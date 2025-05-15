@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Incident } from '@/types/incident';
+import { Incident } from '@/types/incident'; // Updated import
 import { FilterState, FilterHookReturn } from '@/types/filterTypes';
 import { useFilterOptions } from './filters/useFilterOptions';
 import { applyFilters, getInitialFilterState } from './filters/filterUtils';
