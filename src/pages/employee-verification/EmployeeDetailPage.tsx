@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, RefreshCcw, Upload } from 'lucide-react';
@@ -41,27 +40,24 @@ const EmployeeDetailPage = () => {
     if (employeeId && !isRefreshing) {
       setIsRefreshing(true);
       try {
-        // Fetch both documents and statuses on refresh
-        await Promise.all([
-          fetchEmployeeDocuments(employeeId),
-          fetchDocumentStatuses()
-        ]);
+        // Only fetch employee documents when refreshing - this is the main change
+        await fetchEmployeeDocuments(employeeId);
         
         toast({
           title: "Data Refreshed",
-          description: "Documents and status information have been refreshed.",
+          description: "Employee documents have been refreshed.",
         });
       } catch (error) {
         toast({
           title: "Error",
-          description: "Failed to refresh data.",
+          description: "Failed to refresh document data.",
           variant: "destructive",
         });
       } finally {
         setIsRefreshing(false);
       }
     }
-  }, [employeeId, fetchEmployeeDocuments, fetchDocumentStatuses, toast, isRefreshing]);
+  }, [employeeId, fetchEmployeeDocuments, toast, isRefreshing]);
 
   // Fetch data when component mounts - only once
   useEffect(() => {
@@ -69,7 +65,7 @@ const EmployeeDetailPage = () => {
     
     const loadData = async () => {
       try {
-        // Fetch documents and statuses in parallel
+        // Fetch documents and statuses in parallel on initial load
         await Promise.all([
           fetchEmployeeDocuments(employeeId),
           fetchDocumentStatuses()
