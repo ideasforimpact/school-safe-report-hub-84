@@ -8,6 +8,15 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
   const [isLoading, setIsLoading] = useState(false);
   const [fetchedEmployeeIds, setFetchedEmployeeIds] = useState<string[]>([]);
 
+  // Update a document in the local state
+  const updateDocumentInState = useCallback((updatedDoc: VerificationDocument) => {
+    setDocuments(prevDocs => 
+      prevDocs.map(doc => 
+        doc.id === updatedDoc.id ? { ...doc, ...updatedDoc } : doc
+      )
+    );
+  }, []);
+
   // Fetch documents from the database via the edge function
   const fetchEmployeeDocuments = useCallback(async (employeeId: string, timeframe?: string) => {
     // Skip if we're already loading or if this employee's documents have already been fetched
@@ -249,6 +258,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
     deleteDocument,
     getEmployeeDocuments,
     fetchEmployeeDocuments,
+    updateDocumentInState,
     isLoading
   };
 };

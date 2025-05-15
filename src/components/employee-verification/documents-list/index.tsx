@@ -5,6 +5,7 @@ import EmptyDocumentsState from './EmptyDocumentsState';
 import DocumentsTable from './DocumentsTable';
 import VerificationDialog from './VerificationDialog';
 import { Loader2 } from 'lucide-react';
+import { useDocumentRealtime } from '@/hooks/useDocumentRealtime';
 
 interface DocumentsListProps {
   employeeId: string;
@@ -38,6 +39,18 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
       return dateB - dateA; // Descending order (newest first)
     });
   }, [getEmployeeDocuments, employeeId]);
+
+  // Handle real-time document updates
+  const handleDocumentUpdate = useCallback((updatedDocument) => {
+    console.log('Document updated via real-time:', updatedDocument);
+    toast({
+      title: "Document Updated",
+      description: `Document status changed to ${updatedDocument.documentStatusName || updatedDocument.verificationStatus}`,
+    });
+  }, [toast]);
+
+  // Set up real-time subscription
+  useDocumentRealtime(employeeId, handleDocumentUpdate);
 
   // Fetch documents only once when component mounts and avoid duplicate fetches
   useEffect(() => {
