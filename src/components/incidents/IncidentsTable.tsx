@@ -19,8 +19,8 @@ const IncidentsTable = ({ incidents }: IncidentsTableProps) => {
   // Sort incidents
   const { sortedIncidents, sortField, sortDirection, handleSort } = useSortedIncidents(incidents);
   
-  // Paginate incidents
-  const { currentPage, setCurrentPage, totalPages, paginatedItems } = usePagination(sortedIncidents);
+  // Paginate incidents - fix by adding the missing itemsPerPage parameter
+  const { currentPage, setCurrentPage, totalPages, paginatedItems } = usePagination(sortedIncidents, 10); // Added the second parameter (10 items per page)
 
   // Navigation handlers
   const handleRowClick = (incidentId: string) => {

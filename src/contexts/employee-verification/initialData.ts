@@ -64,3 +64,69 @@ export const initialDocumentStatuses: DocumentStatus[] = [
     updatedAt: new Date().toISOString()
   }
 ];
+
+// Add initial employees data
+export const initialEmployees = [
+  {
+    id: '1',
+    employeeId: 'EMP001',
+    name: 'John Doe',
+    email: 'john.doe@example.com',
+    phone: '+91 9876543210',
+    dateOfBirth: '1990-01-01',
+    address: '123 Main Street, Mumbai',
+    joiningDate: '2022-01-15',
+    department: 'Engineering',
+    position: 'Senior Developer',
+    employeeType: 'permanent' as const,
+    status: 'verified' as const,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: '2',
+    employeeId: 'EMP002',
+    name: 'Jane Smith',
+    email: 'jane.smith@example.com',
+    phone: '+91 9123456780',
+    dateOfBirth: '1992-05-15',
+    address: '456 Park Avenue, Delhi',
+    joiningDate: '2022-02-01',
+    department: 'Human Resources',
+    position: 'HR Manager',
+    employeeType: 'permanent' as const,
+    status: 'pending' as const,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  }
+];
+
+// Add initial documents data
+export const initialDocuments = [
+  {
+    id: '1',
+    employeeId: '1',
+    documentTypeId: '1',
+    documentTypeName: 'Aadhar Card',
+    documentNumber: '1234 5678 9012',
+    documentImage: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    documentStatusId: '2',
+    documentStatusName: 'Verified',
+    verificationStatus: 'verified' as const,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: '2',
+    employeeId: '1',
+    documentTypeId: '2',
+    documentTypeName: 'PAN Card',
+    documentNumber: 'ABCDE1234F',
+    documentImage: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    documentStatusId: '1',
+    documentStatusName: 'Pending',
+    verificationStatus: 'pending' as const,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  }
+];
