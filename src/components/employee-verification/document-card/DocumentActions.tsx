@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, XCircle } from 'lucide-react';
 import { VerificationDocument } from '@/types/employeeVerification';
@@ -7,6 +7,7 @@ import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { useToast } from '@/components/ui/use-toast';
 import DocumentVerifyDropdown from './DocumentVerifyDropdown';
 import { supabase } from '@/integrations/supabase/client';
+import VerificationDialog from '../documents-list/VerificationDialog';
 
 interface DocumentActionsProps {
   document: VerificationDocument;
@@ -16,7 +17,8 @@ interface DocumentActionsProps {
 const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyButton }) => {
   const { verifyDocument } = useEmployeeVerification();
   const { toast } = useToast();
-  const [isVerifying, setIsVerifying] = React.useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const handleVerify = async (method: 'api' | 'manual') => {
     setIsVerifying(true);
@@ -45,6 +47,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
           });
           
           setIsVerifying(false);
+          setDialogOpen(false);
           return;
         } else if (method === 'manual') {
           // Handle PAN manual verification
@@ -66,6 +69,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
           });
           
           setIsVerifying(false);
+          setDialogOpen(false);
           return;
         }
       }
@@ -82,6 +86,8 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
         title: "Document Verified",
         description: `Document has been ${method === 'api' ? 'automatically' : 'manually'} verified successfully.`,
       });
+      
+      setDialogOpen(false);
     } catch (error) {
       toast({
         title: "Error",
@@ -120,6 +126,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
         });
         
         setIsVerifying(false);
+        setDialogOpen(false);
         return;
       }
       
@@ -131,6 +138,8 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
         description: "Document has been marked as failed verification.",
         variant: "destructive",
       });
+      
+      setDialogOpen(false);
     } catch (error) {
       toast({
         title: "Error",
@@ -149,22 +158,27 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
 
   return (
     <div className="flex space-x-2">
-      <DocumentVerifyDropdown 
-        onVerify={handleVerify} 
-        documentTypeName={document.documentTypeName || ''}
-        isDisabled={isVerifying}
-      />
-      
-      <Button 
-        variant="outline" 
-        size="sm" 
-        className="text-red-600 border-red-200 hover:bg-red-50"
-        onClick={handleReject}
+      <Button
+        variant="outline"
+        size="sm"
+        className="text-blue-600 border-blue-200 hover:bg-blue-50"
+        onClick={() => setDialogOpen(true)}
         disabled={isVerifying}
       >
-        <XCircle className="h-4 w-4 mr-1" />
-        Reject
+        <CheckCircle className="h-4 w-4 mr-1" />
+        Verify
       </Button>
+      
+      <VerificationDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        onVerify={handleVerify}
+        onReject={handleReject}
+        isVerifying={isVerifying}
+        documentType={document.documentTypeName || ''}
+        documentId={document.id}
+        documentNumber={document.documentNumber}
+      />
     </div>
   );
 };

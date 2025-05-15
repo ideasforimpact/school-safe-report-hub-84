@@ -47,6 +47,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const [clientId, setClientId] = useState<string | null>(null);
   const [isRequestingOtp, setIsRequestingOtp] = useState(false);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [isPanVerifying, setIsPanVerifying] = useState(false);
 
   // Logging OTP state for debugging
   useEffect(() => {
@@ -77,6 +78,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       setClientId(null);
       setIsRequestingOtp(false);
       setIsVerifyingOtp(false);
+      setIsPanVerifying(false);
       if (cooldownTimerId !== null) {
         clearInterval(cooldownTimerId);
         setCooldownTimerId(null);
@@ -107,6 +109,147 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     }, 1000);
     
     setCooldownTimerId(timerId);
+  };
+
+  // Separate handler for PAN API verification
+  const handlePanApiVerification = async () => {
+    setIsPanVerifying(true);
+    
+    try {
+      console.log("Initiating PAN verification for document ID:", documentId);
+      
+      const { data, error } = await supabase.functions.invoke('pan-verification', {
+        body: {
+          action: 'apiVerify',
+          documentId,
+          documentNumber
+        }
+      });
+      
+      console.log("PAN verification response:", data, error);
+      
+      if (error) {
+        console.error('Error verifying PAN:', error);
+        toast({
+          title: "Error",
+          description: error.message || "Failed to verify PAN. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (data.success) {
+        toast({
+          title: "PAN Verified",
+          description: data.message || "PAN has been successfully verified with government database.",
+        });
+        onVerify('api');
+      } else {
+        toast({
+          title: "Verification Failed",
+          description: data.error || "PAN verification failed. Please try manual verification.",
+          variant: "destructive",
+        });
+      }
+    } catch (err: any) {
+      console.error("Exception in handlePanApiVerification:", err);
+      toast({
+        title: "Error",
+        description: err.message || "Failed to verify PAN",
+        variant: "destructive"
+      });
+    } finally {
+      setIsPanVerifying(false);
+    }
+  };
+
+  // Separate handler for PAN manual verification
+  const handlePanManualVerification = async () => {
+    setIsPanVerifying(true);
+    
+    try {
+      console.log("Initiating manual PAN verification for document ID:", documentId);
+      
+      const { data, error } = await supabase.functions.invoke('pan-verification', {
+        body: {
+          action: 'manualVerify',
+          documentId,
+          verification_notes: 'Document manually verified by staff.'
+        }
+      });
+      
+      console.log("PAN manual verification response:", data, error);
+      
+      if (error) {
+        console.error('Error manually verifying PAN:', error);
+        toast({
+          title: "Error",
+          description: error.message || "Failed to manually verify PAN. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      toast({
+        title: "PAN Manually Verified",
+        description: "The PAN card has been manually verified successfully.",
+      });
+      onVerify('manual');
+    } catch (err: any) {
+      console.error("Exception in handlePanManualVerification:", err);
+      toast({
+        title: "Error",
+        description: err.message || "Failed to manually verify PAN",
+        variant: "destructive"
+      });
+    } finally {
+      setIsPanVerifying(false);
+    }
+  };
+
+  // Separate handler for PAN rejection
+  const handlePanRejection = async () => {
+    setIsPanVerifying(true);
+    
+    try {
+      console.log("Rejecting PAN verification for document ID:", documentId);
+      
+      const { data, error } = await supabase.functions.invoke('pan-verification', {
+        body: {
+          action: 'reject',
+          documentId,
+          verification_notes: 'Document verification rejected by staff.'
+        }
+      });
+      
+      console.log("PAN rejection response:", data, error);
+      
+      if (error) {
+        console.error('Error rejecting PAN:', error);
+        toast({
+          title: "Error",
+          description: error.message || "Failed to reject PAN. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      toast({
+        title: "PAN Rejected",
+        description: "The PAN card has been marked as failed verification.",
+        variant: "destructive",
+      });
+      onReject();
+    } catch (err: any) {
+      console.error("Exception in handlePanRejection:", err);
+      toast({
+        title: "Error",
+        description: err.message || "Failed to reject PAN",
+        variant: "destructive"
+      });
+    } finally {
+      setIsPanVerifying(false);
+    }
   };
 
   const handleApiClick = async () => {
@@ -191,11 +334,29 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         setIsRequestingOtp(false);
       }
     } else if (isPan) {
-      // Use pan-verification edge function for PAN cards
-      onVerify('api');
+      // Use dedicated PAN verification handler
+      await handlePanApiVerification();
     } else {
-      // For other document types
+      // For other document types use the generic handler
       onVerify('api');
+    }
+  };
+
+  const handleManualClick = async () => {
+    if (isPan) {
+      await handlePanManualVerification();
+    } else {
+      // For other document types including Aadhar
+      onVerify('manual');
+    }
+  };
+
+  const handleRejectClick = async () => {
+    if (isPan) {
+      await handlePanRejection();
+    } else {
+      // For other document types including Aadhar
+      onReject();
     }
   };
 
@@ -326,9 +487,9 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               variant="outline" 
               className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 justify-start"
               onClick={handleApiClick}
-              disabled={isVerifying || cooldownSeconds !== null || isRequestingOtp}
+              disabled={isVerifying || cooldownSeconds !== null || isRequestingOtp || isPanVerifying}
             >
-              {isRequestingOtp ? (
+              {isRequestingOtp || (isPan && isPanVerifying) ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : (
                 <ShieldCheck className="h-4 w-4 mr-2" />
@@ -340,10 +501,10 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
                     ? 'Requesting OTP...' 
                     : 'Verify via Aadhar API (Requires OTP)' 
                 : isPan
-                  ? 'Verify via PAN API'
+                  ? isPanVerifying ? 'Verifying PAN...' : 'Verify via PAN API'
                   : 'Verify via API'
               }
-              {cooldownSeconds === null && !isRequestingOtp && (
+              {cooldownSeconds === null && !isRequestingOtp && !isPanVerifying && (
                 <span className="ml-auto text-xs text-blue-500 font-normal">
                   {isAadhar ? 'OTP verification' : isPan ? 'Surepass verification' : 'Automated check'}
                 </span>
@@ -352,22 +513,30 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
             <Button 
               variant="outline" 
               className="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200 justify-start"
-              onClick={() => onVerify('manual')}
-              disabled={isVerifying || isRequestingOtp}
+              onClick={handleManualClick}
+              disabled={isVerifying || isRequestingOtp || isPanVerifying}
             >
-              <ShieldCheck className="h-4 w-4 mr-2" />
-              Verify Manually
+              {isPan && isPanVerifying ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <ShieldCheck className="h-4 w-4 mr-2" />
+              )}
+              {isPan && isPanVerifying ? 'Processing...' : 'Verify Manually'}
               <span className="ml-auto text-xs text-purple-500 font-normal">Manual review completed</span>
             </Button>
             
             <Button 
               variant="outline" 
               className="w-full bg-red-50 hover:bg-red-100 text-red-700 border-red-200 justify-start"
-              onClick={onReject}
-              disabled={isVerifying || isRequestingOtp}
+              onClick={handleRejectClick}
+              disabled={isVerifying || isRequestingOtp || isPanVerifying}
             >
-              <ShieldCheck className="h-4 w-4 mr-2" />
-              Reject Document
+              {isPan && isPanVerifying ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <ShieldCheck className="h-4 w-4 mr-2" />
+              )}
+              {isPan && isPanVerifying ? 'Processing...' : 'Reject Document'}
               <span className="ml-auto text-xs text-red-500 font-normal">Document verification failed</span>
             </Button>
           </div>
@@ -424,7 +593,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
             <Button 
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={isVerifying || isRequestingOtp}
+              disabled={isVerifying || isRequestingOtp || isPanVerifying}
             >
               Cancel
             </Button>
