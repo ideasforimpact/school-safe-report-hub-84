@@ -108,16 +108,17 @@ serve(async (req) => {
       console.log("Bank Statement Verification: Found document with URL:", document.document_url);
       
       try {
-        // Step 1: Call the upload API
+        // Step 1: Call the upload API using FormData approach to match the curl example
+        // Create a FormData object and append the file URL
+        const formData = new FormData();
+        formData.append('file', document.document_url);
+        
         const uploadResponse = await fetch(`${baseUrl}/api/v1/bank/statement/upload`, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json'
+            'Authorization': `Bearer ${apiKey}`
           },
-          body: JSON.stringify({
-            file: document.document_url
-          })
+          body: formData
         });
         
         const uploadResult = await uploadResponse.json();
