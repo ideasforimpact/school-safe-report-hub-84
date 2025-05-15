@@ -1,27 +1,16 @@
 
 import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
-import { Employee } from '@/contexts/employee/types';
+import { Employee } from '@/types/employeeVerification';
 import { mapDbRecordToEmployee } from './utils/employeeMappers';
 
 export const getAllEmployeesFromApi = async (): Promise<Employee[]> => {
   try {
     console.log("Calling getAllEmployeesFromApi...");
-    // Fetch all employees from the database with their documents
+    // Fetch all employees without trying to join with documents
     const { data, error } = await supabase
       .from('employees')
-      .select(`
-        *,
-        documents:employee_documents(
-          id,
-          document_type_id,
-          document_url,
-          document_number,
-          verification_status,
-          document_status_id,
-          employee_docs_log
-        )
-      `);
+      .select('*');
 
     if (error) {
       console.error("Error fetching employees:", error);
@@ -32,16 +21,41 @@ export const getAllEmployeesFromApi = async (): Promise<Employee[]> => {
     console.log(`Successfully fetched ${data.length} employees from API`);
     
     // Map the database records to our Employee model
-    return data.map(record => {
-      const employee = mapDbRecordToEmployee(record);
-      
-      // Add the documents to the employee object
-      if (record.documents) {
-        employee.documents = record.documents;
-      }
-      
-      return employee;
-    });
+    const employees = data.map(record => mapDbRecordToEmployee(record));
+    
+    // Now fetch documents separately for each employee
+    const employeesWithDocs = await Promise.all(
+      employees.map(async (employee) => {
+        try {
+          const { data: docs, error: docsError } = await supabase
+            .from('employee_documents')
+            .select('*')
+            .eq('employee_id', employee.id);
+            
+          if (!docsError && docs) {
+            // Add the documents to the employee object
+            employee.documents = docs.map(doc => ({
+              id: doc.id,
+              employeeId: doc.employee_id,
+              documentTypeId: doc.document_type_id,
+              documentNumber: doc.document_number || '',
+              documentImage: doc.document_url ? 
+                `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${doc.document_url}` : '',
+              verificationStatus: doc.verification_status as any || 'pending',
+              documentStatusId: doc.document_status_id,
+              employee_docs_log: doc.employee_docs_log || [],
+              createdAt: doc.created_at || new Date().toISOString(),
+              updatedAt: doc.updated_at || new Date().toISOString()
+            }));
+          }
+        } catch (docError) {
+          console.error(`Error fetching documents for employee ${employee.id}:`, docError);
+        }
+        return employee;
+      })
+    );
+    
+    return employeesWithDocs;
   } catch (error) {
     console.error("Error in getAllEmployeesFromApi:", error);
     toast.error("Failed to fetch employees");
@@ -51,21 +65,10 @@ export const getAllEmployeesFromApi = async (): Promise<Employee[]> => {
 
 export const getEmployeeByIdFromApi = async (id: string): Promise<Employee> => {
   try {
-    // Fetch a single employee by ID with documents
+    // Fetch a single employee by ID
     const { data, error } = await supabase
       .from('employees')
-      .select(`
-        *,
-        documents:employee_documents(
-          id,
-          document_type_id,
-          document_url,
-          document_number,
-          verification_status,
-          document_status_id,
-          employee_docs_log
-        )
-      `)
+      .select('*')
       .eq('id', id)
       .single();
 
@@ -78,9 +81,31 @@ export const getEmployeeByIdFromApi = async (id: string): Promise<Employee> => {
     // Convert the response to our Employee type
     const employee = mapDbRecordToEmployee(data);
     
-    // Add the documents to the employee object
-    if (data.documents) {
-      employee.documents = data.documents;
+    // Fetch documents separately
+    try {
+      const { data: docs, error: docsError } = await supabase
+        .from('employee_documents')
+        .select('*')
+        .eq('employee_id', id);
+        
+      if (!docsError && docs) {
+        // Add the documents to the employee object
+        employee.documents = docs.map(doc => ({
+          id: doc.id,
+          employeeId: doc.employee_id,
+          documentTypeId: doc.document_type_id,
+          documentNumber: doc.document_number || '',
+          documentImage: doc.document_url ? 
+            `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${doc.document_url}` : '',
+          verificationStatus: doc.verification_status as any || 'pending',
+          documentStatusId: doc.document_status_id,
+          employee_docs_log: doc.employee_docs_log || [],
+          createdAt: doc.created_at || new Date().toISOString(),
+          updatedAt: doc.updated_at || new Date().toISOString()
+        }));
+      }
+    } catch (docError) {
+      console.error(`Error fetching documents for employee ${id}:`, docError);
     }
     
     return employee;

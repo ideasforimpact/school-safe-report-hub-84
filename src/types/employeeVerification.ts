@@ -14,7 +14,7 @@ export interface Employee {
   createdAt: string;
   updatedAt: string;
   clientId?: string;
-  documents?: VerificationDocument[]; // Add documents array
+  documents?: VerificationDocument[]; // Added documents property
 }
 
 export interface DocumentType {
