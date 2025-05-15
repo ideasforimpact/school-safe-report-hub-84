@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, RefreshCcw, Upload } from 'lucide-react';
@@ -148,13 +149,13 @@ const EmployeeDetailPage = () => {
               </div>
               <Button
                 variant="outline"
-                size="sm"
+                size="icon"
                 onClick={handleRefreshDocuments}
                 disabled={isLoading || isRefreshing}
                 className="ml-2"
               >
                 <RefreshCcw className={`h-4 w-4 ${isLoading || isRefreshing ? 'animate-spin' : ''}`} />
-                <span className="ml-1">Refresh</span>
+                <span className="sr-only">Refresh</span>
               </Button>
             </div>
             
