@@ -1,4 +1,3 @@
-
 import { Incident, User, Activity, ActionItem, Comment } from '@/types/incident';
 import { ConfigItem, SubcategoryItem, SectionItem, ClassItem, CampusItem } from '@/contexts/types';
 
@@ -66,6 +65,5 @@ export interface IncidentContextType {
   isSubmitting?: boolean;
 }
 
-// Define IncidentStatus here to ensure it's consistent with what incident/IncidentContext.ts expects
-export type IncidentStatus = 'New' | 'Open' | 'In Progress' | 'Closed' | 'On Hold';
-export type { IncidentType, IncidentLocation } from '@/types/incident';
+// Define IncidentStatus here for consistency
+export type { IncidentStatus, IncidentType, IncidentLocation } from '@/types/incident';

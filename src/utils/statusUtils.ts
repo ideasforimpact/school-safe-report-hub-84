@@ -1,5 +1,5 @@
 
-import { IncidentStatus } from '@/contexts/incident';
+import { IncidentStatus } from '@/types/incident';
 
 /**
  * Returns CSS class for incident status badges
