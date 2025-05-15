@@ -100,6 +100,9 @@ const ReportIncident = () => {
       const locationName = formData.locationId ? getSelectedLocation() : '';
       const facilityName = formData.facilityId ? getSelectedFacility() : '';
       
+      console.log("Selected facility:", facilityName);
+      console.log("Selected facility ID:", formData.facilityId);
+      
       // Filter out empty people - now it's optional so we don't need to validate it
       const validPeople = peopleInvolved.filter(p => p.name.trim() !== '');
       

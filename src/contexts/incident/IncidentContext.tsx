@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, ReactNode } from 'react';
 import { IncidentContextType } from './types';
 import { useConfigManagement } from '@/hooks/useConfigManagement'; 

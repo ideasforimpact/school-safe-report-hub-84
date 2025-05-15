@@ -65,6 +65,21 @@ export const useIncidentActions = (
         .eq('name', incidentData.priority || 'Medium')
         .single();
       
+      // Find the facility UUID by name - this is the key fix
+      let facilityId = null;
+      if (incidentData.facility) {
+        const { data: facilityData } = await supabase
+          .from('facilities')
+          .select('id')
+          .eq('name', incidentData.facility)
+          .single();
+        
+        facilityId = facilityData?.id || null;
+        
+        console.log("Looking up facility:", incidentData.facility);
+        console.log("Found facility ID:", facilityId);
+      }
+      
       // Format the data for database insertion - using real UUIDs from database
       const dbIncident = {
         ticket_id: ticketId,
@@ -74,7 +89,7 @@ export const useIncidentActions = (
         people_involved: JSON.stringify(incidentData.peopleInvolved),
         status_id: statusData?.id || null,
         reported_by_id: incidentData.reportedBy.id,
-        facility_id: incidentData.facility ? incidentData.facility : null,
+        facility_id: facilityId, // Use the looked up facility UUID
         documents: incidentData.documents ? JSON.stringify(incidentData.documents) : null,
         priority_id: priorityData?.id || null,
         type_id: typeData?.id || null,
