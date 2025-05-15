@@ -140,7 +140,8 @@ serve(async (req) => {
       try {
         console.log("Making request to Surepass API to verify PAN with base URL:", baseUrl);
         
-        const response = await fetch(`${baseUrl}/api/v1/pan/pan-comprehensive-v2`, {
+        // Changed API endpoint from pan-comprehensive-v2 to pan-comprehensive
+        const response = await fetch(`${baseUrl}/api/v1/pan/pan-comprehensive`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
