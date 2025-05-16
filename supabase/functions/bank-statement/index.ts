@@ -105,35 +105,38 @@ serve(async (req) => {
         );
       }
       
-      // Construct the full URL to the file in Supabase storage
-      const fullDocumentUrl = `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${document.document_url}`;
-      
-      console.log("Bank Statement Verification: Constructed full document URL:", fullDocumentUrl);
-      
       try {
-        // Step 1: First fetch the actual PDF file from the document URL
-        console.log("Fetching PDF file from URL:", fullDocumentUrl);
-        const fileResponse = await fetch(fullDocumentUrl);
+        // UPDATED APPROACH: Directly download file from Supabase storage
+        console.log("Downloading file from Supabase storage:", document.document_url);
         
-        if (!fileResponse.ok) {
-          throw new Error(`Failed to fetch PDF file: ${fileResponse.status} ${fileResponse.statusText}`);
+        const { data: fileData, error: downloadError } = await supabase.storage
+          .from('employee-documents')
+          .download(document.document_url);
+        
+        if (downloadError || !fileData) {
+          console.error("Error downloading file from storage:", downloadError);
+          throw new Error(`Failed to download file from storage: ${downloadError?.message || 'Unknown error'}`);
         }
         
-        // Get the file content as blob
-        const fileBlob = await fileResponse.blob();
-        console.log("File fetched successfully, size:", fileBlob.size, "type:", fileBlob.type);
+        console.log("File downloaded successfully, size:", fileData.size);
         
-        // Create FormData and append the actual file
+        // Convert to ArrayBuffer
+        const arrayBuffer = await fileData.arrayBuffer();
+        console.log("Converted file to ArrayBuffer, size:", arrayBuffer.byteLength);
+        
+        // Create FormData and append file
         const formData = new FormData();
         
-        // Create a File object from the blob with a filename
+        // Extract filename from the path
         const fileName = document.document_url.split('/').pop() || "bank_statement.pdf";
-        const file = new File([fileBlob], fileName, { type: "application/pdf" });
         
+        // Create a File object with the array buffer data
+        const file = new File([arrayBuffer], fileName, { type: "application/pdf" });
         formData.append('file', file);
+        
         console.log("FormData created with file:", fileName);
         
-        // Call the upload API with the actual file
+        // Call the upload API with the file
         console.log("Calling bank statement upload API...");
         const uploadResponse = await fetch(`${baseUrl}/api/v1/bank/statement/upload`, {
           method: 'POST',
