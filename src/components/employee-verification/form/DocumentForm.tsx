@@ -39,6 +39,8 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       documentNumber: '',
       documentImage: '',
       dateOfBirth: '',
+      accountNumber: '',
+      ifscCode: '',
     },
   });
 
@@ -111,6 +113,8 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       const documentNumber = value.documentNumber || '';
       const documentImage = value.documentImage || '';
       const dateOfBirth = value.dateOfBirth || '';
+      const accountNumber = value.accountNumber || '';
+      const ifscCode = value.ifscCode || '';
       
       let valid = documentImage !== '';
       
@@ -120,6 +124,10 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       
       if (showDateOfBirth) {
         valid = valid && dateOfBirth !== '';
+      }
+      
+      if (isBankAccount) {
+        valid = valid && accountNumber !== '' && ifscCode !== '';
       }
       
       setIsFormValid(valid);
@@ -138,6 +146,16 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       return;
     }
 
+    // For bank account, ensure account number and IFSC code are provided
+    if (isBankAccount && (!data.accountNumber || !data.ifscCode)) {
+      toast({
+        title: 'Error',
+        description: 'Please enter account number and IFSC code',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     // Prepare the upload data - only send essential fields
     const uploadData = {
       employeeId: employeeId,
@@ -146,6 +164,11 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       documentImage: data.documentImage,
       // Include date of birth for driving license
       ...(showDateOfBirth && data.dateOfBirth && { dateOfBirth: data.dateOfBirth }),
+      // Include bank account details if applicable
+      ...(isBankAccount && { 
+        accountNumber: data.accountNumber,
+        ifscCode: data.ifscCode 
+      }),
     };
 
     console.log('Submitting document with data:', {
@@ -153,6 +176,8 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       documentTypeId: uploadData.documentTypeId,
       documentNumber: uploadData.documentNumber ? 'Provided' : 'Not provided',
       dateOfBirth: uploadData.dateOfBirth ? 'Provided' : 'Not provided',
+      accountNumber: uploadData.accountNumber ? 'Provided' : 'Not provided',
+      ifscCode: uploadData.ifscCode ? 'Provided' : 'Not provided',
       imageSize: uploadData.documentImage ? uploadData.documentImage.length : 0,
     });
 
@@ -179,6 +204,51 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
         <input type="hidden" {...form.register('employeeId')} value={employeeId} />
+        
+        {/* Bank account specific fields */}
+        {isBankAccount && (
+          <div className="space-y-4">
+            <FormField
+              control={form.control}
+              name="accountNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    Account Number <span className="text-red-500">*</span>
+                  </FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="Enter your bank account number"
+                      {...field} 
+                    />
+                  </FormControl>
+                  <p className="text-xs text-gray-500 mt-1">Enter your complete bank account number</p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="ifscCode"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    IFSC Code <span className="text-red-500">*</span>
+                  </FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="e.g., SBIN0000123"
+                      {...field} 
+                    />
+                  </FormControl>
+                  <p className="text-xs text-gray-500 mt-1">11-character code that identifies your bank branch</p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        )}
         
         {/* Only show document number field if not a bank account */}
         {!isBankAccount && (

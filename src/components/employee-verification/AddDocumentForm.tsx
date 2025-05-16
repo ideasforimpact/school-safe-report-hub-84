@@ -55,6 +55,12 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
     return docType?.name === 'driving_license' || typeId === '4';
   };
 
+  // Check if selected type is bank account
+  const isBankAccount = (typeId: string): boolean => {
+    const docType = documentTypes.find(type => type.id === typeId);
+    return docType?.name === 'bank_account' || typeId === '3';
+  };
+
   const handleSubmit = async (values: any) => {
     if (!selectedTypeId) {
       toast({
@@ -84,15 +90,32 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
       return;
     }
 
+    // For bank account, validate account number and IFSC code
+    if (isBankAccount(selectedTypeId) && (!values.accountNumber || !values.ifscCode)) {
+      toast({
+        title: 'Error',
+        description: 'Please provide account number and IFSC code for bank account',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       // Find the pending status ID
       const pendingStatus = documentStatuses.find(status => status.name.toLowerCase() === 'pending');
 
-      // Prepare params object for driving license with DOB
-      const params = isDrivingLicense(selectedTypeId) && values.dateOfBirth 
-        ? { DOB: values.dateOfBirth } 
-        : undefined;
+      // Prepare params object based on document type
+      let params;
+      if (isDrivingLicense(selectedTypeId) && values.dateOfBirth) {
+        params = { DOB: values.dateOfBirth };
+      } else if (isBankAccount(selectedTypeId)) {
+        params = { 
+          accountNumber: values.accountNumber,
+          ifscCode: values.ifscCode,
+          'ifsc-details': true
+        };
+      }
 
       const documentData = {
         employeeId,
@@ -101,7 +124,7 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
         documentImage: values.documentImage,
         documentStatusId: pendingStatus?.id,
         verificationStatus: 'pending' as 'pending' | 'verified' | 'failed',
-        params: params // Add params object with DOB for driving license
+        params: params // Add params object with DOB for driving license or account details for bank
       };
 
       console.log('Adding document with data:', {
