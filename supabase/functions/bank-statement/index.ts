@@ -183,7 +183,7 @@ serve(async (req) => {
           );
         }
         
-        // Step 5: Get client_id and call the download API
+        // Step 5: Get client_id from upload response and call the download API
         const clientId = uploadResult.data?.client_id;
         if (!clientId) {
           throw new Error("Client ID not found in upload response");
