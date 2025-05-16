@@ -105,12 +105,15 @@ serve(async (req) => {
         );
       }
       
-      console.log("Bank Statement Verification: Found document with URL:", document.document_url);
+      // Construct the full URL to the file in Supabase storage
+      const fullDocumentUrl = `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${document.document_url}`;
+      
+      console.log("Bank Statement Verification: Constructed full document URL:", fullDocumentUrl);
       
       try {
         // Step 1: First fetch the actual PDF file from the document URL
-        console.log("Fetching PDF file from URL:", document.document_url);
-        const fileResponse = await fetch(document.document_url);
+        console.log("Fetching PDF file from URL:", fullDocumentUrl);
+        const fileResponse = await fetch(fullDocumentUrl);
         
         if (!fileResponse.ok) {
           throw new Error(`Failed to fetch PDF file: ${fileResponse.status} ${fileResponse.statusText}`);

@@ -30,8 +30,18 @@ export const formatSupabaseUrl = (url: string): string => {
   // Get the Supabase project reference
   const projectRef = 'ybvxkiubnnixntghojyy';
   
+  // Handle the case where URL is just a path within employee-documents bucket
+  if (!url.includes('/')) {
+    return `https://${projectRef}.supabase.co/storage/v1/object/public/employee-documents/${url}`;
+  }
+  
+  // Handle the case where URL is a relative path in a bucket (e.g., employee-id/filename)
+  if (!url.includes('employee-documents/') && !url.includes('vehicle-documents/')) {
+    return `https://${projectRef}.supabase.co/storage/v1/object/public/employee-documents/${url}`;
+  }
+  
   // Handle the case where URL has the bucket name directly
-  if (url.includes('vehicle-documents/')) {
+  if (url.includes('employee-documents/') || url.includes('vehicle-documents/')) {
     // Remove any leading slashes
     const cleanPath = url.replace(/^\/+/, '');
     return `https://${projectRef}.supabase.co/storage/v1/object/public/${cleanPath}`;
@@ -50,8 +60,8 @@ export const formatSupabaseUrl = (url: string): string => {
     return `https://${projectRef}.supabase.co/storage/v1/object/public/${cleanPath.replace('storage/v1/object/public/', '')}`;
   }
   
-  // Default case: Assume it's a direct path to a file in the bucket
-  return `https://${projectRef}.supabase.co/storage/v1/object/public/${url}`;
+  // Default case: Assume it's a direct path to a file in the employee-documents bucket
+  return `https://${projectRef}.supabase.co/storage/v1/object/public/employee-documents/${url}`;
 };
 
 // Function to determine if file is a PDF
