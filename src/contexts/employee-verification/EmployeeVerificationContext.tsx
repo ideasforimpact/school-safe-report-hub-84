@@ -1,5 +1,4 @@
-
-import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { 
@@ -21,6 +20,7 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
   const [documentTypes, setDocumentTypes] = useState<DocumentType[]>(initialDocumentTypes);
   const [documentStatuses, setDocumentStatuses] = useState<DocumentStatus[]>(initialDocumentStatuses);
   const [isLoading, setIsLoading] = useState(false);
+  const [lastFetchTime, setLastFetchTime] = useState<Record<string, number>>({});
 
   // Use the employee management hook
   const { 
@@ -54,12 +54,19 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
     isLoading: isDocumentLoading
   } = useDocumentManagement(updateEmployeeStatus);
 
-  // Fetch document types from the database
+  // Fetch document types from the database with cache control
   const fetchDocumentTypes = useCallback(async () => {
+    // Check if we've fetched document types in the last minute
+    const now = Date.now();
+    if (lastFetchTime.documentTypes && now - lastFetchTime.documentTypes < 60000) {
+      console.log('Skipping document types fetch - recently fetched');
+      return;
+    }
+    
     setIsLoading(true);
     try {
       const { data, error } = await supabase
-        .from('employee_document_type')  // Use the correct table name
+        .from('employee_document_type')
         .select('*')
         .order('name', { ascending: true });
       
@@ -78,19 +85,27 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
       }));
       
       setDocumentTypes(mappedDocumentTypes.length > 0 ? mappedDocumentTypes : initialDocumentTypes);
+      setLastFetchTime(prev => ({ ...prev, documentTypes: now }));
     } catch (err) {
       console.error('Failed to fetch document types:', err);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [lastFetchTime]);
 
-  // Fetch document statuses from the database
+  // Fetch document statuses from the database with cache control
   const fetchDocumentStatuses = useCallback(async () => {
+    // Check if we've fetched document statuses in the last minute
+    const now = Date.now();
+    if (lastFetchTime.documentStatuses && now - lastFetchTime.documentStatuses < 60000) {
+      console.log('Skipping document statuses fetch - recently fetched');
+      return;
+    }
+    
     setIsLoading(true);
     try {
       const { data, error } = await supabase
-        .from('document_status')  // Use the correct table name
+        .from('document_status')
         .select('*')
         .order('name', { ascending: true });
       
@@ -109,12 +124,13 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
       }));
       
       setDocumentStatuses(mappedDocumentStatuses.length > 0 ? mappedDocumentStatuses : initialDocumentStatuses);
+      setLastFetchTime(prev => ({ ...prev, documentStatuses: now }));
     } catch (err) {
       console.error('Failed to fetch document statuses:', err);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [lastFetchTime]);
 
   // Verify employee (this is the original function from the context)
   const verifyEmployee = async (employeeId: string): Promise<boolean> => {
@@ -153,14 +169,8 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
     }
   };
 
-  // Fetch initial data when the context mounts
-  useEffect(() => {
-    fetchDocumentTypes();
-    fetchDocumentStatuses();
-  }, [fetchDocumentTypes, fetchDocumentStatuses]);
-
-  // Create the context value
-  const value: EmployeeVerificationContextType = {
+  // Use memoized value for context to prevent unnecessary re-renders
+  const contextValue = useMemo(() => ({
     // Original verification context values
     verifyEmployee,
     isVerifying,
@@ -190,10 +200,22 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
     
     // Loading state
     isLoading: isLoading || isDocumentLoading
-  };
+  }), [
+    verifyEmployee, isVerifying, verificationError,
+    employees, addEmployee, updateEmployee, deleteEmployee, getEmployee, fetchEmployees,
+    documents, addDocument, verifyDocument, deleteDocument, getEmployeeDocuments, fetchEmployeeDocuments,
+    documentTypes, documentStatuses, fetchDocumentTypes, fetchDocumentStatuses,
+    isLoading, isDocumentLoading
+  ]);
+
+  // Fetch initial data when the context mounts, but only once
+  useEffect(() => {
+    fetchDocumentTypes();
+    fetchDocumentStatuses();
+  }, []);
 
   return (
-    <EmployeeVerificationContext.Provider value={value}>
+    <EmployeeVerificationContext.Provider value={contextValue}>
       {children}
     </EmployeeVerificationContext.Provider>
   );

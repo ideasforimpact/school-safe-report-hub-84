@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { VerificationDocument } from '@/types/employeeVerification';
 import { initialDocuments } from '../initialData';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,6 +7,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
   const [documents, setDocuments] = useState<VerificationDocument[]>(initialDocuments);
   const [isLoading, setIsLoading] = useState(false);
   const [fetchedEmployeeIds, setFetchedEmployeeIds] = useState<string[]>([]);
+  const fetchTimestampsRef = useRef<Record<string, number>>({});
 
   // Update a document in the local state
   const updateDocumentInState = useCallback((updatedDoc: VerificationDocument) => {
@@ -17,15 +18,24 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
     );
   }, []);
 
-  // Fetch documents from the database via the edge function
+  // Fetch documents from the database via the edge function with cache control
   const fetchEmployeeDocuments = useCallback(async (employeeId: string, timeframe?: string) => {
-    // Skip if we're already loading or if this employee's documents have already been fetched
+    // Skip if we're already loading
     if (isLoading) {
       console.log('Skipping fetchEmployeeDocuments - already loading');
       return [];
     }
     
-    // Always fetch documents when explicitly called (don't skip even if already fetched)
+    // Cache check - don't fetch if we've fetched within the last 30 seconds for this employee
+    const now = Date.now();
+    const cacheKey = `${employeeId}${timeframe || ''}`;
+    const lastFetch = fetchTimestampsRef.current[cacheKey] || 0;
+    
+    if (now - lastFetch < 30000) {
+      console.log(`Skipping fetch for employee ${employeeId} - cached (last fetched ${now - lastFetch}ms ago)`);
+      return documents.filter(doc => doc.employeeId === employeeId);
+    }
+    
     console.log('Fetching documents for employee:', employeeId, 'with timeframe:', timeframe || 'all');
     
     setIsLoading(true);
@@ -45,6 +55,9 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
       // Documents are now returned directly from the edge function
       const mappedDocuments = data?.documents || [];
       console.log('Documents fetched successfully:', mappedDocuments.length);
+      
+      // Update cache timestamp
+      fetchTimestampsRef.current[cacheKey] = now;
       
       setDocuments(currentDocuments => {
         // If timeframe is specified, we're doing a filtered fetch, don't replace all documents
@@ -72,7 +85,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, fetchedEmployeeIds]);
+  }, [isLoading, fetchedEmployeeIds, documents]);
 
   const addDocument = useCallback(async (documentData: Omit<VerificationDocument, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {

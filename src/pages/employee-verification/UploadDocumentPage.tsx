@@ -17,9 +17,9 @@ const UploadDocumentPage = () => {
   const { getEmployee, fetchDocumentTypes } = useEmployeeVerification();
   const employee = getEmployee(employeeId || '');
 
-  // Fetch document types once at the page level
-  // This ensures all child components can access it through context
+  // Fetch document types once when the page loads
   useEffect(() => {
+    // Only fetch if not already loaded
     fetchDocumentTypes();
   }, [fetchDocumentTypes]);
 

@@ -26,11 +26,18 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
     documentStatuses 
   } = useEmployeeVerification();
 
-  // Fetch employee documents and document statuses when the component mounts
+  // Fetch document statuses only once when the component mounts
   useEffect(() => {
-    fetchEmployeeDocuments(employeeId);
-    fetchDocumentStatuses(); // Make sure document statuses are loaded
-  }, [employeeId, fetchEmployeeDocuments, fetchDocumentStatuses]);
+    fetchDocumentStatuses();
+  }, [fetchDocumentStatuses]);
+  
+  // Only fetch employee documents once when the component mounts
+  useEffect(() => {
+    // Only fetch if employeeId is available
+    if (employeeId) {
+      fetchEmployeeDocuments(employeeId);
+    }
+  }, [employeeId, fetchEmployeeDocuments]);
 
   const handleFileUploaded = (base64: string) => {
     // This function will be called when a file is uploaded
