@@ -108,11 +108,30 @@ serve(async (req) => {
       console.log("Bank Statement Verification: Found document with URL:", document.document_url);
       
       try {
-        // Step 1: Call the upload API using FormData approach to match the curl example
-        // Create a FormData object and append the file URL
-        const formData = new FormData();
-        formData.append('file', document.document_url);
+        // Step 1: First fetch the actual PDF file from the document URL
+        console.log("Fetching PDF file from URL:", document.document_url);
+        const fileResponse = await fetch(document.document_url);
         
+        if (!fileResponse.ok) {
+          throw new Error(`Failed to fetch PDF file: ${fileResponse.status} ${fileResponse.statusText}`);
+        }
+        
+        // Get the file content as blob
+        const fileBlob = await fileResponse.blob();
+        console.log("File fetched successfully, size:", fileBlob.size, "type:", fileBlob.type);
+        
+        // Create FormData and append the actual file
+        const formData = new FormData();
+        
+        // Create a File object from the blob with a filename
+        const fileName = document.document_url.split('/').pop() || "bank_statement.pdf";
+        const file = new File([fileBlob], fileName, { type: "application/pdf" });
+        
+        formData.append('file', file);
+        console.log("FormData created with file:", fileName);
+        
+        // Call the upload API with the actual file
+        console.log("Calling bank statement upload API...");
         const uploadResponse = await fetch(`${baseUrl}/api/v1/bank/statement/upload`, {
           method: 'POST',
           headers: {
