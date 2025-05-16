@@ -3,11 +3,12 @@ import { Button } from '@/components/ui/button';
 import { CheckCircle, XCircle } from 'lucide-react';
 import { VerificationDocument } from '@/types/employeeVerification';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import DocumentVerifyDropdown from './DocumentVerifyDropdown';
 import { supabase } from '@/integrations/supabase/client';
 import VerificationDialog from '../documents-list/VerificationDialog';
 import BankStatementDetailsDialog from '../document-card/BankStatementDetailsDialog';
+import OtherDocumentVerificationDialog from '../documents-list/OtherDocumentVerificationDialog';
 
 interface DocumentActionsProps {
   document: VerificationDocument;
@@ -19,6 +20,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
   const { toast } = useToast();
   const [isVerifying, setIsVerifying] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [otherDocDialogOpen, setOtherDocDialogOpen] = useState(false);
   const [bankStatementDetailsOpen, setBankStatementDetailsOpen] = useState(false);
   const [bankStatementDetails, setBankStatementDetails] = useState<any>(null);
 
@@ -26,6 +28,32 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
     setIsVerifying(true);
     
     try {
+      // Special logic for Other document type
+      if (document.documentTypeName === 'other') {
+        if (method === 'manual') {
+          const { data, error } = await supabase.functions.invoke('other-document-verification', {
+            body: {
+              action: 'manualVerify',
+              documentId: document.id,
+              verification_notes: 'Document manually verified by staff.'
+            }
+          });
+          
+          if (error) {
+            throw new Error(error.message || 'Manual verification failed');
+          }
+          
+          toast({
+            title: "Document Verified",
+            description: "Document has been manually verified successfully.",
+          });
+          
+          setIsVerifying(false);
+          setOtherDocDialogOpen(false);
+          return;
+        }
+      }
+      
       // Special logic for Bank Account documents
       if (document.documentTypeName === 'bank_account') {
         if (method === 'api') {
@@ -253,6 +281,31 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
     setIsVerifying(true);
     
     try {
+      // Special handling for Other document type
+      if (document.documentTypeName === 'other') {
+        const { data, error } = await supabase.functions.invoke('other-document-verification', {
+          body: {
+            action: 'reject',
+            documentId: document.id,
+            verification_notes: 'Document verification rejected by staff.'
+          }
+        });
+        
+        if (error) {
+          throw new Error(error.message || 'Rejection failed');
+        }
+        
+        toast({
+          title: "Verification Rejected",
+          description: "Document has been marked as failed verification.",
+          variant: "destructive",
+        });
+        
+        setIsVerifying(false);
+        setOtherDocDialogOpen(false);
+        return;
+      }
+      
       // Special handling for Bank Account
       if (document.documentTypeName === 'bank_account') {
         const { data, error } = await supabase.functions.invoke('bank-statement', {
@@ -377,18 +430,41 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
     return null;
   }
 
+  // For 'other' document type - show a custom button with only manual verification option
+  if (document.documentTypeName === 'other') {
+    return (
+      <div className="flex space-x-2">
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-blue-600 border-blue-200 hover:bg-blue-50"
+          onClick={() => setOtherDocDialogOpen(true)}
+          disabled={isVerifying}
+        >
+          <CheckCircle className="h-4 w-4 mr-1" />
+          Verify
+        </Button>
+        
+        <OtherDocumentVerificationDialog
+          open={otherDocDialogOpen}
+          onOpenChange={setOtherDocDialogOpen}
+          onVerify={handleVerify}
+          onReject={handleReject}
+          isVerifying={isVerifying}
+          documentId={document.id}
+        />
+      </div>
+    );
+  }
+
+  // For other document types, use the regular verification dialog
   return (
     <div className="flex space-x-2">
-      <Button
-        variant="outline"
-        size="sm"
-        className="text-blue-600 border-blue-200 hover:bg-blue-50"
-        onClick={() => setDialogOpen(true)}
-        disabled={isVerifying}
-      >
-        <CheckCircle className="h-4 w-4 mr-1" />
-        Verify
-      </Button>
+      <DocumentVerifyDropdown
+        onVerify={handleVerify}
+        documentTypeName={document.documentTypeName}
+        isDisabled={isVerifying}
+      />
       
       <VerificationDialog
         open={dialogOpen}
