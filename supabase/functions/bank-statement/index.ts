@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 
@@ -40,11 +41,19 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    // Use production values directly
-    const baseUrl = "https://kyc-api.surepass.io";
-    const apiKey = Deno.env.get("SUREPASS_PRODUCTION_API_KEY") || "";
+    // Check environment to determine which API keys and URLs to use
+    const environment = Deno.env.get("ENVIRONMENT") || "production";
     
-    console.log(`Bank Statement Verification: Using production environment with base URL: ${baseUrl}`);
+    // Use the appropriate base URL and API key based on environment
+    const baseUrl = environment === "development" 
+      ? Deno.env.get("SUREPASS_BASE_URL") || "https://sandbox.surepass.io"
+      : Deno.env.get("SUREPASS_PRODUCTION_BASE_URL") || "https://kyc-api.surepass.io";
+    
+    const apiKey = environment === "development"
+      ? Deno.env.get("SUREPASS_SANDBOX_API_KEY") || ""
+      : Deno.env.get("SUREPASS_PRODUCTION_API_KEY") || "";
+    
+    console.log(`Bank Statement Verification: Using ${environment} environment with base URL: ${baseUrl}`);
     
     // Fetch all document statuses once
     const { data: documentStatuses, error: statusError } = await supabase
@@ -70,10 +79,10 @@ serve(async (req) => {
     
     // Handle API verification
     if (action === 'apiVerify') {
-      // First, get the document from the database to get the file URL
+      // First, get the document from the database to get the file URL and params
       const { data: document, error: docError } = await supabase
         .from('employee_documents')
-        .select('document_url, employee_id')
+        .select('document_url, employee_id, params')
         .eq('id', documentId)
         .single();
       
@@ -84,8 +93,83 @@ serve(async (req) => {
           { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      
+
       try {
+        // Extract account number and IFSC code from params
+        const params = document.params || {};
+        const accountNumber = params.accountNumber;
+        const ifscCode = params.ifscCode;
+        
+        // Step 0: First verify the bank account details if IFSC details are requested
+        if (params["ifsc-details"] && accountNumber && ifscCode) {
+          console.log("Verifying bank account details with IFSC:", ifscCode, "Account:", accountNumber);
+          
+          // Call the bank verification API first
+          const verificationResponse = await fetch(`${baseUrl}/api/v1/bank-verification/`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${apiKey}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              account_number: accountNumber,
+              ifsc: ifscCode
+            })
+          });
+          
+          const verificationResult = await verificationResponse.json();
+          console.log("Bank Verification API Response:", verificationResult);
+          
+          // Create log entry for the bank verification response
+          const verificationLogEntry = {
+            timestamp: new Date().toISOString(),
+            action: "bank_statement_details",
+            response: verificationResult
+          };
+          
+          // Update document with verification log
+          const { error: updateLogError } = await supabase
+            .from('employee_documents')
+            .update({
+              employee_docs_log: [verificationLogEntry],
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', documentId);
+            
+          if (updateLogError) {
+            console.error("Error updating document with verification log:", updateLogError);
+          }
+          
+          // Check if bank verification was successful
+          if (!verificationResult.success || verificationResult.status_code !== 200) {
+            // Update document with failed status
+            const { error: updateError } = await supabase
+              .from('employee_documents')
+              .update({
+                verification_status: 'failed',
+                document_status_id: statusMap[DOC_STATUS.REJECTED],
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', documentId);
+              
+            if (updateError) {
+              console.error("Error updating document with failed status:", updateError);
+            }
+            
+            return new Response(
+              JSON.stringify({ 
+                success: false, 
+                message: verificationResult.message || "Bank verification failed",
+                status_code: verificationResult.status_code
+              }),
+              { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+          
+          // Bank verification was successful, now continue with statement verification
+          console.log("Bank verification successful, proceeding with statement verification");
+        }
+        
         // Step 1: Download the file from Supabase storage
         console.log("Downloading file from 'employee-documents' storage bucket:", document.document_url);
         
@@ -136,6 +220,14 @@ serve(async (req) => {
           response: uploadResult
         };
         
+        // Combine logs - if we have verification logs, append the upload log
+        let combinedLogs = [];
+        if (document.employee_docs_log && Array.isArray(document.employee_docs_log)) {
+          combinedLogs = [...document.employee_docs_log, uploadLogEntry];
+        } else {
+          combinedLogs = [uploadLogEntry];
+        }
+        
         // Check if upload was successful
         if (!uploadResult.success || uploadResult.status_code !== 200) {
           // Update document with failed status and log
@@ -144,7 +236,7 @@ serve(async (req) => {
             .update({
               verification_status: 'failed',
               document_status_id: statusMap[DOC_STATUS.REJECTED],
-              employee_docs_log: [uploadLogEntry],
+              employee_docs_log: combinedLogs,
               updated_at: new Date().toISOString()
             })
             .eq('id', documentId);
@@ -175,7 +267,7 @@ serve(async (req) => {
           .update({
             verification_status: 'pending',
             document_status_id: statusMap[DOC_STATUS.PENDING],
-            employee_docs_log: [uploadLogEntry],
+            employee_docs_log: combinedLogs,
             updated_at: new Date().toISOString()
           })
           .eq('id', documentId);
@@ -194,7 +286,7 @@ serve(async (req) => {
             statusMap,
             supabase,
             document.employee_id,
-            uploadLogEntry
+            combinedLogs
           )
         );
         
@@ -322,7 +414,7 @@ async function processDocumentVerification(
   statusMap: Record<string, string>,
   supabase: any,
   employeeId: string,
-  uploadLogEntry: any
+  existingLogs: any[] = []
 ) {
   let attempts = 0;
   let isProcessingComplete = false;
@@ -356,7 +448,7 @@ async function processDocumentVerification(
       };
       
       // Combine logs
-      const combinedLogs = [uploadLogEntry, downloadLogEntry];
+      const combinedLogs = [...existingLogs, downloadLogEntry];
       
       // Check download result
       if (downloadResult.success) {
@@ -452,7 +544,7 @@ async function processDocumentVerification(
           .update({
             verification_status: 'failed',
             document_status_id: statusMap[DOC_STATUS.REJECTED],
-            employee_docs_log: [{
+            employee_docs_log: [...existingLogs, {
               timestamp: new Date().toISOString(),
               action: "bank_statement_download_error",
               response: { error: error.message, attempts }
@@ -482,7 +574,7 @@ async function processDocumentVerification(
       .update({
         verification_status: 'failed',
         document_status_id: statusMap[DOC_STATUS.REJECTED],
-        employee_docs_log: [{
+        employee_docs_log: [...existingLogs, {
           timestamp: new Date().toISOString(),
           action: "bank_statement_max_retries",
           response: { error: "Max retry attempts reached", attempts }
