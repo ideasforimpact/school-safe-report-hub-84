@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.43.1";
 
@@ -8,6 +7,18 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
 };
+
+// Document status constants
+const DOC_STATUS = {
+  PENDING: 'in-progress',
+  VERIFIED: 'governance',
+  REJECTED: 'rejected',
+  MANUAL: 'manual'
+};
+
+// Max retry attempts for checking document status
+const MAX_RETRY_ATTEMPTS = 10;
+const RETRY_DELAY_MS = 3000; // 3 seconds between retries
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -35,58 +46,27 @@ serve(async (req) => {
     
     console.log(`Bank Statement Verification: Using production environment with base URL: ${baseUrl}`);
     
-    // First, fetch document status IDs for governance, manual and rejected statuses
-    const { data: governanceStatus, error: governanceError } = await supabase
+    // Fetch all document statuses once
+    const { data: documentStatuses, error: statusError } = await supabase
       .from('document_status')
-      .select('id')
-      .eq('name', 'governance')
-      .single();
+      .select('id, name')
+      .in('name', [DOC_STATUS.PENDING, DOC_STATUS.VERIFIED, DOC_STATUS.REJECTED, DOC_STATUS.MANUAL]);
     
-    if (governanceError) {
-      console.error("Error fetching governance status:", governanceError);
+    if (statusError) {
+      console.error("Error fetching document statuses:", statusError);
       return new Response(
-        JSON.stringify({ error: "Could not find governance status" }),
+        JSON.stringify({ error: "Could not fetch document statuses" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
     
-    const { data: manualStatus, error: manualError } = await supabase
-      .from('document_status')
-      .select('id')
-      .eq('name', 'manual')
-      .single();
+    // Map status names to IDs
+    const statusMap = documentStatuses.reduce((acc, status) => {
+      acc[status.name] = status.id;
+      return acc;
+    }, {});
     
-    if (manualError) {
-      console.error("Error fetching manual status:", manualError);
-      return new Response(
-        JSON.stringify({ error: "Could not find manual status" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    
-    const { data: rejectedStatus, error: rejectedError } = await supabase
-      .from('document_status')
-      .select('id')
-      .eq('name', 'rejected')
-      .single();
-    
-    if (rejectedError) {
-      console.error("Error fetching rejected status:", rejectedError);
-      return new Response(
-        JSON.stringify({ error: "Could not find rejected status" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    
-    const governanceStatusId = governanceStatus?.id;
-    const manualStatusId = manualStatus?.id;
-    const rejectedStatusId = rejectedStatus?.id;
-    
-    console.log("Bank Statement Verification: Found status IDs:", {
-      governanceStatusId,
-      manualStatusId,
-      rejectedStatusId
-    });
+    console.log("Bank Statement Verification: Found status IDs:", statusMap);
     
     // Handle API verification
     if (action === 'apiVerify') {
@@ -106,7 +86,7 @@ serve(async (req) => {
       }
       
       try {
-        // Step 1: Download the file directly from Supabase storage
+        // Step 1: Download the file from Supabase storage
         console.log("Downloading file from 'employee-documents' storage bucket:", document.document_url);
         
         const { data: fileData, error: downloadError } = await supabase.storage
@@ -163,7 +143,7 @@ serve(async (req) => {
             .from('employee_documents')
             .update({
               verification_status: 'failed',
-              document_status_id: rejectedStatusId,
+              document_status_id: statusMap[DOC_STATUS.REJECTED],
               employee_docs_log: [uploadLogEntry],
               updated_at: new Date().toISOString()
             })
@@ -189,80 +169,43 @@ serve(async (req) => {
           throw new Error("Client ID not found in upload response");
         }
         
-        const downloadResponse = await fetch(`${baseUrl}/api/v1/bank/statement/download`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            client_id: clientId
+        // First update document status to "in-progress"
+        const { error: pendingUpdateError } = await supabase
+          .from('employee_documents')
+          .update({
+            verification_status: 'pending',
+            document_status_id: statusMap[DOC_STATUS.PENDING],
+            employee_docs_log: [uploadLogEntry],
+            updated_at: new Date().toISOString()
           })
-        });
+          .eq('id', documentId);
         
-        const downloadResult = await downloadResponse.json();
-        console.log("Bank Statement Download API Response:", downloadResult);
-        
-        // Create log entry for the download response
-        const downloadLogEntry = {
-          timestamp: new Date().toISOString(),
-          action: "bank_statement_download_api",
-          response: downloadResult
-        };
-        
-        // Combine logs
-        const combinedLogs = [uploadLogEntry, downloadLogEntry];
-        
-        // Check if download was successful
-        if (downloadResult.success && downloadResult.status_code === 200) {
-          // Update document with verified status and log
-          const { error: updateError } = await supabase
-            .from('employee_documents')
-            .update({
-              verification_status: 'verified',
-              document_status_id: governanceStatusId,
-              employee_docs_log: combinedLogs,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', documentId);
-            
-          if (updateError) {
-            console.error("Error updating document with verified status:", updateError);
-          }
-          
-          return new Response(
-            JSON.stringify({ 
-              success: true, 
-              message: "Bank statement verified successfully",
-              status_code: 200
-            }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        } else {
-          // Update document with failed status and log
-          const { error: updateError } = await supabase
-            .from('employee_documents')
-            .update({
-              verification_status: 'failed',
-              document_status_id: rejectedStatusId,
-              employee_docs_log: combinedLogs,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', documentId);
-            
-          if (updateError) {
-            console.error("Error updating document with failed status:", updateError);
-          }
-          
-          return new Response(
-            JSON.stringify({ 
-              success: false, 
-              message: downloadResult.message || "Bank statement download failed",
-              status_code: downloadResult.status_code
-            }),
-            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
+        if (pendingUpdateError) {
+          console.error("Error updating document with pending status:", pendingUpdateError);
         }
+        
+        // Start background processing
+        EdgeRuntime.waitUntil(
+          processDocumentVerification(
+            baseUrl,
+            apiKey,
+            clientId,
+            documentId,
+            statusMap,
+            supabase,
+            document.employee_id,
+            uploadLogEntry
+          )
+        );
+        
+        return new Response(
+          JSON.stringify({ 
+            success: true, 
+            message: "Bank statement verification in progress",
+            status_code: 202
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
         
       } catch (error) {
         console.error("Error verifying bank statement:", error);
@@ -272,7 +215,7 @@ serve(async (req) => {
           .from('employee_documents')
           .update({
             verification_status: 'failed',
-            document_status_id: rejectedStatusId,
+            document_status_id: statusMap[DOC_STATUS.REJECTED],
             employee_docs_log: [{
               timestamp: new Date().toISOString(),
               action: "bank_statement_api_error",
@@ -302,7 +245,7 @@ serve(async (req) => {
         .from('employee_documents')
         .update({
           verification_status: 'verified',
-          document_status_id: manualStatusId,
+          document_status_id: statusMap[DOC_STATUS.MANUAL],
           employee_docs_log: [],
           updated_at: new Date().toISOString()
         })
@@ -331,7 +274,7 @@ serve(async (req) => {
         .from('employee_documents')
         .update({
           verification_status: 'failed',
-          document_status_id: rejectedStatusId,
+          document_status_id: statusMap[DOC_STATUS.REJECTED],
           employee_docs_log: [],
           updated_at: new Date().toISOString()
         })
@@ -367,3 +310,189 @@ serve(async (req) => {
     );
   }
 });
+
+/**
+ * Process document verification with retries
+ */
+async function processDocumentVerification(
+  baseUrl: string,
+  apiKey: string,
+  clientId: string,
+  documentId: string,
+  statusMap: Record<string, string>,
+  supabase: any,
+  employeeId: string,
+  uploadLogEntry: any
+) {
+  let attempts = 0;
+  let isProcessingComplete = false;
+  
+  while (!isProcessingComplete && attempts < MAX_RETRY_ATTEMPTS) {
+    attempts++;
+    
+    try {
+      console.log(`Processing attempt ${attempts} for client ID: ${clientId}`);
+      
+      // Call the download API
+      const downloadResponse = await fetch(`${baseUrl}/api/v1/bank/statement/download`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          client_id: clientId
+        })
+      });
+      
+      const downloadResult = await downloadResponse.json();
+      console.log("Bank Statement Download API Response:", downloadResult);
+      
+      // Create log entry for the download response
+      const downloadLogEntry = {
+        timestamp: new Date().toISOString(),
+        action: "bank_statement_download_api",
+        response: downloadResult
+      };
+      
+      // Combine logs
+      const combinedLogs = [uploadLogEntry, downloadLogEntry];
+      
+      // Check download result
+      if (downloadResult.success) {
+        if (downloadResult.status_code === 200) {
+          // Processing complete - update document with verified status
+          const { error: updateError } = await supabase
+            .from('employee_documents')
+            .update({
+              verification_status: 'verified',
+              document_status_id: statusMap[DOC_STATUS.VERIFIED],
+              employee_docs_log: combinedLogs,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', documentId);
+            
+          if (updateError) {
+            console.error("Error updating document with verified status:", updateError);
+          } else {
+            console.log(`Document ${documentId} verified successfully`);
+          }
+          
+          isProcessingComplete = true;
+          break;
+        } 
+        else if (downloadResult.status_code === 202 && 
+                downloadResult.message_code === "pending_document") {
+          // Document still processing - keep the in-progress status
+          console.log(`Document ${documentId} still processing. Will retry in ${RETRY_DELAY_MS}ms`);
+          
+          // Update logs but keep the pending status
+          const { error: updateLogError } = await supabase
+            .from('employee_documents')
+            .update({
+              employee_docs_log: combinedLogs,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', documentId);
+            
+          if (updateLogError) {
+            console.error("Error updating document logs:", updateLogError);
+          }
+          
+          // Wait before retrying
+          await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+        } 
+        else {
+          // Unexpected status - update document with failed status
+          const { error: updateError } = await supabase
+            .from('employee_documents')
+            .update({
+              verification_status: 'failed',
+              document_status_id: statusMap[DOC_STATUS.REJECTED],
+              employee_docs_log: combinedLogs,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', documentId);
+            
+          if (updateError) {
+            console.error("Error updating document with failed status:", updateError);
+          }
+          
+          isProcessingComplete = true;
+          break;
+        }
+      } 
+      else {
+        // API error - update document with failed status
+        const { error: updateError } = await supabase
+          .from('employee_documents')
+          .update({
+            verification_status: 'failed',
+            document_status_id: statusMap[DOC_STATUS.REJECTED],
+            employee_docs_log: combinedLogs,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', documentId);
+          
+        if (updateError) {
+          console.error("Error updating document with failed status:", updateError);
+        }
+        
+        isProcessingComplete = true;
+        break;
+      }
+    } 
+    catch (error) {
+      console.error(`Error in verification attempt ${attempts}:`, error);
+      
+      // If we've reached max attempts, mark as failed
+      if (attempts >= MAX_RETRY_ATTEMPTS) {
+        const { error: updateError } = await supabase
+          .from('employee_documents')
+          .update({
+            verification_status: 'failed',
+            document_status_id: statusMap[DOC_STATUS.REJECTED],
+            employee_docs_log: [{
+              timestamp: new Date().toISOString(),
+              action: "bank_statement_download_error",
+              response: { error: error.message, attempts }
+            }],
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', documentId);
+          
+        if (updateError) {
+          console.error("Error updating document with failed status after max retries:", updateError);
+        }
+      } 
+      else {
+        // Wait before retrying
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+      }
+    }
+  }
+  
+  // If we've exited the loop without completing, it means we've reached max attempts
+  if (!isProcessingComplete) {
+    console.log(`Max retry attempts (${MAX_RETRY_ATTEMPTS}) reached for document ${documentId}`);
+    
+    // Update document with failed status
+    const { error: updateError } = await supabase
+      .from('employee_documents')
+      .update({
+        verification_status: 'failed',
+        document_status_id: statusMap[DOC_STATUS.REJECTED],
+        employee_docs_log: [{
+          timestamp: new Date().toISOString(),
+          action: "bank_statement_max_retries",
+          response: { error: "Max retry attempts reached", attempts }
+        }],
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', documentId);
+      
+    if (updateError) {
+      console.error("Error updating document with failed status after max retries:", updateError);
+    }
+  }
+}
