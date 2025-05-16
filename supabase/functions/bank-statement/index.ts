@@ -93,7 +93,7 @@ serve(async (req) => {
       // First, get the document from the database to get the file URL
       const { data: document, error: docError } = await supabase
         .from('employee_documents')
-        .select('document_image, employee_id')
+        .select('document_url, employee_id')
         .eq('id', documentId)
         .single();
       
@@ -105,43 +105,14 @@ serve(async (req) => {
         );
       }
       
-      console.log("Bank Statement Verification: Found document with data:", document);
+      console.log("Bank Statement Verification: Found document with URL:", document.document_url);
       
       try {
-        // We need to get the document image and convert it to a file
-        const documentUrl = document.document_image;
-        
-        if (!documentUrl) {
-          console.error("Document has no image/file attached");
-          return new Response(
-            JSON.stringify({ error: "Document has no file attached" }),
-            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-        
-        console.log("Attempting to fetch the PDF document from:", documentUrl);
-        
-        // Fetch the actual file content from the URL
-        const fileResponse = await fetch(documentUrl);
-        if (!fileResponse.ok) {
-          throw new Error(`Failed to fetch document file: ${fileResponse.statusText}`);
-        }
-        
-        // Get the file as blob
-        const fileBlob = await fileResponse.blob();
-        
-        console.log("Successfully fetched file, size:", fileBlob.size, "bytes");
-        
-        // Create a FormData object with the actual file
+        // Step 1: Call the upload API using FormData approach to match the curl example
+        // Create a FormData object and append the file URL
         const formData = new FormData();
+        formData.append('file', document.document_url);
         
-        // Extract filename from URL or use a default name
-        const fileName = documentUrl.split('/').pop() || 'bank_statement.pdf';
-        formData.append('file', new File([fileBlob], fileName, { type: 'application/pdf' }));
-        
-        console.log("Sending PDF file to Surepass API");
-        
-        // Step 1: Call the upload API with the actual file
         const uploadResponse = await fetch(`${baseUrl}/api/v1/bank/statement/upload`, {
           method: 'POST',
           headers: {
