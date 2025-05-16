@@ -42,6 +42,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const isVoterId = documentType === 'voter_id';
   const isDrivingLicense = documentType === 'driving_license';
   const isBankAccount = documentType === 'bank_account';
+  const isOther = documentType === 'other';
   const [showOtpInput, setShowOtpInput] = useState(false);
   const [otp, setOtp] = useState("");
   const [cooldownSeconds, setCooldownSeconds] = useState<number | null>(null);
@@ -55,6 +56,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   const [isDrivingLicenseVerifying, setIsDrivingLicenseVerifying] = useState(false);
   const [isBankAccountVerifying, setIsBankAccountVerifying] = useState(false);
   const [isAadharManualVerifying, setIsAadharManualVerifying] = useState(false);
+  const [isOtherVerifying, setIsOtherVerifying] = useState(false);
+  const [isOtherRejecting, setIsOtherRejecting] = useState(false);
 
   // Logging OTP state for debugging
   useEffect(() => {
@@ -89,6 +92,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       setIsVoterIdVerifying(false);
       setIsDrivingLicenseVerifying(false);
       setIsBankAccountVerifying(false);
+      setIsOtherVerifying(false);
+      setIsOtherRejecting(false);
       if (cooldownTimerId !== null) {
         clearInterval(cooldownTimerId);
         setCooldownTimerId(null);
@@ -611,6 +616,84 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     }
   };
 
+  // Handle Other document type manual verification
+  const handleOtherManualVerification = async () => {
+    setIsOtherVerifying(true);
+    
+    try {
+      console.log("Initiating manual verification for Other document type, ID:", documentId);
+      
+      const { data, error } = await supabase.functions.invoke('other-document-verification', {
+        body: {
+          action: 'manualVerify',
+          documentId,
+          verification_notes: 'Document manually verified by staff.'
+        }
+      });
+      
+      console.log("Other document manual verification response:", data, error);
+      
+      if (error) {
+        console.error('Error manually verifying Other document:', error);
+        toast.error("Verification Failed", {
+          description: error.message || "Failed to manually verify document. Please try again."
+        });
+        return;
+      }
+      
+      toast.success("Document Manually Verified", {
+        description: "The document has been manually verified successfully."
+      });
+      onVerify('manual');
+    } catch (err: any) {
+      console.error("Exception in handleOtherManualVerification:", err);
+      toast.error("Verification Error", {
+        description: err.message || "Failed to manually verify document"
+      });
+    } finally {
+      setIsOtherVerifying(false);
+    }
+  };
+  
+  // Handle Other document type rejection
+  const handleOtherRejection = async () => {
+    setIsOtherRejecting(true);
+    
+    try {
+      console.log("Rejecting verification for Other document type, ID:", documentId);
+      
+      const { data, error } = await supabase.functions.invoke('other-document-verification', {
+        body: {
+          action: 'reject',
+          documentId,
+          verification_notes: 'Document verification rejected by staff.'
+        }
+      });
+      
+      console.log("Other document rejection response:", data, error);
+      
+      if (error) {
+        console.error('Error rejecting Other document:', error);
+        toast.error("Rejection Failed", {
+          description: error.message || "Failed to reject document. Please try again."
+        });
+        return;
+      }
+      
+      toast.error("Document Rejected", {
+        description: "The document has been marked as failed verification."
+      });
+      onReject();
+    } catch (err: any) {
+      console.error("Exception in handleOtherRejection:", err);
+      toast.error("Rejection Error", {
+        description: err.message || "Failed to reject document"
+      });
+    } finally {
+      setIsOtherRejecting(false);
+    }
+  };
+
   const handleApiClick = async () => {
     if (isAadhar) {
       if (!documentNumber) {
@@ -695,6 +778,9 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     } else if (isBankAccount) {
       // Use dedicated Bank Account verification handler
       await handleBankAccountApiVerification();
+    } else if (isOther) {
+      // Handle Other document type manual verification
+      await handleOtherManualVerification();
     } else {
       // For other document types use the generic handler
       onVerify('api');
@@ -702,7 +788,9 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   };
 
   const handleManualClick = async () => {
-    if (isPan) {
+    if (isOther) {
+      await handleOtherManualVerification();
+    } else if (isPan) {
       await handlePanManualVerification();
     } else if (isVoterId) {
       await handleVoterIdManualVerification();
@@ -751,7 +839,9 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   };
 
   const handleRejectClick = async () => {
-    if (isPan) {
+    if (isOther) {
+      await handleOtherRejection();
+    } else if (isPan) {
       await handlePanRejection();
     } else if (isVoterId) {
       await handleVoterIdRejection();
@@ -879,63 +969,67 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         </DialogHeader>
         {!showOtpInput ? (
           <div className="flex flex-col gap-4 py-4">
-            <Button 
-              variant="outline" 
-              className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 justify-start"
-              onClick={handleApiClick}
-              disabled={isVerifying || cooldownSeconds !== null || isRequestingOtp || isPanVerifying || isVoterIdVerifying || isDrivingLicenseVerifying || isBankAccountVerifying || isAadharManualVerifying}
-            >
-              {isRequestingOtp || (isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) || 
-               (isDrivingLicense && isDrivingLicenseVerifying) || (isBankAccount && isBankAccountVerifying) ? (
-                <Loader2 className="h-4 w-4 mr-3 animate-spin" />
-              ) : (
-                <ShieldCheck className="h-4 w-4 mr-3" />
-              )}
-              {isAadhar 
-                ? cooldownSeconds !== null 
-                  ? `Retry in ${formatTime(cooldownSeconds)}` 
-                  : isRequestingOtp 
-                    ? 'Requesting OTP...' 
-                    : 'Verify via Aadhar API (Requires OTP)' 
-                : isPan
-                  ? isPanVerifying ? 'Verifying PAN...' : 'Verify via PAN API'
-                  : isVoterId
-                    ? isVoterIdVerifying ? 'Verifying Voter ID...' : 'Verify via Voter ID API'
-                    : isDrivingLicense
-                      ? isDrivingLicenseVerifying ? 'Verifying Driving License...' : 'Verify via Driving License API'
-                      : isBankAccount
-                        ? isBankAccountVerifying ? 'Verifying Bank Statement...' : 'Verify Bank Statement'
-                        : 'Verify via API'
-              }
-              {cooldownSeconds === null && !isRequestingOtp && !isPanVerifying && !isVoterIdVerifying && 
-               !isDrivingLicenseVerifying && !isBankAccountVerifying && (
-                <span className="ml-auto text-xs text-blue-500 font-normal">
-                  {isAadhar ? 'OTP verification' : 
-                   isPan ? 'Surepass verification' : 
-                   isVoterId ? 'Voter ID verification' : 
-                   isDrivingLicense ? 'Driving License verification' :
-                   isBankAccount ? 'Bank Statement verification' :
-                   'Automated check'}
-                </span>
-              )}
-            </Button>
+            {/* API Verification Button - Hide for "other" document type */}
+            {!isOther && (
+              <Button 
+                variant="outline" 
+                className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 justify-start"
+                onClick={handleApiClick}
+                disabled={isVerifying || cooldownSeconds !== null || isRequestingOtp || isPanVerifying || isVoterIdVerifying || isDrivingLicenseVerifying || isBankAccountVerifying || isAadharManualVerifying || isOtherVerifying || isOtherRejecting}
+              >
+                {isRequestingOtp || (isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) || 
+                 (isDrivingLicense && isDrivingLicenseVerifying) || (isBankAccount && isBankAccountVerifying) ? (
+                  <Loader2 className="h-4 w-4 mr-3 animate-spin" />
+                ) : (
+                  <ShieldCheck className="h-4 w-4 mr-3" />
+                )}
+                {isAadhar 
+                  ? cooldownSeconds !== null 
+                    ? `Retry in ${formatTime(cooldownSeconds)}` 
+                    : isRequestingOtp 
+                      ? 'Requesting OTP...' 
+                      : 'Verify via Aadhar API (Requires OTP)' 
+                  : isPan
+                    ? isPanVerifying ? 'Verifying PAN...' : 'Verify via PAN API'
+                    : isVoterId
+                      ? isVoterIdVerifying ? 'Verifying Voter ID...' : 'Verify via Voter ID API'
+                      : isDrivingLicense
+                        ? isDrivingLicenseVerifying ? 'Verifying Driving License...' : 'Verify via Driving License API'
+                        : isBankAccount
+                          ? isBankAccountVerifying ? 'Verifying Bank Statement...' : 'Verify Bank Statement'
+                          : 'Verify via API'
+                }
+                {cooldownSeconds === null && !isRequestingOtp && !isPanVerifying && !isVoterIdVerifying && 
+                 !isDrivingLicenseVerifying && !isBankAccountVerifying && (
+                  <span className="ml-auto text-xs text-blue-500 font-normal">
+                    {isAadhar ? 'OTP verification' : 
+                     isPan ? 'Surepass verification' : 
+                     isVoterId ? 'Voter ID verification' : 
+                     isDrivingLicense ? 'Driving License verification' :
+                     isBankAccount ? 'Bank Statement verification' :
+                     'Automated check'}
+                  </span>
+                )}
+              </Button>
+            )}
             <Button 
               variant="outline" 
               className="w-full bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200 justify-start"
               onClick={handleManualClick}
               disabled={isVerifying || isRequestingOtp || isPanVerifying || isVoterIdVerifying || 
-                        isDrivingLicenseVerifying || isBankAccountVerifying || isAadharManualVerifying}
+                        isDrivingLicenseVerifying || isBankAccountVerifying || isAadharManualVerifying ||
+                        isOtherVerifying || isOtherRejecting}
             >
               {(isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) || 
                (isDrivingLicense && isDrivingLicenseVerifying) || (isBankAccount && isBankAccountVerifying) || 
-               isAadharManualVerifying ? (
+               isAadharManualVerifying || isOtherVerifying ? (
                 <Loader2 className="h-4 w-4 mr-3 animate-spin" />
               ) : (
                 <ShieldCheck className="h-4 w-4 mr-3" />
               )}
               {(isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) || 
                (isDrivingLicense && isDrivingLicenseVerifying) || (isBankAccount && isBankAccountVerifying) || 
-               isAadharManualVerifying
+               isAadharManualVerifying || isOtherVerifying
                 ? 'Processing...' : 'Verify Manually'}
               <span className="ml-auto text-xs text-purple-500 font-normal">Manual review completed</span>
             </Button>
@@ -945,16 +1039,19 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               className="w-full bg-red-50 hover:bg-red-100 text-red-700 border-red-200 justify-start"
               onClick={handleRejectClick}
               disabled={isVerifying || isRequestingOtp || isPanVerifying || isVoterIdVerifying || 
-                        isDrivingLicenseVerifying || isBankAccountVerifying || isAadharManualVerifying}
+                        isDrivingLicenseVerifying || isBankAccountVerifying || isAadharManualVerifying ||
+                        isOtherVerifying || isOtherRejecting}
             >
               {(isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) || 
-               (isDrivingLicense && isDrivingLicenseVerifying) || (isBankAccount && isBankAccountVerifying) ? (
+               (isDrivingLicense && isDrivingLicenseVerifying) || (isBankAccount && isBankAccountVerifying) ||
+               isOtherRejecting ? (
                 <Loader2 className="h-4 w-4 mr-3 animate-spin" />
               ) : (
                 <ShieldCheck className="h-4 w-4 mr-3" />
               )}
               {(isPan && isPanVerifying) || (isVoterId && isVoterIdVerifying) || 
-               (isDrivingLicense && isDrivingLicenseVerifying) || (isBankAccount && isBankAccountVerifying) 
+               (isDrivingLicense && isDrivingLicenseVerifying) || (isBankAccount && isBankAccountVerifying) ||
+               isOtherRejecting
                 ? 'Processing...' : 'Reject Document'}
               <span className="ml-auto text-xs text-red-500 font-normal">Document verification failed</span>
             </Button>
@@ -1014,7 +1111,8 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
               variant="outline"
               onClick={() => onOpenChange(false)}
               disabled={isVerifying || isRequestingOtp || isPanVerifying || isVoterIdVerifying || 
-                        isDrivingLicenseVerifying || isBankAccountVerifying || isAadharManualVerifying}
+                        isDrivingLicenseVerifying || isBankAccountVerifying || isAadharManualVerifying ||
+                        isOtherVerifying || isOtherRejecting}
             >
               Cancel
             </Button>
