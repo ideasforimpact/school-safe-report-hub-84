@@ -84,6 +84,27 @@ export const useClientManagement = () => {
         joining_date: new Date().toISOString()
       };
 
+      // Check if employee already exists with this email and client_id
+      const { data: existingEmployee, error: checkError } = await supabase
+        .from('employees')
+        .select('*')
+        .eq('email', superAdminEmail)
+        .eq('client_id', clientId)
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        console.error('Error checking for existing employee:', checkError);
+        toast.error('Failed to check for existing employee');
+        return null;
+      }
+
+      // If employee exists, return the existing record
+      if (existingEmployee) {
+        console.log('Employee already exists for this client:', existingEmployee);
+        return existingEmployee;
+      }
+
+      // Insert new employee
       const { data, error } = await supabase
         .from('employees')
         .insert([employeeData])
@@ -95,6 +116,7 @@ export const useClientManagement = () => {
         return null;
       }
 
+      console.log('Created new super admin employee:', data[0]);
       return data[0];
     } catch (err) {
       console.error('Error in createEmployeeFromSuperAdminEmail:', err);
@@ -110,14 +132,14 @@ export const useClientManagement = () => {
     
     try {
       // First, add the client and get the client object back
-      await addClient(formData);
-      
-      // Find the newly added client (should be the last one added)
-      const newClient = clients.find(c => c.email === formData.email && c.name === formData.name);
+      const newClient = await addClient(formData);
       
       if (newClient && newClient.id) {
         // Now create the employee from super admin email
         await createEmployeeFromSuperAdminEmail(newClient.id, formData.superAdminEmail);
+        toast.success('Client and super admin employee created successfully');
+      } else {
+        toast.error('Failed to create client - no client ID returned');
       }
       
       setIsAddDialogOpen(false);
@@ -211,6 +233,7 @@ export const useClientManagement = () => {
       if (error || !existingEmployee) {
         // No super admin exists, create one
         await createEmployeeFromSuperAdminEmail(currentClient.id, formData.superAdminEmail);
+        toast.success('Client updated and super admin employee created');
       } else if (existingEmployee.email !== formData.superAdminEmail) {
         // Update the existing super admin's email
         const employeeId = formData.superAdminEmail.split('@')[0];
@@ -223,6 +246,10 @@ export const useClientManagement = () => {
             first_name: employeeId
           })
           .eq('id', existingEmployee.id);
+        
+        toast.success('Client and super admin employee updated');
+      } else {
+        toast.success('Client updated');
       }
       
       setIsEditDialogOpen(false);
