@@ -16,9 +16,9 @@ const Home = () => {
   const navigate = useNavigate();
   
   useEffect(() => {
-    // If user is logged in as SaaS owner, redirect them to dashboard
+    // If user is logged in as SaaS owner, redirect them to backoffice dashboard
     if (user && isSaasOwner) {
-      navigate('/dashboard');
+      navigate('/backoffice/dashboard');
     }
   }, [user, isSaasOwner, navigate]);
 

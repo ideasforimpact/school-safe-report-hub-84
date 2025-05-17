@@ -24,8 +24,8 @@ const Header = () => {
   // Find the client associated with the current user
   const userClient = user?.clientId ? clients.find(c => c.id === user.clientId) : null;
 
-  // Set dashboard path to /dashboard for all users
-  const dashboardPath = "/dashboard";
+  // Set dashboard path to backoffice/dashboard for SaaS owners, /dashboard for others
+  const dashboardPath = isSaasOwner ? "/backoffice/dashboard" : "/dashboard";
 
   return (
     <div className="w-full h-16 bg-white shadow-sm">
@@ -54,8 +54,16 @@ const Header = () => {
               {/* Settings Menu - Only visible for admins */}
               {isAdmin && !isSaasOwner && <AdminSettingsMenu />}
               
-              {/* Show Admin Settings Menu for SaaS Owner too */}
-              {isSaasOwner && <AdminSettingsMenu />}
+              {/* For SaaS Owner - show Backoffice button */}
+              {isSaasOwner && (
+                <Button 
+                  variant="outline" 
+                  onClick={() => navigate('/backoffice/dashboard')}
+                  className="mr-2"
+                >
+                  Backoffice Dashboard
+                </Button>
+              )}
 
               <UserProfileMenu />
             </div>
@@ -71,6 +79,3 @@ const Header = () => {
       </div>
     </div>
   );
-};
-
-export default Header;
