@@ -158,17 +158,6 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload }: BasicInfoTabP
           required
         />
       </div>
-      
-      {/* New Website field added before Active Client checkbox */}
-      <div className="space-y-2">
-        <label htmlFor="website">Website</label>
-        <Input
-          id="website"
-          value={formData.website || ''}
-          onChange={(e) => setFormData({...formData, website: e.target.value})}
-          placeholder="Enter website URL"
-        />
-      </div>
 
       <div className="flex items-center space-x-2 pt-2">
         <Checkbox 
