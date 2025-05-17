@@ -21,6 +21,7 @@ export const mapDbClientToClient = (dbClient: ClientRecord) => {
     logo: dbClient.logo || undefined,
     institutionType: dbClient.institution_type || undefined,
     allowedDomains: dbClient.allowed_domains ? dbClient.allowed_domains.split(',') : [],
+    superAdminAllowedDomains: dbClient.super_admin_allowed_domain ? dbClient.super_admin_allowed_domain.split(',') : [],
     authProviders: parseAuthProviders(dbClient.auth_providers || '')
   };
 };
@@ -45,6 +46,9 @@ export const prepareClientForDb = (client: any): Omit<ClientRecord, 'id' | 'crea
     institution_type: client.institutionType || null,
     allowed_domains: client.allowedDomains && client.allowedDomains.length > 0 
       ? client.allowedDomains.join(',') 
+      : null,
+    super_admin_allowed_domain: client.superAdminAllowedDomains && client.superAdminAllowedDomains.length > 0
+      ? client.superAdminAllowedDomains.join(',')
       : null,
     auth_providers: client.authProviders 
       ? Object.entries(client.authProviders)

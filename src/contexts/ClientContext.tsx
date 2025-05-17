@@ -20,6 +20,7 @@ export interface Client {
   institutionType?: string;
   moduleAccess?: Partial<ModulePermissions>;
   allowedDomains?: string[];
+  superAdminAllowedDomains?: string[]; // New field for super admin allowed domains
   authProviders?: {
     [key in OAuthProviderName]?: boolean;
   };
@@ -211,7 +212,8 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         // Add the new client to state
         const newClient = {
           ...mapDbClientToClient(data),
-          moduleAccess: clientData.moduleAccess
+          moduleAccess: clientData.moduleAccess,
+          superAdminAllowedDomains: clientData.superAdminAllowedDomains,
         };
         
         setClients(prev => [...prev, newClient]);

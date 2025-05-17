@@ -22,9 +22,21 @@ interface ClientData {
   logo?: string;
   institution_type?: string;
   allowed_domains?: string;
+  super_admin_allowed_domain?: string; // Added for super admin allowed domains
   auth_providers?: string;
   moduleAccess?: Record<string, boolean>;
-  superAdminEmail?: string; // Added to handle super admin email
+  superAdminEmail?: string;
+}
+
+// Check if super admin email domain is allowed
+function isSuperAdminEmailDomainAllowed(email: string, allowedDomains: string | null): boolean {
+  if (!email || !allowedDomains) return true; // If no restrictions, allow all
+  
+  const emailDomain = email.split('@')[1]?.toLowerCase();
+  if (!emailDomain) return false;
+  
+  const domainsArray = allowedDomains.split(',');
+  return domainsArray.some(domain => domain.toLowerCase() === emailDomain);
 }
 
 async function createEmployeeFromSuperAdminEmail(clientId: string, superAdminEmail: string) {
@@ -287,6 +299,18 @@ serve(async (req) => {
         const moduleAccess = clientData.moduleAccess;
         const superAdminEmail = clientData.superAdminEmail; // Get the super admin email
         
+        // Validate super admin email domain if restrictions are set
+        if (superAdminEmail && clientData.super_admin_allowed_domain) {
+          if (!isSuperAdminEmailDomainAllowed(superAdminEmail, clientData.super_admin_allowed_domain)) {
+            return new Response(JSON.stringify({ 
+              error: 'Super Admin email domain is not allowed. Please check the Super Admin Allowed Domains.' 
+            }), {
+              headers: { 'Content-Type': 'application/json', ...corsHeaders },
+              status: 400,
+            });
+          }
+        }
+        
         // Remove moduleAccess and superAdminEmail from client data before insertion
         const { moduleAccess: _, superAdminEmail: __, ...clientOnly } = clientData;
 
@@ -346,6 +370,33 @@ serve(async (req) => {
             headers: { 'Content-Type': 'application/json', ...corsHeaders },
             status: 400,
           });
+        }
+        
+        // Get current client data to check super admin domain validation
+        const { data: currentClient, error: fetchError } = await supabase
+          .from('clients')
+          .select('super_admin_allowed_domain')
+          .eq('id', id)
+          .single();
+          
+        if (fetchError) {
+          console.error('Error fetching current client data:', fetchError);
+        }
+
+        // Validate super admin email domain if restrictions are set
+        if (superAdminEmail && (clientUpdates.super_admin_allowed_domain || 
+            (currentClient && currentClient.super_admin_allowed_domain))) {
+          const domains = clientUpdates.super_admin_allowed_domain || 
+            (currentClient ? currentClient.super_admin_allowed_domain : null);
+            
+          if (domains && !isSuperAdminEmailDomainAllowed(superAdminEmail, domains)) {
+            return new Response(JSON.stringify({ 
+              error: 'Super Admin email domain is not allowed. Please check the Super Admin Allowed Domains.' 
+            }), {
+              headers: { 'Content-Type': 'application/json', ...corsHeaders },
+              status: 400,
+            });
+          }
         }
 
         // Update client data

@@ -22,6 +22,7 @@ export interface ClientFormData {
   authProviders: {
     [key in OAuthProviderName]?: boolean;
   };
+  superAdminAllowedDomains: string[]; // New field for super admin allowed domains
 }
 
 const initialFormData: ClientFormData = {
@@ -50,7 +51,8 @@ const initialFormData: ClientFormData = {
     google: false,
     microsoft: false,
     zoho: false
-  }
+  },
+  superAdminAllowedDomains: [] // Initialize the new field
 };
 
 export const useClientManagement = () => {
@@ -63,6 +65,16 @@ export const useClientManagement = () => {
   const resetForm = () => {
     setFormData({...initialFormData});
     setCurrentClient(null);
+  };
+
+  // Check if super admin email domain is allowed
+  const isSuperAdminEmailDomainAllowed = (email: string, allowedDomains: string[]): boolean => {
+    if (!email || allowedDomains.length === 0) return true; // If no restrictions, allow all
+    
+    const emailDomain = email.split('@')[1]?.toLowerCase();
+    if (!emailDomain) return false;
+    
+    return allowedDomains.some(domain => domain.toLowerCase() === emailDomain);
   };
 
   const createEmployeeFromSuperAdminEmail = async (clientId: string, superAdminEmail: string) => {
@@ -151,7 +163,7 @@ export const useClientManagement = () => {
       // Update the existing employee with the new email
       const employeeId = superAdminEmail.split('@')[0];
       
-      const { data, updateError } = await supabase
+      const { data, error: updateError } = await supabase
         .from('employees')
         .update({
           email: superAdminEmail,
@@ -178,6 +190,12 @@ export const useClientManagement = () => {
   const handleAddClient = async () => {
     if (!formData.superAdminEmail) {
       toast.error('Super Admin Email is required');
+      return;
+    }
+    
+    // Check if super admin email domain is allowed
+    if (!isSuperAdminEmailDomainAllowed(formData.superAdminEmail, formData.superAdminAllowedDomains)) {
+      toast.error('Super Admin email domain is not allowed. Please check the Super Admin Allowed Domains list.');
       return;
     }
     
@@ -249,6 +267,7 @@ export const useClientManagement = () => {
         institutionType: (client.institutionType as InstitutionType) || 'Other',
         allowedDomains: client.allowedDomains || [],
         superAdminEmail: superAdminEmail,
+        superAdminAllowedDomains: client.superAdminAllowedDomains || [], // Load super admin allowed domains
         authProviders: {
           google: client.authProviders?.google ?? false,
           microsoft: client.authProviders?.microsoft ?? false,
@@ -267,6 +286,12 @@ export const useClientManagement = () => {
     
     if (!formData.superAdminEmail) {
       toast.error('Super Admin Email is required');
+      return;
+    }
+    
+    // Check if super admin email domain is allowed
+    if (!isSuperAdminEmailDomainAllowed(formData.superAdminEmail, formData.superAdminAllowedDomains)) {
+      toast.error('Super Admin email domain is not allowed. Please check the Super Admin Allowed Domains list.');
       return;
     }
     
@@ -306,7 +331,8 @@ export const useClientManagement = () => {
     handleEditClick,
     handleUpdateClient,
     handleDeleteClient,
-    resetForm
+    resetForm,
+    isSuperAdminEmailDomainAllowed
   };
 };
 

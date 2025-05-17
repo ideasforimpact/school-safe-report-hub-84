@@ -84,10 +84,25 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
     });
   };
 
-  // Ensure allowedDomains is always an array
+  const addSuperAdminDomain = (domain: string) => {
+    setFormData({
+      ...formData,
+      superAdminAllowedDomains: [...formData.superAdminAllowedDomains, domain]
+    });
+  };
+
+  const removeSuperAdminDomain = (domain: string) => {
+    setFormData({
+      ...formData,
+      superAdminAllowedDomains: formData.superAdminAllowedDomains.filter(d => d !== domain)
+    });
+  };
+
+  // Ensure allowedDomains and superAdminAllowedDomains are always arrays
   const safeFormData = {
     ...formData,
-    allowedDomains: formData.allowedDomains || []
+    allowedDomains: formData.allowedDomains || [],
+    superAdminAllowedDomains: formData.superAdminAllowedDomains || []
   };
 
   return (
@@ -127,6 +142,8 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
               formData={safeFormData}
               onAddDomain={addDomain}
               onRemoveDomain={removeDomain}
+              onAddSuperAdminDomain={addSuperAdminDomain}
+              onRemoveSuperAdminDomain={removeSuperAdminDomain}
               onProviderChange={handleAuthProviderChange}
             />
           </TabsContent>

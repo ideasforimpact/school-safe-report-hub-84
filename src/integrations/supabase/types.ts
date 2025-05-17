@@ -113,6 +113,7 @@ export type Database = {
           logo: string | null
           name: string
           phone: string | null
+          super_admin_allowed_domain: string | null
         }
         Insert: {
           active?: boolean
@@ -126,6 +127,7 @@ export type Database = {
           logo?: string | null
           name: string
           phone?: string | null
+          super_admin_allowed_domain?: string | null
         }
         Update: {
           active?: boolean
@@ -139,6 +141,7 @@ export type Database = {
           logo?: string | null
           name?: string
           phone?: string | null
+          super_admin_allowed_domain?: string | null
         }
         Relationships: []
       }
