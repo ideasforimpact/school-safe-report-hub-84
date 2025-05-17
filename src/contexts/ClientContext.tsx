@@ -29,7 +29,7 @@ interface ClientContextType {
   clients: Client[];
   loading: boolean;
   setClient: (client: Client | null) => void;
-  addClient: (clientData: Omit<Client, 'id' | 'creationDate'>) => Promise<void>;
+  addClient: (clientData: Omit<Client, 'id' | 'creationDate'>) => Promise<Client | null>;
   updateClient: (id: string, updates: Partial<Client>) => Promise<void>;
   deleteClient: (id: string) => Promise<void>;
   isEmailDomainAllowed?: (email: string, clientId: string) => boolean;
@@ -215,10 +215,15 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         
         setClients(prev => [...prev, newClient]);
         toast.success('Client added successfully');
+        
+        // Return the newly created client for further processing
+        return newClient;
       }
+      return null;
     } catch (error) {
       console.error('Error adding client:', error);
       toast.error('Failed to add client');
+      return null;
     } finally {
       setLoading(false);
     }
@@ -354,3 +359,5 @@ export const useClient = (): ClientContextType => {
 
 // Export types
 export type { ClientContextType };
+
+</edits_to_apply>

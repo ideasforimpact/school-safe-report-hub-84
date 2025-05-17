@@ -24,6 +24,65 @@ interface ClientData {
   allowed_domains?: string;
   auth_providers?: string;
   moduleAccess?: Record<string, boolean>;
+  superAdminEmail?: string; // Added to handle super admin email
+}
+
+async function createEmployeeFromSuperAdminEmail(clientId: string, superAdminEmail: string) {
+  try {
+    // Extract employee_id from the email (part before @ symbol)
+    const employeeId = superAdminEmail.split('@')[0];
+    
+    // Create the employee record
+    const employeeData = {
+      employee_id: employeeId,
+      first_name: employeeId, // Using the part before @ as first name
+      last_name: '', // Empty last name
+      email: superAdminEmail,
+      department: 'Admin',
+      employee_type: 'permanent',
+      status: true,
+      is_super_admin: true,
+      client_id: clientId,
+      joining_date: new Date().toISOString()
+    };
+
+    // Check if employee already exists with this email and client_id
+    const { data: existingEmployee, error: checkError } = await supabase
+      .from('employees')
+      .select('*')
+      .eq('email', superAdminEmail)
+      .eq('client_id', clientId)
+      .single();
+
+    if (checkError && checkError.code !== 'PGRST116') {
+      console.error('Error checking for existing employee:', checkError);
+      return null;
+    }
+
+    // If employee exists, return the existing record
+    if (existingEmployee) {
+      console.log('Employee already exists for this client:', existingEmployee);
+      return existingEmployee;
+    }
+
+    // Insert new employee
+    const { data, error } = await supabase
+      .from('employees')
+      .insert([employeeData])
+      .select('*')
+      .single();
+
+    if (error) {
+      console.error("Error creating employee from super admin email:", error);
+      return null;
+    }
+
+    console.log('Created new super admin employee:', data);
+    return data;
+  } catch (err) {
+    console.error('Error in createEmployeeFromSuperAdminEmail:', err);
+    return null;
+  }
 }
 
 serve(async (req) => {
@@ -137,9 +196,10 @@ serve(async (req) => {
         // Create a new client with module access
         const clientData: ClientData = requestData.client;
         const moduleAccess = clientData.moduleAccess;
+        const superAdminEmail = clientData.superAdminEmail; // Get the super admin email
         
-        // Remove moduleAccess from client data before insertion
-        const { moduleAccess: _, ...clientOnly } = clientData;
+        // Remove moduleAccess and superAdminEmail from client data before insertion
+        const { moduleAccess: _, superAdminEmail: __, ...clientOnly } = clientData;
 
         // Insert client first
         const { data: newClient, error: clientError } = await supabase
@@ -171,18 +231,26 @@ serve(async (req) => {
           }
         }
 
+        // Create employee from super admin email if provided
+        let employee = null;
+        if (superAdminEmail) {
+          employee = await createEmployeeFromSuperAdminEmail(newClient.id, superAdminEmail);
+        }
+
         return new Response(JSON.stringify({ 
           client: {
             ...newClient,
-            moduleAccess
-          } 
+            moduleAccess,
+            superAdminEmail
+          },
+          employee
         }), {
           headers: { 'Content-Type': 'application/json', ...corsHeaders },
           status: 201,
         });
       } else if (operation === 'update') {
         // Update an existing client with module access
-        const { id, moduleAccess, ...clientUpdates } = requestData.client;
+        const { id, moduleAccess, superAdminEmail, ...clientUpdates } = requestData.client;
 
         if (!id) {
           return new Response(JSON.stringify({ error: 'Client ID is required' }), {
@@ -233,11 +301,55 @@ serve(async (req) => {
           }
         }
 
+        // Handle super admin email update
+        let employee = null;
+        if (superAdminEmail) {
+          // Check if a super admin employee already exists for this client
+          const { data: existingEmployee, error: empError } = await supabase
+            .from('employees')
+            .select('*')
+            .eq('client_id', id)
+            .eq('is_super_admin', true)
+            .single();
+
+          if (empError && empError.code !== 'PGRST116') {
+            console.error('Error checking for existing employee:', empError);
+          } else if (existingEmployee) {
+            // Update existing employee if email changed
+            if (existingEmployee.email !== superAdminEmail) {
+              const employeeId = superAdminEmail.split('@')[0];
+              const { data, error } = await supabase
+                .from('employees')
+                .update({
+                  email: superAdminEmail,
+                  employee_id: employeeId,
+                  first_name: employeeId
+                })
+                .eq('id', existingEmployee.id)
+                .select()
+                .single();
+
+              if (error) {
+                console.error('Error updating employee email:', error);
+              } else {
+                employee = data;
+              }
+            } else {
+              employee = existingEmployee;
+            }
+          } else {
+            // Create new super admin employee
+            employee = await createEmployeeFromSuperAdminEmail(id, superAdminEmail);
+          }
+        }
+
         return new Response(JSON.stringify({ 
           client: {
             ...updatedClient,
-            moduleAccess
-          } 
+            moduleAccess,
+            superAdminEmail
+          },
+          employee
         }), {
           headers: { 'Content-Type': 'application/json', ...corsHeaders },
           status: 200,

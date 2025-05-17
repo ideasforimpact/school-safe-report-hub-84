@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Client, useClient, InstitutionType } from '@/contexts/ClientContext';
 import { OAuthProviderName } from '@/utils/authProviders';
@@ -131,8 +130,9 @@ export const useClientManagement = () => {
     }
     
     try {
-      // First, add the client and get the client object back
-      const newClient = await addClient(formData);
+      // First, add the client and get the client object back with proper typing
+      const result = await addClient(formData);
+      const newClient = result as unknown as Client; // Cast to Client type
       
       if (newClient && newClient.id) {
         // Now create the employee from super admin email
