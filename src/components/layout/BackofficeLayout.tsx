@@ -31,16 +31,6 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
     }, 0);
     return null;
   }
-  
-  const isActive = (path: string) => location.pathname === path;
-
-  const navigationItems = [
-    { name: 'Dashboard', path: '/backoffice/dashboard' },
-    { name: 'Client Management', path: '/backoffice/clients' },
-    { name: 'Assessment Templates', path: '/backoffice/assessments/templates' },
-    { name: 'Analytics', path: '/backoffice/analytics' },
-    { name: 'Settings', path: '/backoffice/settings' },
-  ];
 
   const handleLogout = () => {
     logout();
@@ -91,27 +81,6 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
               )}
             </div>
           </div>
-        </div>
-      </div>
-      
-      {/* Navigation tabs */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="container mx-auto px-6">
-          <nav className="flex space-x-8 overflow-x-auto">
-            {navigationItems.map((item) => (
-              <button
-                key={item.path}
-                onClick={() => navigate(item.path)}
-                className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
-                  isActive(item.path) || location.pathname.startsWith(item.path + '/')
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                } transition-colors`}
-              >
-                {item.name}
-              </button>
-            ))}
-          </nav>
         </div>
       </div>
       
