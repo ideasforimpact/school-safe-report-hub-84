@@ -2,7 +2,7 @@
 import React from 'react';
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ImageIcon } from 'lucide-react';
+import { ImageIcon, Asterisk } from 'lucide-react';
 import { 
   Select, 
   SelectContent, 
@@ -21,6 +21,7 @@ interface BasicInfoTabProps {
     active: boolean;
     logo: string;
     institutionType: InstitutionType;
+    superAdminEmail?: string;
   };
   setFormData: (formData: any) => void;
   handleLogoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -30,6 +31,14 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload }: BasicInfoTabP
   const institutionTypes: InstitutionType[] = [
     'CBSE', 'IB', 'IGCSE', 'ICSE', 'Matric', 'Combined Campus', 'Other'
   ];
+
+  // Component for required field label
+  const RequiredFieldLabel = ({ children }: { children: React.ReactNode }) => (
+    <div className="flex items-center gap-1">
+      {children}
+      <Asterisk className="h-3 w-3 text-red-500" />
+    </div>
+  );
 
   return (
     <div className="space-y-4">
@@ -63,20 +72,26 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload }: BasicInfoTabP
       </div>
 
       <div className="space-y-2">
-        <label htmlFor="name">Client Name</label>
+        <RequiredFieldLabel>
+          <label htmlFor="name">Client Name</label>
+        </RequiredFieldLabel>
         <Input
           id="name"
           value={formData.name}
           onChange={(e) => setFormData({...formData, name: e.target.value})}
           placeholder="Enter client name"
+          required
         />
       </div>
       
       <div className="space-y-2">
-        <label htmlFor="institutionType">Institution Type</label>
+        <RequiredFieldLabel>
+          <label htmlFor="institutionType">Institution Type</label>
+        </RequiredFieldLabel>
         <Select
           value={formData.institutionType}
           onValueChange={(value) => setFormData({...formData, institutionType: value as InstitutionType})}
+          required
         >
           <SelectTrigger className="w-full">
             <SelectValue placeholder="Select institution type" />
@@ -90,33 +105,56 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload }: BasicInfoTabP
           </SelectContent>
         </Select>
       </div>
+
+      <div className="space-y-2">
+        <RequiredFieldLabel>
+          <label htmlFor="superAdminEmail">Super Admin Email</label>
+        </RequiredFieldLabel>
+        <Input
+          id="superAdminEmail"
+          type="email"
+          value={formData.superAdminEmail || ''}
+          onChange={(e) => setFormData({...formData, superAdminEmail: e.target.value})}
+          placeholder="Enter super admin email"
+          required
+        />
+      </div>
       
       <div className="space-y-2">
-        <label htmlFor="contactPerson">Contact Person</label>
+        <RequiredFieldLabel>
+          <label htmlFor="contactPerson">Contact Person</label>
+        </RequiredFieldLabel>
         <Input
           id="contactPerson"
           value={formData.contactPerson}
           onChange={(e) => setFormData({...formData, contactPerson: e.target.value})}
           placeholder="Enter contact person name"
+          required
         />
       </div>
       <div className="space-y-2">
-        <label htmlFor="email">Email</label>
+        <RequiredFieldLabel>
+          <label htmlFor="email">Email</label>
+        </RequiredFieldLabel>
         <Input
           id="email"
           type="email"
           value={formData.email}
           onChange={(e) => setFormData({...formData, email: e.target.value})}
           placeholder="Enter email"
+          required
         />
       </div>
       <div className="space-y-2">
-        <label htmlFor="phone">Phone</label>
+        <RequiredFieldLabel>
+          <label htmlFor="phone">Phone</label>
+        </RequiredFieldLabel>
         <Input
           id="phone"
           value={formData.phone}
           onChange={(e) => setFormData({...formData, phone: e.target.value})}
           placeholder="Enter phone number"
+          required
         />
       </div>
 

@@ -16,7 +16,7 @@ import AuthTab from './tabs/AuthTab';
 import { OAuthProviderName } from '@/utils/authProviders';
 import { ClientFormData } from '@/hooks/useClientManagement';
 import { ModulePermissions } from '@/contexts/auth/types';
-import { Loader2 } from 'lucide-react'; // Import loading spinner
+import { Loader2, Asterisk } from 'lucide-react'; // Import both loading spinner and asterisk
 
 interface ClientDialogProps {
   isOpen: boolean;
