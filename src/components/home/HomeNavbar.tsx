@@ -2,9 +2,16 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ShieldCheck, HomeIcon, FileText, CreditCard, HelpCircle, Users } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
-const HomeNavbar = () => {
+interface HomeNavbarProps {
+  showBackoffice?: boolean;
+  hideSignIn?: boolean;
+}
+
+const HomeNavbar = ({ showBackoffice = false, hideSignIn = false }: HomeNavbarProps) => {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   return (
     <nav className="bg-white shadow-sm">
@@ -43,27 +50,40 @@ const HomeNavbar = () => {
               <HelpCircle className="h-4 w-4 mr-1" />
               Support
             </Link>
-            <Link 
-              to="/backoffice" 
-              className="flex items-center text-gray-700 hover:text-primary transition-colors font-medium"
-            >
-              <Users className="h-4 w-4 mr-1" />
-              Backoffice
-            </Link>
+            {showBackoffice && (
+              <Link 
+                to="/dashboard" 
+                className="flex items-center text-primary hover:text-primary-dark transition-colors font-medium"
+              >
+                <Users className="h-4 w-4 mr-1" />
+                Backoffice
+              </Link>
+            )}
             <div className="ml-0 md:ml-4 mt-4 md:mt-0 w-full md:w-auto flex gap-2">
-              <Button 
-                variant="outline" 
-                onClick={() => navigate('/login')}
-                className="transition-all hover:bg-primary hover:text-white"
-              >
-                Sign In
-              </Button>
-              <Button 
-                onClick={() => navigate('/login')}
-                className="bg-primary hover:bg-primary/80 transition-all"
-              >
-                Get Started
-              </Button>
+              {user ? (
+                <Button 
+                  onClick={() => navigate('/dashboard')}
+                  className="bg-primary hover:bg-primary/80 transition-all"
+                >
+                  Dashboard
+                </Button>
+              ) : !hideSignIn && (
+                <>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => navigate('/login')}
+                    className="transition-all hover:bg-primary hover:text-white"
+                  >
+                    Sign In
+                  </Button>
+                  <Button 
+                    onClick={() => navigate('/login')}
+                    className="bg-primary hover:bg-primary/80 transition-all"
+                  >
+                    Get Started
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>

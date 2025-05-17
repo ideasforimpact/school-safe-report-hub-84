@@ -1,5 +1,4 @@
-
-import React, { createContext, useEffect, useState } from 'react';
+import React, { createContext, useEffect, useState, useRef } from 'react';
 import { User, AuthContextType, UserWithPassword } from './types';
 import { 
   getUserFromStorage, 
@@ -46,6 +45,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
   const [authError, setAuthError] = useState<string | null>(null);
   const [isBackofficeUser, setIsBackofficeUser] = useState<boolean>(false);
+  const authInitCompleteRef = useRef<boolean>(false);
 
   // Update display users whenever users changes
   useEffect(() => {
@@ -254,7 +254,46 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       toast.error("Not authenticated");
       return false;
     }
-
+    
+    // If it's a backoffice user, use Supabase function to change password
+    if (isBackofficeUser) {
+      // First verify current password
+      const { data: isValid, error: verifyError } = await supabase.rpc('verify_password', {
+        email: currentUser.email,
+        password_attempt: currentPassword
+      });
+      
+      if (verifyError || !isValid) {
+        toast.error("Current password is incorrect");
+        return false;
+      }
+      
+      // Hash the new password
+      const { data: hashedPassword, error: hashError } = await supabase.rpc('hash_password', {
+        password: newPassword
+      });
+      
+      if (hashError) {
+        toast.error("Error updating password");
+        return false;
+      }
+      
+      // Update the password
+      const { error: updateError } = await supabase
+        .from('backoffice_users')
+        .update({ password: hashedPassword })
+        .eq('id', currentUser.id);
+      
+      if (updateError) {
+        toast.error("Error updating password");
+        return false;
+      }
+      
+      toast.success("Password updated successfully");
+      return true;
+    }
+    
+    // Regular user password change
     const storedUsers = getUsersFromStorage();
     const updatedUsers = changeUserPassword(storedUsers, currentUser.id, currentPassword, newPassword);
 
