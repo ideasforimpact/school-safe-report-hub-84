@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
@@ -47,6 +48,7 @@ import BackofficeLayout from '@/components/layout/BackofficeLayout';
 // Backoffice Pages
 import BackofficeDashboard from '@/pages/backoffice/BackofficeDashboard';
 import BackofficeSettings from '@/pages/backoffice/BackofficeSettings';
+import BackofficeLogin from '@/pages/backoffice/BackofficeLogin';
 
 // Backoffice Wrapper Component for routing
 const BackofficeWrapper = ({ component: Component }) => {
@@ -70,6 +72,7 @@ function App() {
                     <Routes>
                       {/* Public routes */}
                       <Route path="/login" element={<Login />} />
+                      <Route path="/backoffice/login" element={<BackofficeLogin />} />
                       <Route path="/home" element={<Home />} />
                       <Route path="/pricing" element={<Pricing />} />
                       
