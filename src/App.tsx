@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
@@ -13,6 +14,7 @@ import { AssessmentProvider } from '@/contexts/assessment/AssessmentContext';
 // Pages
 import Dashboard from '@/pages/Dashboard';
 import Login from '@/pages/Login';
+import BackofficeLogin from '@/pages/BackofficeLogin';
 import UserManagement from '@/pages/UserManagement';
 import ClientManagement from '@/pages/ClientManagement';
 import EmployeeManagement from '@/pages/EmployeeManagement';
@@ -70,6 +72,7 @@ function App() {
                     <Routes>
                       {/* Public routes */}
                       <Route path="/login" element={<Login />} />
+                      <Route path="/backoffice/login" element={<BackofficeLogin />} />
                       <Route path="/home" element={<Home />} />
                       <Route path="/pricing" element={<Pricing />} />
                       
