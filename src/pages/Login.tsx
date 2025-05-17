@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth';
@@ -84,9 +83,6 @@ const Login = () => {
           </form>
           <div className="text-center text-sm text-gray-500">
             Don't have an account? <a href="/home" className="text-primary-600 hover:underline">Contact to Admin</a>
-          </div>
-          <div className="text-center text-sm text-gray-500">
-            <a href="/backoffice/login" className="text-primary-600 hover:underline">Backoffice Login</a>
           </div>
         </CardContent>
       </Card>
