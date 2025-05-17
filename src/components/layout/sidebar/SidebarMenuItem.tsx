@@ -26,6 +26,7 @@ const SidebarMenuItem = ({ icon: IconComponent, label, path, isActive }: Sidebar
             ? "bg-blue-700 text-white"
             : "text-blue-100 hover:bg-blue-800 hover:text-white"
         )}
+        aria-current={isActive ? 'page' : undefined}
       >
         <IconComponent className="h-6 w-6 mb-1" />
         {labelParts.length > 1 ? (

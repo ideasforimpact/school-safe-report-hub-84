@@ -38,10 +38,14 @@ const SidebarContent = () => {
       eduSafeResourceAccess: true
     } : permissions;
 
-  // Determine which menu items to show based on user role
-  const menuItems = isSaasOwner ? getSaasOwnerItems() : getClientItems(effectivePermissions);
+  // Determine which menu items to show based on user role and current path
+  // Check if we're in backoffice mode based on the URL path
+  const isBackofficeRoute = location.pathname.startsWith('/backoffice');
+  const menuItems = (isSaasOwner && isBackofficeRoute) ? 
+    getSaasOwnerItems() : getClientItems(effectivePermissions);
 
   const isActive = (path: string) => {
+    // Check if the current path matches the menu item path or starts with it (for nested routes)
     return location.pathname === path || (path !== '/' && location.pathname.startsWith(path));
   };
 
