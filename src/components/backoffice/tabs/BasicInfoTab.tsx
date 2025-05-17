@@ -22,7 +22,6 @@ interface BasicInfoTabProps {
     logo: string;
     institutionType: InstitutionType;
     superAdminEmail?: string;
-    website?: string;
   };
   setFormData: (formData: any) => void;
   handleLogoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -156,17 +155,6 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload }: BasicInfoTabP
           onChange={(e) => setFormData({...formData, phone: e.target.value})}
           placeholder="Enter phone number"
           required
-        />
-      </div>
-      
-      {/* New Website field added before Active Client checkbox */}
-      <div className="space-y-2">
-        <label htmlFor="website">Website</label>
-        <Input
-          id="website"
-          value={formData.website || ''}
-          onChange={(e) => setFormData({...formData, website: e.target.value})}
-          placeholder="Enter website URL"
         />
       </div>
 
