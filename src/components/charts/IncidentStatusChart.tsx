@@ -1,7 +1,7 @@
 
 import React from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
-import { useIncidents } from "@/contexts/IncidentContext";
+import { useIncidents } from "@/contexts/incident"; // Fixed import path
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 

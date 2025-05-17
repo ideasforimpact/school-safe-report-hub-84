@@ -1,7 +1,7 @@
 
 import React from 'react';
 import Layout from '@/components/layout/Layout';
-import { useInsightsData } from '@/hooks/useInsightsData';
+import { useIncidents } from '@/contexts/incident'; // Fixed import path
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Download } from 'lucide-react';

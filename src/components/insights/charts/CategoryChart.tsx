@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { useIncidents } from '@/contexts/incident/IncidentContext';
+import { useIncidents } from '@/contexts/incident'; // Fixed import path
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PieChart, Pie, Cell, Legend, Tooltip, ResponsiveContainer } from 'recharts';
 

@@ -1,6 +1,6 @@
 
 import { useMemo, useState } from 'react';
-import { useIncidents } from '@/contexts/IncidentContext';
+import { useIncidents } from '@/contexts/incident'; // Fixed import path
 import { useAuth } from '@/contexts/auth';
 import { useFacilities } from '@/contexts/FacilityContext';
 import { DateRange } from 'react-day-picker';

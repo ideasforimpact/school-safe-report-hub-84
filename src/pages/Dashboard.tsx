@@ -1,7 +1,7 @@
 
 import React from 'react';
 import Layout from '@/components/layout/Layout';
-import { useIncidents } from '@/contexts/incident/IncidentContext';
+import { useIncidents } from '@/contexts/incident'; // Fixed import path
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
