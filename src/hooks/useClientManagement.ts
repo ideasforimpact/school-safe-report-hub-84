@@ -107,8 +107,11 @@ export const useClientManagement = () => {
     }
     
     try {
-      // Fix for TypeScript error: Explicitly type the return value of addClient
-      const newClient = await addClient(formData) as Client | undefined;
+      // First, add the client and get the client object back
+      await addClient(formData);
+      
+      // Find the newly added client (should be the last one added)
+      const newClient = clients.find(c => c.email === formData.email && c.name === formData.name);
       
       if (newClient && newClient.id) {
         // Now create the employee from super admin email
