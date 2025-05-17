@@ -18,6 +18,7 @@ export interface ClientFormData {
   institutionType: InstitutionType;
   allowedDomains: string[];
   superAdminEmail: string;
+  website?: string;
   authProviders: {
     [key in OAuthProviderName]?: boolean;
   };
@@ -44,6 +45,7 @@ const initialFormData: ClientFormData = {
   institutionType: 'Other',
   allowedDomains: [],
   superAdminEmail: '',
+  website: '',
   authProviders: {
     google: false,
     microsoft: false,
