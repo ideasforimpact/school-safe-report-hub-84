@@ -1,5 +1,6 @@
+
 import React, { createContext, useEffect, useState } from 'react';
-import { User, AuthContextType } from './types';
+import { User, AuthContextType, UserWithPassword } from './types';
 import { 
   getUserFromStorage, 
   logoutUser, 
@@ -8,7 +9,8 @@ import {
   getUsersFromStorage,
   saveUserToStorage, 
   saveUsersToStorage,
-  getCurrentUserData
+  getCurrentUserData,
+  changeUserPassword
 } from '@/services/auth/authService';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -37,10 +39,18 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // State for the current user, all users, and auth error
   const [currentUser, setCurrentUser] = useState<User | null>(getUserFromStorage());
-  const [users, setUsersState] = useState<User[]>(getUsersFromStorage().map(({ password, ...user }) => user));
+  const [users, setUsersState] = useState<UserWithPassword[]>(getUsersFromStorage());
+  const [displayUsers, setDisplayUsers] = useState<User[]>(
+    users.map(({ password, ...user }) => user)
+  );
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
   const [authError, setAuthError] = useState<string | null>(null);
   const [isBackofficeUser, setIsBackofficeUser] = useState<boolean>(false);
+
+  // Update display users whenever users changes
+  useEffect(() => {
+    setDisplayUsers(users.map(({ password, ...user }) => user));
+  }, [users]);
 
   // Compute roles
   const isAdmin = Boolean(currentUser?.role === 'admin' || currentUser?.modulePermissions?.superAdmin);
@@ -72,7 +82,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     try {
       // First try to login as a regular user
-      const user = loginUser(email, password);
+      const user = loginUser(email, password, users);
 
       if (user) {
         setCurrentUser(user);
@@ -162,13 +172,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Add new user
   const handleAddUser = (userData: any): void => {
-    const newUser = { ...userData, id: Date.now().toString(), isActive: true };
+    const newUser: UserWithPassword = { 
+      ...userData,
+      id: Date.now().toString(), 
+      isActive: true,
+      password: userData.password || '' 
+    };
+    
     setUsersState(prevUsers => {
       const updatedUsers = [...prevUsers, newUser];
       setUsers(updatedUsers);
-      saveUsersToStorage(updatedUsers as any);
+      saveUsersToStorage(updatedUsers);
       return updatedUsers;
     });
+    
     toast.success("User added successfully");
   };
 
@@ -182,7 +199,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return user;
       });
       setUsers(updatedUsers);
-      saveUsersToStorage(updatedUsers as any);
+      saveUsersToStorage(updatedUsers);
       return updatedUsers;
     });
     toast.success("User updated successfully");
@@ -193,7 +210,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUsersState(prevUsers => {
       const updatedUsers = prevUsers.filter(user => user.id !== id);
       setUsers(updatedUsers);
-      saveUsersToStorage(updatedUsers as any);
+      saveUsersToStorage(updatedUsers);
       return updatedUsers;
     });
     toast.success("User deleted successfully");
@@ -209,7 +226,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return user;
       });
       setUsers(updatedUsers);
-      saveUsersToStorage(updatedUsers as any);
+      saveUsersToStorage(updatedUsers);
       return updatedUsers;
     });
     toast.success("User deactivated successfully");
@@ -225,7 +242,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return user;
       });
       setUsers(updatedUsers);
-      saveUsersToStorage(updatedUsers as any);
+      saveUsersToStorage(updatedUsers);
       return updatedUsers;
     });
     toast.success("User reactivated successfully");
@@ -239,29 +256,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
 
     const storedUsers = getUsersFromStorage();
-    const updatedUsers = storedUsers.map(user => {
-      if (user.id === currentUser.id && user.password === currentPassword) {
-        return { ...user, password: newPassword };
-      }
-      return user;
-    });
+    const updatedUsers = changeUserPassword(storedUsers, currentUser.id, currentPassword, newPassword);
 
-    if (JSON.stringify(updatedUsers) === JSON.stringify(storedUsers)) {
-      toast.error("Invalid current password");
+    if (!updatedUsers) {
       return false;
     }
 
-    setUsers(updatedUsers.map(({ password, ...user }) => user));
-    setUsersState(updatedUsers.map(({ password, ...user }) => user));
+    setUsersState(updatedUsers);
     saveUsersToStorage(updatedUsers);
-    toast.success("Password changed successfully");
     return true;
   };
 
   // The value to be provided to the context consumers
   const value: AuthContextType = {
     user: currentUser,
-    users,
+    users: displayUsers,
     login: handleLogin,
     logout: handleLogout,
     isAdmin,

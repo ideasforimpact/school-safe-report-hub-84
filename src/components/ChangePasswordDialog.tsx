@@ -47,7 +47,7 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
     setIsSubmitting(true);
     
     try {
-      const success = await changePassword(user.id, currentPassword, newPassword);
+      const success = await changePassword(currentPassword, newPassword);
       
       if (success) {
         toast.success("Password changed successfully");
