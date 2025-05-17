@@ -9,6 +9,36 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      backoffice_users: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          is_saas_admin: boolean
+          last_signed_in: string | null
+          password: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          is_saas_admin?: boolean
+          last_signed_in?: string | null
+          password: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          is_saas_admin?: boolean
+          last_signed_in?: string | null
+          password?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       campuses: {
         Row: {
           client_id: string
@@ -307,6 +337,7 @@ export type Database = {
           employee_type: string
           first_name: string
           id: string
+          is_super_admin: boolean
           joining_date: string
           last_name: string
           status: boolean
@@ -322,6 +353,7 @@ export type Database = {
           employee_type: string
           first_name: string
           id?: string
+          is_super_admin?: boolean
           joining_date: string
           last_name: string
           status?: boolean
@@ -337,6 +369,7 @@ export type Database = {
           employee_type?: string
           first_name?: string
           id?: string
+          is_super_admin?: boolean
           joining_date?: string
           last_name?: string
           status?: boolean
@@ -919,6 +952,14 @@ export type Database = {
       get_masked_document_number: {
         Args: { encrypted_doc_number: string }
         Returns: string
+      }
+      hash_password: {
+        Args: { password: string }
+        Returns: string
+      }
+      verify_password: {
+        Args: { email: string; password_attempt: string }
+        Returns: boolean
       }
     }
     Enums: {

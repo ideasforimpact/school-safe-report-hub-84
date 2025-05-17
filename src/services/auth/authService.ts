@@ -1,7 +1,7 @@
-
 import { User, UserWithPassword } from '@/contexts/auth/types';
 import { INITIAL_MOCK_USERS } from '@/contexts/auth/initialData';
-import { toast } from "@/components/ui/sonner";
+import { toast } from "sonner";
+import { supabase } from '@/integrations/supabase/client';
 
 // In-memory user storage
 let users: UserWithPassword[] = [...INITIAL_MOCK_USERS];
@@ -52,7 +52,6 @@ export const loginUser = (
   
   if (!user) {
     console.error("Login failed - user not found or inactive");
-    toast.error("Invalid credentials or account is inactive");
     return null;
   }
   

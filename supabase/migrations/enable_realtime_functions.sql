@@ -18,3 +18,7 @@ BEGIN
   EXECUTE format('ALTER PUBLICATION %I ADD TABLE public.%I', publication_name, table_name);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Enable real-time for backoffice_users table
+SELECT set_replica_identity_for_table('backoffice_users');
+SELECT add_table_to_publication('backoffice_users');
