@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { OAuthProviderName } from '@/utils/authProviders';
 import { ModulePermissions } from '@/contexts/auth/types';
@@ -359,5 +360,3 @@ export const useClient = (): ClientContextType => {
 
 // Export types
 export type { ClientContextType };
-
-</edits_to_apply>
