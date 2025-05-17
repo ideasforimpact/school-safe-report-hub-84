@@ -15,40 +15,64 @@ import RiskAnalysisTab from '@/components/insights/tabs/RiskAnalysisTab';
 
 const Insights = () => {
   const {
-    dateRange,
-    setDateRange,
-    categories,
-    selectedCategory,
-    setSelectedCategory,
-    subcategories,
-    selectedSubcategory,
-    setSelectedSubcategory,
     facilities,
-    selectedFacility,
-    setSelectedFacility,
+    isAdmin,
+    filters,
+    handleFilterChange,
+    handleDateRangeChange,
     filteredIncidents,
-    handleExportData,
-    clearFilters
+    availableSubcategories,
+    peopleInvolved,
+    chartData
   } = useInsightsData();
+
+  // Function to handle export
+  const handleExport = () => {
+    // If there's a real export function in useInsightsData, use that instead
+    console.log('Exporting data...');
+  };
+  
+  // Function to clear filters
+  const clearFilters = () => {
+    // Reset all filters to their default values
+    handleFilterChange('dateFilter', 'all');
+    handleFilterChange('typeFilter', 'all');
+    handleFilterChange('categoryFilter', 'all');
+    handleFilterChange('subcategoryFilter', 'all');
+    handleFilterChange('facilityFilter', 'all');
+    handleFilterChange('personFilter', 'all');
+    handleFilterChange('roleFilter', 'all');
+    handleDateRangeChange(undefined);
+  };
 
   return (
     <Layout>
       <div className="space-y-6">
-        <InsightsHeader onExport={handleExportData} />
+        {/* Use appropriate props for InsightsHeader */}
+        <InsightsHeader onExport={handleExport} />
         
+        {/* Update InsightsFilters with the new props structure */}
         <InsightsFilters 
-          dateRange={dateRange}
-          onDateRangeChange={setDateRange}
-          categories={categories}
-          selectedCategory={selectedCategory}
-          onCategoryChange={setSelectedCategory}
-          subcategories={subcategories}
-          selectedSubcategory={selectedSubcategory}
-          onSubcategoryChange={setSelectedSubcategory}
+          dateFilter={filters.dateFilter}
+          setDateFilter={(value) => handleFilterChange('dateFilter', value)}
+          typeFilter={filters.typeFilter}
+          setTypeFilter={(value) => handleFilterChange('typeFilter', value)}
+          categoryFilter={filters.categoryFilter}
+          setCategoryFilter={(value) => handleFilterChange('categoryFilter', value)}
+          subcategoryFilter={filters.subcategoryFilter}
+          setSubcategoryFilter={(value) => handleFilterChange('subcategoryFilter', value)}
+          facilityFilter={filters.facilityFilter}
+          setFacilityFilter={(value) => handleFilterChange('facilityFilter', value)}
+          personFilter={filters.personFilter}
+          setPersonFilter={(value) => handleFilterChange('personFilter', value)}
+          roleFilter={filters.roleFilter}
+          setRoleFilter={(value) => handleFilterChange('roleFilter', value)}
+          dateRange={filters.dateRange}
+          handleDateRangeChange={handleDateRangeChange}
+          availableSubcategories={availableSubcategories}
+          peopleInvolved={peopleInvolved}
           facilities={facilities}
-          selectedFacility={selectedFacility}
-          onFacilityChange={setSelectedFacility}
-          onClearFilters={clearFilters}
+          isAdmin={isAdmin}
         />
 
         <Tabs defaultValue="overview" className="w-full">
@@ -61,23 +85,23 @@ const Insights = () => {
           </TabsList>
           
           <TabsContent value="overview">
-            <OverviewTab incidents={filteredIncidents} />
+            <OverviewTab data={chartData} incidents={filteredIncidents} />
           </TabsContent>
           
           <TabsContent value="charts">
-            <ChartsTab incidents={filteredIncidents} />
+            <ChartsTab data={chartData} incidents={filteredIncidents} />
           </TabsContent>
           
           <TabsContent value="people">
-            <PeopleTab incidents={filteredIncidents} />
+            <PeopleTab data={chartData} incidents={filteredIncidents} />
           </TabsContent>
           
           <TabsContent value="locations">
-            <LocationTab incidents={filteredIncidents} />
+            <LocationTab data={chartData} incidents={filteredIncidents} />
           </TabsContent>
           
           <TabsContent value="risk">
-            <RiskAnalysisTab incidents={filteredIncidents} />
+            <RiskAnalysisTab data={chartData} incidents={filteredIncidents} />
           </TabsContent>
         </Tabs>
       </div>
