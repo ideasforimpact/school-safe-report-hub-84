@@ -21,7 +21,7 @@ export const getSaasOwnerItems = () => [
   {
     icon: Home,
     label: 'Dashboard',
-    path: '/dashboard',
+    path: '/backoffice/dashboard',
     allowed: true,
   },
   {
@@ -33,7 +33,7 @@ export const getSaasOwnerItems = () => [
   {
     icon: ClipboardList,
     label: 'Assessment\nTemplates',
-    path: '/backoffice/assessment-templates',
+    path: '/backoffice/assessments/templates',
     allowed: true,
   },
   {

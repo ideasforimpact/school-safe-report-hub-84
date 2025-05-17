@@ -1,6 +1,6 @@
 
 import { useLocation } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth';
 import { useClient } from '@/contexts/ClientContext';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -21,11 +21,17 @@ const Header = () => {
   // Check if we're on the home page
   const isHomePage = location.pathname === "/" || location.pathname === "/home";
   
+  // Check if we're in the backoffice
+  const isBackoffice = location.pathname.startsWith('/backoffice');
+  
   // Find the client associated with the current user
   const userClient = user?.clientId ? clients.find(c => c.id === user.clientId) : null;
 
   // Set dashboard path to /dashboard for all users
   const dashboardPath = "/dashboard";
+  
+  // Show backoffice link for SaaS owners when not already in backoffice
+  const showBackofficeLink = isSaasOwner && !isBackoffice;
 
   return (
     <div className="w-full h-16 bg-white shadow-sm">
@@ -50,12 +56,36 @@ const Header = () => {
               <HeaderIcons />
 
               {user && <UserRoleBadge isSaasOwner={isSaasOwner} isAdmin={isAdmin} />}
+              
+              {/* Backoffice Link for SaaS Owner */}
+              {showBackofficeLink && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate('/backoffice/dashboard')}
+                  className="hidden md:flex"
+                >
+                  Go to Backoffice
+                </Button>
+              )}
+              
+              {/* Client Dashboard Link for SaaS Owner in Backoffice */}
+              {isSaasOwner && isBackoffice && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate('/dashboard')}
+                  className="hidden md:flex"
+                >
+                  Client Dashboard
+                </Button>
+              )}
 
               {/* Settings Menu - Only visible for admins */}
               {isAdmin && !isSaasOwner && <AdminSettingsMenu />}
               
               {/* Show Admin Settings Menu for SaaS Owner too */}
-              {isSaasOwner && <AdminSettingsMenu />}
+              {isSaasOwner && !isBackoffice && <AdminSettingsMenu />}
 
               <UserProfileMenu />
             </div>

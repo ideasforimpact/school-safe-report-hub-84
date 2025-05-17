@@ -2,7 +2,7 @@
 import { ReactNode } from 'react';
 import { ShieldCheck, LogOut } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '@/contexts/auth/AuthContext';
+import { useAuth } from '@/contexts/auth';
 import { formatUserFullName } from '@/utils/userUtils';
 import { 
   DropdownMenu,
@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
 import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
 
 interface BackofficeLayoutProps {
   children: ReactNode;
@@ -19,13 +20,24 @@ interface BackofficeLayoutProps {
 const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuth();
+  const { user, logout, isSaasOwner } = useAuth();
+  
+  // Redirect if not SaaS owner
+  if (!isSaasOwner) {
+    // Use setTimeout to avoid rendering issues when redirecting
+    setTimeout(() => {
+      toast.error("You don't have permission to access the backoffice.");
+      navigate('/dashboard');
+    }, 0);
+    return null;
+  }
   
   const isActive = (path: string) => location.pathname === path;
 
   const navigationItems = [
-    { name: 'Dashboard', path: '/dashboard' },
+    { name: 'Dashboard', path: '/backoffice/dashboard' },
     { name: 'Client Management', path: '/backoffice/clients' },
+    { name: 'Assessment Templates', path: '/backoffice/assessments/templates' },
     { name: 'Analytics', path: '/backoffice/analytics' },
     { name: 'Settings', path: '/backoffice/settings' },
   ];
@@ -67,6 +79,9 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => navigate('/dashboard')}>
+                      Client Dashboard
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={handleLogout} className="text-destructive">
                       <LogOut size={16} className="mr-2" />
                       <span>Logout</span>
@@ -88,7 +103,7 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
                 key={item.path}
                 onClick={() => navigate(item.path)}
                 className={`flex items-center py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
-                  isActive(item.path)
+                  isActive(item.path) || location.pathname.startsWith(item.path + '/')
                     ? 'border-primary text-primary'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 } transition-colors`}
