@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Client, useClient, InstitutionType } from '@/contexts/ClientContext';
 import { OAuthProviderName } from '@/utils/authProviders';
@@ -123,6 +124,57 @@ export const useClientManagement = () => {
     }
   };
 
+  const updateEmployeeFromSuperAdminEmail = async (clientId: string, superAdminEmail: string) => {
+    try {
+      // Check if a super admin employee already exists for this client
+      const { data: existingEmployee, error } = await supabase
+        .from('employees')
+        .select('*')
+        .eq('client_id', clientId)
+        .eq('is_super_admin', true)
+        .single();
+      
+      if (error) {
+        if (error.code === 'PGRST116') {
+          // No super admin exists, create one
+          return await createEmployeeFromSuperAdminEmail(clientId, superAdminEmail);
+        }
+        console.error('Error checking for existing employee:', error);
+        return null;
+      }
+
+      // If email hasn't changed, just return the existing employee
+      if (existingEmployee.email === superAdminEmail) {
+        return existingEmployee;
+      }
+      
+      // Update the existing employee with the new email
+      const employeeId = superAdminEmail.split('@')[0];
+      
+      const { data, updateError } = await supabase
+        .from('employees')
+        .update({
+          email: superAdminEmail,
+          employee_id: employeeId,
+          first_name: employeeId
+        })
+        .eq('id', existingEmployee.id)
+        .select()
+        .single();
+
+      if (updateError) {
+        console.error('Error updating employee email:', updateError);
+        toast.error('Failed to update super admin email');
+        return null;
+      }
+
+      return data;
+    } catch (err) {
+      console.error('Error in updateEmployeeFromSuperAdminEmail:', err);
+      return null;
+    }
+  };
+
   const handleAddClient = async () => {
     if (!formData.superAdminEmail) {
       toast.error('Super Admin Email is required');
@@ -222,36 +274,10 @@ export const useClientManagement = () => {
       // Update the client first
       await updateClient(currentClient.id, formData);
       
-      // Check if we need to update or create the super admin employee
-      const { data: existingEmployee, error } = await supabase
-        .from('employees')
-        .select('*')
-        .eq('client_id', currentClient.id)
-        .eq('is_super_admin', true)
-        .single();
+      // Update or create the super admin employee
+      await updateEmployeeFromSuperAdminEmail(currentClient.id, formData.superAdminEmail);
       
-      if (error || !existingEmployee) {
-        // No super admin exists, create one
-        await createEmployeeFromSuperAdminEmail(currentClient.id, formData.superAdminEmail);
-        toast.success('Client updated and super admin employee created');
-      } else if (existingEmployee.email !== formData.superAdminEmail) {
-        // Update the existing super admin's email
-        const employeeId = formData.superAdminEmail.split('@')[0];
-        
-        await supabase
-          .from('employees')
-          .update({ 
-            email: formData.superAdminEmail,
-            employee_id: employeeId,
-            first_name: employeeId
-          })
-          .eq('id', existingEmployee.id);
-        
-        toast.success('Client and super admin employee updated');
-      } else {
-        toast.success('Client updated');
-      }
-      
+      toast.success('Client and super admin employee updated successfully');
       setIsEditDialogOpen(false);
       resetForm();
     } catch (error) {

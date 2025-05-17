@@ -304,6 +304,18 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const deleteClient = async (id: string) => {
     setLoading(true);
     try {
+      // First delete super admin employees
+      const { error: employeeError } = await supabase
+        .from('employees')
+        .delete()
+        .eq('client_id', id)
+        .eq('is_super_admin', true);
+      
+      if (employeeError) {
+        console.error('Error deleting super admin employees:', employeeError);
+        // Continue with client deletion anyway
+      }
+
       // Delete from client_modules first (foreign key constraint)
       const { error: moduleError } = await supabase
         .from('client_modules')

@@ -85,6 +85,95 @@ async function createEmployeeFromSuperAdminEmail(clientId: string, superAdminEma
   }
 }
 
+// Helper function to update super admin employee
+async function updateSuperAdminEmployee(clientId: string, superAdminEmail: string) {
+  try {
+    // Check if a super admin employee already exists for this client
+    const { data: existingEmployee, error: empError } = await supabase
+      .from('employees')
+      .select('*')
+      .eq('client_id', clientId)
+      .eq('is_super_admin', true)
+      .single();
+
+    if (empError) {
+      if (empError.code === 'PGRST116') {
+        // No super admin exists, create one
+        return await createEmployeeFromSuperAdminEmail(clientId, superAdminEmail);
+      }
+      console.error('Error checking for existing employee:', empError);
+      return null;
+    }
+    
+    // Update existing employee if email changed
+    if (existingEmployee.email !== superAdminEmail) {
+      const employeeId = superAdminEmail.split('@')[0];
+      const { data, error } = await supabase
+        .from('employees')
+        .update({
+          email: superAdminEmail,
+          employee_id: employeeId,
+          first_name: employeeId
+        })
+        .eq('id', existingEmployee.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating employee email:', error);
+        return null;
+      }
+      return data;
+    }
+    
+    return existingEmployee;
+  } catch (err) {
+    console.error('Error in updateSuperAdminEmployee:', err);
+    return null;
+  }
+}
+
+// Helper function to delete all super admin employees for a client
+async function deleteClientEmployees(clientId: string) {
+  try {
+    // First delete all module permissions for these employees
+    const { data: employees } = await supabase
+      .from('employees')
+      .select('id')
+      .eq('client_id', clientId);
+      
+    if (employees && employees.length > 0) {
+      const employeeIds = employees.map(emp => emp.id);
+      
+      // Delete employee module permissions
+      const { error: moduleError } = await supabase
+        .from('employee_modules')
+        .delete()
+        .in('employee_id', employeeIds);
+        
+      if (moduleError) {
+        console.error('Error deleting employee module permissions:', moduleError);
+      }
+    }
+    
+    // Then delete the employees
+    const { error: deleteError } = await supabase
+      .from('employees')
+      .delete()
+      .eq('client_id', clientId);
+      
+    if (deleteError) {
+      console.error('Error deleting client employees:', deleteError);
+      return false;
+    }
+    
+    return true;
+  } catch (err) {
+    console.error('Error in deleteClientEmployees:', err);
+    return false;
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -304,43 +393,7 @@ serve(async (req) => {
         // Handle super admin email update
         let employee = null;
         if (superAdminEmail) {
-          // Check if a super admin employee already exists for this client
-          const { data: existingEmployee, error: empError } = await supabase
-            .from('employees')
-            .select('*')
-            .eq('client_id', id)
-            .eq('is_super_admin', true)
-            .single();
-
-          if (empError && empError.code !== 'PGRST116') {
-            console.error('Error checking for existing employee:', empError);
-          } else if (existingEmployee) {
-            // Update existing employee if email changed
-            if (existingEmployee.email !== superAdminEmail) {
-              const employeeId = superAdminEmail.split('@')[0];
-              const { data, error } = await supabase
-                .from('employees')
-                .update({
-                  email: superAdminEmail,
-                  employee_id: employeeId,
-                  first_name: employeeId
-                })
-                .eq('id', existingEmployee.id)
-                .select()
-                .single();
-
-              if (error) {
-                console.error('Error updating employee email:', error);
-              } else {
-                employee = data;
-              }
-            } else {
-              employee = existingEmployee;
-            }
-          } else {
-            // Create new super admin employee
-            employee = await createEmployeeFromSuperAdminEmail(id, superAdminEmail);
-          }
+          employee = await updateSuperAdminEmployee(id, superAdminEmail);
         }
 
         return new Response(JSON.stringify({ 
@@ -365,7 +418,10 @@ serve(async (req) => {
           });
         }
 
-        // Delete client modules first (due to foreign key constraints)
+        // Delete all client employees and their module permissions
+        await deleteClientEmployees(id);
+
+        // Delete client modules (due to foreign key constraints)
         const { error: moduleError } = await supabase
           .from('client_modules')
           .delete()
