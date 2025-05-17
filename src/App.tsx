@@ -6,7 +6,7 @@ import { AuthProvider } from '@/contexts/auth';
 import { ClientProvider } from '@/contexts/ClientContext';
 import { EmployeeProvider } from './contexts/employee/EmployeeContext';
 import { StudentProvider } from './contexts/StudentContext';
-import { IncidentProvider } from './contexts/incident'; 
+import { IncidentProvider } from './contexts/incident'; // Fixed import path
 import { EmployeeVerificationProvider } from './contexts/employee-verification';
 import { FacilityProvider } from './contexts/FacilityContext';
 import { AssessmentProvider } from '@/contexts/assessment/AssessmentContext';
@@ -41,16 +41,6 @@ import EmployeeVerificationPage from '@/pages/employee-verification/EmployeeVeri
 import EmployeeDetailPage from '@/pages/employee-verification/EmployeeDetailPage';
 import UploadDocumentPage from '@/pages/employee-verification/UploadDocumentPage';
 import VerificationDashboardPage from '@/pages/employee-verification/VerificationDashboardPage';
-
-// Backoffice Pages
-import BackofficeDashboard from '@/pages/backoffice/BackofficeDashboard';
-import BackofficeAnalytics from '@/pages/backoffice/BackofficeAnalytics';
-import BackofficeSettings from '@/pages/backoffice/BackofficeSettings';
-import AssessmentTemplatesManagementPage from '@/pages/backoffice/AssessmentTemplatesManagementPage';
-import EduSafeResourcesManagementPage from '@/pages/backoffice/EduSafeResourcesManagementPage';
-
-// Guards 
-import BackofficeRouteGuard from '@/components/BackofficeRouteGuard';
 
 function App() {
   return (
@@ -113,16 +103,6 @@ function App() {
                       <Route path="/employee-verification/:employeeId" element={<EmployeeDetailPage />} />
                       <Route path="/employee-verification/:employeeId/upload-document" element={<UploadDocumentPage />} />
                       <Route path="/employee-verification/dashboard" element={<VerificationDashboardPage />} />
-
-                      {/* BACKOFFICE ROUTES - Protected for SaaS owners only */}
-                      <Route element={<BackofficeRouteGuard />}>
-                        <Route path="/backoffice/dashboard" element={<BackofficeDashboard />} />
-                        <Route path="/backoffice/clients" element={<BackofficeDashboard />} />
-                        <Route path="/backoffice/analytics" element={<BackofficeAnalytics />} />
-                        <Route path="/backoffice/settings" element={<BackofficeSettings />} />
-                        <Route path="/backoffice/assessment-templates" element={<AssessmentTemplatesManagementPage />} />
-                        <Route path="/backoffice/edusafe-resources" element={<EduSafeResourcesManagementPage />} />
-                      </Route>
 
                       {/* 404 route */}
                       <Route path="*" element={<NotFound />} />

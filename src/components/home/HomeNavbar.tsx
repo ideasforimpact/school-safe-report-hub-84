@@ -52,7 +52,7 @@ const HomeNavbar = ({ showBackoffice = false, hideSignIn = false }: HomeNavbarPr
             </Link>
             {showBackoffice && (
               <Link 
-                to="/backoffice/dashboard" 
+                to="/dashboard" 
                 className="flex items-center text-primary hover:text-primary-dark transition-colors font-medium"
               >
                 <Users className="h-4 w-4 mr-1" />
