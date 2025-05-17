@@ -158,9 +158,10 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload }: BasicInfoTabP
           required
         />
       </div>
-
+      
+      {/* New Website field added before Active Client checkbox */}
       <div className="space-y-2">
-        <label htmlFor="website" className="font-medium">Website</label>
+        <label htmlFor="website">Website</label>
         <Input
           id="website"
           value={formData.website || ''}
