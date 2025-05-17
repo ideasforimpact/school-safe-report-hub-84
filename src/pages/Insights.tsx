@@ -23,7 +23,8 @@ const Insights = () => {
     filteredIncidents,
     availableSubcategories,
     peopleInvolved,
-    chartData
+    chartData,
+    roleDistributionData
   } = useInsightsData();
 
   // Function to handle export
@@ -45,11 +46,17 @@ const Insights = () => {
     handleDateRangeChange(undefined);
   };
 
+  // Generate a consistent set of colors for charts
+  const chartColors = [
+    '#4f46e5', '#06b6d4', '#059669', '#8b5cf6', '#ec4899', 
+    '#f59e0b', '#10b981', '#6366f1', '#14b8a6', '#d946ef'
+  ];
+
   return (
     <Layout>
       <div className="space-y-6">
-        {/* Use appropriate props for InsightsHeader */}
-        <InsightsHeader onExport={handleExport} />
+        {/* InsightsHeader with no export prop */}
+        <InsightsHeader />
         
         {/* Update InsightsFilters with the new props structure */}
         <InsightsFilters 
@@ -85,23 +92,57 @@ const Insights = () => {
           </TabsList>
           
           <TabsContent value="overview">
-            <OverviewTab data={chartData} incidents={filteredIncidents} />
+            <OverviewTab 
+              categoryData={chartData.categoryData}
+              typeData={chartData.typeData}
+              statusData={chartData.statusData} 
+              timeSeriesData={chartData.timeSeriesData}
+              colors={chartColors} 
+            />
           </TabsContent>
           
           <TabsContent value="charts">
-            <ChartsTab data={chartData} incidents={filteredIncidents} />
+            <ChartsTab 
+              categoryData={chartData.categoryData}
+              typeData={chartData.typeData}
+              subcategoryData={chartData.subcategoryData}
+              timeSeriesData={chartData.timeSeriesData}
+              locationData={chartData.locationData}
+              facilityData={chartData.facilityData}
+              assigneeData={chartData.assigneeData}
+              statusData={chartData.statusData}
+              riskData={chartData.riskData}
+              isAdmin={isAdmin}
+              colors={chartColors}
+              roleDistributionData={roleDistributionData}
+              heatmapData={chartData.heatmapData}
+            />
           </TabsContent>
           
           <TabsContent value="people">
-            <PeopleTab data={chartData} incidents={filteredIncidents} />
+            <PeopleTab 
+              roleDistributionData={roleDistributionData}
+              assigneeData={chartData.assigneeData}
+              colors={chartColors}
+            />
           </TabsContent>
           
           <TabsContent value="locations">
-            <LocationTab data={chartData} incidents={filteredIncidents} />
+            <LocationTab 
+              locationData={chartData.locationData}
+              facilityData={chartData.facilityData}
+              heatmapData={chartData.heatmapData}
+              isAdmin={isAdmin}
+              colors={chartColors}
+            />
           </TabsContent>
           
           <TabsContent value="risk">
-            <RiskAnalysisTab data={chartData} incidents={filteredIncidents} />
+            <RiskAnalysisTab 
+              subcategoryData={chartData.subcategoryData}
+              riskData={chartData.riskData}
+              colors={chartColors} 
+            />
           </TabsContent>
         </Tabs>
       </div>
