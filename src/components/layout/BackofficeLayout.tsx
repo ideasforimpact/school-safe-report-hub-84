@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useBackofficeAuth } from '@/contexts/backoffice/BackofficeAuthContext';
-import { BackofficeUser } from '@/contexts/backoffice/types'; // Add this import
+import { BackofficeUser } from '@/contexts/backoffice/types';
 
 interface BackofficeLayoutProps {
   children: ReactNode;
@@ -28,8 +28,7 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
     console.log("Backoffice Layout - Initial mount, checking auth state:", {
       isUser: !!user,
       pathname: location.pathname,
-      userDetails: user ? `${user.firstName} ${user.lastName} (${user.role})` : 'No user',
-      "user":user
+      userDetails: user ? `${user.firstName} ${user.lastName} (${user.role})` : 'No user'
     });
     
     // Set initial check to true after first render

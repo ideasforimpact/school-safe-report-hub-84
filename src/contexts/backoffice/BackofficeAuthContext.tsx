@@ -81,7 +81,8 @@ export const BackofficeAuthProvider: React.FC<BackofficeAuthProviderProps> = ({ 
   console.log("BackofficeAuthProvider: Providing context with value:", { 
     hasUser: !!user, 
     isLoading, 
-    hasError: !!error 
+    hasError: !!error,
+    userData: user ? `${user.firstName} ${user.lastName} (${user.role})` : 'No user'
   });
 
   return (

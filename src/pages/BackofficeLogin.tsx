@@ -56,13 +56,14 @@ const BackofficeLogin = () => {
       const backofficeUser = await loginBackofficeUser(email, password);
       
       if (backofficeUser) {
-        console.log("BackofficeLogin: Setting user in context",backofficeUser);
+        console.log("BackofficeLogin: Setting user in context", backofficeUser);
         // Update the context with the user
         setUser(backofficeUser);
         
         toast.success("Login successful!");
         navigate('/backoffice/dashboard');
       } else {
+        toast.error("Invalid credentials. Please try again.");
         setIsLoading(false);
       }
     } catch (err) {
