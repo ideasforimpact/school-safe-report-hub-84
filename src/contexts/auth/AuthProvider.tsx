@@ -1,3 +1,4 @@
+
 import React, { createContext, useEffect, useState, useRef } from 'react';
 import { User, AuthContextType, UserWithPassword } from './types';
 import { 
@@ -31,7 +32,6 @@ export const AuthContext = createContext<AuthContextType>({
   changePassword: async () => false,
   authError: null,
   handleUserAuthentication: async () => {},
-  forceGoogleLogout: async () => {},
 });
 
 interface AuthProviderProps {
@@ -233,33 +233,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     toast.info("You have been logged out");
   };
 
-  // Force Google logout - this will help users logout of Google completely
-  const forceGoogleLogout = async (): Promise<void> => {
-    try {
-      // First, log out from our app
-      setCurrentUser(null);
-      setIsBackofficeUser(false);
-      logoutUser();
-      
-      // Then sign out from Supabase
-      await supabase.auth.signOut();
-      
-      // Open a new window to Google's logout page
-      const googleLogoutUrl = 'https://accounts.google.com/logout';
-      const logoutWindow = window.open(googleLogoutUrl, '_blank', 'width=500,height=500');
-      
-      // Close the window after a few seconds
-      setTimeout(() => {
-        if (logoutWindow) logoutWindow.close();
-      }, 5000);
-      
-      toast.info("You have been logged out. Please close all browser windows to complete the process.");
-    } catch (error) {
-      console.error("Error during forced Google logout:", error);
-      toast.error("Error during logout process");
-    }
-  };
-
   // Add new user
   const handleAddUser = (userData: any): void => {
     const newUser: UserWithPassword = { 
@@ -412,7 +385,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     changePassword: handleChangePassword,
     authError,
     handleUserAuthentication,
-    forceGoogleLogout,
   };
 
   // If still initializing, show nothing
