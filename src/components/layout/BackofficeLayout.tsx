@@ -2,7 +2,6 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { ShieldCheck, LogOut } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '@/contexts/auth';
 import { formatUserFullName } from '@/utils/userUtils';
 import { 
   DropdownMenu,
@@ -12,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
+import { useBackofficeAuth } from '@/contexts/backoffice/BackofficeAuthContext';
 
 interface BackofficeLayoutProps {
   children: ReactNode;
@@ -20,23 +20,22 @@ interface BackofficeLayoutProps {
 const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout, isSaasOwner } = useAuth();
+  const { user, logout } = useBackofficeAuth();
   const [initialCheckDone, setInitialCheckDone] = useState(false);
   
   // Initialize with auth check
   useEffect(() => {
     console.log("Backoffice Layout - Initial mount, checking auth state:", {
       isUser: !!user,
-      isSaasOwner,
       pathname: location.pathname,
       userDetails: user ? `${user.firstName} ${user.lastName} (${user.role})` : 'No user'
     });
     
     // Set initial check to true after first render
     setInitialCheckDone(true);
-  }, [user, isSaasOwner, location.pathname]);
+  }, [user, location.pathname]);
   
-  // Redirect if not SaaS owner or not logged in, but only after initial render
+  // Redirect if not logged in, but only after initial render
   useEffect(() => {
     if (initialCheckDone) {
       if (!user) {
@@ -45,20 +44,12 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
         navigate('/backoffice/login');
         return;
       }
-      
-      if (user && !isSaasOwner) {
-        console.log("Backoffice Layout - User is not a SaaS owner, redirecting to dashboard");
-        toast.error("You don't have permission to access the backoffice.");
-        navigate('/dashboard');
-        return;
-      }
     }
-  }, [user, isSaasOwner, navigate, initialCheckDone, location.pathname]);
+  }, [user, navigate, initialCheckDone, location.pathname]);
 
   const handleLogout = async () => {
     console.log("Backoffice Layout - Logging out user");
     await logout();
-    navigate('/backoffice/login');
   };
 
   // Function to safely get the user's initial
@@ -78,8 +69,8 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
     );
   }
 
-  // If not SaaS owner or not logged in, don't render anything while redirecting
-  if (!user || !isSaasOwner) {
+  // If not logged in, don't render anything while redirecting
+  if (!user) {
     return null;
   }
 

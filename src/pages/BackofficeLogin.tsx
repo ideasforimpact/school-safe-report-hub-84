@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { useAuth } from "@/contexts/auth";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +9,7 @@ import { AlertCircle, ShieldCheck } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useBackofficeAuth } from "@/contexts/backoffice/BackofficeAuthContext";
 
 // List of demo credentials for verification
 const DEMO_CREDENTIALS = [
@@ -21,119 +21,39 @@ const BackofficeLogin = () => {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [error, setError] = useState("");
-  const { login, authError, user, isSaasOwner, logout } = useAuth();
+  const { login, user, error: authError, clearError } = useBackofficeAuth();
   const navigate = useNavigate();
-  const location = useLocation();
-  const [redirect, setRedirect] = useState(false);
-  const [initialCheckDone, setInitialCheckDone] = useState(false);
 
-  // On component mount, check if there's any stale session and clear it
+  // Check if user is already logged in, redirect if they are
   useEffect(() => {
-    const clearStaleSession = async () => {
-      console.log("Backoffice Login - Initial mount, checking for stale sessions");
-      
-      try {
-        const { data } = await supabase.auth.getSession();
-        
-        // If user appears logged in but we're on the login page,
-        // they likely tried to log out but the session wasn't fully cleared
-        if (data?.session && location.pathname === '/backoffice/login') {
-          console.log("Backoffice Login - Found session but on login page:", data.session.user?.email);
-          console.log("Backoffice Login - Clearing stale session");
-          await logout(); // This will clear everything
-        }
-      } catch (error) {
-        console.error("Backoffice Login - Error checking session:", error);
-      }
-      
-      setInitialCheckDone(true);
-    };
-    
-    clearStaleSession();
-  }, [logout, location.pathname]);
-
-  // Check if user is already logged in and is a SaaS owner, redirect if they are but only after initial render
-  useEffect(() => {
-    console.log("Backoffice Login - Auth state:", { 
-      isUser: !!user, 
-      isSaasOwner, 
-      redirect,
-      initialCheckDone,
-      userDetails: user ? `${user.firstName} ${user.lastName} (${user.role})` : 'No user'
-    });
-    
-    // Only redirect if initial check is done and we're not in the middle of cleanup
-    if (initialCheckDone && user && isSaasOwner && redirect) {
-      console.log("Backoffice Login - Redirecting SaaS owner to backoffice dashboard");
+    if (user) {
       navigate('/backoffice/dashboard');
-    } else if (initialCheckDone && user && !isSaasOwner && redirect) {
-      console.log("Backoffice Login - User is not a SaaS owner, redirecting to dashboard");
-      toast.error("You don't have permission to access the backoffice.");
-      navigate('/dashboard');
-    } else if (initialCheckDone && user) {
-      // Set redirect flag to true after initial render
-      console.log("Backoffice Login - Setting redirect flag to true");
-      setRedirect(true);
     }
-  }, [user, isSaasOwner, navigate, redirect, initialCheckDone]);
+  }, [user, navigate]);
 
-  // Check for authentication redirect results and errors
-  useEffect(() => {
-    const checkForAuthRedirect = async () => {
-      if (!initialCheckDone) return;
-      
-      console.log("Backoffice Login - Checking for auth redirect");
-      const { data, error } = await supabase.auth.getSession();
-      
-      if (data?.session) {
-        console.log("Backoffice Login - Session detected after redirect:", data.session.user?.email);
-      }
-      
-      if (error) {
-        console.error("Backoffice Login - Auth redirect error:", error);
-        toast.error("Authentication failed. Please try again.");
-      }
-    };
-    
-    checkForAuthRedirect();
-  }, [navigate, initialCheckDone]);
-
-  // Listen for auth errors from context
+  // Reset error when inputs change
   useEffect(() => {
     if (authError) {
-      setError(authError);
-      setIsLoading(false);
-      setGoogleLoading(false);
+      clearError();
     }
-  }, [authError]);
+  }, [email, password, clearError, authError]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     setIsLoading(true);
 
     try {
       console.log("Attempting to log in with:", email, password);
       const success = await login(email, password);
+      
       if (success) {
-        if (isSaasOwner) {
-          navigate('/backoffice/dashboard');
-        } else {
-          setError("You don't have permission to access the backoffice.");
-          toast.error("You don't have permission to access the backoffice.");
-          setIsLoading(false);
-          await supabase.auth.signOut(); // Sign out if not a SaaS owner
-        }
+        navigate('/backoffice/dashboard');
       } else {
-        if (!authError) {
-          setError("Invalid email or password");
-        }
         setIsLoading(false);
       }
     } catch (err) {
       console.error("Login error:", err);
-      setError("An error occurred. Please try again.");
+      toast.error("An error occurred. Please try again.");
       setIsLoading(false);
     }
   };
@@ -141,7 +61,6 @@ const BackofficeLogin = () => {
   const handleGoogleLogin = async () => {
     try {
       setGoogleLoading(true);
-      setError("");
       
       // Get the current origin for constructing redirect URL
       const origin = window.location.origin;
@@ -159,12 +78,11 @@ const BackofficeLogin = () => {
       if (error) {
         console.error("Google login error:", error);
         toast.error("Google login failed. Please try again.");
-        setError(`Google authentication failed: ${error.message}`);
         setGoogleLoading(false);
       }
     } catch (err) {
       console.error("Google login unexpected error:", err);
-      setError("An error occurred with Google login. Please try again.");
+      toast.error("An error occurred with Google login. Please try again.");
       setGoogleLoading(false);
     }
   };
@@ -182,43 +100,22 @@ const BackofficeLogin = () => {
     
     setEmail(demoEmail);
     setPassword(demoPassword);
-    setError("");
     setIsLoading(true);
 
     try {
       console.log("Using demo credentials:", demoEmail, demoPassword);
       const success = await login(demoEmail, demoPassword);
+      
       if (success) {
         navigate("/backoffice/dashboard");
       } else {
-        if (!authError) {
-          toast.error("Demo login failed. Please try again.");
-          setError("Demo login failed. Please check the console for details.");
-        }
         setIsLoading(false);
       }
     } catch (err) {
       console.error("Demo login error:", err);
-      setError("An error occurred with demo login. Please try again.");
       setIsLoading(false);
     }
   };
-
-  // This function would be implemented when we connect to real OAuth providers
-  const handleOAuthLogin = (provider: string) => {
-    toast.info(`${provider} authentication is not configured yet. Please use Google or email login.`);
-  };
-
-  // If we're still checking initial state, show a loading indicator
-  if (!initialCheckDone) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-indigo-100 p-4">
-        <div className="text-center">
-          <p className="text-gray-600">Checking authentication state...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-indigo-100 p-4 animate-fade-in">
@@ -241,10 +138,10 @@ const BackofficeLogin = () => {
           </CardHeader>
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
-              {error && (
+              {authError && (
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{error}</AlertDescription>
+                  <AlertDescription>{authError}</AlertDescription>
                 </Alert>
               )}
 

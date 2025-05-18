@@ -6,10 +6,11 @@ import { AuthProvider } from '@/contexts/auth';
 import { ClientProvider } from '@/contexts/ClientContext';
 import { EmployeeProvider } from './contexts/employee/EmployeeContext';
 import { StudentProvider } from './contexts/StudentContext';
-import { IncidentProvider } from './contexts/incident'; // Fixed import path
+import { IncidentProvider } from './contexts/incident'; 
 import { EmployeeVerificationProvider } from './contexts/employee-verification';
 import { FacilityProvider } from './contexts/FacilityContext';
 import { AssessmentProvider } from '@/contexts/assessment/AssessmentContext';
+import { BackofficeAuthProvider } from '@/contexts/backoffice/BackofficeAuthContext';
 
 // Pages
 import Dashboard from '@/pages/Dashboard';
@@ -49,9 +50,11 @@ import BackofficeLayout from '@/components/layout/BackofficeLayout';
 // Backoffice Wrapper Component for routing
 const BackofficeWrapper = ({ component: Component }) => {
   return (
-    <BackofficeLayout>
-      <Component />
-    </BackofficeLayout>
+    <BackofficeAuthProvider>
+      <BackofficeLayout>
+        <Component />
+      </BackofficeLayout>
+    </BackofficeAuthProvider>
   );
 };
 
@@ -118,7 +121,7 @@ function App() {
                       <Route path="/employee-verification/:employeeId/upload-document" element={<UploadDocumentPage />} />
                       <Route path="/employee-verification/dashboard" element={<VerificationDashboardPage />} />
 
-                      {/* Backoffice routes - duplicated routes with /backoffice prefix */}
+                      {/* Backoffice routes with the new BackofficeAuthProvider */}
                       <Route path="/backoffice/dashboard" element={<BackofficeWrapper component={Dashboard} />} />
                       <Route path="/backoffice/clients" element={<BackofficeWrapper component={ClientManagement} />} />
                       <Route path="/backoffice/settings" element={<BackofficeWrapper component={OtherConfiguration} />} />
