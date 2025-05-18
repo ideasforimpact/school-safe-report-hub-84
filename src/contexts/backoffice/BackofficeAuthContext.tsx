@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { BackofficeUser, BackofficeAuthContextType } from './types';
 import { loginBackofficeUser, logoutBackofficeUser } from '@/services/backoffice/authService';
@@ -58,7 +59,7 @@ export const BackofficeAuthProvider: React.FC<BackofficeAuthProviderProps> = ({ 
 
   // Login function
   const login = async (email: string, password: string): Promise<boolean> => {
-    console.log("⭐ BackofficeAuthContext.login CALLED with email:", email);
+    console.log("⭐ BackofficeAuthContext.login CALLED with email:", email, "and password length:", password ? password.length : 0);
     setIsLoading(true);
     setError(null);
 

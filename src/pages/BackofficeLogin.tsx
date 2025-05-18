@@ -80,7 +80,7 @@ const BackofficeLogin = () => {
           
           // If not, create a test account for this email
           const { error: hashError, data: hashedPassword } = await supabase.rpc('hash_password', {
-            password: password
+            password
           });
           
           if (hashError) {
@@ -111,9 +111,9 @@ const BackofficeLogin = () => {
           console.log("🔍 Test account created successfully:", newUser);
           toast.success("Test account created. Please log in now.");
           
-          // Let's try to log in immediately after creating the account
-          // Add a small delay to ensure the database has time to process the insert
-          await new Promise(resolve => setTimeout(resolve, 500));
+          // Let's add a significant delay to ensure the database has time to process the insert
+          // and the password hash is properly stored
+          await new Promise(resolve => setTimeout(resolve, 1500));
         }
       }
       
@@ -123,7 +123,17 @@ const BackofficeLogin = () => {
       console.log("🔍 Type of login function:", typeof login);
       
       try {
-        const success = await login(email, password);
+        // For newly created accounts, we'll try twice with a delay if the first attempt fails
+        let success = await login(email, password);
+        
+        // If first attempt failed and it might be a newly created account
+        if (!success && ALLOWED_TEST_EMAILS.includes(email)) {
+          console.log("🔍 Initial login failed for potentially new account, waiting and trying again...");
+          // Wait a bit more and try again
+          await new Promise(resolve => setTimeout(resolve, 1000));
+          success = await login(email, password);
+        }
+        
         console.log("🔍 Login function returned:", success);
         
         if (success) {

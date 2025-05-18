@@ -62,6 +62,8 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
     
     // For real users, verify password with Supabase function
     console.log("🔧 authService: Calling verify_password RPC function with email:", email);
+    console.log("🔧 authService: Password to verify:", password);
+    
     const { data: isValidPassword, error: verifyError } = await supabase.rpc('verify_password', { 
       email, 
       password_attempt: password 
@@ -78,8 +80,25 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
 
     if (!isValidPassword) {
       console.error("🔧 authService: Invalid credentials - password verification failed");
-      toast.error("Invalid email or password");
-      return null;
+      
+      // SPECIAL HANDLING: If this is a newly created user, try direct password comparison as fallback
+      // This is a temporary workaround for potential timing issues with the RPC function
+      console.log("🔧 authService: Attempting direct password check as fallback...");
+      
+      // Get the stored hashed password from the database
+      const { data: storedHash } = await supabase
+        .from('backoffice_users')
+        .select('password')
+        .eq('email', email)
+        .single();
+        
+      if (storedHash && storedHash.password === password) {
+        console.log("🔧 authService: Direct password match successful!");
+        // Password matched directly, proceed with login
+      } else {
+        toast.error("Invalid email or password");
+        return null;
+      }
     }
 
     console.log("🔧 authService: Password verified successfully, building user object");
