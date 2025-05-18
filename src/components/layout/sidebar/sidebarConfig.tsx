@@ -13,16 +13,17 @@ import {
   FileCheck
 } from 'lucide-react';
 import { ModulePermissions } from '@/contexts/auth/types';
-import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-// Define module type to match database schema
+// Define module type to match roles table schema
 export interface Module {
   id: string;
   name: string;
-  level: string;
-  icon: string;
+  level?: string; // Make optional to handle DB responses
+  icon?: string; // Make optional to handle DB responses
   key?: string;
+  active?: boolean;
+  description?: string;
 }
 
 // Map string icon names to Lucide components
@@ -60,7 +61,16 @@ export const fetchModules = async (isBackoffice: boolean): Promise<Module[]> => 
       return [];
     }
     
-    return data || [];
+    // Transform the data to ensure it has the expected fields
+    return data.map(role => ({
+      id: role.id,
+      name: role.name,
+      level: role.level || '',
+      icon: role.icon || 'LayoutDashboard',
+      key: role.key,
+      active: role.active,
+      description: role.description
+    }));
   } catch (error) {
     console.error("Error in fetchModules:", error);
     return [];
