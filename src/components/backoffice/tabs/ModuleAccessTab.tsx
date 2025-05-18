@@ -31,12 +31,15 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
   const [adminAccess, setAdminAccess] = useState<Record<string, boolean>>({});
   // Store the module access state locally to avoid unnecessary API calls
   const [moduleAccessState, setModuleAccessState] = useState<Partial<ModulePermissions>>({});
+  // Track module IDs for troubleshooting the auto-selection issue
+  const [moduleIdMap, setModuleIdMap] = useState<Record<string, string>>({});
 
   // Fetch modules only once during initial load
   useEffect(() => {
     const fetchClientModules = async () => {
       if (modules.length > 0) return; // Skip if modules are already loaded
       
+      console.log("Fetching client modules: Initial load");
       setLoading(true);
       try {
         // Fetch modules that are not backoffice level
@@ -51,9 +54,20 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
         }
 
         if (data && data.modules) {
+          console.log("Modules fetched successfully:", data.modules.length);
           setModules(data.modules);
           
+          // Create a map of module names to IDs for debugging
+          const idMapping: Record<string, string> = {};
+          data.modules.forEach((module: Module) => {
+            const accessKey = getAccessKeyFromModuleName(module.name);
+            idMapping[accessKey] = module.id;
+            console.log(`Module mapping: ${module.name} -> ${accessKey} -> ${module.id}`);
+          });
+          setModuleIdMap(idMapping);
+          
           // Initialize local state based on formData
+          console.log("Initializing module access state from formData:", formData.moduleAccess);
           setModuleAccessState({...formData.moduleAccess});
           
           // Initialize admin access state
@@ -86,6 +100,7 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
     );
     
     if (hasChanges) {
+      console.log("Module access state changed, updating parent:", moduleAccessState);
       Object.entries(moduleAccessState).forEach(([key, value]) => {
         handleModuleAccessChange(key as keyof ModulePermissions, !!value);
       });
@@ -136,22 +151,34 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
   };
 
   // Handle clicking on the module checkbox
-  const handleModuleCheckboxChange = (accessKey: keyof ModulePermissions, checked: boolean) => {
-    // Update only local state for this specific module
-    setModuleAccessState(prev => ({
-      ...prev,
-      [accessKey]: checked
-    }));
+  const handleModuleCheckboxChange = (accessKey: keyof ModulePermissions, checked: boolean, moduleId: string) => {
+    console.log(`Module checkbox change - Key: ${accessKey}, ModuleID: ${moduleId}, Checked: ${checked}`);
+    
+    // Update only local state for this specific module 
+    setModuleAccessState(prev => {
+      const newState = {
+        ...prev,
+        [accessKey]: checked
+      };
+      console.log(`New module access state after checkbox change:`, newState);
+      return newState;
+    });
   };
 
   // Handle clicking on the admin badge
-  const handleAdminBadgeClick = (accessKey: keyof ModulePermissions) => {
+  const handleAdminBadgeClick = (accessKey: keyof ModulePermissions, moduleId: string) => {
+    console.log(`Admin badge click - Key: ${accessKey}, ModuleID: ${moduleId}`);
+    
     // Toggle the admin access state for this module
     const newState = !adminAccess[accessKey];
-    setAdminAccess(prev => ({
-      ...prev,
-      [accessKey]: newState
-    }));
+    setAdminAccess(prev => {
+      const newAdminState = {
+        ...prev,
+        [accessKey]: newState
+      };
+      console.log(`New admin access state after badge click:`, newAdminState);
+      return newAdminState;
+    });
   };
 
   return (
@@ -185,17 +212,17 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
                     <TableRow key={module.id} className="h-14">
                       <TableCell>
                         <Checkbox 
-                          id={`module-${accessKey}`}
+                          id={`module-${module.id}`}
                           checked={moduleEnabled}
                           onCheckedChange={(checkedState) => {
-                            handleModuleCheckboxChange(accessKey, checkedState === true);
+                            handleModuleCheckboxChange(accessKey, checkedState === true, module.id);
                           }}
                           className="transition-all"
                         />
                       </TableCell>
                       <TableCell>
                         <label 
-                          htmlFor={`module-${accessKey}`}
+                          htmlFor={`module-${module.id}`}
                           className="text-sm font-medium cursor-pointer"
                         >
                           {module.name}
@@ -210,7 +237,7 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
                               ? "bg-green-500 text-white hover:bg-green-600" 
                               : "text-muted-foreground hover:bg-gray-100"
                           )}
-                          onClick={() => handleAdminBadgeClick(accessKey)}
+                          onClick={() => handleAdminBadgeClick(accessKey, module.id)}
                         >
                           Admin
                           {isAdminEnabled && (
