@@ -23,25 +23,32 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
   const { user, logout, isSaasOwner } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   
+  // Debug logging
+  console.log("BackofficeLayout mounted, auth state:", { 
+    userId: user?.id || "null",
+    userEmail: user?.email || "null", 
+    isSaasOwner 
+  });
+  
   useEffect(() => {
-    console.log("BackofficeLayout mounted, auth state:", { user, isSaasOwner });
-    
     // Add a small delay to ensure auth state is stable
     const timer = setTimeout(() => {
       console.log("Authentication check after delay:", { 
-        user: user?.email || "null", 
+        userId: user?.id || "null", 
+        userEmail: user?.email || "null", 
         isSaasOwner 
       });
       
-      // Check permission after a delay to ensure auth state has stabilized
       if (!user) {
         console.log("No user found, redirecting to login");
+        // Use replace instead of push to prevent back button issues
+        navigate('/login', { replace: true, state: { from: location.pathname } });
         toast.error("Please log in to access the backoffice.");
-        navigate('/login', { state: { from: location } });
       } else if (!isSaasOwner) {
         console.log("User found but not SaaS owner, redirecting to dashboard");
+        // Use replace instead of push to prevent back button issues
+        navigate('/dashboard', { replace: true });
         toast.error("You don't have permission to access the backoffice.");
-        navigate('/dashboard');
       }
       
       setIsLoading(false);
@@ -68,7 +75,7 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate('/login', { replace: true });
   };
 
   // Function to safely get the user's initial

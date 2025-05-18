@@ -54,7 +54,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const authListenerSetupRef = useRef<boolean>(false);
 
   console.log("AuthProvider rendered, current state:", { 
-    currentUser: currentUser?.email || "null",
+    currentUserId: currentUser?.id || "null",
+    currentUserEmail: currentUser?.email || "null",
     isBackofficeUser,
     role: currentUser?.role
   });
@@ -157,17 +158,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
 
     checkSupabaseAuth();
-  }, []);
+  }, [currentUser, handleUserAuthentication]);
 
   // Handle login
   const handleLogin = async (email: string, password: string): Promise<boolean> => {
     setAuthError(null);
     
     try {
+      console.log("Login attempt for:", email);
       // First try to login as a regular user
       const user = loginUser(email, password, users);
 
       if (user) {
+        console.log("Regular user login successful:", user.email, "role:", user.role);
         setCurrentUser(user);
         setIsBackofficeUser(user.role === 'saas_owner');
         saveUserToStorage(user);
@@ -175,6 +178,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return true;
       }
 
+      console.log("Regular login failed, trying backoffice login");
       // If regular login fails, try backoffice login
       const { data, error } = await supabase.rpc('verify_password', { 
         email, 
@@ -188,6 +192,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       if (data === true) {
+        console.log("Backoffice login verified, fetching user details");
         // Fetch the backoffice user
         const { data: backofficeUser, error: backofficeError } = await supabase
           .from('backoffice_users')
@@ -201,6 +206,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           return false;
         }
         
+        console.log("Backoffice user found:", backofficeUser.email);
         // Update last_signed_in
         await supabase
           .from('backoffice_users')
@@ -229,6 +235,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           createdAt: backofficeUser.created_at
         };
         
+        console.log("Created saasUser object:", saasUser.email, "role:", saasUser.role);
         setCurrentUser(saasUser);
         setIsBackofficeUser(true);
         saveUserToStorage(saasUser);
@@ -236,6 +243,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return true;
       }
 
+      console.log("Both login methods failed");
       setAuthError("Invalid credentials");
       return false;
     } catch (error) {
@@ -249,6 +257,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Handle logout
   const handleLogout = async (): Promise<void> => {
     try {
+      console.log("Logout initiated");
       // First sign out from Supabase
       await supabase.auth.signOut();
       console.log("Signed out from Supabase");
