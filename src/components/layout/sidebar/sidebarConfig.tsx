@@ -70,7 +70,7 @@ export const fetchModules = async (isBackoffice: boolean): Promise<Module[]> => 
     }).map(role => ({
       id: role.id,
       name: role.name,
-      icon: role.icon || 'LayoutDashboard',
+      icon: 'LayoutDashboard', // Always provide a default icon since it doesn't exist in the database
       key: role.key,
       active: role.active,
       description: role.description
@@ -85,7 +85,7 @@ export const fetchModules = async (isBackoffice: boolean): Promise<Module[]> => 
 export const convertModulesToSidebarItems = (modules: Module[], permissions: ModulePermissions, basePath: string = '') => {
   return modules.map(module => {
     // Get the icon component from our mapping, or default to LayoutDashboard
-    const IconComponent = module.icon && iconMap[module.icon] ? iconMap[module.icon] : LayoutDashboard;
+    const IconComponent = iconMap[module.icon || 'LayoutDashboard'];
     
     // Determine path based on name
     const path = `${basePath}/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
