@@ -187,6 +187,23 @@ export const useClientManagement = () => {
     }
   };
 
+  const prepareModuleInfoArray = (moduleAccess: Partial<ModulePermissions>): ModuleInfo[] => {
+    // Create module info array from moduleAccess
+    return Object.entries(moduleAccess)
+      .filter(([_, enabled]) => enabled) // Only include enabled modules
+      .map(([key, _]) => {
+        const isAdmin = key.includes("Admin");
+        // Use base name without "Admin" suffix for more consistent naming
+        const baseName = key.replace("Admin", "");
+        
+        return {
+          name: key, // Use the key as the module name for identification
+          module_id: "", // Will be looked up in the edge function
+          is_admin: isAdmin // Modules with "Admin" in name are admin modules
+        };
+      });
+  };
+
   const handleAddClient = async () => {
     if (!formData.superAdminEmail) {
       toast.error('Super Admin Email is required');
@@ -200,19 +217,14 @@ export const useClientManagement = () => {
     }
     
     try {
-      // Create module info array from moduleAccess
-      const moduleInfoArray: ModuleInfo[] = Object.entries(formData.moduleAccess)
-        .filter(([_, enabled]) => enabled) // Only include enabled modules
-        .map(([key, _]) => ({
-          name: key, // Use the key as the module name
-          module_id: "", // Will be looked up in the edge function
-          is_admin: key.includes("Admin") // Assume modules with "Admin" are admin modules
-        }));
+      // Prepare module info array for the edge function
+      const moduleInfoArray = prepareModuleInfoArray(formData.moduleAccess);
+      
+      console.log('Module info for client creation:', moduleInfoArray);
       
       // First, add the client and get the client object back with proper typing
       const result = await addClient({
         ...formData
-        // TypeScript will handle this correctly now that we've updated the Client interface
       });
       
       const newClient = result as Client; // Cast to Client type
@@ -309,19 +321,14 @@ export const useClientManagement = () => {
     }
     
     try {
-      // Create module info array from moduleAccess
-      const moduleInfoArray: ModuleInfo[] = Object.entries(formData.moduleAccess)
-        .filter(([_, enabled]) => enabled) // Only include enabled modules
-        .map(([key, _]) => ({
-          name: key, // Use the key as the module name
-          module_id: "", // Will be looked up in the edge function
-          is_admin: key.includes("Admin") // Assume modules with "Admin" are admin modules
-        }));
+      // Prepare module info array
+      const moduleInfoArray = prepareModuleInfoArray(formData.moduleAccess);
+      
+      console.log('Module info for client update:', moduleInfoArray);
       
       // Update the client first
       await updateClient(currentClient.id, {
         ...formData
-        // TypeScript will handle this correctly now that we've updated the Client interface
       });
       
       // Update or create the super admin employee

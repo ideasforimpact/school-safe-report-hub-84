@@ -103,16 +103,21 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
     
     moduleAccessState.forEach(module => {
       const accessKey = getAccessKeyFromModuleName(module.name);
-      updatedPermissions[accessKey as keyof ModulePermissions] = module.is_enabled;
       
-      // If this is an admin module and it's enabled, set the corresponding admin permission
-      if (module.is_admin) {
-        const adminKey = accessKey.endsWith('Admin') ? 
-          accessKey : 
-          (accessKey + 'Admin') as keyof ModulePermissions;
-          
-        if (Object.keys(formData.moduleAccess).includes(adminKey)) {
-          updatedPermissions[adminKey as keyof ModulePermissions] = true;
+      if (module.name.toLowerCase().includes('admin')) {
+        // For admin modules
+        updatedPermissions[accessKey as keyof ModulePermissions] = module.is_enabled && module.is_admin;
+      } else {
+        // For non-admin modules
+        const baseKey = accessKey.replace('Admin', '') as keyof ModulePermissions;
+        updatedPermissions[baseKey] = module.is_enabled;
+        
+        // If this is enabled and admin is true, also set the admin version
+        if (module.is_enabled && module.is_admin) {
+          const adminKey = baseKey.toString() + 'Admin' as keyof ModulePermissions;
+          if (Object.keys(formData.moduleAccess).includes(adminKey)) {
+            updatedPermissions[adminKey] = true;
+          }
         }
       }
     });
@@ -146,6 +151,18 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
   // Helper function to map module names to formData.moduleAccess keys
   const getAccessKeyFromModuleName = (moduleName: string): keyof ModulePermissions => {
     // Convert module name to camelCase for matching with ModulePermissions keys
+    const normalizedName = moduleName.toLowerCase();
+    
+    // Special case mappings
+    if (normalizedName === 'dashboard') return 'superAdmin';
+    if (normalizedName === 'incidents') return 'incidentReporting';
+    if (normalizedName === 'assessments') return 'assessmentUser';
+    if (normalizedName === 'employee verification') return 'employeeVerificationAdmin';
+    if (normalizedName === 'grievances') return 'grievancesAdmin';
+    if (normalizedName === 'transport safety') return 'transportSafetyAdmin';
+    if (normalizedName === 'edusafe resources') return 'eduSafeResourceAccess';
+    
+    // If no direct mapping, try a fuzzy match
     const key = moduleName.toLowerCase()
       .replace(/\s(.)/g, ($1) => $1.toUpperCase())
       .replace(/\s/g, '')
@@ -163,7 +180,7 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
       return key as keyof ModulePermissions;
     }
     
-    // Default fallback - should be avoided in production
+    // Default fallback
     return 'superAdmin';
   };
 
