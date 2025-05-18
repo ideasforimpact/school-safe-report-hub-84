@@ -5,12 +5,14 @@ import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@
 import { ModulePermissions } from '@/contexts/auth/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { Loader2 } from 'lucide-react';
 
 interface Module {
   id: string;
   name: string;
   key?: string;
   level: string;
+  icon: string;
 }
 
 interface ModuleAccessTabProps {
@@ -40,7 +42,7 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
         }
 
         if (data && data.modules) {
-          setModules(data.modules.filter((module: Module) => module.level !== 'backoffice'));
+          setModules(data.modules);
         }
       } catch (error) {
         console.error("Error in fetchClientModules:", error);
@@ -53,16 +55,33 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
     fetchClientModules();
   }, []);
 
-  // Group modules into rows of 3 for better display
-  const getGroupedModules = () => {
-    const result = [];
-    const modulesArray = Object.entries(formData.moduleAccess);
+  // Helper function to format module name for display
+  const formatModuleName = (name: string): string => {
+    return name.replace(/([A-Z])/g, ' $1')
+      .replace(/^./, str => str.toUpperCase());
+  };
+
+  // Map module names to formData.moduleAccess keys
+  const getAccessKeyFromModuleName = (moduleName: string): keyof ModulePermissions => {
+    // Convert module name to camelCase for matching with ModulePermissions keys
+    const key = moduleName.toLowerCase()
+      .replace(/\s(.)/g, ($1) => $1.toUpperCase())
+      .replace(/\s/g, '')
+      .replace(/^(.)/, ($1) => $1.toLowerCase()) as keyof ModulePermissions;
+
+    // Check if there's an admin version of this key
+    const adminKey = `${key}Admin` as keyof ModulePermissions;
     
-    for (let i = 0; i < modulesArray.length; i += 3) {
-      result.push(modulesArray.slice(i, i + 3));
+    // If adminKey exists in formData.moduleAccess, return that, otherwise return the regular key
+    if (adminKey in formData.moduleAccess) {
+      return adminKey;
     }
-    
-    return result;
+    return key;
+  };
+
+  // Check if a module key represents admin access
+  const isAdminKey = (key: string): boolean => {
+    return key.toLowerCase().includes('admin');
   };
 
   return (
@@ -72,103 +91,57 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
         
         {loading ? (
           <div className="flex items-center justify-center h-40">
+            <Loader2 className="w-6 h-6 text-primary animate-spin mr-2" />
             <p className="text-muted-foreground">Loading modules...</p>
           </div>
         ) : (
-          <>
-            {/* Traditional checkboxes layout */}
-            <div className="hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Select</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Admin Access</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {Object.entries(formData.moduleAccess).map(([key, checked]) => (
-                    <TableRow key={key}>
+          <div className="grid grid-cols-1 gap-4 mt-4">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[100px]">Select</TableHead>
+                  <TableHead>Module Name</TableHead>
+                  <TableHead className="w-[120px]">Access Level</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {modules.map((module) => {
+                  const accessKey = getAccessKeyFromModuleName(module.name);
+                  const checked = formData.moduleAccess[accessKey] || false;
+                  const isAdmin = isAdminKey(accessKey);
+                  
+                  return (
+                    <TableRow key={module.id} className="h-14">
                       <TableCell>
                         <Checkbox 
-                          id={`module-${key}`}
+                          id={`module-${accessKey}`}
                           checked={checked}
                           onCheckedChange={(checked) => 
-                            handleModuleAccessChange(key as keyof ModulePermissions, checked === true)
+                            handleModuleAccessChange(accessKey, checked === true)
                           }
                         />
                       </TableCell>
                       <TableCell>
-                        {key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}
+                        <label 
+                          htmlFor={`module-${accessKey}`}
+                          className="text-sm font-medium cursor-pointer"
+                        >
+                          {module.name}
+                        </label>
                       </TableCell>
                       <TableCell>
-                        <Checkbox 
-                          id={`admin-${key}`}
-                          checked={key.includes('Admin') && checked}
-                          disabled={!checked}
-                          onCheckedChange={(adminChecked) => {
-                            // Logic for admin privilege can be added here
-                          }}
-                        />
+                        {isAdmin ? (
+                          <span className="text-xs bg-green-100 text-green-800 rounded-full px-2 py-1">Admin</span>
+                        ) : (
+                          <span className="text-xs bg-blue-100 text-blue-800 rounded-full px-2 py-1">User</span>
+                        )}
                       </TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-
-            {/* Grid layout for better visualization */}
-            <div className="grid grid-cols-1 gap-4 mt-4">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[100px]">Select</TableHead>
-                    <TableHead>Module Name</TableHead>
-                    <TableHead className="w-[120px]">Admin Access</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {Object.entries(formData.moduleAccess).map(([key, checked]) => {
-                    const formattedName = key
-                      .replace(/([A-Z])/g, ' $1')
-                      .replace(/^./, str => str.toUpperCase())
-                      .replace(/Admin$/, '');
-                    
-                    const isAdmin = key.toLowerCase().includes('admin');
-                    
-                    return (
-                      <TableRow key={key} className="h-14">
-                        <TableCell>
-                          <Checkbox 
-                            id={`module-${key}`}
-                            checked={checked}
-                            onCheckedChange={(checked) => 
-                              handleModuleAccessChange(key as keyof ModulePermissions, checked === true)
-                            }
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <label 
-                            htmlFor={`module-${key}`}
-                            className="text-sm font-medium cursor-pointer"
-                          >
-                            {formattedName}
-                          </label>
-                        </TableCell>
-                        <TableCell>
-                          {isAdmin ? (
-                            <span className="text-xs bg-green-100 text-green-800 rounded-full px-2 py-1">Admin</span>
-                          ) : (
-                            <span className="text-xs bg-blue-100 text-blue-800 rounded-full px-2 py-1">User</span>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          </>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
         )}
       </div>
     </div>
