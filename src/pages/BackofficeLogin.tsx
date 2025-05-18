@@ -50,11 +50,11 @@ const BackofficeLogin = () => {
     
     try {
       // Call the login function from BackofficeAuthContext
+      console.log("BackofficeLogin: Calling login function with email:", email);
       let success = await login(email, password);
-      console.log("🔍 BackofficeAuth login function returned:", success);
+      console.log("BackofficeLogin: login function returned:", success);
       
       if (success) {
-        toast.success("Login successful!");
         navigate('/backoffice/dashboard');
       } else {
         toast.error("Login failed. Please check your credentials.");

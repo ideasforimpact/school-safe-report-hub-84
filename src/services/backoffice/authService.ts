@@ -1,4 +1,3 @@
-
 import { BackofficeUser } from '@/contexts/backoffice/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -13,13 +12,14 @@ const DEMO_EMAILS = [
  */
 export const loginBackofficeUser = async (email: string, password: string): Promise<BackofficeUser | null> => {
   try {
-    console.log("Attempting backoffice login for email:", email);
+    console.log("authService: loginBackofficeUser function called with email:", email);
     
     // Check if this is a demo email
     const isDemoUser = DEMO_EMAILS.includes(email);
+    console.log("Is demo user:", isDemoUser);
     
     if (isDemoUser && password === 'owner123') {
-      console.log("Using demo user login");
+      console.log("Using demo user login path");
       // For demo users, create a local user object
       return {
         id: 'demo-backoffice-id',
@@ -43,18 +43,16 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
       .eq('email', email)
       .single();
     
-    console.log("Existing user:", existingUser ? "Found" : "Not found");
+    console.log("Existing user check result:", existingUser ? "Found" : "Not found");
     
     if (userCheckError) {
       // If error is not-found, give a clear message
       if (userCheckError.code === 'PGRST116') {
         console.error(`Account not found for email: ${email}`);
-        toast.error("Account not found. Please check your email or contact an administrator.");
         return null;
       }
       
       console.error("Error checking user existence:", userCheckError);
-      toast.error("Error checking user account");
       return null;
     }
     
@@ -70,7 +68,6 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
     
     if (verifyError) {
       console.error("Password verification error:", verifyError);
-      toast.error("Authentication failed: " + verifyError.message);
       return null;
     }
 
@@ -91,7 +88,6 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
         console.log("Direct password match successful!");
         // Password matched directly, proceed with login
       } else {
-        toast.error("Invalid email or password");
         return null;
       }
     }
@@ -118,10 +114,10 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
       console.error("Error updating last_signed_in:", updateError);
     }
 
+    console.log("Returning valid backoffice user");
     return backofficeUser;
   } catch (error) {
     console.error("Unexpected error during backoffice login:", error);
-    toast.error("An unexpected error occurred during login");
     return null;
   }
 };
