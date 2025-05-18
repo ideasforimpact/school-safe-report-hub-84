@@ -30,9 +30,9 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
       navigate('/dashboard');
     }
 
-    // if(!user && !isSaasOwner){
-    //    navigate("/login")
-    // }
+    if(!user && !isSaasOwner){
+       navigate("/login")
+    }
     
   }, [user, isSaasOwner, navigate]);
 
