@@ -47,17 +47,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   );
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
   const [authError, setAuthError] = useState<string | null>(null);
-  const [isBackofficeUser, setIsBackofficeUser] = useState<boolean>(
-    currentUser?.role === 'saas_owner' // Initialize based on stored user
-  );
+  const [isBackofficeUser, setIsBackofficeUser] = useState<boolean>(false);
   const authInitCompleteRef = useRef<boolean>(false);
   const authListenerSetupRef = useRef<boolean>(false);
-
-  console.log("AuthProvider rendered, current state:", { 
-    currentUser: currentUser?.email || "null",
-    isBackofficeUser,
-    role: currentUser?.role
-  });
 
   // Import useAuthHandlers to get handleUserAuthentication function
   const { handleUserAuthentication } = useAuthHandlers({
@@ -74,16 +66,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setDisplayUsers(users.map(({ password, ...user }) => user));
   }, [users]);
 
-  // Compute roles - ensure consistent calculation
-  const isAdmin = Boolean(
-    currentUser?.role === 'admin' || 
-    currentUser?.modulePermissions?.superAdmin
-  );
-  
-  const isSaasOwner = Boolean(
-    currentUser?.role === 'saas_owner' || 
-    isBackofficeUser
-  );
+  // Compute roles
+  const isAdmin = Boolean(currentUser?.role === 'admin' || currentUser?.modulePermissions?.superAdmin);
+  const isSaasOwner = Boolean(currentUser?.role === 'saas_owner' || isBackofficeUser);
 
   // Setup Supabase auth listener for Google authentication
   useEffect(() => {
@@ -110,7 +95,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } else if (event === 'SIGNED_OUT') {
         console.log("🚪 User signed out event detected");
         setCurrentUser(null);
-        setIsBackofficeUser(false);
         setAuthError(null);
       }
     });
@@ -141,10 +125,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setTimeout(async () => {
               await handleUserAuthentication(data.session?.user);
             }, 0);
-          } else {
-            console.log("👤 Using existing user from storage:", currentUser.email);
-            // Make sure isBackofficeUser is set correctly based on existing user
-            setIsBackofficeUser(currentUser.role === 'saas_owner');
           }
         } else {
           console.log("ℹ️ No existing session found");
@@ -169,7 +149,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (user) {
         setCurrentUser(user);
-        setIsBackofficeUser(user.role === 'saas_owner');
         saveUserToStorage(user);
         toast.success(`Welcome back, ${user.firstName}!`);
         return true;
@@ -247,21 +226,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   // Handle logout
-  const handleLogout = async (): Promise<void> => {
-    try {
-      // First sign out from Supabase
-      await supabase.auth.signOut();
-      console.log("Signed out from Supabase");
-      
-      // Then proceed with our app's logout
-      setCurrentUser(null);
-      setIsBackofficeUser(false);
-      logoutUser();
-      toast.info("You have been logged out");
-    } catch (error) {
-      console.error("Logout error:", error);
-      toast.error("Error during logout");
-    }
+  const handleLogout = (): void => {
+    setCurrentUser(null);
+    setIsBackofficeUser(false);
+    logoutUser();
+    toast.info("You have been logged out");
   };
 
   // Add new user
