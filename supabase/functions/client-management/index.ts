@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -25,6 +26,12 @@ interface ClientData {
   auth_providers?: string;
   moduleAccess?: Record<string, boolean>;
   superAdminEmail?: string;
+}
+
+interface ModuleInfo {
+  name: string;
+  module_id: string;
+  is_admin: boolean;
 }
 
 // Check if super admin email domain is allowed
@@ -185,18 +192,123 @@ async function deleteClientEmployees(clientId: string) {
   }
 }
 
+// Function to find a module by name
+async function findModuleByName(moduleName: string): Promise<string | null> {
+  try {
+    const { data: modules, error } = await supabase
+      .from('modules')
+      .select('id, name')
+      .ilike('name', moduleName);
+
+    if (error) {
+      console.error(`Error finding module with name ${moduleName}:`, error);
+      return null;
+    }
+
+    if (modules && modules.length > 0) {
+      // Return the first matching module ID
+      return modules[0].id;
+    }
+
+    console.log(`No module found with name: ${moduleName}`);
+    return null;
+  } catch (err) {
+    console.error(`Error in findModuleByName for ${moduleName}:`, err);
+    return null;
+  }
+}
+
+// Function to process module access data
+async function processModuleAccess(clientId: string, moduleInfoArray: ModuleInfo[]): Promise<boolean> {
+  try {
+    console.log(`Processing modules for client ${clientId}:`, moduleInfoArray);
+    
+    if (!moduleInfoArray || moduleInfoArray.length === 0) {
+      console.log('No modules to process');
+      return true;
+    }
+    
+    // Delete existing client modules
+    const { error: deleteError } = await supabase
+      .from('client_modules')
+      .delete()
+      .eq('client_id', clientId);
+      
+    if (deleteError) {
+      console.error('Error deleting existing client modules:', deleteError);
+      return false;
+    }
+    
+    // Process each module
+    const moduleInserts = await Promise.all(moduleInfoArray.map(async (moduleInfo) => {
+      // If module_id is not provided, try to find it by name
+      let moduleId = moduleInfo.module_id;
+      if (!moduleId) {
+        moduleId = await findModuleByName(moduleInfo.name);
+        if (!moduleId) {
+          console.log(`Could not find module ID for module named: ${moduleInfo.name}`);
+          return null;
+        }
+      }
+      
+      // Create the client_module entry with proper access_level JSON
+      return {
+        client_id: clientId,
+        module_id: moduleId,
+        enabled: true,
+        access_level: { 
+          isAdmin: moduleInfo.is_admin,
+          isEnabled: true
+        }
+      };
+    }));
+    
+    // Filter out null entries and insert valid modules
+    const validModuleInserts = moduleInserts.filter(item => item !== null);
+    
+    if (validModuleInserts.length > 0) {
+      const { error: insertError } = await supabase
+        .from('client_modules')
+        .insert(validModuleInserts);
+        
+      if (insertError) {
+        console.error('Error inserting client modules:', insertError);
+        return false;
+      }
+      
+      console.log(`Successfully inserted ${validModuleInserts.length} modules for client ${clientId}`);
+      return true;
+    }
+    
+    console.log('No valid modules to insert after processing');
+    return true;
+  } catch (err) {
+    console.error('Error in processModuleAccess:', err);
+    return false;
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Get the route to determine operation
-  const url = new URL(req.url);
-  const pathParts = url.pathname.split('/').filter(Boolean);
-  const operation = pathParts[pathParts.length - 1];
-
   try {
+    // Create a Supabase client with the auth context of the function
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: { headers: { Authorization: req.headers.get('Authorization')! } },
+      }
+    );
+
+    // Get the route to determine operation
+    const url = new URL(req.url);
+    const pathParts = url.pathname.split('/').filter(Boolean);
+    const operation = pathParts[pathParts.length - 1];
+
     // Process requests based on the operation
     if (req.method === 'GET') {
       if (operation === 'clients') {
@@ -230,7 +342,12 @@ serve(async (req) => {
           
           clientModules.forEach(module => {
             if (module.enabled) {
-              moduleAccess[module.module_key] = true;
+              if (module.module_key) {
+                moduleAccess[module.module_key] = true;
+              } else if (module.module_id && module.access_level) {
+                // Use the module_id and access_level if available
+                moduleAccess[module.module_id] = true;
+              }
             }
           });
           
@@ -275,7 +392,12 @@ serve(async (req) => {
         const moduleAccess: Record<string, boolean> = {};
         modules?.forEach(module => {
           if (module.enabled) {
-            moduleAccess[module.module_key] = true;
+            if (module.module_key) {
+              moduleAccess[module.module_key] = true;
+            } else if (module.module_id && module.access_level) {
+              // Use the module_id and access_level if available
+              moduleAccess[module.module_id] = true;
+            }
           }
         });
 
@@ -295,7 +417,7 @@ serve(async (req) => {
       if (operation === 'create') {
         // Create a new client with module access
         const clientData: ClientData = requestData.client;
-        const moduleAccess = clientData.moduleAccess;
+        const moduleInfoArray: ModuleInfo[] = requestData.modules || [];
         const superAdminEmail = clientData.superAdminEmail; // Get the super admin email
         
         // Validate super admin email domain if restrictions are set
@@ -322,43 +444,9 @@ serve(async (req) => {
 
         if (clientError) throw clientError;
 
-        // Insert module access if provided
-        if (moduleAccess && Object.keys(moduleAccess).length > 0) {
-          const moduleInserts = Object.entries(moduleAccess)
-            .filter(([_, enabled]) => enabled)
-            .map(async ([key, _]) => {
-              // Find the module ID for this key
-              const { data: moduleData, error: moduleError } = await supabase
-                .from('modules')
-                .select('id')
-                .ilike('name', `%${key.replace(/([A-Z])/g, ' $1').trim()}%`)
-                .limit(1);
-                
-              if (moduleError || !moduleData || moduleData.length === 0) {
-                console.log(`Module not found for key: ${key}`);
-                return null;
-              }
-              
-              return {
-                client_id: newClient.id,
-                module_id: moduleData[0].id,
-                enabled: true,
-                access_level: { isAdmin: key.includes('Admin'), isEnabled: true }
-              };
-            });
-            
-          const moduleData = await Promise.all(moduleInserts);
-          const validModuleData = moduleData.filter(item => item !== null);
-          
-          if (validModuleData.length > 0) {
-            const { error: moduleError } = await supabase
-              .from('client_modules')
-              .insert(validModuleData);
-
-            if (moduleError) {
-              console.error('Error inserting client modules:', moduleError);
-            }
-          }
+        // Process module access if provided
+        if (moduleInfoArray.length > 0) {
+          await processModuleAccess(newClient.id, moduleInfoArray);
         }
 
         // Create employee from super admin email if provided
@@ -370,7 +458,7 @@ serve(async (req) => {
         return new Response(JSON.stringify({ 
           client: {
             ...newClient,
-            moduleAccess,
+            moduleInfoArray,
             superAdminEmail
           },
           employee
@@ -380,7 +468,7 @@ serve(async (req) => {
         });
       } else if (operation === 'update') {
         // Update an existing client with module access
-        const { id, moduleAccess, superAdminEmail, ...clientUpdates } = requestData.client;
+        const { id, moduleAccess, superAdminEmail, modules: moduleInfoArray = [], ...clientUpdates } = requestData.client;
 
         if (!id) {
           return new Response(JSON.stringify({ error: 'Client ID is required' }), {
@@ -426,56 +514,9 @@ serve(async (req) => {
 
         if (clientError) throw clientError;
 
-        // Update module access if provided
-        if (moduleAccess) {
-          // Delete existing modules
-          const { error: deleteError } = await supabase
-            .from('client_modules')
-            .delete()
-            .eq('client_id', id);
-
-          if (deleteError) {
-            console.error('Error deleting client modules:', deleteError);
-          }
-
-          // Insert new modules
-          const moduleInserts = Object.entries(moduleAccess)
-            .filter(([_, enabled]) => enabled)
-            .map(async ([key, _]) => {
-              // Find the module ID for this key
-              const { data: moduleData, error: moduleError } = await supabase
-                .from('modules')
-                .select('id')
-                .ilike('name', `%${key.replace(/([A-Z])/g, ' $1').trim()}%`)
-                .limit(1);
-                
-              if (moduleError || !moduleData || moduleData.length === 0) {
-                console.log(`Module not found for key: ${key}`);
-                return null;
-              }
-              
-              return {
-                client_id: id,
-                module_id: moduleData[0].id,
-                enabled: true,
-                access_level: { isAdmin: key.includes('Admin'), isEnabled: true }
-              };
-            });
-
-          if (moduleInserts.length > 0) {
-            const moduleData = await Promise.all(moduleInserts);
-            const validModuleData = moduleData.filter(item => item !== null);
-
-            if (validModuleData.length > 0) {
-              const { error: moduleError } = await supabase
-                .from('client_modules')
-                .insert(validModuleData);
-
-              if (moduleError) {
-                console.error('Error inserting client modules:', moduleError);
-              }
-            }
-          }
+        // Process modules if provided
+        if (moduleInfoArray && moduleInfoArray.length > 0) {
+          await processModuleAccess(id, moduleInfoArray);
         }
 
         // Handle super admin email update
@@ -487,7 +528,7 @@ serve(async (req) => {
         return new Response(JSON.stringify({ 
           client: {
             ...updatedClient,
-            moduleAccess,
+            moduleInfoArray,
             superAdminEmail
           },
           employee
