@@ -29,14 +29,24 @@ const BackofficeLogin = () => {
 
   // Check if user is already logged in and is a SaaS owner, redirect if they are but only after initial render
   useEffect(() => {
+    console.log("Backoffice Login - Auth state:", { 
+      isUser: !!user, 
+      isSaasOwner, 
+      redirect,
+      userDetails: user ? `${user.firstName} ${user.lastName} (${user.role})` : 'No user'
+    });
+    
     // Only redirect if this isn't the initial render
     if (user && isSaasOwner && redirect) {
+      console.log("Backoffice Login - Redirecting SaaS owner to backoffice dashboard");
       navigate('/backoffice/dashboard');
     } else if (user && !isSaasOwner && redirect) {
+      console.log("Backoffice Login - User is not a SaaS owner, redirecting to dashboard");
       toast.error("You don't have permission to access the backoffice.");
       navigate('/dashboard');
     } else if (user) {
       // Set redirect flag to true after initial render
+      console.log("Backoffice Login - Setting redirect flag to true");
       setRedirect(true);
     }
   }, [user, isSaasOwner, navigate, redirect]);
@@ -44,14 +54,15 @@ const BackofficeLogin = () => {
   // Check for authentication redirect results and errors
   useEffect(() => {
     const checkForAuthRedirect = async () => {
+      console.log("Backoffice Login - Checking for auth redirect");
       const { data, error } = await supabase.auth.getSession();
       
       if (data?.session) {
-        console.log("Session detected after redirect:", data.session);
+        console.log("Backoffice Login - Session detected after redirect:", data.session);
       }
       
       if (error) {
-        console.error("Auth redirect error:", error);
+        console.error("Backoffice Login - Auth redirect error:", error);
         toast.error("Authentication failed. Please try again.");
       }
     };

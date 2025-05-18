@@ -1,4 +1,3 @@
-
 import { ReactNode, useEffect, useState } from 'react';
 import { ShieldCheck, LogOut } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -25,8 +24,17 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
   
   // Redirect if not SaaS owner or not logged in, but only after initial render
   useEffect(() => {
+    console.log("Backoffice Layout - Auth state:", { 
+      isUser: !!user, 
+      isSaasOwner, 
+      redirect,
+      pathname: location.pathname,
+      userDetails: user ? `${user.firstName} ${user.lastName} (${user.role})` : 'No user'
+    });
+    
     if (!user && redirect) {
       // User is not logged in at all, redirect to backoffice login
+      console.log("Backoffice Layout - No user, redirecting to backoffice login");
       toast.error("Please log in to access the backoffice.");
       navigate('/backoffice/login');
       return;
@@ -34,6 +42,7 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
     
     if (user && !isSaasOwner && redirect) {
       // User is logged in but not a SaaS owner
+      console.log("Backoffice Layout - User is not a SaaS owner, redirecting to dashboard");
       toast.error("You don't have permission to access the backoffice.");
       navigate('/dashboard');
       return;
@@ -41,9 +50,10 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
 
     // Set redirect flag to true after initial render
     if (!redirect) {
+      console.log("Backoffice Layout - Setting redirect flag to true");
       setRedirect(true);
     }
-  }, [user, isSaasOwner, navigate, redirect]);
+  }, [user, isSaasOwner, navigate, redirect, location.pathname]);
 
   const handleLogout = () => {
     logout();

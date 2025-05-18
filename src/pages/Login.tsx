@@ -31,12 +31,21 @@ const Login = () => {
 
   // Check if user is already logged in, redirect if they are but only after initial render
   useEffect(() => {
+    console.log("Login page - Auth state:", { 
+      isUser: !!user, 
+      redirect,
+      locationState: location.state,
+      userDetails: user ? `${user.firstName} ${user.lastName} (${user.role})` : 'No user'
+    });
+    
     // Only redirect if this isn't the initial render
     if (user && redirect) {
       const from = location.state?.from?.pathname || "/dashboard";
+      console.log("Login page - Redirecting authenticated user to:", from);
       navigate(from);
     } else if (user) {
       // Set redirect flag to true after initial render
+      console.log("Login page - Setting redirect flag to true");
       setRedirect(true);
     }
   }, [user, redirect, navigate, location.state]);
@@ -44,14 +53,15 @@ const Login = () => {
   // Check for authentication redirect results and errors
   useEffect(() => {
     const checkForAuthRedirect = async () => {
+      console.log("Login page - Checking for auth redirect");
       const { data, error } = await supabase.auth.getSession();
       
       if (data?.session) {
-        console.log("Session detected after redirect:", data.session);
+        console.log("Login page - Session detected after redirect:", data.session);
       }
       
       if (error) {
-        console.error("Auth redirect error:", error);
+        console.error("Login page - Auth redirect error:", error);
         toast.error("Authentication failed. Please try again.");
       }
     };
