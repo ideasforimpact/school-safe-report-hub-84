@@ -1,3 +1,4 @@
+
 import { 
   LayoutDashboard, 
   AlertTriangle,
@@ -50,7 +51,7 @@ const clientRoleKeys = ['incidentReporting', 'incidentAdmin', 'assessmentUser', 
 let cachedBackofficeModules: Module[] | null = null;
 let cachedClientModules: Module[] | null = null;
 
-export const fetchModules = async (isBackoffice: boolean): Promise<Module[]> => {
+export const fetchModules = async (isBackoffice: boolean, user?: any): Promise<Module[]> => {
   try {
     // Check cache first
     if (isBackoffice && cachedBackofficeModules) {
@@ -59,9 +60,20 @@ export const fetchModules = async (isBackoffice: boolean): Promise<Module[]> => 
       return cachedClientModules;
     }
     
-    // Call our edge function with the appropriate level parameter
+    // Prepare user info to send for logging purposes
+    const userInfo = user ? {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      isSaasOwner: user.role === 'saas_owner'
+    } : null;
+    
+    // Call our edge function with the appropriate level parameter and user info
     const { data, error } = await supabase.functions.invoke('fetch-modules', {
-      body: { level: isBackoffice ? 'backoffice' : 'client' }
+      body: { 
+        level: isBackoffice ? 'backoffice' : 'client',
+        userInfo
+      }
     });
     
     if (error) {

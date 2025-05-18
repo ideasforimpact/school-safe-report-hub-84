@@ -25,7 +25,19 @@ serve(async (req) => {
     );
 
     // Parse request parameters
-    const { level } = await req.json();
+    const { level, userInfo } = await req.json();
+    
+    // Log user details if provided
+    if (userInfo) {
+      console.log(`User requesting modules: ${JSON.stringify({
+        id: userInfo.id,
+        email: userInfo.email,
+        role: userInfo.role,
+        isSaasOwner: userInfo.isSaasOwner
+      })}`);
+    } else {
+      console.log('No user info provided with module request');
+    }
     
     console.log(`Fetching modules with level=${level}`);
     

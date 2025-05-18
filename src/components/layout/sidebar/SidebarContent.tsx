@@ -62,8 +62,8 @@ const SidebarContent = () => {
       const level = isBackofficeFetch ? 'backoffice' : 'client';
       console.log(`Fetching ${level} modules`);
       
-      // Fetch modules based on the user type and route
-      const modules = await fetchModules(isBackofficeFetch);
+      // Fetch modules based on the user type and route, passing user info
+      const modules = await fetchModules(isBackofficeFetch, user);
       
       if (modules.length === 0 && !user) {
         // If no modules and no user, only show dashboard
