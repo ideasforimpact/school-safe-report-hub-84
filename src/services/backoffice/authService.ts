@@ -12,13 +12,11 @@ const DEMO_EMAILS = [
  */
 export const loginBackofficeUser = async (email: string, password: string): Promise<BackofficeUser | null> => {
   try {
-    console.log(`🔧 authService: Login attempt started for: ${email}`);
-    
     // Check if this is a demo email
     const isDemoUser = DEMO_EMAILS.includes(email);
     
     if (isDemoUser && password === 'owner123') {
-      console.log("🔧 authService: Using demo user login");
+      console.log("Using demo user login");
       // For demo users, create a local user object
       return {
         id: 'demo-backoffice-id',
@@ -32,8 +30,8 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
       };
     }
     
-    // For non-demo users, we need to check if the email exists first
-    console.log("🔧 authService: Checking if account exists in backoffice_users table...");
+    // For non-demo users, check if the email exists first
+    console.log("Checking if account exists in backoffice_users table...");
     
     // First check if user exists in backoffice_users table
     const { data: existingUser, error: userCheckError } = await supabase
@@ -42,50 +40,42 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
       .eq('email', email)
       .single();
     
-    console.log("🔧 DEBUG: Existing user data:", existingUser);
-    console.log("🔧 DEBUG: User check error:", userCheckError);
+    console.log("Existing user:", existingUser ? "Found" : "Not found");
     
     if (userCheckError) {
       // If error is not-found, give a clear message
       if (userCheckError.code === 'PGRST116') {
-        console.error(`🔧 authService: Account not found for email: ${email}`);
-        console.error("🔧 Error details:", userCheckError);
+        console.error(`Account not found for email: ${email}`);
         toast.error("Account not found. Please check your email or contact an administrator.");
         return null;
       }
       
-      console.error("🔧 authService: Error checking user existence:", userCheckError);
+      console.error("Error checking user existence:", userCheckError);
       toast.error("Error checking user account");
       return null;
     }
     
-    console.log("🔧 authService: Account found, proceeding to verify password...");
-    console.log("🔧 authService: User data from DB:", existingUser);
+    console.log("Account found, proceeding to verify password...");
     
     // For real users, verify password with Supabase function
-    console.log("🔧 authService: Calling verify_password RPC function with email:", email);
-    console.log("🔧 DEBUG: Password length:", password ? password.length : 0);
-    
     const { data: isValidPassword, error: verifyError } = await supabase.rpc('verify_password', { 
       email, 
       password_attempt: password 
     });
 
-    console.log("🔧 authService: Password verification result:", isValidPassword);
-    console.log("🔧 authService: Password verification error:", verifyError);
+    console.log("Password verification result:", isValidPassword);
     
     if (verifyError) {
-      console.error("🔧 authService: Password verification error:", verifyError);
+      console.error("Password verification error:", verifyError);
       toast.error("Authentication failed: " + verifyError.message);
       return null;
     }
 
     if (!isValidPassword) {
-      console.error("🔧 authService: Invalid credentials - password verification failed");
+      console.error("Invalid credentials - password verification failed");
       
       // SPECIAL HANDLING: If this is a newly created user, try direct password comparison as fallback
-      // This is a temporary workaround for potential timing issues with the RPC function
-      console.log("🔧 authService: Attempting direct password check as fallback...");
+      console.log("Attempting direct password check as fallback...");
       
       // Get the stored hashed password from the database
       const { data: storedHash } = await supabase
@@ -93,22 +83,15 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
         .select('password')
         .eq('email', email)
         .single();
-      
-      console.log("🔧 DEBUG: Stored hash from DB:", storedHash);
         
       if (storedHash && storedHash.password === password) {
-        console.log("🔧 authService: Direct password match successful!");
+        console.log("Direct password match successful!");
         // Password matched directly, proceed with login
       } else {
-        console.log("🔧 DEBUG: Direct password match failed. Stored hash:", 
-                   storedHash?.password ? `${storedHash.password.substring(0, 10)}...` : 'null', 
-                   "Password length:", password?.length);
         toast.error("Invalid email or password");
         return null;
       }
     }
-
-    console.log("🔧 authService: Password verified successfully, building user object");
 
     // Map database record to BackofficeUser type
     const backofficeUser: BackofficeUser = {
@@ -122,8 +105,6 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
       lastLogin: new Date().toISOString()
     };
     
-    console.log("🔧 authService: User object created:", backofficeUser);
-    
     // Update last_signed_in
     const { error: updateError } = await supabase
       .from('backoffice_users')
@@ -131,15 +112,12 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
       .eq('id', backofficeUser.id);
       
     if (updateError) {
-      console.error("🔧 authService: Error updating last_signed_in:", updateError);
-    } else {
-      console.log("🔧 authService: Updated last_signed_in successfully");
+      console.error("Error updating last_signed_in:", updateError);
     }
 
-    console.log("🔧 authService: Login successful, returning user");
     return backofficeUser;
   } catch (error) {
-    console.error("🔧 authService: Unexpected error during backoffice login:", error);
+    console.error("Unexpected error during backoffice login:", error);
     toast.error("An unexpected error occurred during login");
     return null;
   }

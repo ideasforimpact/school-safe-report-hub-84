@@ -28,13 +28,6 @@ const BackofficeLogin = () => {
   const { login, user, error: authError, clearError } = useBackofficeAuth();
   const navigate = useNavigate();
 
-  // Add a debug effect to verify which login function is available
-  useEffect(() => {
-    console.log("🔎 DEBUG: BackofficeLogin mounted");
-    console.log("🔎 DEBUG: login function from useBackofficeAuth:", login ? "present" : "missing");
-    console.log("🔎 DEBUG: useBackofficeAuth context:", { user, login, error: authError, clearError });
-  }, []);
-
   // Check if user is already logged in, redirect if they are
   useEffect(() => {
     if (user) {
@@ -58,20 +51,11 @@ const BackofficeLogin = () => {
     }
     
     setIsLoading(true);
-    console.log("🔍 Starting login attempt with email:", email);
+    console.log("Starting login attempt with email:", email);
     
     try {
-      // For debugging, log the type of login attempt
-      if (email === 'owner@saasplatform.com' && password === 'owner123') {
-        console.log("🔍 Attempting demo login");
-      } else {
-        console.log("🔍 Attempting standard login");
-      }
-      
-      // For testing specific emails, check if email is in allowed test list
+      // Check if this email is in allowed test list
       if (ALLOWED_TEST_EMAILS.includes(email)) {
-        console.log("🔍 This email is in the allowed test list");
-        
         // Check if this user exists in backoffice_users table
         const { data: existingUser, error } = await supabase
           .from('backoffice_users')
@@ -79,10 +63,10 @@ const BackofficeLogin = () => {
           .eq('email', email)
           .maybeSingle();
           
-        console.log("🔍 User check result:", existingUser, error);
+        console.log("User check result:", existingUser ? "Found" : "Not found");
         
         if (!existingUser) {
-          console.log("🔍 Creating test user account for:", email);
+          console.log("Creating test user account for:", email);
           
           // If not, create a test account for this email
           const { error: hashError, data: hashedPassword } = await supabase.rpc('hash_password', {
@@ -90,7 +74,7 @@ const BackofficeLogin = () => {
           });
           
           if (hashError) {
-            console.error("🔍 Error hashing password:", hashError);
+            console.error("Error hashing password:", hashError);
             toast.error("Error creating test account");
             setIsLoading(false);
             return;
@@ -108,49 +92,46 @@ const BackofficeLogin = () => {
             .single();
             
           if (insertError) {
-            console.error("🔍 Error creating test account:", insertError);
+            console.error("Error creating test account:", insertError);
             toast.error("Error creating test account");
             setIsLoading(false);
             return;
           }
           
-          console.log("🔍 Test account created successfully:", newUser);
+          console.log("Test account created successfully");
           toast.success("Test account created. Please log in now.");
           
-          // Let's add a significant delay to ensure the database has time to process the insert
-          // and the password hash is properly stored
-          await new Promise(resolve => setTimeout(resolve, 2500));
+          // Add a significant delay to ensure the database has time to process
+          await new Promise(resolve => setTimeout(resolve, 3000));
         }
       }
       
-      // Now proceed with login - IMPORTANT: Use the login function from BackofficeAuthContext
-      console.log("🔍 About to call BackofficeAuthContext login function with:", email);
-      
-      // First attempt at login
+      // Call the login function from BackofficeAuthContext
+      console.log("Calling BackofficeAuthContext login function");
       let success = await login(email, password);
-      console.log("🔍 BackofficeAuth login function returned:", success);
+      console.log("Login attempt result:", success ? "Success" : "Failed");
       
       // If first attempt failed and it might be a newly created account
       if (!success && ALLOWED_TEST_EMAILS.includes(email)) {
-        console.log("🔍 Initial login failed for potentially new account, waiting and trying again...");
-        // Wait a bit more and try again
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        console.log("🔍 Trying BackofficeAuth login function again after delay");
+        console.log("Initial login failed for new account, waiting and trying again...");
+        // Wait a bit more and try again with a longer delay
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        console.log("Trying login again after delay");
         success = await login(email, password);
-        console.log("🔍 Second login attempt returned:", success);
+        console.log("Second login attempt result:", success ? "Success" : "Failed");
       }
       
       if (success) {
-        console.log("🔍 Login success, redirecting to dashboard");
+        console.log("Login successful, redirecting to dashboard");
         toast.success("Login successful!");
         navigate('/backoffice/dashboard');
       } else {
-        console.error("🔍 Login failed with false return value");
+        console.error("Login failed");
         toast.error("Login failed. Please check your credentials.");
         setIsLoading(false);
       }
     } catch (err) {
-      console.error("🔍 Outer try-catch caught error:", err);
+      console.error("Login error:", err);
       toast.error("An error occurred. Please try again.");
       setIsLoading(false);
     }

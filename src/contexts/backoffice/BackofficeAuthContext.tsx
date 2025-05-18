@@ -16,17 +16,10 @@ const BackofficeAuthContext = createContext<BackofficeAuthContextType>({
 });
 
 export const useBackofficeAuth = () => {
-  console.log("🔑 DEBUG: useBackofficeAuth hook called");
   const context = useContext(BackofficeAuthContext);
   if (!context) {
-    console.error("🔑 DEBUG: BackofficeAuthContext is undefined");
     throw new Error('useBackofficeAuth must be used within a BackofficeAuthProvider');
   }
-  console.log("🔑 DEBUG: useBackofficeAuth returning context:", {
-    userExists: !!context.user,
-    loginFnExists: !!context.login,
-    loginFnType: typeof context.login
-  });
   return context;
 };
 
@@ -35,7 +28,6 @@ interface BackofficeAuthProviderProps {
 }
 
 export const BackofficeAuthProvider: React.FC<BackofficeAuthProviderProps> = ({ children }) => {
-  console.log("🔑 DEBUG: BackofficeAuthProvider rendering");
   const [user, setUser] = useState<BackofficeUser | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,15 +37,10 @@ export const BackofficeAuthProvider: React.FC<BackofficeAuthProviderProps> = ({ 
   useEffect(() => {
     const checkExistingSession = () => {
       try {
-        console.log("Checking for existing backoffice session");
-        // Check if there's a stored backoffice user
         const storedUser = sessionStorage.getItem('backoffice_user');
         if (storedUser) {
           const parsedUser = JSON.parse(storedUser);
-          console.log("Found stored backoffice user:", parsedUser.email);
           setUser(parsedUser);
-        } else {
-          console.log("No stored backoffice user found");
         }
       } catch (err) {
         console.error("Error checking backoffice session:", err);
@@ -67,43 +54,31 @@ export const BackofficeAuthProvider: React.FC<BackofficeAuthProviderProps> = ({ 
 
   // Login function
   const login = async (email: string, password: string): Promise<boolean> => {
-    console.log("⭐ DEBUG: BackofficeAuthContext.login FUNCTION DEFINITION");
-    console.log("⭐ BackofficeAuthContext.login CALLED with email:", email, "and password length:", password ? password.length : 0);
     setIsLoading(true);
     setError(null);
 
     try {
-      // Check if this is a demo login
-      const isDemoUser = email === 'owner@saasplatform.com' && password === 'owner123';
-      if (isDemoUser) {
-        console.log("⭐ BackofficeAuthContext: Using demo credentials for login");
-      }
-      
-      console.log("⭐ BackofficeAuthContext: About to call loginBackofficeUser service");
+      // Call the service to authenticate the user
       const backofficeUser = await loginBackofficeUser(email, password);
-      console.log("⭐ BackofficeAuthContext: Service returned user:", backofficeUser ? "User Object" : "null");
       
       if (backofficeUser) {
-        console.log("⭐ BackofficeAuthContext: Login successful for:", backofficeUser.email);
         setUser(backofficeUser);
         // Store user in session storage
         sessionStorage.setItem('backoffice_user', JSON.stringify(backofficeUser));
         toast.success("Login successful!");
         return true;
       } else {
-        console.error("⭐ BackofficeAuthContext: Login failed - invalid credentials or user not found");
         setError('Invalid email or password');
         toast.error('Invalid email or password');
         return false;
       }
     } catch (err) {
-      console.error("⭐ BackofficeAuthContext: Login error:", err);
+      console.error("Login error:", err);
       setError('An error occurred during login');
       toast.error('An error occurred during login');
       return false;
     } finally {
       setIsLoading(false);
-      console.log("⭐ BackofficeAuthContext: Login process completed");
     }
   };
 
@@ -111,7 +86,6 @@ export const BackofficeAuthProvider: React.FC<BackofficeAuthProviderProps> = ({ 
   const logout = async (): Promise<void> => {
     setIsLoading(true);
     try {
-      console.log("Logging out backoffice user");
       await logoutBackofficeUser();
       setUser(null);
       // Clear session storage
@@ -141,12 +115,6 @@ export const BackofficeAuthProvider: React.FC<BackofficeAuthProviderProps> = ({ 
     error,
     clearError
   };
-
-  console.log("🔑 DEBUG: BackofficeAuthProvider value:", {
-    userExists: !!value.user,
-    loginFnExists: !!value.login,
-    loginFnType: typeof value.login
-  });
 
   return (
     <BackofficeAuthContext.Provider value={value}>
