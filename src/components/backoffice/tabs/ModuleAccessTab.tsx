@@ -128,7 +128,7 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[100px]">Select</TableHead>
+                  <TableHead className="w-[100px]">Enable</TableHead>
                   <TableHead>Module Name</TableHead>
                   <TableHead className="w-[120px]">Access Level</TableHead>
                 </TableRow>
