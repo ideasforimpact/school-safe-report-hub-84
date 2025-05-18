@@ -30,8 +30,11 @@ const Header = () => {
   // Set dashboard path to /dashboard for all users
   const dashboardPath = "/dashboard";
   
-  // Show backoffice link for SaaS owners when not already in backoffice
-  const showBackofficeLink = isSaasOwner && !isBackoffice;
+  // Check if user is super admin
+  const isSuperAdmin = user?.modulePermissions?.superAdmin === true;
+  
+  // Show admin settings menu only for SaaS owner or super admin users
+  const showAdminSettings = isSaasOwner || isSuperAdmin;
 
   return (
     <div className="w-full h-16 bg-white shadow-sm">
@@ -57,25 +60,8 @@ const Header = () => {
 
               {user && <UserRoleBadge isSaasOwner={isSaasOwner} isAdmin={isAdmin} />}
               
-              {/* Backoffice Link for SaaS Owner */}
-              {showBackofficeLink && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate('/backoffice/dashboard')}
-                  className="hidden md:flex"
-                >
-                  Go to Backoffice
-                </Button>
-              )}
-              
-              {/* Removed the Client Dashboard Link that was here */}
-
-              {/* Settings Menu - Only visible for admins */}
-              {isAdmin && !isSaasOwner && <AdminSettingsMenu />}
-              
-              {/* Show Admin Settings Menu for SaaS Owner too */}
-              {isSaasOwner && !isBackoffice && <AdminSettingsMenu />}
+              {/* Settings Menu - Only visible for SaaS owners or super admins */}
+              {showAdminSettings && !isBackoffice && <AdminSettingsMenu />}
 
               <UserProfileMenu />
             </div>

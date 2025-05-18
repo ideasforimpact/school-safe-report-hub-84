@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/auth';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -19,9 +19,15 @@ import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { ChangePasswordDialog } from '@/components/ChangePasswordDialog';
 
 const UserProfileMenu = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, isAdmin, isSaasOwner } = useAuth();
   const navigate = useNavigate();
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+
+  // Check if user is super admin
+  const isSuperAdmin = user?.modulePermissions?.superAdmin === true;
+  
+  // Show settings only for SaaS owners or super admins
+  const showSettings = isSaasOwner || isSuperAdmin;
 
   const getInitials = () => {
     if (!user || !user.firstName || !user.lastName) return '';
@@ -74,10 +80,12 @@ const UserProfileMenu = () => {
             <User className="mr-2 h-4 w-4" />
             <span>Profile</span>
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => navigate('/settings')}>
-            <Settings className="mr-2 h-4 w-4" />
-            <span>Settings</span>
-          </DropdownMenuItem>
+          {showSettings && (
+            <DropdownMenuItem onClick={() => navigate('/settings')}>
+              <Settings className="mr-2 h-4 w-4" />
+              <span>Settings</span>
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem onClick={handleChangePassword}>
             <Key className="mr-2 h-4 w-4" />
             <span>Change Password</span>

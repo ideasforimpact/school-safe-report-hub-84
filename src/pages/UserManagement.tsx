@@ -70,6 +70,9 @@ const UserManagement = () => {
   // Get clientId from user context
   const clientId = user?.clientId;
   
+  // Check if user is super admin
+  const isSuperAdmin = user?.modulePermissions?.superAdmin === true;
+
   // Default form data for the user forms
   const [formData, setFormData] = useState<{
     firstName: string;
@@ -519,24 +522,26 @@ const UserManagement = () => {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">User Management</h1>
-          <div className="flex gap-2">
-            <Button 
-              onClick={() => setIsImportDialogOpen(true)}
-              className="flex items-center gap-2"
-              variant="secondary"
-              disabled={isLoading}
-            >
-              <FileUp className="h-4 w-4" />
-              <span>Import Employees</span>
-            </Button>
-            <Button 
-              onClick={() => setIsAddDialogOpen(true)}
-              disabled={isLoading}
-            >
-              <UserPlus className="h-4 w-4 mr-2" />
-              Add Employee
-            </Button>
-          </div>
+          {isSuperAdmin && (
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => setIsImportDialogOpen(true)}
+                className="flex items-center gap-2"
+                variant="secondary"
+                disabled={isLoading}
+              >
+                <FileUp className="h-4 w-4" />
+                <span>Import Employees</span>
+              </Button>
+              <Button 
+                onClick={() => setIsAddDialogOpen(true)}
+                disabled={isLoading}
+              >
+                <UserPlus className="h-4 w-4 mr-2" />
+                Add Employee
+              </Button>
+            </div>
+          )}
         </div>
 
         <Card>
