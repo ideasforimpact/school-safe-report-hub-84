@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import BasicInfoTab from './tabs/BasicInfoTab';
-import ModuleAccessTab from './tabs/ModuleAccessTab';
+import ModuleAccessTab, { ModuleInfo } from './tabs/ModuleAccessTab';
 import AuthTab from './tabs/AuthTab';
 import { OAuthProviderName } from '@/utils/authProviders';
 import { ClientFormData } from '@/hooks/useClientManagement';
@@ -58,6 +58,15 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
         [module]: value
       }
     });
+  };
+
+  const handleModuleInfoChange = (moduleInfoArray: ModuleInfo[]) => {
+    setFormData({
+      ...formData,
+      moduleInfoArray
+    });
+    
+    console.log("Updated moduleInfoArray in formData:", moduleInfoArray);
   };
 
   const handleAuthProviderChange = (provider: OAuthProviderName, value: boolean) => {
@@ -133,7 +142,8 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
           <TabsContent value="access">
             <ModuleAccessTab 
               formData={safeFormData} 
-              handleModuleAccessChange={handleModuleAccessChange} 
+              handleModuleAccessChange={handleModuleAccessChange}
+              onModuleInfoChange={handleModuleInfoChange}
             />
           </TabsContent>
 

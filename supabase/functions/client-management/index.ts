@@ -195,20 +195,76 @@ async function deleteClientEmployees(clientId: string) {
 // Function to find a module by name
 async function findModuleByName(moduleName: string): Promise<string | null> {
   try {
-    const { data: modules, error } = await supabase
+    console.log(`Searching for module with name: ${moduleName}`);
+    
+    // First try exact match
+    let { data: modules, error } = await supabase
       .from('modules')
       .select('id, name')
-      .ilike('name', moduleName);
-
+      .eq('name', moduleName);
+      
     if (error) {
       console.error(`Error finding module with name ${moduleName}:`, error);
       return null;
     }
 
+    // If exact match found, return it
     if (modules && modules.length > 0) {
-      // Return the first matching module ID
-      console.log(`Found module with name ${moduleName}: ${modules[0].id}`);
+      console.log(`Found exact match for module ${moduleName}: ${modules[0].id}`);
       return modules[0].id;
+    }
+    
+    // If no exact match, try case-insensitive search
+    const { data: modulesIlike, error: ilikeError } = await supabase
+      .from('modules')
+      .select('id, name')
+      .ilike('name', `%${moduleName}%`);
+      
+    if (ilikeError) {
+      console.error(`Error in ilike search for module ${moduleName}:`, ilikeError);
+      return null;
+    }
+    
+    if (modulesIlike && modulesIlike.length > 0) {
+      console.log(`Found fuzzy match for module ${moduleName}: ${modulesIlike[0].id} (${modulesIlike[0].name})`);
+      return modulesIlike[0].id;
+    }
+    
+    // Special case mappings
+    const specialCaseMap: Record<string, string> = {
+      'superAdmin': 'Dashboard',
+      'incidentReporting': 'Incidents',
+      'assessmentUser': 'Assessments',
+      'employeeVerificationAdmin': 'Employee Verification',
+      'grievancesAdmin': 'Grievances',
+      'transportSafetyAdmin': 'Transport Safety',
+      'eduSafeResourceAccess': 'EduSafe Resources'
+    };
+    
+    // Try special case mapping
+    const mappedName = specialCaseMap[moduleName];
+    if (mappedName) {
+      const { data: mappedModules, error: mappedError } = await supabase
+        .from('modules')
+        .select('id, name')
+        .eq('name', mappedName);
+        
+      if (!mappedError && mappedModules && mappedModules.length > 0) {
+        console.log(`Found mapped module for ${moduleName}: ${mappedModules[0].id} (${mappedModules[0].name})`);
+        return mappedModules[0].id;
+      }
+    }
+
+    // As last resort, get all modules and find the best match
+    const { data: allModules, error: allModulesError } = await supabase
+      .from('modules')
+      .select('id, name');
+      
+    if (!allModulesError && allModules && allModules.length > 0) {
+      console.log(`No direct match found for ${moduleName}, searching all ${allModules.length} modules`);
+      for (const module of allModules) {
+        console.log(`Checking module: ${module.name}`);
+      }
     }
 
     console.log(`No module found with name: ${moduleName}`);
@@ -251,6 +307,8 @@ async function processModuleAccess(clientId: string, moduleInfoArray: ModuleInfo
           return null;
         }
       }
+      
+      console.log(`Creating client_module for: ${moduleInfo.name}, module_id: ${moduleId}, is_admin: ${moduleInfo.is_admin}`);
       
       // Create the client_module entry with proper access_level JSON
       return {
@@ -309,6 +367,10 @@ serve(async (req) => {
     const url = new URL(req.url);
     const pathParts = url.pathname.split('/').filter(Boolean);
     const operation = pathParts[pathParts.length - 1];
+
+    // Get the request data
+    const requestData = req.method === 'POST' ? await req.json() : null;
+    console.log(`Received ${req.method} request for operation: ${operation}`, requestData);
 
     // Process requests based on the operation
     if (req.method === 'GET') {
@@ -413,13 +475,13 @@ serve(async (req) => {
         });
       }
     } else if (req.method === 'POST') {
-      const requestData = await req.json();
-
       if (operation === 'create') {
         // Create a new client with module access
         const clientData: ClientData = requestData.client;
         const moduleInfoArray: ModuleInfo[] = requestData.client.modules || [];
         const superAdminEmail = clientData.superAdminEmail;
+        
+        console.log('Creating client with modules:', moduleInfoArray);
         
         // Validate super admin email domain if restrictions are set
         if (superAdminEmail && clientData.super_admin_allowed_domain) {
@@ -433,7 +495,7 @@ serve(async (req) => {
           }
         }
         
-        // Remove moduleAccess and superAdminEmail from client data before insertion
+        // Remove moduleAccess, superAdminEmail, and modules from client data before insertion
         const { moduleAccess: _, superAdminEmail: __, modules: ___, ...clientOnly } = clientData;
 
         // Insert client first
@@ -477,6 +539,8 @@ serve(async (req) => {
             status: 400,
           });
         }
+        
+        console.log('Updating client modules:', moduleInfoArray);
         
         // Get current client data to check super admin domain validation
         const { data: currentClient, error: fetchError } = await supabase

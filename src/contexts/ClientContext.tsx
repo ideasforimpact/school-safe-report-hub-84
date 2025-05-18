@@ -38,8 +38,8 @@ interface ClientContextType {
   clients: Client[];
   loading: boolean;
   setClient: (client: Client | null) => void;
-  addClient: (clientData: Omit<Client, 'id' | 'creationDate'>) => Promise<Client | null>;
-  updateClient: (id: string, updates: Partial<Client>) => Promise<void>;
+  addClient: (clientData: Omit<Client, 'id' | 'creationDate'> & { modules?: ModuleInfo[] }) => Promise<Client | null>;
+  updateClient: (id: string, updates: Partial<Client> & { modules?: ModuleInfo[] }) => Promise<void>;
   deleteClient: (id: string) => Promise<void>;
   isEmailDomainAllowed?: (email: string, clientId: string) => boolean;
 }
@@ -172,11 +172,14 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   };
 
   // Add a new client
-  const addClient = async (clientData: Omit<Client, 'id' | 'creationDate'>) => {
+  const addClient = async (clientData: Omit<Client, 'id' | 'creationDate'> & { modules?: ModuleInfo[] }) => {
     setLoading(true);
     try {
+      // Extract modules from clientData
+      const { modules, ...rest } = clientData;
+      
       // First save the client data
-      const dbClient = prepareClientForDb(clientData as Client);
+      const dbClient = prepareClientForDb(rest as Client);
       
       const { data, error } = await supabase
         .from('clients')
@@ -189,25 +192,17 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       }
 
       if (data) {
-        // Now prepare module access data
-        if (clientData.moduleAccess) {
-          // Convert module permissions to module info array
-          const moduleInfoArray = Object.entries(clientData.moduleAccess)
-            .filter(([_, enabled]) => enabled) // Only include enabled modules
-            .map(([key, _]) => ({
-              name: key, // Use the key as the module name
-              module_id: "", // Will be looked up in the edge function
-              is_admin: key.includes("Admin") // Assume modules with "Admin" are admin modules
-            }));
-
-          // Call the client-management edge function to handle modules
+        // Now handle module access with the edge function
+        if (modules && modules.length > 0) {
+          console.log('Sending modules to client-management edge function:', modules);
+          
           const { error: modulesError } = await supabase.functions.invoke('client-management', {
             body: { 
               operation: 'create',
               client: {
                 id: data.id, 
                 moduleAccess: clientData.moduleAccess,
-                modules: moduleInfoArray,
+                modules: modules,
                 superAdminEmail: clientData.superAdminEmail
               }
             }
@@ -224,7 +219,7 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           ...mapDbClientToClient(data),
           moduleAccess: clientData.moduleAccess,
           superAdminAllowedDomains: clientData.superAdminAllowedDomains,
-          superAdminEmail: clientData.superAdminEmail // Make sure to include this property
+          superAdminEmail: clientData.superAdminEmail
         };
         
         setClients(prev => [...prev, newClient]);
@@ -244,16 +239,19 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   };
 
   // Update an existing client
-  const updateClient = async (id: string, updates: Partial<Client>) => {
+  const updateClient = async (id: string, updates: Partial<Client> & { modules?: ModuleInfo[] }) => {
     setLoading(true);
     try {
+      // Extract modules from updates
+      const { modules, ...clientUpdates } = updates;
+      
       // First get the existing client to merge with updates
       const existingClient = clients.find(c => c.id === id);
       if (!existingClient) {
         throw new Error('Client not found');
       }
 
-      const updatedClient = { ...existingClient, ...updates };
+      const updatedClient = { ...existingClient, ...clientUpdates };
       const dbUpdates = prepareClientForDb(updatedClient);
       
       // Update client record
@@ -267,24 +265,16 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       }
 
       // Handle module access updates through edge function
-      if (updates.moduleAccess) {
-        // Convert module permissions to module info array
-        const moduleInfoArray = Object.entries(updates.moduleAccess)
-          .filter(([_, enabled]) => enabled) // Only include enabled modules
-          .map(([key, _]) => ({
-            name: key, // Use the key as the module name
-            module_id: "", // Will be looked up in the edge function
-            is_admin: key.includes("Admin") // Assume modules with "Admin" are admin modules
-          }));
-
-        // Call client-management edge function for module handling
+      if (modules && modules.length > 0) {
+        console.log('Sending modules to client-management edge function:', modules);
+        
         const { error: modulesError } = await supabase.functions.invoke('client-management', {
           body: { 
             operation: 'update',
             client: {
-              id: id, 
+              id: id,
               moduleAccess: updates.moduleAccess,
-              modules: moduleInfoArray,
+              modules: modules,
               superAdminEmail: updates.superAdminEmail
             }
           }
@@ -297,7 +287,7 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       }
 
       // Update client in state
-      setClients(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
+      setClients(prev => prev.map(c => c.id === id ? { ...c, ...clientUpdates } : c));
       toast.success('Client updated successfully');
     } catch (error) {
       console.error('Error updating client:', error);

@@ -25,14 +25,21 @@ interface ModuleAccess {
   access_level?: Record<string, any>;
 }
 
+export interface ModuleInfo {
+  name: string;
+  module_id: string;
+  is_admin: boolean;
+}
+
 interface ModuleAccessTabProps {
   formData: {
     moduleAccess: Partial<ModulePermissions>;
   };
   handleModuleAccessChange: (module: keyof ModulePermissions, value: boolean) => void;
+  onModuleInfoChange?: (moduleInfoArray: ModuleInfo[]) => void;
 }
 
-const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTabProps) => {
+const ModuleAccessTab = ({ formData, handleModuleAccessChange, onModuleInfoChange }: ModuleAccessTabProps) => {
   const [modules, setModules] = useState<Module[]>([]);
   const [loading, setLoading] = useState(false);
   const [moduleAccessState, setModuleAccessState] = useState<ModuleAccess[]>([]);
@@ -81,6 +88,18 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
           
           setModuleAccessState(initialModuleAccess);
           console.log("Initial module access state:", initialModuleAccess);
+          
+          // If onModuleInfoChange callback is provided, use it to update parent
+          if (onModuleInfoChange) {
+            const moduleInfoArray: ModuleInfo[] = initialModuleAccess
+              .filter(module => module.is_enabled)
+              .map(module => ({
+                name: module.name,
+                module_id: module.module_id,
+                is_admin: module.is_admin
+              }));
+            onModuleInfoChange(moduleInfoArray);
+          }
         }
       } catch (error) {
         console.error("Error in fetchClientModules:", error);
@@ -132,6 +151,19 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
       Object.entries(updatedPermissions).forEach(([key, value]) => {
         handleModuleAccessChange(key as keyof ModulePermissions, !!value);
       });
+    }
+    
+    // If onModuleInfoChange callback is provided, use it to update parent
+    if (onModuleInfoChange) {
+      const moduleInfoArray: ModuleInfo[] = moduleAccessState
+        .filter(module => module.is_enabled)
+        .map(module => ({
+          name: module.name,
+          module_id: module.module_id,
+          is_admin: module.is_admin
+        }));
+      console.log("Updating parent with module info array:", moduleInfoArray);
+      onModuleInfoChange(moduleInfoArray);
     }
   }, [moduleAccessState]);
 

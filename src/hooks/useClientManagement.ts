@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Client, useClient, InstitutionType, ModuleInfo } from '@/contexts/ClientContext';
 import { OAuthProviderName } from '@/utils/authProviders';
@@ -23,6 +22,7 @@ export interface ClientFormData {
     [key in OAuthProviderName]?: boolean;
   };
   superAdminAllowedDomains: string[];
+  moduleInfoArray?: ModuleInfo[]; // Add the new moduleInfoArray property
 }
 
 const initialFormData: ClientFormData = {
@@ -52,7 +52,8 @@ const initialFormData: ClientFormData = {
     microsoft: false,
     zoho: false
   },
-  superAdminAllowedDomains: [] // Initialize the new field
+  superAdminAllowedDomains: [],
+  moduleInfoArray: [] // Initialize moduleInfoArray as empty array
 };
 
 export const useClientManagement = () => {
@@ -217,14 +218,15 @@ export const useClientManagement = () => {
     }
     
     try {
-      // Prepare module info array for the edge function
-      const moduleInfoArray = prepareModuleInfoArray(formData.moduleAccess);
+      // Use moduleInfoArray if available, or create it from moduleAccess
+      const moduleInfoArray = formData.moduleInfoArray || prepareModuleInfoArray(formData.moduleAccess);
       
       console.log('Module info for client creation:', moduleInfoArray);
       
       // First, add the client and get the client object back with proper typing
       const result = await addClient({
-        ...formData
+        ...formData,
+        modules: moduleInfoArray  // Pass the moduleInfoArray directly
       });
       
       const newClient = result as Client; // Cast to Client type
@@ -321,14 +323,15 @@ export const useClientManagement = () => {
     }
     
     try {
-      // Prepare module info array
-      const moduleInfoArray = prepareModuleInfoArray(formData.moduleAccess);
+      // Use moduleInfoArray if available, or create it from moduleAccess
+      const moduleInfoArray = formData.moduleInfoArray || prepareModuleInfoArray(formData.moduleAccess);
       
       console.log('Module info for client update:', moduleInfoArray);
       
       // Update the client first
       await updateClient(currentClient.id, {
-        ...formData
+        ...formData,
+        modules: moduleInfoArray  // Pass the moduleInfoArray directly
       });
       
       // Update or create the super admin employee
