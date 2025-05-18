@@ -28,7 +28,8 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
     console.log("Backoffice Layout - Initial mount, checking auth state:", {
       isUser: !!user,
       pathname: location.pathname,
-      userDetails: user ? `${user.firstName} ${user.lastName} (${user.role})` : 'No user'
+      userDetails: user ? `${user.firstName} ${user.lastName} (${user.role})` : 'No user',
+      "user":user
     });
     
     // Set initial check to true after first render

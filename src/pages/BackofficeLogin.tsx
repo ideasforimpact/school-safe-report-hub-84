@@ -53,24 +53,19 @@ const BackofficeLogin = () => {
     
     try {
       // Directly call the loginBackofficeUser service
-      console.log("BackofficeLogin: Calling loginBackofficeUser directly with email:", email);
       const backofficeUser = await loginBackofficeUser(email, password);
-      console.log("BackofficeLogin: loginBackofficeUser returned:", backofficeUser ? "User object received" : "Failed - No user returned");
       
       if (backofficeUser) {
-        console.log("BackofficeLogin: Setting user in context");
+        console.log("BackofficeLogin: Setting user in context",backofficeUser);
         // Update the context with the user
         setUser(backofficeUser);
         
         toast.success("Login successful!");
         navigate('/backoffice/dashboard');
       } else {
-        console.log("BackofficeLogin: Login failed, no user returned");
-        toast.error("Invalid email or password");
         setIsLoading(false);
       }
     } catch (err) {
-      console.error("Login error:", err);
       toast.error("An error occurred. Please try again.");
       setIsLoading(false);
     }
