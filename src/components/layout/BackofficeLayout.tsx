@@ -20,9 +20,10 @@ interface BackofficeLayoutProps {
 const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout, isSaasOwner } = useAuth();
-  
+  const { user, logout, isSaasOwner,isBackofficeUser } = useAuth();
+
   // Redirect if not SaaS owner
+  console.log(user,isSaasOwner,isBackofficeUser)
   if (!isSaasOwner) {
     // Use setTimeout to avoid rendering issues when redirecting
     setTimeout(() => {
