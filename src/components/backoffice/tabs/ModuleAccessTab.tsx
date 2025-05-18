@@ -17,6 +17,13 @@ interface Module {
   icon: string;
 }
 
+interface ModuleAccess {
+  name: string;
+  module_id: string;
+  is_admin: boolean;
+  is_enabled: boolean;
+}
+
 interface ModuleAccessTabProps {
   formData: {
     moduleAccess: Partial<ModulePermissions>;
@@ -27,12 +34,8 @@ interface ModuleAccessTabProps {
 const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTabProps) => {
   const [modules, setModules] = useState<Module[]>([]);
   const [loading, setLoading] = useState(false);
-  // Track admin access separately from module access
-  const [adminAccess, setAdminAccess] = useState<Record<string, boolean>>({});
-  // Store the module access state locally to avoid unnecessary API calls
-  const [moduleAccessState, setModuleAccessState] = useState<Partial<ModulePermissions>>({});
-  // Track module IDs for troubleshooting the auto-selection issue
-  const [moduleIdMap, setModuleIdMap] = useState<Record<string, string>>({});
+  // Track modules as an array of objects with name, module_id, and is_admin properties
+  const [moduleAccessState, setModuleAccessState] = useState<ModuleAccess[]>([]);
 
   // Fetch modules only once during initial load
   useEffect(() => {
@@ -57,26 +60,24 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
           console.log("Modules fetched successfully:", data.modules.length);
           setModules(data.modules);
           
-          // Create a map of module names to IDs for debugging
-          const idMapping: Record<string, string> = {};
-          data.modules.forEach((module: Module) => {
+          // Initialize module access state based on formData
+          const initialModuleAccess: ModuleAccess[] = data.modules.map((module: Module) => {
             const accessKey = getAccessKeyFromModuleName(module.name);
-            idMapping[accessKey] = module.id;
-            console.log(`Module mapping: ${module.name} -> ${accessKey} -> ${module.id}`);
+            const isEnabled = !!formData.moduleAccess[accessKey];
+            const isAdmin = isEnabled && accessKey.includes('Admin'); // Check if it's an admin module
+            
+            console.log(`Initializing module: ${module.name}, ID: ${module.id}, Enabled: ${isEnabled}, Admin: ${isAdmin}`);
+            
+            return {
+              name: module.name,
+              module_id: module.id,
+              is_admin: isAdmin,
+              is_enabled: isEnabled
+            };
           });
-          setModuleIdMap(idMapping);
           
-          // Initialize local state based on formData
-          console.log("Initializing module access state from formData:", formData.moduleAccess);
-          setModuleAccessState({...formData.moduleAccess});
-          
-          // Initialize admin access state
-          const initialAdminAccess: Record<string, boolean> = {};
-          data.modules.forEach((module: Module) => {
-            const accessKey = getAccessKeyFromModuleName(module.name);
-            initialAdminAccess[accessKey] = !!formData.moduleAccess[accessKey];
-          });
-          setAdminAccess(initialAdminAccess);
+          setModuleAccessState(initialModuleAccess);
+          console.log("Initial module access state:", initialModuleAccess);
         }
       } catch (error) {
         console.error("Error in fetchClientModules:", error);
@@ -92,16 +93,35 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
   // Sync local state to parent component when moduleAccessState changes
   useEffect(() => {
     // Skip on initial render
-    if (Object.keys(moduleAccessState).length === 0) return;
+    if (moduleAccessState.length === 0) return;
+    
+    // Convert moduleAccessState to ModulePermissions format for parent
+    const updatedPermissions: Partial<ModulePermissions> = {};
+    
+    moduleAccessState.forEach(module => {
+      const accessKey = getAccessKeyFromModuleName(module.name);
+      updatedPermissions[accessKey as keyof ModulePermissions] = module.is_enabled;
+      
+      // If this is an admin module and it's enabled, set the corresponding admin permission
+      if (module.is_admin) {
+        const adminKey = accessKey.endsWith('Admin') ? 
+          accessKey : 
+          (accessKey + 'Admin') as keyof ModulePermissions;
+          
+        if (Object.keys(formData.moduleAccess).includes(adminKey)) {
+          updatedPermissions[adminKey as keyof ModulePermissions] = true;
+        }
+      }
+    });
     
     // Compare with formData to avoid unnecessary updates
-    const hasChanges = Object.entries(moduleAccessState).some(
+    const hasChanges = Object.entries(updatedPermissions).some(
       ([key, value]) => formData.moduleAccess[key as keyof ModulePermissions] !== value
     );
     
     if (hasChanges) {
-      console.log("Module access state changed, updating parent:", moduleAccessState);
-      Object.entries(moduleAccessState).forEach(([key, value]) => {
+      console.log("Module access state changed, updating parent:", updatedPermissions);
+      Object.entries(updatedPermissions).forEach(([key, value]) => {
         handleModuleAccessChange(key as keyof ModulePermissions, !!value);
       });
     }
@@ -120,13 +140,7 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
     'eduSafeResourceAccess'
   ];
 
-  // Helper function to format module name for display
-  const formatModuleName = (name: string): string => {
-    return name.replace(/([A-Z])/g, ' $1')
-      .replace(/^./, str => str.toUpperCase());
-  };
-
-  // Map module names to formData.moduleAccess keys
+  // Helper function to map module names to formData.moduleAccess keys
   const getAccessKeyFromModuleName = (moduleName: string): keyof ModulePermissions => {
     // Convert module name to camelCase for matching with ModulePermissions keys
     const key = moduleName.toLowerCase()
@@ -151,34 +165,41 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
   };
 
   // Handle clicking on the module checkbox
-  const handleModuleCheckboxChange = (accessKey: keyof ModulePermissions, checked: boolean, moduleId: string) => {
-    console.log(`Module checkbox change - Key: ${accessKey}, ModuleID: ${moduleId}, Checked: ${checked}`);
+  const handleModuleCheckboxChange = (moduleId: string, checked: boolean) => {
+    const moduleToUpdate = moduleAccessState.find(m => m.module_id === moduleId);
+    if (!moduleToUpdate) return;
     
-    // Update only local state for this specific module 
-    setModuleAccessState(prev => {
-      const newState = {
-        ...prev,
-        [accessKey]: checked
-      };
-      console.log(`New module access state after checkbox change:`, newState);
-      return newState;
-    });
+    console.log(`Module checkbox change - Name: ${moduleToUpdate.name}, ID: ${moduleId}, Checked: ${checked}`);
+    
+    // Update only the is_enabled state for this specific module
+    setModuleAccessState(prev => 
+      prev.map(m => 
+        m.module_id === moduleId 
+          ? { ...m, is_enabled: checked } 
+          : m
+      )
+    );
+    
+    console.log(`Updated module ${moduleToUpdate.name} (${moduleId}) enabled state to ${checked}`);
   };
 
   // Handle clicking on the admin badge
-  const handleAdminBadgeClick = (accessKey: keyof ModulePermissions, moduleId: string) => {
-    console.log(`Admin badge click - Key: ${accessKey}, ModuleID: ${moduleId}`);
+  const handleAdminBadgeClick = (moduleId: string) => {
+    const moduleToUpdate = moduleAccessState.find(m => m.module_id === moduleId);
+    if (!moduleToUpdate) return;
+    
+    console.log(`Admin badge click - Name: ${moduleToUpdate.name}, ID: ${moduleId}, Current admin: ${moduleToUpdate.is_admin}`);
     
     // Toggle the admin access state for this module
-    const newState = !adminAccess[accessKey];
-    setAdminAccess(prev => {
-      const newAdminState = {
-        ...prev,
-        [accessKey]: newState
-      };
-      console.log(`New admin access state after badge click:`, newAdminState);
-      return newAdminState;
-    });
+    setModuleAccessState(prev => 
+      prev.map(m => 
+        m.module_id === moduleId 
+          ? { ...m, is_admin: !m.is_admin } 
+          : m
+      )
+    );
+    
+    console.log(`Toggled admin status for module ${moduleToUpdate.name} (${moduleId}) to ${!moduleToUpdate.is_admin}`);
   };
 
   return (
@@ -203,10 +224,9 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
               </TableHeader>
               <TableBody>
                 {modules.map((module) => {
-                  const accessKey = getAccessKeyFromModuleName(module.name);
-                  // Use local state for module status
-                  const moduleEnabled = moduleAccessState[accessKey] || false;
-                  const isAdminEnabled = adminAccess[accessKey] || false;
+                  const moduleAccess = moduleAccessState.find(m => m.module_id === module.id);
+                  const moduleEnabled = moduleAccess?.is_enabled || false;
+                  const isAdminEnabled = moduleAccess?.is_admin || false;
                   
                   return (
                     <TableRow key={module.id} className="h-14">
@@ -215,7 +235,7 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
                           id={`module-${module.id}`}
                           checked={moduleEnabled}
                           onCheckedChange={(checkedState) => {
-                            handleModuleCheckboxChange(accessKey, checkedState === true, module.id);
+                            handleModuleCheckboxChange(module.id, checkedState === true);
                           }}
                           className="transition-all"
                         />
@@ -237,7 +257,7 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
                               ? "bg-green-500 text-white hover:bg-green-600" 
                               : "text-muted-foreground hover:bg-gray-100"
                           )}
-                          onClick={() => handleAdminBadgeClick(accessKey, module.id)}
+                          onClick={() => handleAdminBadgeClick(module.id)}
                         >
                           Admin
                           {isAdminEnabled && (
