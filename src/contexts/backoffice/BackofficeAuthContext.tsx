@@ -42,7 +42,7 @@ export const BackofficeAuthProvider: React.FC<BackofficeAuthProviderProps> = ({ 
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  // Effect to load user from sessionStorage on mount
+  // Effect to load user from sessionStorage on mount - runs only once
   useEffect(() => {
     try {
       const storedUser = sessionStorage.getItem(BACKOFFICE_USER_KEY);

@@ -28,7 +28,8 @@ const BackofficeLogin = () => {
   useEffect(() => {
     console.log("BackofficeLogin: Effect checking for user:", user ? "User exists" : "No user");
     if (user) {
-      navigate('/backoffice/dashboard');
+      console.log("BackofficeLogin: User exists, redirecting to dashboard");
+      navigate('/backoffice/dashboard', { replace: true });
     }
   }, [user, navigate]);
 
@@ -56,18 +57,21 @@ const BackofficeLogin = () => {
       const backofficeUser = await loginBackofficeUser(email, password);
       
       if (backofficeUser) {
-        console.log("BackofficeLogin: Setting user in context", backofficeUser);
+        console.log("BackofficeLogin: Login successful, setting user in context", backofficeUser);
+        
         // Update the context with the user
         setUser(backofficeUser);
         
         toast.success("Login successful!");
-        navigate('/backoffice/dashboard');
+        navigate('/backoffice/dashboard', { replace: true });
       } else {
         toast.error("Invalid credentials. Please try again.");
-        setIsLoading(false);
+        console.log("BackofficeLogin: Invalid credentials");
       }
     } catch (err) {
+      console.error("BackofficeLogin: Error during login", err);
       toast.error("An error occurred. Please try again.");
+    } finally {
       setIsLoading(false);
     }
   };

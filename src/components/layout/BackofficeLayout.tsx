@@ -37,15 +37,13 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
   
   // Redirect if not logged in, but only after initial render
   useEffect(() => {
-    if (initialCheckDone) {
-      if (!user) {
-        console.log("Backoffice Layout - No user, redirecting to backoffice login");
-        toast.error("Please log in to access the backoffice.");
-        navigate('/backoffice/login');
-        return;
-      }
+    // Make sure to check for both initialCheckDone and user being null
+    if (initialCheckDone && user === null) {
+      console.log("Backoffice Layout - No user, redirecting to backoffice login");
+      toast.error("Please log in to access the backoffice.");
+      navigate('/backoffice/login');
     }
-  }, [user, navigate, initialCheckDone, location.pathname]);
+  }, [user, navigate, initialCheckDone]);
 
   const handleLogout = async () => {
     console.log("Backoffice Layout - Logging out user");
@@ -76,7 +74,11 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
 
   // If not logged in, don't render anything while redirecting
   if (!user) {
-    return null;
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p>Redirecting to login...</p>
+      </div>
+    );
   }
 
   return (
