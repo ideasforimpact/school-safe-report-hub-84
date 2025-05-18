@@ -58,11 +58,14 @@ export const fetchModules = async (isBackoffice: boolean): Promise<Module[]> => 
       return cachedClientModules;
     }
     
+    // Use exact equality for backoffice, and inequality for client modules
+    const queryOperator = isBackoffice ? 'eq' : 'neq';
+    
     // Fetch roles from database with level filter for backoffice or client
     const { data, error } = await supabase
       .from('roles')
       .select('*')
-      .eq('level', isBackoffice ? 'backoffice' : 'client');
+      .eq(queryOperator, 'backoffice');
     
     if (error) {
       console.error("Error fetching modules:", error);

@@ -56,7 +56,7 @@ const SidebarContent = () => {
     setIsLoading(true);
     
     try {
-      // Determine which modules to fetch based on if user is SaaS owner and current route
+      // For SaaS users, fetch backoffice modules. For others, fetch client modules
       const isBackofficeFetch = isSaasOwner && isBackofficeRoute;
       console.log(`Fetching ${isBackofficeFetch ? 'backoffice' : 'client'} modules`);
       
