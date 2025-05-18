@@ -40,7 +40,7 @@ const Login = () => {
         navigate('/dashboard', { replace: true });
       }
     }
-  }, []);
+  }, [user, navigate, location.state]);
 
   // Check for authentication redirect results and errors
   useEffect(() => {
