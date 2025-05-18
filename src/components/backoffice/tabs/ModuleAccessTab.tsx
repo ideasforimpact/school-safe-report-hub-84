@@ -101,11 +101,10 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
   };
 
   // Handle clicking on the admin badge
-  const handleBadgeClick = (accessKey: keyof ModulePermissions, checked: boolean) => {
-    // If the module is not selected, clicking the badge should have no effect
-    if (!checked) return;
-    
-    handleModuleAccessChange(accessKey, false);
+  const handleBadgeClick = (accessKey: keyof ModulePermissions) => {
+    // Toggle the current state of the badge
+    const currentValue = !!formData.moduleAccess[accessKey];
+    handleModuleAccessChange(accessKey, !currentValue);
   };
 
   return (
@@ -158,12 +157,12 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
                         <Badge
                           variant={checked ? "default" : "outline"}
                           className={cn(
-                            "relative pr-7 transition-all duration-200",
+                            "relative pr-7 transition-all duration-200 cursor-pointer",
                             checked 
-                              ? "bg-green-500 text-white hover:bg-green-600 cursor-pointer" 
-                              : "text-muted-foreground opacity-50 cursor-not-allowed"
+                              ? "bg-green-500 text-white hover:bg-green-600" 
+                              : "text-muted-foreground hover:bg-gray-100"
                           )}
-                          onClick={() => checked && handleBadgeClick(accessKey, checked)}
+                          onClick={() => handleBadgeClick(accessKey)}
                         >
                           Admin
                           {checked && (
