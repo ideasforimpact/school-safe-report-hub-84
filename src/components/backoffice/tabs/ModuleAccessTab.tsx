@@ -107,7 +107,10 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
 
   // Handle clicking on the admin badge
   const handleBadgeClick = (accessKey: keyof ModulePermissions, checked: boolean) => {
-    handleModuleAccessChange(accessKey, !checked);
+    // If the module is not selected, clicking the badge should have no effect
+    if (!checked) return;
+    
+    handleModuleAccessChange(accessKey, false);
   };
 
   return (
@@ -138,13 +141,19 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
                   return (
                     <TableRow key={module.id} className="h-14">
                       <TableCell>
-                        <Checkbox 
-                          id={`module-${accessKey}`}
-                          checked={checked}
-                          onCheckedChange={(checked) => 
-                            handleModuleAccessChange(accessKey, checked === true)
-                          }
-                        />
+                        <div className={cn(
+                          "p-0.5 rounded-sm transition-all",
+                          checked ? "border-2 border-green-500" : "border-2 border-transparent"
+                        )}>
+                          <Checkbox 
+                            id={`module-${accessKey}`}
+                            checked={checked}
+                            onCheckedChange={(checkedState) => 
+                              handleModuleAccessChange(accessKey, checkedState === true)
+                            }
+                            className="transition-all"
+                          />
+                        </div>
                       </TableCell>
                       <TableCell>
                         <label 
@@ -158,12 +167,12 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
                         <Badge
                           variant={checked ? "default" : "outline"}
                           className={cn(
-                            "cursor-pointer relative pr-7 transition-all duration-200",
+                            "relative pr-7 transition-all duration-200",
                             checked 
-                              ? "bg-primary hover:bg-primary/90" 
-                              : "text-muted-foreground hover:bg-secondary/10"
+                              ? "bg-primary hover:bg-primary/90 cursor-pointer" 
+                              : "text-muted-foreground opacity-50 cursor-not-allowed"
                           )}
-                          onClick={() => handleBadgeClick(accessKey, checked)}
+                          onClick={() => checked && handleBadgeClick(accessKey, checked)}
                         >
                           Admin
                           {checked && (
