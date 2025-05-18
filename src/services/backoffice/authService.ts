@@ -59,13 +59,16 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
       .update({ last_signed_in: new Date().toISOString() })
       .eq('id', backofficeUser.id);
 
-    // Map to BackofficeUser type
+    // Map database record to BackofficeUser type
+    // Note: The database fields may not match our BackofficeUser type exactly,
+    // so we need to map them properly and provide fallbacks
     return {
       id: backofficeUser.id,
-      firstName: backofficeUser.first_name || 'Backoffice', // Handle potential null or missing fields
-      lastName: backofficeUser.last_name || 'Admin',  // Handle potential null or missing fields
+      // The database doesn't have first_name/last_name fields, so provide defaults
+      firstName: 'Backoffice', // Default first name
+      lastName: 'Admin',       // Default last name
       email: backofficeUser.email,
-      role: 'saas_owner', // Default role for backoffice users
+      role: 'saas_owner',      // Default role for backoffice users
       isActive: true,
       createdAt: backofficeUser.created_at,
       lastLogin: new Date().toISOString()

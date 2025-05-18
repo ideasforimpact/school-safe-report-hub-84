@@ -11,6 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { useBackofficeAuth } from '@/contexts/backoffice/BackofficeAuthContext';
+import { BackofficeUser } from '@/contexts/backoffice/types'; // Add this import
 
 interface BackofficeLayoutProps {
   children: ReactNode;
