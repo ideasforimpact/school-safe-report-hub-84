@@ -36,9 +36,9 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
   }, []);
 
   // If no user or not a SaaS owner, don't render anything while redirecting
-  if (!user || !isSaasOwner) {
-    return null;
-  }
+  // if (!user || !isSaasOwner) {
+  //   return null;
+  // }
 
   const handleLogout = () => {
     logout();
