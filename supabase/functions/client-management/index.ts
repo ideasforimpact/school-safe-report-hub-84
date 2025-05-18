@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -192,13 +191,35 @@ async function deleteClientEmployees(clientId: string) {
   }
 }
 
-// Function to find a module by name
+// Updated Function to find a module by name
 async function findModuleByName(moduleName: string): Promise<string | null> {
   try {
     console.log(`Searching for module with name: ${moduleName}`);
     
-    // First try exact match
-    let { data: modules, error } = await supabase
+    // If module_id is already provided, just return it
+    if (moduleName.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)) {
+      console.log(`Module ID already provided: ${moduleName}`);
+      
+      // Verify it exists in the database
+      const { data: moduleExists, error: verifyError } = await supabase
+        .from('modules')
+        .select('id')
+        .eq('id', moduleName)
+        .single();
+        
+      if (verifyError) {
+        console.error(`Error verifying module ID ${moduleName}:`, verifyError);
+        return null;
+      }
+      
+      if (moduleExists) {
+        console.log(`Verified module ID exists: ${moduleName}`);
+        return moduleName;
+      }
+    }
+    
+    // First try exact name match
+    const { data: modules, error } = await supabase
       .from('modules')
       .select('id, name')
       .eq('name', moduleName);
@@ -275,10 +296,10 @@ async function findModuleByName(moduleName: string): Promise<string | null> {
   }
 }
 
-// Function to process module access data
+// Updated Function to process module access data
 async function processModuleAccess(clientId: string, moduleInfoArray: ModuleInfo[]): Promise<boolean> {
   try {
-    console.log(`Processing modules for client ${clientId}:`, moduleInfoArray);
+    console.log(`Processing modules for client ${clientId}:`, JSON.stringify(moduleInfoArray, null, 2));
     
     if (!moduleInfoArray || moduleInfoArray.length === 0) {
       console.log('No modules to process');
@@ -326,6 +347,8 @@ async function processModuleAccess(clientId: string, moduleInfoArray: ModuleInfo
     const validModuleInserts = moduleInserts.filter(item => item !== null);
     
     if (validModuleInserts.length > 0) {
+      console.log(`Inserting ${validModuleInserts.length} client modules:`, JSON.stringify(validModuleInserts, null, 2));
+      
       const { error: insertError } = await supabase
         .from('client_modules')
         .insert(validModuleInserts);
@@ -363,125 +386,22 @@ serve(async (req) => {
       }
     );
 
-    // Get the route to determine operation
-    const url = new URL(req.url);
-    const pathParts = url.pathname.split('/').filter(Boolean);
-    const operation = pathParts[pathParts.length - 1];
-
     // Get the request data
     const requestData = req.method === 'POST' ? await req.json() : null;
-    console.log(`Received ${req.method} request for operation: ${operation}`, requestData);
+    console.log(`Received ${req.method} request:`, JSON.stringify(requestData, null, 2));
 
     // Process requests based on the operation
-    if (req.method === 'GET') {
-      if (operation === 'clients') {
-        // Get all clients with their module access
-        const { data: clientsData, error: clientsError } = await supabase
-          .from('clients')
-          .select('*');
+    if (req.method === 'POST') {
+      const operation = requestData.operation;
+      console.log(`Processing operation: ${operation}`);
 
-        if (clientsError) throw clientsError;
-
-        // Get all client_modules
-        const { data: modulesData, error: modulesError } = await supabase
-          .from('client_modules')
-          .select('*');
-
-        if (modulesError) throw modulesError;
-
-        // Group modules by client
-        const modulesByClient: Record<string, any[]> = {};
-        modulesData?.forEach((module) => {
-          if (!modulesByClient[module.client_id]) {
-            modulesByClient[module.client_id] = [];
-          }
-          modulesByClient[module.client_id].push(module);
-        });
-
-        // Map clients with their modules
-        const clientsWithModules = clientsData.map(client => {
-          const clientModules = modulesByClient[client.id] || [];
-          const moduleAccess: Record<string, boolean> = {};
-          
-          clientModules.forEach(module => {
-            if (module.enabled) {
-              if (module.module_key) {
-                moduleAccess[module.module_key] = true;
-              } else if (module.module_id && module.access_level) {
-                // Use the module_id and access_level if available
-                moduleAccess[module.module_id] = true;
-              }
-            }
-          });
-          
-          return {
-            ...client,
-            moduleAccess
-          };
-        });
-
-        return new Response(JSON.stringify({ clients: clientsWithModules }), {
-          headers: { 'Content-Type': 'application/json', ...corsHeaders },
-          status: 200,
-        });
-      } else if (operation === 'client') {
-        // Get client by ID with module access
-        const id = url.searchParams.get('id');
-        if (!id) {
-          return new Response(JSON.stringify({ error: 'Client ID is required' }), {
-            headers: { 'Content-Type': 'application/json', ...corsHeaders },
-            status: 400,
-          });
-        }
-
-        // Get client data
-        const { data: client, error: clientError } = await supabase
-          .from('clients')
-          .select('*')
-          .eq('id', id)
-          .single();
-
-        if (clientError) throw clientError;
-
-        // Get client modules
-        const { data: modules, error: modulesError } = await supabase
-          .from('client_modules')
-          .select('*')
-          .eq('client_id', id);
-
-        if (modulesError) throw modulesError;
-
-        // Map modules to client
-        const moduleAccess: Record<string, boolean> = {};
-        modules?.forEach(module => {
-          if (module.enabled) {
-            if (module.module_key) {
-              moduleAccess[module.module_key] = true;
-            } else if (module.module_id && module.access_level) {
-              // Use the module_id and access_level if available
-              moduleAccess[module.module_id] = true;
-            }
-          }
-        });
-
-        return new Response(JSON.stringify({ 
-          client: {
-            ...client,
-            moduleAccess
-          }
-        }), {
-          headers: { 'Content-Type': 'application/json', ...corsHeaders },
-          status: 200,
-        });
-      }
-    } else if (req.method === 'POST') {
       if (operation === 'create') {
         // Create a new client with module access
         const clientData: ClientData = requestData.client;
         const moduleInfoArray: ModuleInfo[] = requestData.client.modules || [];
         const superAdminEmail = clientData.superAdminEmail;
         
-        console.log('Creating client with modules:', moduleInfoArray);
+        console.log('Creating client with modules:', JSON.stringify(moduleInfoArray, null, 2));
         
         // Validate super admin email domain if restrictions are set
         if (superAdminEmail && clientData.super_admin_allowed_domain) {
@@ -505,11 +425,17 @@ serve(async (req) => {
           .select()
           .single();
 
-        if (clientError) throw clientError;
+        if (clientError) {
+          console.error('Error creating client:', clientError);
+          throw clientError;
+        }
 
         // Process module access if provided
         if (moduleInfoArray.length > 0) {
-          await processModuleAccess(newClient.id, moduleInfoArray);
+          const success = await processModuleAccess(newClient.id, moduleInfoArray);
+          if (!success) {
+            console.error('Failed to process module access');
+          }
         }
 
         // Create employee from super admin email if provided
@@ -540,7 +466,7 @@ serve(async (req) => {
           });
         }
         
-        console.log('Updating client modules:', moduleInfoArray);
+        console.log('Updating client modules:', JSON.stringify(moduleInfoArray, null, 2));
         
         // Get current client data to check super admin domain validation
         const { data: currentClient, error: fetchError } = await supabase
@@ -577,11 +503,17 @@ serve(async (req) => {
           .select()
           .single();
 
-        if (clientError) throw clientError;
+        if (clientError) {
+          console.error('Error updating client:', clientError);
+          throw clientError;
+        }
 
         // Process modules if provided
         if (moduleInfoArray && moduleInfoArray.length > 0) {
-          await processModuleAccess(id, moduleInfoArray);
+          const success = await processModuleAccess(id, moduleInfoArray);
+          if (!success) {
+            console.error('Failed to process module access');
+          }
         }
 
         // Handle super admin email update
@@ -637,11 +569,22 @@ serve(async (req) => {
           headers: { 'Content-Type': 'application/json', ...corsHeaders },
           status: 200,
         });
+      } else {
+        return new Response(JSON.stringify({ error: 'Invalid operation' }), {
+          headers: { 'Content-Type': 'application/json', ...corsHeaders },
+          status: 400,
+        });
       }
+    } else if (req.method === 'GET') {
+      // Handle GET requests if needed
+      return new Response(JSON.stringify({ message: "GET method not implemented" }), {
+        headers: { 'Content-Type': 'application/json', ...corsHeaders },
+        status: 501, // Not Implemented
+      });
     }
 
     // If no matching operation is found
-    return new Response(JSON.stringify({ error: 'Invalid operation' }), {
+    return new Response(JSON.stringify({ error: 'Invalid request' }), {
       headers: { 'Content-Type': 'application/json', ...corsHeaders },
       status: 400,
     });
