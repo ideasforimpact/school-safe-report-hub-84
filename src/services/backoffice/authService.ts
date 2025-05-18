@@ -13,13 +13,13 @@ const DEMO_EMAILS = [
  */
 export const loginBackofficeUser = async (email: string, password: string): Promise<BackofficeUser | null> => {
   try {
-    console.log(`Attempting login for: ${email}`);
+    console.log(`authService: Attempting login for: ${email}`);
     
     // Check if this is a demo email
     const isDemoUser = DEMO_EMAILS.includes(email);
     
     if (isDemoUser && password === 'owner123') {
-      console.log("Using demo user login");
+      console.log("authService: Using demo user login");
       // For demo users, create a local user object
       return {
         id: 'demo-backoffice-id',
@@ -34,7 +34,7 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
     }
     
     // For non-demo users, we need to check if the email exists first
-    console.log("Checking if this account exists in backoffice_users table...");
+    console.log("authService: Checking if this account exists in backoffice_users table...");
     
     // First check if user exists in backoffice_users table
     const { data: existingUser, error: userCheckError } = await supabase
@@ -46,17 +46,18 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
     if (userCheckError) {
       // If error is not-found, give a clear message
       if (userCheckError.code === 'PGRST116') {
-        console.error(`Account not found for email: ${email}`);
+        console.error(`authService: Account not found for email: ${email}`);
+        console.error("Error details:", userCheckError);
         toast.error("Account not found. Please check your email or contact an administrator.");
         return null;
       }
       
-      console.error("Error checking user existence:", userCheckError);
+      console.error("authService: Error checking user existence:", userCheckError);
       toast.error("Error checking user account");
       return null;
     }
     
-    console.log("Account found, verifying password...");
+    console.log("authService: Account found, verifying password...", existingUser);
     
     // For real users, verify password with Supabase function
     const { data: isValidPassword, error: verifyError } = await supabase.rpc('verify_password', { 
@@ -64,34 +65,36 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
       password_attempt: password 
     });
 
+    console.log("authService: Password verification result:", isValidPassword);
+    
     if (verifyError) {
-      console.error("Password verification error:", verifyError);
+      console.error("authService: Password verification error:", verifyError);
       toast.error("Authentication failed: " + verifyError.message);
       return null;
     }
 
     // Log the verification result
-    console.log("Password verification result:", isValidPassword);
+    console.log("authService: Password verification result:", isValidPassword);
 
     if (!isValidPassword) {
-      console.error("Invalid credentials");
+      console.error("authService: Invalid credentials");
       toast.error("Invalid email or password");
       return null;
     }
 
-    console.log("Password verified, fetching user details");
+    console.log("authService: Password verified, fetching user details");
 
     // If password is valid, fetch user details - we already have the user from above
     const backofficeUser = existingUser;
     
     if (!backofficeUser) {
-      console.error("Error retrieving user information");
+      console.error("authService: Error retrieving user information");
       toast.error("Error retrieving user information");
       return null;
     }
     
-    console.log("User fetched successfully:", backofficeUser.email);
-    console.log("User data:", backofficeUser);
+    console.log("authService: User fetched successfully:", backofficeUser.email);
+    console.log("authService: User data:", backofficeUser);
     
     // Update last_signed_in
     await supabase
@@ -111,7 +114,7 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
       lastLogin: new Date().toISOString()
     };
   } catch (error) {
-    console.error("Unexpected error during backoffice login:", error);
+    console.error("authService: Unexpected error during backoffice login:", error);
     toast.error("An unexpected error occurred during login");
     return null;
   }

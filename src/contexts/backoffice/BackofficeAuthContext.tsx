@@ -63,30 +63,34 @@ export const BackofficeAuthProvider: React.FC<BackofficeAuthProviderProps> = ({ 
     setError(null);
 
     try {
-      console.log("Attempting backoffice login with email:", email);
+      console.log("BackofficeAuthContext: Attempting login with:", email);
+      
       // Check if this is a demo login
       const isDemoUser = email === 'owner@saasplatform.com' && password === 'owner123';
       if (isDemoUser) {
-        console.log("Using demo credentials for login");
+        console.log("BackofficeAuthContext: Using demo credentials for login");
       }
       
+      console.log("BackofficeAuthContext: Calling loginBackofficeUser service");
       const backofficeUser = await loginBackofficeUser(email, password);
       
+      console.log("BackofficeAuthContext: Service returned user:", backofficeUser ? "User Object" : "null");
+      
       if (backofficeUser) {
-        console.log("Backoffice login successful for:", backofficeUser.email);
+        console.log("BackofficeAuthContext: Login successful for:", backofficeUser.email);
         setUser(backofficeUser);
         // Store user in session storage
         sessionStorage.setItem('backoffice_user', JSON.stringify(backofficeUser));
         toast.success("Login successful!");
         return true;
       } else {
-        console.error("Backoffice login failed - invalid credentials or user not found");
+        console.error("BackofficeAuthContext: Login failed - invalid credentials or user not found");
         setError('Invalid email or password');
         toast.error('Invalid email or password');
         return false;
       }
     } catch (err) {
-      console.error("Backoffice login error:", err);
+      console.error("BackofficeAuthContext: Login error:", err);
       setError('An error occurred during login');
       toast.error('An error occurred during login');
       return false;

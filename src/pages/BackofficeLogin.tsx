@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -113,7 +114,10 @@ const BackofficeLogin = () => {
       }
       
       // Now proceed with login
+      console.log("Calling login function with:", email, "and password (masked)");
       const success = await login(email, password);
+      
+      console.log("Login function returned:", success);
       
       if (success) {
         console.log("Login success, redirecting to dashboard");
