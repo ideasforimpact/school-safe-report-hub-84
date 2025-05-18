@@ -103,6 +103,8 @@ const Login = () => {
       
       // Get the current origin for constructing redirect URL
       const origin = window.location.origin;
+      // Always redirect to dashboard first, the auth handlers will check permissions
+      // and redirect accordingly
       const redirectTo = `${origin}/dashboard`;
       
       console.log("Initiating Google login with redirect to:", redirectTo);
@@ -122,6 +124,8 @@ const Login = () => {
         setGoogleLoading(false);
       }
       // No else branch needed as successful OAuth will redirect the page
+      // The handleUserAuthentication function in useAuthHandlers will handle the domain checks
+      // and redirect to the appropriate page based on the user's permissions
       
     } catch (err) {
       console.error("Google login unexpected error:", err);

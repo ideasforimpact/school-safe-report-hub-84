@@ -56,6 +56,85 @@ const checkEmployeeAccess = async (email: string, setAuthError: (error: string |
   }
 };
 
+// New helper function to check domain access
+const checkDomainAccess = async (email: string, employeeId: string, setAuthError: (error: string | null) => void) => {
+  try {
+    // First, check if the employee exists and if they are a super admin
+    const { data: employee, error: employeeError } = await supabase
+      .from('employees')
+      .select('is_super_admin, client_id')
+      .eq('email', email.toLowerCase())
+      .single();
+      
+    if (employeeError || !employee) {
+      console.log("Employee data fetch failed:", employeeError?.message || "Employee not found");
+      setAuthError("Access denied: Cannot retrieve employee information");
+      return false;
+    }
+    
+    // Check if employee has client_id
+    if (!employee.client_id) {
+      console.log("Employee has no client assignment");
+      setAuthError("Access denied: Employee is not assigned to any client");
+      return false;
+    }
+    
+    // Get the client data to check domains
+    const { data: client, error: clientError } = await supabase
+      .from('clients')
+      .select('allowed_domains, super_admin_allowed_domain')
+      .eq('id', employee.client_id)
+      .single();
+      
+    if (clientError || !client) {
+      console.log("Client data fetch failed:", clientError?.message || "Client not found");
+      setAuthError("Access denied: Cannot retrieve client information");
+      return false;
+    }
+    
+    // Check if the email domain matches based on super admin status
+    const emailDomain = email.split('@')[1].toLowerCase();
+    
+    if (employee.is_super_admin) {
+      // Super admin needs to match super_admin_allowed_domain
+      if (!client.super_admin_allowed_domain) {
+        console.log("No super admin domain configured for this client");
+        setAuthError("Access denied: No super admin domains configured for this client");
+        return false;
+      }
+      
+      const superAdminDomains = client.super_admin_allowed_domain.split(',').map(d => d.trim().toLowerCase());
+      if (!superAdminDomains.includes(emailDomain)) {
+        console.log("Email domain not in super admin allowed domains");
+        setAuthError("Access denied: Email domain not authorized for super admin access");
+        return false;
+      }
+      console.log("Super admin domain check passed");
+    } else {
+      // Regular user needs to match allowed_domains
+      if (!client.allowed_domains) {
+        console.log("No allowed domains configured for this client");
+        setAuthError("Access denied: No domains configured for this client");
+        return false;
+      }
+      
+      const allowedDomains = client.allowed_domains.split(',').map(d => d.trim().toLowerCase());
+      if (!allowedDomains.includes(emailDomain)) {
+        console.log("Email domain not in allowed domains");
+        setAuthError("Access denied: Email domain not authorized");
+        return false;
+      }
+      console.log("Regular domain check passed");
+    }
+    
+    return true;
+  } catch (error) {
+    console.error("Error checking domain access:", error);
+    setAuthError("Error verifying domain access");
+    return false;
+  }
+};
+
 /**
  * Hook for auth operation handlers
  */
@@ -88,13 +167,23 @@ export function useAuthHandlers({
     // Check if this is a demo user - if so, bypass employee access check
     const isDemoUser = DEMO_EMAILS.includes(supabaseUser.email);
     
-    // Only check employee access if not a demo user
     if (!isDemoUser) {
-      const hasAccess = await checkEmployeeAccess(supabaseUser.email, setAuthError);
-      if (!hasAccess) {
-        console.log("Access denied: User is not an admin employee");
+      // First check if employee exists and is active
+      const hasEmployeeAccess = await checkEmployeeAccess(supabaseUser.email, setAuthError);
+      if (!hasEmployeeAccess) {
+        console.log("Access denied: Employee verification failed");
         await supabase.auth.signOut();
-        toast.error("Access denied: Only admin department employees can login");
+        toast.error("Access denied: Employee verification failed");
+        navigate('/login');
+        return;
+      }
+      
+      // Then check domain access based on super admin status and client configuration
+      const hasDomainAccess = await checkDomainAccess(supabaseUser.email, supabaseUser.id, setAuthError);
+      if (!hasDomainAccess) {
+        console.log("Access denied: Domain verification failed");
+        await supabase.auth.signOut();
+        toast.error("Access denied: Your email domain is not authorized");
         navigate('/login');
         return;
       }
@@ -238,10 +327,19 @@ export function useAuthHandlers({
       
       // Only check employee access if not a demo user
       if (!isDemoUser) {
-        const hasAccess = await checkEmployeeAccess(email, setAuthError);
-        if (!hasAccess) {
-          console.log("Access denied: User is not an admin employee");
+        // First check if employee exists and is active
+        const hasEmployeeAccess = await checkEmployeeAccess(email, setAuthError);
+        if (!hasEmployeeAccess) {
+          console.log("Access denied: Employee verification failed");
           setAuthError("Access denied: Only admin department employees can login");
+          return false;
+        }
+        
+        // Then check domain access
+        const hasDomainAccess = await checkDomainAccess(email, "", setAuthError);
+        if (!hasDomainAccess) {
+          console.log("Access denied: Domain verification failed");
+          setAuthError("Access denied: Your email domain is not authorized");
           return false;
         }
       }
