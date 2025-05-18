@@ -23,15 +23,15 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
   const { user, logout, isSaasOwner } = useAuth();
   
   useEffect(() => {
-    console.log("logged information",user,isSaasOwner)
-    // Check permission on component mount
-    if (user && !isSaasOwner) {
-      toast.error("You don't have permission to access the backoffice.");
-      navigate('/dashboard');
-    }
-    else if(!user && !isSaasOwner){
-       navigate("/login")
-    }
+    // console.log("logged information",user,isSaasOwner)
+    // // Check permission on component mount
+    // if (user && !isSaasOwner) {
+    //   toast.error("You don't have permission to access the backoffice.");
+    //   navigate('/dashboard');
+    // }
+    // else if(!user && !isSaasOwner){
+    //    navigate("/login")
+    // }
     
   }, []);
 
