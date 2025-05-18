@@ -8,9 +8,10 @@ import { toast } from 'sonner';
 // Session storage key constants
 const BACKOFFICE_USER_KEY = 'backoffice_user';
 
-// Extended context type to include setUser
+// Extended context type to include setUser and initialization flag
 interface ExtendedBackofficeAuthContextType extends BackofficeAuthContextType {
   setUser: React.Dispatch<React.SetStateAction<BackofficeUser | null>>;
+  isInitializing: boolean;
 }
 
 // Create the context
@@ -22,6 +23,7 @@ const BackofficeAuthContext = createContext<ExtendedBackofficeAuthContextType>({
   error: null,
   clearError: () => {},
   setUser: () => {},
+  isInitializing: true,
 });
 
 export const useBackofficeAuth = () => {
@@ -40,19 +42,26 @@ export const BackofficeAuthProvider: React.FC<BackofficeAuthProviderProps> = ({ 
   const [user, setUser] = useState<BackofficeUser | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isInitializing, setIsInitializing] = useState(true);
   const navigate = useNavigate();
 
   // Effect to load user from sessionStorage on mount - runs only once
   useEffect(() => {
     try {
+      console.log("BackofficeAuthProvider: Checking for stored user session");
       const storedUser = sessionStorage.getItem(BACKOFFICE_USER_KEY);
       if (storedUser) {
         const parsedUser = JSON.parse(storedUser);
         console.log("BackofficeAuthProvider: Loaded user from sessionStorage", parsedUser);
         setUser(parsedUser);
+      } else {
+        console.log("BackofficeAuthProvider: No stored user session found");
       }
     } catch (error) {
       console.error("Error loading user from sessionStorage:", error);
+    } finally {
+      // Always mark initialization as complete
+      setIsInitializing(false);
     }
   }, []);
 
@@ -106,13 +115,15 @@ export const BackofficeAuthProvider: React.FC<BackofficeAuthProviderProps> = ({ 
     isLoading,
     error,
     clearError,
-    setUser
+    setUser,
+    isInitializing
   };
 
   console.log("BackofficeAuthProvider: Providing context with value:", { 
     hasUser: !!user, 
     isLoading, 
     hasError: !!error,
+    isInitializing,
     userData: user ? `${user.firstName} ${user.lastName} (${user.role})` : 'No user'
   });
 

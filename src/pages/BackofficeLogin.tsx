@@ -21,17 +21,30 @@ const BackofficeLogin = () => {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const { user, error: authError, clearError, setUser } = useBackofficeAuth();
+  const { user, error: authError, clearError, setUser, isInitializing } = useBackofficeAuth();
   const navigate = useNavigate();
 
   // Check if user is already logged in, redirect if they are
   useEffect(() => {
-    console.log("BackofficeLogin: Effect checking for user:", user ? "User exists" : "No user");
+    console.log("BackofficeLogin: Effect checking for user:", user ? "User exists" : "No user", "isInitializing:", isInitializing);
+    
+    // Don't redirect if we're still initializing
+    if (isInitializing) {
+      console.log("BackofficeLogin: Auth is still initializing, waiting...");
+      return;
+    }
+    
     if (user) {
       console.log("BackofficeLogin: User exists, redirecting to dashboard");
-      navigate('/backoffice/dashboard', { replace: true });
+      
+      // Use a short timeout to prevent potential race conditions
+      const timer = setTimeout(() => {
+        navigate('/backoffice/dashboard', { replace: true });
+      }, 100);
+      
+      return () => clearTimeout(timer);
     }
-  }, [user, navigate]);
+  }, [user, navigate, isInitializing]);
 
   // Reset error when inputs change
   useEffect(() => {
@@ -61,6 +74,9 @@ const BackofficeLogin = () => {
         
         // Update the context with the user
         setUser(backofficeUser);
+        
+        // Store in sessionStorage (backup, should be handled by context)
+        sessionStorage.setItem('backoffice_user', JSON.stringify(backofficeUser));
         
         toast.success("Login successful!");
         navigate('/backoffice/dashboard', { replace: true });
@@ -128,6 +144,9 @@ const BackofficeLogin = () => {
         // Update the context with the user
         setUser(backofficeUser);
         
+        // Also store in sessionStorage as backup
+        sessionStorage.setItem('backoffice_user', JSON.stringify(backofficeUser));
+        
         toast.success("Demo login successful!");
         navigate("/backoffice/dashboard");
       } else {
@@ -139,6 +158,18 @@ const BackofficeLogin = () => {
       setIsLoading(false);
     }
   };
+
+  // Show loading state if auth is initializing
+  if (isInitializing) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-indigo-100 p-4">
+        <div className="text-center">
+          <ShieldCheck className="h-12 w-12 text-primary mx-auto mb-4 animate-pulse" />
+          <p>Initializing authentication...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-indigo-100 p-4 animate-fade-in">
