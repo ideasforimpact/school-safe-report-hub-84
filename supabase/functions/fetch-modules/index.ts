@@ -24,8 +24,8 @@ serve(async (req) => {
       }
     );
 
-    // Parse request parameters
-    const { level, userInfo } = await req.json();
+    // Parse request parameters - only need userInfo now
+    const { userInfo } = await req.json();
     
     // Log user details if provided
     if (userInfo) {
@@ -39,7 +39,9 @@ serve(async (req) => {
       console.log('No user info provided with module request');
     }
     
-    console.log(`Fetching modules with level=${level}`);
+    // Determine level based on user role
+    const level = userInfo?.role === 'saas_owner' || userInfo?.isSaasOwner ? 'backoffice' : 'client';
+    console.log(`Determined module level: ${level} based on user role`);
     
     // Query the modules table
     let query = supabase.from('modules').select('*');

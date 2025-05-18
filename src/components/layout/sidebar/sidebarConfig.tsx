@@ -1,4 +1,3 @@
-
 import { 
   LayoutDashboard, 
   AlertTriangle,
@@ -60,7 +59,7 @@ export const fetchModules = async (isBackoffice: boolean, user?: any): Promise<M
       return cachedClientModules;
     }
     
-    // Prepare user info to send for logging purposes
+    // Prepare user info to send for determining module level and logging
     const userInfo = user ? {
       id: user.id,
       email: user.email,
@@ -68,12 +67,9 @@ export const fetchModules = async (isBackoffice: boolean, user?: any): Promise<M
       isSaasOwner: user.role === 'saas_owner'
     } : null;
     
-    // Call our edge function with the appropriate level parameter and user info
+    // Call our edge function with user info only - edge function will determine level
     const { data, error } = await supabase.functions.invoke('fetch-modules', {
-      body: { 
-        level: isBackoffice ? 'backoffice' : 'client',
-        userInfo
-      }
+      body: { userInfo }
     });
     
     if (error) {
@@ -82,11 +78,11 @@ export const fetchModules = async (isBackoffice: boolean, user?: any): Promise<M
     }
     
     if (!data || !data.modules || data.modules.length === 0) {
-      console.log(`No modules found with level ${isBackoffice ? 'backoffice' : 'client'}`);
+      console.log(`No modules found for user ${userInfo?.email || 'anonymous'}`);
       return [];
     }
     
-    // Cache the results
+    // Cache the results based on the determined user role
     const modules = data.modules;
     if (isBackoffice) {
       cachedBackofficeModules = modules;

@@ -59,10 +59,9 @@ const SidebarContent = () => {
       // For SaaS users in backoffice route, fetch backoffice modules
       // For others, fetch client modules
       const isBackofficeFetch = isSaasOwner && isBackofficeRoute;
-      const level = isBackofficeFetch ? 'backoffice' : 'client';
-      console.log(`Fetching ${level} modules`);
+      console.log(`User is ${isSaasOwner ? 'SaaS owner' : 'client user'}, route is ${isBackofficeRoute ? 'backoffice' : 'client'}`);
       
-      // Fetch modules based on the user type and route, passing user info
+      // Fetch modules passing user info
       const modules = await fetchModules(isBackofficeFetch, user);
       
       if (modules.length === 0 && !user) {
