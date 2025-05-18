@@ -1,3 +1,4 @@
+
 import { 
   LayoutDashboard, 
   AlertTriangle,
@@ -19,10 +20,12 @@ export interface Module {
   id: string;
   name: string;
   icon: string; // We'll always set a default value
-  key?: string;
+  level: string;
+  created_at?: string;
+  updated_at?: string;
+  key?: string; // Added as optional since it might be missing in the database
   active?: boolean;
-  description?: string;
-  level?: string;
+  description?: string; // Added as optional since it might be missing in the database
 }
 
 // Map string icon names to Lucide components
@@ -78,10 +81,10 @@ export const fetchModules = async (isBackoffice: boolean): Promise<Module[]> => 
       id: module.id,
       name: module.name,
       icon: module.icon || 'LayoutDashboard', // Always provide a default icon
-      key: module.key,
-      active: true,
-      description: module.description,
-      level: module.level
+      level: module.level,
+      created_at: module.created_at,
+      updated_at: module.updated_at
+      // We don't map key or description as they don't exist in the modules table
     }));
     
     // Cache the results
@@ -107,9 +110,9 @@ export const convertModulesToSidebarItems = (modules: Module[], permissions: Mod
     // Determine path based on name
     const path = `${basePath}/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
     
-    // Check if user has permission for this module
-    const key = module.key as keyof ModulePermissions | undefined;
-    const allowed = key ? (permissions[key] || false) : true;
+    // For modules, we don't have a specific permission key, so we'll show all modules
+    // In a real app, you might want to map module names to permission keys
+    const allowed = true; // All modules are allowed for now
     
     return {
       icon: IconComponent,
