@@ -1,4 +1,3 @@
-
 import { BackofficeUser } from '@/contexts/backoffice/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -13,13 +12,13 @@ const DEMO_EMAILS = [
  */
 export const loginBackofficeUser = async (email: string, password: string): Promise<BackofficeUser | null> => {
   try {
-    console.log(`authService: Attempting login for: ${email}`);
+    console.log(`🔧 authService: Login attempt started for: ${email}`);
     
     // Check if this is a demo email
     const isDemoUser = DEMO_EMAILS.includes(email);
     
     if (isDemoUser && password === 'owner123') {
-      console.log("authService: Using demo user login");
+      console.log("🔧 authService: Using demo user login");
       // For demo users, create a local user object
       return {
         id: 'demo-backoffice-id',
@@ -34,7 +33,7 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
     }
     
     // For non-demo users, we need to check if the email exists first
-    console.log("authService: Checking if this account exists in backoffice_users table...");
+    console.log("🔧 authService: Checking if account exists in backoffice_users table...");
     
     // First check if user exists in backoffice_users table
     const { data: existingUser, error: userCheckError } = await supabase
@@ -46,75 +45,74 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
     if (userCheckError) {
       // If error is not-found, give a clear message
       if (userCheckError.code === 'PGRST116') {
-        console.error(`authService: Account not found for email: ${email}`);
-        console.error("Error details:", userCheckError);
+        console.error(`🔧 authService: Account not found for email: ${email}`);
+        console.error("🔧 Error details:", userCheckError);
         toast.error("Account not found. Please check your email or contact an administrator.");
         return null;
       }
       
-      console.error("authService: Error checking user existence:", userCheckError);
+      console.error("🔧 authService: Error checking user existence:", userCheckError);
       toast.error("Error checking user account");
       return null;
     }
     
-    console.log("authService: Account found, verifying password...", existingUser);
+    console.log("🔧 authService: Account found, proceeding to verify password...");
+    console.log("🔧 authService: User data from DB:", existingUser);
     
     // For real users, verify password with Supabase function
+    console.log("🔧 authService: Calling verify_password RPC function");
     const { data: isValidPassword, error: verifyError } = await supabase.rpc('verify_password', { 
       email, 
       password_attempt: password 
     });
 
-    console.log("authService: Password verification result:", isValidPassword);
+    console.log("🔧 authService: Password verification result:", isValidPassword);
+    console.log("🔧 authService: Password verification error:", verifyError);
     
     if (verifyError) {
-      console.error("authService: Password verification error:", verifyError);
+      console.error("🔧 authService: Password verification error:", verifyError);
       toast.error("Authentication failed: " + verifyError.message);
       return null;
     }
 
-    // Log the verification result
-    console.log("authService: Password verification result:", isValidPassword);
-
     if (!isValidPassword) {
-      console.error("authService: Invalid credentials");
+      console.error("🔧 authService: Invalid credentials - password verification failed");
       toast.error("Invalid email or password");
       return null;
     }
 
-    console.log("authService: Password verified, fetching user details");
+    console.log("🔧 authService: Password verified successfully, building user object");
 
-    // If password is valid, fetch user details - we already have the user from above
-    const backofficeUser = existingUser;
+    // Map database record to BackofficeUser type
+    const backofficeUser: BackofficeUser = {
+      id: existingUser.id,
+      firstName: existingUser.first_name || 'Backoffice',
+      lastName: existingUser.last_name || 'Admin',
+      email: existingUser.email,
+      role: existingUser.is_saas_admin ? 'saas_owner' : 'backoffice_admin',
+      isActive: existingUser.is_active !== false,
+      createdAt: existingUser.created_at,
+      lastLogin: new Date().toISOString()
+    };
     
-    if (!backofficeUser) {
-      console.error("authService: Error retrieving user information");
-      toast.error("Error retrieving user information");
-      return null;
-    }
-    
-    console.log("authService: User fetched successfully:", backofficeUser.email);
-    console.log("authService: User data:", backofficeUser);
+    console.log("🔧 authService: User object created:", backofficeUser);
     
     // Update last_signed_in
-    await supabase
+    const { error: updateError } = await supabase
       .from('backoffice_users')
       .update({ last_signed_in: new Date().toISOString() })
       .eq('id', backofficeUser.id);
+      
+    if (updateError) {
+      console.error("🔧 authService: Error updating last_signed_in:", updateError);
+    } else {
+      console.log("🔧 authService: Updated last_signed_in successfully");
+    }
 
-    // Map database record to BackofficeUser type
-    return {
-      id: backofficeUser.id,
-      firstName: 'Backoffice', // Default first name
-      lastName: 'Admin',       // Default last name
-      email: backofficeUser.email,
-      role: backofficeUser.is_saas_admin ? 'saas_owner' : 'backoffice_admin',
-      isActive: true,
-      createdAt: backofficeUser.created_at,
-      lastLogin: new Date().toISOString()
-    };
+    console.log("🔧 authService: Login successful, returning user");
+    return backofficeUser;
   } catch (error) {
-    console.error("authService: Unexpected error during backoffice login:", error);
+    console.error("🔧 authService: Unexpected error during backoffice login:", error);
     toast.error("An unexpected error occurred during login");
     return null;
   }

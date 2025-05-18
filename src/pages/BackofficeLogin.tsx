@@ -52,19 +52,19 @@ const BackofficeLogin = () => {
     }
     
     setIsLoading(true);
-    console.log("Starting login attempt with email:", email);
+    console.log("🔍 Starting login attempt with email:", email);
 
     try {
       // For debugging, log the type of login attempt
       if (email === 'owner@saasplatform.com' && password === 'owner123') {
-        console.log("Attempting demo login");
+        console.log("🔍 Attempting demo login");
       } else {
-        console.log("Attempting standard login");
+        console.log("🔍 Attempting standard login");
       }
       
       // For testing specific emails, check if email is in allowed test list
       if (ALLOWED_TEST_EMAILS.includes(email)) {
-        console.log("This email is in the allowed test list");
+        console.log("🔍 This email is in the allowed test list");
         
         // Check if this user exists in backoffice_users table
         const { data: existingUser, error } = await supabase
@@ -73,10 +73,10 @@ const BackofficeLogin = () => {
           .eq('email', email)
           .maybeSingle();
           
-        console.log("User check result:", existingUser, error);
+        console.log("🔍 User check result:", existingUser, error);
         
         if (!existingUser) {
-          console.log("Creating test user account for:", email);
+          console.log("🔍 Creating test user account for:", email);
           
           // If not, create a test account for this email
           const { error: hashError, data: hashedPassword } = await supabase.rpc('hash_password', {
@@ -84,7 +84,7 @@ const BackofficeLogin = () => {
           });
           
           if (hashError) {
-            console.error("Error hashing password:", hashError);
+            console.error("🔍 Error hashing password:", hashError);
             toast.error("Error creating test account");
             setIsLoading(false);
             return;
@@ -102,34 +102,42 @@ const BackofficeLogin = () => {
             .single();
             
           if (insertError) {
-            console.error("Error creating test account:", insertError);
+            console.error("🔍 Error creating test account:", insertError);
             toast.error("Error creating test account");
             setIsLoading(false);
             return;
           }
           
-          console.log("Test account created successfully:", newUser);
+          console.log("🔍 Test account created successfully:", newUser);
           toast.success("Test account created. Please log in now.");
         }
       }
       
       // Now proceed with login
-      console.log("Calling login function with:", email, "and password (masked)");
-      const success = await login(email, password);
+      console.log("🔍 About to call login function with:", email);
+      console.log("🔍 Login function reference check:", login ? "Function exists" : "Function is undefined");
+      console.log("🔍 Type of login function:", typeof login);
       
-      console.log("Login function returned:", success);
-      
-      if (success) {
-        console.log("Login success, redirecting to dashboard");
-        toast.success("Login successful!");
-        navigate('/backoffice/dashboard');
-      } else {
-        console.error("Login failed");
-        toast.error("Login failed. Please check your credentials.");
+      try {
+        const success = await login(email, password);
+        console.log("🔍 Login function returned:", success);
+        
+        if (success) {
+          console.log("🔍 Login success, redirecting to dashboard");
+          toast.success("Login successful!");
+          navigate('/backoffice/dashboard');
+        } else {
+          console.error("🔍 Login failed with false return value");
+          toast.error("Login failed. Please check your credentials.");
+          setIsLoading(false);
+        }
+      } catch (loginErr) {
+        console.error("🔍 Login function threw an exception:", loginErr);
+        toast.error("Login process error. Please try again.");
         setIsLoading(false);
       }
     } catch (err) {
-      console.error("Login error:", err);
+      console.error("🔍 Outer try-catch caught error:", err);
       toast.error("An error occurred. Please try again.");
       setIsLoading(false);
     }
