@@ -17,4 +17,5 @@ export interface BackofficeAuthContextType {
   isLoading: boolean;
   error: string | null;
   clearError: () => void;
+  setUser?: React.Dispatch<React.SetStateAction<BackofficeUser | null>>;
 }

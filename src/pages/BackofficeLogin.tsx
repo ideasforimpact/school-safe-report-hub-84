@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { useBackofficeAuth } from "@/contexts/backoffice/BackofficeAuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { loginBackofficeUser } from "@/services/backoffice/authService";
 
 // List of demo credentials for verification
 const DEMO_CREDENTIALS = [
@@ -21,7 +22,8 @@ const BackofficeLogin = () => {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const { login, user, error: authError, clearError } = useBackofficeAuth();
+  const { user, error: authError, clearError } = useBackofficeAuth();
+  const { setUser } = useBackofficeAuth() as any; // Access the setUser function from context
   const navigate = useNavigate();
 
   // Check if user is already logged in, redirect if they are
@@ -52,15 +54,23 @@ const BackofficeLogin = () => {
     setIsLoading(true);
     
     try {
-      // CRITICAL FIX: Ensure we're explicitly calling the login function from context
-      console.log("BackofficeLogin: About to call login function with email:", email);
-      const success = await login(email, password);
-      console.log("BackofficeLogin: login function returned:", success);
+      // Directly call the loginBackofficeUser service
+      console.log("BackofficeLogin: Calling loginBackofficeUser directly with email:", email);
+      const backofficeUser = await loginBackofficeUser(email, password);
+      console.log("BackofficeLogin: loginBackofficeUser returned:", backofficeUser ? "User object received" : "Failed - No user returned");
       
-      if (success) {
+      if (backofficeUser) {
+        console.log("BackofficeLogin: Setting user in context and session storage");
+        // Update the context with the user
+        setUser(backofficeUser);
+        // Store user in session storage
+        sessionStorage.setItem('backoffice_user', JSON.stringify(backofficeUser));
+        
+        toast.success("Login successful!");
         navigate('/backoffice/dashboard');
       } else {
-        toast.error("Login failed. Please check your credentials.");
+        console.log("BackofficeLogin: Login failed, no user returned");
+        toast.error("Invalid email or password");
         setIsLoading(false);
       }
     } catch (err) {
