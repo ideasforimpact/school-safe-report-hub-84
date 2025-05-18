@@ -42,11 +42,11 @@ const checkEmployeeAccess = async (email: string, setAuthError: (error: string |
     
     // Check if the employee has the necessary department permissions
     // Here we're checking if they are in the admin department
-    if (data.department.toLowerCase() !== 'admin') {
-      console.log("Employee department check failed: Not in admin department");
-      setAuthError("Access denied: Only admin department employees can login");
-      return false;
-    }
+    // if (data.department.toLowerCase() !== 'admin') {
+    //   console.log("Employee department check failed: Not in admin department");
+    //   setAuthError("Access denied: Only admin department employees can login");
+    //   return false;
+    // }
     
     return true;
   } catch (error) {
