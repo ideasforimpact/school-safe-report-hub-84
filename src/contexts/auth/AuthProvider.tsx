@@ -1,3 +1,4 @@
+
 import React, { createContext, useEffect, useState, useRef } from 'react';
 import { User, AuthContextType, UserWithPassword } from './types';
 import { 
@@ -48,6 +49,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [authError, setAuthError] = useState<string | null>(null);
   const [isBackofficeUser, setIsBackofficeUser] = useState<boolean>(false);
   const authInitCompleteRef = useRef<boolean>(false);
+  const authListenerSetupRef = useRef<boolean>(false);
 
   // Import useAuthHandlers to get handleUserAuthentication function
   const { handleUserAuthentication } = useAuthHandlers({
@@ -68,18 +70,67 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const isAdmin = Boolean(currentUser?.role === 'admin' || currentUser?.modulePermissions?.superAdmin);
   const isSaasOwner = Boolean(currentUser?.role === 'saas_owner' || isBackofficeUser);
 
+  // Setup Supabase auth listener for Google authentication
+  useEffect(() => {
+    // Only setup listener once
+    if (authListenerSetupRef.current) return;
+    
+    console.log("🔵 Setting up Supabase auth state listener");
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("🔔 Auth state changed:", event, session?.user?.email);
+      
+      if (event === 'SIGNED_IN' && session?.user) {
+        console.log("👤 User signed in event detected:", session.user.email);
+        
+        try {
+          console.log("🔍 Processing authentication for user:", session.user.email);
+          // Use setTimeout to avoid potential deadlock issues with Supabase auth
+          setTimeout(async () => {
+            await handleUserAuthentication(session.user);
+          }, 0);
+        } catch (error) {
+          console.error("❌ Error in auth state change handler:", error);
+        }
+      } else if (event === 'SIGNED_OUT') {
+        console.log("🚪 User signed out event detected");
+        setCurrentUser(null);
+        setAuthError(null);
+      }
+    });
+    
+    authListenerSetupRef.current = true;
+    
+    // Return cleanup function
+    return () => {
+      console.log("🧹 Cleaning up auth state listener");
+      subscription.unsubscribe();
+    };
+  }, [handleUserAuthentication]);
+
   // Fetch users from Supabase on mount
   useEffect(() => {
     const checkSupabaseAuth = async () => {
       try {
+        console.log("🔍 Checking initial Supabase auth session");
         const { data } = await supabase.auth.getSession();
+        
         if (data.session) {
-          // User is authenticated with Supabase
-          // We could potentially fetch user data here
-          console.log("User is authenticated with Supabase");
+          console.log("✅ Found existing session for:", data.session.user.email);
+          
+          // Check if we already have a user loaded from storage
+          if (!currentUser) {
+            console.log("👤 Processing existing session user");
+            // Use setTimeout to avoid potential deadlock issues
+            setTimeout(async () => {
+              await handleUserAuthentication(data.session?.user);
+            }, 0);
+          }
+        } else {
+          console.log("ℹ️ No existing session found");
         }
       } catch (error) {
-        console.error("Error checking Supabase auth:", error);
+        console.error("❌ Error checking Supabase auth:", error);
       } finally {
         setIsInitializing(false);
       }

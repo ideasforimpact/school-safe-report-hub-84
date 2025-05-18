@@ -28,13 +28,17 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  console.log("🏁 Login component rendering");
+
   // Check if user is already logged in, redirect if they are
   useEffect(() => {
+    console.log("👤 User state changed:", user?.email);
     if (user) {
+      console.log("🚀 Redirecting logged-in user to dashboard");
       // Get the intended destination from location state or use dashboard as default
       const from = location.state?.from?.pathname || "/dashboard";
 
-      if(user?.role == "saas_owner"){
+      if(user?.role === "saas_owner"){
          navigate("/backoffice/dashboard");
       }
       else{
@@ -43,42 +47,11 @@ const Login = () => {
     }
   }, [user, navigate, location.state]);
 
-  // Check for authentication redirect results and errors
-  useEffect(() => {
-    const checkForAuthRedirect = async () => {
-      try {
-        const { data, error } = await supabase.auth.getSession();
-        
-        if (data?.session) {
-          console.log("Session detected after redirect:", data.session);
-          // Get user info from the session to pass to handleUserAuthentication
-          const supabaseUser = data.session.user;
-          if (supabaseUser) {
-            // Use the handler function from AuthContext to validate the user
-            await handleUserAuthentication(supabaseUser);
-          }
-        }
-        
-        if (error) {
-          console.error("Auth redirect error:", error);
-          toast.error("Authentication failed. Please try again.");
-          setGoogleLoading(false);
-        }
-      } catch (err) {
-        console.error("Error checking auth redirect:", err);
-        toast.error("Error processing authentication. Please try again.");
-        setGoogleLoading(false);
-      }
-    };
-    
-    checkForAuthRedirect();
-  }, [handleUserAuthentication]);
-
   // Listen for auth errors from context
   useEffect(() => {
     if (authError) {
+      console.log("❌ Auth error detected:", authError);
       setError(authError);
-      // No need to show toast here, the auth context will handle it
       setIsLoading(false);
       setGoogleLoading(false);
     }
@@ -90,12 +63,11 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      console.log("Attempting to log in with:", email, password);
+      console.log("🔑 Attempting to log in with email:", email);
       const success = await login(email, password);
-      console.log(success,"success")
+      console.log("Login result:", success ? "Success" : "Failed");
       if (success) {
         // Redirect logic is handled in the useEffect that watches for user changes
-        // This prevents redirection code duplication
       } else {
         if (!authError) {
           setError("Invalid email or password");
@@ -103,7 +75,7 @@ const Login = () => {
         setIsLoading(false);
       }
     } catch (err) {
-      console.error("Login error:", err);
+      console.error("❌ Login error:", err);
       setError("An error occurred. Please try again.");
       setIsLoading(false);
     }
@@ -111,37 +83,39 @@ const Login = () => {
 
   const handleGoogleLogin = async () => {
     try {
+      console.log("🔵 Starting Google login process");
       setGoogleLoading(true);
       setError("");
       
       // Get the current origin for constructing redirect URL
       const origin = window.location.origin;
-      // Always redirect to dashboard first, the auth handlers will check permissions
-      // and redirect accordingly
+      // Always redirect to dashboard after login
       const redirectTo = `${origin}/dashboard`;
       
-      console.log("Initiating Google login with redirect to:", redirectTo);
+      console.log("🔄 Initiating Google login with redirect to:", redirectTo);
       
-      // Use signInWithOAuth to redirect to Google's login page directly
+      // Use signInWithOAuth to redirect to Google's login page
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
           redirectTo: redirectTo,
+          queryParams: {
+            // Add a timestamp to prevent caching issues
+            ts: new Date().getTime().toString()
+          }
         }
       });
       
       if (error) {
-        console.error("Google login error:", error);
+        console.error("❌ Google login error:", error);
         toast.error("Google login failed. Please try again.");
         setError(`Google authentication failed: ${error.message}`);
         setGoogleLoading(false);
       }
-      // No else branch needed as successful OAuth will redirect the page
-      // The handleUserAuthentication function in useAuthHandlers will handle the domain checks
-      // and redirect to the appropriate page based on the user's permissions
+      // Successful OAuth will redirect the page, no need for else branch
       
     } catch (err) {
-      console.error("Google login unexpected error:", err);
+      console.error("❌ Google login unexpected error:", err);
       setError("An error occurred with Google login. Please try again.");
       setGoogleLoading(false);
     }
@@ -164,11 +138,10 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      console.log("Using demo credentials:", demoEmail, demoPassword);
+      console.log("👤 Using demo credentials:", demoEmail);
       const success = await login(demoEmail, demoPassword);
       if (success) {
         // Redirect logic is handled in the useEffect that watches for user changes
-        // This prevents redirection code duplication
       } else {
         if (!authError) {
           toast.error("Demo login failed. Please try again.");
@@ -177,7 +150,7 @@ const Login = () => {
         setIsLoading(false);
       }
     } catch (err) {
-      console.error("Demo login error:", err);
+      console.error("❌ Demo login error:", err);
       setError("An error occurred with demo login. Please try again.");
       setIsLoading(false);
     }
