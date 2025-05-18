@@ -21,23 +21,17 @@ const BackofficeLogin = () => {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const { user, error: authError, clearError, setUser, isInitializing } = useBackofficeAuth();
+  const { user, error: authError, clearError, setUser } = useBackofficeAuth();
   const navigate = useNavigate();
 
   // Check if user is already logged in, redirect if they are
   useEffect(() => {
-    if (isInitializing) {
-      console.log("BackofficeLogin: Still initializing auth state, waiting...");
-      return;
-    }
-    
-    console.log("BackofficeLogin: Auth initialization complete, checking for user:", user ? "User exists" : "No user");
-    
+    console.log("BackofficeLogin: Effect checking for user:", user ? "User exists" : "No user");
     if (user) {
       console.log("BackofficeLogin: User exists, redirecting to dashboard");
       navigate('/backoffice/dashboard', { replace: true });
     }
-  }, [user, navigate, isInitializing]);
+  }, [user, navigate]);
 
   // Reset error when inputs change
   useEffect(() => {
@@ -65,15 +59,11 @@ const BackofficeLogin = () => {
       if (backofficeUser) {
         console.log("BackofficeLogin: Login successful, setting user in context", backofficeUser);
         
-        // Update the context with the user - this will also update sessionStorage
+        // Update the context with the user
         setUser(backofficeUser);
         
         toast.success("Login successful!");
-        
-        // Use a small timeout to ensure state updates before navigation
-        setTimeout(() => {
-          navigate('/backoffice/dashboard', { replace: true });
-        }, 100);
+        navigate('/backoffice/dashboard', { replace: true });
       } else {
         toast.error("Invalid credentials. Please try again.");
         console.log("BackofficeLogin: Invalid credentials");
@@ -149,15 +139,6 @@ const BackofficeLogin = () => {
       setIsLoading(false);
     }
   };
-
-  // Show loading while checking authentication state
-  if (isInitializing) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-indigo-100 p-4">
-        <p className="text-gray-600">Checking authentication state...</p>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-indigo-100 p-4 animate-fade-in">

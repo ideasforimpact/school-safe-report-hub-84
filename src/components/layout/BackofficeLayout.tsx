@@ -1,5 +1,5 @@
 
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { ShieldCheck, LogOut } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
@@ -20,26 +20,31 @@ interface BackofficeLayoutProps {
 const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout, isInitializing } = useBackofficeAuth();
+  const { user, logout } = useBackofficeAuth();
+  const [initialCheckDone, setInitialCheckDone] = useState(false);
   
-  // Handle authentication check once initialization is complete
+  // Initialize with auth check
   useEffect(() => {
-    console.log("Backoffice Layout - Checking auth state:", {
-      isInitializing,
+    console.log("Backoffice Layout - Initial mount, checking auth state:", {
       isUser: !!user,
       pathname: location.pathname,
       userDetails: user ? `${user.firstName} ${user.lastName} (${user.role})` : 'No user'
     });
     
-    // Only redirect if we're done initializing and there's no user
-    if (!isInitializing && user === null) {
+    // Set initial check to true after first render
+    setInitialCheckDone(true);
+  }, [user, location.pathname]);
+  
+  // Redirect if not logged in, but only after initial render
+  useEffect(() => {
+    // Make sure to check for both initialCheckDone and user being null
+    if (initialCheckDone && user === null) {
       console.log("Backoffice Layout - No user, redirecting to backoffice login");
       toast.error("Please log in to access the backoffice.");
-      navigate('/backoffice/login', { replace: true });
+      navigate('/backoffice/login');
     }
-  }, [user, navigate, isInitializing, location.pathname]);
+  }, [user, navigate, initialCheckDone]);
 
-  // Add the missing handleLogout function
   const handleLogout = async () => {
     console.log("Backoffice Layout - Logging out user");
     await logout();
@@ -58,8 +63,8 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
     return `${user.firstName} ${user.lastName}`;
   };
 
-  // If still initializing, show loading
-  if (isInitializing) {
+  // If initial check isn't done, show loading
+  if (!initialCheckDone) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <p>Loading backoffice...</p>
@@ -67,7 +72,7 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
     );
   }
 
-  // If not logged in, show loading while redirecting
+  // If not logged in, don't render anything while redirecting
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
