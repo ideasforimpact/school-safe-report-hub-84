@@ -23,6 +23,7 @@ export interface Module {
   key?: string;
   active?: boolean;
   description?: string;
+  level?: string;
 }
 
 // Map string icon names to Lucide components
@@ -57,10 +58,11 @@ export const fetchModules = async (isBackoffice: boolean): Promise<Module[]> => 
       return cachedClientModules;
     }
     
-    // Fetch roles from database
+    // Fetch roles from database with level filter for backoffice or client
     const { data, error } = await supabase
       .from('roles')
-      .select('*');
+      .select('*')
+      .eq('level', isBackoffice ? 'backoffice' : 'client');
     
     if (error) {
       console.error("Error fetching modules:", error);
@@ -68,30 +70,29 @@ export const fetchModules = async (isBackoffice: boolean): Promise<Module[]> => 
     }
     
     if (!data || data.length === 0) {
+      console.log(`No modules found with level ${isBackoffice ? 'backoffice' : 'client'}`);
       return [];
     }
     
-    // Filter the fetched roles based on whether they're for backoffice or client users
-    const filteredData = data.filter(role => {
-      const isBackofficeRole = backofficeRoleKeys.includes(role.key);
-      return isBackoffice ? isBackofficeRole : !isBackofficeRole;
-    }).map(role => ({
+    // Map the fetched data to include icon property
+    const mappedData = data.map(role => ({
       id: role.id,
       name: role.name,
-      icon: 'LayoutDashboard', // Always provide a default icon since it doesn't exist in the database
+      icon: 'LayoutDashboard', // Always provide a default icon
       key: role.key,
       active: role.active,
-      description: role.description
+      description: role.description,
+      level: role.level
     }));
     
     // Cache the results
     if (isBackoffice) {
-      cachedBackofficeModules = filteredData;
+      cachedBackofficeModules = mappedData;
     } else {
-      cachedClientModules = filteredData;
+      cachedClientModules = mappedData;
     }
     
-    return filteredData;
+    return mappedData;
   } catch (error) {
     console.error("Error in fetchModules:", error);
     return [];

@@ -56,17 +56,16 @@ const SidebarContent = () => {
     setIsLoading(true);
     
     try {
-      if (isSaasOwner && isBackofficeRoute) {
-        // For SaaS owners in backoffice route, fetch backoffice modules
-        const backofficeModules = await fetchModules(true);
-        const items = convertModulesToSidebarItems(backofficeModules, effectivePermissions, '/backoffice');
-        setDynamicMenuItems(items);
-      } else {
-        // For regular users, fetch non-backoffice modules
-        const clientModules = await fetchModules(false);
-        const items = convertModulesToSidebarItems(clientModules, effectivePermissions);
-        setDynamicMenuItems(items);
-      }
+      // Determine which modules to fetch based on if user is SaaS owner and current route
+      const isBackofficeFetch = isSaasOwner && isBackofficeRoute;
+      console.log(`Fetching ${isBackofficeFetch ? 'backoffice' : 'client'} modules`);
+      
+      // Fetch modules based on the user type and route
+      const modules = await fetchModules(isBackofficeFetch);
+      const basePath = isBackofficeFetch ? '/backoffice' : '';
+      const items = convertModulesToSidebarItems(modules, effectivePermissions, basePath);
+      
+      setDynamicMenuItems(items);
       
       // Update the last fetch path to prevent duplicate fetches
       setLastFetchPath(isBackofficeRoute ? 'backoffice' : 'client');
