@@ -62,10 +62,10 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
     // Map to BackofficeUser type
     return {
       id: backofficeUser.id,
-      firstName: backofficeUser.first_name || 'Backoffice',
-      lastName: backofficeUser.last_name || 'Admin',
+      firstName: backofficeUser.first_name || 'Backoffice', // Handle potential null or missing fields
+      lastName: backofficeUser.last_name || 'Admin',  // Handle potential null or missing fields
       email: backofficeUser.email,
-      role: 'saas_owner',
+      role: 'saas_owner', // Default role for backoffice users
       isActive: true,
       createdAt: backofficeUser.created_at,
       lastLogin: new Date().toISOString()

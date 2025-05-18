@@ -2,7 +2,6 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { ShieldCheck, LogOut } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { formatUserFullName } from '@/utils/userUtils';
 import { 
   DropdownMenu,
   DropdownMenuContent, 
@@ -59,6 +58,11 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
     }
     return 'U'; // Default fallback if firstName is undefined
   };
+  
+  // Helper function to format user name (avoiding the external formatUserFullName)
+  const formatUserName = (user: BackofficeUser) => {
+    return `${user.firstName} ${user.lastName}`;
+  };
 
   // If initial check isn't done, show loading
   if (!initialCheckDone) {
@@ -94,7 +98,7 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
                           {getUserInitial()}
                         </span>
                       </div>
-                      <span>{formatUserFullName(user)}</span>
+                      <span>{formatUserName(user)}</span>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">

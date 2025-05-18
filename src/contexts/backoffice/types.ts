@@ -4,7 +4,7 @@ export interface BackofficeUser {
   email: string;
   firstName: string;
   lastName: string;
-  role: string;
+  role: string;  // Keep this as string for the backoffice system
   isActive: boolean;
   createdAt: string;
   lastLogin?: string;
