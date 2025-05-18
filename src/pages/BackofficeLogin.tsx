@@ -33,13 +33,18 @@ const BackofficeLogin = () => {
     const clearStaleSession = async () => {
       console.log("Backoffice Login - Initial mount, checking for stale sessions");
       
-      const { data } = await supabase.auth.getSession();
-      
-      // If user appears logged in but we're on the login page,
-      // they likely tried to log out but the session wasn't fully cleared
-      if (data?.session && location.pathname === '/backoffice/login') {
-        console.log("Backoffice Login - Found stale session, cleaning up");
-        logout();
+      try {
+        const { data } = await supabase.auth.getSession();
+        
+        // If user appears logged in but we're on the login page,
+        // they likely tried to log out but the session wasn't fully cleared
+        if (data?.session && location.pathname === '/backoffice/login') {
+          console.log("Backoffice Login - Found session but on login page:", data.session.user?.email);
+          console.log("Backoffice Login - Clearing stale session");
+          await logout(); // This will clear everything
+        }
+      } catch (error) {
+        console.error("Backoffice Login - Error checking session:", error);
       }
       
       setInitialCheckDone(true);
@@ -76,11 +81,13 @@ const BackofficeLogin = () => {
   // Check for authentication redirect results and errors
   useEffect(() => {
     const checkForAuthRedirect = async () => {
+      if (!initialCheckDone) return;
+      
       console.log("Backoffice Login - Checking for auth redirect");
       const { data, error } = await supabase.auth.getSession();
       
       if (data?.session) {
-        console.log("Backoffice Login - Session detected after redirect:", data.session);
+        console.log("Backoffice Login - Session detected after redirect:", data.session.user?.email);
       }
       
       if (error) {
@@ -89,9 +96,7 @@ const BackofficeLogin = () => {
       }
     };
     
-    if (initialCheckDone) {
-      checkForAuthRedirect();
-    }
+    checkForAuthRedirect();
   }, [navigate, initialCheckDone]);
 
   // Listen for auth errors from context

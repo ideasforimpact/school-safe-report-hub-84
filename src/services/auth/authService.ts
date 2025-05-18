@@ -1,3 +1,4 @@
+
 import { User, UserWithPassword } from '@/contexts/auth/types';
 import { INITIAL_MOCK_USERS } from '@/contexts/auth/initialData';
 import { toast } from "sonner";
@@ -62,23 +63,45 @@ export const loginUser = (
   return userWithoutPassword;
 };
 
-export const logoutUser = (): void => {
-  console.log("Removing user from local storage");
-  localStorage.removeItem('currentUser');
+export const logoutUser = async (): Promise<void> => {
+  console.log("LOGOUT: Clearing all user session data");
   
-  // Clear any other auth-related items that might be stored
-  // This ensures complete logout
+  try {
+    // Sign out from Supabase first
+    await supabase.auth.signOut();
+    console.log("LOGOUT: Supabase auth signOut completed");
+  } catch (error) {
+    console.error("LOGOUT ERROR: Supabase signout failed", error);
+  }
+  
+  // Clear user from localStorage
+  localStorage.removeItem('currentUser');
+  console.log("LOGOUT: Removed currentUser from localStorage");
+  
+  // Clear any Supabase auth tokens that might be stored
   const authItemsToRemove = [
     'supabase.auth.token',
-    'sb-ybvxkiubnnixntghojyy-auth-token'
+    'sb-ybvxkiubnnixntghojyy-auth-token',
+    'supabase.auth.refreshToken',
+    'supabase.auth.expiresAt'
   ];
   
   authItemsToRemove.forEach(item => {
     if (localStorage.getItem(item)) {
-      console.log(`Removing ${item} from localStorage`);
+      console.log(`LOGOUT: Removing ${item} from localStorage`);
       localStorage.removeItem(item);
     }
   });
+  
+  // As a last resort, clear the session storage too
+  try {
+    sessionStorage.clear();
+    console.log("LOGOUT: Cleared session storage");
+  } catch (error) {
+    console.error("LOGOUT ERROR: Failed to clear session storage", error);
+  }
+  
+  console.log("LOGOUT: All user session data cleared");
 };
 
 export const changeUserPassword = (

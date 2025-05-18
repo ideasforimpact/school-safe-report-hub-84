@@ -35,13 +35,17 @@ const Login = () => {
     const clearStaleSession = async () => {
       console.log("Login page - Initial mount, checking for stale sessions");
       
-      const { data } = await supabase.auth.getSession();
-      
-      // If user appears logged in but we're on the login page,
-      // they likely tried to log out but the session wasn't fully cleared
-      if (data?.session && location.pathname === '/login') {
-        console.log("Login page - Found stale session, cleaning up");
-        logout();
+      try {
+        const { data } = await supabase.auth.getSession();
+        
+        // Log if there's an active session but we're on login page
+        if (data?.session && location.pathname === '/login') {
+          console.log("Login page - Found session but on login page:", data.session.user?.email);
+          console.log("Login page - Clearing stale session");
+          await logout(); // This will clear everything
+        }
+      } catch (error) {
+        console.error("Login page - Error checking session:", error);
       }
       
       setInitialCheckDone(true);
@@ -75,11 +79,13 @@ const Login = () => {
   // Check for authentication redirect results and errors
   useEffect(() => {
     const checkForAuthRedirect = async () => {
+      if (!initialCheckDone) return;
+      
       console.log("Login page - Checking for auth redirect");
       const { data, error } = await supabase.auth.getSession();
       
       if (data?.session) {
-        console.log("Login page - Session detected after redirect:", data.session);
+        console.log("Login page - Session detected after redirect:", data.session.user?.email);
       }
       
       if (error) {
@@ -88,9 +94,7 @@ const Login = () => {
       }
     };
     
-    if (initialCheckDone) {
-      checkForAuthRedirect();
-    }
+    checkForAuthRedirect();
   }, [navigate, initialCheckDone]);
 
   // Listen for auth errors from context

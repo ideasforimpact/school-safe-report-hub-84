@@ -26,6 +26,7 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
   
   // Initialize with auth check
   useEffect(() => {
+    console.log("Backoffice Layout - Initial mount, checking auth state");
     // Set initial check to true after first render
     setInitialCheckDone(true);
   }, []);
@@ -67,9 +68,9 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
     }
   }, [user, isSaasOwner, navigate, redirect, location.pathname, initialCheckDone]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     console.log("Backoffice Layout - Logging out user");
-    logout();
+    await logout();
     navigate('/backoffice/login');
   };
 
