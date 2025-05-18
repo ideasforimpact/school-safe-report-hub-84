@@ -1,3 +1,4 @@
+
 import { BackofficeUser } from '@/contexts/backoffice/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -12,6 +13,8 @@ const DEMO_EMAILS = [
  */
 export const loginBackofficeUser = async (email: string, password: string): Promise<BackofficeUser | null> => {
   try {
+    console.log("Attempting backoffice login for email:", email);
+    
     // Check if this is a demo email
     const isDemoUser = DEMO_EMAILS.includes(email);
     

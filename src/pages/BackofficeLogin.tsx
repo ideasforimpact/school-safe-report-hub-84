@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -7,17 +8,11 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, ShieldCheck } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 import { useBackofficeAuth } from "@/contexts/backoffice/BackofficeAuthContext";
 
 // List of demo credentials for verification
 const DEMO_CREDENTIALS = [
   { email: 'owner@saasplatform.com', password: 'owner123', role: 'SaaS Owner' }
-];
-
-// Add your backoffice email here to test if it exists
-const ALLOWED_TEST_EMAILS = [
-  'backofficesafeschool@gmail.com'
 ];
 
 const BackofficeLogin = () => {
@@ -51,82 +46,15 @@ const BackofficeLogin = () => {
     }
     
     setIsLoading(true);
-    console.log("Starting login attempt with email:", email);
     
     try {
-      // Check if this email is in allowed test list
-      if (ALLOWED_TEST_EMAILS.includes(email)) {
-        // Check if this user exists in backoffice_users table
-        const { data: existingUser, error } = await supabase
-          .from('backoffice_users')
-          .select('email')
-          .eq('email', email)
-          .maybeSingle();
-          
-        console.log("User check result:", existingUser ? "Found" : "Not found");
-        
-        if (!existingUser) {
-          console.log("Creating test user account for:", email);
-          
-          // If not, create a test account for this email
-          const { error: hashError, data: hashedPassword } = await supabase.rpc('hash_password', {
-            password
-          });
-          
-          if (hashError) {
-            console.error("Error hashing password:", hashError);
-            toast.error("Error creating test account");
-            setIsLoading(false);
-            return;
-          }
-          
-          // Insert the user into backoffice_users
-          const { data: newUser, error: insertError } = await supabase
-            .from('backoffice_users')
-            .insert({
-              email: email,
-              password: hashedPassword,
-              is_saas_admin: true
-            })
-            .select()
-            .single();
-            
-          if (insertError) {
-            console.error("Error creating test account:", insertError);
-            toast.error("Error creating test account");
-            setIsLoading(false);
-            return;
-          }
-          
-          console.log("Test account created successfully");
-          toast.success("Test account created. Please log in now.");
-          
-          // Add a significant delay to ensure the database has time to process
-          await new Promise(resolve => setTimeout(resolve, 3000));
-        }
-      }
-      
       // Call the login function from BackofficeAuthContext
-      console.log("Calling BackofficeAuthContext login function");
       let success = await login(email, password);
-      console.log("Login attempt result:", success ? "Success" : "Failed");
-      
-      // If first attempt failed and it might be a newly created account
-      if (!success && ALLOWED_TEST_EMAILS.includes(email)) {
-        console.log("Initial login failed for new account, waiting and trying again...");
-        // Wait a bit more and try again with a longer delay
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        console.log("Trying login again after delay");
-        success = await login(email, password);
-        console.log("Second login attempt result:", success ? "Success" : "Failed");
-      }
       
       if (success) {
-        console.log("Login successful, redirecting to dashboard");
         toast.success("Login successful!");
         navigate('/backoffice/dashboard');
       } else {
-        console.error("Login failed");
         toast.error("Login failed. Please check your credentials.");
         setIsLoading(false);
       }
@@ -144,8 +72,6 @@ const BackofficeLogin = () => {
       // Get the current origin for constructing redirect URL
       const origin = window.location.origin;
       const redirectTo = `${origin}/backoffice/dashboard`;
-      
-      console.log("Initiating Google login with redirect to:", redirectTo);
       
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -180,18 +106,15 @@ const BackofficeLogin = () => {
     setEmail(demoEmail);
     setPassword(demoPassword);
     
-    console.log("Using demo credentials:", demoEmail);
     setIsLoading(true);
 
     try {
       const success = await login(demoEmail, demoPassword);
       
       if (success) {
-        console.log("Demo login successful, redirecting to dashboard");
         toast.success("Demo login successful!");
         navigate("/backoffice/dashboard");
       } else {
-        console.error("Demo login failed");
         toast.error("Demo login failed");
         setIsLoading(false);
       }

@@ -56,10 +56,12 @@ export const BackofficeAuthProvider: React.FC<BackofficeAuthProviderProps> = ({ 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     setError(null);
+    console.log("Login function called with email:", email);
 
     try {
       // Call the service to authenticate the user
       const backofficeUser = await loginBackofficeUser(email, password);
+      console.log("Login result:", backofficeUser ? "Success" : "Failed");
       
       if (backofficeUser) {
         setUser(backofficeUser);
