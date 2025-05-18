@@ -19,7 +19,7 @@ import { supabase } from '@/integrations/supabase/client';
 export interface Module {
   id: string;
   name: string;
-  icon?: string; // Make optional to handle DB responses
+  icon: string; // We'll always set a default value
   key?: string;
   active?: boolean;
   description?: string;
@@ -40,12 +40,24 @@ const iconMap: Record<string, any> = {
   FileCheck,
 };
 
-// Function to fetch modules from backend based on role type
+// Define which roles are for backoffice (SaaS owner) vs client users
+const backofficeRoleKeys = ['superAdmin', 'clientManagement', 'assessmentTemplateAdmin', 'eduSafeResourceAdmin', 'analyticsAdmin'];
+const clientRoleKeys = ['incidentReporting', 'incidentAdmin', 'assessmentUser', 'assessmentsAdmin', 'employeeVerificationAdmin', 'grievancesAdmin', 'transportSafetyAdmin', 'eduSafeResourceAccess'];
+
+// Function to fetch modules from backend based on role type with caching
+let cachedBackofficeModules: Module[] | null = null;
+let cachedClientModules: Module[] | null = null;
+
 export const fetchModules = async (isBackoffice: boolean): Promise<Module[]> => {
   try {
-    // Since there's no level column, we need to adapt our approach
-    // For now, we'll fetch all roles and use predefined lists to 
-    // determine which ones to show for backoffice vs client users
+    // Check cache first
+    if (isBackoffice && cachedBackofficeModules) {
+      return cachedBackofficeModules;
+    } else if (!isBackoffice && cachedClientModules) {
+      return cachedClientModules;
+    }
+    
+    // Fetch roles from database
     const { data, error } = await supabase
       .from('roles')
       .select('*');
@@ -59,12 +71,8 @@ export const fetchModules = async (isBackoffice: boolean): Promise<Module[]> => 
       return [];
     }
     
-    // Define which roles are for backoffice (SaaS owner) vs client users
-    const backofficeRoleKeys = ['superAdmin', 'clientManagement', 'assessmentTemplateAdmin', 'eduSafeResourceAdmin', 'analyticsAdmin'];
-    const clientRoleKeys = ['incidentReporting', 'incidentAdmin', 'assessmentUser', 'assessmentsAdmin', 'employeeVerificationAdmin', 'grievancesAdmin', 'transportSafetyAdmin', 'eduSafeResourceAccess'];
-    
     // Filter the fetched roles based on whether they're for backoffice or client users
-    return data.filter(role => {
+    const filteredData = data.filter(role => {
       const isBackofficeRole = backofficeRoleKeys.includes(role.key);
       return isBackoffice ? isBackofficeRole : !isBackofficeRole;
     }).map(role => ({
@@ -75,6 +83,15 @@ export const fetchModules = async (isBackoffice: boolean): Promise<Module[]> => 
       active: role.active,
       description: role.description
     }));
+    
+    // Cache the results
+    if (isBackoffice) {
+      cachedBackofficeModules = filteredData;
+    } else {
+      cachedClientModules = filteredData;
+    }
+    
+    return filteredData;
   } catch (error) {
     console.error("Error in fetchModules:", error);
     return [];
