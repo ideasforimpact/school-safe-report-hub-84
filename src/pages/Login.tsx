@@ -31,8 +31,15 @@ const Login = () => {
   // Check if user is already logged in, redirect if they are
   useEffect(() => {
     if (user) {
+      // Get the intended destination from location state or use dashboard as default
       const from = location.state?.from?.pathname || "/dashboard";
-      navigate(from, { replace: true });
+      
+      // Only redirect to backoffice paths if the user is a SaaS owner
+      if (from.includes('/backoffice') && user.role !== 'saas_owner') {
+        navigate('/dashboard', { replace: true });
+      } else {
+        navigate(from, { replace: true });
+      }
     }
   }, [user, navigate, location.state]);
 
@@ -74,10 +81,8 @@ const Login = () => {
       console.log("Attempting to log in with:", email, password);
       const success = await login(email, password);
       if (success) {
-        // Redirect to the page they were trying to access before being redirected to login
-        const from = location.state?.from?.pathname || "/dashboard";
-        navigate(from, { replace: true });
-        // Toast is now handled in AuthContext to prevent duplicates
+        // Redirect logic is handled in the useEffect that watches for user changes
+        // This prevents redirection code duplication
       } else {
         if (!authError) {
           setError("Invalid email or password");
@@ -145,8 +150,8 @@ const Login = () => {
       console.log("Using demo credentials:", demoEmail, demoPassword);
       const success = await login(demoEmail, demoPassword);
       if (success) {
-        // Toast is now handled in AuthContext to prevent duplicates
-        navigate("/dashboard");
+        // Redirect logic is handled in the useEffect that watches for user changes
+        // This prevents redirection code duplication
       } else {
         if (!authError) {
           toast.error("Demo login failed. Please try again.");
