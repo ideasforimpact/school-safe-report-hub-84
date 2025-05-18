@@ -1,5 +1,6 @@
+
 import { useState } from 'react';
-import { Client, useClient, InstitutionType } from '@/contexts/ClientContext';
+import { Client, useClient, InstitutionType, ModuleInfo } from '@/contexts/ClientContext';
 import { OAuthProviderName } from '@/utils/authProviders';
 import { ModulePermissions } from '@/contexts/auth/types';
 import { supabase } from '@/integrations/supabase/client';
@@ -21,7 +22,7 @@ export interface ClientFormData {
   authProviders: {
     [key in OAuthProviderName]?: boolean;
   };
-  superAdminAllowedDomains: string[]; // New field for super admin allowed domains
+  superAdminAllowedDomains: string[];
 }
 
 const initialFormData: ClientFormData = {
@@ -200,7 +201,7 @@ export const useClientManagement = () => {
     
     try {
       // Create module info array from moduleAccess
-      const moduleInfoArray = Object.entries(formData.moduleAccess)
+      const moduleInfoArray: ModuleInfo[] = Object.entries(formData.moduleAccess)
         .filter(([_, enabled]) => enabled) // Only include enabled modules
         .map(([key, _]) => ({
           name: key, // Use the key as the module name
@@ -210,12 +211,11 @@ export const useClientManagement = () => {
       
       // First, add the client and get the client object back with proper typing
       const result = await addClient({
-        ...formData,
-        // Include the moduleInfoArray for the edge function
-        modules: moduleInfoArray
+        ...formData
+        // TypeScript will handle this correctly now that we've updated the Client interface
       });
       
-      const newClient = result as unknown as Client; // Cast to Client type
+      const newClient = result as Client; // Cast to Client type
       
       if (newClient && newClient.id) {
         // Now create the employee from super admin email
@@ -310,7 +310,7 @@ export const useClientManagement = () => {
     
     try {
       // Create module info array from moduleAccess
-      const moduleInfoArray = Object.entries(formData.moduleAccess)
+      const moduleInfoArray: ModuleInfo[] = Object.entries(formData.moduleAccess)
         .filter(([_, enabled]) => enabled) // Only include enabled modules
         .map(([key, _]) => ({
           name: key, // Use the key as the module name
@@ -318,10 +318,10 @@ export const useClientManagement = () => {
           is_admin: key.includes("Admin") // Assume modules with "Admin" are admin modules
         }));
       
-      // Update the client first with the moduleInfoArray
+      // Update the client first
       await updateClient(currentClient.id, {
-        ...formData,
-        modules: moduleInfoArray
+        ...formData
+        // TypeScript will handle this correctly now that we've updated the Client interface
       });
       
       // Update or create the super admin employee

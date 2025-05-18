@@ -22,7 +22,7 @@ interface ClientData {
   logo?: string;
   institution_type?: string;
   allowed_domains?: string;
-  super_admin_allowed_domain?: string; // Added for super admin allowed domains
+  super_admin_allowed_domain?: string;
   auth_providers?: string;
   moduleAccess?: Record<string, boolean>;
   superAdminEmail?: string;
@@ -207,6 +207,7 @@ async function findModuleByName(moduleName: string): Promise<string | null> {
 
     if (modules && modules.length > 0) {
       // Return the first matching module ID
+      console.log(`Found module with name ${moduleName}: ${modules[0].id}`);
       return modules[0].id;
     }
 
@@ -241,7 +242,7 @@ async function processModuleAccess(clientId: string, moduleInfoArray: ModuleInfo
     
     // Process each module
     const moduleInserts = await Promise.all(moduleInfoArray.map(async (moduleInfo) => {
-      // If module_id is not provided, try to find it by name
+      // If module_id is not provided or empty, try to find it by name
       let moduleId = moduleInfo.module_id;
       if (!moduleId) {
         moduleId = await findModuleByName(moduleInfo.name);
@@ -417,8 +418,8 @@ serve(async (req) => {
       if (operation === 'create') {
         // Create a new client with module access
         const clientData: ClientData = requestData.client;
-        const moduleInfoArray: ModuleInfo[] = requestData.modules || [];
-        const superAdminEmail = clientData.superAdminEmail; // Get the super admin email
+        const moduleInfoArray: ModuleInfo[] = requestData.client.modules || [];
+        const superAdminEmail = clientData.superAdminEmail;
         
         // Validate super admin email domain if restrictions are set
         if (superAdminEmail && clientData.super_admin_allowed_domain) {
@@ -433,7 +434,7 @@ serve(async (req) => {
         }
         
         // Remove moduleAccess and superAdminEmail from client data before insertion
-        const { moduleAccess: _, superAdminEmail: __, ...clientOnly } = clientData;
+        const { moduleAccess: _, superAdminEmail: __, modules: ___, ...clientOnly } = clientData;
 
         // Insert client first
         const { data: newClient, error: clientError } = await supabase

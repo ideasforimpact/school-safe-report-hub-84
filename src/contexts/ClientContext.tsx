@@ -19,10 +19,18 @@ export interface Client {
   institutionType?: string;
   moduleAccess?: Partial<ModulePermissions>;
   allowedDomains?: string[];
-  superAdminAllowedDomains?: string[]; // New field for super admin allowed domains
+  superAdminAllowedDomains?: string[]; 
+  superAdminEmail?: string; // Added property
   authProviders?: {
     [key in OAuthProviderName]?: boolean;
   };
+}
+
+// Define ModuleInfo interface for consistent type handling
+export interface ModuleInfo {
+  name: string;
+  module_id: string;
+  is_admin: boolean;
 }
 
 interface ClientContextType {
@@ -216,6 +224,7 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           ...mapDbClientToClient(data),
           moduleAccess: clientData.moduleAccess,
           superAdminAllowedDomains: clientData.superAdminAllowedDomains,
+          superAdminEmail: clientData.superAdminEmail // Make sure to include this property
         };
         
         setClients(prev => [...prev, newClient]);
