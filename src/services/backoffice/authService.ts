@@ -14,6 +14,7 @@ const DEMO_EMAILS = [
 export const loginBackofficeUser = async (email: string, password: string): Promise<BackofficeUser | null> => {
   try {
     console.log(`🔧 authService: Login attempt started for: ${email}`);
+    console.log(`🔧 DEBUG: Raw password received in authService:`, password);
     
     // Check if this is a demo email
     const isDemoUser = DEMO_EMAILS.includes(email);
@@ -43,6 +44,9 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
       .eq('email', email)
       .single();
     
+    console.log("🔧 DEBUG: Existing user data:", existingUser);
+    console.log("🔧 DEBUG: User check error:", userCheckError);
+    
     if (userCheckError) {
       // If error is not-found, give a clear message
       if (userCheckError.code === 'PGRST116') {
@@ -63,6 +67,7 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
     // For real users, verify password with Supabase function
     console.log("🔧 authService: Calling verify_password RPC function with email:", email);
     console.log("🔧 authService: Password to verify:", password);
+    console.log("🔧 DEBUG: Password length:", password ? password.length : 0);
     
     const { data: isValidPassword, error: verifyError } = await supabase.rpc('verify_password', { 
       email, 
@@ -84,6 +89,7 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
       // SPECIAL HANDLING: If this is a newly created user, try direct password comparison as fallback
       // This is a temporary workaround for potential timing issues with the RPC function
       console.log("🔧 authService: Attempting direct password check as fallback...");
+      console.log("🔧 DEBUG: Raw password for direct check:", password);
       
       // Get the stored hashed password from the database
       const { data: storedHash } = await supabase
@@ -91,11 +97,16 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
         .select('password')
         .eq('email', email)
         .single();
+      
+      console.log("🔧 DEBUG: Stored hash from DB:", storedHash);
         
       if (storedHash && storedHash.password === password) {
         console.log("🔧 authService: Direct password match successful!");
         // Password matched directly, proceed with login
       } else {
+        console.log("🔧 DEBUG: Direct password match failed. Stored hash:", 
+                   storedHash?.password ? `${storedHash.password.substring(0, 10)}...` : 'null', 
+                   "Password length:", password?.length);
         toast.error("Invalid email or password");
         return null;
       }

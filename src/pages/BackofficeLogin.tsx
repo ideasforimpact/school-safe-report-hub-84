@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -29,6 +28,13 @@ const BackofficeLogin = () => {
   const { login, user, error: authError, clearError } = useBackofficeAuth();
   const navigate = useNavigate();
 
+  // Add a debug effect to verify which login function is available
+  useEffect(() => {
+    console.log("🔎 DEBUG: BackofficeLogin mounted");
+    console.log("🔎 DEBUG: login function from useBackofficeAuth:", login ? "present" : "missing");
+    console.log("🔎 DEBUG: useBackofficeAuth context:", { user, login, error: authError, clearError });
+  }, []);
+
   // Check if user is already logged in, redirect if they are
   useEffect(() => {
     if (user) {
@@ -53,6 +59,8 @@ const BackofficeLogin = () => {
     
     setIsLoading(true);
     console.log("🔍 Starting login attempt with email:", email);
+    console.log("🔍 DEBUG: login function type:", typeof login);
+    console.log("🔍 DEBUG: login function reference:", login);
 
     try {
       // For debugging, log the type of login attempt
@@ -123,14 +131,20 @@ const BackofficeLogin = () => {
       console.log("🔍 Type of login function:", typeof login);
       
       try {
+        console.log("🔍 DEBUG: About to invoke the login function directly with:");
+        console.log("🔍 DEBUG: Email:", email);
+        console.log("🔍 DEBUG: Password length:", password ? password.length : 0);
+        
         // For newly created accounts, we'll try twice with a delay if the first attempt fails
         let success = await login(email, password);
+        console.log("🔍 DEBUG: First login attempt returned:", success);
         
         // If first attempt failed and it might be a newly created account
         if (!success && ALLOWED_TEST_EMAILS.includes(email)) {
           console.log("🔍 Initial login failed for potentially new account, waiting and trying again...");
           // Wait a bit more and try again
           await new Promise(resolve => setTimeout(resolve, 1000));
+          console.log("🔍 DEBUG: About to try login again after delay");
           success = await login(email, password);
         }
         

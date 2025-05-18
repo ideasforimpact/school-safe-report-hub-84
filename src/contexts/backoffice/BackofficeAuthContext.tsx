@@ -16,10 +16,17 @@ const BackofficeAuthContext = createContext<BackofficeAuthContextType>({
 });
 
 export const useBackofficeAuth = () => {
+  console.log("🔑 DEBUG: useBackofficeAuth hook called");
   const context = useContext(BackofficeAuthContext);
   if (!context) {
+    console.error("🔑 DEBUG: BackofficeAuthContext is undefined");
     throw new Error('useBackofficeAuth must be used within a BackofficeAuthProvider');
   }
+  console.log("🔑 DEBUG: useBackofficeAuth returning context:", {
+    userExists: !!context.user,
+    loginFnExists: !!context.login,
+    loginFnType: typeof context.login
+  });
   return context;
 };
 
@@ -28,6 +35,7 @@ interface BackofficeAuthProviderProps {
 }
 
 export const BackofficeAuthProvider: React.FC<BackofficeAuthProviderProps> = ({ children }) => {
+  console.log("🔑 DEBUG: BackofficeAuthProvider rendering");
   const [user, setUser] = useState<BackofficeUser | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -59,6 +67,7 @@ export const BackofficeAuthProvider: React.FC<BackofficeAuthProviderProps> = ({ 
 
   // Login function
   const login = async (email: string, password: string): Promise<boolean> => {
+    console.log("⭐ DEBUG: BackofficeAuthContext.login FUNCTION DEFINITION");
     console.log("⭐ BackofficeAuthContext.login CALLED with email:", email, "and password length:", password ? password.length : 0);
     setIsLoading(true);
     setError(null);
@@ -132,6 +141,12 @@ export const BackofficeAuthProvider: React.FC<BackofficeAuthProviderProps> = ({ 
     error,
     clearError
   };
+
+  console.log("🔑 DEBUG: BackofficeAuthProvider value:", {
+    userExists: !!value.user,
+    loginFnExists: !!value.login,
+    loginFnType: typeof value.login
+  });
 
   return (
     <BackofficeAuthContext.Provider value={value}>
