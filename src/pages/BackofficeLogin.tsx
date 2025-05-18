@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/auth";
@@ -24,16 +25,21 @@ const BackofficeLogin = () => {
   const { login, authError, user, isSaasOwner } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [redirect, setRedirect] = useState(false);
 
-  // Check if user is already logged in and is a SaaS owner, redirect if they are
+  // Check if user is already logged in and is a SaaS owner, redirect if they are but only after initial render
   useEffect(() => {
-    if (user && isSaasOwner) {
+    // Only redirect if this isn't the initial render
+    if (user && isSaasOwner && redirect) {
       navigate('/backoffice/dashboard');
-    } else if (user && !isSaasOwner) {
+    } else if (user && !isSaasOwner && redirect) {
       toast.error("You don't have permission to access the backoffice.");
       navigate('/dashboard');
+    } else if (user) {
+      // Set redirect flag to true after initial render
+      setRedirect(true);
     }
-  }, [user, isSaasOwner, navigate]);
+  }, [user, isSaasOwner, navigate, redirect]);
 
   // Check for authentication redirect results and errors
   useEffect(() => {

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/auth";
@@ -26,14 +27,19 @@ const Login = () => {
   const { login, authError, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [redirect, setRedirect] = useState(false);
 
-  // Check if user is already logged in, redirect if they are
+  // Check if user is already logged in, redirect if they are but only after initial render
   useEffect(() => {
-    if (user) {
+    // Only redirect if this isn't the initial render
+    if (user && redirect) {
       const from = location.state?.from?.pathname || "/dashboard";
       navigate(from);
+    } else if (user) {
+      // Set redirect flag to true after initial render
+      setRedirect(true);
     }
-  }, [user, navigate, location.state]);
+  }, [user, redirect, navigate, location.state]);
 
   // Check for authentication redirect results and errors
   useEffect(() => {
