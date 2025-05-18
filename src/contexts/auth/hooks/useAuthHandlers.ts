@@ -283,7 +283,14 @@ export function useAuthHandlers({
         }
         
         setUser(loggedInUser);
-        saveUsersToStorage([loggedInUser]);
+        
+        // Create a proper UserWithPassword object to save to storage
+        const userWithPassword = users.find(u => u.email === loggedInUser.email) || {
+          ...loggedInUser,
+          password: password // This ensures the password property exists
+        };
+        
+        saveUsersToStorage([userWithPassword]);
         setAuthError(null);
         
         // Toast is now handled by the auth state change listener
