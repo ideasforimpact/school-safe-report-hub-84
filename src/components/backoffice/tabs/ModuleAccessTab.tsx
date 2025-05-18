@@ -29,9 +29,14 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
   const [loading, setLoading] = useState(false);
   // Track admin access separately from module access
   const [adminAccess, setAdminAccess] = useState<Record<string, boolean>>({});
+  // Store the module access state locally to avoid unnecessary API calls
+  const [moduleAccessState, setModuleAccessState] = useState<Partial<ModulePermissions>>({});
 
+  // Fetch modules only once during initial load
   useEffect(() => {
     const fetchClientModules = async () => {
+      if (modules.length > 0) return; // Skip if modules are already loaded
+      
       setLoading(true);
       try {
         // Fetch modules that are not backoffice level
@@ -48,7 +53,10 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
         if (data && data.modules) {
           setModules(data.modules);
           
-          // Initialize admin access state based on formData
+          // Initialize local state based on formData
+          setModuleAccessState({...formData.moduleAccess});
+          
+          // Initialize admin access state
           const initialAdminAccess: Record<string, boolean> = {};
           data.modules.forEach((module: Module) => {
             const accessKey = getAccessKeyFromModuleName(module.name);
@@ -65,7 +73,24 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
     };
 
     fetchClientModules();
-  }, [formData.moduleAccess]);
+  }, []); // Only run on initial mount
+
+  // Sync local state to parent component when moduleAccessState changes
+  useEffect(() => {
+    // Skip on initial render
+    if (Object.keys(moduleAccessState).length === 0) return;
+    
+    // Compare with formData to avoid unnecessary updates
+    const hasChanges = Object.entries(moduleAccessState).some(
+      ([key, value]) => formData.moduleAccess[key as keyof ModulePermissions] !== value
+    );
+    
+    if (hasChanges) {
+      Object.entries(moduleAccessState).forEach(([key, value]) => {
+        handleModuleAccessChange(key as keyof ModulePermissions, !!value);
+      });
+    }
+  }, [moduleAccessState]);
 
   // Known module access keys from the ModulePermissions type
   const knownAccessKeys = [
@@ -112,8 +137,11 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
 
   // Handle clicking on the module checkbox
   const handleModuleCheckboxChange = (accessKey: keyof ModulePermissions, checked: boolean) => {
-    // Update only this specific module's state
-    handleModuleAccessChange(accessKey, checked);
+    // Update only local state for this specific module
+    setModuleAccessState(prev => ({
+      ...prev,
+      [accessKey]: checked
+    }));
   };
 
   // Handle clicking on the admin badge
@@ -149,7 +177,8 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
               <TableBody>
                 {modules.map((module) => {
                   const accessKey = getAccessKeyFromModuleName(module.name);
-                  const moduleEnabled = !!formData.moduleAccess[accessKey];
+                  // Use local state for module status
+                  const moduleEnabled = moduleAccessState[accessKey] || false;
                   const isAdminEnabled = adminAccess[accessKey] || false;
                   
                   return (
