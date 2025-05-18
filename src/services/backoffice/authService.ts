@@ -45,6 +45,9 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
       return null;
     }
 
+    // Log the verification result
+    console.log("Password verification result:", isValidPassword);
+
     if (!isValidPassword) {
       console.error("Invalid credentials");
       toast.error("Invalid email or password");
@@ -67,6 +70,7 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
     }
     
     console.log("User fetched successfully:", backofficeUser.email);
+    console.log("User data:", backofficeUser);
     
     // Update last_signed_in
     await supabase
@@ -75,11 +79,8 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
       .eq('id', backofficeUser.id);
 
     // Map database record to BackofficeUser type
-    // Note: The database fields may not match our BackofficeUser type exactly,
-    // so we need to map them properly and provide fallbacks
     return {
       id: backofficeUser.id,
-      // The database doesn't have first_name/last_name fields, so provide defaults
       firstName: 'Backoffice', // Default first name
       lastName: 'Admin',       // Default last name
       email: backofficeUser.email,

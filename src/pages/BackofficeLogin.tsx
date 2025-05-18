@@ -47,16 +47,25 @@ const BackofficeLogin = () => {
     }
     
     setIsLoading(true);
+    console.log("Starting login attempt with email:", email);
 
     try {
-      console.log("Attempting to log in with:", email);
+      // For debugging, log the type of login attempt
+      if (email === 'owner@saasplatform.com' && password === 'owner123') {
+        console.log("Attempting demo login");
+      } else {
+        console.log("Attempting standard login");
+      }
+      
       const success = await login(email, password);
       
       if (success) {
+        console.log("Login success, redirecting to dashboard");
         toast.success("Login successful!");
         navigate('/backoffice/dashboard');
       } else {
         console.error("Login failed");
+        toast.error("Login failed. Please check your credentials.");
         setIsLoading(false);
       }
     } catch (err) {
@@ -108,16 +117,20 @@ const BackofficeLogin = () => {
     
     setEmail(demoEmail);
     setPassword(demoPassword);
+    
+    console.log("Using demo credentials:", demoEmail);
     setIsLoading(true);
 
     try {
-      console.log("Using demo credentials:", demoEmail);
       const success = await login(demoEmail, demoPassword);
       
       if (success) {
+        console.log("Demo login successful, redirecting to dashboard");
         toast.success("Demo login successful!");
         navigate("/backoffice/dashboard");
       } else {
+        console.error("Demo login failed");
+        toast.error("Demo login failed");
         setIsLoading(false);
       }
     } catch (err) {

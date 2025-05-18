@@ -64,6 +64,12 @@ export const BackofficeAuthProvider: React.FC<BackofficeAuthProviderProps> = ({ 
 
     try {
       console.log("Attempting backoffice login with email:", email);
+      // Check if this is a demo login
+      const isDemoUser = email === 'owner@saasplatform.com' && password === 'owner123';
+      if (isDemoUser) {
+        console.log("Using demo credentials for login");
+      }
+      
       const backofficeUser = await loginBackofficeUser(email, password);
       
       if (backofficeUser) {
