@@ -40,15 +40,23 @@ const BackofficeLogin = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!email || !password) {
+      toast.error("Email and password are required");
+      return;
+    }
+    
     setIsLoading(true);
 
     try {
-      console.log("Attempting to log in with:", email, password);
+      console.log("Attempting to log in with:", email);
       const success = await login(email, password);
       
       if (success) {
+        toast.success("Login successful!");
         navigate('/backoffice/dashboard');
       } else {
+        console.error("Login failed");
         setIsLoading(false);
       }
     } catch (err) {
@@ -103,10 +111,11 @@ const BackofficeLogin = () => {
     setIsLoading(true);
 
     try {
-      console.log("Using demo credentials:", demoEmail, demoPassword);
+      console.log("Using demo credentials:", demoEmail);
       const success = await login(demoEmail, demoPassword);
       
       if (success) {
+        toast.success("Demo login successful!");
         navigate("/backoffice/dashboard");
       } else {
         setIsLoading(false);

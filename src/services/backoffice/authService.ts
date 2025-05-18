@@ -17,6 +17,7 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
     const isDemoUser = DEMO_EMAILS.includes(email);
     
     if (isDemoUser && password === 'owner123') {
+      console.log("Using demo user login");
       // For demo users, create a local user object
       return {
         id: 'demo-backoffice-id',
@@ -30,16 +31,27 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
       };
     }
 
+    console.log("Attempting regular login with:", email);
+    
     // For real users, verify password with Supabase function
     const { data: isValidPassword, error: verifyError } = await supabase.rpc('verify_password', { 
       email, 
       password_attempt: password 
     });
 
-    if (verifyError || !isValidPassword) {
-      console.error("Login error:", verifyError || "Invalid credentials");
+    if (verifyError) {
+      console.error("Password verification error:", verifyError);
+      toast.error("Authentication failed: " + verifyError.message);
       return null;
     }
+
+    if (!isValidPassword) {
+      console.error("Invalid credentials");
+      toast.error("Invalid email or password");
+      return null;
+    }
+
+    console.log("Password verified, fetching user details");
 
     // If password is valid, fetch user details
     const { data: backofficeUser, error: userError } = await supabase
@@ -50,8 +62,11 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
       
     if (userError || !backofficeUser) {
       console.error("Error fetching backoffice user:", userError);
+      toast.error("Error retrieving user information");
       return null;
     }
+    
+    console.log("User fetched successfully:", backofficeUser.email);
     
     // Update last_signed_in
     await supabase
@@ -68,13 +83,14 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
       firstName: 'Backoffice', // Default first name
       lastName: 'Admin',       // Default last name
       email: backofficeUser.email,
-      role: 'saas_owner',      // Default role for backoffice users
+      role: backofficeUser.is_saas_admin ? 'saas_owner' : 'backoffice_admin',
       isActive: true,
       createdAt: backofficeUser.created_at,
       lastLogin: new Date().toISOString()
     };
   } catch (error) {
     console.error("Unexpected error during backoffice login:", error);
+    toast.error("An unexpected error occurred during login");
     return null;
   }
 };
