@@ -24,8 +24,9 @@ serve(async (req) => {
       }
     );
 
-    // Parse request parameters - only need userInfo now
-    const { userInfo } = await req.json();
+    // Parse request parameters - support both userInfo and explicit level request
+    const requestBody = await req.json();
+    const { userInfo, fetchLevel } = requestBody;
     
     // Log user details if provided
     if (userInfo) {
@@ -39,9 +40,15 @@ serve(async (req) => {
       console.log('No user info provided with module request');
     }
     
-    // Determine level based on user role
-    const level = userInfo?.role === 'saas_owner' || userInfo?.isSaasOwner ? 'backoffice' : 'client';
-    console.log(`Determined module level: ${level} based on user role`);
+    // Determine level based on explicit request or user role
+    let level;
+    if (fetchLevel) {
+      level = fetchLevel;
+      console.log(`Explicit module level requested: ${level}`);
+    } else {
+      level = userInfo?.role === 'saas_owner' || userInfo?.isSaasOwner ? 'backoffice' : 'client';
+      console.log(`Determined module level: ${level} based on user role`);
+    }
     
     // Query the modules table
     let query = supabase.from('modules').select('*');
@@ -50,10 +57,13 @@ serve(async (req) => {
       // For backoffice users, fetch modules with level = 'backoffice'
       console.log('Fetching backoffice modules');
       query = query.eq('level', 'backoffice');
-    } else {
+    } else if (level === 'client') {
       // For client users, fetch modules with level != 'backoffice'
       console.log('Fetching client modules');
       query = query.neq('level', 'backoffice');
+    } else if (level === 'all') {
+      // Fetch all modules if explicitly requested
+      console.log('Fetching all modules');
     }
     
     const { data, error } = await query;
