@@ -1,3 +1,4 @@
+
 import { BackofficeUser } from '@/contexts/backoffice/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -84,13 +85,15 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
     console.log("🔧 authService: Password verified successfully, building user object");
 
     // Map database record to BackofficeUser type
+    // Since first_name, last_name, and is_active don't exist in the DB schema,
+    // we'll use default values or derive them from other fields
     const backofficeUser: BackofficeUser = {
       id: existingUser.id,
-      firstName: existingUser.first_name || 'Backoffice',
-      lastName: existingUser.last_name || 'Admin',
+      firstName: existingUser.email.split('@')[0] || 'Backoffice', // Use part of email as first name
+      lastName: 'Admin', // Default last name
       email: existingUser.email,
       role: existingUser.is_saas_admin ? 'saas_owner' : 'backoffice_admin',
-      isActive: existingUser.is_active !== false,
+      isActive: true, // Default to active since there's no is_active in the DB
       createdAt: existingUser.created_at,
       lastLogin: new Date().toISOString()
     };
