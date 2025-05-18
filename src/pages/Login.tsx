@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -23,7 +24,7 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
-  const { login, authError, user } = useAuth();
+  const { login, authError, user, handleUserAuthentication } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -45,21 +46,33 @@ const Login = () => {
   // Check for authentication redirect results and errors
   useEffect(() => {
     const checkForAuthRedirect = async () => {
-      const { data, error } = await supabase.auth.getSession();
-      
-      if (data?.session) {
-        console.log("Session detected after redirect:", data.session);
-        // The AuthContext will check if the user has proper access and handle redirect
-      }
-      
-      if (error) {
-        console.error("Auth redirect error:", error);
-        toast.error("Authentication failed. Please try again.");
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        
+        if (data?.session) {
+          console.log("Session detected after redirect:", data.session);
+          // Get user info from the session to pass to handleUserAuthentication
+          const supabaseUser = data.session.user;
+          if (supabaseUser) {
+            // Use the handler function from AuthContext to validate the user
+            await handleUserAuthentication(supabaseUser);
+          }
+        }
+        
+        if (error) {
+          console.error("Auth redirect error:", error);
+          toast.error("Authentication failed. Please try again.");
+          setGoogleLoading(false);
+        }
+      } catch (err) {
+        console.error("Error checking auth redirect:", err);
+        toast.error("Error processing authentication. Please try again.");
+        setGoogleLoading(false);
       }
     };
     
     checkForAuthRedirect();
-  }, [navigate]);
+  }, [handleUserAuthentication]);
 
   // Listen for auth errors from context
   useEffect(() => {

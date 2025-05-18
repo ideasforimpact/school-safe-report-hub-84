@@ -40,14 +40,6 @@ const checkEmployeeAccess = async (email: string, setAuthError: (error: string |
       return false;
     }
     
-    // Check if the employee has the necessary department permissions
-    // Here we're checking if they are in the admin department
-    // if (data.department.toLowerCase() !== 'admin') {
-    //   console.log("Employee department check failed: Not in admin department");
-    //   setAuthError("Access denied: Only admin department employees can login");
-    //   return false;
-    // }
-    
     return true;
   } catch (error) {
     console.error("Error checking employee access:", error);
@@ -165,7 +157,7 @@ export function useAuthHandlers({
     console.log("Handling authentication for:", supabaseUser.email);
     
     // Check if this is a demo user - if so, bypass employee access check
-    const isDemoUser = DEMO_EMAILS.includes(supabaseUser.email);
+    const isDemoUser = supabaseUser.email && DEMO_EMAILS.includes(supabaseUser.email);
     
     if (!isDemoUser) {
       // First check if employee exists and is active
@@ -173,7 +165,7 @@ export function useAuthHandlers({
       if (!hasEmployeeAccess) {
         console.log("Access denied: Employee verification failed");
         await supabase.auth.signOut();
-        toast.error("Access denied: Employee verification failed");
+        toast.error("Access denied: Your email is not registered as an active employee");
         navigate('/login');
         return;
       }
@@ -254,7 +246,7 @@ export function useAuthHandlers({
       isNewUser = true;
       
       // Determine if this is a demo user being created
-      const isNewDemoUser = DEMO_EMAILS.includes(supabaseUser.email);
+      const isNewDemoUser = supabaseUser.email && DEMO_EMAILS.includes(supabaseUser.email);
       
       const newUser: UserWithPassword = {
         id: supabaseUser.id,
