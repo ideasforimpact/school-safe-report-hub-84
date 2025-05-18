@@ -69,8 +69,6 @@ const Header = () => {
                 </Button>
               )}
               
-              {/* Removed Client Dashboard button here */}
-
               {/* Settings Menu - Only visible for admins */}
               {isAdmin && !isSaasOwner && <AdminSettingsMenu />}
               

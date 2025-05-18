@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,10 +28,10 @@ const BackofficeLogin = () => {
   // Check if user is already logged in and is a SaaS owner, redirect if they are
   useEffect(() => {
     if (user && isSaasOwner) {
-      navigate('/backoffice/dashboard', { replace: true });
+      navigate('/backoffice/dashboard');
     } else if (user && !isSaasOwner) {
       toast.error("You don't have permission to access the backoffice.");
-      navigate('/dashboard', { replace: true });
+      navigate('/dashboard');
     }
   }, [user, isSaasOwner, navigate]);
 
@@ -43,7 +42,6 @@ const BackofficeLogin = () => {
       
       if (data?.session) {
         console.log("Session detected after redirect:", data.session);
-        // The AuthContext will check if the user has proper access and handle redirect
       }
       
       if (error) {
@@ -74,7 +72,7 @@ const BackofficeLogin = () => {
       const success = await login(email, password);
       if (success) {
         if (isSaasOwner) {
-          navigate('/backoffice/dashboard', { replace: true });
+          navigate('/backoffice/dashboard');
         } else {
           setError("You don't have permission to access the backoffice.");
           toast.error("You don't have permission to access the backoffice.");
@@ -105,7 +103,6 @@ const BackofficeLogin = () => {
       
       console.log("Initiating Google login with redirect to:", redirectTo);
       
-      // Use signInWithOAuth to redirect to Google's login page directly
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {

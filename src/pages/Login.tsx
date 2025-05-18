@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,7 +31,7 @@ const Login = () => {
   useEffect(() => {
     if (user) {
       const from = location.state?.from?.pathname || "/dashboard";
-      navigate(from, { replace: true });
+      navigate(from);
     }
   }, [user, navigate, location.state]);
 
@@ -42,7 +42,6 @@ const Login = () => {
       
       if (data?.session) {
         console.log("Session detected after redirect:", data.session);
-        // The AuthContext will check if the user has proper access and handle redirect
       }
       
       if (error) {
@@ -58,7 +57,6 @@ const Login = () => {
   useEffect(() => {
     if (authError) {
       setError(authError);
-      // No need to show toast here, the auth context will handle it
       setIsLoading(false);
       setGoogleLoading(false);
     }
@@ -75,8 +73,7 @@ const Login = () => {
       if (success) {
         // Redirect to the page they were trying to access before being redirected to login
         const from = location.state?.from?.pathname || "/dashboard";
-        navigate(from, { replace: true });
-        // Toast is now handled in AuthContext to prevent duplicates
+        navigate(from);
       } else {
         if (!authError) {
           setError("Invalid email or password");
@@ -101,7 +98,6 @@ const Login = () => {
       
       console.log("Initiating Google login with redirect to:", redirectTo);
       
-      // Use signInWithOAuth to redirect to Google's login page directly
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -115,8 +111,6 @@ const Login = () => {
         setError(`Google authentication failed: ${error.message}`);
         setGoogleLoading(false);
       }
-      // No else branch needed as successful OAuth will redirect the page
-      
     } catch (err) {
       console.error("Google login unexpected error:", err);
       setError("An error occurred with Google login. Please try again.");
@@ -144,7 +138,6 @@ const Login = () => {
       console.log("Using demo credentials:", demoEmail, demoPassword);
       const success = await login(demoEmail, demoPassword);
       if (success) {
-        // Toast is now handled in AuthContext to prevent duplicates
         navigate("/dashboard");
       } else {
         if (!authError) {
