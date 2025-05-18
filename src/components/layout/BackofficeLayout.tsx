@@ -1,7 +1,7 @@
 
-import { ReactNode, useEffect } from 'react';
+import { ReactNode } from 'react';
 import { ShieldCheck, LogOut } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth';
 import { formatUserFullName } from '@/utils/userUtils';
 import { 
@@ -11,7 +11,6 @@ import {
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
 import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
 
 interface BackofficeLayoutProps {
   children: ReactNode;
@@ -19,22 +18,10 @@ interface BackofficeLayoutProps {
 
 const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
   const navigate = useNavigate();
-  const location = useLocation();
-  const { user, logout, isSaasOwner } = useAuth();
+  const { user, logout } = useAuth();
   
-  useEffect(() => {
-    // Check permission on component mount
-    if (user && !isSaasOwner) {
-      toast.error("You don't have permission to access the backoffice.");
-      navigate('/dashboard');
-    }
-  }, [user, isSaasOwner, navigate]);
-
-  // If no user or not a SaaS owner, don't render anything while redirecting
-  if (!user || !isSaasOwner) {
-    return null;
-  }
-
+  // No need to check for permissions here anymore as BackofficeGuard handles it
+  
   const handleLogout = () => {
     logout();
     navigate('/login');
