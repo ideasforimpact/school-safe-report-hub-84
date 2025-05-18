@@ -56,7 +56,8 @@ const SidebarContent = () => {
     setIsLoading(true);
     
     try {
-      // For SaaS users, fetch backoffice modules. For others, fetch client modules
+      // For SaaS users in backoffice route, fetch backoffice modules
+      // For others, fetch client modules
       const isBackofficeFetch = isSaasOwner && isBackofficeRoute;
       console.log(`Fetching ${isBackofficeFetch ? 'backoffice' : 'client'} modules`);
       

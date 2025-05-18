@@ -1,4 +1,3 @@
-
 import { 
   LayoutDashboard, 
   AlertTriangle,
@@ -15,7 +14,7 @@ import {
 import { ModulePermissions } from '@/contexts/auth/types';
 import { supabase } from '@/integrations/supabase/client';
 
-// Define module type to match roles table schema
+// Define module type to match modules table schema
 export interface Module {
   id: string;
   name: string;
@@ -58,14 +57,11 @@ export const fetchModules = async (isBackoffice: boolean): Promise<Module[]> => 
       return cachedClientModules;
     }
     
-    // Use exact equality for backoffice, and inequality for client modules
-    const queryOperator = isBackoffice ? 'eq' : 'neq';
-    
-    // Fetch roles from database with level filter for backoffice or client
+    // Fetch modules from database with level filter for backoffice or client
     const { data, error } = await supabase
-      .from('roles')
+      .from('modules')
       .select('*')
-      .eq(queryOperator, 'backoffice');
+      .eq('level', isBackoffice ? 'backoffice' : 'client');
     
     if (error) {
       console.error("Error fetching modules:", error);
@@ -78,14 +74,14 @@ export const fetchModules = async (isBackoffice: boolean): Promise<Module[]> => 
     }
     
     // Map the fetched data to include icon property
-    const mappedData: Module[] = data.map(role => ({
-      id: role.id,
-      name: role.name,
-      icon: 'LayoutDashboard', // Always provide a default icon
-      key: role.key,
-      active: role.active,
-      description: role.description,
-      level: role.level
+    const mappedData: Module[] = data.map(module => ({
+      id: module.id,
+      name: module.name,
+      icon: module.icon || 'LayoutDashboard', // Always provide a default icon
+      key: module.key,
+      active: true,
+      description: module.description,
+      level: module.level
     }));
     
     // Cache the results
