@@ -7,13 +7,33 @@ import { supabase } from '@/integrations/supabase/client';
 // In-memory user storage
 let users: UserWithPassword[] = [...INITIAL_MOCK_USERS];
 
-// User management functions
-export const getUsersFromStorage = (): UserWithPassword[] => {
-  return [...INITIAL_MOCK_USERS];
+// Storage helper functions
+export const getUserFromStorage = (): User | null => {
+  const storedUser = localStorage.getItem('currentUser');
+  if (!storedUser) return null;
+  try {
+    return JSON.parse(storedUser);
+  } catch (error) {
+    return null;
+  }
 };
 
-export const saveUsersToStorage = (updatedUsers: UserWithPassword[]): void => {
-  users = updatedUsers;
+export const getUsersFromStorage = (): UserWithPassword[] => {
+  const storedUsers = localStorage.getItem('users');
+  if (!storedUsers) return [...INITIAL_MOCK_USERS];
+  try {
+    return JSON.parse(storedUsers);
+  } catch (error) {
+    return [...INITIAL_MOCK_USERS];
+  }
+};
+
+export const saveUserToStorage = (user: User): void => {
+  localStorage.setItem('currentUser', JSON.stringify(user));
+};
+
+export const saveUsersToStorage = (users: UserWithPassword[]): void => {
+  localStorage.setItem('users', JSON.stringify(users));
 };
 
 // Authentication functions
@@ -43,42 +63,8 @@ export const loginUser = (
   return userWithoutPassword;
 };
 
-export const logoutUser = async (): Promise<void> => {
-  console.log("LOGOUT: Clearing all user session data");
-  
-  try {
-    // Sign out from Supabase first
-    await supabase.auth.signOut();
-    console.log("LOGOUT: Supabase auth signOut completed");
-  } catch (error) {
-    console.error("LOGOUT ERROR: Supabase signout failed", error);
-  }
-  
-  // Clear any Supabase auth tokens that might be stored in localStorage
-  const authItemsToRemove = [
-    'supabase.auth.token',
-    'sb-ybvxkiubnnixntghojyy-auth-token',
-    'supabase.auth.refreshToken',
-    'supabase.auth.expiresAt',
-    'currentUser'
-  ];
-  
-  authItemsToRemove.forEach(item => {
-    if (localStorage.getItem(item)) {
-      console.log(`LOGOUT: Removing ${item} from localStorage`);
-      localStorage.removeItem(item);
-    }
-  });
-  
-  // As a last resort, clear the session storage too
-  try {
-    sessionStorage.clear();
-    console.log("LOGOUT: Cleared session storage");
-  } catch (error) {
-    console.error("LOGOUT ERROR: Failed to clear session storage", error);
-  }
-  
-  console.log("LOGOUT: All user session data cleared");
+export const logoutUser = (): void => {
+  localStorage.removeItem('currentUser');
 };
 
 export const changeUserPassword = (

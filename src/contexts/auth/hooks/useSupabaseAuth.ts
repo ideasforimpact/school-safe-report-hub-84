@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { saveUserToStorage } from '@/services/auth/authService';
 import { excludePasswordFromUser } from '../utils';
 import { UserWithPassword } from '../types';
 

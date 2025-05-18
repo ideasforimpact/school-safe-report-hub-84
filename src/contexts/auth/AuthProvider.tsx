@@ -2,10 +2,12 @@
 import React, { createContext, useEffect, useState, useRef } from 'react';
 import { User, AuthContextType, UserWithPassword } from './types';
 import { 
+  getUserFromStorage, 
   logoutUser, 
   loginUser, 
   setUsers, 
   getUsersFromStorage,
+  saveUserToStorage, 
   saveUsersToStorage,
   getCurrentUserData,
   changeUserPassword
@@ -36,7 +38,7 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // State for the current user, all users, and auth error
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(getUserFromStorage());
   const [users, setUsersState] = useState<UserWithPassword[]>(getUsersFromStorage());
   const [displayUsers, setDisplayUsers] = useState<User[]>(
     users.map(({ password, ...user }) => user)
@@ -45,7 +47,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [authError, setAuthError] = useState<string | null>(null);
   const [isBackofficeUser, setIsBackofficeUser] = useState<boolean>(false);
   const authInitCompleteRef = useRef<boolean>(false);
-  const initialCheckPerformedRef = useRef<boolean>(false);
 
   // Update display users whenever users changes
   useEffect(() => {
@@ -56,55 +57,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const isAdmin = Boolean(currentUser?.role === 'admin' || currentUser?.modulePermissions?.superAdmin);
   const isSaasOwner = Boolean(currentUser?.role === 'saas_owner' || isBackofficeUser);
 
-  // Check session state on mount
+  // Fetch users from Supabase on mount
   useEffect(() => {
-    const initializeAuth = async () => {
-      if (initialCheckPerformedRef.current) return;
-      
-      console.log("AUTH PROVIDER: Initializing auth state");
-      initialCheckPerformedRef.current = true;
-      
+    const checkSupabaseAuth = async () => {
       try {
-        // Check Supabase auth state
         const { data } = await supabase.auth.getSession();
-        
-        if (data?.session) {
-          console.log("AUTH PROVIDER: Found active Supabase session:", data.session.user?.email);
-        } else {
-          console.log("AUTH PROVIDER: No active Supabase session found");
-          setCurrentUser(null);
+        if (data.session) {
+          // User is authenticated with Supabase
+          // We could potentially fetch user data here
+          console.log("User is authenticated with Supabase");
         }
       } catch (error) {
-        console.error("AUTH PROVIDER: Error checking auth state:", error);
-        setCurrentUser(null);
+        console.error("Error checking Supabase auth:", error);
       } finally {
         setIsInitializing(false);
       }
     };
 
-    initializeAuth();
-    
-    // Set up auth state change listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        console.log("AUTH PROVIDER: Auth state change event:", event);
-        if (event === 'SIGNED_OUT') {
-          console.log("AUTH PROVIDER: User signed out, clearing session data");
-          setCurrentUser(null);
-          setIsBackofficeUser(false);
-        }
-      }
-    );
-    
-    return () => {
-      subscription.unsubscribe();
-    };
+    checkSupabaseAuth();
   }, []);
 
   // Handle login
   const handleLogin = async (email: string, password: string): Promise<boolean> => {
     setAuthError(null);
-    console.log("AUTH PROVIDER: Login attempt for", email);
     
     try {
       // First try to login as a regular user
@@ -112,6 +87,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (user) {
         setCurrentUser(user);
+        saveUserToStorage(user);
         toast.success(`Welcome back, ${user.firstName}!`);
         return true;
       }
@@ -172,10 +148,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         setCurrentUser(saasUser);
         setIsBackofficeUser(true);
+        saveUserToStorage(saasUser);
         toast.success(`Welcome back, Backoffice Admin!`);
         return true;
       }
-      
+
       setAuthError("Invalid credentials");
       return false;
     } catch (error) {
@@ -187,26 +164,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   // Handle logout
-  const handleLogout = async (): Promise<void> => {
-    console.log("AUTH PROVIDER: Logout called - clearing all session data");
-    
-    try {
-      // First clear local state
-      setCurrentUser(null);
-      setIsBackofficeUser(false);
-      setAuthError(null);
-      
-      // Then call the service to clear storage and Supabase session
-      await logoutUser();
-      
-      console.log("AUTH PROVIDER: Logout completed successfully");
-      toast.info("You have been logged out");
-    } catch (error) {
-      console.error("AUTH PROVIDER: Error during logout:", error);
-      // Still ensure the local session is cleared
-      setCurrentUser(null);
-      setIsBackofficeUser(false);
-    }
+  const handleLogout = (): void => {
+    setCurrentUser(null);
+    setIsBackofficeUser(false);
+    logoutUser();
+    toast.info("You have been logged out");
   };
 
   // Add new user
@@ -333,7 +295,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
     
     // Regular user password change
-    const updatedUsers = changeUserPassword(users, currentUser.id, currentPassword, newPassword);
+    const storedUsers = getUsersFromStorage();
+    const updatedUsers = changeUserPassword(storedUsers, currentUser.id, currentPassword, newPassword);
 
     if (!updatedUsers) {
       return false;

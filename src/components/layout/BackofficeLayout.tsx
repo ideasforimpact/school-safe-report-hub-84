@@ -1,6 +1,9 @@
-import { ReactNode, useEffect, useState } from 'react';
+
+import { ReactNode } from 'react';
 import { ShieldCheck, LogOut } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '@/contexts/auth';
+import { formatUserFullName } from '@/utils/userUtils';
 import { 
   DropdownMenu,
   DropdownMenuContent, 
@@ -9,8 +12,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { useBackofficeAuth } from '@/contexts/backoffice/BackofficeAuthContext';
-import { BackofficeUser } from '@/contexts/backoffice/types';
 
 interface BackofficeLayoutProps {
   children: ReactNode;
@@ -19,39 +20,21 @@ interface BackofficeLayoutProps {
 const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout, isInitializing } = useBackofficeAuth();
-  const [initialCheckDone, setInitialCheckDone] = useState(false);
+  const { user, logout, isSaasOwner } = useAuth();
   
-  // Initialize with auth check
-  useEffect(() => {
-    console.log("Backoffice Layout - Initial mount, checking auth state:", {
-      isUser: !!user,
-      pathname: location.pathname,
-      isInitializing,
-      userDetails: user ? `${user.firstName} ${user.lastName} (${user.role})` : 'No user'
-    });
-    
-    // Set initial check to true after first render
-    setInitialCheckDone(true);
-  }, [user, location.pathname, isInitializing]);
-  
-  // Redirect if not logged in, but only after initialization is complete
-  useEffect(() => {
-    // Make sure to check for both initialCheckDone and initialization being complete
-    if (initialCheckDone && !isInitializing && user === null) {
-      console.log("Backoffice Layout - No user, redirecting to backoffice login");
-      
-      // Only redirect if we're not already on the login page
-      if (!location.pathname.includes('/backoffice/login')) {
-        toast.error("Please log in to access the backoffice.");
-        navigate('/backoffice/login');
-      }
-    }
-  }, [user, navigate, initialCheckDone, isInitializing, location.pathname]);
+  // Redirect if not SaaS owner
+  if (!isSaasOwner) {
+    // Use setTimeout to avoid rendering issues when redirecting
+    setTimeout(() => {
+      toast.error("You don't have permission to access the backoffice.");
+      navigate('/dashboard');
+    }, 0);
+    return null;
+  }
 
-  const handleLogout = async () => {
-    console.log("Backoffice Layout - Logging out user");
-    await logout();
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
   };
 
   // Function to safely get the user's initial
@@ -61,38 +44,7 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
     }
     return 'U'; // Default fallback if firstName is undefined
   };
-  
-  // Helper function to format user name (avoiding the external formatUserFullName)
-  const formatUserName = (user: BackofficeUser) => {
-    return `${user.firstName} ${user.lastName}`;
-  };
 
-  // If initialization isn't done, show loading
-  if (isInitializing) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p>Initializing backoffice session...</p>
-      </div>
-    );
-  }
-
-  // If not logged in and not on the login page, show redirecting message
-  if (!user && !location.pathname.includes('/backoffice/login')) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p>Redirecting to login...</p>
-      </div>
-    );
-  }
-
-  // If we're on the login page and not logged in, don't render the layout
-  if (!user && location.pathname.includes('/backoffice/login')) {
-    return (
-      <div>{children}</div>
-    );
-  }
-
-  // Otherwise, render the full layout with user authenticated
   return (
     <div className="flex flex-col min-h-screen bg-gray-100">
       {/* Top nav */}
@@ -113,10 +65,13 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
                           {getUserInitial()}
                         </span>
                       </div>
-                      <span>{formatUserName(user)}</span>
+                      <span>{formatUserFullName(user)}</span>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => navigate('/dashboard')}>
+                      Client Dashboard
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={handleLogout} className="text-destructive">
                       <LogOut size={16} className="mr-2" />
                       <span>Logout</span>

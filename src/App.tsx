@@ -6,16 +6,14 @@ import { AuthProvider } from '@/contexts/auth';
 import { ClientProvider } from '@/contexts/ClientContext';
 import { EmployeeProvider } from './contexts/employee/EmployeeContext';
 import { StudentProvider } from './contexts/StudentContext';
-import { IncidentProvider } from './contexts/incident'; 
+import { IncidentProvider } from './contexts/incident'; // Fixed import path
 import { EmployeeVerificationProvider } from './contexts/employee-verification';
 import { FacilityProvider } from './contexts/FacilityContext';
 import { AssessmentProvider } from '@/contexts/assessment/AssessmentContext';
-import { BackofficeAuthProvider } from '@/contexts/backoffice/BackofficeAuthContext';
 
 // Pages
 import Dashboard from '@/pages/Dashboard';
 import Login from '@/pages/Login';
-import BackofficeLogin from '@/pages/BackofficeLogin';
 import UserManagement from '@/pages/UserManagement';
 import ClientManagement from '@/pages/ClientManagement';
 import EmployeeManagement from '@/pages/EmployeeManagement';
@@ -50,11 +48,9 @@ import BackofficeLayout from '@/components/layout/BackofficeLayout';
 // Backoffice Wrapper Component for routing
 const BackofficeWrapper = ({ component: Component }) => {
   return (
-    <BackofficeAuthProvider>
-      <BackofficeLayout>
-        <Component />
-      </BackofficeLayout>
-    </BackofficeAuthProvider>
+    <BackofficeLayout>
+      <Component />
+    </BackofficeLayout>
   );
 };
 
@@ -71,7 +67,6 @@ function App() {
                     <Routes>
                       {/* Public routes */}
                       <Route path="/login" element={<Login />} />
-                      <Route path="/backoffice/login" element={<BackofficeLogin />} />
                       <Route path="/home" element={<Home />} />
                       <Route path="/pricing" element={<Pricing />} />
                       
@@ -121,11 +116,9 @@ function App() {
                       <Route path="/employee-verification/:employeeId/upload-document" element={<UploadDocumentPage />} />
                       <Route path="/employee-verification/dashboard" element={<VerificationDashboardPage />} />
 
-                      {/* Backoffice routes with the new BackofficeAuthProvider */}
+                      {/* Backoffice routes - duplicated routes with /backoffice prefix */}
                       <Route path="/backoffice/dashboard" element={<BackofficeWrapper component={Dashboard} />} />
                       <Route path="/backoffice/clients" element={<BackofficeWrapper component={ClientManagement} />} />
-                      <Route path="/backoffice/settings" element={<BackofficeWrapper component={OtherConfiguration} />} />
-                      <Route path="/backoffice/profile" element={<BackofficeWrapper component={UserManagement} />} />
                       
                       {/* Backoffice Assessment routes */}
                       <Route path="/backoffice/assessments" element={<BackofficeWrapper component={AssessmentsPage} />} />

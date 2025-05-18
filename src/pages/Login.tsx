@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from "react";
-import { useNavigate, useLocation, Link } from "react-router-dom";
-import { useAuth } from "@/contexts/auth";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,83 +24,42 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
-  const { login, authError, user, logout } = useAuth();
+  const { login, authError, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [redirect, setRedirect] = useState(false);
-  const [initialCheckDone, setInitialCheckDone] = useState(false);
 
-  // On component mount, check if there's any stale session and clear it
+  // Check if user is already logged in, redirect if they are
   useEffect(() => {
-    const clearStaleSession = async () => {
-      console.log("Login page - Initial mount, checking for stale sessions");
-      
-      try {
-        const { data } = await supabase.auth.getSession();
-        
-        // Log if there's an active session but we're on login page
-        if (data?.session && location.pathname === '/login') {
-          console.log("Login page - Found session but on login page:", data.session.user?.email);
-          console.log("Login page - Clearing stale session");
-          await logout(); // This will clear everything
-        }
-      } catch (error) {
-        console.error("Login page - Error checking session:", error);
-      }
-      
-      setInitialCheckDone(true);
-    };
-    
-    clearStaleSession();
-  }, [logout, location.pathname]);
-
-  // Check if user is already logged in, redirect if they are but only after initial render
-  useEffect(() => {
-    console.log("Login page - Auth state:", { 
-      isUser: !!user, 
-      redirect,
-      initialCheckDone,
-      locationState: location.state,
-      userDetails: user ? `${user.firstName} ${user.lastName} (${user.role})` : 'No user'
-    });
-    
-    // Only redirect if initial check is done and we're not in the middle of cleanup
-    if (initialCheckDone && user && redirect) {
+    if (user) {
       const from = location.state?.from?.pathname || "/dashboard";
-      console.log("Login page - Redirecting authenticated user to:", from);
-      navigate(from);
-    } else if (initialCheckDone && user && !redirect) {
-      // Set redirect flag to true after initial render and checks
-      console.log("Login page - Setting redirect flag to true");
-      setRedirect(true);
+      navigate(from, { replace: true });
     }
-  }, [user, redirect, navigate, location.state, initialCheckDone]);
+  }, [user, navigate, location.state]);
 
   // Check for authentication redirect results and errors
   useEffect(() => {
     const checkForAuthRedirect = async () => {
-      if (!initialCheckDone) return;
-      
-      console.log("Login page - Checking for auth redirect");
       const { data, error } = await supabase.auth.getSession();
       
       if (data?.session) {
-        console.log("Login page - Session detected after redirect:", data.session.user?.email);
+        console.log("Session detected after redirect:", data.session);
+        // The AuthContext will check if the user has proper access and handle redirect
       }
       
       if (error) {
-        console.error("Login page - Auth redirect error:", error);
+        console.error("Auth redirect error:", error);
         toast.error("Authentication failed. Please try again.");
       }
     };
     
     checkForAuthRedirect();
-  }, [navigate, initialCheckDone]);
+  }, [navigate]);
 
   // Listen for auth errors from context
   useEffect(() => {
     if (authError) {
       setError(authError);
+      // No need to show toast here, the auth context will handle it
       setIsLoading(false);
       setGoogleLoading(false);
     }
@@ -117,7 +76,8 @@ const Login = () => {
       if (success) {
         // Redirect to the page they were trying to access before being redirected to login
         const from = location.state?.from?.pathname || "/dashboard";
-        navigate(from);
+        navigate(from, { replace: true });
+        // Toast is now handled in AuthContext to prevent duplicates
       } else {
         if (!authError) {
           setError("Invalid email or password");
@@ -142,6 +102,7 @@ const Login = () => {
       
       console.log("Initiating Google login with redirect to:", redirectTo);
       
+      // Use signInWithOAuth to redirect to Google's login page directly
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -155,6 +116,8 @@ const Login = () => {
         setError(`Google authentication failed: ${error.message}`);
         setGoogleLoading(false);
       }
+      // No else branch needed as successful OAuth will redirect the page
+      
     } catch (err) {
       console.error("Google login unexpected error:", err);
       setError("An error occurred with Google login. Please try again.");
@@ -182,6 +145,7 @@ const Login = () => {
       console.log("Using demo credentials:", demoEmail, demoPassword);
       const success = await login(demoEmail, demoPassword);
       if (success) {
+        // Toast is now handled in AuthContext to prevent duplicates
         navigate("/dashboard");
       } else {
         if (!authError) {
@@ -201,17 +165,6 @@ const Login = () => {
   const handleOAuthLogin = (provider: string) => {
     toast.info(`${provider} authentication is not configured yet. Please use Google or email login.`);
   };
-
-  // If we're still checking initial state, show a loading indicator
-  if (!initialCheckDone) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-indigo-100 p-4">
-        <div className="text-center">
-          <p className="text-gray-600">Checking authentication state...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-indigo-100 p-4 animate-fade-in">
@@ -338,24 +291,14 @@ const Login = () => {
                 </Button>
               </div>
               
-              <div className="flex gap-2 w-full mt-4">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => navigate('/home')} 
-                  className="flex-1 transition-all hover:bg-primary/10"
-                >
-                  Back to Home
-                </Button>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => navigate('/backoffice/login')} 
-                  className="flex-1 transition-all hover:bg-primary/10"
-                >
-                  Backoffice Login
-                </Button>
-              </div>
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => navigate('/home')} 
+                className="w-full mt-4 transition-all hover:bg-primary/10"
+              >
+                Back to Home
+              </Button>
             </CardFooter>
           </form>
         </Card>
