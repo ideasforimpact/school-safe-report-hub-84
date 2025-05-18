@@ -1,4 +1,3 @@
-
 import { BackofficeUser } from '@/contexts/backoffice/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -14,7 +13,6 @@ const DEMO_EMAILS = [
 export const loginBackofficeUser = async (email: string, password: string): Promise<BackofficeUser | null> => {
   try {
     console.log(`🔧 authService: Login attempt started for: ${email}`);
-    console.log(`🔧 DEBUG: Raw password received in authService:`, password);
     
     // Check if this is a demo email
     const isDemoUser = DEMO_EMAILS.includes(email);
@@ -66,7 +64,6 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
     
     // For real users, verify password with Supabase function
     console.log("🔧 authService: Calling verify_password RPC function with email:", email);
-    console.log("🔧 authService: Password to verify:", password);
     console.log("🔧 DEBUG: Password length:", password ? password.length : 0);
     
     const { data: isValidPassword, error: verifyError } = await supabase.rpc('verify_password', { 
@@ -89,7 +86,6 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
       // SPECIAL HANDLING: If this is a newly created user, try direct password comparison as fallback
       // This is a temporary workaround for potential timing issues with the RPC function
       console.log("🔧 authService: Attempting direct password check as fallback...");
-      console.log("🔧 DEBUG: Raw password for direct check:", password);
       
       // Get the stored hashed password from the database
       const { data: storedHash } = await supabase
@@ -115,8 +111,6 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
     console.log("🔧 authService: Password verified successfully, building user object");
 
     // Map database record to BackofficeUser type
-    // Since first_name, last_name, and is_active don't exist in the DB schema,
-    // we'll use default values or derive them from other fields
     const backofficeUser: BackofficeUser = {
       id: existingUser.id,
       firstName: existingUser.email.split('@')[0] || 'Backoffice', // Use part of email as first name

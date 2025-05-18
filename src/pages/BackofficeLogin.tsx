@@ -59,9 +59,7 @@ const BackofficeLogin = () => {
     
     setIsLoading(true);
     console.log("🔍 Starting login attempt with email:", email);
-    console.log("🔍 DEBUG: login function type:", typeof login);
-    console.log("🔍 DEBUG: login function reference:", login);
-
+    
     try {
       // For debugging, log the type of login attempt
       if (email === 'owner@saasplatform.com' && password === 'owner123') {
@@ -121,47 +119,34 @@ const BackofficeLogin = () => {
           
           // Let's add a significant delay to ensure the database has time to process the insert
           // and the password hash is properly stored
-          await new Promise(resolve => setTimeout(resolve, 1500));
+          await new Promise(resolve => setTimeout(resolve, 2500));
         }
       }
       
-      // Now proceed with login
-      console.log("🔍 About to call login function with:", email);
-      console.log("🔍 Login function reference check:", login ? "Function exists" : "Function is undefined");
-      console.log("🔍 Type of login function:", typeof login);
+      // Now proceed with login - IMPORTANT: Use the login function from BackofficeAuthContext
+      console.log("🔍 About to call BackofficeAuthContext login function with:", email);
       
-      try {
-        console.log("🔍 DEBUG: About to invoke the login function directly with:");
-        console.log("🔍 DEBUG: Email:", email);
-        console.log("🔍 DEBUG: Password length:", password ? password.length : 0);
-        
-        // For newly created accounts, we'll try twice with a delay if the first attempt fails
-        let success = await login(email, password);
-        console.log("🔍 DEBUG: First login attempt returned:", success);
-        
-        // If first attempt failed and it might be a newly created account
-        if (!success && ALLOWED_TEST_EMAILS.includes(email)) {
-          console.log("🔍 Initial login failed for potentially new account, waiting and trying again...");
-          // Wait a bit more and try again
-          await new Promise(resolve => setTimeout(resolve, 1000));
-          console.log("🔍 DEBUG: About to try login again after delay");
-          success = await login(email, password);
-        }
-        
-        console.log("🔍 Login function returned:", success);
-        
-        if (success) {
-          console.log("🔍 Login success, redirecting to dashboard");
-          toast.success("Login successful!");
-          navigate('/backoffice/dashboard');
-        } else {
-          console.error("🔍 Login failed with false return value");
-          toast.error("Login failed. Please check your credentials.");
-          setIsLoading(false);
-        }
-      } catch (loginErr) {
-        console.error("🔍 Login function threw an exception:", loginErr);
-        toast.error("Login process error. Please try again.");
+      // First attempt at login
+      let success = await login(email, password);
+      console.log("🔍 BackofficeAuth login function returned:", success);
+      
+      // If first attempt failed and it might be a newly created account
+      if (!success && ALLOWED_TEST_EMAILS.includes(email)) {
+        console.log("🔍 Initial login failed for potentially new account, waiting and trying again...");
+        // Wait a bit more and try again
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        console.log("🔍 Trying BackofficeAuth login function again after delay");
+        success = await login(email, password);
+        console.log("🔍 Second login attempt returned:", success);
+      }
+      
+      if (success) {
+        console.log("🔍 Login success, redirecting to dashboard");
+        toast.success("Login successful!");
+        navigate('/backoffice/dashboard');
+      } else {
+        console.error("🔍 Login failed with false return value");
+        toast.error("Login failed. Please check your credentials.");
         setIsLoading(false);
       }
     } catch (err) {
