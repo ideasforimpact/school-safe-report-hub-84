@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { BackofficeUser, BackofficeAuthContextType } from './types';
 import { loginBackofficeUser, logoutBackofficeUser } from '@/services/backoffice/authService';
@@ -54,33 +53,37 @@ export const BackofficeAuthProvider: React.FC<BackofficeAuthProviderProps> = ({ 
 
   // Login function
   const login = async (email: string, password: string): Promise<boolean> => {
-    console.log("BackofficeAuthContext login function called with email:", email);
+    console.log("BackofficeAuthContext: login function called with email:", email);
     setIsLoading(true);
     setError(null);
 
     try {
       // Call the service to authenticate the user
-      console.log("Calling loginBackofficeUser service function");
+      console.log("BackofficeAuthContext: Calling loginBackofficeUser service function");
       const backofficeUser = await loginBackofficeUser(email, password);
-      console.log("loginBackofficeUser service returned:", backofficeUser ? "User object received" : "Failed - No user returned");
+      console.log("BackofficeAuthContext: loginBackofficeUser service returned:", backofficeUser ? "User object received" : "Failed - No user returned");
       
       if (backofficeUser) {
+        console.log("BackofficeAuthContext: Setting user and session storage");
         setUser(backofficeUser);
         // Store user in session storage
         sessionStorage.setItem('backoffice_user', JSON.stringify(backofficeUser));
         toast.success("Login successful!");
+        console.log("BackofficeAuthContext: Returning true");
         return true;
       } else {
+        console.log("BackofficeAuthContext: Login failed, no user returned");
         setError('Invalid email or password');
         toast.error('Invalid email or password');
         return false;
       }
     } catch (err) {
-      console.error("Login error:", err);
+      console.error("BackofficeAuthContext: Login error:", err);
       setError('An error occurred during login');
       toast.error('An error occurred during login');
       return false;
     } finally {
+      console.log("BackofficeAuthContext: Setting isLoading to false");
       setIsLoading(false);
     }
   };
@@ -113,11 +116,17 @@ export const BackofficeAuthProvider: React.FC<BackofficeAuthProviderProps> = ({ 
   const value = {
     user,
     login,
-    logout,
+    logout: logoutBackofficeUser,
     isLoading,
     error,
     clearError
   };
+
+  console.log("BackofficeAuthContext: Providing context with value:", { 
+    hasUser: !!user, 
+    isLoading, 
+    hasError: !!error 
+  });
 
   return (
     <BackofficeAuthContext.Provider value={value}>

@@ -17,10 +17,10 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
     
     // Check if this is a demo email
     const isDemoUser = DEMO_EMAILS.includes(email);
-    console.log("Is demo user:", isDemoUser);
+    console.log("authService: Is demo user:", isDemoUser);
     
     if (isDemoUser && password === 'owner123') {
-      console.log("Using demo user login path");
+      console.log("authService: Using demo user login path");
       // For demo users, create a local user object
       return {
         id: 'demo-backoffice-id',
@@ -35,7 +35,7 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
     }
     
     // For non-demo users, check if the email exists first
-    console.log("Checking if account exists in backoffice_users table...");
+    console.log("authService: Checking if account exists in backoffice_users table...");
     
     // First check if user exists in backoffice_users table
     const { data: existingUser, error: userCheckError } = await supabase
@@ -44,20 +44,20 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
       .eq('email', email)
       .single();
     
-    console.log("Existing user check result:", existingUser ? "Found" : "Not found");
+    console.log("authService: Existing user check result:", existingUser ? "Found" : "Not found", "Error:", userCheckError?.message || "None");
     
     if (userCheckError) {
       // If error is not-found, give a clear message
       if (userCheckError.code === 'PGRST116') {
-        console.error(`Account not found for email: ${email}`);
+        console.error(`authService: Account not found for email: ${email}`);
         return null;
       }
       
-      console.error("Error checking user existence:", userCheckError);
+      console.error("authService: Error checking user existence:", userCheckError);
       return null;
     }
     
-    console.log("Account found, proceeding to verify password...");
+    console.log("authService: Account found, proceeding to verify password...");
     
     // For real users, verify password with Supabase function
     const { data: isValidPassword, error: verifyError } = await supabase.rpc('verify_password', { 
@@ -65,30 +65,33 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
       password_attempt: password 
     });
 
-    console.log("Password verification result:", isValidPassword);
+    console.log("authService: Password verification result:", isValidPassword);
     
     if (verifyError) {
-      console.error("Password verification error:", verifyError);
+      console.error("authService: Password verification error:", verifyError);
       return null;
     }
 
     if (!isValidPassword) {
-      console.error("Invalid credentials - password verification failed");
+      console.error("authService: Invalid credentials - password verification failed");
       
       // SPECIAL HANDLING: If this is a newly created user, try direct password comparison as fallback
-      console.log("Attempting direct password check as fallback...");
+      console.log("authService: Attempting direct password check as fallback...");
       
       // Get the stored hashed password from the database
-      const { data: storedHash } = await supabase
+      const { data: storedHash, error: hashError } = await supabase
         .from('backoffice_users')
         .select('password')
         .eq('email', email)
         .single();
         
+      console.log("authService: Direct password check result:", storedHash ? "Hash retrieved" : "No hash found", "Error:", hashError?.message || "None");
+        
       if (storedHash && storedHash.password === password) {
-        console.log("Direct password match successful!");
+        console.log("authService: Direct password match successful!");
         // Password matched directly, proceed with login
       } else {
+        console.log("authService: Direct password check failed too, login failed");
         return null;
       }
     }
@@ -112,13 +115,13 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
       .eq('id', backofficeUser.id);
       
     if (updateError) {
-      console.error("Error updating last_signed_in:", updateError);
+      console.error("authService: Error updating last_signed_in:", updateError);
     }
 
-    console.log("Returning valid backoffice user");
+    console.log("authService: Returning valid backoffice user:", backofficeUser.email);
     return backofficeUser;
   } catch (error) {
-    console.error("Unexpected error during backoffice login:", error);
+    console.error("authService: Unexpected error during backoffice login:", error);
     return null;
   }
 };
