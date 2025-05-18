@@ -34,14 +34,19 @@ const Login = () => {
       // Get the intended destination from location state or use dashboard as default
       const from = location.state?.from?.pathname || "/dashboard";
 
-      console.log(user,"user")
-      
-      // Only redirect to backoffice paths if the user is a SaaS owner
-      if (from.includes('/backoffice') && user.role !== 'saas_owner') {
-        navigate('/dashboard', { replace: true });
-      } else {
-        navigate(from, { replace: true });
+      if(user?.role == "saas_owner"){
+         navigate("/backoffice/dashboard");
       }
+      else{
+        navigate('/dashboard', { replace: true });
+      }
+      
+      // // Only redirect to backoffice paths if the user is a SaaS owner
+      // if (from.includes('/backoffice') && user.role !== 'saas_owner') {
+        
+      // } else {
+      //   navigate(from, { replace: true });
+      // }
     }
   }, [user, navigate, location.state]);
 
