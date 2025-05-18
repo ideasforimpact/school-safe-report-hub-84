@@ -27,6 +27,8 @@ interface ModuleAccessTabProps {
 const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTabProps) => {
   const [modules, setModules] = useState<Module[]>([]);
   const [loading, setLoading] = useState(false);
+  // Track admin access separately from module access
+  const [adminAccess, setAdminAccess] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     const fetchClientModules = async () => {
@@ -45,6 +47,14 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
 
         if (data && data.modules) {
           setModules(data.modules);
+          
+          // Initialize admin access state based on formData
+          const initialAdminAccess: Record<string, boolean> = {};
+          data.modules.forEach((module: Module) => {
+            const accessKey = getAccessKeyFromModuleName(module.name);
+            initialAdminAccess[accessKey] = !!formData.moduleAccess[accessKey];
+          });
+          setAdminAccess(initialAdminAccess);
         }
       } catch (error) {
         console.error("Error in fetchClientModules:", error);
@@ -55,7 +65,7 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
     };
 
     fetchClientModules();
-  }, []);
+  }, [formData.moduleAccess]);
 
   // Known module access keys from the ModulePermissions type
   const knownAccessKeys = [
@@ -100,11 +110,20 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
     return 'superAdmin';
   };
 
+  // Handle clicking on the module checkbox
+  const handleModuleCheckboxChange = (accessKey: keyof ModulePermissions, checked: boolean) => {
+    // Update only this specific module's state
+    handleModuleAccessChange(accessKey, checked);
+  };
+
   // Handle clicking on the admin badge
-  const handleBadgeClick = (accessKey: keyof ModulePermissions) => {
-    // Toggle the current state of the badge
-    const currentValue = !!formData.moduleAccess[accessKey];
-    handleModuleAccessChange(accessKey, !currentValue);
+  const handleAdminBadgeClick = (accessKey: keyof ModulePermissions) => {
+    // Toggle the admin access state for this module
+    const newState = !adminAccess[accessKey];
+    setAdminAccess(prev => ({
+      ...prev,
+      [accessKey]: newState
+    }));
   };
 
   return (
@@ -130,17 +149,17 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
               <TableBody>
                 {modules.map((module) => {
                   const accessKey = getAccessKeyFromModuleName(module.name);
-                  const checked = formData.moduleAccess[accessKey] || false;
+                  const moduleEnabled = !!formData.moduleAccess[accessKey];
+                  const isAdminEnabled = adminAccess[accessKey] || false;
                   
                   return (
                     <TableRow key={module.id} className="h-14">
                       <TableCell>
                         <Checkbox 
                           id={`module-${accessKey}`}
-                          checked={checked}
+                          checked={moduleEnabled}
                           onCheckedChange={(checkedState) => {
-                            // Only update the current module's state
-                            handleModuleAccessChange(accessKey, checkedState === true);
+                            handleModuleCheckboxChange(accessKey, checkedState === true);
                           }}
                           className="transition-all"
                         />
@@ -155,17 +174,17 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
                       </TableCell>
                       <TableCell>
                         <Badge
-                          variant={checked ? "default" : "outline"}
+                          variant={isAdminEnabled ? "default" : "outline"}
                           className={cn(
                             "relative pr-7 transition-all duration-200 cursor-pointer",
-                            checked 
+                            isAdminEnabled 
                               ? "bg-green-500 text-white hover:bg-green-600" 
                               : "text-muted-foreground hover:bg-gray-100"
                           )}
-                          onClick={() => handleBadgeClick(accessKey)}
+                          onClick={() => handleAdminBadgeClick(accessKey)}
                         >
                           Admin
-                          {checked && (
+                          {isAdminEnabled && (
                             <span className="absolute right-1.5 top-1/2 -translate-y-1/2">
                               <Check className="h-3 w-3" />
                             </span>
