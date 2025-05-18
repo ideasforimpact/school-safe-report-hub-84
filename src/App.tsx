@@ -6,10 +6,11 @@ import { AuthProvider } from '@/contexts/auth';
 import { ClientProvider } from '@/contexts/ClientContext';
 import { EmployeeProvider } from './contexts/employee/EmployeeContext';
 import { StudentProvider } from './contexts/StudentContext';
-import { IncidentProvider } from './contexts/incident'; // Fixed import path
+import { IncidentProvider } from './contexts/incident'; 
 import { EmployeeVerificationProvider } from './contexts/employee-verification';
 import { FacilityProvider } from './contexts/FacilityContext';
 import { AssessmentProvider } from '@/contexts/assessment/AssessmentContext';
+import { BackofficeGuard } from '@/components/guards/BackofficeGuard';
 
 // Pages
 import Dashboard from '@/pages/Dashboard';
@@ -48,9 +49,11 @@ import BackofficeLayout from '@/components/layout/BackofficeLayout';
 // Backoffice Wrapper Component for routing
 const BackofficeWrapper = ({ component: Component }) => {
   return (
-    <BackofficeLayout>
-      <Component />
-    </BackofficeLayout>
+    <BackofficeGuard>
+      <BackofficeLayout>
+        <Component />
+      </BackofficeLayout>
+    </BackofficeGuard>
   );
 };
 
