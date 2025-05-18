@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Client, useClient, InstitutionType } from '@/contexts/ClientContext';
 import { OAuthProviderName } from '@/utils/authProviders';

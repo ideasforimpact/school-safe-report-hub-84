@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -327,16 +326,34 @@ serve(async (req) => {
         if (moduleAccess && Object.keys(moduleAccess).length > 0) {
           const moduleInserts = Object.entries(moduleAccess)
             .filter(([_, enabled]) => enabled)
-            .map(([key, _]) => ({
-              client_id: newClient.id,
-              module_key: key,
-              enabled: true
-            }));
-
-          if (moduleInserts.length > 0) {
+            .map(async ([key, _]) => {
+              // Find the module ID for this key
+              const { data: moduleData, error: moduleError } = await supabase
+                .from('modules')
+                .select('id')
+                .ilike('name', `%${key.replace(/([A-Z])/g, ' $1').trim()}%`)
+                .limit(1);
+                
+              if (moduleError || !moduleData || moduleData.length === 0) {
+                console.log(`Module not found for key: ${key}`);
+                return null;
+              }
+              
+              return {
+                client_id: newClient.id,
+                module_id: moduleData[0].id,
+                enabled: true,
+                access_level: { isAdmin: key.includes('Admin'), isEnabled: true }
+              };
+            });
+            
+          const moduleData = await Promise.all(moduleInserts);
+          const validModuleData = moduleData.filter(item => item !== null);
+          
+          if (validModuleData.length > 0) {
             const { error: moduleError } = await supabase
               .from('client_modules')
-              .insert(moduleInserts);
+              .insert(validModuleData);
 
             if (moduleError) {
               console.error('Error inserting client modules:', moduleError);
@@ -424,19 +441,39 @@ serve(async (req) => {
           // Insert new modules
           const moduleInserts = Object.entries(moduleAccess)
             .filter(([_, enabled]) => enabled)
-            .map(([key, _]) => ({
-              client_id: id,
-              module_key: key,
-              enabled: true
-            }));
+            .map(async ([key, _]) => {
+              // Find the module ID for this key
+              const { data: moduleData, error: moduleError } = await supabase
+                .from('modules')
+                .select('id')
+                .ilike('name', `%${key.replace(/([A-Z])/g, ' $1').trim()}%`)
+                .limit(1);
+                
+              if (moduleError || !moduleData || moduleData.length === 0) {
+                console.log(`Module not found for key: ${key}`);
+                return null;
+              }
+              
+              return {
+                client_id: id,
+                module_id: moduleData[0].id,
+                enabled: true,
+                access_level: { isAdmin: key.includes('Admin'), isEnabled: true }
+              };
+            });
 
           if (moduleInserts.length > 0) {
-            const { error: moduleError } = await supabase
-              .from('client_modules')
-              .insert(moduleInserts);
+            const moduleData = await Promise.all(moduleInserts);
+            const validModuleData = moduleData.filter(item => item !== null);
 
-            if (moduleError) {
-              console.error('Error inserting client modules:', moduleError);
+            if (validModuleData.length > 0) {
+              const { error: moduleError } = await supabase
+                .from('client_modules')
+                .insert(validModuleData);
+
+              if (moduleError) {
+                console.error('Error inserting client modules:', moduleError);
+              }
             }
           }
         }

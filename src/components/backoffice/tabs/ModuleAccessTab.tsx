@@ -22,6 +22,7 @@ interface ModuleAccess {
   module_id: string;
   is_admin: boolean;
   is_enabled: boolean;
+  access_level?: Record<string, any>;
 }
 
 interface ModuleAccessTabProps {
@@ -34,7 +35,6 @@ interface ModuleAccessTabProps {
 const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTabProps) => {
   const [modules, setModules] = useState<Module[]>([]);
   const [loading, setLoading] = useState(false);
-  // Track modules as an array of objects with name, module_id, and is_admin properties
   const [moduleAccessState, setModuleAccessState] = useState<ModuleAccess[]>([]);
 
   // Fetch modules only once during initial load
@@ -72,7 +72,10 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
               name: module.name,
               module_id: module.id,
               is_admin: isAdmin,
-              is_enabled: isEnabled
+              is_enabled: isEnabled,
+              access_level: {
+                isAdmin: isAdmin
+              }
             };
           });
           
@@ -175,7 +178,14 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
     setModuleAccessState(prev => 
       prev.map(m => 
         m.module_id === moduleId 
-          ? { ...m, is_enabled: checked } 
+          ? { 
+              ...m, 
+              is_enabled: checked,
+              access_level: {
+                ...m.access_level,
+                isEnabled: checked
+              }
+            } 
           : m
       )
     );
@@ -194,7 +204,14 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
     setModuleAccessState(prev => 
       prev.map(m => 
         m.module_id === moduleId 
-          ? { ...m, is_admin: !m.is_admin } 
+          ? { 
+              ...m, 
+              is_admin: !m.is_admin,
+              access_level: {
+                ...m.access_level,
+                isAdmin: !m.is_admin
+              }
+            } 
           : m
       )
     );

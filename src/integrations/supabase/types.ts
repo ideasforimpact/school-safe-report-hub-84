@@ -73,21 +73,27 @@ export type Database = {
       }
       client_modules: {
         Row: {
+          access_level: Json
           client_id: string
           enabled: boolean
           id: string
+          module_id: string | null
           module_key: string
         }
         Insert: {
+          access_level?: Json
           client_id: string
           enabled?: boolean
           id?: string
+          module_id?: string | null
           module_key: string
         }
         Update: {
+          access_level?: Json
           client_id?: string
           enabled?: boolean
           id?: string
+          module_id?: string | null
           module_key?: string
         }
         Relationships: [
@@ -96,6 +102,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_modules_module_id_fkey"
+            columns: ["module_id"]
+            isOneToOne: false
+            referencedRelation: "modules"
             referencedColumns: ["id"]
           },
         ]
@@ -293,6 +306,7 @@ export type Database = {
       }
       employee_modules: {
         Row: {
+          access_level: Json
           created_at: string
           employee_id: string
           id: string
@@ -300,6 +314,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          access_level?: Json
           created_at?: string
           employee_id: string
           id?: string
@@ -307,6 +322,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          access_level?: Json
           created_at?: string
           employee_id?: string
           id?: string
