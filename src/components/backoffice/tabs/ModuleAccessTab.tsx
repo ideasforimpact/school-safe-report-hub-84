@@ -100,11 +100,6 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
     return 'superAdmin';
   };
 
-  // Check if a module key represents admin access
-  const isAdminKey = (key: string): boolean => {
-    return key.toLowerCase().includes('admin');
-  };
-
   // Handle clicking on the admin badge
   const handleBadgeClick = (accessKey: keyof ModulePermissions, checked: boolean) => {
     // If the module is not selected, clicking the badge should have no effect
@@ -144,9 +139,10 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
                         <Checkbox 
                           id={`module-${accessKey}`}
                           checked={checked}
-                          onCheckedChange={(checkedState) => 
-                            handleModuleAccessChange(accessKey, checkedState === true)
-                          }
+                          onCheckedChange={(checkedState) => {
+                            // Only update the current module's state
+                            handleModuleAccessChange(accessKey, checkedState === true);
+                          }}
                           className="transition-all"
                         />
                       </TableCell>
