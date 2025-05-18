@@ -19,7 +19,6 @@ import { supabase } from '@/integrations/supabase/client';
 export interface Module {
   id: string;
   name: string;
-  level?: string; // Make optional to handle DB responses
   icon?: string; // Make optional to handle DB responses
   key?: string;
   active?: boolean;
@@ -41,31 +40,36 @@ const iconMap: Record<string, any> = {
   FileCheck,
 };
 
-// Function to fetch modules from backend based on level
+// Function to fetch modules from backend based on role type
 export const fetchModules = async (isBackoffice: boolean): Promise<Module[]> => {
   try {
-    const query = supabase
+    // Since there's no level column, we need to adapt our approach
+    // For now, we'll fetch all roles and use predefined lists to 
+    // determine which ones to show for backoffice vs client users
+    const { data, error } = await supabase
       .from('roles')
       .select('*');
-    
-    if (isBackoffice) {
-      query.eq('level', 'backoffice');
-    } else {
-      query.neq('level', 'backoffice');
-    }
-    
-    const { data, error } = await query;
     
     if (error) {
       console.error("Error fetching modules:", error);
       return [];
     }
     
-    // Transform the data to ensure it has the expected fields
-    return data.map(role => ({
+    if (!data || data.length === 0) {
+      return [];
+    }
+    
+    // Define which roles are for backoffice (SaaS owner) vs client users
+    const backofficeRoleKeys = ['superAdmin', 'clientManagement', 'assessmentTemplateAdmin', 'eduSafeResourceAdmin', 'analyticsAdmin'];
+    const clientRoleKeys = ['incidentReporting', 'incidentAdmin', 'assessmentUser', 'assessmentsAdmin', 'employeeVerificationAdmin', 'grievancesAdmin', 'transportSafetyAdmin', 'eduSafeResourceAccess'];
+    
+    // Filter the fetched roles based on whether they're for backoffice or client users
+    return data.filter(role => {
+      const isBackofficeRole = backofficeRoleKeys.includes(role.key);
+      return isBackoffice ? isBackofficeRole : !isBackofficeRole;
+    }).map(role => ({
       id: role.id,
       name: role.name,
-      level: role.level || '',
       icon: role.icon || 'LayoutDashboard',
       key: role.key,
       active: role.active,
@@ -83,7 +87,7 @@ export const convertModulesToSidebarItems = (modules: Module[], permissions: Mod
     // Get the icon component from our mapping, or default to LayoutDashboard
     const IconComponent = module.icon && iconMap[module.icon] ? iconMap[module.icon] : LayoutDashboard;
     
-    // Determine path based on level and name
+    // Determine path based on name
     const path = `${basePath}/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
     
     // Check if user has permission for this module

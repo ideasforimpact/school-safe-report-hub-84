@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { getSaasOwnerItems, getClientItems, fetchModules, convertModulesToSidebarItems, Module } from './sidebarConfig';
+import { getSaasOwnerItems, getClientItems, fetchModules, convertModulesToSidebarItems } from './sidebarConfig';
 import SidebarMenuItem from './SidebarMenuItem';
 import { ModulePermissions } from '@/contexts/auth/types';
 
