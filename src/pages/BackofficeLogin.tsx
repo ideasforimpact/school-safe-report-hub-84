@@ -21,7 +21,7 @@ const BackofficeLogin = () => {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const { login, user, error: authError, clearError } = useBackofficeAuth();
+  const { login: backofficeAuthLogin, user, error: authError, clearError } = useBackofficeAuth();
   const navigate = useNavigate();
 
   // Check if user is already logged in, redirect if they are
@@ -49,10 +49,10 @@ const BackofficeLogin = () => {
     setIsLoading(true);
     
     try {
-      // Call the login function from BackofficeAuthContext
-      console.log("BackofficeLogin: Calling login function with email:", email);
-      let success = await login(email, password);
-      console.log("BackofficeLogin: login function returned:", success);
+      // Call the login function from BackofficeAuthContext with explicit naming
+      console.log("BackofficeLogin: Calling backofficeAuthLogin function with email:", email);
+      let success = await backofficeAuthLogin(email, password);
+      console.log("BackofficeLogin: backofficeAuthLogin function returned:", success);
       
       if (success) {
         navigate('/backoffice/dashboard');
@@ -111,7 +111,9 @@ const BackofficeLogin = () => {
     setIsLoading(true);
 
     try {
-      const success = await login(demoEmail, demoPassword);
+      console.log("BackofficeLogin: Calling backofficeAuthLogin for demo with email:", demoEmail);
+      const success = await backofficeAuthLogin(demoEmail, demoPassword);
+      console.log("BackofficeLogin: backofficeAuthLogin demo login returned:", success);
       
       if (success) {
         toast.success("Demo login successful!");
