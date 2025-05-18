@@ -1,4 +1,3 @@
-
 import { ReactNode, useEffect } from 'react';
 import { ShieldCheck, LogOut } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -38,11 +37,6 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
       navigate('/backoffice/login', { replace: true });
     }
   }, [user, navigate, isInitializing, location.pathname]);
-
-  const handleLogout = async () => {
-    console.log("Backoffice Layout - Logging out user");
-    await logout();
-  };
 
   // Function to safely get the user's initial
   const getUserInitial = () => {

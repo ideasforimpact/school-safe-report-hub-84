@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import { BackofficeUser, BackofficeAuthContextType } from './types';
 import { logoutBackofficeUser } from '@/services/backoffice/authService';
