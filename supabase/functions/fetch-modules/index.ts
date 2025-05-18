@@ -27,22 +27,29 @@ serve(async (req) => {
     // Parse request parameters
     const { level } = await req.json();
     
+    console.log(`Fetching modules with level=${level}`);
+    
     // Query the modules table
     let query = supabase.from('modules').select('*');
     
     if (level === 'backoffice') {
       // For backoffice users, fetch modules with level = 'backoffice'
+      console.log('Fetching backoffice modules');
       query = query.eq('level', 'backoffice');
     } else {
       // For client users, fetch modules with level != 'backoffice'
+      console.log('Fetching client modules');
       query = query.neq('level', 'backoffice');
     }
     
     const { data, error } = await query;
     
     if (error) {
+      console.error('Error fetching modules:', error);
       throw error;
     }
+    
+    console.log(`Successfully fetched ${data?.length || 0} modules`);
     
     // Return the modules data
     return new Response(

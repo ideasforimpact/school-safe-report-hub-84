@@ -18,7 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 export interface Module {
   id: string;
   name: string;
-  icon: string; // We'll always set a default value
+  icon: string; 
   level: string;
   created_at?: string;
   updated_at?: string;
@@ -59,7 +59,7 @@ export const fetchModules = async (isBackoffice: boolean): Promise<Module[]> => 
       return cachedClientModules;
     }
     
-    // Call our edge function instead of querying the database directly
+    // Call our edge function with the appropriate level parameter
     const { data, error } = await supabase.functions.invoke('fetch-modules', {
       body: { level: isBackoffice ? 'backoffice' : 'client' }
     });

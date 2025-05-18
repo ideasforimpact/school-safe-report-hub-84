@@ -59,14 +59,25 @@ const SidebarContent = () => {
       // For SaaS users in backoffice route, fetch backoffice modules
       // For others, fetch client modules
       const isBackofficeFetch = isSaasOwner && isBackofficeRoute;
-      console.log(`Fetching ${isBackofficeFetch ? 'backoffice' : 'client'} modules`);
+      const level = isBackofficeFetch ? 'backoffice' : 'client';
+      console.log(`Fetching ${level} modules`);
       
       // Fetch modules based on the user type and route
       const modules = await fetchModules(isBackofficeFetch);
-      const basePath = isBackofficeFetch ? '/backoffice' : '';
-      const items = convertModulesToSidebarItems(modules, effectivePermissions, basePath);
       
-      setDynamicMenuItems(items);
+      if (modules.length === 0 && !user) {
+        // If no modules and no user, only show dashboard
+        setDynamicMenuItems([{
+          icon: null,
+          label: 'Dashboard',
+          path: '/dashboard',
+          allowed: true
+        }]);
+      } else {
+        const basePath = isBackofficeFetch ? '/backoffice' : '';
+        const items = convertModulesToSidebarItems(modules, effectivePermissions, basePath);
+        setDynamicMenuItems(items);
+      }
       
       // Update the last fetch path to prevent duplicate fetches
       setLastFetchPath(isBackofficeRoute ? 'backoffice' : 'client');
@@ -82,7 +93,7 @@ const SidebarContent = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [isSaasOwner, isBackofficeRoute, effectivePermissions, lastFetchPath]);
+  }, [isSaasOwner, isBackofficeRoute, effectivePermissions, lastFetchPath, user]);
 
   // Fetch modules only when relevant dependencies change
   useEffect(() => {
