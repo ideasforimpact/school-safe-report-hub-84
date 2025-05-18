@@ -138,7 +138,7 @@ export const getSaasOwnerItems = () => [
   {
     icon: ClipboardCheck,
     label: 'Assessment\nTemplates',
-    path: '/backoffice/assessment-templates',
+    path: '/backoffice/assessments/templates',
     allowed: true,
   },
   {
