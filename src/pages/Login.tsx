@@ -100,6 +100,8 @@ const Login = () => {
         options: {
           redirectTo: redirectTo,
           queryParams: {
+            // Force Google to show the account selection screen
+            prompt: 'select_account',
             // Add a timestamp to prevent caching issues
             ts: new Date().getTime().toString()
           }
