@@ -1,5 +1,5 @@
 
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 import { ShieldCheck, LogOut } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth';
@@ -22,19 +22,26 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
   const location = useLocation();
   const { user, logout, isSaasOwner } = useAuth();
   
-  // Redirect if not SaaS owner
-  if (!isSaasOwner) {
-    // Use setTimeout to avoid rendering issues when redirecting
-    setTimeout(() => {
+  // Redirect if not SaaS owner or not logged in
+  useEffect(() => {
+    if (!user) {
+      // User is not logged in at all, redirect to backoffice login
+      toast.error("Please log in to access the backoffice.");
+      navigate('/backoffice/login');
+      return;
+    }
+    
+    if (!isSaasOwner) {
+      // User is logged in but not a SaaS owner
       toast.error("You don't have permission to access the backoffice.");
       navigate('/dashboard');
-    }, 0);
-    return null;
-  }
+      return;
+    }
+  }, [user, isSaasOwner, navigate]);
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate('/backoffice/login');
   };
 
   // Function to safely get the user's initial
@@ -44,6 +51,11 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
     }
     return 'U'; // Default fallback if firstName is undefined
   };
+
+  // If not SaaS owner or not logged in, don't render anything while redirecting
+  if (!user || !isSaasOwner) {
+    return null;
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-100">
@@ -69,9 +81,6 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => navigate('/dashboard')}>
-                      Client Dashboard
-                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={handleLogout} className="text-destructive">
                       <LogOut size={16} className="mr-2" />
                       <span>Logout</span>

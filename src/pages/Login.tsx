@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -291,14 +290,24 @@ const Login = () => {
                 </Button>
               </div>
               
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => navigate('/home')} 
-                className="w-full mt-4 transition-all hover:bg-primary/10"
-              >
-                Back to Home
-              </Button>
+              <div className="flex gap-2 w-full mt-4">
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => navigate('/home')} 
+                  className="flex-1 transition-all hover:bg-primary/10"
+                >
+                  Back to Home
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => navigate('/backoffice/login')} 
+                  className="flex-1 transition-all hover:bg-primary/10"
+                >
+                  Backoffice Login
+                </Button>
+              </div>
             </CardFooter>
           </form>
         </Card>

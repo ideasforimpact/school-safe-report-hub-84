@@ -69,17 +69,7 @@ const Header = () => {
                 </Button>
               )}
               
-              {/* Client Dashboard Link for SaaS Owner in Backoffice */}
-              {isSaasOwner && isBackoffice && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => navigate('/dashboard')}
-                  className="hidden md:flex"
-                >
-                  Client Dashboard
-                </Button>
-              )}
+              {/* Removed Client Dashboard button here */}
 
               {/* Settings Menu - Only visible for admins */}
               {isAdmin && !isSaasOwner && <AdminSettingsMenu />}
