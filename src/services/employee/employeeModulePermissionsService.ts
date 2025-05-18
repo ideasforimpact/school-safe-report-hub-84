@@ -146,7 +146,7 @@ export const updateModulePermissionsInApi = async (
     for (const [moduleName, isEnabled] of Object.entries(modulePermissions)) {
       // Get the module ID for this permission
       const { data: moduleData, error: moduleError } = await supabase
-        .from('modules')
+        .from('roles')
         .select('id')
         .eq('key', moduleName)
         .single();

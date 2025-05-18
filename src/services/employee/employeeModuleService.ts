@@ -13,7 +13,7 @@ export const getEmployeeModulePermissions = async (employeeId: string): Promise<
     // Get all module entries for this employee from the database
     const { data, error } = await supabase
       .from('employee_modules')
-      .select('module_id, modules(key)')
+      .select('module_id, roles(key)')
       .eq('employee_id', employeeId);
 
     if (error) {
@@ -43,8 +43,8 @@ export const getEmployeeModulePermissions = async (employeeId: string): Promise<
     const permissions = { ...defaultPermissions };
 
     data.forEach(moduleEntry => {
-      if (moduleEntry.modules?.key) {
-        const moduleKey = moduleEntry.modules.key as keyof ModulePermissions;
+      if (moduleEntry.roles?.key) {
+        const moduleKey = moduleEntry.roles.key as keyof ModulePermissions;
         if (moduleKey in permissions) {
           permissions[moduleKey] = true;
         }
@@ -89,11 +89,11 @@ export const updateEmployeeModulePermissions = async (employeeId: string, permis
 
     // Get the module IDs for each module key
     const { data: modules, error: moduleError } = await supabase
-      .from('modules')
+      .from('roles')
       .select('id, key');
 
     if (moduleError) {
-      console.error("Error fetching modules:", moduleError);
+      console.error("Error fetching roles:", moduleError);
       throw moduleError;
     }
 
