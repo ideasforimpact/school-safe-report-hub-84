@@ -33,7 +33,7 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
        navigate("/login")
     }
     
-  }, [user, isSaasOwner, navigate]);
+  }, [navigate]);
 
   // If no user or not a SaaS owner, don't render anything while redirecting
   if (!user || !isSaasOwner) {
