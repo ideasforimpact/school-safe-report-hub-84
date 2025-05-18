@@ -13,7 +13,83 @@ import {
   FileCheck
 } from 'lucide-react';
 import { ModulePermissions } from '@/contexts/auth/types';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 
+// Define module type to match database schema
+export interface Module {
+  id: string;
+  name: string;
+  level: string;
+  icon: string;
+  key?: string;
+}
+
+// Map string icon names to Lucide components
+const iconMap: Record<string, any> = {
+  LayoutDashboard,
+  AlertTriangle,
+  Users,
+  ClipboardCheck,
+  FileText,
+  BarChart,
+  Settings,
+  Building2,
+  MessageSquare,
+  Car,
+  FileCheck,
+};
+
+// Function to fetch modules from backend based on level
+export const fetchModules = async (isBackoffice: boolean): Promise<Module[]> => {
+  try {
+    const query = supabase
+      .from('roles')
+      .select('*');
+    
+    if (isBackoffice) {
+      query.eq('level', 'backoffice');
+    } else {
+      query.neq('level', 'backoffice');
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) {
+      console.error("Error fetching modules:", error);
+      return [];
+    }
+    
+    return data || [];
+  } catch (error) {
+    console.error("Error in fetchModules:", error);
+    return [];
+  }
+};
+
+// Convert database modules to sidebar items
+export const convertModulesToSidebarItems = (modules: Module[], permissions: ModulePermissions, basePath: string = '') => {
+  return modules.map(module => {
+    // Get the icon component from our mapping, or default to LayoutDashboard
+    const IconComponent = module.icon && iconMap[module.icon] ? iconMap[module.icon] : LayoutDashboard;
+    
+    // Determine path based on level and name
+    const path = `${basePath}/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
+    
+    // Check if user has permission for this module
+    const key = module.key as keyof ModulePermissions | undefined;
+    const allowed = key ? (permissions[key] || false) : true;
+    
+    return {
+      icon: IconComponent,
+      label: module.name,
+      path,
+      allowed,
+    };
+  });
+};
+
+// These functions are kept for backward compatibility
 // SaaS Owner (Backoffice) Menu Items
 export const getSaasOwnerItems = () => [
   {
