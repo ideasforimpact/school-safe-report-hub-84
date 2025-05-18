@@ -39,29 +39,6 @@ export const BackofficeAuthProvider: React.FC<BackofficeAuthProviderProps> = ({ 
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
 
-  // Check for existing session on mount
-  useEffect(() => {
-    const checkExistingSession = () => {
-      try {
-        console.log("BackofficeAuthProvider: Checking existing session");
-        const storedUser = sessionStorage.getItem('backoffice_user');
-        if (storedUser) {
-          console.log("BackofficeAuthProvider: Found stored user in session");
-          const parsedUser = JSON.parse(storedUser);
-          setUser(parsedUser);
-        } else {
-          console.log("BackofficeAuthProvider: No user found in session");
-        }
-      } catch (err) {
-        console.error("Error checking backoffice session:", err);
-        // If there's an error parsing, clear the session
-        sessionStorage.removeItem('backoffice_user');
-      }
-    };
-
-    checkExistingSession();
-  }, []);
-
   // Login function stub - actual implementation moved to BackofficeLogin
   const login = async (email: string, password: string): Promise<boolean> => {
     console.log("⚠️ BackofficeAuthProvider.login: This function is now just a stub. Actual implementation moved to BackofficeLogin");
@@ -74,8 +51,6 @@ export const BackofficeAuthProvider: React.FC<BackofficeAuthProviderProps> = ({ 
     try {
       await logoutBackofficeUser();
       setUser(null);
-      // Clear session storage
-      sessionStorage.removeItem('backoffice_user');
       // Navigate to login page
       navigate('/backoffice/login');
       toast.info("You have been logged out");

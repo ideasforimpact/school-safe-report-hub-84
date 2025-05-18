@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -59,11 +58,9 @@ const BackofficeLogin = () => {
       console.log("BackofficeLogin: loginBackofficeUser returned:", backofficeUser ? "User object received" : "Failed - No user returned");
       
       if (backofficeUser) {
-        console.log("BackofficeLogin: Setting user in context and session storage");
+        console.log("BackofficeLogin: Setting user in context");
         // Update the context with the user
         setUser(backofficeUser);
-        // Store user in session storage
-        sessionStorage.setItem('backoffice_user', JSON.stringify(backofficeUser));
         
         toast.success("Login successful!");
         navigate('/backoffice/dashboard');
@@ -130,8 +127,6 @@ const BackofficeLogin = () => {
       if (backofficeUser) {
         // Update the context with the user
         setUser(backofficeUser);
-        // Store user in session storage
-        sessionStorage.setItem('backoffice_user', JSON.stringify(backofficeUser));
         
         toast.success("Demo login successful!");
         navigate("/backoffice/dashboard");

@@ -134,9 +134,6 @@ export const logoutBackofficeUser = async (): Promise<void> => {
     // Just clear Supabase session for now
     await supabase.auth.signOut();
     
-    // Clear any session storage
-    sessionStorage.removeItem('backoffice_user');
-    
     toast.info("You have been logged out");
   } catch (error) {
     console.error("Error during backoffice logout:", error);
