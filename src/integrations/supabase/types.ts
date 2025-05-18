@@ -325,7 +325,7 @@ export type Database = {
             foreignKeyName: "employee_modules_module_id_fkey"
             columns: ["module_id"]
             isOneToOne: false
-            referencedRelation: "modules"
+            referencedRelation: "roles"
             referencedColumns: ["id"]
           },
         ]
@@ -744,6 +744,33 @@ export type Database = {
         ]
       }
       modules: {
+        Row: {
+          created_at: string
+          icon: string | null
+          id: string
+          level: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          icon?: string | null
+          id?: string
+          level: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          icon?: string | null
+          id?: string
+          level?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      roles: {
         Row: {
           active: boolean
           description: string | null
