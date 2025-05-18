@@ -23,11 +23,17 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
   const { user, logout, isSaasOwner } = useAuth();
   
   useEffect(() => {
+    console.log("logged information",user,isSaasOwner)
     // Check permission on component mount
     if (user && !isSaasOwner) {
       toast.error("You don't have permission to access the backoffice.");
       navigate('/dashboard');
     }
+
+    if(!user && !isSaasOwner){
+       navigate("/login")
+    }
+    
   }, [user, isSaasOwner, navigate]);
 
   // If no user or not a SaaS owner, don't render anything while redirecting
