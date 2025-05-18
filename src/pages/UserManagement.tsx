@@ -61,20 +61,42 @@ const UserManagement = () => {
       </div>
 
       <UserList 
-        searchQuery={searchQuery} 
-        onEditUser={handleEditUser} 
+        users={[]} 
+        onEditClick={handleEditUser}
+        onDeleteUser={(id) => console.log('Delete user', id)}
+        onDeactivateUser={(id) => console.log('Deactivate user', id)}
       />
 
       <AddUserDialog 
-        open={isAddDialogOpen} 
-        onOpenChange={setIsAddDialogOpen}
+        isOpen={isAddDialogOpen} 
+        setIsOpen={setIsAddDialogOpen}
+        formData={{
+          firstName: '',
+          lastName: '',
+          email: '',
+          role: 'reporter',
+          modulePermissions: {}
+        }}
+        setFormData={() => {}}
+        onSubmit={() => {}}
+        resetForm={() => {}}
       />
       
       {selectedUser && (
         <EditUserDialog 
-          open={isEditDialogOpen} 
-          onOpenChange={setIsEditDialogOpen}
+          isOpen={isEditDialogOpen} 
+          setIsOpen={setIsEditDialogOpen}
           user={selectedUser}
+          formData={{
+            firstName: '',
+            lastName: '',
+            email: '',
+            role: 'reporter',
+            modulePermissions: {}
+          }}
+          setFormData={() => {}}
+          onSubmit={() => {}}
+          resetForm={() => {}}
         />
       )}
     </div>
