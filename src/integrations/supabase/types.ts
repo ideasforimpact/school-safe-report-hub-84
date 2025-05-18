@@ -78,7 +78,6 @@ export type Database = {
           enabled: boolean
           id: string
           module_id: string | null
-          module_key: string
         }
         Insert: {
           access_level?: Json
@@ -86,7 +85,6 @@ export type Database = {
           enabled?: boolean
           id?: string
           module_id?: string | null
-          module_key: string
         }
         Update: {
           access_level?: Json
@@ -94,7 +92,6 @@ export type Database = {
           enabled?: boolean
           id?: string
           module_id?: string | null
-          module_key?: string
         }
         Relationships: [
           {
@@ -990,6 +987,10 @@ export type Database = {
       decrypt_document_number: {
         Args: { encrypted_doc_number: string }
         Returns: string
+      }
+      drop_module_key_column: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       encrypt_document_number: {
         Args: { doc_number: string }

@@ -199,8 +199,22 @@ export const useClientManagement = () => {
     }
     
     try {
+      // Create module info array from moduleAccess
+      const moduleInfoArray = Object.entries(formData.moduleAccess)
+        .filter(([_, enabled]) => enabled) // Only include enabled modules
+        .map(([key, _]) => ({
+          name: key, // Use the key as the module name
+          module_id: "", // Will be looked up in the edge function
+          is_admin: key.includes("Admin") // Assume modules with "Admin" are admin modules
+        }));
+      
       // First, add the client and get the client object back with proper typing
-      const result = await addClient(formData);
+      const result = await addClient({
+        ...formData,
+        // Include the moduleInfoArray for the edge function
+        modules: moduleInfoArray
+      });
+      
       const newClient = result as unknown as Client; // Cast to Client type
       
       if (newClient && newClient.id) {
@@ -295,8 +309,20 @@ export const useClientManagement = () => {
     }
     
     try {
-      // Update the client first
-      await updateClient(currentClient.id, formData);
+      // Create module info array from moduleAccess
+      const moduleInfoArray = Object.entries(formData.moduleAccess)
+        .filter(([_, enabled]) => enabled) // Only include enabled modules
+        .map(([key, _]) => ({
+          name: key, // Use the key as the module name
+          module_id: "", // Will be looked up in the edge function
+          is_admin: key.includes("Admin") // Assume modules with "Admin" are admin modules
+        }));
+      
+      // Update the client first with the moduleInfoArray
+      await updateClient(currentClient.id, {
+        ...formData,
+        modules: moduleInfoArray
+      });
       
       // Update or create the super admin employee
       await updateEmployeeFromSuperAdminEmail(currentClient.id, formData.superAdminEmail);

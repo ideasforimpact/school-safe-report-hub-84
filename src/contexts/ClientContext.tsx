@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { OAuthProviderName } from '@/utils/authProviders';
 import { ModulePermissions } from '@/contexts/auth/types';
@@ -118,35 +117,31 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     };
 
     clientModules.forEach(module => {
-      if (module.enabled) {
-        // Map module_key to the appropriate permission
-        switch (module.module_key) {
-          case 'superAdmin':
+      if (module.enabled && module.access_level && module.module_id) {
+        // Map the module to the appropriate permission based on access_level
+        // This will depend on your module structure in the database
+        
+        // For example:
+        // If you have a mapping of module_id to permission name, you would use that here
+        // Since we don't have the exact mapping, we'll rely on the fact that your
+        // module_id should correspond to a specific permission
+        
+        // Assuming access_level contains an isAdmin field
+        const isAdmin = module.access_level.isAdmin || false;
+        
+        // You'll need to replace this with your actual module mapping logic
+        // based on the module_id values in your database
+        switch (module.module_id) {
+          case 'your-superadmin-module-id':
             permissions.superAdmin = true;
             break;
-          case 'incidentReporting':
+          case 'your-incident-reporting-module-id':
             permissions.incidentReporting = true;
             break;
-          case 'incidentAdmin':
-            permissions.incidentAdmin = true;
-            break;
-          case 'assessmentUser':
-            permissions.assessmentUser = true;
-            break;
-          case 'assessmentsAdmin':
-            permissions.assessmentsAdmin = true;
-            break;
-          case 'employeeVerificationAdmin':
-            permissions.employeeVerificationAdmin = true;
-            break;
-          case 'grievancesAdmin':
-            permissions.grievancesAdmin = true;
-            break;
-          case 'transportSafetyAdmin':
-            permissions.transportSafetyAdmin = true;
-            break;
-          case 'eduSafeResourceAccess':
-            permissions.eduSafeResourceAccess = true;
+          // Add more cases as needed
+          default:
+            // If you don't have an exact mapping yet, you can log it
+            console.log(`Unknown module_id: ${module.module_id}`);
             break;
         }
       }
@@ -186,25 +181,32 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       }
 
       if (data) {
-        // Now save the module access to client_modules table
-        const moduleEntries = Object.entries(clientData.moduleAccess || {});
-        
-        // Prepare module entries for insertion
-        const moduleInserts = moduleEntries
-          .filter(([_, enabled]) => enabled) // Only include enabled modules
-          .map(([key, _]) => ({
-            client_id: data.id,
-            module_key: key,
-            enabled: true
-          }));
-        
-        if (moduleInserts.length > 0) {
-          const { error: moduleError } = await supabase
-            .from('client_modules')
-            .insert(moduleInserts);
+        // Now prepare module access data
+        if (clientData.moduleAccess) {
+          // Convert module permissions to module info array
+          const moduleInfoArray = Object.entries(clientData.moduleAccess)
+            .filter(([_, enabled]) => enabled) // Only include enabled modules
+            .map(([key, _]) => ({
+              name: key, // Use the key as the module name
+              module_id: "", // Will be looked up in the edge function
+              is_admin: key.includes("Admin") // Assume modules with "Admin" are admin modules
+            }));
+
+          // Call the client-management edge function to handle modules
+          const { error: modulesError } = await supabase.functions.invoke('client-management', {
+            body: { 
+              operation: 'create',
+              client: {
+                id: data.id, 
+                moduleAccess: clientData.moduleAccess,
+                modules: moduleInfoArray,
+                superAdminEmail: clientData.superAdminEmail
+              }
+            }
+          });
           
-          if (moduleError) {
-            console.error('Error saving client modules:', moduleError);
+          if (modulesError) {
+            console.error('Error saving client modules:', modulesError);
             toast.error('Client created but module access could not be saved');
           }
         }
@@ -255,39 +257,33 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         throw error;
       }
 
-      // Handle module access updates
+      // Handle module access updates through edge function
       if (updates.moduleAccess) {
-        // Delete existing module entries
-        const { error: deleteError } = await supabase
-          .from('client_modules')
-          .delete()
-          .eq('client_id', id);
-        
-        if (deleteError) {
-          console.error('Error deleting existing client modules:', deleteError);
-        }
-        
-        // Add new module entries
-        const moduleEntries = Object.entries(updates.moduleAccess);
-        
-        // Prepare module entries for insertion
-        const moduleInserts = moduleEntries
+        // Convert module permissions to module info array
+        const moduleInfoArray = Object.entries(updates.moduleAccess)
           .filter(([_, enabled]) => enabled) // Only include enabled modules
           .map(([key, _]) => ({
-            client_id: id,
-            module_key: key,
-            enabled: true
+            name: key, // Use the key as the module name
+            module_id: "", // Will be looked up in the edge function
+            is_admin: key.includes("Admin") // Assume modules with "Admin" are admin modules
           }));
-        
-        if (moduleInserts.length > 0) {
-          const { error: moduleError } = await supabase
-            .from('client_modules')
-            .insert(moduleInserts);
-          
-          if (moduleError) {
-            console.error('Error saving client modules:', moduleError);
-            toast.error('Client updated but module access could not be updated');
+
+        // Call client-management edge function for module handling
+        const { error: modulesError } = await supabase.functions.invoke('client-management', {
+          body: { 
+            operation: 'update',
+            client: {
+              id: id, 
+              moduleAccess: updates.moduleAccess,
+              modules: moduleInfoArray,
+              superAdminEmail: updates.superAdminEmail
+            }
           }
+        });
+        
+        if (modulesError) {
+          console.error('Error updating client modules:', modulesError);
+          toast.error('Client updated but module access could not be updated');
         }
       }
 
