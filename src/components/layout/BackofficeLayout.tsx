@@ -1,5 +1,5 @@
 
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { ShieldCheck, LogOut } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth';
@@ -21,21 +21,47 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout, isSaasOwner } = useAuth();
+  const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
-    console.log("logged information",user,isSaasOwner)
-    // Check permission on component mount
-    if (user && !isSaasOwner) {
-      toast.error("You don't have permission to access the backoffice.");
-      navigate('/dashboard');
-    }
-    else if(!user && !isSaasOwner){
-       navigate("/login")
-    }
+    console.log("BackofficeLayout mounted, auth state:", { user, isSaasOwner });
     
-  }, []);
+    // Add a small delay to ensure auth state is stable
+    const timer = setTimeout(() => {
+      console.log("Authentication check after delay:", { 
+        user: user?.email || "null", 
+        isSaasOwner 
+      });
+      
+      // Check permission after a delay to ensure auth state has stabilized
+      if (!user) {
+        console.log("No user found, redirecting to login");
+        toast.error("Please log in to access the backoffice.");
+        navigate('/login', { state: { from: location } });
+      } else if (!isSaasOwner) {
+        console.log("User found but not SaaS owner, redirecting to dashboard");
+        toast.error("You don't have permission to access the backoffice.");
+        navigate('/dashboard');
+      }
+      
+      setIsLoading(false);
+    }, 100); // Small delay to ensure auth has stabilized
+    
+    return () => clearTimeout(timer);
+  }, [user, isSaasOwner, navigate, location]);
 
-  // If no user or not a SaaS owner, don't render anything while redirecting
+  // If still loading, show a minimal loading state
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <div className="text-center">
+          <p className="text-gray-500">Verifying access...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // If no user or not a SaaS owner, render nothing as we're redirecting
   if (!user || !isSaasOwner) {
     return null;
   }

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
 import { AuthProvider } from '@/contexts/auth'; 
 import { ClientProvider } from '@/contexts/ClientContext';
@@ -42,17 +42,11 @@ import EmployeeDetailPage from '@/pages/employee-verification/EmployeeDetailPage
 import UploadDocumentPage from '@/pages/employee-verification/UploadDocumentPage';
 import VerificationDashboardPage from '@/pages/employee-verification/VerificationDashboardPage';
 
-// Layout for Backoffice
-import BackofficeLayout from '@/components/layout/BackofficeLayout';
+// Backoffice Pages
+import BackofficeDashboard from '@/pages/backoffice/BackofficeDashboard';
 
-// Backoffice Wrapper Component for routing
-const BackofficeWrapper = ({ component: Component }) => {
-  return (
-    <BackofficeLayout>
-      <Component />
-    </BackofficeLayout>
-  );
-};
+// Backoffice protector component
+import BackofficeLayout from '@/components/layout/BackofficeLayout';
 
 function App() {
   return (
@@ -116,21 +110,70 @@ function App() {
                       <Route path="/employee-verification/:employeeId/upload-document" element={<UploadDocumentPage />} />
                       <Route path="/employee-verification/dashboard" element={<VerificationDashboardPage />} />
 
-                      {/* Backoffice routes - duplicated routes with /backoffice prefix */}
-                      <Route path="/backoffice/dashboard" element={<BackofficeWrapper component={Dashboard} />} />
-                      <Route path="/backoffice/clients" element={<BackofficeWrapper component={ClientManagement} />} />
+                      {/* Backoffice routes */}
+                      <Route path="/backoffice/dashboard" element={
+                        <BackofficeLayout>
+                          <BackofficeDashboard />
+                        </BackofficeLayout>
+                      } />
+                      
+                      <Route path="/backoffice/clients" element={
+                        <BackofficeLayout>
+                          <ClientManagement />
+                        </BackofficeLayout>
+                      } />
                       
                       {/* Backoffice Assessment routes */}
-                      <Route path="/backoffice/assessments" element={<BackofficeWrapper component={AssessmentsPage} />} />
-                      <Route path="/backoffice/assessments/templates" element={<BackofficeWrapper component={AssessmentsPage} />} />
-                      <Route path="/backoffice/assessments/templates/:templateId" element={<BackofficeWrapper component={AssessmentsPage} />} />
-                      <Route path="/backoffice/assessments/templates/new" element={<BackofficeWrapper component={AssessmentsPage} />} />
-                      <Route path="/backoffice/assessments/templates/:templateId/edit" element={<BackofficeWrapper component={AssessmentsPage} />} />
-                      <Route path="/backoffice/assessments/templates/:templateId/assign" element={<BackofficeWrapper component={AssessmentsPage} />} />
-                      <Route path="/backoffice/assessments/templates/:templateId/bulk-assign" element={<BackofficeWrapper component={AssessmentsPage} />} />
-                      <Route path="/backoffice/assessments/assignments" element={<BackofficeWrapper component={AssessmentsPage} />} />
-                      <Route path="/backoffice/assessments/results" element={<BackofficeWrapper component={AssessmentsPage} />} />
-                      <Route path="/backoffice/assessments/respond/:assignmentId" element={<BackofficeWrapper component={AssessmentResponsePage} />} />
+                      <Route path="/backoffice/assessments" element={
+                        <BackofficeLayout>
+                          <AssessmentsPage />
+                        </BackofficeLayout>
+                      } />
+                      <Route path="/backoffice/assessments/templates" element={
+                        <BackofficeLayout>
+                          <AssessmentsPage />
+                        </BackofficeLayout>
+                      } />
+                      <Route path="/backoffice/assessments/templates/:templateId" element={
+                        <BackofficeLayout>
+                          <AssessmentsPage />
+                        </BackofficeLayout>
+                      } />
+                      <Route path="/backoffice/assessments/templates/new" element={
+                        <BackofficeLayout>
+                          <AssessmentsPage />
+                        </BackofficeLayout>
+                      } />
+                      <Route path="/backoffice/assessments/templates/:templateId/edit" element={
+                        <BackofficeLayout>
+                          <AssessmentsPage />
+                        </BackofficeLayout>
+                      } />
+                      <Route path="/backoffice/assessments/templates/:templateId/assign" element={
+                        <BackofficeLayout>
+                          <AssessmentsPage />
+                        </BackofficeLayout>
+                      } />
+                      <Route path="/backoffice/assessments/templates/:templateId/bulk-assign" element={
+                        <BackofficeLayout>
+                          <AssessmentsPage />
+                        </BackofficeLayout>
+                      } />
+                      <Route path="/backoffice/assessments/assignments" element={
+                        <BackofficeLayout>
+                          <AssessmentsPage />
+                        </BackofficeLayout>
+                      } />
+                      <Route path="/backoffice/assessments/results" element={
+                        <BackofficeLayout>
+                          <AssessmentsPage />
+                        </BackofficeLayout>
+                      } />
+                      <Route path="/backoffice/assessments/respond/:assignmentId" element={
+                        <BackofficeLayout>
+                          <AssessmentResponsePage />
+                        </BackofficeLayout>
+                      } />
 
                       {/* 404 route */}
                       <Route path="*" element={<NotFound />} />

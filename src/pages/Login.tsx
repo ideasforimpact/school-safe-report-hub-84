@@ -24,7 +24,7 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
-  const { login, authError, user, handleUserAuthentication } = useAuth();
+  const { login, authError, user, handleUserAuthentication, isSaasOwner } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -32,20 +32,22 @@ const Login = () => {
 
   // Check if user is already logged in, redirect if they are
   useEffect(() => {
-    console.log("👤 User state changed:", user?.email);
+    console.log("👤 User state changed:", user?.email, "isSaasOwner:", isSaasOwner);
     if (user) {
-      console.log("🚀 Redirecting logged-in user to dashboard");
+      console.log("🚀 Redirecting logged-in user");
       // Get the intended destination from location state or use dashboard as default
       const from = location.state?.from?.pathname || "/dashboard";
-
-      if(user?.role === "saas_owner"){
-         navigate("/backoffice/dashboard");
-      }
-      else{
+      
+      // If user is SaaS owner, redirect to backoffice dashboard
+      if (isSaasOwner) {
+        console.log("Redirecting SaaS owner to backoffice dashboard");
+        navigate("/backoffice/dashboard", { replace: true });
+      } else {
+        console.log("Redirecting standard user to dashboard");
         navigate('/dashboard', { replace: true });
       }
     }
-  }, [user, navigate, location.state]);
+  }, [user, navigate, location.state, isSaasOwner]);
 
   // Listen for auth errors from context
   useEffect(() => {
@@ -121,6 +123,7 @@ const Login = () => {
     }
   };
 
+  // This function is kept for demo purposes but not displayed in UI
   const handleDemoLogin = async (demoEmail: string, demoPassword: string) => {
     // First validate that this is a valid demo credential
     const isValidDemo = DEMO_CREDENTIALS.some(cred => 
@@ -297,42 +300,6 @@ const Login = () => {
             </CardFooter>
           </form>
         </Card>
-
-        {/* Commenting out the demo credentials section as requested */}
-        {/*
-        <div className="text-center mt-6 text-sm text-gray-600 p-4 bg-white/80 rounded-md shadow-sm">
-          <p>Demo Credentials:</p>
-          <div className="mt-2 space-y-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="w-full text-xs" 
-              onClick={() => handleDemoLogin("owner@saasplatform.com", "owner123")}
-              disabled={isLoading || googleLoading}
-            >
-              Login as SaaS Owner
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="w-full text-xs" 
-              onClick={() => handleDemoLogin("admin@school.edu", "admin123")}
-              disabled={isLoading || googleLoading}
-            >
-              Login as Admin
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="w-full text-xs" 
-              onClick={() => handleDemoLogin("reporter@school.edu", "reporter123")}
-              disabled={isLoading || googleLoading}
-            >
-              Login as Reporter
-            </Button>
-          </div>
-        </div>
-        */}
       </div>
     </div>
   );
