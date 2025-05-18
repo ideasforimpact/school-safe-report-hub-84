@@ -4,8 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { 
   loginUser, 
-  saveUserToStorage,
-  changeUserPassword as changePassword
+  changeUserPassword as changePassword,
+  saveUsersToStorage
 } from '@/services/auth/authService';
 import { 
   addNewUser, 
@@ -149,7 +149,7 @@ export function useAuthHandlers({
       
       setUsers(updatedUsers);
       setUser(excludePasswordFromUser(updatedUser));
-      saveUserToStorage(excludePasswordFromUser(updatedUser));
+      saveUsersToStorage(updatedUsers);
       console.log("User session updated");
     } else {
       console.log("New user via SSO, creating account");
@@ -205,7 +205,7 @@ export function useAuthHandlers({
       const updatedUsers = [...users, newUser];
       setUsers(updatedUsers);
       setUser(excludePasswordFromUser(newUser));
-      saveUserToStorage(excludePasswordFromUser(newUser));
+      saveUsersToStorage(updatedUsers);
       console.log("New user account created");
     }
     
@@ -283,7 +283,7 @@ export function useAuthHandlers({
         }
         
         setUser(loggedInUser);
-        saveUserToStorage(loggedInUser);
+        saveUsersToStorage([loggedInUser]);
         setAuthError(null);
         
         // Toast is now handled by the auth state change listener
@@ -309,6 +309,7 @@ export function useAuthHandlers({
       );
       if (updatedUsers) {
         setUsers(updatedUsers);
+        saveUsersToStorage(updatedUsers);
       }
     } catch (error) {
       console.error("Error adding user:", error);
@@ -321,13 +322,14 @@ export function useAuthHandlers({
       const updatedUsers = await updateExistingUser(users, id, updates);
       if (updatedUsers) {
         setUsers(updatedUsers);
+        saveUsersToStorage(updatedUsers);
         
         // If the currently logged-in user is being updated, update their session too
         if (user && user.id === id) {
           const { password, ...updatesWithoutPassword } = updates;
           const updatedUser = { ...user, ...updatesWithoutPassword };
           setUser(updatedUser);
-          saveUserToStorage(updatedUser);
+          saveUsersToStorage([updatedUser]);
         }
       }
     } catch (error) {
@@ -339,6 +341,7 @@ export function useAuthHandlers({
     const updatedUsers = deleteExistingUser(users, id, user?.id);
     if (updatedUsers) {
       setUsers(updatedUsers);
+      saveUsersToStorage(updatedUsers);
     }
   };
 
@@ -346,6 +349,7 @@ export function useAuthHandlers({
     const updatedUsers = deactivateExistingUser(users, id, user?.id);
     if (updatedUsers) {
       setUsers(updatedUsers);
+      saveUsersToStorage(updatedUsers);
       
       // If the currently logged-in user is being deactivated, log them out
       if (user && user.id === id) {
@@ -363,6 +367,7 @@ export function useAuthHandlers({
     });
     
     setUsers(updatedUsers);
+    saveUsersToStorage(updatedUsers);
   };
   
   const logout = async () => {
@@ -388,6 +393,7 @@ export function useAuthHandlers({
     const updatedUsers = changePassword(users, user.id, currentPassword, newPassword);
     if (updatedUsers) {
       setUsers(updatedUsers);
+      saveUsersToStorage(updatedUsers);
       return true;
     }
 
