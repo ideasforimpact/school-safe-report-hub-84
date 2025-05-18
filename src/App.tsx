@@ -6,7 +6,7 @@ import { AuthProvider } from '@/contexts/auth';
 import { ClientProvider } from '@/contexts/ClientContext';
 import { EmployeeProvider } from './contexts/employee/EmployeeContext';
 import { StudentProvider } from './contexts/StudentContext';
-import { IncidentProvider } from './contexts/incident'; // Fixed import path
+import { IncidentProvider } from './contexts/incident';
 import { EmployeeVerificationProvider } from './contexts/employee-verification';
 import { FacilityProvider } from './contexts/FacilityContext';
 import { AssessmentProvider } from '@/contexts/assessment/AssessmentContext';
@@ -36,11 +36,18 @@ import AssessmentsPage from '@/pages/AssessmentsPage';
 import AssessmentResponsePage from '@/pages/AssessmentResponsePage';
 import IncidentConfiguration from '@/pages/IncidentConfiguration';
 
+// Backoffice pages
+import AssessmentTemplatesManagementPage from '@/pages/backoffice/AssessmentTemplatesManagementPage';
+import EduSafeResourcesManagementPage from '@/pages/backoffice/EduSafeResourcesManagementPage';
+import BackofficeAnalytics from '@/pages/backoffice/BackofficeAnalytics';
+import BackofficeSettings from '@/pages/backoffice/BackofficeSettings';
+
 // Employee Verification Pages
 import EmployeeVerificationPage from '@/pages/employee-verification/EmployeeVerificationPage';
 import EmployeeDetailPage from '@/pages/employee-verification/EmployeeDetailPage';
 import UploadDocumentPage from '@/pages/employee-verification/UploadDocumentPage';
 import VerificationDashboardPage from '@/pages/employee-verification/VerificationDashboardPage';
+import EduSafeResourcesPage from '@/pages/edusafe/EduSafeResourcesPage';
 
 // Layout for Backoffice
 import BackofficeLayout from '@/components/layout/BackofficeLayout';
@@ -104,6 +111,9 @@ function App() {
                       <Route path="/assessments/results" element={<AssessmentsPage />} />
                       <Route path="/assessments/respond/:assignmentId" element={<AssessmentResponsePage />} />
 
+                      {/* EduSafe Resources routes */}
+                      <Route path="/edusafe-resources" element={<EduSafeResourcesPage />} />
+
                       {/* Transport Safety routes */}
                       <Route path="/transport-safety" element={<TransportSafetyPage />} />
                       <Route path="/transport-safety/documents" element={<DocumentsPage />} />
@@ -116,9 +126,22 @@ function App() {
                       <Route path="/employee-verification/:employeeId/upload-document" element={<UploadDocumentPage />} />
                       <Route path="/employee-verification/dashboard" element={<VerificationDashboardPage />} />
 
-                      {/* Backoffice routes - duplicated routes with /backoffice prefix */}
+                      {/* Backoffice routes */}
+                      <Route path="/backoffice" element={<BackofficeWrapper component={Dashboard} />} />
                       <Route path="/backoffice/dashboard" element={<BackofficeWrapper component={Dashboard} />} />
                       <Route path="/backoffice/clients" element={<BackofficeWrapper component={ClientManagement} />} />
+                      
+                      {/* Backoffice - AssessmentTemplates route (matching the original URL structure) */}
+                      <Route path="/backoffice/assessment-templates" element={<AssessmentTemplatesManagementPage />} />
+                      
+                      {/* Backoffice - EduSafe Resources route */}
+                      <Route path="/backoffice/edusafe-resources" element={<EduSafeResourcesManagementPage />} />
+                      
+                      {/* Backoffice - Analytics route */}
+                      <Route path="/backoffice/analytics" element={<BackofficeAnalytics />} />
+                      
+                      {/* Backoffice - Settings route */}
+                      <Route path="/backoffice/settings" element={<BackofficeSettings />} />
                       
                       {/* Backoffice Assessment routes */}
                       <Route path="/backoffice/assessments" element={<BackofficeWrapper component={AssessmentsPage} />} />
