@@ -6,7 +6,6 @@ import { ModulePermissions } from '@/contexts/auth/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Loader2 } from 'lucide-react';
-import { Badge } from "@/components/ui/badge";
 
 interface Module {
   id: string;
@@ -85,32 +84,6 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
     return key.toLowerCase().includes('admin');
   };
 
-  // Determine access types available for a module
-  const getAvailableAccessTypes = (moduleName: string) => {
-    // Convert module name to base key (without Admin suffix)
-    const baseKey = moduleName.toLowerCase()
-      .replace(/\s(.)/g, ($1) => $1.toUpperCase())
-      .replace(/\s/g, '')
-      .replace(/^(.)/, ($1) => $1.toLowerCase());
-    
-    const adminKey = `${baseKey}Admin` as keyof ModulePermissions;
-    const userKey = baseKey as keyof ModulePermissions;
-    
-    const result = [];
-    
-    // Check if user access exists
-    if (userKey in ModulePermissions.prototype) {
-      result.push({ key: userKey, type: 'User' });
-    }
-    
-    // Check if admin access exists
-    if (adminKey in ModulePermissions.prototype) {
-      result.push({ key: adminKey, type: 'Admin' });
-    }
-    
-    return result;
-  };
-
   return (
     <div className="space-y-4">
       <div className="space-y-2">
@@ -133,41 +106,38 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
               </TableHeader>
               <TableBody>
                 {modules.map((module) => {
-                  const accessTypes = getAvailableAccessTypes(module.name);
+                  const accessKey = getAccessKeyFromModuleName(module.name);
+                  const checked = formData.moduleAccess[accessKey] || false;
+                  const isAdmin = isAdminKey(accessKey);
                   
-                  return accessTypes.map(({ key, type }) => {
-                    const accessKey = key as keyof ModulePermissions;
-                    const checked = formData.moduleAccess[accessKey] || false;
-                    
-                    return (
-                      <TableRow key={`${module.id}-${key}`} className="h-14">
-                        <TableCell>
-                          <Checkbox 
-                            id={`module-${accessKey}`}
-                            checked={checked}
-                            onCheckedChange={(checked) => 
-                              handleModuleAccessChange(accessKey, checked === true)
-                            }
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <label 
-                            htmlFor={`module-${accessKey}`}
-                            className="text-sm font-medium cursor-pointer"
-                          >
-                            {module.name}
-                          </label>
-                        </TableCell>
-                        <TableCell>
-                          {type === 'Admin' ? (
-                            <Badge variant="success" className="text-xs">Admin</Badge>
-                          ) : (
-                            <Badge variant="secondary" className="text-xs">User</Badge>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    );
-                  });
+                  return (
+                    <TableRow key={module.id} className="h-14">
+                      <TableCell>
+                        <Checkbox 
+                          id={`module-${accessKey}`}
+                          checked={checked}
+                          onCheckedChange={(checked) => 
+                            handleModuleAccessChange(accessKey, checked === true)
+                          }
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <label 
+                          htmlFor={`module-${accessKey}`}
+                          className="text-sm font-medium cursor-pointer"
+                        >
+                          {module.name}
+                        </label>
+                      </TableCell>
+                      <TableCell>
+                        {isAdmin ? (
+                          <span className="text-xs bg-green-100 text-green-800 rounded-full px-2 py-1">Admin</span>
+                        ) : (
+                          <span className="text-xs bg-blue-100 text-blue-800 rounded-full px-2 py-1">User</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
                 })}
               </TableBody>
             </Table>
