@@ -1,4 +1,3 @@
-
 import { 
   LayoutDashboard, 
   AlertTriangle,
@@ -60,41 +59,30 @@ export const fetchModules = async (isBackoffice: boolean): Promise<Module[]> => 
       return cachedClientModules;
     }
     
-    // Fetch modules from database with level filter for backoffice or client
-    const { data, error } = await supabase
-      .from('modules')
-      .select('*')
-      .eq('level', isBackoffice ? 'backoffice' : 'client');
+    // Call our edge function instead of querying the database directly
+    const { data, error } = await supabase.functions.invoke('fetch-modules', {
+      body: { level: isBackoffice ? 'backoffice' : 'client' }
+    });
     
     if (error) {
       console.error("Error fetching modules:", error);
       return [];
     }
     
-    if (!data || data.length === 0) {
+    if (!data || !data.modules || data.modules.length === 0) {
       console.log(`No modules found with level ${isBackoffice ? 'backoffice' : 'client'}`);
       return [];
     }
     
-    // Map the fetched data to include icon property
-    const mappedData: Module[] = data.map(module => ({
-      id: module.id,
-      name: module.name,
-      icon: module.icon || 'LayoutDashboard', // Always provide a default icon
-      level: module.level,
-      created_at: module.created_at,
-      updated_at: module.updated_at
-      // We don't map key or description as they don't exist in the modules table
-    }));
-    
     // Cache the results
+    const modules = data.modules;
     if (isBackoffice) {
-      cachedBackofficeModules = mappedData;
+      cachedBackofficeModules = modules;
     } else {
-      cachedClientModules = mappedData;
+      cachedClientModules = modules;
     }
     
-    return mappedData;
+    return modules;
   } catch (error) {
     console.error("Error in fetchModules:", error);
     return [];
