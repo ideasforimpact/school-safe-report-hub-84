@@ -33,6 +33,8 @@ const Login = () => {
     if (user) {
       // Get the intended destination from location state or use dashboard as default
       const from = location.state?.from?.pathname || "/dashboard";
+
+      console.log(user,"user")
       
       // Only redirect to backoffice paths if the user is a SaaS owner
       if (from.includes('/backoffice') && user.role !== 'saas_owner') {
@@ -80,6 +82,7 @@ const Login = () => {
     try {
       console.log("Attempting to log in with:", email, password);
       const success = await login(email, password);
+      console.log(sucess,"success")
       if (success) {
         // Redirect logic is handled in the useEffect that watches for user changes
         // This prevents redirection code duplication
