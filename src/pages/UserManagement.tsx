@@ -75,7 +75,17 @@ const UserManagement = () => {
           lastName: '',
           email: '',
           role: 'reporter',
-          modulePermissions: {}
+          modulePermissions: {
+            superAdmin: false,
+            incidentReporting: false,
+            incidentAdmin: false,
+            assessmentUser: false,
+            assessmentsAdmin: false,
+            employeeVerificationAdmin: false,
+            grievancesAdmin: false,
+            transportSafetyAdmin: false,
+            eduSafeResourceAccess: false
+          }
         }}
         setFormData={() => {}}
         onSubmit={() => {}}
@@ -92,7 +102,17 @@ const UserManagement = () => {
             lastName: '',
             email: '',
             role: 'reporter',
-            modulePermissions: {}
+            modulePermissions: {
+              superAdmin: false,
+              incidentReporting: false,
+              incidentAdmin: false,
+              assessmentUser: false,
+              assessmentsAdmin: false,
+              employeeVerificationAdmin: false,
+              grievancesAdmin: false,
+              transportSafetyAdmin: false,
+              eduSafeResourceAccess: false
+            }
           }}
           setFormData={() => {}}
           onSubmit={() => {}}
