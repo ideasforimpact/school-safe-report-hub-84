@@ -75,7 +75,7 @@ export const fetchModules = async (isBackoffice: boolean): Promise<Module[]> => 
     }
     
     // Map the fetched data to include icon property
-    const mappedData = data.map(role => ({
+    const mappedData: Module[] = data.map(role => ({
       id: role.id,
       name: role.name,
       icon: 'LayoutDashboard', // Always provide a default icon
