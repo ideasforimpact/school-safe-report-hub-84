@@ -131,7 +131,7 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
  */
 export const logoutBackofficeUser = async (): Promise<void> => {
   try {
-    // Just clear Supabase session for now
+    // Clear Supabase session
     await supabase.auth.signOut();
     
     toast.info("You have been logged out");
