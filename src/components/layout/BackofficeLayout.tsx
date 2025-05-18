@@ -29,8 +29,7 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
       toast.error("You don't have permission to access the backoffice.");
       navigate('/dashboard');
     }
-
-    if(!user && !isSaasOwner){
+    elseif(!user && !isSaasOwner){
        navigate("/login")
     }
     
