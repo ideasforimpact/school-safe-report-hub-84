@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { BackofficeUser, BackofficeAuthContextType } from './types';
 import { loginBackofficeUser, logoutBackofficeUser } from '@/services/backoffice/authService';
@@ -36,10 +37,14 @@ export const BackofficeAuthProvider: React.FC<BackofficeAuthProviderProps> = ({ 
   useEffect(() => {
     const checkExistingSession = () => {
       try {
+        console.log("BackofficeAuthProvider: Checking existing session");
         const storedUser = sessionStorage.getItem('backoffice_user');
         if (storedUser) {
+          console.log("BackofficeAuthProvider: Found stored user in session");
           const parsedUser = JSON.parse(storedUser);
           setUser(parsedUser);
+        } else {
+          console.log("BackofficeAuthProvider: No user found in session");
         }
       } catch (err) {
         console.error("Error checking backoffice session:", err);
@@ -53,37 +58,37 @@ export const BackofficeAuthProvider: React.FC<BackofficeAuthProviderProps> = ({ 
 
   // Login function
   const login = async (email: string, password: string): Promise<boolean> => {
-    console.log("BackofficeAuthContext: login function called with email:", email);
+    console.log("🔐 BackofficeAuthProvider.login CALLED with email:", email);
     setIsLoading(true);
     setError(null);
 
     try {
       // Call the service to authenticate the user
-      console.log("BackofficeAuthContext: Calling loginBackofficeUser service function");
+      console.log("🔐 BackofficeAuthProvider.login: Calling loginBackofficeUser service function");
       const backofficeUser = await loginBackofficeUser(email, password);
-      console.log("BackofficeAuthContext: loginBackofficeUser service returned:", backofficeUser ? "User object received" : "Failed - No user returned");
+      console.log("🔐 BackofficeAuthProvider.login: loginBackofficeUser returned:", backofficeUser ? "User object received" : "Failed - No user returned");
       
       if (backofficeUser) {
-        console.log("BackofficeAuthContext: Setting user and session storage");
+        console.log("🔐 BackofficeAuthProvider.login: Setting user and session storage");
         setUser(backofficeUser);
         // Store user in session storage
         sessionStorage.setItem('backoffice_user', JSON.stringify(backofficeUser));
         toast.success("Login successful!");
-        console.log("BackofficeAuthContext: Returning true");
+        console.log("🔐 BackofficeAuthProvider.login: Returning true");
         return true;
       } else {
-        console.log("BackofficeAuthContext: Login failed, no user returned");
+        console.log("🔐 BackofficeAuthProvider.login: Login failed, no user returned");
         setError('Invalid email or password');
         toast.error('Invalid email or password');
         return false;
       }
     } catch (err) {
-      console.error("BackofficeAuthContext: Login error:", err);
+      console.error("🔐 BackofficeAuthProvider.login: Login error:", err);
       setError('An error occurred during login');
       toast.error('An error occurred during login');
       return false;
     } finally {
-      console.log("BackofficeAuthContext: Setting isLoading to false");
+      console.log("🔐 BackofficeAuthProvider.login: Setting isLoading to false");
       setIsLoading(false);
     }
   };
@@ -116,13 +121,13 @@ export const BackofficeAuthProvider: React.FC<BackofficeAuthProviderProps> = ({ 
   const value = {
     user,
     login,
-    logout: logoutBackofficeUser,
+    logout,
     isLoading,
     error,
     clearError
   };
 
-  console.log("BackofficeAuthContext: Providing context with value:", { 
+  console.log("BackofficeAuthProvider: Providing context with value:", { 
     hasUser: !!user, 
     isLoading, 
     hasError: !!error 

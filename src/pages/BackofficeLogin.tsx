@@ -26,6 +26,7 @@ const BackofficeLogin = () => {
 
   // Check if user is already logged in, redirect if they are
   useEffect(() => {
+    console.log("BackofficeLogin: Effect checking for user:", user ? "User exists" : "No user");
     if (user) {
       navigate('/backoffice/dashboard');
     }
@@ -41,6 +42,8 @@ const BackofficeLogin = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log("BackofficeLogin: Submit button clicked");
+    
     if (!email || !password) {
       toast.error("Email and password are required");
       return;
@@ -49,9 +52,9 @@ const BackofficeLogin = () => {
     setIsLoading(true);
     
     try {
-      // Call the login function from BackofficeAuthContext
+      // CRITICAL FIX: Ensure we're explicitly calling the login function from context
       console.log("BackofficeLogin: About to call login function with email:", email);
-      let success = await login(email, password);
+      const success = await login(email, password);
       console.log("BackofficeLogin: login function returned:", success);
       
       if (success) {
