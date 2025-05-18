@@ -21,52 +21,39 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout, isSaasOwner } = useAuth();
-  const [redirect, setRedirect] = useState(false);
   const [initialCheckDone, setInitialCheckDone] = useState(false);
   
   // Initialize with auth check
   useEffect(() => {
-    console.log("Backoffice Layout - Initial mount, checking auth state");
-    // Set initial check to true after first render
-    setInitialCheckDone(true);
-  }, []);
-  
-  // Redirect if not SaaS owner or not logged in, but only after initial render
-  useEffect(() => {
-    console.log("Backoffice Layout - Auth state:", { 
-      isUser: !!user, 
-      isSaasOwner, 
-      redirect,
-      initialCheckDone,
+    console.log("Backoffice Layout - Initial mount, checking auth state:", {
+      isUser: !!user,
+      isSaasOwner,
       pathname: location.pathname,
       userDetails: user ? `${user.firstName} ${user.lastName} (${user.role})` : 'No user'
     });
     
-    // Only check for redirection after initial check is done
+    // Set initial check to true after first render
+    setInitialCheckDone(true);
+  }, [user, isSaasOwner, location.pathname]);
+  
+  // Redirect if not SaaS owner or not logged in, but only after initial render
+  useEffect(() => {
     if (initialCheckDone) {
-      if (!user && redirect) {
-        // User is not logged in at all, redirect to backoffice login
+      if (!user) {
         console.log("Backoffice Layout - No user, redirecting to backoffice login");
         toast.error("Please log in to access the backoffice.");
         navigate('/backoffice/login');
         return;
       }
       
-      if (user && !isSaasOwner && redirect) {
-        // User is logged in but not a SaaS owner
+      if (user && !isSaasOwner) {
         console.log("Backoffice Layout - User is not a SaaS owner, redirecting to dashboard");
         toast.error("You don't have permission to access the backoffice.");
         navigate('/dashboard');
         return;
       }
-
-      // Set redirect flag to true after initial render
-      if (!redirect) {
-        console.log("Backoffice Layout - Setting redirect flag to true");
-        setRedirect(true);
-      }
     }
-  }, [user, isSaasOwner, navigate, redirect, location.pathname, initialCheckDone]);
+  }, [user, isSaasOwner, navigate, initialCheckDone, location.pathname]);
 
   const handleLogout = async () => {
     console.log("Backoffice Layout - Logging out user");

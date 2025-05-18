@@ -1,14 +1,14 @@
 
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { User, UserWithPassword } from '../types';
-import { getUserFromStorage, getUsersFromStorage } from '@/services/auth/authService';
 
 /**
  * Hook for managing authentication state
  */
 export function useAuthState() {
-  const [user, setUser] = useState<User | null>(() => getUserFromStorage());
-  const [users, setUsers] = useState<UserWithPassword[]>(() => getUsersFromStorage());
+  // Initialize with null values instead of getting from localStorage
+  const [user, setUser] = useState<User | null>(null);
+  const [users, setUsers] = useState<UserWithPassword[]>([]);
   const [authError, setAuthError] = useState<string | null>(null);
   const [isAuthInitialized, setIsAuthInitialized] = useState(false);
   const authInitCompleteRef = useRef(false);

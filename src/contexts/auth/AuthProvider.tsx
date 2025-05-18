@@ -1,12 +1,11 @@
+
 import React, { createContext, useEffect, useState, useRef } from 'react';
 import { User, AuthContextType, UserWithPassword } from './types';
 import { 
-  getUserFromStorage, 
   logoutUser, 
   loginUser, 
   setUsers, 
   getUsersFromStorage,
-  saveUserToStorage, 
   saveUsersToStorage,
   getCurrentUserData,
   changeUserPassword
@@ -57,7 +56,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const isAdmin = Boolean(currentUser?.role === 'admin' || currentUser?.modulePermissions?.superAdmin);
   const isSaasOwner = Boolean(currentUser?.role === 'saas_owner' || isBackofficeUser);
 
-  // Fetch users from Supabase on mount and check for existing session
+  // Check session state on mount
   useEffect(() => {
     const initializeAuth = async () => {
       if (initialCheckPerformedRef.current) return;
@@ -66,44 +65,40 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       initialCheckPerformedRef.current = true;
       
       try {
-        // First check for a locally stored user
-        const storedUser = getUserFromStorage();
-        if (storedUser) {
-          console.log("AUTH PROVIDER: Found stored user in localStorage:", storedUser.email);
-        } else {
-          console.log("AUTH PROVIDER: No stored user found in localStorage");
-        }
-        
-        // Then check Supabase auth state
+        // Check Supabase auth state
         const { data } = await supabase.auth.getSession();
+        
         if (data?.session) {
           console.log("AUTH PROVIDER: Found active Supabase session:", data.session.user?.email);
         } else {
           console.log("AUTH PROVIDER: No active Supabase session found");
-          
-          // If no Supabase session but we have a local user, that's inconsistent
-          // We should clear local user data to ensure they're in sync
-          if (storedUser) {
-            console.log("AUTH PROVIDER: Inconsistent state - clearing local user data");
-            await logoutUser();
-            setCurrentUser(null);
-          }
+          setCurrentUser(null);
         }
       } catch (error) {
         console.error("AUTH PROVIDER: Error checking auth state:", error);
+        setCurrentUser(null);
       } finally {
         setIsInitializing(false);
-        
-        // Set user from storage AFTER completing auth checks
-        const storedUser = getUserFromStorage();
-        if (storedUser) {
-          console.log("AUTH PROVIDER: Setting user from storage:", storedUser.email);
-          setCurrentUser(storedUser);
-        }
       }
     };
 
     initializeAuth();
+    
+    // Set up auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        console.log("AUTH PROVIDER: Auth state change event:", event);
+        if (event === 'SIGNED_OUT') {
+          console.log("AUTH PROVIDER: User signed out, clearing session data");
+          setCurrentUser(null);
+          setIsBackofficeUser(false);
+        }
+      }
+    );
+    
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Handle login
@@ -117,7 +112,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (user) {
         setCurrentUser(user);
-        saveUserToStorage(user);
         toast.success(`Welcome back, ${user.firstName}!`);
         return true;
       }
@@ -178,7 +172,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         setCurrentUser(saasUser);
         setIsBackofficeUser(true);
-        saveUserToStorage(saasUser);
         toast.success(`Welcome back, Backoffice Admin!`);
         return true;
       }
@@ -340,8 +333,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
     
     // Regular user password change
-    const storedUsers = getUsersFromStorage();
-    const updatedUsers = changeUserPassword(storedUsers, currentUser.id, currentPassword, newPassword);
+    const updatedUsers = changeUserPassword(users, currentUser.id, currentPassword, newPassword);
 
     if (!updatedUsers) {
       return false;

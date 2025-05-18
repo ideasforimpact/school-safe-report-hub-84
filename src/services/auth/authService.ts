@@ -7,33 +7,13 @@ import { supabase } from '@/integrations/supabase/client';
 // In-memory user storage
 let users: UserWithPassword[] = [...INITIAL_MOCK_USERS];
 
-// Storage helper functions
-export const getUserFromStorage = (): User | null => {
-  const storedUser = localStorage.getItem('currentUser');
-  if (!storedUser) return null;
-  try {
-    return JSON.parse(storedUser);
-  } catch (error) {
-    return null;
-  }
-};
-
+// User management functions
 export const getUsersFromStorage = (): UserWithPassword[] => {
-  const storedUsers = localStorage.getItem('users');
-  if (!storedUsers) return [...INITIAL_MOCK_USERS];
-  try {
-    return JSON.parse(storedUsers);
-  } catch (error) {
-    return [...INITIAL_MOCK_USERS];
-  }
+  return [...INITIAL_MOCK_USERS];
 };
 
-export const saveUserToStorage = (user: User): void => {
-  localStorage.setItem('currentUser', JSON.stringify(user));
-};
-
-export const saveUsersToStorage = (users: UserWithPassword[]): void => {
-  localStorage.setItem('users', JSON.stringify(users));
+export const saveUsersToStorage = (updatedUsers: UserWithPassword[]): void => {
+  users = updatedUsers;
 };
 
 // Authentication functions
@@ -74,16 +54,13 @@ export const logoutUser = async (): Promise<void> => {
     console.error("LOGOUT ERROR: Supabase signout failed", error);
   }
   
-  // Clear user from localStorage
-  localStorage.removeItem('currentUser');
-  console.log("LOGOUT: Removed currentUser from localStorage");
-  
-  // Clear any Supabase auth tokens that might be stored
+  // Clear any Supabase auth tokens that might be stored in localStorage
   const authItemsToRemove = [
     'supabase.auth.token',
     'sb-ybvxkiubnnixntghojyy-auth-token',
     'supabase.auth.refreshToken',
-    'supabase.auth.expiresAt'
+    'supabase.auth.expiresAt',
+    'currentUser'
   ];
   
   authItemsToRemove.forEach(item => {
