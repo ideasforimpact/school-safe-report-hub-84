@@ -22,10 +22,31 @@ const BackofficeLogin = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
-  const { login, authError, user, isSaasOwner } = useAuth();
+  const { login, authError, user, isSaasOwner, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [redirect, setRedirect] = useState(false);
+  const [initialCheckDone, setInitialCheckDone] = useState(false);
+
+  // On component mount, check if there's any stale session and clear it
+  useEffect(() => {
+    const clearStaleSession = async () => {
+      console.log("Backoffice Login - Initial mount, checking for stale sessions");
+      
+      const { data } = await supabase.auth.getSession();
+      
+      // If user appears logged in but we're on the login page,
+      // they likely tried to log out but the session wasn't fully cleared
+      if (data?.session && location.pathname === '/backoffice/login') {
+        console.log("Backoffice Login - Found stale session, cleaning up");
+        logout();
+      }
+      
+      setInitialCheckDone(true);
+    };
+    
+    clearStaleSession();
+  }, [logout, location.pathname]);
 
   // Check if user is already logged in and is a SaaS owner, redirect if they are but only after initial render
   useEffect(() => {
@@ -33,23 +54,24 @@ const BackofficeLogin = () => {
       isUser: !!user, 
       isSaasOwner, 
       redirect,
+      initialCheckDone,
       userDetails: user ? `${user.firstName} ${user.lastName} (${user.role})` : 'No user'
     });
     
-    // Only redirect if this isn't the initial render
-    if (user && isSaasOwner && redirect) {
+    // Only redirect if initial check is done and we're not in the middle of cleanup
+    if (initialCheckDone && user && isSaasOwner && redirect) {
       console.log("Backoffice Login - Redirecting SaaS owner to backoffice dashboard");
       navigate('/backoffice/dashboard');
-    } else if (user && !isSaasOwner && redirect) {
+    } else if (initialCheckDone && user && !isSaasOwner && redirect) {
       console.log("Backoffice Login - User is not a SaaS owner, redirecting to dashboard");
       toast.error("You don't have permission to access the backoffice.");
       navigate('/dashboard');
-    } else if (user) {
+    } else if (initialCheckDone && user) {
       // Set redirect flag to true after initial render
       console.log("Backoffice Login - Setting redirect flag to true");
       setRedirect(true);
     }
-  }, [user, isSaasOwner, navigate, redirect]);
+  }, [user, isSaasOwner, navigate, redirect, initialCheckDone]);
 
   // Check for authentication redirect results and errors
   useEffect(() => {
@@ -67,8 +89,10 @@ const BackofficeLogin = () => {
       }
     };
     
-    checkForAuthRedirect();
-  }, [navigate]);
+    if (initialCheckDone) {
+      checkForAuthRedirect();
+    }
+  }, [navigate, initialCheckDone]);
 
   // Listen for auth errors from context
   useEffect(() => {
@@ -179,6 +203,17 @@ const BackofficeLogin = () => {
   const handleOAuthLogin = (provider: string) => {
     toast.info(`${provider} authentication is not configured yet. Please use Google or email login.`);
   };
+
+  // If we're still checking initial state, show a loading indicator
+  if (!initialCheckDone) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-indigo-100 p-4">
+        <div className="text-center">
+          <p className="text-gray-600">Checking authentication state...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-indigo-100 p-4 animate-fade-in">

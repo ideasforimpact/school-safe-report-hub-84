@@ -164,11 +164,31 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   // Handle logout
-  const handleLogout = (): void => {
-    setCurrentUser(null);
-    setIsBackofficeUser(false);
-    logoutUser();
-    toast.info("You have been logged out");
+  const handleLogout = async (): Promise<void> => {
+    console.log("Logout called: Clearing user session");
+    
+    try {
+      // First, sign out from Supabase
+      await supabase.auth.signOut();
+      console.log("Supabase signout completed");
+
+      // Then clear local state
+      setCurrentUser(null);
+      setIsBackofficeUser(false);
+      
+      // Remove user from localStorage
+      logoutUser();
+      console.log("User removed from localStorage");
+
+      // Display logout notification
+      toast.info("You have been logged out");
+    } catch (error) {
+      console.error("Error during logout:", error);
+      // Still clear the local session even if Supabase errors
+      setCurrentUser(null);
+      setIsBackofficeUser(false);
+      logoutUser();
+    }
   };
 
   // Add new user

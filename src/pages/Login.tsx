@@ -24,31 +24,53 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
-  const { login, authError, user } = useAuth();
+  const { login, authError, user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [redirect, setRedirect] = useState(false);
+  const [initialCheckDone, setInitialCheckDone] = useState(false);
+
+  // On component mount, check if there's any stale session and clear it
+  useEffect(() => {
+    const clearStaleSession = async () => {
+      console.log("Login page - Initial mount, checking for stale sessions");
+      
+      const { data } = await supabase.auth.getSession();
+      
+      // If user appears logged in but we're on the login page,
+      // they likely tried to log out but the session wasn't fully cleared
+      if (data?.session && location.pathname === '/login') {
+        console.log("Login page - Found stale session, cleaning up");
+        logout();
+      }
+      
+      setInitialCheckDone(true);
+    };
+    
+    clearStaleSession();
+  }, [logout, location.pathname]);
 
   // Check if user is already logged in, redirect if they are but only after initial render
   useEffect(() => {
     console.log("Login page - Auth state:", { 
       isUser: !!user, 
       redirect,
+      initialCheckDone,
       locationState: location.state,
       userDetails: user ? `${user.firstName} ${user.lastName} (${user.role})` : 'No user'
     });
     
-    // Only redirect if this isn't the initial render
-    if (user && redirect) {
+    // Only redirect if initial check is done and we're not in the middle of cleanup
+    if (initialCheckDone && user && redirect) {
       const from = location.state?.from?.pathname || "/dashboard";
       console.log("Login page - Redirecting authenticated user to:", from);
       navigate(from);
-    } else if (user) {
-      // Set redirect flag to true after initial render
+    } else if (initialCheckDone && user && !redirect) {
+      // Set redirect flag to true after initial render and checks
       console.log("Login page - Setting redirect flag to true");
       setRedirect(true);
     }
-  }, [user, redirect, navigate, location.state]);
+  }, [user, redirect, navigate, location.state, initialCheckDone]);
 
   // Check for authentication redirect results and errors
   useEffect(() => {
@@ -66,8 +88,10 @@ const Login = () => {
       }
     };
     
-    checkForAuthRedirect();
-  }, [navigate]);
+    if (initialCheckDone) {
+      checkForAuthRedirect();
+    }
+  }, [navigate, initialCheckDone]);
 
   // Listen for auth errors from context
   useEffect(() => {
@@ -173,6 +197,17 @@ const Login = () => {
   const handleOAuthLogin = (provider: string) => {
     toast.info(`${provider} authentication is not configured yet. Please use Google or email login.`);
   };
+
+  // If we're still checking initial state, show a loading indicator
+  if (!initialCheckDone) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-indigo-100 p-4">
+        <div className="text-center">
+          <p className="text-gray-600">Checking authentication state...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-indigo-100 p-4 animate-fade-in">

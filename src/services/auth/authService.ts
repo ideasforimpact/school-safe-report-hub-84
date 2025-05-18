@@ -1,4 +1,3 @@
-
 import { User, UserWithPassword } from '@/contexts/auth/types';
 import { INITIAL_MOCK_USERS } from '@/contexts/auth/initialData';
 import { toast } from "sonner";
@@ -64,7 +63,22 @@ export const loginUser = (
 };
 
 export const logoutUser = (): void => {
+  console.log("Removing user from local storage");
   localStorage.removeItem('currentUser');
+  
+  // Clear any other auth-related items that might be stored
+  // This ensures complete logout
+  const authItemsToRemove = [
+    'supabase.auth.token',
+    'sb-ybvxkiubnnixntghojyy-auth-token'
+  ];
+  
+  authItemsToRemove.forEach(item => {
+    if (localStorage.getItem(item)) {
+      console.log(`Removing ${item} from localStorage`);
+      localStorage.removeItem(item);
+    }
+  });
 };
 
 export const changeUserPassword = (

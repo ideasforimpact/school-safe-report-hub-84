@@ -1,3 +1,4 @@
+
 import { ReactNode, useEffect, useState } from 'react';
 import { ShieldCheck, LogOut } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -21,6 +22,13 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
   const location = useLocation();
   const { user, logout, isSaasOwner } = useAuth();
   const [redirect, setRedirect] = useState(false);
+  const [initialCheckDone, setInitialCheckDone] = useState(false);
+  
+  // Initialize with auth check
+  useEffect(() => {
+    // Set initial check to true after first render
+    setInitialCheckDone(true);
+  }, []);
   
   // Redirect if not SaaS owner or not logged in, but only after initial render
   useEffect(() => {
@@ -28,34 +36,39 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
       isUser: !!user, 
       isSaasOwner, 
       redirect,
+      initialCheckDone,
       pathname: location.pathname,
       userDetails: user ? `${user.firstName} ${user.lastName} (${user.role})` : 'No user'
     });
     
-    if (!user && redirect) {
-      // User is not logged in at all, redirect to backoffice login
-      console.log("Backoffice Layout - No user, redirecting to backoffice login");
-      toast.error("Please log in to access the backoffice.");
-      navigate('/backoffice/login');
-      return;
-    }
-    
-    if (user && !isSaasOwner && redirect) {
-      // User is logged in but not a SaaS owner
-      console.log("Backoffice Layout - User is not a SaaS owner, redirecting to dashboard");
-      toast.error("You don't have permission to access the backoffice.");
-      navigate('/dashboard');
-      return;
-    }
+    // Only check for redirection after initial check is done
+    if (initialCheckDone) {
+      if (!user && redirect) {
+        // User is not logged in at all, redirect to backoffice login
+        console.log("Backoffice Layout - No user, redirecting to backoffice login");
+        toast.error("Please log in to access the backoffice.");
+        navigate('/backoffice/login');
+        return;
+      }
+      
+      if (user && !isSaasOwner && redirect) {
+        // User is logged in but not a SaaS owner
+        console.log("Backoffice Layout - User is not a SaaS owner, redirecting to dashboard");
+        toast.error("You don't have permission to access the backoffice.");
+        navigate('/dashboard');
+        return;
+      }
 
-    // Set redirect flag to true after initial render
-    if (!redirect) {
-      console.log("Backoffice Layout - Setting redirect flag to true");
-      setRedirect(true);
+      // Set redirect flag to true after initial render
+      if (!redirect) {
+        console.log("Backoffice Layout - Setting redirect flag to true");
+        setRedirect(true);
+      }
     }
-  }, [user, isSaasOwner, navigate, redirect, location.pathname]);
+  }, [user, isSaasOwner, navigate, redirect, location.pathname, initialCheckDone]);
 
   const handleLogout = () => {
+    console.log("Backoffice Layout - Logging out user");
     logout();
     navigate('/backoffice/login');
   };
@@ -67,6 +80,15 @@ const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
     }
     return 'U'; // Default fallback if firstName is undefined
   };
+
+  // If initial check isn't done, show loading
+  if (!initialCheckDone) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p>Loading backoffice...</p>
+      </div>
+    );
+  }
 
   // If not SaaS owner or not logged in, don't render anything while redirecting
   if (!user || !isSaasOwner) {
