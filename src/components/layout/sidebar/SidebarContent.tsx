@@ -1,6 +1,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { getSaasOwnerItems, getClientItems, fetchModules, convertModulesToSidebarItems } from './sidebarConfig';
 import SidebarMenuItem from './SidebarMenuItem';
@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 
 const SidebarContent = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, isSaasOwner, isAdmin } = useAuth();
   const [dynamicMenuItems, setDynamicMenuItems] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -45,6 +46,13 @@ const SidebarContent = () => {
 
   // Determine if we're in backoffice mode based on the URL path
   const isBackofficeRoute = location.pathname.startsWith('/backoffice');
+  
+  // Auto-redirect SaaS owners to backoffice when they're at root path
+  useEffect(() => {
+    if (isSaasOwner && user?.role === 'saas_owner' && location.pathname === '/') {
+      navigate('/backoffice');
+    }
+  }, [isSaasOwner, user, location.pathname, navigate]);
   
   // Memoize the loadModules function to prevent unnecessary re-renders
   const loadModules = useCallback(async () => {
@@ -117,9 +125,11 @@ const SidebarContent = () => {
   // Process paths for SaaS owners - add /backoffice prefix if not already present
   const getProcessedPath = (path: string) => {
     // If user is SaaS owner and path doesn't already start with /backoffice, add it
-    if (isSaasOwner && user?.role === 'saas_owner' && !path.startsWith('/backoffice')) {
-      // Don't add prefix to root path
-      return path === '/' ? '/backoffice' : `/backoffice${path}`;
+    if (isSaasOwner && user?.role === 'saas_owner') {
+      if (path === '/') {
+        return '/backoffice';
+      }
+      return path.startsWith('/backoffice') ? path : `/backoffice${path}`;
     }
     return path;
   };

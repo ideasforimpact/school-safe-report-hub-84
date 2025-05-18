@@ -1,3 +1,4 @@
+
 import { 
   LayoutDashboard, 
   AlertTriangle,
@@ -120,7 +121,7 @@ export const convertModulesToSidebarItems = (modules: Module[], permissions: Mod
 };
 
 // These functions are kept for backward compatibility
-// SaaS Owner (Backoffice) Menu Items
+// SaaS Owner (Backoffice) Menu Items - always include backoffice prefix
 export const getSaasOwnerItems = () => [
   {
     icon: LayoutDashboard,
