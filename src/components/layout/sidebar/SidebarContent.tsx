@@ -99,16 +99,29 @@ const SidebarContent = () => {
     loadModules();
   }, [loadModules]);
 
-  // Use dynamic menu items if available, otherwise fall back to static config
+  // Get appropriate items based on user role and route
   const menuItems = dynamicMenuItems.length > 0 
     ? dynamicMenuItems 
     : (isSaasOwner && isBackofficeRoute) 
       ? getSaasOwnerItems() 
       : getClientItems(effectivePermissions);
 
+  // Determine if a path is active, and add '/backoffice' prefix for SaaS owners
   const isActive = (path: string) => {
+    const currentPath = location.pathname;
+    const activePath = path;
     // Check if the current path matches the menu item path or starts with it (for nested routes)
-    return location.pathname === path || (path !== '/' && location.pathname.startsWith(path));
+    return currentPath === activePath || (activePath !== '/' && currentPath.startsWith(activePath));
+  };
+
+  // Process paths for SaaS owners - add /backoffice prefix if not already present
+  const getProcessedPath = (path: string) => {
+    // If user is SaaS owner and path doesn't already start with /backoffice, add it
+    if (isSaasOwner && user?.role === 'saas_owner' && !path.startsWith('/backoffice')) {
+      // Don't add prefix to root path
+      return path === '/' ? '/backoffice' : `/backoffice${path}`;
+    }
+    return path;
   };
 
   if (isLoading) {
@@ -130,8 +143,8 @@ const SidebarContent = () => {
                 key={item.path}
                 icon={item.icon}
                 label={item.label}
-                path={item.path}
-                isActive={isActive(item.path)}
+                path={getProcessedPath(item.path)}
+                isActive={isActive(getProcessedPath(item.path))}
               />
             ))}
         </ul>
