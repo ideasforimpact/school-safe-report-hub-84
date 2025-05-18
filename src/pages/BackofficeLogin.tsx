@@ -110,6 +110,10 @@ const BackofficeLogin = () => {
           
           console.log("🔍 Test account created successfully:", newUser);
           toast.success("Test account created. Please log in now.");
+          
+          // Let's try to log in immediately after creating the account
+          // Add a small delay to ensure the database has time to process the insert
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
       }
       

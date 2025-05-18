@@ -61,7 +61,7 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
     console.log("🔧 authService: User data from DB:", existingUser);
     
     // For real users, verify password with Supabase function
-    console.log("🔧 authService: Calling verify_password RPC function");
+    console.log("🔧 authService: Calling verify_password RPC function with email:", email);
     const { data: isValidPassword, error: verifyError } = await supabase.rpc('verify_password', { 
       email, 
       password_attempt: password 
