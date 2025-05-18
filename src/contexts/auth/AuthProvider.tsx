@@ -1,4 +1,3 @@
-
 import React, { createContext, useEffect, useState, useRef } from 'react';
 import { User, AuthContextType, UserWithPassword } from './types';
 import { 
@@ -14,6 +13,7 @@ import {
 } from '@/services/auth/authService';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuthHandlers } from './hooks/useAuthHandlers';
 
 // Create the context
 export const AuthContext = createContext<AuthContextType>({
@@ -30,6 +30,7 @@ export const AuthContext = createContext<AuthContextType>({
   reactivateUser: () => {},
   changePassword: async () => false,
   authError: null,
+  handleUserAuthentication: async () => {},
 });
 
 interface AuthProviderProps {
@@ -47,6 +48,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [authError, setAuthError] = useState<string | null>(null);
   const [isBackofficeUser, setIsBackofficeUser] = useState<boolean>(false);
   const authInitCompleteRef = useRef<boolean>(false);
+
+  // Import useAuthHandlers to get handleUserAuthentication function
+  const { handleUserAuthentication } = useAuthHandlers({
+    user: currentUser,
+    users,
+    setUser: setCurrentUser,
+    setUsers: setUsersState,
+    setAuthError,
+    authInitCompleteRef
+  });
 
   // Update display users whenever users changes
   useEffect(() => {
@@ -322,6 +333,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     reactivateUser: handleReactivateUser,
     changePassword: handleChangePassword,
     authError,
+    handleUserAuthentication,
   };
 
   // If still initializing, show nothing

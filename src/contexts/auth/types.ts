@@ -1,4 +1,3 @@
-
 // Define the user with password separately for internal use
 export interface UserWithPassword extends User {
   password: string;
@@ -30,6 +29,7 @@ export interface AuthContextType {
   reactivateUser: (id: string) => void;
   changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
   authError: string | null;
+  handleUserAuthentication: (supabaseUser: any) => Promise<void>;
 }
 
 export interface User {
