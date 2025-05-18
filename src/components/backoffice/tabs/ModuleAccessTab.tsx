@@ -141,19 +141,14 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
                   return (
                     <TableRow key={module.id} className="h-14">
                       <TableCell>
-                        <div className={cn(
-                          "p-0.5 rounded-sm transition-all",
-                          checked ? "border-2 border-green-500" : "border-2 border-transparent"
-                        )}>
-                          <Checkbox 
-                            id={`module-${accessKey}`}
-                            checked={checked}
-                            onCheckedChange={(checkedState) => 
-                              handleModuleAccessChange(accessKey, checkedState === true)
-                            }
-                            className="transition-all"
-                          />
-                        </div>
+                        <Checkbox 
+                          id={`module-${accessKey}`}
+                          checked={checked}
+                          onCheckedChange={(checkedState) => 
+                            handleModuleAccessChange(accessKey, checkedState === true)
+                          }
+                          className="transition-all"
+                        />
                       </TableCell>
                       <TableCell>
                         <label 
@@ -169,7 +164,7 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
                           className={cn(
                             "relative pr-7 transition-all duration-200",
                             checked 
-                              ? "bg-primary hover:bg-primary/90 cursor-pointer" 
+                              ? "bg-green-500 text-white hover:bg-green-600 cursor-pointer" 
                               : "text-muted-foreground opacity-50 cursor-not-allowed"
                           )}
                           onClick={() => checked && handleBadgeClick(accessKey, checked)}
