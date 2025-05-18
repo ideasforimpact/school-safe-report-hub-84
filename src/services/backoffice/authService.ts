@@ -13,6 +13,8 @@ const DEMO_EMAILS = [
  */
 export const loginBackofficeUser = async (email: string, password: string): Promise<BackofficeUser | null> => {
   try {
+    console.log(`Attempting login for: ${email}`);
+    
     // Check if this is a demo email
     const isDemoUser = DEMO_EMAILS.includes(email);
     
@@ -30,8 +32,31 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
         lastLogin: new Date().toISOString(),
       };
     }
-
-    console.log("Attempting regular login with:", email);
+    
+    // For non-demo users, we need to check if the email exists first
+    console.log("Checking if this account exists in backoffice_users table...");
+    
+    // First check if user exists in backoffice_users table
+    const { data: existingUser, error: userCheckError } = await supabase
+      .from('backoffice_users')
+      .select('*')
+      .eq('email', email)
+      .single();
+    
+    if (userCheckError) {
+      // If error is not-found, give a clear message
+      if (userCheckError.code === 'PGRST116') {
+        console.error(`Account not found for email: ${email}`);
+        toast.error("Account not found. Please check your email or contact an administrator.");
+        return null;
+      }
+      
+      console.error("Error checking user existence:", userCheckError);
+      toast.error("Error checking user account");
+      return null;
+    }
+    
+    console.log("Account found, verifying password...");
     
     // For real users, verify password with Supabase function
     const { data: isValidPassword, error: verifyError } = await supabase.rpc('verify_password', { 
@@ -56,15 +81,11 @@ export const loginBackofficeUser = async (email: string, password: string): Prom
 
     console.log("Password verified, fetching user details");
 
-    // If password is valid, fetch user details
-    const { data: backofficeUser, error: userError } = await supabase
-      .from('backoffice_users')
-      .select('*')
-      .eq('email', email)
-      .single();
-      
-    if (userError || !backofficeUser) {
-      console.error("Error fetching backoffice user:", userError);
+    // If password is valid, fetch user details - we already have the user from above
+    const backofficeUser = existingUser;
+    
+    if (!backofficeUser) {
+      console.error("Error retrieving user information");
       toast.error("Error retrieving user information");
       return null;
     }

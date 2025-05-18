@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -14,6 +13,11 @@ import { useBackofficeAuth } from "@/contexts/backoffice/BackofficeAuthContext";
 // List of demo credentials for verification
 const DEMO_CREDENTIALS = [
   { email: 'owner@saasplatform.com', password: 'owner123', role: 'SaaS Owner' }
+];
+
+// Add your backoffice email here to test if it exists
+const ALLOWED_TEST_EMAILS = [
+  'backofficesafeschool@gmail.com'
 ];
 
 const BackofficeLogin = () => {
@@ -57,6 +61,58 @@ const BackofficeLogin = () => {
         console.log("Attempting standard login");
       }
       
+      // For testing specific emails, check if email is in allowed test list
+      if (ALLOWED_TEST_EMAILS.includes(email)) {
+        console.log("This email is in the allowed test list");
+        
+        // Check if this user exists in backoffice_users table
+        const { data: existingUser, error } = await supabase
+          .from('backoffice_users')
+          .select('email')
+          .eq('email', email)
+          .maybeSingle();
+          
+        console.log("User check result:", existingUser, error);
+        
+        if (!existingUser) {
+          console.log("Creating test user account for:", email);
+          
+          // If not, create a test account for this email
+          const { error: hashError, data: hashedPassword } = await supabase.rpc('hash_password', {
+            password: password
+          });
+          
+          if (hashError) {
+            console.error("Error hashing password:", hashError);
+            toast.error("Error creating test account");
+            setIsLoading(false);
+            return;
+          }
+          
+          // Insert the user into backoffice_users
+          const { data: newUser, error: insertError } = await supabase
+            .from('backoffice_users')
+            .insert({
+              email: email,
+              password: hashedPassword,
+              is_saas_admin: true
+            })
+            .select()
+            .single();
+            
+          if (insertError) {
+            console.error("Error creating test account:", insertError);
+            toast.error("Error creating test account");
+            setIsLoading(false);
+            return;
+          }
+          
+          console.log("Test account created successfully:", newUser);
+          toast.success("Test account created. Please log in now.");
+        }
+      }
+      
+      // Now proceed with login
       const success = await login(email, password);
       
       if (success) {
