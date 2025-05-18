@@ -9,6 +9,7 @@ import { AlertCircle, ShieldCheck } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { useBackofficeAuth } from "@/contexts/backoffice/BackofficeAuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
 // List of demo credentials for verification
 const DEMO_CREDENTIALS = [
@@ -50,6 +51,7 @@ const BackofficeLogin = () => {
     try {
       // Call the login function from BackofficeAuthContext
       let success = await login(email, password);
+      console.log("🔍 BackofficeAuth login function returned:", success);
       
       if (success) {
         toast.success("Login successful!");
