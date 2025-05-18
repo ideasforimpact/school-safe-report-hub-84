@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { useAuth } from "@/contexts/auth";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,37 +28,26 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  console.log("🏁 Login component rendering, user:", user?.email, "isSaasOwner:", isSaasOwner);
+  console.log("🏁 Login component rendering");
 
   // Check if user is already logged in, redirect if they are
   useEffect(() => {
+    console.log("👤 User state changed:", user?.email, "isSaasOwner:", isSaasOwner);
     if (user) {
-      console.log("🚀 Logged-in user detected in Login component:", user.email, "isSaasOwner:", isSaasOwner);
+      console.log("🚀 Redirecting logged-in user");
+      // Get the intended destination from location state or use dashboard as default
+      const from = location.state?.from?.pathname || "/dashboard";
       
-      // Get intended destination from location state or use appropriate default based on role
-      const fromPath = location.state?.from;
-      let redirectPath = '/dashboard'; // Default for regular users
-      
+      // If user is SaaS owner, redirect to backoffice dashboard
       if (isSaasOwner) {
-        // If the request came from a backoffice path or user is SaaS owner, go to backoffice
-        if (fromPath && fromPath.startsWith('/backoffice')) {
-          redirectPath = fromPath;
-        } else {
-          redirectPath = '/backoffice/dashboard';
-        }
-        console.log("Redirecting SaaS owner to:", redirectPath);
+        console.log("Redirecting SaaS owner to backoffice dashboard");
+        navigate("/backoffice/dashboard", { replace: true });
       } else {
-        // For non-SaaS owners, if there's a stored path that's not a backoffice path, use it
-        if (fromPath && !fromPath.startsWith('/backoffice')) {
-          redirectPath = fromPath;
-        }
-        console.log("Redirecting standard user to:", redirectPath);
+        console.log("Redirecting standard user to dashboard");
+        navigate('/dashboard', { replace: true });
       }
-      
-      // Use replace instead of push to prevent back button issues
-      navigate(redirectPath, { replace: true });
     }
-  }, [user, isSaasOwner, navigate, location.state]);
+  }, [user, navigate, location.state, isSaasOwner]);
 
   // Listen for auth errors from context
   useEffect(() => {
@@ -79,14 +68,14 @@ const Login = () => {
       console.log("🔑 Attempting to log in with email:", email);
       const success = await login(email, password);
       console.log("Login result:", success ? "Success" : "Failed");
-      
-      if (!success) {
+      if (success) {
+        // Redirect logic is handled in the useEffect that watches for user changes
+      } else {
         if (!authError) {
           setError("Invalid email or password");
         }
         setIsLoading(false);
       }
-      // Successful login will trigger the useEffect above to handle redirection
     } catch (err) {
       console.error("❌ Login error:", err);
       setError("An error occurred. Please try again.");
@@ -154,12 +143,15 @@ const Login = () => {
     try {
       console.log("👤 Using demo credentials:", demoEmail);
       const success = await login(demoEmail, demoPassword);
-      if (!success && !authError) {
-        toast.error("Demo login failed. Please try again.");
-        setError("Demo login failed. Please check the console for details.");
+      if (success) {
+        // Redirect logic is handled in the useEffect that watches for user changes
+      } else {
+        if (!authError) {
+          toast.error("Demo login failed. Please try again.");
+          setError("Demo login failed. Please check the console for details.");
+        }
         setIsLoading(false);
       }
-      // Successful login will trigger the useEffect above to handle redirection
     } catch (err) {
       console.error("❌ Demo login error:", err);
       setError("An error occurred with demo login. Please try again.");
@@ -171,17 +163,6 @@ const Login = () => {
   const handleOAuthLogin = (provider: string) => {
     toast.info(`${provider} authentication is not configured yet. Please use Google or email login.`);
   };
-
-  // If already authenticated, show a loading state
-  if (user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-blue-50 to-indigo-100">
-        <div className="text-center">
-          <p className="text-gray-500">You are already logged in. Redirecting...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-indigo-100 p-4 animate-fade-in">
