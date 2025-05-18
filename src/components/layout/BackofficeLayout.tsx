@@ -1,5 +1,5 @@
 
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 import { ShieldCheck, LogOut } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth';
@@ -20,16 +20,18 @@ interface BackofficeLayoutProps {
 const BackofficeLayout = ({ children }: BackofficeLayoutProps) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout, isSaasOwner,isBackofficeUser } = useAuth();
-
-  // Redirect if not SaaS owner
-  console.log(user,isSaasOwner,isBackofficeUser)
-  if (!isSaasOwner) {
-    // Use setTimeout to avoid rendering issues when redirecting
-    setTimeout(() => {
+  const { user, logout, isSaasOwner } = useAuth();
+  
+  useEffect(() => {
+    // Check permission on component mount
+    if (user && !isSaasOwner) {
       toast.error("You don't have permission to access the backoffice.");
       navigate('/dashboard');
-    }, 0);
+    }
+  }, [user, isSaasOwner, navigate]);
+
+  // If no user or not a SaaS owner, don't render anything while redirecting
+  if (!user || !isSaasOwner) {
     return null;
   }
 
