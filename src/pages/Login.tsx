@@ -87,7 +87,7 @@ const Login = () => {
     try {
       console.log("Attempting to log in with:", email, password);
       const success = await login(email, password);
-      console.log(sucess,"success")
+      console.log(success,"success")
       if (success) {
         // Redirect logic is handled in the useEffect that watches for user changes
         // This prevents redirection code duplication
