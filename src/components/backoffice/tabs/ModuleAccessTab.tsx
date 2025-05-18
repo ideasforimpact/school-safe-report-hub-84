@@ -98,18 +98,39 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
     
     const result = [];
     
-    // Check if user access exists
-    if (userKey in ModulePermissions.prototype) {
+    // Check if these keys exist in the ModulePermissions type by testing if they exist 
+    // in the current formData or any predefined access keys list
+    // Instead of checking ModulePermissions.prototype which doesn't exist
+    
+    // Check for potential user access type
+    if (formData.moduleAccess.hasOwnProperty(userKey) || moduleAccessKeys.includes(userKey)) {
       result.push({ key: userKey, type: 'User' });
     }
     
-    // Check if admin access exists
-    if (adminKey in ModulePermissions.prototype) {
+    // Check for potential admin access type
+    if (formData.moduleAccess.hasOwnProperty(adminKey) || moduleAccessKeys.includes(adminKey)) {
       result.push({ key: adminKey, type: 'Admin' });
     }
     
     return result;
   };
+
+  // Define a list of known module access keys
+  const moduleAccessKeys: (keyof ModulePermissions)[] = [
+    'superAdmin',
+    'incidentReporting',
+    'incidentAdmin',
+    'assessmentUser',
+    'assessmentsAdmin',
+    'employeeVerificationAdmin',
+    'grievancesAdmin',
+    'transportSafetyAdmin',
+    'eduSafeResourceAccess',
+    'clientManagement',
+    'assessmentTemplateAdmin',
+    'eduSafeResourceAdmin',
+    'analyticsAdmin'
+  ];
 
   return (
     <div className="space-y-4">
