@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -40,13 +39,6 @@ const Login = () => {
       else{
         navigate('/dashboard', { replace: true });
       }
-      
-      // // Only redirect to backoffice paths if the user is a SaaS owner
-      // if (from.includes('/backoffice') && user.role !== 'saas_owner') {
-        
-      // } else {
-      //   navigate(from, { replace: true });
-      // }
     }
   }, [user, navigate, location.state]);
 
@@ -316,6 +308,8 @@ const Login = () => {
           </form>
         </Card>
 
+        {/* Commenting out the demo credentials section as requested */}
+        {/*
         <div className="text-center mt-6 text-sm text-gray-600 p-4 bg-white/80 rounded-md shadow-sm">
           <p>Demo Credentials:</p>
           <div className="mt-2 space-y-2">
@@ -348,6 +342,7 @@ const Login = () => {
             </Button>
           </div>
         </div>
+        */}
       </div>
     </div>
   );
