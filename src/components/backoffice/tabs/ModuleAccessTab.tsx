@@ -5,7 +5,9 @@ import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@
 import { ModulePermissions } from '@/contexts/auth/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Check } from 'lucide-react';
+import { Badge } from "@/components/ui/badge";
+import { cn } from '@/lib/utils';
 
 interface Module {
   id: string;
@@ -55,6 +57,19 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
     fetchClientModules();
   }, []);
 
+  // Known module access keys from the ModulePermissions type
+  const knownAccessKeys = [
+    'superAdmin', 
+    'incidentReporting', 
+    'incidentAdmin', 
+    'assessmentUser', 
+    'assessmentsAdmin', 
+    'employeeVerificationAdmin', 
+    'grievancesAdmin', 
+    'transportSafetyAdmin', 
+    'eduSafeResourceAccess'
+  ];
+
   // Helper function to format module name for display
   const formatModuleName = (name: string): string => {
     return name.replace(/([A-Z])/g, ' $1')
@@ -67,21 +82,32 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
     const key = moduleName.toLowerCase()
       .replace(/\s(.)/g, ($1) => $1.toUpperCase())
       .replace(/\s/g, '')
-      .replace(/^(.)/, ($1) => $1.toLowerCase()) as keyof ModulePermissions;
-
-    // Check if there's an admin version of this key
-    const adminKey = `${key}Admin` as keyof ModulePermissions;
+      .replace(/^(.)/, ($1) => $1.toLowerCase());
+      
+    // Find if there's an admin version of this key
+    const adminKey = `${key}Admin`;
     
-    // If adminKey exists in formData.moduleAccess, return that, otherwise return the regular key
-    if (adminKey in formData.moduleAccess) {
-      return adminKey;
+    // Check if these keys exist in the known access keys list
+    if (knownAccessKeys.includes(adminKey as string)) {
+      return adminKey as keyof ModulePermissions;
     }
-    return key;
+    
+    if (knownAccessKeys.includes(key as string)) {
+      return key as keyof ModulePermissions;
+    }
+    
+    // Default fallback - should be avoided in production
+    return 'superAdmin';
   };
 
   // Check if a module key represents admin access
   const isAdminKey = (key: string): boolean => {
     return key.toLowerCase().includes('admin');
+  };
+
+  // Handle clicking on the admin badge
+  const handleBadgeClick = (accessKey: keyof ModulePermissions, checked: boolean) => {
+    handleModuleAccessChange(accessKey, !checked);
   };
 
   return (
@@ -108,7 +134,6 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
                 {modules.map((module) => {
                   const accessKey = getAccessKeyFromModuleName(module.name);
                   const checked = formData.moduleAccess[accessKey] || false;
-                  const isAdmin = isAdminKey(accessKey);
                   
                   return (
                     <TableRow key={module.id} className="h-14">
@@ -130,11 +155,23 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange }: ModuleAccessTab
                         </label>
                       </TableCell>
                       <TableCell>
-                        {isAdmin ? (
-                          <span className="text-xs bg-green-100 text-green-800 rounded-full px-2 py-1">Admin</span>
-                        ) : (
-                          <span className="text-xs bg-blue-100 text-blue-800 rounded-full px-2 py-1">User</span>
-                        )}
+                        <Badge
+                          variant={checked ? "default" : "outline"}
+                          className={cn(
+                            "cursor-pointer relative pr-7 transition-all duration-200",
+                            checked 
+                              ? "bg-primary hover:bg-primary/90" 
+                              : "text-muted-foreground hover:bg-secondary/10"
+                          )}
+                          onClick={() => handleBadgeClick(accessKey, checked)}
+                        >
+                          Admin
+                          {checked && (
+                            <span className="absolute right-1.5 top-1/2 -translate-y-1/2">
+                              <Check className="h-3 w-3" />
+                            </span>
+                          )}
+                        </Badge>
                       </TableCell>
                     </TableRow>
                   );
