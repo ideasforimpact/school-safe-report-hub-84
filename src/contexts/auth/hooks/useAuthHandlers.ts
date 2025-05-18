@@ -84,6 +84,7 @@ const checkDomainAccess = async (email: string, employeeId: string, setAuthError
       return false;
     }
     
+    
     // Check if the email domain matches based on super admin status
     const emailDomain = email.split('@')[1].toLowerCase();
     
@@ -103,6 +104,7 @@ const checkDomainAccess = async (email: string, employeeId: string, setAuthError
       }
       console.log("Super admin domain check passed");
     } else {
+      console.log(client)
       // Regular user needs to match allowed_domains
       if (!client.allowed_domains) {
         console.log("No allowed domains configured for this client");
@@ -172,6 +174,7 @@ export function useAuthHandlers({
       
       // Then check domain access based on super admin status and client configuration
       const hasDomainAccess = await checkDomainAccess(supabaseUser.email, supabaseUser.id, setAuthError);
+      console.log(hasDomainAccess,"hasDomainAccess")
       if (!hasDomainAccess) {
         console.log("Access denied: Domain verification failed");
         await supabase.auth.signOut();
