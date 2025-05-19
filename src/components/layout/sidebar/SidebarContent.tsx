@@ -2,7 +2,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { getSaasOwnerItems, getClientItems, fetchModules, convertModulesToSidebarItems } from './sidebarConfig';
+import { 
+  getSaasOwnerItems, 
+  getClientItems, 
+  fetchModules, 
+  convertModulesToSidebarItems 
+} from './sidebarConfig';
 import SidebarMenuItem from './SidebarMenuItem';
 import { ModulePermissions } from '@/contexts/auth/types';
 import { toast } from 'sonner';
@@ -31,7 +36,8 @@ const SidebarContent = () => {
   const permissions: ModulePermissions = user?.modulePermissions || defaultPermissions;
 
   // For admin users, we want to show all modules regardless of specific permissions
-  const effectivePermissions = isAdmin ? 
+  // If user is authenticated via a provider (like Google), only show their configured modules
+  const effectivePermissions = isAdmin && !user?.provider ? 
     {
       ...permissions,
       incidentReporting: true,
@@ -68,6 +74,7 @@ const SidebarContent = () => {
       // For others, fetch client modules
       const isBackofficeFetch = isSaasOwner && isBackofficeRoute;
       console.log(`User is ${isSaasOwner ? 'SaaS owner' : 'client user'}, route is ${isBackofficeRoute ? 'backoffice' : 'client'}`);
+      console.log(`User authenticated via provider: ${user?.provider || 'none'}, will show ${user?.provider ? 'configured' : 'all'} modules`);
       
       // Fetch modules passing user info
       const modules = await fetchModules(isBackofficeFetch, user);
@@ -82,7 +89,24 @@ const SidebarContent = () => {
         }]);
       } else {
         const basePath = isBackofficeFetch ? '/backoffice' : '';
-        const items = convertModulesToSidebarItems(modules, effectivePermissions, basePath);
+        
+        // If user is authenticated via provider (Google, etc.), filter modules based on permissions
+        let items = [];
+        
+        if (user?.provider) {
+          // For provider-authenticated users, only show modules they have permission for
+          const filteredModules = modules.filter(module => {
+            const moduleKey = module.key;
+            // If the module has a key and matches a permission key that is enabled, show it
+            return moduleKey && effectivePermissions[moduleKey as keyof ModulePermissions];
+          });
+          
+          items = convertModulesToSidebarItems(filteredModules, effectivePermissions, basePath);
+        } else {
+          // For regular users, use standard conversion
+          items = convertModulesToSidebarItems(modules, effectivePermissions, basePath);
+        }
+        
         setDynamicMenuItems(items);
       }
       

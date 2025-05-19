@@ -1,3 +1,4 @@
+
 // Define the user with password separately for internal use
 export interface UserWithPassword extends User {
   password: string;
@@ -47,13 +48,14 @@ export interface User {
   joiningDate?: string;
   createdAt: string;
   lastLogin?: string;
+  provider?: string; // Add provider field to track authentication method
 }
 
 export type UserRole = 'admin' | 'reporter' | 'viewer' | 'saas_owner';
 
-export type EmployeeType = 'permanent' | 'contract' | 'part_time' | 'consultant';
+export type EmployeeType = 'permanent' | 'contract' | 'part_time' | 'consultant' | 'intern';
 
-export type DepartmentType = 'admin' | 'teaching' | 'security' | 'maintenance' | 'transport' | 'management';
+export type DepartmentType = 'admin' | 'teaching' | 'security' | 'maintenance' | 'transport' | 'management' | 'it' | 'hr' | 'finance';
 
 export interface ModulePermissions {
   superAdmin: boolean;
@@ -65,4 +67,5 @@ export interface ModulePermissions {
   grievancesAdmin: boolean;
   transportSafetyAdmin: boolean;
   eduSafeResourceAccess: boolean;
+  [key: string]: boolean; // Add index signature to support dynamic properties
 }

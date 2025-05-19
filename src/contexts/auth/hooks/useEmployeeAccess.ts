@@ -2,6 +2,7 @@
 import { useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
+import { EmploymentStatus } from '@/contexts/employee/types';
 
 /**
  * Hook to check if employee is verified and active
@@ -20,13 +21,13 @@ export const useEmployeeAccess = () => {
   // Check if employee is active
   const isActiveEmployee = useMemo(() => {
     if (!employee) return false;
-    return employee.status === true; // Using boolean status
+    return employee.status === 'active'; // Using EmploymentStatus
   }, [employee]);
 
   // Check if employee is verified
   const isVerifiedEmployee = useMemo(() => {
     if (!employee) return false;
-    return employee.status === true; // Using boolean status
+    return employee.status === 'active'; // Using EmploymentStatus
   }, [employee]);
 
   // Get employee id if available

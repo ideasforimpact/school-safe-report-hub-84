@@ -23,9 +23,9 @@ export interface Module {
   level: string;
   created_at?: string;
   updated_at?: string;
-  key?: string; // Added as optional since it might be missing in the database
+  key?: string; // Module key for permission mapping
   active?: boolean;
-  description?: string; // Added as optional since it might be missing in the database
+  description?: string;
 }
 
 // Map string icon names to Lucide components
@@ -65,12 +65,16 @@ export const fetchModules = async (isBackoffice: boolean, user?: any): Promise<M
       id: user.id,
       email: user.email,
       role: user.role,
-      isSaasOwner: user.role === 'saas_owner'
+      isSaasOwner: user.role === 'saas_owner',
+      provider: user.provider // Include provider information
     } : null;
     
     // Call our edge function with user info only - edge function will determine level
     const { data, error } = await supabase.functions.invoke('fetch-modules', {
-      body: { userInfo }
+      body: { 
+        userInfo,
+        fetchLevel: isBackoffice ? 'backoffice' : 'client' 
+      }
     });
     
     if (error) {
@@ -85,6 +89,35 @@ export const fetchModules = async (isBackoffice: boolean, user?: any): Promise<M
     
     // Cache the results based on the determined user role
     const modules = data.modules;
+    
+    // Map module names to permission keys for filtering
+    modules.forEach(module => {
+      // Set key based on module name for permission mapping
+      switch(module.name.toLowerCase()) {
+        case 'incidents':
+          module.key = 'incidentReporting';
+          break;
+        case 'assessments':
+          module.key = 'assessmentUser';
+          break;
+        case 'employee verification':
+          module.key = 'employeeVerificationAdmin';
+          break;
+        case 'grievances':
+          module.key = 'grievancesAdmin';
+          break;
+        case 'transport safety':
+          module.key = 'transportSafetyAdmin';
+          break;
+        case 'edusafe resources':
+          module.key = 'eduSafeResourceAccess';
+          break;
+        default:
+          // For modules without specific permissions
+          module.key = module.name.toLowerCase().replace(/\s+/g, '_');
+      }
+    });
+    
     if (isBackoffice) {
       cachedBackofficeModules = modules;
     } else {
@@ -100,24 +133,52 @@ export const fetchModules = async (isBackoffice: boolean, user?: any): Promise<M
 
 // Convert database modules to sidebar items
 export const convertModulesToSidebarItems = (modules: Module[], permissions: ModulePermissions, basePath: string = '') => {
-  return modules.map(module => {
+  // Always include dashboard
+  const items = [{
+    icon: LayoutDashboard,
+    label: 'Dashboard',
+    path: `${basePath}/dashboard`,
+    allowed: true
+  }];
+  
+  // Process other modules
+  modules.forEach(module => {
+    // Skip if this is the dashboard module (already added)
+    if (module.name.toLowerCase() === 'dashboard') {
+      return;
+    }
+    
     // Get the icon component from our mapping, or default to LayoutDashboard
-    const IconComponent = iconMap[module.icon || 'LayoutDashboard'];
+    const IconComponent = iconMap[module.icon || 'LayoutDashboard'] || LayoutDashboard;
     
     // Determine path based on name
     const path = `${basePath}/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
     
-    // For modules, we don't have a specific permission key, so we'll show all modules
-    // In a real app, you might want to map module names to permission keys
-    const allowed = true; // All modules are allowed for now
+    // Determine if module is allowed based on permissions
+    let allowed = true;
     
-    return {
+    // If the module has a key that maps to permissions, check it
+    if (module.key && module.key in permissions) {
+      allowed = permissions[module.key as keyof ModulePermissions];
+    }
+    
+    items.push({
       icon: IconComponent,
       label: module.name,
       path,
       allowed,
-    };
+    });
   });
+  
+  // Always add settings at the end
+  items.push({
+    icon: Settings,
+    label: 'Settings',
+    path: `${basePath}/configuration`,
+    allowed: true,
+  });
+  
+  return items;
 };
 
 // These functions are kept for backward compatibility

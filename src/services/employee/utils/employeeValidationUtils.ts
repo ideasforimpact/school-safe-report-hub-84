@@ -13,20 +13,20 @@ export const validateEmployeeType = (value: string): EmployeeType | null => {
   
   // Map common variations to standard types
   const typeMap: Record<string, EmployeeType> = {
-    'full-time': 'permanent',
-    'fulltime': 'permanent',
-    'full time': 'permanent',
-    'permanent': 'permanent',
-    'part-time': 'part_time',
-    'parttime': 'part_time', 
-    'part time': 'part_time',
-    'contractor': 'contract',
-    'contractual': 'contract',
-    'contract': 'contract',
-    'consultant': 'consultant',
-    'intern': 'intern',
-    'internship': 'intern',
-    'temporary': 'contract'
+    'full-time': 'permanent' as EmployeeType,
+    'fulltime': 'permanent' as EmployeeType,
+    'full time': 'permanent' as EmployeeType,
+    'permanent': 'permanent' as EmployeeType,
+    'part-time': 'part_time' as EmployeeType,
+    'parttime': 'part_time' as EmployeeType, 
+    'part time': 'part_time' as EmployeeType,
+    'contractor': 'contract' as EmployeeType,
+    'contractual': 'contract' as EmployeeType,
+    'contract': 'contract' as EmployeeType,
+    'consultant': 'consultant' as EmployeeType,
+    'intern': 'intern' as EmployeeType,
+    'internship': 'intern' as EmployeeType,
+    'temporary': 'contract' as EmployeeType
   };
   
   return (typeMap[normalizedValue] || normalizedValue) as EmployeeType;
@@ -43,24 +43,24 @@ export const validateDepartment = (value: string): DepartmentType | null => {
   
   // Map common variations to standard departments
   const deptMap: Record<string, DepartmentType> = {
-    'admin': 'admin',
-    'administration': 'admin',
-    'teaching': 'teaching',
-    'teacher': 'teaching',
-    'faculty': 'teaching',
-    'security': 'security',
-    'safety': 'security',
-    'maintenance': 'maintenance',
-    'transport': 'transport',
-    'transportation': 'transport',
-    'management': 'management',
-    'it': 'it',
-    'information technology': 'it',
-    'hr': 'hr',
-    'human resources': 'hr',
-    'finance': 'finance',
-    'accounting': 'finance',
-    'operations': 'management'
+    'admin': 'admin' as DepartmentType,
+    'administration': 'admin' as DepartmentType,
+    'teaching': 'teaching' as DepartmentType,
+    'teacher': 'teaching' as DepartmentType,
+    'faculty': 'teaching' as DepartmentType,
+    'security': 'security' as DepartmentType,
+    'safety': 'security' as DepartmentType,
+    'maintenance': 'maintenance' as DepartmentType,
+    'transport': 'transport' as DepartmentType,
+    'transportation': 'transport' as DepartmentType,
+    'management': 'management' as DepartmentType,
+    'it': 'it' as DepartmentType,
+    'information technology': 'it' as DepartmentType,
+    'hr': 'hr' as DepartmentType,
+    'human resources': 'hr' as DepartmentType,
+    'finance': 'finance' as DepartmentType,
+    'accounting': 'finance' as DepartmentType,
+    'operations': 'management' as DepartmentType
   };
   
   return (deptMap[normalizedValue] || normalizedValue) as DepartmentType;
@@ -77,15 +77,15 @@ export const validateEmploymentStatus = (value: string): EmploymentStatus | null
   
   // Map common variations to standard statuses
   const statusMap: Record<string, EmploymentStatus> = {
-    'active': 'active',
-    'on leave': 'on_leave',
-    'onleave': 'on_leave',
-    'leave': 'on_leave',
-    'resigned': 'resigned',
-    'terminated': 'terminated',
-    'fired': 'terminated',
-    'retired': 'retired',
-    'inactive': 'inactive'
+    'active': 'active' as EmploymentStatus,
+    'on leave': 'on_leave' as EmploymentStatus,
+    'onleave': 'on_leave' as EmploymentStatus,
+    'leave': 'on_leave' as EmploymentStatus,
+    'resigned': 'resigned' as EmploymentStatus,
+    'terminated': 'terminated' as EmploymentStatus,
+    'fired': 'terminated' as EmploymentStatus,
+    'retired': 'retired' as EmploymentStatus,
+    'inactive': 'inactive' as EmploymentStatus
   };
   
   return (statusMap[normalizedValue] || normalizedValue) as EmploymentStatus;
