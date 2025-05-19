@@ -1,3 +1,4 @@
+
 import { EmployeeState } from './types';
 import { ModulePermissions } from '@/contexts/auth/types';
 
@@ -10,6 +11,10 @@ export const getEmployeeError = (state: EmployeeState) => state.error;
 // Helper function to determine if employee is a super admin
 export const isEmployeeSuperAdmin = (state: EmployeeState) => 
   state.employeeData?.isSuperAdmin === true;
+
+// Helper function to determine if employee is an admin
+export const isEmployeeAdmin = (state: EmployeeState) => 
+  state.employeeData ? true : false; // If we have employee data, consider them an admin
 
 // Helper function to check if any module is enabled from configured modules
 export const hasAnyModulePermission = (state: EmployeeState): boolean => {

@@ -3,6 +3,8 @@ import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth, ModulePermissions } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
+import { useEmployeeStore } from '@/store/EmployeeContext';
+import { hasModulePermission } from '@/store/employeeSelectors';
 
 interface ModuleGuardProps {
   moduleType: keyof ModulePermissions;
@@ -10,10 +12,17 @@ interface ModuleGuardProps {
 }
 
 const ModuleGuard = ({ moduleType, children }: ModuleGuardProps) => {
+  const { state } = useEmployeeStore();
   const { user } = useAuth();
   
-  // Check if user has permission for this module
-  const hasPermission = user?.modulePermissions?.[moduleType] || false;
+  // First check the Redux store for permissions
+  const hasReduxPermission = hasModulePermission(state, moduleType);
+  
+  // Fallback to auth context if Redux doesn't have the permission
+  const hasAuthPermission = user?.modulePermissions?.[moduleType] || false;
+  
+  // Use Redux permission if available, otherwise fallback to auth context
+  const hasPermission = hasReduxPermission || hasAuthPermission;
 
   if (!hasPermission) {
     return (

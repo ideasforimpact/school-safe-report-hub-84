@@ -17,21 +17,22 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { ChangePasswordDialog } from '@/components/ChangePasswordDialog';
+import EmployeeDataProvider from '@/components/employee/EmployeeDataProvider';
 
 interface UserProfileMenuProps {
   employeeData?: any;
 }
 
-const UserProfileMenu: React.FC<UserProfileMenuProps> = ({ employeeData }) => {
-  const { user, logout, isAdmin, isSaasOwner } = useAuth();
+const UserProfileMenuInner: React.FC<UserProfileMenuProps & {
+  isAdmin: boolean;
+  isSuperAdmin: boolean;
+}> = ({ employeeData, isAdmin, isSuperAdmin }) => {
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
-
-  // Check if user is super admin
-  const isSuperAdmin = user?.modulePermissions?.superAdmin === true;
   
   // Show settings only for SaaS owners or super admins
-  const showSettings = isSaasOwner || isSuperAdmin;
+  const showSettings = isSuperAdmin;
 
   const getInitials = () => {
     if (!user || !user.firstName || !user.lastName) return '';
@@ -109,6 +110,20 @@ const UserProfileMenu: React.FC<UserProfileMenuProps> = ({ employeeData }) => {
         </DialogContent>
       </Dialog>
     </>
+  );
+};
+
+const UserProfileMenu: React.FC<UserProfileMenuProps> = (props) => {
+  return (
+    <EmployeeDataProvider>
+      {({ isAdmin, isSuperAdmin }) => (
+        <UserProfileMenuInner 
+          {...props} 
+          isAdmin={isAdmin} 
+          isSuperAdmin={isSuperAdmin} 
+        />
+      )}
+    </EmployeeDataProvider>
   );
 };
 

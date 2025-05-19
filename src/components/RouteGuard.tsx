@@ -3,6 +3,7 @@ import React, { useEffect } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import EmployeeDataProvider from '@/components/employee/EmployeeDataProvider';
 
 interface RouteGuardProps {
   children?: React.ReactNode;
@@ -10,12 +11,17 @@ interface RouteGuardProps {
   requireSaasOwner?: boolean;
 }
 
-const RouteGuard = ({ 
+const RouteGuardInner = ({ 
   children, 
   requireAdmin = false,
-  requireSaasOwner = false 
-}: RouteGuardProps) => {
-  const { user, isAdmin, authError } = useAuth();
+  requireSaasOwner = false,
+  isAdmin,
+  isSuperAdmin 
+}: RouteGuardProps & { 
+  isAdmin: boolean;
+  isSuperAdmin: boolean;
+}) => {
+  const { user, authError } = useAuth();
   const location = useLocation();
 
   // Notice: This component is set to be more permissive now.
@@ -29,14 +35,28 @@ const RouteGuard = ({
       }
     } else if (requireAdmin && !isAdmin) {
       toast.warning("This page normally requires admin privileges");
-    } else if (requireSaasOwner && user.role !== 'saas_owner') {
+    } else if (requireSaasOwner && !isSuperAdmin) {
       toast.warning("This page normally requires owner privileges");
     }
-  }, [user, isAdmin, requireAdmin, requireSaasOwner, authError, location.pathname]);
+  }, [user, isAdmin, isSuperAdmin, requireAdmin, requireSaasOwner, authError, location.pathname]);
 
   // Always allow access, but show different UI based on user status
   // Return children if provided, otherwise return Outlet for nested routes
   return children ? <>{children}</> : <Outlet />;
+};
+
+const RouteGuard = (props: RouteGuardProps) => {
+  return (
+    <EmployeeDataProvider>
+      {({ isAdmin, isSuperAdmin }) => (
+        <RouteGuardInner 
+          {...props} 
+          isAdmin={isAdmin} 
+          isSuperAdmin={isSuperAdmin} 
+        />
+      )}
+    </EmployeeDataProvider>
+  );
 };
 
 export default RouteGuard;

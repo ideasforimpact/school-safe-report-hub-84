@@ -14,10 +14,10 @@ import UserRoleBadge from './UserRoleBadge';
 import EmployeeDataProvider from '@/components/employee/EmployeeDataProvider';
 
 // Inner component to receive employee data from Redux
-const HeaderInner = ({ employeeData, user, isSaasOwner, isAdmin, logout }: {
+const HeaderInner = ({ employeeData, user, isSuperAdmin, isAdmin, logout }: {
   employeeData: any;
   user: any;
-  isSaasOwner: boolean;
+  isSuperAdmin: boolean;
   isAdmin: boolean;
   logout: () => void;
 }) => {
@@ -38,7 +38,7 @@ const HeaderInner = ({ employeeData, user, isSaasOwner, isAdmin, logout }: {
   const dashboardPath = "/dashboard";
   
   // Show admin settings menu for all admin users
-  const showAdminSettings = isSaasOwner || isAdmin;
+  const showAdminSettings = isSuperAdmin || isAdmin;
 
   return (
     <div className="w-full h-16 bg-white shadow-sm">
@@ -47,7 +47,7 @@ const HeaderInner = ({ employeeData, user, isSaasOwner, isAdmin, logout }: {
           {/* Logo Section */}
           <HeaderLogo 
             userClient={userClient} 
-            isSaasOwner={isSaasOwner} 
+            isSaasOwner={isSuperAdmin} 
             dashboardPath={dashboardPath} 
           />
           
@@ -62,7 +62,7 @@ const HeaderInner = ({ employeeData, user, isSaasOwner, isAdmin, logout }: {
             <div className="flex items-center gap-3">
               <HeaderIcons />
 
-              {user && <UserRoleBadge isSaasOwner={isSaasOwner} isAdmin={isAdmin} />}
+              {user && <UserRoleBadge isSaasOwner={isSuperAdmin} isAdmin={isAdmin} />}
               
               {/* Settings Menu - Only visible for admins */}
               {showAdminSettings && !isBackoffice && <AdminSettingsMenu />}
@@ -85,15 +85,15 @@ const HeaderInner = ({ employeeData, user, isSaasOwner, isAdmin, logout }: {
 
 // Main component that uses EmployeeDataProvider
 const Header = () => {
-  const { user, logout, isAdmin, isSaasOwner } = useAuth();
+  const { user, logout } = useAuth();
 
   return (
     <EmployeeDataProvider>
-      {({ employeeData }) => (
+      {({ employeeData, isAdmin, isSuperAdmin }) => (
         <HeaderInner
           employeeData={employeeData}
           user={user}
-          isSaasOwner={isSaasOwner}
+          isSuperAdmin={isSuperAdmin}
           isAdmin={isAdmin}
           logout={logout}
         />

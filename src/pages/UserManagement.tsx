@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -60,9 +59,10 @@ const convertDepartmentType = (department: EmployeeContextDepartmentType): Depar
 };
 
 // Inner component to receive employee data from Redux
-const UserManagementInner = ({ employeeData, isAdmin, user }: { 
+const UserManagementInner = ({ employeeData, isAdmin, isSuperAdmin, user }: { 
   employeeData: any;
   isAdmin: boolean;
+  isSuperAdmin: boolean;
   user: User | null;
 }) => {
   const { users = [] } = useAuth();
@@ -660,14 +660,15 @@ const UserManagementInner = ({ employeeData, isAdmin, user }: {
 
 // Main component that uses EmployeeDataProvider
 const UserManagement = () => {
-  const { isAdmin, user } = useAuth();
+  const { user } = useAuth();
   
   return (
     <EmployeeDataProvider>
-      {({ employeeData }) => (
+      {({ employeeData, isAdmin, isSuperAdmin }) => (
         <UserManagementInner 
           employeeData={employeeData}
           isAdmin={isAdmin}
+          isSuperAdmin={isSuperAdmin}
           user={user}
         />
       )}

@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/auth/AuthContext';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { EmploymentStatus } from '@/contexts/employee/types';
 import { useEmployeeStore } from '@/store/EmployeeContext';
-import { getEmployeeData } from '@/store/employeeSelectors';
+import { getEmployeeData, isEmployeeAdmin, isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 
 /**
  * Hook to check if employee is verified and active
@@ -14,6 +14,8 @@ export const useEmployeeAccess = () => {
   const { employees } = useEmployeeVerification();
   const { state } = useEmployeeStore();
   const employeeData = getEmployeeData(state);
+  const isAdmin = isEmployeeAdmin(state);
+  const isSuperAdmin = isEmployeeSuperAdmin(state);
 
   // Find employee associated with current user
   const employee = useMemo(() => {
@@ -30,13 +32,15 @@ export const useEmployeeAccess = () => {
       // If we couldn't find the full employee record, still use the Redux data
       return {
         ...employeeData,
-        status: true // Assume active if in Redux
+        status: true, // Assume active if in Redux
+        isAdmin, // Add isAdmin from Redux
+        isSuperAdmin // Add isSuperAdmin from Redux
       };
     }
     
     // Fallback to finding by email
     return employees.find(emp => emp.email.toLowerCase() === user.email?.toLowerCase());
-  }, [user, employees, employeeData]);
+  }, [user, employees, employeeData, isAdmin, isSuperAdmin]);
 
   // Check if employee is active
   const isActiveEmployee = useMemo(() => {
@@ -93,6 +97,8 @@ export const useEmployeeAccess = () => {
     isActiveEmployee,
     isVerifiedEmployee,
     getEmployeeId,
-    getClientId
+    getClientId,
+    isAdmin,
+    isSuperAdmin
   };
 };
