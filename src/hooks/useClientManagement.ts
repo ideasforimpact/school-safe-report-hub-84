@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Client, useClient, InstitutionType, ModuleInfo } from '@/contexts/ClientContext';
 import { OAuthProviderName } from '@/utils/authProviders';
@@ -189,6 +188,7 @@ export const useClientManagement = () => {
     }
   };
 
+  // Fix the function that prepares module info array
   const prepareModuleInfoArray = (moduleAccess: Partial<ModulePermissions>): ModuleInfo[] => {
     // Create module info array from moduleAccess
     return Object.entries(moduleAccess)
@@ -300,7 +300,7 @@ export const useClientManagement = () => {
           // Now create the module info array with complete information
           moduleInfoArray = clientModulesData.map(cm => {
             // Parse access_level if it's a string
-            let accessLevel = cm.access_level;
+            let accessLevel: any = cm.access_level;
             if (typeof accessLevel === 'string') {
               try {
                 accessLevel = JSON.parse(accessLevel);
@@ -309,10 +309,15 @@ export const useClientManagement = () => {
               }
             }
             
+            // Make sure we properly handle the access level object
+            const isAdmin = typeof accessLevel === 'object' && accessLevel !== null 
+              ? !!accessLevel.isAdmin 
+              : false;
+            
             return {
               name: moduleMap.get(cm.module_id) || "Unknown Module",
               module_id: cm.module_id,
-              is_admin: accessLevel?.isAdmin === true || false
+              is_admin: isAdmin
             };
           });
           
