@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -54,7 +53,7 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
 
   const handlePermissionChange = (permission: keyof ModulePermissions, checked: boolean) => {
     const newSelectedPermissions = checked 
-      ? [...selectedPermissions, permission] 
+      ? [...selectedPermissions, permission as string] 
       : selectedPermissions.filter(p => p !== permission);
     
     setSelectedPermissions(newSelectedPermissions);

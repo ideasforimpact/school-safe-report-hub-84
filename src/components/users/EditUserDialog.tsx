@@ -45,7 +45,7 @@ const EditUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, re
         .filter(([_, value]) => value)
         .map(([key]) => key);
       
-      setSelectedPermissions(enabledPermissions);
+      setSelectedPermissions(enabledPermissions as string[]);
       
       // Ensure clientId is set in formData
       if (!formData.clientId && clientId) {
@@ -72,7 +72,7 @@ const EditUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, re
 
   const handlePermissionChange = (permission: keyof ModulePermissions, checked: boolean) => {
     const newSelectedPermissions = checked 
-      ? [...selectedPermissions, permission] 
+      ? [...selectedPermissions, permission as string] 
       : selectedPermissions.filter(p => p !== permission);
     
     setSelectedPermissions(newSelectedPermissions);

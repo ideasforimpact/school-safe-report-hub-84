@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Employee } from '@/contexts/employee/types';
 import { ModulePermissions } from '@/contexts/auth/types';
@@ -16,14 +17,6 @@ interface EmployeeFormProps {
   setFormData: React.Dispatch<React.SetStateAction<Partial<Employee>>>;
   isEditMode?: boolean;
 }
-
-// Employee Module Permissions component (to be implemented or imported)
-const EmployeeModulePermissionsPlaceholder: React.FC<{
-  modulePermissions: ModulePermissions;
-  onModulePermissionChange: (key: keyof ModulePermissions, value: boolean) => void;
-}> = ({ modulePermissions, onModulePermissionChange }) => {
-  return <div>Module Permissions Placeholder</div>;
-};
 
 const EmployeeForm: React.FC<EmployeeFormProps> = ({
   formData,
