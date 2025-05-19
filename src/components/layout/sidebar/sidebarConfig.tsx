@@ -78,11 +78,8 @@ export const fetchModules = async (isBackoffice: boolean, user?: any, employeeDa
       email: employeeData.email,
       firstName: employeeData.firstName,
       lastName: employeeData.lastName,
-      department: employeeData.department,
       employeeType: employeeData.employeeType,
-      isSuperAdmin: employeeData.isSuperAdmin,
-      status: employeeData.status,
-      employeeId: employeeData.employeeId
+      employeeId: employeeData.id
     } : null;
 
     console.log("Employee data being sent:", employeeInfo,employeeData);
