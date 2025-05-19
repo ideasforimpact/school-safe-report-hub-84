@@ -192,112 +192,7 @@ async function deleteClientEmployees(clientId: string) {
   }
 }
 
-// Updated Function to find a module by name
-async function findModuleByName(moduleName: string): Promise<string | null> {
-  try {
-    console.log(`Searching for module with name: ${moduleName}`);
-    
-    // If module_id is already provided, just return it
-    if (moduleName.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)) {
-      console.log(`Module ID already provided: ${moduleName}`);
-      
-      // Verify it exists in the database
-      const { data: moduleExists, error: verifyError } = await supabase
-        .from('modules')
-        .select('id')
-        .eq('id', moduleName)
-        .single();
-        
-      if (verifyError) {
-        console.error(`Error verifying module ID ${moduleName}:`, verifyError);
-        return null;
-      }
-      
-      if (moduleExists) {
-        console.log(`Verified module ID exists: ${moduleName}`);
-        return moduleName;
-      }
-    }
-    
-    // First try exact name match
-    const { data: modules, error } = await supabase
-      .from('modules')
-      .select('id, name')
-      .eq('name', moduleName);
-      
-    if (error) {
-      console.error(`Error finding module with name ${moduleName}:`, error);
-      return null;
-    }
-
-    // If exact match found, return it
-    if (modules && modules.length > 0) {
-      console.log(`Found exact match for module ${moduleName}: ${modules[0].id}`);
-      return modules[0].id;
-    }
-    
-    // If no exact match, try case-insensitive search
-    const { data: modulesIlike, error: ilikeError } = await supabase
-      .from('modules')
-      .select('id, name')
-      .ilike('name', `%${moduleName}%`);
-      
-    if (ilikeError) {
-      console.error(`Error in ilike search for module ${moduleName}:`, ilikeError);
-      return null;
-    }
-    
-    if (modulesIlike && modulesIlike.length > 0) {
-      console.log(`Found fuzzy match for module ${moduleName}: ${modulesIlike[0].id} (${modulesIlike[0].name})`);
-      return modulesIlike[0].id;
-    }
-    
-    // Special case mappings
-    const specialCaseMap: Record<string, string> = {
-      'superAdmin': 'Dashboard',
-      'incidentReporting': 'Incidents',
-      'assessmentUser': 'Assessments',
-      'employeeVerificationAdmin': 'Employee Verification',
-      'grievancesAdmin': 'Grievances',
-      'transportSafetyAdmin': 'Transport Safety',
-      'eduSafeResourceAccess': 'EduSafe Resources'
-    };
-    
-    // Try special case mapping
-    const mappedName = specialCaseMap[moduleName];
-    if (mappedName) {
-      const { data: mappedModules, error: mappedError } = await supabase
-        .from('modules')
-        .select('id, name')
-        .eq('name', mappedName);
-        
-      if (!mappedError && mappedModules && mappedModules.length > 0) {
-        console.log(`Found mapped module for ${moduleName}: ${mappedModules[0].id} (${mappedModules[0].name})`);
-        return mappedModules[0].id;
-      }
-    }
-
-    // As last resort, get all modules and find the best match
-    const { data: allModules, error: allModulesError } = await supabase
-      .from('modules')
-      .select('id, name');
-      
-    if (!allModulesError && allModules && allModules.length > 0) {
-      console.log(`No direct match found for ${moduleName}, searching all ${allModules.length} modules`);
-      for (const module of allModules) {
-        console.log(`Checking module: ${module.name}`);
-      }
-    }
-
-    console.log(`No module found with name: ${moduleName}`);
-    return null;
-  } catch (err) {
-    console.error(`Error in findModuleByName for ${moduleName}:`, err);
-    return null;
-  }
-}
-
-// Updated Function to process module access data
+// Direct function to process module access based on the provided module information
 async function processModuleAccess(clientId: string, moduleInfoArray: ModuleInfo[]): Promise<boolean> {
   try {
     console.log(`Processing modules for client ${clientId}:`, JSON.stringify(moduleInfoArray, null, 2));
@@ -306,65 +201,93 @@ async function processModuleAccess(clientId: string, moduleInfoArray: ModuleInfo
       console.log('No modules to process');
       return true;
     }
-    
-    // Delete existing client modules
-    const { error: deleteError } = await supabase
-      .from('client_modules')
-      .delete()
-      .eq('client_id', clientId);
+
+    // Create an array to store upsert operations
+    const upsertOperations = moduleInfoArray.map(moduleInfo => {
+      console.log(`Processing module: ${moduleInfo.name}, module_id: ${moduleInfo.module_id}, is_admin: ${moduleInfo.is_admin}`);
       
-    if (deleteError) {
-      console.error('Error deleting existing client modules:', deleteError);
-      return false;
-    }
-    
-    // Process each module
-    const moduleInserts = await Promise.all(moduleInfoArray.map(async (moduleInfo) => {
-      // If module_id is not provided or empty, try to find it by name
-      let moduleId = moduleInfo.module_id;
-      if (!moduleId) {
-        moduleId = await findModuleByName(moduleInfo.name);
-        if (!moduleId) {
-          console.log(`Could not find module ID for module named: ${moduleInfo.name}`);
-          return null;
-        }
-      }
-      
-      console.log(`Creating client_module for: ${moduleInfo.name}, module_id: ${moduleId}, is_admin: ${moduleInfo.is_admin}`);
-      
-      // Create the client_module entry with proper access_level JSON
+      // Prepare the data for upsert
       return {
         client_id: clientId,
-        module_id: moduleId,
+        module_id: moduleInfo.module_id,
         enabled: true,
         access_level: { 
           isAdmin: moduleInfo.is_admin,
           isEnabled: true
         }
       };
-    }));
+    });
     
-    // Filter out null entries and insert valid modules
-    const validModuleInserts = moduleInserts.filter(item => item !== null);
+    // Filter out any invalid entries
+    const validOperations = upsertOperations.filter(op => op.module_id);
     
-    if (validModuleInserts.length > 0) {
-      console.log(`Inserting ${validModuleInserts.length} client modules:`, JSON.stringify(validModuleInserts, null, 2));
-      
-      const { error: insertError } = await supabase
-        .from('client_modules')
-        .insert(validModuleInserts);
-        
-      if (insertError) {
-        console.error('Error inserting client modules:', insertError);
-        return false;
-      }
-      
-      console.log(`Successfully inserted ${validModuleInserts.length} modules for client ${clientId}`);
+    if (validOperations.length === 0) {
+      console.log('No valid modules to process');
       return true;
     }
     
-    console.log('No valid modules to insert after processing');
-    return true;
+    console.log(`Processing ${validOperations.length} module operations for client ${clientId}`);
+    
+    // Check for existing entries for this client
+    const { data: existingModules, error: fetchError } = await supabase
+      .from('client_modules')
+      .select('id, module_id')
+      .eq('client_id', clientId);
+      
+    if (fetchError) {
+      console.error('Error fetching existing client modules:', fetchError);
+      return false;
+    }
+    
+    // Map of existing module entries by module_id
+    const existingModuleMap = new Map();
+    if (existingModules) {
+      existingModules.forEach(module => {
+        existingModuleMap.set(module.module_id, module.id);
+      });
+    }
+    
+    // Process updates for existing modules
+    const updatePromises = validOperations
+      .filter(op => existingModuleMap.has(op.module_id))
+      .map(async op => {
+        const id = existingModuleMap.get(op.module_id);
+        console.log(`Updating existing module: ${op.module_id} with access_level:`, op.access_level);
+        
+        const { error } = await supabase
+          .from('client_modules')
+          .update({ access_level: op.access_level, enabled: op.enabled })
+          .eq('id', id);
+          
+        if (error) {
+          console.error(`Error updating module ${op.module_id}:`, error);
+          return false;
+        }
+        return true;
+      });
+      
+    // Process inserts for new modules
+    const insertOperations = validOperations
+      .filter(op => !existingModuleMap.has(op.module_id));
+      
+    let insertResult = true;
+    if (insertOperations.length > 0) {
+      console.log(`Inserting ${insertOperations.length} new modules`);
+      const { error: insertError } = await supabase
+        .from('client_modules')
+        .insert(insertOperations);
+        
+      if (insertError) {
+        console.error('Error inserting client modules:', insertError);
+        insertResult = false;
+      }
+    }
+    
+    // Wait for all update operations to complete
+    const updateResults = await Promise.all(updatePromises);
+    const updateSuccess = updateResults.every(result => result === true);
+    
+    return updateSuccess && insertResult;
   } catch (err) {
     console.error('Error in processModuleAccess:', err);
     return false;
