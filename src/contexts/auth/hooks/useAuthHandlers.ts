@@ -91,7 +91,7 @@ export const useAuthHandlers = ({
       if (supabaseUser.id) {
         const { data, error } = await supabase
           .from('employees')
-          .select('id, client_id, employee_type, first_name, last_name, email, status, user_id')
+          .select('id, client_id, employee_type, first_name, last_name, email, status, user_id',"is_super_admin")
           .eq('user_id', supabaseUser.id)
           .single();
           
@@ -101,7 +101,8 @@ export const useAuthHandlers = ({
             clientId: data.client_id,
             firstName: data.first_name,
             lastName: data.last_name,
-            email: data.email
+            email: data.email,
+            isSuperAdmin: data.is_super_admin
           };
           
           // Convert employee_type string to UserRole
@@ -141,7 +142,7 @@ export const useAuthHandlers = ({
       if (!employeeData && supabaseUser.email) {
         const { data, error } = await supabase
           .from('employees')
-          .select('id, client_id, employee_type, first_name, last_name, email, status, user_id')
+          .select('id, client_id, employee_type, first_name, last_name, email, status, user_id',"is_super_admin")
           .eq('email', supabaseUser.email.toLowerCase())
           .single();
           
@@ -151,7 +152,9 @@ export const useAuthHandlers = ({
             clientId: data.client_id,
             firstName: data.first_name,
             lastName: data.last_name,
-            email: data.email
+            email: data.email,
+            isSuperAdmin: data.is_super_admin
+
           };
           
           // Convert employee_type string to UserRole
@@ -196,17 +199,17 @@ export const useAuthHandlers = ({
       }
       
       // Fetch module permissions from the database if we have an employee
-      let modulePermissions = {
-        superAdmin: false,
-        incidentReporting: false,
-        incidentAdmin: false,
-        assessmentUser: false,
-        assessmentsAdmin: false,
-        employeeVerificationAdmin: false,
-        grievancesAdmin: false,
-        transportSafetyAdmin: false,
-        eduSafeResourceAccess: false
-      };
+      // let modulePermissions = {
+      //   superAdmin: false,
+      //   incidentReporting: false,
+      //   incidentAdmin: false,
+      //   assessmentUser: false,
+      //   assessmentsAdmin: false,
+      //   employeeVerificationAdmin: false,
+      //   grievancesAdmin: false,
+      //   transportSafetyAdmin: false,
+      //   eduSafeResourceAccess: false
+      // };
       
       if (employeeData?.id) {
         try {
@@ -219,23 +222,22 @@ export const useAuthHandlers = ({
             console.log("Employee module permissions:", moduleData);
             
             // Map the permissions to our modulePermissions object
-            moduleData.forEach(module => {
-              if (module.roles?.key) {
-                const moduleKey = module.roles.key;
-                if (moduleKey in modulePermissions) {
-                  modulePermissions[moduleKey as keyof typeof modulePermissions] = true;
-                } else {
-                  console.log("Unknown module_id:", module.module_id);
-                }
-              }
-            });
+            // moduleData.forEach(module => {
+            //   if (module.roles?.key) {
+            //     const moduleKey = module.roles.key;
+            //     if (moduleKey in modulePermissions) {
+            //       modulePermissions[moduleKey as keyof typeof modulePermissions] = true;
+            //     } else {
+            //       console.log("Unknown module_id:", module.module_id);
+            //     }
+            //   }
+            // });
           }
         } catch (error) {
           console.error("Error fetching module permissions:", error);
         }
       }
       
-      console.log("Module permissions set:", modulePermissions);
       
       // Create a new user object
       const newUser: User = {
@@ -247,7 +249,6 @@ export const useAuthHandlers = ({
         isActive: true,
         provider,
         clientId,
-        modulePermissions,
         createdAt: supabaseUser.created_at || new Date().toISOString()
       };
 
