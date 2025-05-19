@@ -69,6 +69,7 @@ export const useEmployeeData = () => {
           name: moduleObj.name,
           key: moduleObj.level,
           icon: moduleObj.icon,
+          level: moduleObj.level, // Add the level property to fix the type error
           enabled: true,
           // Use employee-specific permissions if available, otherwise use client defaults
           accessLevel: employeeModuleMap.has(moduleObj.id) 
