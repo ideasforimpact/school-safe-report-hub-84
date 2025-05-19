@@ -1,15 +1,15 @@
-
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
-import { AuthProvider } from '@/contexts/auth'; 
+import { AuthProvider } from '@/contexts/auth';
 import { ClientProvider } from '@/contexts/ClientContext';
-import { EmployeeProvider } from './contexts/employee/EmployeeContext';
+// Remove EmployeeProvider import since it's now in App-wrapper.tsx
 import { StudentProvider } from './contexts/StudentContext';
-import { IncidentProvider } from './contexts/incident'; // Fixed import path
+import { IncidentProvider } from './contexts/incident';
 import { EmployeeVerificationProvider } from './contexts/employee-verification';
 import { FacilityProvider } from './contexts/FacilityContext';
 import { AssessmentProvider } from '@/contexts/assessment/AssessmentContext';
+import { EmployeeProvider as EmployeeContextProvider } from './contexts/employee/EmployeeContext';
 
 // Pages
 import Dashboard from '@/pages/Dashboard';
@@ -57,92 +57,90 @@ const BackofficeWrapper = ({ component: Component }) => {
 function App() {
   return (
     <ClientProvider>
-      <AuthProvider>
-        <EmployeeProvider>
-          <IncidentProvider>
-            <StudentProvider>
-              <FacilityProvider>
-                <EmployeeVerificationProvider>
-                  <AssessmentProvider>
-                    <Routes>
-                      {/* Public routes */}
-                      <Route path="/login" element={<Login />} />
-                      <Route path="/home" element={<Home />} />
-                      <Route path="/pricing" element={<Pricing />} />
-                      
-                      {/* Make Home page the default route */}
-                      <Route path="/" element={<Home />} />
-                      
-                      {/* Routes that were previously protected - now public */}
-                      <Route path="/dashboard" element={<Dashboard />} />
-                      <Route path="/users" element={<UserManagement />} />
-                      <Route path="/clients" element={<ClientManagement />} />
-                      <Route path="/employees" element={<EmployeeManagement />} />
-                      <Route path="/students" element={<StudentManagement />} />
-                      <Route path="/educational-configuration" element={<EducationalConfiguration />} />
-                      <Route path="/other-configuration" element={<OtherConfiguration />} />
-                      <Route path="/facilities-configuration" element={<FacilityManagement />} />
-                      <Route path="/facility-management" element={<FacilityManagement />} />
-                      <Route path="/incident-configuration" element={<IncidentConfiguration />} />
+      <EmployeeContextProvider>
+        <IncidentProvider>
+          <StudentProvider>
+            <FacilityProvider>
+              <EmployeeVerificationProvider>
+                <AssessmentProvider>
+                  <Routes>
+                    {/* Public routes */}
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/home" element={<Home />} />
+                    <Route path="/pricing" element={<Pricing />} />
+                    
+                    {/* Make Home page the default route */}
+                    <Route path="/" element={<Home />} />
+                    
+                    {/* Routes that were previously protected - now public */}
+                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/users" element={<UserManagement />} />
+                    <Route path="/clients" element={<ClientManagement />} />
+                    <Route path="/employees" element={<EmployeeManagement />} />
+                    <Route path="/students" element={<StudentManagement />} />
+                    <Route path="/educational-configuration" element={<EducationalConfiguration />} />
+                    <Route path="/other-configuration" element={<OtherConfiguration />} />
+                    <Route path="/facilities-configuration" element={<FacilityManagement />} />
+                    <Route path="/facility-management" element={<FacilityManagement />} />
+                    <Route path="/incident-configuration" element={<IncidentConfiguration />} />
 
-                      {/* Incident routes */}
-                      <Route path="/incidents" element={<IncidentsList />} />
-                      <Route path="/incidents/:id" element={<IncidentDetail />} />
-                      <Route path="/report-incident" element={<ReportIncident />} />
-                      <Route path="/edit-incident/:id" element={<EditIncident />} />
-                      <Route path="/insights" element={<Insights />} />
+                    {/* Incident routes */}
+                    <Route path="/incidents" element={<IncidentsList />} />
+                    <Route path="/incidents/:id" element={<IncidentDetail />} />
+                    <Route path="/report-incident" element={<ReportIncident />} />
+                    <Route path="/edit-incident/:id" element={<EditIncident />} />
+                    <Route path="/insights" element={<Insights />} />
 
-                      {/* Assessment routes */}
-                      <Route path="/assessments" element={<AssessmentsPage />} />
-                      <Route path="/assessments/templates" element={<AssessmentsPage />} />
-                      <Route path="/assessments/templates/:templateId" element={<AssessmentsPage />} />
-                      <Route path="/assessments/templates/new" element={<AssessmentsPage />} />
-                      <Route path="/assessments/templates/:templateId/edit" element={<AssessmentsPage />} />
-                      <Route path="/assessments/templates/:templateId/assign" element={<AssessmentsPage />} />
-                      <Route path="/assessments/templates/:templateId/bulk-assign" element={<AssessmentsPage />} />
-                      <Route path="/assessments/assignments" element={<AssessmentsPage />} />
-                      <Route path="/assessments/results" element={<AssessmentsPage />} />
-                      <Route path="/assessments/respond/:assignmentId" element={<AssessmentResponsePage />} />
+                    {/* Assessment routes */}
+                    <Route path="/assessments" element={<AssessmentsPage />} />
+                    <Route path="/assessments/templates" element={<AssessmentsPage />} />
+                    <Route path="/assessments/templates/:templateId" element={<AssessmentsPage />} />
+                    <Route path="/assessments/templates/new" element={<AssessmentsPage />} />
+                    <Route path="/assessments/templates/:templateId/edit" element={<AssessmentsPage />} />
+                    <Route path="/assessments/templates/:templateId/assign" element={<AssessmentsPage />} />
+                    <Route path="/assessments/templates/:templateId/bulk-assign" element={<AssessmentsPage />} />
+                    <Route path="/assessments/assignments" element={<AssessmentsPage />} />
+                    <Route path="/assessments/results" element={<AssessmentsPage />} />
+                    <Route path="/assessments/respond/:assignmentId" element={<AssessmentResponsePage />} />
 
-                      {/* Transport Safety routes */}
-                      <Route path="/transport-safety" element={<TransportSafetyPage />} />
-                      <Route path="/transport-safety/documents" element={<DocumentsPage />} />
-                      <Route path="/transport-safety/:vehicleId" element={<VehicleDetailPage />} />
-                      <Route path="/transport-safety/:vehicleId/documents" element={<DocumentsPage />} />
-                      
-                      {/* Employee Verification routes */}
-                      <Route path="/employee-verification" element={<EmployeeVerificationPage />} />
-                      <Route path="/employee-verification/:employeeId" element={<EmployeeDetailPage />} />
-                      <Route path="/employee-verification/:employeeId/upload-document" element={<UploadDocumentPage />} />
-                      <Route path="/employee-verification/dashboard" element={<VerificationDashboardPage />} />
+                    {/* Transport Safety routes */}
+                    <Route path="/transport-safety" element={<TransportSafetyPage />} />
+                    <Route path="/transport-safety/documents" element={<DocumentsPage />} />
+                    <Route path="/transport-safety/:vehicleId" element={<VehicleDetailPage />} />
+                    <Route path="/transport-safety/:vehicleId/documents" element={<DocumentsPage />} />
+                    
+                    {/* Employee Verification routes */}
+                    <Route path="/employee-verification" element={<EmployeeVerificationPage />} />
+                    <Route path="/employee-verification/:employeeId" element={<EmployeeDetailPage />} />
+                    <Route path="/employee-verification/:employeeId/upload-document" element={<UploadDocumentPage />} />
+                    <Route path="/employee-verification/dashboard" element={<VerificationDashboardPage />} />
 
-                      {/* Backoffice routes - duplicated routes with /backoffice prefix */}
-                      <Route path="/backoffice/dashboard" element={<BackofficeWrapper component={Dashboard} />} />
-                      <Route path="/backoffice/clients" element={<BackofficeWrapper component={ClientManagement} />} />
-                      
-                      {/* Backoffice Assessment routes */}
-                      <Route path="/backoffice/assessments" element={<BackofficeWrapper component={AssessmentsPage} />} />
-                      <Route path="/backoffice/assessments/templates" element={<BackofficeWrapper component={AssessmentsPage} />} />
-                      <Route path="/backoffice/assessments/templates/:templateId" element={<BackofficeWrapper component={AssessmentsPage} />} />
-                      <Route path="/backoffice/assessments/templates/new" element={<BackofficeWrapper component={AssessmentsPage} />} />
-                      <Route path="/backoffice/assessments/templates/:templateId/edit" element={<BackofficeWrapper component={AssessmentsPage} />} />
-                      <Route path="/backoffice/assessments/templates/:templateId/assign" element={<BackofficeWrapper component={AssessmentsPage} />} />
-                      <Route path="/backoffice/assessments/templates/:templateId/bulk-assign" element={<BackofficeWrapper component={AssessmentsPage} />} />
-                      <Route path="/backoffice/assessments/assignments" element={<BackofficeWrapper component={AssessmentsPage} />} />
-                      <Route path="/backoffice/assessments/results" element={<BackofficeWrapper component={AssessmentsPage} />} />
-                      <Route path="/backoffice/assessments/respond/:assignmentId" element={<BackofficeWrapper component={AssessmentResponsePage} />} />
+                    {/* Backoffice routes - duplicated routes with /backoffice prefix */}
+                    <Route path="/backoffice/dashboard" element={<BackofficeWrapper component={Dashboard} />} />
+                    <Route path="/backoffice/clients" element={<BackofficeWrapper component={ClientManagement} />} />
+                    
+                    {/* Backoffice Assessment routes */}
+                    <Route path="/backoffice/assessments" element={<BackofficeWrapper component={AssessmentsPage} />} />
+                    <Route path="/backoffice/assessments/templates" element={<BackofficeWrapper component={AssessmentsPage} />} />
+                    <Route path="/backoffice/assessments/templates/:templateId" element={<BackofficeWrapper component={AssessmentsPage} />} />
+                    <Route path="/backoffice/assessments/templates/new" element={<BackofficeWrapper component={AssessmentsPage} />} />
+                    <Route path="/backoffice/assessments/templates/:templateId/edit" element={<BackofficeWrapper component={AssessmentsPage} />} />
+                    <Route path="/backoffice/assessments/templates/:templateId/assign" element={<BackofficeWrapper component={AssessmentsPage} />} />
+                    <Route path="/backoffice/assessments/templates/:templateId/bulk-assign" element={<BackofficeWrapper component={AssessmentsPage} />} />
+                    <Route path="/backoffice/assessments/assignments" element={<BackofficeWrapper component={AssessmentsPage} />} />
+                    <Route path="/backoffice/assessments/results" element={<BackofficeWrapper component={AssessmentsPage} />} />
+                    <Route path="/backoffice/assessments/respond/:assignmentId" element={<BackofficeWrapper component={AssessmentResponsePage} />} />
 
-                      {/* 404 route */}
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                    <Toaster position="top-right" />
-                  </AssessmentProvider>
-                </EmployeeVerificationProvider>
-              </FacilityProvider>
-            </StudentProvider>
-          </IncidentProvider>
-        </EmployeeProvider>
-      </AuthProvider>
+                    {/* 404 route */}
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                  <Toaster position="top-right" />
+                </AssessmentProvider>
+              </EmployeeVerificationProvider>
+            </FacilityProvider>
+          </StudentProvider>
+        </IncidentProvider>
+      </EmployeeContextProvider>
     </ClientProvider>
   );
 }

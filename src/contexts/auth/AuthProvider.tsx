@@ -54,6 +54,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isBackofficeUser, setIsBackofficeUser] = useState<boolean>(false);
   const authInitCompleteRef = useRef<boolean>(false);
   const authListenerSetupRef = useRef<boolean>(false);
+  
+  // Access EmployeeStore - available since we are now properly wrapped with EmployeeProvider
+  const { dispatch } = useEmployeeStore();
 
   // Import useAuthHandlers to get handleUserAuthentication function
   const { handleUserAuthentication } = useAuthHandlers({
@@ -64,7 +67,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setAuthError,
     authInitCompleteRef,
     setEmployeeData,
-    dispatch: useEmployeeStore().dispatch // Pass Redux dispatch to useAuthHandlers
+    dispatch // Pass Redux dispatch to useAuthHandlers
   });
 
   // Update display users whenever users changes

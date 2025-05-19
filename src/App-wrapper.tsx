@@ -7,11 +7,11 @@ import { EmployeeProvider } from './store/EmployeeContext';
 const AppWrapper = () => {
   return (
     <Router>
-      <AuthProvider>
-        <EmployeeProvider>
+      <EmployeeProvider>
+        <AuthProvider>
           <App />
-        </EmployeeProvider>
-      </AuthProvider>
+        </AuthProvider>
+      </EmployeeProvider>
     </Router>
   );
 };
