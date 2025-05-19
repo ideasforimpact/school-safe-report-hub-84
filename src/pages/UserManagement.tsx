@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { UserPlus, FileUp, RefreshCw } from 'lucide-react';
-import { User, UserRole, ModulePermissions, EmployeeType, DepartmentType } from '@/contexts/auth/types';
+import { User, UserRole, EmployeeType, DepartmentType } from '@/contexts/auth/types';
 import { EmploymentStatus, EmployeeType as EmployeeContextType, DepartmentType as EmployeeContextDepartmentType } from '@/contexts/employee/types';
 import { toast } from "sonner";
 import { 
@@ -91,7 +91,6 @@ const UserManagement = () => {
     department?: DepartmentType;
     joiningDate?: string;
     role: UserRole;
-    modulePermissions: ModulePermissions;
     clientId?: string; // Add clientId to form data
   }>({
     firstName: '',
@@ -99,17 +98,6 @@ const UserManagement = () => {
     email: '',
     role: 'reporter',
     clientId: clientId, // Initialize with current clientId
-    modulePermissions: {
-      superAdmin: false,
-      incidentReporting: true,
-      incidentAdmin: false,
-      assessmentUser: false,
-      assessmentsAdmin: false,
-      employeeVerificationAdmin: false,
-      grievancesAdmin: false,
-      transportSafetyAdmin: false,
-      eduSafeResourceAccess: false
-    }
   });
 
   // Update formData when clientId changes
@@ -133,11 +121,8 @@ const UserManagement = () => {
       const employeeData = await getAllEmployeesFromApi();
       
       if (employeeData && employeeData.length > 0) {
-        // Process each employee to get their module permissions
+        // Process each employee
         const processedUsers = await Promise.all(employeeData.map(async employee => {
-          // Fetch module permissions for this employee
-          const modulePermissions = await getEmployeeModulePermissions(employee.id);
-          
           return {
             id: employee.id,
             firstName: employee.firstName,
@@ -147,8 +132,7 @@ const UserManagement = () => {
             employeeType: employee.employeeType as any, // Type conversion handled by helper function
             department: employee.department as any, // Type conversion handled by helper function
             joiningDate: employee.joiningDate,
-            role: modulePermissions.superAdmin ? 'admin' : 'reporter' as UserRole,
-            modulePermissions: modulePermissions,
+            role: 'reporter' as UserRole,
             isActive: employee.status === true, // Compare with boolean true instead of string
             createdAt: employee.createdAt || new Date().toISOString(),
             clientId: employee.clientId, // Make sure to include clientId
@@ -212,7 +196,6 @@ const UserManagement = () => {
               joiningDate: formData.joiningDate,
               status: 'active' as EmploymentStatus, // Explicitly cast to EmploymentStatus
               clientId: formData.clientId || clientId, // Use form clientId or fall back to context clientId
-              modulePermissions: formData.modulePermissions // Include module permissions
             };
             
             // First try the edge function
@@ -236,8 +219,7 @@ const UserManagement = () => {
               console.error("Edge function error:", edgeFuncError);
               // Fall back to the context function if the edge function fails
               await addEmployee({
-                ...employeeData,
-                modulePermissions: formData.modulePermissions
+                ...employeeData
               });
               console.log("Employee created via context function");
               toast.success("Employee record created via local storage");
@@ -270,9 +252,6 @@ const UserManagement = () => {
       
       if (employeeData && employeeData.length > 0) {
         const processedUsers = await Promise.all(employeeData.map(async employee => {
-          // Fetch module permissions for this employee
-          const modulePermissions = await getEmployeeModulePermissions(employee.id);
-          
           return {
             id: employee.id,
             firstName: employee.firstName,
@@ -282,8 +261,7 @@ const UserManagement = () => {
             employeeType: employee.employeeType as any, // Type conversion handled by helper function
             department: employee.department as any, // Type conversion handled by helper function
             joiningDate: employee.joiningDate,
-            role: modulePermissions.superAdmin ? 'admin' : 'reporter' as UserRole,
-            modulePermissions: modulePermissions,
+            role: 'reporter' as UserRole,
             isActive: employee.status === true, // Compare with boolean true instead of string
             createdAt: employee.createdAt || new Date().toISOString(),
           };
@@ -335,9 +313,6 @@ const UserManagement = () => {
               });
               
               if (error) throw error;
-              
-              // Update module permissions separately
-              await updateEmployeeModulePermissions(currentUser.id, formData.modulePermissions);
               
               console.log("Employee updated via edge function:", data);
             } catch (edgeFuncError) {
@@ -428,8 +403,8 @@ const UserManagement = () => {
           await refreshEmployeesList();
           toast.success("User deactivated successfully");
         } catch (error) {
-          console.error("Error deactivating employee:", error);
-          toast.error("User deactivated but employee record update failed");
+          console.error("Error deactivating user:", error);
+          toast.error("Failed to deactivate user");
         }
       }
     } catch (error) {
@@ -440,55 +415,65 @@ const UserManagement = () => {
     }
   };
 
-  // Reset form to default values
+  // Handler for reactivating a user
+  const handleReactivateUser = async (userId: string) => {
+    try {
+      setIsLoading(true);
+      // First update the user in the auth context
+      const updatedUsers = await updateExistingUser(
+        users as any, // Type casting to fix TypeScript error
+        userId,
+        { isActive: true }
+      );
+      
+      if (updatedUsers) {
+        try {
+          // Call the edge function to reactivate the employee
+          const { data, error } = await supabase.functions.invoke('employee-management', {
+            body: JSON.stringify({
+              operation: 'reactivate',
+              id: userId
+            })
+          });
+          
+          if (error) {
+            console.error("Edge function reactivate error:", error);
+            toast.error("Failed to reactivate employee record");
+          } else {
+            console.log("Employee reactivated via edge function:", data);
+          }
+          
+          // After successful reactivation, refresh the employee list
+          await refreshEmployeesList();
+          toast.success("User reactivated successfully");
+        } catch (error) {
+          console.error("Error reactivating user:", error);
+          toast.error("Failed to reactivate user");
+        }
+      }
+    } catch (error) {
+      console.error("Error reactivating user:", error);
+      toast.error("Failed to reactivate user");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Function to reset the form data to defaults
   const resetForm = () => {
     setFormData({
       firstName: '',
       lastName: '',
       email: '',
       role: 'reporter',
-      clientId: clientId, // Keep the clientId
-      modulePermissions: {
-        superAdmin: false,
-        incidentReporting: true,
-        incidentAdmin: false,
-        assessmentUser: false,
-        assessmentsAdmin: false,
-        employeeVerificationAdmin: false,
-        grievancesAdmin: false,
-        transportSafetyAdmin: false,
-        eduSafeResourceAccess: false
-      }
+      clientId: clientId, // Keep clientId when resetting
     });
     setCurrentUser(null);
   };
 
-  // Handle edit user click
-  const handleEditClick = async (user: User) => {
+  // Function to open the edit dialog for a user
+  const openEditDialog = (user: User) => {
     setCurrentUser(user);
-    
-    // If we're editing an existing user, fetch their current module permissions
-    let modulePermissions = user.modulePermissions || {
-      superAdmin: false,
-      incidentReporting: true,
-      incidentAdmin: false,
-      assessmentUser: false,
-      assessmentsAdmin: false,
-      employeeVerificationAdmin: false,
-      grievancesAdmin: false,
-      transportSafetyAdmin: false,
-      eduSafeResourceAccess: false
-    };
-    
-    // If module permissions don't exist in the user object, fetch them from the database
-    if (!user.modulePermissions) {
-      try {
-        modulePermissions = await getEmployeeModulePermissions(user.id);
-      } catch (error) {
-        console.error("Error fetching module permissions:", error);
-      }
-    }
-    
     setFormData({
       firstName: user.firstName,
       lastName: user.lastName,
@@ -498,125 +483,88 @@ const UserManagement = () => {
       department: user.department,
       joiningDate: user.joiningDate,
       role: user.role,
-      modulePermissions: modulePermissions
+      clientId: user.clientId || clientId, // Use user's clientId or fall back to context clientId
     });
-    
     setIsEditDialogOpen(true);
   };
 
-  // Handler for importing employees - Simplified to focus on validation and processing only
+  // Handler for importing employees from Excel
   const handleImportEmployees = async (file: File) => {
     try {
       setIsLoading(true);
-      console.log("Importing employees with clientId:", clientId);
-      
-      // No authentication check needed - proceed directly to import
-      await processEmployeeExcel(file, clientId);
-      
-      // Refresh the employee list after successful import
-      await fetchEmployeesList();
-      toast.success("Employees imported successfully");
-      setIsImportDialogOpen(false);
+      const importedEmployees = await processEmployeeExcel(file, clientId as string);
+      if (importedEmployees && importedEmployees.length > 0) {
+        toast.success(`Successfully imported ${importedEmployees.length} employees`);
+        await refreshEmployeesList();
+        setIsImportDialogOpen(false);
+      } else {
+        toast.error("No employees were imported");
+      }
     } catch (error) {
-      console.error("Import process failed:", error);
-      toast.error(`Failed to process employee import: ${(error as Error).message || 'Unknown error'}`);
+      console.error("Error importing employees:", error);
+      toast.error("Failed to import employees");
     } finally {
       setIsLoading(false);
     }
   };
-
-  // Handle refresh button click
-  const handleRefreshEmployeesList = async () => {
-    try {
-      setIsLoading(true);
-      await fetchEmployeesList();
-      toast.success("Employee list refreshed");
-    } catch (error) {
-      console.error("Failed to refresh employees:", error);
-      toast.error("Failed to refresh employee list");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  if (!isAdmin) {
-    return (
-      <Layout>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <p>You don't have permission to access this page.</p>
-            </div>
-          </CardContent>
-        </Card>
-      </Layout>
-    );
-  }
 
   return (
     <Layout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">User Management</h1>
-          {isSuperAdmin && (
-            <div className="flex gap-2">
-              <Button 
-                onClick={() => setIsImportDialogOpen(true)}
-                className="flex items-center gap-2"
-                variant="secondary"
-                disabled={isLoading}
-              >
-                <FileUp className="h-4 w-4" />
-                <span>Import Employees</span>
-              </Button>
-              <Button 
-                onClick={() => setIsAddDialogOpen(true)}
-                disabled={isLoading}
-              >
-                <UserPlus className="h-4 w-4 mr-2" />
-                Add Employee
-              </Button>
+      <div className="px-4 md:px-6">
+        <Card className="w-full">
+          <CardHeader className="pb-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle>User Management</CardTitle>
+                <CardDescription>Manage your organization's users</CardDescription>
+              </div>
+              <div className="flex space-x-2">
+                <Button 
+                  size="sm" 
+                  onClick={() => setIsAddDialogOpen(true)}
+                  disabled={!clientId || isLoading}
+                  className="flex items-center"
+                >
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Add Employee
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsImportDialogOpen(true)}
+                  disabled={!clientId || isLoading}
+                  className="flex items-center"
+                >
+                  <FileUp className="h-4 w-4 mr-2" />
+                  Import Employees
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={refreshEmployeesList}
+                  disabled={isLoading}
+                  className="flex items-center"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                </Button>
+              </div>
             </div>
-          )}
-        </div>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Users</CardTitle>
-              <CardDescription>
-                Manage system users and their permissions
-              </CardDescription>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleRefreshEmployeesList}
-              disabled={isLoading}
-              title="Refresh employee list"
-            >
-              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            </Button>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
-              <div className="flex justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
-              </div>
-            ) : (
-              <UserList 
-                users={employeeUsers.length > 0 ? employeeUsers : users}
-                onEditClick={handleEditClick}
-                onDeleteUser={handleDeleteUser}
-                onDeactivateUser={handleDeactivateUser}
-              />
-            )}
+            <UserList
+              users={employeeUsers}
+              onEdit={openEditDialog}
+              onDelete={handleDeleteUser}
+              onDeactivate={handleDeactivateUser}
+              onReactivate={handleReactivateUser}
+              isLoading={isLoading}
+            />
           </CardContent>
         </Card>
       </div>
-
+      
       {/* Add User Dialog */}
-      <AddUserDialog 
+      <AddUserDialog
         isOpen={isAddDialogOpen}
         setIsOpen={setIsAddDialogOpen}
         formData={formData}
@@ -624,11 +572,11 @@ const UserManagement = () => {
         onSubmit={handleAddUser}
         resetForm={resetForm}
         isLoading={isLoading}
-        clientId={clientId} // Pass clientId to the dialog
+        clientId={clientId}
       />
-
+      
       {/* Edit User Dialog */}
-      <EditUserDialog 
+      <EditUserDialog
         isOpen={isEditDialogOpen}
         setIsOpen={setIsEditDialogOpen}
         formData={formData}
@@ -636,15 +584,15 @@ const UserManagement = () => {
         onSubmit={handleUpdateUser}
         resetForm={resetForm}
         isLoading={isLoading}
-        clientId={clientId} // Pass clientId to the dialog
+        clientId={clientId}
       />
-
-      {/* Import Employees Dialog */}
+      
+      {/* Import Employee Dialog */}
       <ImportEmployeeDialog
         isOpen={isImportDialogOpen}
         setIsOpen={setIsImportDialogOpen}
-        onImportEmployees={handleImportEmployees}
-        clientId={clientId} // Pass clientId to the dialog
+        onImport={handleImportEmployees}
+        isLoading={isLoading}
       />
     </Layout>
   );
