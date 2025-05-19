@@ -8,6 +8,13 @@ import {
   changeUserPassword as changePassword,
   saveEmployeeDataToStorage
 } from '@/services/auth/authService';
+import { 
+  addNewUser,
+  updateExistingUser,
+  deleteExistingUser,
+  deactivateExistingUser 
+} from '@/services/auth/userManagementService';
+import { excludePasswordFromUser } from '@/contexts/auth/utils';
 
 // List of demo emails that can bypass the employee verification
 const DEMO_EMAILS = [
