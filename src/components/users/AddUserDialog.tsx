@@ -5,11 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 import { User, UserRole, ModulePermissions, EmployeeType, DepartmentType } from '@/contexts/auth/types';
 import { Loader2 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Check, X } from "lucide-react";
+import { Checkbox } from '@/components/ui/checkbox';
 
 interface AddUserDialogProps {
   isOpen: boolean;
@@ -24,13 +24,13 @@ interface AddUserDialogProps {
     joiningDate?: string;
     role: UserRole;
     modulePermissions: ModulePermissions;
-    clientId?: string; // Add clientId to formData type
+    clientId?: string;
   };
   setFormData: (data: any) => void;
   onSubmit: () => void;
   resetForm: () => void;
   isLoading: boolean;
-  clientId?: string; // Add clientId prop
+  clientId?: string;
 }
 
 const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, resetForm, isLoading, clientId }: AddUserDialogProps) => {

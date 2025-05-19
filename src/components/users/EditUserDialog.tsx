@@ -24,13 +24,13 @@ interface EditUserDialogProps {
     joiningDate?: string;
     role: UserRole;
     modulePermissions: ModulePermissions;
-    clientId?: string; // Add clientId to formData type
+    clientId?: string;
   };
   setFormData: (data: any) => void;
   onSubmit: () => void;
   resetForm: () => void;
   isLoading: boolean;
-  clientId?: string; // Add clientId prop
+  clientId?: string;
 }
 
 const EditUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, resetForm, isLoading, clientId }: EditUserDialogProps) => {
