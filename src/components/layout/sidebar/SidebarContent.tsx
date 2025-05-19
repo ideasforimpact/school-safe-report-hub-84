@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -26,7 +25,7 @@ const SidebarContent = () => {
     superAdmin: false,
     incidentReporting: true,
     incidentAdmin: false,
-    assessmentUser: true,
+    assessmentUser: false,
     assessmentsAdmin: false,
     employeeVerificationAdmin: false,
     grievancesAdmin: false,
@@ -34,11 +33,19 @@ const SidebarContent = () => {
     eduSafeResourceAccess: true
   };
   
-  const permissions: ModulePermissions = user?.modulePermissions || defaultPermissions;
+  // Check if the employee data indicates super admin status
+  const isSuperAdmin = employeeData?.isSuperAdmin === true;
+  
+  // Enhanced permissions that merge local and employee status
+  const permissions: ModulePermissions = {
+    ...(user?.modulePermissions || defaultPermissions),
+    // Override superAdmin based on employee data
+    superAdmin: user?.modulePermissions?.superAdmin || isSuperAdmin || false
+  };
 
   // For admin users, we want to show all modules regardless of specific permissions
   // If user is authenticated via a provider (like Google), only show their configured modules
-  const effectivePermissions = isAdmin && !user?.provider ? 
+  const effectivePermissions = (isAdmin || isSuperAdmin) && !user?.provider ? 
     {
       ...permissions,
       incidentReporting: true,
@@ -62,7 +69,9 @@ const SidebarContent = () => {
     provider: user?.provider || 'none',
     isProviderAuthenticated,
     isBackofficeRoute,
-    isSaasOwner
+    isSaasOwner,
+    isSuperAdmin,
+    effectivePermissions
   });
   
   // Auto-redirect SaaS owners to backoffice when they're at root path
@@ -111,21 +120,30 @@ const SidebarContent = () => {
       } else {
         const basePath = isBackofficeFetch ? '/backoffice' : '';
         
+        // For super admins, make sure they have all proper permissions regardless of what was fetched
+        let enhancedPermissions = { ...effectivePermissions };
+        if (isSuperAdmin) {
+          enhancedPermissions.superAdmin = true;
+        }
+        
         // If user is authenticated via provider (Google, etc.), filter modules based on permissions
         let items = [];
         
         if (user?.provider) {
           // For provider-authenticated users, only show modules they have permission for
           const filteredModules = modules.filter(module => {
+            // Super admins can see all modules
+            if (isSuperAdmin) return true;
+            
             const moduleKey = module.key;
             // If the module has a key and matches a permission key that is enabled, show it
-            return moduleKey && effectivePermissions[moduleKey as keyof ModulePermissions];
+            return moduleKey && enhancedPermissions[moduleKey as keyof ModulePermissions];
           });
           
-          items = convertModulesToSidebarItems(filteredModules, effectivePermissions, basePath);
+          items = convertModulesToSidebarItems(filteredModules, enhancedPermissions, basePath);
         } else {
           // For regular users, use standard conversion
-          items = convertModulesToSidebarItems(modules, effectivePermissions, basePath);
+          items = convertModulesToSidebarItems(modules, enhancedPermissions, basePath);
         }
         
         setDynamicMenuItems(items);
@@ -145,7 +163,7 @@ const SidebarContent = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [isSaasOwner, isBackofficeRoute, effectivePermissions, lastFetchPath, user, isProviderAuthenticated, employeeData]);
+  }, [isSaasOwner, isBackofficeRoute, effectivePermissions, lastFetchPath, user, isProviderAuthenticated, employeeData, isSuperAdmin]);
 
   // Fetch modules only when user is authenticated
   useEffect(() => {

@@ -1,15 +1,42 @@
 
+import { Badge } from "@/components/ui/badge";
+
 interface UserRoleBadgeProps {
   isSaasOwner: boolean;
   isAdmin: boolean;
+  isSuperAdmin?: boolean;
 }
 
-const UserRoleBadge = ({ isSaasOwner, isAdmin }: UserRoleBadgeProps) => {
-  return (
-    <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full mr-2 hidden md:inline-flex">
-      {isSaasOwner ? 'SaaS Owner' : (isAdmin ? 'Admin' : 'Reporter')}
-    </span>
-  );
+const UserRoleBadge: React.FC<UserRoleBadgeProps> = ({ 
+  isSaasOwner, 
+  isAdmin,
+  isSuperAdmin = false
+}) => {
+  if (isSaasOwner) {
+    return (
+      <Badge variant="default" className="bg-blue-600 hover:bg-blue-700">
+        SaaS Owner
+      </Badge>
+    );
+  }
+  
+  if (isSuperAdmin) {
+    return (
+      <Badge variant="default" className="bg-purple-600 hover:bg-purple-700">
+        Super Admin
+      </Badge>
+    );
+  }
+  
+  if (isAdmin) {
+    return (
+      <Badge variant="default" className="bg-green-600 hover:bg-green-700">
+        Admin
+      </Badge>
+    );
+  }
+  
+  return null;
 };
 
 export default UserRoleBadge;

@@ -13,7 +13,7 @@ import AdminSettingsMenu from './AdminSettingsMenu';
 import UserRoleBadge from './UserRoleBadge';
 
 const Header = () => {
-  const { user, logout, isAdmin, isSaasOwner } = useAuth();
+  const { user, logout, isAdmin, isSaasOwner, employeeData } = useAuth();
   const { clients } = useClient();
   const navigate = useNavigate();
   const location = useLocation();
@@ -30,8 +30,8 @@ const Header = () => {
   // Set dashboard path to /dashboard for all users
   const dashboardPath = "/dashboard";
   
-  // Check if user is super admin
-  const isSuperAdmin = user?.modulePermissions?.superAdmin === true;
+  // Check if user is super admin based on either the module permissions or the employee data
+  const isSuperAdmin = user?.modulePermissions?.superAdmin === true || employeeData?.isSuperAdmin === true;
   
   // Show admin settings menu only for SaaS owner or super admin users
   const showAdminSettings = isSaasOwner || isSuperAdmin;
@@ -58,7 +58,7 @@ const Header = () => {
             <div className="flex items-center gap-3">
               <HeaderIcons />
 
-              {user && <UserRoleBadge isSaasOwner={isSaasOwner} isAdmin={isAdmin} />}
+              {user && <UserRoleBadge isSaasOwner={isSaasOwner} isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} />}
               
               {/* Settings Menu - Only visible for SaaS owners or super admins */}
               {showAdminSettings && !isBackoffice && <AdminSettingsMenu />}

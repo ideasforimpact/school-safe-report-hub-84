@@ -243,13 +243,12 @@ export const useClientManagement = () => {
         }
         
         // Transform client modules data to moduleInfoArray
-        // Fix: Access the correct properties from the database result
         const moduleInfoArray = clientModulesData ? clientModulesData.map(module => {
-          // Extract module name from a module lookup or use module_id if name not available
-          // Since the module name isn't directly in client_modules, we'll use a placeholder
-          const moduleName = ""; // This could be fetched from a modules table if needed
+          // Since the name isn't directly in client_modules, fetch it from modules table
+          // For now, use a default empty string as a placeholder
+          const moduleName = '';
           
-          // Safely access access_level properties using optional chaining and type check
+          // Safely access access_level properties
           const accessLevel = module.access_level as Record<string, any> || {};
           const isAdmin = typeof accessLevel === 'object' && accessLevel !== null ? 
             !!accessLevel.isAdmin : false;
@@ -274,7 +273,7 @@ export const useClientManagement = () => {
           toast.error('Failed to load super admin data');
         }
         
-        // Now set the form data with all information but without moduleAccess
+        // Set the form data with all information
         setFormData({
           name: client.name,
           email: client.email,
