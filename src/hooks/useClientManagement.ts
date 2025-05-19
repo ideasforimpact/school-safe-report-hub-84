@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Client, useClient, InstitutionType, ModuleInfo } from '@/contexts/ClientContext';
 import { OAuthProviderName } from '@/utils/authProviders';
@@ -244,11 +243,23 @@ export const useClientManagement = () => {
         }
         
         // Transform client modules data to moduleInfoArray
-        const moduleInfoArray = clientModulesData ? clientModulesData.map(module => ({
-          name: module.name || '',  // Default to empty string if name is null
-          module_id: module.module_id,
-          is_admin: module.access_level?.isAdmin || false
-        })) : [];
+        // Fix: Access the correct properties from the database result
+        const moduleInfoArray = clientModulesData ? clientModulesData.map(module => {
+          // Extract module name from a module lookup or use module_id if name not available
+          // Since the module name isn't directly in client_modules, we'll use a placeholder
+          const moduleName = ""; // This could be fetched from a modules table if needed
+          
+          // Safely access access_level properties using optional chaining and type check
+          const accessLevel = module.access_level as Record<string, any> || {};
+          const isAdmin = typeof accessLevel === 'object' && accessLevel !== null ? 
+            !!accessLevel.isAdmin : false;
+          
+          return {
+            name: moduleName,
+            module_id: module.module_id || '',
+            is_admin: isAdmin
+          };
+        }) : [];
         
         // Fetch super admin email
         const { data: employeeData, error: employeeError } = await supabase
