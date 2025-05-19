@@ -9,6 +9,7 @@ import {
   convertModulesToSidebarItems 
 } from './sidebarConfig';
 import SidebarMenuItem from './SidebarMenuItem';
+import ClientModulesList from './ClientModulesList';
 import { ModulePermissions } from '@/contexts/auth/types';
 import { toast } from 'sonner';
 
@@ -53,6 +54,9 @@ const SidebarContent = () => {
   // Determine if we're in backoffice mode based on the URL path
   const isBackofficeRoute = location.pathname.startsWith('/backoffice');
   
+  // Check if user is authenticated via provider (like Google)
+  const isProviderAuthenticated = !!user?.provider;
+  
   // Auto-redirect SaaS owners to backoffice when they're at root path
   useEffect(() => {
     if (isSaasOwner && user?.role === 'saas_owner' && location.pathname === '/') {
@@ -75,6 +79,14 @@ const SidebarContent = () => {
       const isBackofficeFetch = isSaasOwner && isBackofficeRoute;
       console.log(`User is ${isSaasOwner ? 'SaaS owner' : 'client user'}, route is ${isBackofficeRoute ? 'backoffice' : 'client'}`);
       console.log(`User authenticated via provider: ${user?.provider || 'none'}, will show ${user?.provider ? 'configured' : 'all'} modules`);
+      
+      // If this is a provider-authenticated user on client side, we'll use the ClientModulesList
+      // component instead of continuing with this function
+      if (isProviderAuthenticated && !isBackofficeFetch) {
+        setIsLoading(false);
+        setLastFetchPath(isBackofficeRoute ? 'backoffice' : 'client');
+        return;
+      }
       
       // Fetch modules passing user info
       const modules = await fetchModules(isBackofficeFetch, user);
@@ -124,7 +136,7 @@ const SidebarContent = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [isSaasOwner, isBackofficeRoute, effectivePermissions, lastFetchPath, user]);
+  }, [isSaasOwner, isBackofficeRoute, effectivePermissions, lastFetchPath, user, isProviderAuthenticated]);
 
   // Fetch modules only when relevant dependencies change
   useEffect(() => {
@@ -157,6 +169,11 @@ const SidebarContent = () => {
     }
     return path;
   };
+
+  // For provider-authenticated users on client routes, use the dedicated component
+  if (isProviderAuthenticated && !isBackofficeRoute) {
+    return <ClientModulesList />;
+  }
 
   if (isLoading) {
     return (
