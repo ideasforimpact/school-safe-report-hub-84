@@ -46,22 +46,17 @@ const ClientModulesList = () => {
   const { user, employeeData } = useAuth();
   const { getEmployeeId, employee } = useEmployeeAccess(); // Get employee info
   const [configuredModules, setConfiguredModules] = useState<ModuleItem[]>([]);
-  const [isLoading, setIsLoading] = useState(false); // Changed to false by default
   const [receivedEmployeeData, setReceivedEmployeeData] = useState(null);
   
   useEffect(() => {
     const fetchConfiguredModules = async () => {
       if (!user || !user.id) {
         setConfiguredModules([]);
-        setIsLoading(false);
         console.log("No user data available for fetching modules");
         return;
       }
       
       try {
-        // Set isLoading to false initially, only set it to true if necessary
-        // This way we avoid the loading text while waiting for the response
-        
         // Get employee data from context or using the hook
         const currentEmployeeData = employeeData || employee;
         console.log("Fetching modules with employee data:", currentEmployeeData);
@@ -135,7 +130,6 @@ const ClientModulesList = () => {
               path: '/dashboard',
               allowed: true
             }]);
-            toast.error("Failed to load menu items");
             return;
           }
           
@@ -199,7 +193,6 @@ const ClientModulesList = () => {
         });
       } catch (error) {
         console.error("Error loading configured modules:", error);
-        toast.error("Failed to load menu items");
         setConfiguredModules([{
           icon: LayoutDashboard,
           label: 'Dashboard',
@@ -223,14 +216,6 @@ const ClientModulesList = () => {
     // Check if the current path matches the menu item path or starts with it (for nested routes)
     return currentPath === path || (path !== '/' && currentPath.startsWith(path));
   };
-
-  if (isLoading) {
-    return (
-      <div className="flex-1 py-6 text-white flex justify-center items-center">
-        <span className="text-sm">Loading...</span>
-      </div>
-    );
-  }
 
   return (
     <div className="flex-1 py-6">

@@ -18,7 +18,6 @@ const SidebarContent = () => {
   const navigate = useNavigate();
   const { user, isSaasOwner, isAdmin, employeeData } = useAuth();
   const [dynamicMenuItems, setDynamicMenuItems] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(false); // Changed to false by default
   const [lastFetchPath, setLastFetchPath] = useState('');
   
   // Get user permissions with default fallback
@@ -79,8 +78,6 @@ const SidebarContent = () => {
       return;
     }
 
-    setIsLoading(true);
-    
     try {
       // For SaaS users in backoffice route, fetch backoffice modules
       // For others, fetch client modules
@@ -92,7 +89,6 @@ const SidebarContent = () => {
       // component instead of continuing with this function
       if (isProviderAuthenticated && !isBackofficeFetch) {
         console.log("Using ClientModulesList for provider-authenticated user:", user?.email);
-        setIsLoading(false);
         setLastFetchPath(isBackofficeRoute ? 'backoffice' : 'client');
         return;
       }
@@ -142,8 +138,6 @@ const SidebarContent = () => {
       
       // Notify user of the error
       toast.error("Could not load menu items. Using fallback configuration.");
-    } finally {
-      setIsLoading(false);
     }
   }, [isSaasOwner, isBackofficeRoute, effectivePermissions, lastFetchPath, user, isProviderAuthenticated, employeeData]);
 
@@ -188,14 +182,6 @@ const SidebarContent = () => {
   if (isProviderAuthenticated && !isBackofficeRoute) {
     console.log("Using ClientModulesList for provider-authenticated user:", user?.email);
     return <ClientModulesList />;
-  }
-
-  if (isLoading) {
-    return (
-      <div className="flex-1 py-6 text-white flex justify-center items-center">
-        <span className="text-sm">Loading...</span>
-      </div>
-    );
   }
 
   return (

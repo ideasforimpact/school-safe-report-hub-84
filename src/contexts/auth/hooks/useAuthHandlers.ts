@@ -258,6 +258,18 @@ export function useAuthHandlers({
           setEmployeeData(employee);
           saveEmployeeDataToStorage(employee);
           console.log("📝 Employee data stored in context after Google auth:", employee);
+          
+          // Pre-fetch modules during authentication
+          try {
+            // Determine if this is a SaaS owner in backoffice
+            const isBackoffice = updatedUser.role === 'saas_owner' && window.location.pathname.startsWith('/backoffice');
+            
+            // Call fetchModules with employee data to pre-cache the modules
+            await fetchModules(isBackoffice, updatedUser, employee);
+            console.log("✅ Modules pre-fetched during authentication process");
+          } catch (err) {
+            console.error("❌ Error pre-fetching modules during authentication:", err);
+          }
         } else {
           console.log("⚠️ No employee data found for Google auth user:", supabaseUser.email);
         }
