@@ -11,7 +11,6 @@ export interface AuthContextType {
   logout: () => void;
   isAdmin: boolean;
   isSaasOwner: boolean;
-  isLoading: boolean;
   addUser: (userData: any) => void;
   updateUser: (id: string, updates: Partial<User>) => void;
   deleteUser: (id: string) => void;
@@ -20,10 +19,7 @@ export interface AuthContextType {
   changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
   authError: string | null;
   handleUserAuthentication: (user: any) => Promise<void>;
-  employeeData: EmployeeData | null;
-  modulePermissions: ModulePermissions;
-  cachedBackofficeModules: any[];
-  cachedClientModules: any[];
+  employeeData: EmployeeData | null; // Add employee data to context
 }
 
 export interface User {

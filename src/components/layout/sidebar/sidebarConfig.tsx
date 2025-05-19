@@ -1,3 +1,4 @@
+
 import { 
   LayoutDashboard, 
   AlertTriangle,
@@ -13,7 +14,6 @@ import {
 } from 'lucide-react';
 import { ModulePermissions } from '@/contexts/auth/types';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 
 // Define module type to match modules table schema
 export interface Module {
@@ -48,9 +48,19 @@ const iconMap: Record<string, any> = {
 const backofficeRoleKeys = ['superAdmin', 'clientManagement', 'assessmentTemplateAdmin', 'eduSafeResourceAdmin', 'analyticsAdmin'];
 const clientRoleKeys = ['incidentReporting', 'incidentAdmin', 'assessmentUser', 'assessmentsAdmin', 'employeeVerificationAdmin', 'grievancesAdmin', 'transportSafetyAdmin', 'eduSafeResourceAccess'];
 
-// Function to fetch modules from backend based on role type - KEPT FOR BACKWARD COMPATIBILITY
+// Function to fetch modules from backend based on role type with caching
+let cachedBackofficeModules: Module[] | null = null;
+let cachedClientModules: Module[] | null = null;
+
 export const fetchModules = async (isBackoffice: boolean, user?: any, employeeData?: any): Promise<Module[]> => {
   try {
+    // Check cache first
+    if (isBackoffice && cachedBackofficeModules) {
+      return cachedBackofficeModules;
+    } else if (!isBackoffice && cachedClientModules) {
+      return cachedClientModules;
+    }
+    
     // Prepare user info to send for determining module level and logging
     const userInfo = user ? {
       id: user.id,
@@ -97,8 +107,10 @@ export const fetchModules = async (isBackoffice: boolean, user?: any, employeeDa
       return [];
     }
     
-    // Map module names to permission keys for filtering
+    // Cache the results based on the determined user role
     const modules = data.modules;
+    
+    // Map module names to permission keys for filtering
     modules.forEach(module => {
       // Set key based on module name for permission mapping
       switch(module.name.toLowerCase()) {
@@ -135,6 +147,12 @@ export const fetchModules = async (isBackoffice: boolean, user?: any, employeeDa
           module.key = module.name.toLowerCase().replace(/\s+/g, '_');
       }
     });
+    
+    if (isBackoffice) {
+      cachedBackofficeModules = modules;
+    } else {
+      cachedClientModules = modules;
+    }
     
     return modules;
   } catch (error) {
