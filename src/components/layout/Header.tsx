@@ -40,8 +40,7 @@ const Header = () => {
       id: employeeData.id,
       isSuperAdmin: employeeData.isSuperAdmin,
       email: employeeData.email
-    } : 'NULL - No employee data found',
-    currentPath: location.pathname
+    } : 'NULL - No employee data found'
   });
   
   // Show admin settings menu only for SaaS owner or super admin users
@@ -69,11 +68,7 @@ const Header = () => {
             <div className="flex items-center gap-3">
               <HeaderIcons />
 
-              {user && <UserRoleBadge 
-                isSaasOwner={isSaasOwner} 
-                isAdmin={isAdmin} 
-                isSuperAdmin={isSuperAdmin} 
-              />}
+              {user && <UserRoleBadge isSaasOwner={isSaasOwner} isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} />}
               
               {/* Settings Menu - Only visible for SaaS owners or super admins */}
               {showAdminSettings && !isBackoffice && <AdminSettingsMenu />}

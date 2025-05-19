@@ -47,6 +47,7 @@ const ClientModulesList = () => {
   const { getEmployeeId, employee } = useEmployeeAccess(); // Get employee info
   const [configuredModules, setConfiguredModules] = useState<ModuleItem[]>([]);
   const [isLoading, setIsLoading] = useState(false); // Changed to false by default
+  const [receivedEmployeeData, setReceivedEmployeeData] = useState(null);
   
   useEffect(() => {
     const fetchConfiguredModules = async () => {
@@ -58,9 +59,8 @@ const ClientModulesList = () => {
       }
       
       try {
-        // Debug employee data
-        console.log("CLIENT MODULES - Auth Context Employee Data:", employeeData);
-        console.log("CLIENT MODULES - Employee Access Hook Data:", employee);
+        // Set isLoading to false initially, only set it to true if necessary
+        // This way we avoid the loading text while waiting for the response
         
         // Get employee data from context or using the hook
         const currentEmployeeData = employeeData || employee;
@@ -102,7 +102,7 @@ const ClientModulesList = () => {
           requestBody.employeeInfo = {
             ...currentEmployeeData,
             id: currentEmployeeData.id,
-            clientId: currentEmployeeData.clientId || currentEmployeeData.client_id, // Fix: Use clientId instead of client_id
+            clientId: currentEmployeeData.clientId || currentEmployeeData.clientId,
             email: currentEmployeeData.email,
             firstName: nameParts.firstName,
             lastName: nameParts.lastName,
@@ -142,6 +142,7 @@ const ClientModulesList = () => {
           // Store the employee data returned from the edge function if available
           if (data && data.employee) {
             console.log("Received employee data from fetch-modules function:", data.employee);
+            setReceivedEmployeeData(data.employee);
           }
           
           if (!data || !data.modules || data.modules.length === 0) {
@@ -222,6 +223,14 @@ const ClientModulesList = () => {
     // Check if the current path matches the menu item path or starts with it (for nested routes)
     return currentPath === path || (path !== '/' && currentPath.startsWith(path));
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex-1 py-6 text-white flex justify-center items-center">
+        <span className="text-sm">Loading...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 py-6">

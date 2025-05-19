@@ -12,13 +12,11 @@ import SidebarMenuItem from './SidebarMenuItem';
 import ClientModulesList from './ClientModulesList';
 import { ModulePermissions } from '@/contexts/auth/types';
 import { toast } from 'sonner';
-import { useEmployeeAccess } from '@/contexts/auth/hooks/useEmployeeAccess';
 
 const SidebarContent = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isSaasOwner, isAdmin, employeeData } = useAuth();
-  const { employee, fetchedEmployeeData } = useEmployeeAccess();
   const [dynamicMenuItems, setDynamicMenuItems] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [lastFetchPath, setLastFetchPath] = useState('');
@@ -37,15 +35,9 @@ const SidebarContent = () => {
   };
 
   console.log("SidebarContent - employeeData:", employeeData);
-  console.log("SidebarContent - fetchedEmployeeData:", fetchedEmployeeData);
-  console.log("SidebarContent - employee from hook:", employee);
   
   // Check if the employee data indicates super admin status
-  const isSuperAdmin = employeeData?.isSuperAdmin === true || 
-                      fetchedEmployeeData?.isSuperAdmin === true ||
-                      (employee && 'isSuperAdmin' in employee && employee.isSuperAdmin === true);
-  
-  console.log("SidebarContent - isSuperAdmin calculated value:", isSuperAdmin);
+  const isSuperAdmin = employeeData?.isSuperAdmin === true;
   
   // Enhanced permissions that merge local and employee status
   const permissions: ModulePermissions = {
@@ -87,18 +79,7 @@ const SidebarContent = () => {
       id: employeeData.id,
       isSuperAdmin: employeeData.isSuperAdmin,
       email: employeeData.email
-    } : 'NULL - No employee data found',
-    fetchedEmployeeData: fetchedEmployeeData ? {
-      id: fetchedEmployeeData.id,
-      isSuperAdmin: fetchedEmployeeData.isSuperAdmin,
-      email: fetchedEmployeeData.email
-    } : 'NULL - No fetched data found',
-    employee: employee ? {
-      id: employee.id,
-      isSuperAdmin: 'isSuperAdmin' in employee ? employee.isSuperAdmin : 'not found',
-      email: employee.email
-    } : 'NULL - No employee found in hook',
-    currentPath: location.pathname
+    } : 'NULL - No employee data found'
   });
   
   // Auto-redirect SaaS owners to backoffice when they're at root path
@@ -133,19 +114,8 @@ const SidebarContent = () => {
         return;
       }
       
-      // Create combined employee data to pass
-      const combinedEmployeeData = employeeData || fetchedEmployeeData || 
-                                  (employee && 'id' in employee ? {
-                                    id: employee.id,
-                                    clientId: (employee as any).clientId || (employee as any).client_id,
-                                    email: employee.email,
-                                    isSuperAdmin: (employee as any).isSuperAdmin || false
-                                  } : null);
-                                  
-      console.log("Employee data being sent:", combinedEmployeeData, user);
-      
       // Fetch modules passing user info and employee data from context
-      const modules = await fetchModules(isBackofficeFetch, user, combinedEmployeeData);
+      const modules = await fetchModules(isBackofficeFetch, user, employeeData);
       
       if (modules.length === 0 && !user) {
         // If no modules and no user, only show dashboard
@@ -198,18 +168,7 @@ const SidebarContent = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [
-    isSaasOwner, 
-    isBackofficeRoute, 
-    effectivePermissions, 
-    lastFetchPath, 
-    user, 
-    isProviderAuthenticated, 
-    employeeData, 
-    isSuperAdmin, 
-    fetchedEmployeeData,
-    employee
-  ]);
+  }, [isSaasOwner, isBackofficeRoute, effectivePermissions, lastFetchPath, user, isProviderAuthenticated, employeeData, isSuperAdmin]);
 
   // Fetch modules only when user is authenticated
   useEffect(() => {
@@ -252,6 +211,14 @@ const SidebarContent = () => {
   if (isProviderAuthenticated && !isBackofficeRoute) {
     console.log("Using ClientModulesList for provider-authenticated user:", user?.email);
     return <ClientModulesList />;
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex-1 py-6 text-white flex justify-center items-center">
+        <span className="text-sm">Loading...</span>
+      </div>
+    );
   }
 
   return (
