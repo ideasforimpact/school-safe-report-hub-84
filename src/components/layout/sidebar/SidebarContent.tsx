@@ -68,6 +68,18 @@ const SidebarContent = () => {
       // For others, fetch client modules
       const isBackofficeFetch = isSaasOwner && isBackofficeRoute;
       console.log(`User is ${isSaasOwner ? 'SaaS owner' : 'client user'}, route is ${isBackofficeRoute ? 'backoffice' : 'client'}`);
+      console.log("User object:", user);
+      
+      // Check if user has modules from login process
+      if (user?.modules && user.modules.length > 0) {
+        console.log("Using modules from user object:", user.modules);
+        const basePath = isBackofficeFetch ? '/backoffice' : '';
+        const items = convertModulesToSidebarItems(user.modules, effectivePermissions, basePath);
+        setDynamicMenuItems(items);
+        setIsLoading(false);
+        setLastFetchPath(isBackofficeRoute ? 'backoffice' : 'client');
+        return;
+      }
       
       // Fetch modules passing user info
       const modules = await fetchModules(isBackofficeFetch, user);

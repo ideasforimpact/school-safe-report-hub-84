@@ -1,59 +1,9 @@
-// Define the user with password separately for internal use
-export interface UserWithPassword extends User {
-  password: string;
-}
 
-export interface AuthContextType {
-  user: User | null;
-  users: User[];
-  login: (email: string, password: string) => Promise<boolean>;
-  logout: () => void;
-  isAdmin: boolean;
-  isSaasOwner: boolean;
-  addUser: (userData: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    password: string;
-    role: UserRole;
-    modulePermissions: ModulePermissions;
-    clientId?: string;
-    employeeId?: string;
-    employeeType?: EmployeeType;
-    department?: DepartmentType;
-    joiningDate?: string;
-  }) => void;
-  updateUser: (id: string, updates: Partial<User & { password?: string }>) => void;
-  deleteUser: (id: string) => void;
-  deactivateUser: (id: string) => void;
-  reactivateUser: (id: string) => void;
-  changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
-  authError: string | null;
-  handleUserAuthentication: (supabaseUser: any) => Promise<void>;
-}
+export type UserRole = 'user' | 'admin' | 'reporter' | 'saas_owner';
 
-export interface User {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  role: UserRole;
-  modulePermissions?: ModulePermissions;
-  isActive: boolean;
-  clientId?: string;
-  employeeId?: string;
-  employeeType?: EmployeeType;
-  department?: DepartmentType;
-  joiningDate?: string;
-  createdAt: string;
-  lastLogin?: string;
-}
+export type DepartmentType = 'Admin' | 'Teaching' | 'Support' | 'Tech' | 'Management' | 'Security';
 
-export type UserRole = 'admin' | 'reporter' | 'viewer' | 'saas_owner';
-
-export type EmployeeType = 'permanent' | 'contract' | 'part_time' | 'consultant';
-
-export type DepartmentType = 'admin' | 'teaching' | 'security' | 'maintenance' | 'transport' | 'management';
+export type EmployeeType = 'permanent' | 'contract' | 'temporary' | 'intern';
 
 export interface ModulePermissions {
   superAdmin: boolean;
@@ -65,4 +15,39 @@ export interface ModulePermissions {
   grievancesAdmin: boolean;
   transportSafetyAdmin: boolean;
   eduSafeResourceAccess: boolean;
+}
+
+export interface Module {
+  id: string;
+  name: string;
+  icon: string;
+  level: string;
+  created_at?: string;
+  updated_at?: string;
+  key?: string;
+  active?: boolean;
+  description?: string;
+  access_level?: {
+    isAdmin?: boolean;
+    isEnabled?: boolean;
+    [key: string]: any;
+  };
+}
+
+export interface User {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: UserRole;
+  modulePermissions: ModulePermissions;
+  clientId?: string;
+  isActive?: boolean;
+  createdAt?: string;
+  lastLogin?: string;
+  modules?: Module[]; // Add modules array to store client module information
+}
+
+export interface UserWithPassword extends User {
+  password: string;
 }

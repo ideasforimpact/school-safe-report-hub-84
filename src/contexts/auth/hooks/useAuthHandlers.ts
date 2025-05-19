@@ -1,3 +1,4 @@
+
 import { User, UserWithPassword, UserRole } from '../types';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
@@ -48,6 +49,65 @@ const checkEmployeeAccess = async (email: string, setAuthError: (error: string |
   }
 };
 
+// Helper function to fetch module information for an employee
+const fetchEmployeeModules = async (clientId: string, email: string) => {
+  try {
+    console.log(`Fetching modules for client ${clientId} and employee ${email}`);
+    
+    // 1. Get module IDs and access levels from client_modules
+    const { data: clientModules, error: clientModulesError } = await supabase
+      .from('client_modules')
+      .select('module_id, access_level')
+      .eq('client_id', clientId);
+      
+    if (clientModulesError) {
+      console.error('Error fetching client modules:', clientModulesError);
+      return [];
+    }
+    
+    if (!clientModules || clientModules.length === 0) {
+      console.log('No modules assigned to this client');
+      return [];
+    }
+    
+    console.log(`Found ${clientModules.length} modules for client ${clientId}`);
+    
+    // 2. Get full module details from modules table
+    const moduleIds = clientModules.map(cm => cm.module_id);
+    const { data: moduleDetails, error: modulesError } = await supabase
+      .from('modules')
+      .select('*')
+      .in('id', moduleIds);
+      
+    if (modulesError) {
+      console.error('Error fetching module details:', modulesError);
+      return [];
+    }
+    
+    if (!moduleDetails || moduleDetails.length === 0) {
+      console.log('No module details found');
+      return [];
+    }
+    
+    // 3. Combine module details with access levels
+    const modulesWithAccess = moduleDetails.map(module => {
+      // Find matching client_module to get access_level
+      const clientModule = clientModules.find(cm => cm.module_id === module.id);
+      return {
+        ...module,
+        access_level: clientModule?.access_level || {}
+      };
+    });
+    
+    console.log('Processed modules with access levels:', modulesWithAccess);
+    return modulesWithAccess;
+    
+  } catch (error) {
+    console.error('Error in fetchEmployeeModules:', error);
+    return [];
+  }
+};
+
 // New helper function to check domain access
 const checkDomainAccess = async (email: string, employeeId: string, setAuthError: (error: string | null) => void) => {
   try {
@@ -61,14 +121,14 @@ const checkDomainAccess = async (email: string, employeeId: string, setAuthError
     if (employeeError || !employee) {
       console.log("Employee data fetch failed:", employeeError?.message || "Employee not found");
       setAuthError("Access denied: Cannot retrieve employee information");
-      return false;
+      return { allowed: false, clientId: null };
     }
     
     // Check if employee has client_id
     if (!employee.client_id) {
       console.log("Employee has no client assignment");
       setAuthError("Access denied: Employee is not assigned to any client");
-      return false;
+      return { allowed: false, clientId: null };
     }
     
     // Get the client data to check domains
@@ -81,7 +141,7 @@ const checkDomainAccess = async (email: string, employeeId: string, setAuthError
     if (clientError || !client) {
       console.log("Client data fetch failed:", clientError?.message || "Client not found");
       setAuthError("Access denied: Cannot retrieve client information");
-      return false;
+      return { allowed: false, clientId: null };
     }
     
     
@@ -93,14 +153,14 @@ const checkDomainAccess = async (email: string, employeeId: string, setAuthError
       if (!client.super_admin_allowed_domain) {
         console.log("No super admin domain configured for this client");
         setAuthError("Access denied: No super admin domains configured for this client");
-        return false;
+        return { allowed: false, clientId: null };
       }
       
       const superAdminDomains = client.super_admin_allowed_domain.split(',').map(d => d.trim().toLowerCase());
       if (!superAdminDomains.includes(emailDomain)) {
         console.log("Email domain not in super admin allowed domains");
         setAuthError("Access denied: Email domain not authorized for super admin access");
-        return false;
+        return { allowed: false, clientId: null };
       }
       console.log("Super admin domain check passed");
     } else {
@@ -109,23 +169,23 @@ const checkDomainAccess = async (email: string, employeeId: string, setAuthError
       if (!client.allowed_domains) {
         console.log("No allowed domains configured for this client");
         setAuthError("Access denied: No domains configured for this client");
-        return false;
+        return { allowed: false, clientId: null };
       }
       
       const allowedDomains = client.allowed_domains.split(',').map(d => d.trim().toLowerCase());
       if (!allowedDomains.includes(emailDomain)) {
         console.log("Email domain not in allowed domains");
         setAuthError("Access denied: Email domain not authorized");
-        return false;
+        return { allowed: false, clientId: null };
       }
       console.log("Regular domain check passed");
     }
     
-    return true;
+    return { allowed: true, clientId: employee.client_id };
   } catch (error) {
     console.error("Error checking domain access:", error);
     setAuthError("Error verifying domain access");
-    return false;
+    return { allowed: false, clientId: null };
   }
 };
 
@@ -161,6 +221,9 @@ export function useAuthHandlers({
     // Check if this is a demo user - if so, bypass employee access check
     const isDemoUser = supabaseUser.email && DEMO_EMAILS.includes(supabaseUser.email);
     
+    let clientId = null;
+    let userModules = [];
+    
     if (!isDemoUser) {
       // First check if employee exists and is active
       const hasEmployeeAccess = await checkEmployeeAccess(supabaseUser.email, setAuthError);
@@ -173,14 +236,23 @@ export function useAuthHandlers({
       }
       
       // Then check domain access based on super admin status and client configuration
-      const hasDomainAccess = await checkDomainAccess(supabaseUser.email, supabaseUser.id, setAuthError);
-      console.log(hasDomainAccess,"hasDomainAccess")
-      if (!hasDomainAccess) {
+      const { allowed, clientId: empClientId } = await checkDomainAccess(supabaseUser.email, supabaseUser.id, setAuthError);
+      console.log(allowed, "hasDomainAccess");
+      if (!allowed) {
         console.log("Access denied: Domain verification failed");
         await supabase.auth.signOut();
         toast.error("Access denied: Your email domain is not authorized");
         navigate('/login');
         return;
+      }
+      
+      // Store the client ID for module access
+      clientId = empClientId;
+      
+      // Fetch module information if we have a client ID
+      if (clientId) {
+        userModules = await fetchEmployeeModules(clientId, supabaseUser.email);
+        console.log("User modules:", userModules);
       }
     }
     
@@ -192,7 +264,9 @@ export function useAuthHandlers({
       // Update login timestamp
       const updatedUser = {
         ...existingUser,
-        lastLogin: new Date().toISOString()
+        lastLogin: new Date().toISOString(),
+        // Add modules information to user
+        modules: userModules
       };
       
       // For demo users, ensure they have full admin access
@@ -214,6 +288,7 @@ export function useAuthHandlers({
       const updatedUsers = users.map(u => 
         u.id === existingUser?.id ? { ...u, 
           lastLogin: new Date().toISOString(),
+          modules: userModules,
           ...(isDemoUser ? { 
             role: 'admin' as UserRole,
             modulePermissions: {
@@ -281,6 +356,8 @@ export function useAuthHandlers({
           transportSafetyAdmin: false,
           eduSafeResourceAccess: false
         },
+        // Add modules information for new user
+        modules: userModules,
         isActive: true,
         createdAt: new Date().toISOString(),
         lastLogin: new Date().toISOString(),

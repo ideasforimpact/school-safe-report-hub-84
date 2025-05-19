@@ -26,6 +26,7 @@ export interface Module {
   key?: string; // Added as optional since it might be missing in the database
   active?: boolean;
   description?: string; // Added as optional since it might be missing in the database
+  access_level?: Record<string, any>; // Added to store access level information
 }
 
 // Map string icon names to Lucide components
@@ -53,6 +54,12 @@ let cachedClientModules: Module[] | null = null;
 
 export const fetchModules = async (isBackoffice: boolean, user?: any): Promise<Module[]> => {
   try {
+    // If user has modules from login process, use those first
+    if (user?.modules && user.modules.length > 0) {
+      console.log("Using modules from user object:", user.modules);
+      return user.modules;
+    }
+    
     // Check cache first
     if (isBackoffice && cachedBackofficeModules) {
       return cachedBackofficeModules;
@@ -107,15 +114,19 @@ export const convertModulesToSidebarItems = (modules: Module[], permissions: Mod
     // Determine path based on name
     const path = `${basePath}/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
     
-    // For modules, we don't have a specific permission key, so we'll show all modules
-    // In a real app, you might want to map module names to permission keys
-    const allowed = true; // All modules are allowed for now
+    // Check access level from the module if available
+    const isAdmin = module.access_level?.isAdmin || false;
+    const isEnabled = module.access_level?.isEnabled || true;
+    
+    // Module is allowed if it's enabled in access_level
+    const allowed = isEnabled;
     
     return {
       icon: IconComponent,
       label: module.name,
       path,
       allowed,
+      isAdmin
     };
   });
 };
