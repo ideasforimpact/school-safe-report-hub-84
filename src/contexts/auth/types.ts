@@ -1,8 +1,8 @@
 
 // Add the provider field to User type
 export type UserRole = 'admin' | 'user' | 'reporter' | 'supervisor' | 'saas_owner' | 'client_admin';
-export type EmployeeType = 'teaching' | 'non-teaching' | 'contract' | 'admin';
-export type DepartmentType = 'academic' | 'administration' | 'finance' | 'hr' | 'it' | 'maintenance' | 'security' | 'transportation' | 'other';
+export type EmployeeType = 'teaching' | 'non-teaching' | 'contract' | 'part_time' | 'consultant' | 'intern' | 'admin' | 'permanent';
+export type DepartmentType = 'academic' | 'administration' | 'finance' | 'hr' | 'it' | 'maintenance' | 'security' | 'transportation' | 'other' | 'Admin' | 'Teaching' | 'Security' | 'Management' | 'Tech' | 'transport' | 'Support';
 
 // Define permissions for different modules
 export interface ModulePermissions {
@@ -29,10 +29,20 @@ export interface User {
   customClaims?: Record<string, any>;
   modules?: any[]; // Array of modules the user has access to
   provider?: string; // Added provider field to track authentication method
+  employeeId?: string; // Added missing field
+  employeeType?: EmployeeType; // Added missing field
+  department?: DepartmentType; // Added missing field
+  joiningDate?: string; // Added missing field
+  createdAt?: string; // Added missing field
 }
 
 export interface UserWithPassword extends User {
   password: string;
+  employeeId?: string;
+  employeeType?: EmployeeType;
+  department?: DepartmentType;
+  joiningDate?: string;
+  createdAt?: string;
 }
 
 export interface AuthContextType {

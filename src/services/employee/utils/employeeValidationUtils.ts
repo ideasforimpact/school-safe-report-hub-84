@@ -14,9 +14,9 @@ export const validateEmployeeType = (value: string): EmployeeType | null => {
   
   // Map common variations to standard types
   const typeMap: Record<string, EmployeeType> = {
-    'full-time': 'permanent',
-    'fulltime': 'permanent',
-    'full time': 'permanent',
+    'full-time': 'teaching',
+    'fulltime': 'teaching', 
+    'full time': 'teaching',
     'permanent': 'permanent',
     'part-time': 'part_time',
     'parttime': 'part_time', 

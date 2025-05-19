@@ -101,9 +101,18 @@ const ConfiguredSidebarContent = () => {
               };
             });
             
-            // Filter out disabled modules
+            // Filter out disabled modules - safely check for isEnabled property
             const enabledModules = configuredModules.filter(
-              module => module.access_level && module.access_level.isEnabled !== false
+              module => {
+                // Check if access_level is an object and has isEnabled property set to true
+                if (typeof module.access_level === 'object' && 
+                    module.access_level !== null &&
+                    'isEnabled' in module.access_level) {
+                  return module.access_level.isEnabled !== false;
+                }
+                // Default to enabled if we can't determine
+                return true;
+              }
             );
             
             console.log(`Found ${enabledModules.length} configured modules for client ${user.clientId}`);
