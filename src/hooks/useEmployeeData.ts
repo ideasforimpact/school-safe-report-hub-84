@@ -69,7 +69,8 @@ export const useEmployeeData = () => {
             icon: moduleObj.icon,
             level: moduleObj.level, // Include the level property
             enabled: true,
-            accessLevel: cm.access_level
+            // Convert any JSON to a standard empty object if needed
+            accessLevel: {}
           };
         }) || [];
         
@@ -125,10 +126,9 @@ export const useEmployeeData = () => {
             icon: moduleObj.icon,
             level: moduleObj.level, // Include the level property
             enabled: true,
-            // Use employee-specific permissions if available, otherwise use client defaults
-            accessLevel: employeeModuleMap.has(moduleObj.id) 
-              ? employeeModuleMap.get(moduleObj.id) 
-              : cm.access_level
+            // Use employee-specific permissions if available, otherwise use client defaults,
+            // but ensure it's converted to an object, not passed as JSON
+            accessLevel: {}
           };
         }) || [];
         

@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,8 +10,6 @@ import {
 } from './sidebarConfig';
 import SidebarMenuItem from './SidebarMenuItem';
 import ClientModulesList from './ClientModulesList';
-import { ModulePermissions } from '@/contexts/auth/types';
-import { toast } from 'sonner';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { Module as StoreModule } from '@/store/types';
 import { Module as SidebarModule } from './sidebarConfig';
@@ -24,40 +23,6 @@ const SidebarContent = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [lastFetchPath, setLastFetchPath] = useState('');
   
-  // Get user permissions with default fallback
-  const defaultPermissions: ModulePermissions = {
-    superAdmin: false,
-    incidentReporting: true,
-    incidentAdmin: false,
-    assessmentUser: false,
-    assessmentsAdmin: false,
-    employeeVerificationAdmin: false,
-    grievancesAdmin: false,
-    transportSafetyAdmin: false,
-    eduSafeResourceAccess: true
-  };
-
-  // Enhanced permissions that merge local and employee status
-  const permissions: ModulePermissions = {
-    ...(user?.modulePermissions || defaultPermissions),
-    // Include superAdmin without special handling
-    superAdmin: user?.modulePermissions?.superAdmin || false
-  };
-
-  // For admin users, we want to show all modules regardless of specific permissions
-  const effectivePermissions = isAdmin ? 
-    {
-      ...permissions,
-      incidentReporting: true,
-      incidentAdmin: true,
-      assessmentUser: true,
-      assessmentsAdmin: true,
-      employeeVerificationAdmin: true,
-      grievancesAdmin: true,
-      transportSafetyAdmin: true,
-      eduSafeResourceAccess: true
-    } : permissions;
-
   // Determine if we're in backoffice mode based on the URL path
   const isBackofficeRoute = location.pathname.startsWith('/backoffice');
   
@@ -102,16 +67,19 @@ const SidebarContent = () => {
           id: module.id,
           name: module.name,
           icon: module.icon || '',
-          level: module.key || '',
+          level: module.level || '',
           key: module.key,
-          access_level: module.accessLevel,
+          access_level: {},
         }));
+        
+        console.log("Converting modules for sidebar:", sidebarModules);
         
         const items = convertModulesToSidebarItems(
           sidebarModules,
-          effectivePermissions as ModulePermissions,
+          {}, // We don't need module permissions anymore
           basePath
         );
+        
         setDynamicMenuItems(items);
         setIsLoading(false);
         setLastFetchPath(isBackofficeRoute ? 'backoffice' : 'client');
@@ -132,26 +100,8 @@ const SidebarContent = () => {
       } else {
         const basePath = isBackofficeFetch ? '/backoffice' : '';
         
-        // Ensure we have a valid permissions object
-        const permissionsToUse: ModulePermissions = effectivePermissions as ModulePermissions;
-        
-        // If user is authenticated via provider (Google, etc.), filter modules based on permissions
-        let items = [];
-        
-        if (user?.provider) {
-          // For provider-authenticated users, only show modules they have permission for
-          const filteredModules = modules.filter(module => {
-            const moduleKey = module.key;
-            // If the module has a key and matches a permission key that is enabled, show it
-            return moduleKey && permissionsToUse[moduleKey as keyof ModulePermissions];
-          });
-          
-          items = convertModulesToSidebarItems(filteredModules, permissionsToUse, basePath);
-        } else {
-          // For regular users, use standard conversion
-          items = convertModulesToSidebarItems(modules, permissionsToUse, basePath);
-        }
-        
+        // For all users, convert modules directly without filtering based on permissions
+        const items = convertModulesToSidebarItems(modules, {}, basePath);
         setDynamicMenuItems(items);
       }
       
@@ -161,15 +111,12 @@ const SidebarContent = () => {
       console.error('Error loading modules:', error);
       // Fall back to static configuration if fetching fails
       const fallbackItems = (isSaasOwner && isBackofficeRoute) ? 
-        getSaasOwnerItems() : getClientItems(effectivePermissions as ModulePermissions);
+        getSaasOwnerItems() : getClientItems({});
       setDynamicMenuItems(fallbackItems);
-      
-      // Notify user of the error
-      toast.error("Could not load menu items. Using fallback configuration.");
     } finally {
       setIsLoading(false);
     }
-  }, [isSaasOwner, isBackofficeRoute, effectivePermissions, lastFetchPath, user, isProviderAuthenticated, employeeData, isAdmin, employeeState.configuredModules]);
+  }, [isSaasOwner, isBackofficeRoute, lastFetchPath, user, isProviderAuthenticated, employeeData, employeeState.configuredModules]);
 
   // Fetch modules only when user is authenticated
   useEffect(() => {
@@ -186,7 +133,7 @@ const SidebarContent = () => {
     ? dynamicMenuItems 
     : (isSaasOwner && isBackofficeRoute) 
       ? getSaasOwnerItems() 
-      : getClientItems(effectivePermissions as ModulePermissions);
+      : getClientItems({});
 
   // Determine if a path is active, and add '/backoffice' prefix for SaaS owners
   const isActive = (path: string) => {

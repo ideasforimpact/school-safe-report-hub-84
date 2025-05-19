@@ -12,7 +12,6 @@ import {
   Car,
   FileCheck
 } from 'lucide-react';
-import { ModulePermissions } from '@/contexts/auth/types';
 import { supabase } from '@/integrations/supabase/client';
 
 // Define module type to match modules table schema
@@ -44,10 +43,6 @@ const iconMap: Record<string, any> = {
   FileCheck,
 };
 
-// Define which roles are for backoffice (SaaS owner) vs client users
-const backofficeRoleKeys = ['superAdmin', 'clientManagement', 'assessmentTemplateAdmin', 'eduSafeResourceAdmin', 'analyticsAdmin'];
-const clientRoleKeys = ['incidentReporting', 'incidentAdmin', 'assessmentUser', 'assessmentsAdmin', 'employeeVerificationAdmin', 'grievancesAdmin', 'transportSafetyAdmin', 'eduSafeResourceAccess'];
-
 // Function to fetch modules from backend based on role type with caching
 let cachedBackofficeModules: Module[] | null = null;
 let cachedClientModules: Module[] | null = null;
@@ -69,8 +64,6 @@ export const fetchModules = async (isBackoffice: boolean, user?: any, employeeDa
       isSaasOwner: user.role === 'saas_owner',
       provider: user.provider // Include provider information
     } : null;
-
-    console.log(user, "user")
     
     // Prepare employee data if available
     const employeeInfo = employeeData ? {
@@ -86,7 +79,7 @@ export const fetchModules = async (isBackoffice: boolean, user?: any, employeeDa
       status: employeeData.status !== undefined ? employeeData.status : true
     } : null;
 
-    console.log("Employee data being sent:", employeeInfo, employeeData);
+    console.log("Employee data being sent:", employeeInfo);
     
     // Call our edge function with user and employee info
     const { data, error } = await supabase.functions.invoke('fetch-modules', {
@@ -110,42 +103,10 @@ export const fetchModules = async (isBackoffice: boolean, user?: any, employeeDa
     // Cache the results based on the determined user role
     const modules = data.modules;
     
-    // Map module names to permission keys for filtering
+    // Map module names to keys for easy reference
     modules.forEach(module => {
-      // Set key based on module name for permission mapping
-      switch(module.name.toLowerCase()) {
-        case 'incidents':
-          module.key = 'incidentReporting';
-          break;
-        case 'assessments':
-          module.key = 'assessmentUser';
-          break;
-        case 'employee verification':
-          module.key = 'employeeVerificationAdmin';
-          break;
-        case 'grievances':
-          module.key = 'grievancesAdmin';
-          break;
-        case 'transport safety':
-          module.key = 'transportSafetyAdmin';
-          break;
-        case 'edusafe resources':
-          module.key = 'eduSafeResourceAccess';
-          break;
-        case 'users':
-          module.key = 'users';
-          break;
-        case 'settings':
-        case 'configuration':
-          module.key = 'configuration';
-          break;
-        case 'dashboard':
-          module.key = 'dashboard';
-          break;
-        default:
-          // For modules without specific permissions
-          module.key = module.name.toLowerCase().replace(/\s+/g, '_');
-      }
+      // Set key based on module name for mapping
+      module.key = module.level || module.name.toLowerCase().replace(/\s+/g, '_');
     });
     
     if (isBackoffice) {
@@ -162,7 +123,7 @@ export const fetchModules = async (isBackoffice: boolean, user?: any, employeeDa
 };
 
 // Convert database modules to sidebar items
-export const convertModulesToSidebarItems = (modules: Module[], permissions: ModulePermissions, basePath: string = '') => {
+export const convertModulesToSidebarItems = (modules: Module[], permissions: any, basePath: string = '') => {
   const items = [];
   
   // Process modules
@@ -173,13 +134,8 @@ export const convertModulesToSidebarItems = (modules: Module[], permissions: Mod
     // Determine path based on name
     const path = `${basePath}/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
     
-    // Determine if module is allowed based on permissions
+    // All modules are allowed now - we filter at the database/API level
     let allowed = true;
-    
-    // If the module has a key that maps to permissions, check it
-    if (module.key && module.key in permissions) {
-      allowed = permissions[module.key as keyof ModulePermissions];
-    }
     
     items.push({
       icon: IconComponent,
@@ -235,7 +191,7 @@ export const getSaasOwnerItems = () => [
 ];
 
 // Client Admin and User Menu Items
-export const getClientItems = (permissions: ModulePermissions) => [
+export const getClientItems = (permissions: any) => [
   {
     icon: LayoutDashboard,
     label: 'Dashboard',
@@ -246,48 +202,48 @@ export const getClientItems = (permissions: ModulePermissions) => [
     icon: AlertTriangle,
     label: 'Incidents',
     path: '/incidents',
-    allowed: permissions?.incidentReporting || permissions?.incidentAdmin || false,
+    allowed: true,
   },
   {
     icon: ClipboardCheck,
     label: 'Assessments',
     path: '/assessments',
-    allowed: permissions?.assessmentUser || permissions?.assessmentsAdmin || false,
+    allowed: true,
   },
   {
     icon: FileCheck,
     label: 'Employee\nVerification',
     path: '/employee-verification',
-    allowed: permissions?.employeeVerificationAdmin || false,
+    allowed: true,
   },
   {
     icon: MessageSquare,
     label: 'Grievances',
     path: '/grievances',
-    allowed: permissions?.grievancesAdmin || false,
+    allowed: true,
   },
   {
     icon: Car,
     label: 'Transport\nSafety',
     path: '/transport-safety',
-    allowed: permissions?.transportSafetyAdmin || false,
+    allowed: true,
   },
   {
     icon: FileText,
     label: 'EduSafe\nResources',
     path: '/edusafe-resources',
-    allowed: permissions?.eduSafeResourceAccess || false,
+    allowed: true,
   },
   {
     icon: Users,
     label: 'Users',
     path: '/users',
-    allowed: true,  // Always show for admins
+    allowed: true,
   },
   {
     icon: Settings,
     label: 'Settings',
     path: '/configuration',
-    allowed: true,  // Always show for admins
+    allowed: true,
   },
 ];
