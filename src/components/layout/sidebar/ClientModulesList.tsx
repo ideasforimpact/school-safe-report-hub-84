@@ -70,6 +70,8 @@ const ClientModulesList = () => {
           return;
         }
         
+        console.log("Found employee with ID:", employeeData.id, "Email:", employeeData.email);
+        
         // Fetch employee's configured modules
         const { data: moduleEntries, error: modulesError } = await supabase
           .from('employee_modules')
@@ -177,6 +179,7 @@ const ClientModulesList = () => {
           allowed: true
         });
         
+        console.log("Final configured modules for sidebar:", modules.map(m => m.label));
         setConfiguredModules(modules);
       } catch (error) {
         console.error("Error loading configured modules:", error);
