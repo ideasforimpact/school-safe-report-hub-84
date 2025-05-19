@@ -10,20 +10,12 @@ interface UserRoleBadgeProps {
 const UserRoleBadge: React.FC<UserRoleBadgeProps> = ({ 
   isSaasOwner, 
   isAdmin,
-  isSuperAdmin = false
+  isSuperAdmin = false // We'll keep the prop but not use it differently
 }) => {
   if (isSaasOwner) {
     return (
       <Badge variant="default" className="bg-blue-600 hover:bg-blue-700">
         SaaS Owner
-      </Badge>
-    );
-  }
-  
-  if (isSuperAdmin) {
-    return (
-      <Badge variant="default" className="bg-purple-600 hover:bg-purple-700">
-        Super Admin
       </Badge>
     );
   }

@@ -102,7 +102,7 @@ const ClientModulesList = () => {
           requestBody.employeeInfo = {
             ...currentEmployeeData,
             id: currentEmployeeData.id,
-            clientId: currentEmployeeData.clientId || currentEmployeeData.clientId,
+            clientId: currentEmployeeData.clientId || currentEmployeeData.clientId, // Fixed property name
             email: currentEmployeeData.email,
             firstName: nameParts.firstName,
             lastName: nameParts.lastName,

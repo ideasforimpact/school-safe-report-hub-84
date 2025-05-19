@@ -30,20 +30,8 @@ const Header = () => {
   // Set dashboard path to /dashboard for all users
   const dashboardPath = "/dashboard";
   
-  // Check if user is super admin based on the employee data
-  const isSuperAdmin = employeeData?.isSuperAdmin === true;
-  
-  // Debug super admin status
-  console.log("Header Super Admin Status:", {
-    isSuperAdmin,
-    employeeData: employeeData ? {
-      id: employeeData.id,
-      isSuperAdmin: employeeData.isSuperAdmin
-    } : null
-  });
-  
-  // Show admin settings menu only for SaaS owner or super admin users
-  const showAdminSettings = isSaasOwner || isSuperAdmin;
+  // Show admin settings menu for all admin users
+  const showAdminSettings = isSaasOwner || isAdmin;
 
   return (
     <div className="w-full h-16 bg-white shadow-sm">
@@ -67,9 +55,9 @@ const Header = () => {
             <div className="flex items-center gap-3">
               <HeaderIcons />
 
-              {user && <UserRoleBadge isSaasOwner={isSaasOwner} isAdmin={isAdmin} isSuperAdmin={isSuperAdmin} />}
+              {user && <UserRoleBadge isSaasOwner={isSaasOwner} isAdmin={isAdmin} />}
               
-              {/* Settings Menu - Only visible for SaaS owners or super admins */}
+              {/* Settings Menu - Only visible for admins */}
               {showAdminSettings && !isBackoffice && <AdminSettingsMenu />}
 
               <UserProfileMenu />

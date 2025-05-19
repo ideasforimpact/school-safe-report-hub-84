@@ -7,8 +7,6 @@ import { useAuth } from '@/contexts/AuthContext';
 
 const AdminSettingsMenu = () => {
   const navigate = useNavigate();
-  const { employeeData } = useAuth();
-  const isSuperAdmin = employeeData?.isSuperAdmin === true;
   
   return (
     <DropdownMenu>
@@ -45,20 +43,18 @@ const AdminSettingsMenu = () => {
           <span>Student Management</span>
         </DropdownMenuItem>
         
-        {/* Super Admin-only options for employee management */}
-        {isSuperAdmin && (
-          <>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => navigate('/employees/add')} className="cursor-pointer">
-              <UserPlus className="h-4 w-4 mr-2" />
-              <span>Add Employee</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate('/employees/import')} className="cursor-pointer">
-              <Import className="h-4 w-4 mr-2" />
-              <span>Import Employees</span>
-            </DropdownMenuItem>
-          </>
-        )}
+        {/* Employee management options - now visible to all admins */}
+        <>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => navigate('/employees/add')} className="cursor-pointer">
+            <UserPlus className="h-4 w-4 mr-2" />
+            <span>Add Employee</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => navigate('/employees/import')} className="cursor-pointer">
+            <Import className="h-4 w-4 mr-2" />
+            <span>Import Employees</span>
+          </DropdownMenuItem>
+        </>
       </DropdownMenuContent>
     </DropdownMenu>
   );

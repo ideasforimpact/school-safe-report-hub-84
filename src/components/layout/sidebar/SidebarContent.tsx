@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -33,20 +34,15 @@ const SidebarContent = () => {
     eduSafeResourceAccess: true
   };
 
-  console.log(employeeData,"employeeData")
-  // Check if the employee data indicates super admin status
-  const isSuperAdmin = employeeData?.isSuperAdmin === true;
-  
   // Enhanced permissions that merge local and employee status
   const permissions: ModulePermissions = {
     ...(user?.modulePermissions || defaultPermissions),
-    // Override superAdmin based on employee data
-    superAdmin: user?.modulePermissions?.superAdmin || isSuperAdmin || false
+    // Include superAdmin without special handling
+    superAdmin: user?.modulePermissions?.superAdmin || false
   };
 
   // For admin users, we want to show all modules regardless of specific permissions
-  // If user is authenticated via a provider (like Google), only show their configured modules
-  const effectivePermissions = (isAdmin || isSuperAdmin) && !user?.provider ? 
+  const effectivePermissions = isAdmin ? 
     {
       ...permissions,
       incidentReporting: true,
@@ -64,16 +60,6 @@ const SidebarContent = () => {
   
   // Check if user is authenticated via provider (like Google)
   const isProviderAuthenticated = !!user?.provider;
-  
-  // Log auth details (removed effectivePermissions from logging)
-  console.log("AUTH DETAILS:", {
-    email: user?.email,
-    provider: user?.provider || 'none',
-    isProviderAuthenticated,
-    isBackofficeRoute,
-    isSaasOwner,
-    isSuperAdmin
-  });
   
   // Auto-redirect SaaS owners to backoffice when they're at root path
   useEffect(() => {
@@ -95,13 +81,10 @@ const SidebarContent = () => {
       // For SaaS users in backoffice route, fetch backoffice modules
       // For others, fetch client modules
       const isBackofficeFetch = isSaasOwner && isBackofficeRoute;
-      console.log(`User is ${isSaasOwner ? 'SaaS owner' : 'client user'}, route is ${isBackofficeRoute ? 'backoffice' : 'client'}`);
-      console.log(`User authenticated via provider: ${user?.provider || 'none'}, will show ${user?.provider ? 'configured' : 'all'} modules`);
       
       // If this is a provider-authenticated user on client side, we'll use the ClientModulesList
       // component instead of continuing with this function
       if (isProviderAuthenticated && !isBackofficeFetch) {
-        console.log("Using ClientModulesList for provider-authenticated user:", user?.email);
         setIsLoading(false);
         setLastFetchPath(isBackofficeRoute ? 'backoffice' : 'client');
         return;
@@ -130,9 +113,6 @@ const SidebarContent = () => {
         if (user?.provider) {
           // For provider-authenticated users, only show modules they have permission for
           const filteredModules = modules.filter(module => {
-            // Super admins can see all modules
-            if (isSuperAdmin) return true;
-            
             const moduleKey = module.key;
             // If the module has a key and matches a permission key that is enabled, show it
             return moduleKey && permissionsToUse[moduleKey as keyof ModulePermissions];
@@ -161,7 +141,7 @@ const SidebarContent = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [isSaasOwner, isBackofficeRoute, effectivePermissions, lastFetchPath, user, isProviderAuthenticated, employeeData, isSuperAdmin]);
+  }, [isSaasOwner, isBackofficeRoute, effectivePermissions, lastFetchPath, user, isProviderAuthenticated, employeeData, isAdmin]);
 
   // Fetch modules only when user is authenticated
   useEffect(() => {
@@ -202,7 +182,6 @@ const SidebarContent = () => {
 
   // For provider-authenticated users on client routes, use the dedicated component
   if (isProviderAuthenticated && !isBackofficeRoute) {
-    console.log("Using ClientModulesList for provider-authenticated user:", user?.email);
     return <ClientModulesList />;
   }
 

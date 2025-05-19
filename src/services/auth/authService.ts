@@ -1,4 +1,3 @@
-
 import { User, UserWithPassword } from '@/contexts/auth/types';
 import { INITIAL_MOCK_USERS } from '@/contexts/auth/initialData';
 
