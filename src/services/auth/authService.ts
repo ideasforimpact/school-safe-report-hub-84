@@ -105,7 +105,7 @@ export const initializeUsers = (): UserWithPassword[] => {
       lastName: 'User',
       email: 'admin@school.edu',
       password: 'admin123',
-      role: 'admin',
+      role: 'admin', // Fix: Changed from 'user' to proper UserRole type
       isActive: true,
       createdAt: new Date().toISOString(),
     },

@@ -1,8 +1,7 @@
-
 import { useCallback, useMemo, useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
-import { EmploymentStatus, EmployeeData } from '@/contexts/auth/types';
+import { EmploymentStatus, EmployeeData, DepartmentType, EmployeeType } from '@/contexts/auth/types';
 import { supabase } from '@/integrations/supabase/client';
 
 /**
@@ -37,8 +36,8 @@ export const useEmployeeAccess = () => {
               firstName: data.first_name,
               lastName: data.last_name,
               isSuperAdmin: data.is_super_admin,
-              department: data.department,
-              employeeType: data.employee_type,
+              department: data.department as DepartmentType, // Fix: Explicit type casting
+              employeeType: data.employee_type as EmployeeType, // Fix: Explicit type casting
               status: data.status,
               employeeId: data.employee_id
             };
