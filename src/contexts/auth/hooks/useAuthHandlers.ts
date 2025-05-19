@@ -416,39 +416,7 @@ export function useAuthHandlers({
         saveUserToStorage(loggedInUser);
         setAuthError(null);
         
-        // Fetch employee data after successful login
-        try {
-          const { data: employeeData, error } = await supabase
-            .from('employees')
-            .select('id, client_id, email, first_name, last_name, is_super_admin, department, employee_type, status, employee_id')
-            .eq('email', email.toLowerCase())
-            .single();
-          
-          if (employeeData && !error && setEmployeeData) {
-            console.log("Super Admin Status from DB for regular login:", employeeData.is_super_admin);
-            
-            const employee: EmployeeData = {
-              id: employeeData.id,
-              clientId: employeeData.client_id,
-              email: employeeData.email,
-              firstName: employeeData.first_name,
-              lastName: employeeData.last_name,
-              isSuperAdmin: employeeData.is_super_admin,
-              department: employeeData.department as DepartmentType,
-              employeeType: employeeData.employee_type as EmployeeType,
-              status: employeeData.status,
-              employeeId: employeeData.employee_id
-            };
-            
-            setEmployeeData(employee);
-            saveEmployeeDataToStorage(employee);
-            console.log("📝 Employee data stored in context after regular login:", employee);
-          } else {
-            console.log("⚠️ No employee data found for regular login user:", email);
-          }
-        } catch (err) {
-          console.error("❌ Error fetching employee data after regular login:", err);
-        }
+        // Toast is now handled by the auth state change listener
         
         return true;
       }

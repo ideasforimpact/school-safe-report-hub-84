@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -34,8 +33,7 @@ const SidebarContent = () => {
     eduSafeResourceAccess: true
   };
 
-  console.log("SidebarContent - employeeData:", employeeData);
-  
+  console.log(employeeData,"employeeData")
   // Check if the employee data indicates super admin status
   const isSuperAdmin = employeeData?.isSuperAdmin === true;
   
@@ -67,19 +65,14 @@ const SidebarContent = () => {
   // Check if user is authenticated via provider (like Google)
   const isProviderAuthenticated = !!user?.provider;
   
-  // Log auth details
+  // Log auth details (removed effectivePermissions from logging)
   console.log("AUTH DETAILS:", {
     email: user?.email,
     provider: user?.provider || 'none',
     isProviderAuthenticated,
     isBackofficeRoute,
     isSaasOwner,
-    isSuperAdmin,
-    employeeData: employeeData ? {
-      id: employeeData.id,
-      isSuperAdmin: employeeData.isSuperAdmin,
-      email: employeeData.email
-    } : 'NULL - No employee data found'
+    isSuperAdmin
   });
   
   // Auto-redirect SaaS owners to backoffice when they're at root path
