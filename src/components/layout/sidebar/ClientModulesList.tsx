@@ -224,13 +224,13 @@ const ClientModulesList = () => {
     return currentPath === path || (path !== '/' && currentPath.startsWith(path));
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex-1 py-6 text-white flex justify-center items-center">
-        <span className="text-sm">Loading...</span>
-      </div>
-    );
-  }
+  // if (isLoading) {
+  //   return (
+  //     <div className="flex-1 py-6 text-white flex justify-center items-center">
+  //       <span className="text-sm">Loading...</span>
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="flex-1 py-6">
