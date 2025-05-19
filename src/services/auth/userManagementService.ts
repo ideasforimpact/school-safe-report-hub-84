@@ -101,7 +101,7 @@ export const addNewUser = async (
 export const updateExistingUser = async (
   currentUsers: UserWithPassword[],
   id: string,
-  updates: Partial<User & { password?: string; modulePermissions?: ModulePermissions }>
+  updates: Partial<User & { password?: string }>
 ): Promise<UserWithPassword[] | null> => {
   // Check if email already exists and it's not the current user
   if (updates.email && !validateUserEmail(currentUsers, updates.email, id)) {

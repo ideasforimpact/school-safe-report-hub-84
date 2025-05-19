@@ -23,7 +23,7 @@ const UserProfileMenu = () => {
   const navigate = useNavigate();
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
-  // Check if user is super admin (using optional chaining since modulePermissions might not exist)
+  // Check if user is super admin
   const isSuperAdmin = user?.modulePermissions?.superAdmin === true;
   
   // Show settings only for SaaS owners or super admins

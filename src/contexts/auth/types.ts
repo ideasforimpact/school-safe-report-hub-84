@@ -19,7 +19,7 @@ export interface AuthContextType {
   changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
   authError: string | null;
   handleUserAuthentication: (user: any) => Promise<void>;
-  employeeData: EmployeeData | null;
+  employeeData: EmployeeData | null; // Add employee data to context
 }
 
 export interface User {
@@ -28,6 +28,7 @@ export interface User {
   lastName: string;
   email: string;
   role: UserRole;
+  modulePermissions?: ModulePermissions;
   isActive: boolean;
   clientId?: string;
   employeeId?: string;
@@ -36,8 +37,7 @@ export interface User {
   joiningDate?: string;
   createdAt: string;
   lastLogin?: string;
-  provider?: string;
-  modulePermissions?: ModulePermissions; // Add this line back
+  provider?: string; // Add provider field to track authentication method
 }
 
 export type UserRole = 'admin' | 'reporter' | 'viewer' | 'saas_owner';
@@ -45,6 +45,19 @@ export type UserRole = 'admin' | 'reporter' | 'viewer' | 'saas_owner';
 export type EmployeeType = 'permanent' | 'contract' | 'part_time' | 'consultant' | 'intern';
 
 export type DepartmentType = 'admin' | 'teaching' | 'security' | 'maintenance' | 'transport' | 'management' | 'it' | 'hr' | 'finance';
+
+export interface ModulePermissions {
+  superAdmin: boolean;
+  incidentReporting: boolean;
+  incidentAdmin: boolean;
+  assessmentUser: boolean;
+  assessmentsAdmin: boolean;
+  employeeVerificationAdmin: boolean;
+  grievancesAdmin: boolean;
+  transportSafetyAdmin: boolean;
+  eduSafeResourceAccess: boolean;
+  [key: string]: boolean; // Add index signature to support dynamic properties
+}
 
 // Updated EmployeeData interface with all required properties
 export interface EmployeeData {
@@ -63,16 +76,3 @@ export interface EmployeeData {
 
 // Add EmploymentStatus type since it's used in the status field
 export type EmploymentStatus = 'active' | 'on_leave' | 'resigned' | 'terminated' | 'retired' | 'inactive';
-
-// Add ModulePermissions type back
-export interface ModulePermissions {
-  superAdmin: boolean;
-  incidentReporting: boolean;
-  incidentAdmin: boolean;
-  assessmentUser: boolean;
-  assessmentsAdmin: boolean;
-  employeeVerificationAdmin: boolean;
-  grievancesAdmin: boolean;
-  transportSafetyAdmin: boolean;
-  eduSafeResourceAccess: boolean;
-}

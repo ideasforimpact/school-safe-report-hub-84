@@ -1,96 +1,291 @@
-
-import { useState, useRef } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Loader2, Upload } from 'lucide-react';
+import { FileUp, Check, AlertCircle, Loader2, Upload } from 'lucide-react';
+import { toast } from 'sonner';
+import { validateEmployeeExcel } from '@/services/employee/importEmployeeService';
+import { Progress } from '@/components/ui/progress';
 
 interface ImportEmployeeDialogProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
+  onImportEmployees: (file: File, clientId?: string) => Promise<void>;
   clientId?: string;
-  onImportSubmit: (file: File) => Promise<void>;
-  isLoading: boolean;
 }
 
-const ImportEmployeeDialog = ({ 
-  isOpen, 
-  setIsOpen, 
-  clientId,
-  onImportSubmit,
-  isLoading 
-}: ImportEmployeeDialogProps) => {
+const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }: ImportEmployeeDialogProps) => {
   const [file, setFile] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [isValidated, setIsValidated] = useState(false);
+  const [recordCount, setRecordCount] = useState<number | null>(null);
   
-  const handleClose = () => {
-    setIsOpen(false);
-    setFile(null);
-  };
+  // Log clientId for debugging
+  useEffect(() => {
+    console.log("ImportEmployeeDialog received clientId:", clientId);
+  }, [clientId]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setFile(e.target.files[0]);
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      if (selectedFile.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || 
+          selectedFile.type === 'application/vnd.ms-excel') {
+        setFile(selectedFile);
+        setIsValidated(false);
+        setValidationErrors([]);
+        setRecordCount(null);
+        
+        // Auto-validate when a file is selected
+        handleValidateFile(selectedFile);
+      } else {
+        toast.error('Please select a valid Excel file (.xlsx or .xls)');
+        e.target.value = '';
+      }
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!file) return;
-    
-    await onImportSubmit(file);
+  const handleValidateFile = async (selectedFile: File = file!) => {
+    if (!selectedFile) {
+      toast.error('Please select a file first');
+      return;
+    }
+
+    setIsValidating(true);
+    setValidationErrors([]);
+
+    try {
+      // Show status message if it's a large file (based on file size)
+      if (selectedFile.size > 1000000) { // Roughly 1MB
+        toast.info('Validating a large file. This might take a moment...');
+      }
+      
+      const errors = await validateEmployeeExcel(selectedFile);
+      setValidationErrors(errors);
+      
+      // Estimate number of records from file size or extract it during validation
+      try {
+        // This is simplified - in a real app would be more accurate
+        const data = await parseExcelForCount(selectedFile);
+        setRecordCount(data);
+      } catch (e) {
+        console.error("Couldn't determine record count", e);
+      }
+      
+      if (errors.length === 0) {
+        setIsValidated(true);
+        toast.success('File validated successfully');
+      } else {
+        setIsValidated(false);
+      }
+    } catch (error) {
+      console.error('Validation error:', error);
+      toast.error('Failed to validate file');
+    } finally {
+      setIsValidating(false);
+    }
+  };
+
+  // Simple function to estimate record count from the Excel file
+  const parseExcelForCount = async (file: File): Promise<number> => {
+    // This is a simplification - we're reusing existing functionality
+    try {
+      const { parseExcelFile } = await import('@/services/employee/utils/excelProcessingUtils');
+      const data = await parseExcelFile(file);
+      return data.length;
+    } catch (e) {
+      console.error("Error parsing Excel for count:", e);
+      return 0;
+    }
+  };
+
+  const handleImport = async () => {
+    if (!file) {
+      toast.error('Please select a file first');
+      return;
+    }
+
+    if (!isValidated) {
+      toast.error('Please validate the file before importing');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // Show a message for large imports to manage user expectations
+      if (recordCount && recordCount > 100) {
+        toast.info(`Processing ${recordCount} records. This may take a moment...`);
+      }
+      
+      console.log("Using clientId for import:", clientId);
+      
+      // Pass clientId to the import function
+      await onImportEmployees(file, clientId);
+      
+      // Reset state and close dialog after successful import
+      setFile(null);
+      setIsValidated(false);
+      setValidationErrors([]);
+      setRecordCount(null);
+      setIsOpen(false);
+      toast.success("Import completed successfully");
+    } catch (error) {
+      console.error('Import failed:', error);
+      toast.error(`Import failed: ${(error as Error).message || 'Unknown error'}`);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDialogClose = () => {
+    // Clear state when dialog is closed
     setFile(null);
+    setIsValidated(false);
+    setValidationErrors([]);
+    setIsLoading(false);
+    setRecordCount(null);
+    setIsOpen(false);
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px]">
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Import Employees</DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="file">Upload Excel File</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="file"
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileChange}
-                  accept=".xlsx,.xls"
-                  className="flex-1"
-                  required
-                />
-              </div>
-              <p className="text-sm text-gray-500 mt-1">
-                File must be Excel format (.xlsx, .xls) with employee details.
-              </p>
-              {file && (
-                <p className="text-sm text-green-600 mt-1">
-                  Selected file: {file.name}
-                </p>
-              )}
+          <DialogDescription>
+            Upload an Excel file containing employee information. The file should include employee ID, name, email, and department.
+            {clientId && <div className="mt-2 text-sm text-muted-foreground">Client ID: {clientId}</div>}
+            <div className="mt-2 text-xs text-muted-foreground">
+              Note: Existing employees will be updated based on their Employee ID
             </div>
-            
-            {/* Display clientId for debugging */}
-            {clientId && (
-              <div className="text-xs text-gray-500">
-                Client ID: {clientId}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="file" className="text-sm font-medium">
+              Select File
+            </Label>
+            <div className="flex items-center gap-2">
+              <div className="flex-grow">
+                <div className="border rounded-md p-4 text-center cursor-pointer bg-muted/50 hover:bg-muted/70 transition-colors">
+                  <Label htmlFor="file" className="w-full cursor-pointer flex flex-col items-center gap-2">
+                    <Upload className="h-8 w-8 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">
+                      {file ? file.name : 'Click to select an Excel file'}
+                    </span>
+                    {recordCount && (
+                      <span className="text-xs text-muted-foreground">
+                        {recordCount} records detected
+                      </span>
+                    )}
+                  </Label>
+                  <input
+                    type="file"
+                    id="file"
+                    className="sr-only"
+                    onChange={handleFileChange}
+                    accept=".xls,.xlsx"
+                  />
+                </div>
               </div>
-            )}
+            </div>
           </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={handleClose} disabled={isLoading}>
+
+          {validationErrors.length > 0 && (
+            <div className="border border-destructive/50 rounded-md p-3 bg-destructive/10">
+              <h3 className="font-medium flex items-center text-destructive mb-2">
+                <AlertCircle className="h-4 w-4 mr-1" />
+                Validation Errors
+              </h3>
+              <div className="max-h-40 overflow-y-auto text-sm">
+                <ul className="list-disc pl-5 space-y-1">
+                  {validationErrors.slice(0, 10).map((error, index) => (
+                    <li key={index} className="text-destructive">
+                      {error}
+                    </li>
+                  ))}
+                  {validationErrors.length > 10 && (
+                    <li className="text-destructive font-medium">
+                      ... and {validationErrors.length - 10} more errors
+                    </li>
+                  )}
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {isValidated && validationErrors.length === 0 && (
+            <div className="border border-green-500/50 rounded-md p-3 bg-green-500/10">
+              <p className="text-green-600 flex items-center">
+                <Check className="h-4 w-4 mr-1" />
+                File is valid and ready to import
+                {recordCount && ` (${recordCount} records)`}
+              </p>
+            </div>
+          )}
+
+          {isValidating && (
+            <div className="space-y-2">
+              <div className="flex items-center">
+                <Loader2 className="h-4 w-4 mr-2 animate-spin text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Validating file...</span>
+              </div>
+              <Progress value={isValidating ? 80 : 0} className="h-1" />
+            </div>
+          )}
+
+          {isLoading && (
+            <div className="space-y-2">
+              <div className="flex items-center">
+                <Loader2 className="h-4 w-4 mr-2 animate-spin text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Importing data...</span>
+              </div>
+              <Progress value={isLoading ? 70 : 0} className="h-1" />
+            </div>
+          )}
+
+          <DialogFooter className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={handleDialogClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={!file || isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Import
+            <Button
+              onClick={() => handleValidateFile()}
+              disabled={!file || isValidating}
+              variant="outline"
+            >
+              {isValidating ? (
+                <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Validating...</>
+              ) : isValidated ? (
+                <>
+                  <Check className="h-4 w-4 mr-1" />
+                  Validated
+                </>
+              ) : (
+                "Verify"
+              )}
+            </Button>
+            <Button
+              onClick={handleImport}
+              disabled={!isValidated || isLoading}
+              className="gap-1"
+            >
+              {isLoading ? (
+                <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Importing...</>
+              ) : (
+                <><FileUp className="h-4 w-4 mr-1" /> Import Employees</>
+              )}
             </Button>
           </DialogFooter>
-        </form>
+        </div>
       </DialogContent>
     </Dialog>
   );

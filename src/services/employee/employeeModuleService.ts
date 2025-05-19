@@ -50,8 +50,7 @@ export const getEmployeeModulePermissions = async (employeeId: string): Promise<
 
     data.forEach(moduleEntry => {
       if (moduleEntry.roles?.key) {
-        // Convert moduleKey to string explicitly if it might be a symbol
-        const moduleKey = String(moduleEntry.roles.key) as keyof ModulePermissions;
+        const moduleKey = moduleEntry.roles.key as keyof ModulePermissions;
         if (moduleKey in permissions) {
           permissions[moduleKey] = true;
           console.log(`Setting permission ${moduleKey} to true`);
