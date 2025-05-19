@@ -15,6 +15,7 @@ import {
   deactivateExistingUser 
 } from '@/services/auth/userManagementService';
 import { excludePasswordFromUser } from '@/contexts/auth/utils';
+import { fetchModules } from '@/components/layout/sidebar/sidebarConfig';
 
 // List of demo emails that can bypass the employee verification
 const DEMO_EMAILS = [
