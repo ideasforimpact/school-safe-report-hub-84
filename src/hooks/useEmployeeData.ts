@@ -21,6 +21,8 @@ export const useEmployeeData = () => {
         return;
       }
 
+      console.log("Starting to fetch modules with employeeId:", employeeId, "and clientId:", clientId);
+
       // Check if employee is a super admin
       const { data: employeeData, error: employeeError } = await supabase
         .from('employees')
@@ -40,6 +42,7 @@ export const useEmployeeData = () => {
       let configuredModules: Module[] = [];
       
       if (isSuperAdmin) {
+        console.log("Fetching modules for super admin");
         // For super admins, fetch all modules enabled for the client
         const { data: clientModules, error: clientModulesError } = await supabase
           .from('client_modules')
@@ -59,24 +62,30 @@ export const useEmployeeData = () => {
           return;
         }
 
+        console.log("Client modules raw data:", clientModules);
+
         // Convert client modules to the expected format
         configuredModules = clientModules?.map(cm => {
           const moduleObj = cm.modules;
+          if (!moduleObj) {
+            console.warn("Missing module object in client module:", cm);
+            return null;
+          }
           return {
             id: moduleObj.id,
             name: moduleObj.name,
-            key: moduleObj.level,
-            icon: moduleObj.icon,
+            key: moduleObj.level, // Using level as key
+            icon: moduleObj.icon || '',
             level: moduleObj.level, // Include the level property
             enabled: true,
-            // Convert any JSON to a standard empty object if needed
-            accessLevel: {}
+            accessLevel: cm.access_level || {}
           };
-        }) || [];
+        }).filter(Boolean) as Module[] || [];
         
         console.log("Super admin modules loaded:", configuredModules);
       } else {
-        // For regular employees, first fetch all modules that are enabled for this client
+        console.log("Fetching modules for regular employee");
+        // First fetch all client modules to understand what's available
         const { data: clientModules, error: clientModulesError } = await supabase
           .from('client_modules')
           .select(`
@@ -90,10 +99,12 @@ export const useEmployeeData = () => {
           .eq('enabled', true);
 
         if (clientModulesError) {
-          console.error("Error fetching client modules:", clientModulesError);
+          console.error("Error fetching client modules for regular employee:", clientModulesError);
           dispatch(setError(clientModulesError.message));
           return;
         }
+
+        console.log("Client modules available to the employee:", clientModules);
 
         // Then fetch employee-specific module permissions
         const { data: employeeModules, error: employeeModulesError } = await supabase
@@ -110,6 +121,8 @@ export const useEmployeeData = () => {
           return;
         }
 
+        console.log("Employee-specific modules:", employeeModules);
+
         // Create a map of employee module permissions for quick lookup
         const employeeModuleMap = new Map();
         employeeModules?.forEach(em => {
@@ -119,24 +132,50 @@ export const useEmployeeData = () => {
         // Combine client modules with employee-specific permissions
         configuredModules = clientModules?.map(cm => {
           const moduleObj = cm.modules;
+          if (!moduleObj) {
+            console.warn("Missing module object in client module for employee:", cm);
+            return null;
+          }
+          
+          // Check if this module is assigned to the employee
+          const hasAccess = employeeModules?.some(em => em.module_id === moduleObj.id) || 
+                           employeeModules?.length === 0; // If no modules specified, assume access to all
+          
+          if (!hasAccess && employeeModules?.length > 0) {
+            console.log(`Employee doesn't have access to module: ${moduleObj.name}`);
+            return null;
+          }
+          
           return {
             id: moduleObj.id,
             name: moduleObj.name,
-            key: moduleObj.level,
-            icon: moduleObj.icon,
+            key: moduleObj.level, // Using level as key
+            icon: moduleObj.icon || '',
             level: moduleObj.level, // Include the level property
             enabled: true,
-            // Use employee-specific permissions if available, otherwise use client defaults,
-            // but ensure it's converted to an object, not passed as JSON
-            accessLevel: {}
+            accessLevel: employeeModuleMap.get(moduleObj.id) || cm.access_level || {}
           };
-        }) || [];
+        }).filter(Boolean) as Module[] || [];
         
         console.log("Regular employee modules loaded:", configuredModules);
       }
 
+      // If no modules found, we should at least provide a dashboard
+      if (configuredModules.length === 0) {
+        console.log("No modules found, adding default dashboard");
+        configuredModules = [{
+          id: 'dashboard-default',
+          name: 'Dashboard',
+          key: 'dashboard',
+          icon: 'LayoutDashboard',
+          level: 'client',
+          enabled: true,
+          accessLevel: {}
+        }];
+      }
+
       dispatch(setConfiguredModules(configuredModules));
-      console.log("Total configured modules loaded:", configuredModules.length);
+      console.log("Total configured modules loaded:", configuredModules.length, configuredModules);
     } catch (error) {
       console.error("Error in fetchConfiguredModules:", error);
       dispatch(setError("Failed to fetch configured modules"));

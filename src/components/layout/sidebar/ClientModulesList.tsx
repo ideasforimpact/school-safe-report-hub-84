@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -6,6 +7,7 @@ import { toast } from 'sonner';
 import SidebarMenuItem from './SidebarMenuItem';
 import { LucideIcon } from 'lucide-react';
 import { useEmployeeAccess } from '@/contexts/auth/hooks/useEmployeeAccess';
+import { useEmployeeData } from '@/hooks/useEmployeeData';
 import { 
   LayoutDashboard,
   AlertTriangle,
@@ -17,7 +19,6 @@ import {
   Users,
   Settings
 } from 'lucide-react';
-import { EmploymentStatus } from '@/contexts/auth/types';
 
 // Map string icon names to Lucide components
 const iconMap: Record<string, any> = {
@@ -45,11 +46,39 @@ const ClientModulesList = () => {
   const navigate = useNavigate();
   const { user, employeeData } = useAuth();
   const { getEmployeeId, employee } = useEmployeeAccess(); // Get employee info
+  const { configuredModules: storeModules } = useEmployeeData(); // Get modules from store
   const [configuredModules, setConfiguredModules] = useState<ModuleItem[]>([]);
-  const [isLoading, setIsLoading] = useState(false); // Changed to false by default
+  const [isLoading, setIsLoading] = useState(true);
   const [receivedEmployeeData, setReceivedEmployeeData] = useState(null);
   
+  // First check if modules are already in the store
   useEffect(() => {
+    if (storeModules && storeModules.length > 0) {
+      console.log("Using modules from store:", storeModules);
+      
+      // Map store modules to sidebar items
+      const modules = storeModules.map(module => {
+        // Get icon component
+        const IconComponent = iconMap[module.icon || 'LayoutDashboard'] || LayoutDashboard;
+        
+        // Create path from module name
+        const path = `/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
+        
+        return {
+          icon: IconComponent,
+          label: module.name,
+          path,
+          allowed: true,
+          accessLevel: module.accessLevel || {}
+        };
+      });
+      
+      setConfiguredModules(modules);
+      setIsLoading(false);
+      return;
+    }
+    
+    // If not in store, fetch them directly
     const fetchConfiguredModules = async () => {
       if (!user || !user.id) {
         setConfiguredModules([]);
@@ -59,8 +88,7 @@ const ClientModulesList = () => {
       }
       
       try {
-        // Set isLoading to false initially, only set it to true if necessary
-        // This way we avoid the loading text while waiting for the response
+        setIsLoading(true);
         
         // Get employee data from context or using the hook
         const currentEmployeeData = employeeData || employee;
@@ -102,7 +130,7 @@ const ClientModulesList = () => {
           requestBody.employeeInfo = {
             ...currentEmployeeData,
             id: currentEmployeeData.id,
-            clientId: currentEmployeeData.clientId || currentEmployeeData.clientId, // Fixed property name
+            clientId: currentEmployeeData.clientId || currentEmployeeData.client_id, // Support both formats
             email: currentEmployeeData.email,
             firstName: nameParts.firstName,
             lastName: nameParts.lastName,
@@ -120,83 +148,82 @@ const ClientModulesList = () => {
           console.log("No employee data available - will attempt to find by email only");
         }
         
-        // Use requestAnimationFrame to ensure DOM is rendered first before making the API call
-        requestAnimationFrame(async () => {
-          // Call the fetch-modules function with comprehensive request parameters
-          const { data, error } = await supabase.functions.invoke('fetch-modules', {
-            body: requestBody
-          });
-          
-          if (error) {
-            console.error("Error invoking fetch-modules function:", error);
-            setConfiguredModules([{
-              icon: LayoutDashboard,
-              label: 'Dashboard',
-              path: '/dashboard',
-              allowed: true
-            }]);
-            toast.error("Failed to load menu items");
-            return;
-          }
-          
-          // Store the employee data returned from the edge function if available
-          if (data && data.employee) {
-            console.log("Received employee data from fetch-modules function:", data.employee);
-            setReceivedEmployeeData(data.employee);
-          }
-          
-          if (!data || !data.modules || data.modules.length === 0) {
-            console.log("No modules returned from fetch-modules function");
-            setConfiguredModules([{
-              icon: LayoutDashboard,
-              label: 'Dashboard',
-              path: '/dashboard',
-              allowed: true
-            }]);
-            return;
-          }
-          
-          console.log(`Received ${data.modules.length} modules from fetch-modules function:`, 
-            data.modules.map((m: any) => m.name));
-          
-          // Map modules to sidebar items with their access levels
-          const modules: ModuleItem[] = [];
-          
-          // Always include dashboard if it's in the returned modules or by default
-          const dashboardModule = data.modules.find((m: any) => m.name.toLowerCase() === 'dashboard');
-          modules.push({
+        console.log("Full request body to fetch-modules:", requestBody);
+        
+        // Call the fetch-modules function with comprehensive request parameters
+        const { data, error } = await supabase.functions.invoke('fetch-modules', {
+          body: requestBody
+        });
+        
+        if (error) {
+          console.error("Error invoking fetch-modules function:", error);
+          setConfiguredModules([{
             icon: LayoutDashboard,
             label: 'Dashboard',
             path: '/dashboard',
-            allowed: true,
-            accessLevel: dashboardModule?.access_level || {}
-          });
-          
-          // Add other modules
-          data.modules.forEach((module: any) => {
-            // Skip dashboard as it's already added
-            if (module.name.toLowerCase() === 'dashboard') {
-              return;
-            }
-            
-            // Get icon component
-            const IconComponent = iconMap[module.icon || 'LayoutDashboard'] || LayoutDashboard;
-            
-            // Create path from module name
-            const path = `/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
-            
-            modules.push({
-              icon: IconComponent,
-              label: module.name,
-              path,
-              allowed: true,
-              accessLevel: module.access_level || {}
-            });
-          });
-          
-          console.log("Final configured modules for sidebar:", modules.map(m => ({ label: m.label, path: m.path })));
-          setConfiguredModules(modules);
+            allowed: true
+          }]);
+          toast.error("Failed to load menu items");
+          return;
+        }
+        
+        // Store the employee data returned from the edge function if available
+        if (data && data.employee) {
+          console.log("Received employee data from fetch-modules function:", data.employee);
+          setReceivedEmployeeData(data.employee);
+        }
+        
+        if (!data || !data.modules || data.modules.length === 0) {
+          console.log("No modules returned from fetch-modules function");
+          setConfiguredModules([{
+            icon: LayoutDashboard,
+            label: 'Dashboard',
+            path: '/dashboard',
+            allowed: true
+          }]);
+          return;
+        }
+        
+        console.log(`Received ${data.modules.length} modules from fetch-modules function:`, 
+          data.modules.map((m: any) => m.name));
+        
+        // Map modules to sidebar items with their access levels
+        const modules: ModuleItem[] = [];
+        
+        // Always include dashboard if it's in the returned modules or by default
+        const dashboardModule = data.modules.find((m: any) => m.name.toLowerCase() === 'dashboard');
+        modules.push({
+          icon: LayoutDashboard,
+          label: 'Dashboard',
+          path: '/dashboard',
+          allowed: true,
+          accessLevel: dashboardModule?.access_level || {}
         });
+        
+        // Add other modules
+        data.modules.forEach((module: any) => {
+          // Skip dashboard as it's already added
+          if (module.name.toLowerCase() === 'dashboard') {
+            return;
+          }
+          
+          // Get icon component
+          const IconComponent = iconMap[module.icon || 'LayoutDashboard'] || LayoutDashboard;
+          
+          // Create path from module name
+          const path = `/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
+          
+          modules.push({
+            icon: IconComponent,
+            label: module.name,
+            path,
+            allowed: true,
+            accessLevel: module.access_level || {}
+          });
+        });
+        
+        console.log("Final configured modules for sidebar:", modules.map(m => ({ label: m.label, path: m.path })));
+        setConfiguredModules(modules);
       } catch (error) {
         console.error("Error loading configured modules:", error);
         toast.error("Failed to load menu items");
@@ -206,16 +233,13 @@ const ClientModulesList = () => {
           path: '/dashboard',
           allowed: true
         }]);
+      } finally {
+        setIsLoading(false);
       }
     };
     
-    // Use requestAnimationFrame to ensure DOM is rendered first
-    if (user) {
-      requestAnimationFrame(() => {
-        fetchConfiguredModules();
-      });
-    }
-  }, [user, getEmployeeId, employeeData, employee]);
+    fetchConfiguredModules();
+  }, [user, getEmployeeId, employeeData, employee, storeModules]);
   
   // Determine if a path is active
   const isActive = (path: string) => {

@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -54,6 +55,8 @@ serve(async (req) => {
         status: employeeInfo.status,
         employeeId: employeeInfo.employeeId
       })}`);
+    } else {
+      console.log('No employee info provided with module request');
     }
     
     // Determine level based on explicit request or user role
@@ -250,6 +253,7 @@ serve(async (req) => {
               console.error('Error fetching modules by IDs for employee:', modulesError);
             } else if (modulesData) {
               console.log(`Retrieved ${modulesData.length} modules from database for employee`);
+              console.log('Modules data:', JSON.stringify(modulesData));
               
               // Add access_level and role info to each module
               modules = modulesData.map(module => {
@@ -339,6 +343,7 @@ serve(async (req) => {
     }
     
     console.log(`Successfully fetched ${modules.length} modules`);
+    console.log('Module names:', modules.map(m => m.name).join(', '));
     
     // Return the modules data along with employee information and super admin status
     return new Response(
