@@ -53,6 +53,7 @@ serve(async (req) => {
     
     // ENHANCED LOGIC: For client level, use employee_id to get client_id and their specific modules
     let modules = [];
+    let employeeData = null;
     
     if (level === 'client') {
       console.log(`Fetching client modules`);
@@ -67,7 +68,7 @@ serve(async (req) => {
         
         const { data: employeeData, error: employeeError } = await supabase
           .from('employees')
-          .select('id, client_id')
+          .select('id, client_id, email, first_name, last_name, is_super_admin, department, employee_type, status, employee_id')
           .eq('email', emailToUse.toLowerCase())
           .single();
         
@@ -82,27 +83,41 @@ serve(async (req) => {
       // Try to get employee info from provided ID or ID found from email
       if (empId) {
         // Get employee record to find their client
-        const { data: employeeData, error: employeeError } = await supabase
+        const { data: employeeDetails, error: employeeError } = await supabase
           .from('employees')
-          .select('id, client_id, email, first_name, last_name')
+          .select('id, client_id, email, first_name, last_name, is_super_admin, department, employee_type, status, employee_id')
           .eq('id', empId)
           .single();
           
         if (employeeError) {
           console.error('Error fetching employee:', employeeError);
-        } else if (employeeData && employeeData.client_id) {
-          console.log(`Found employee ${employeeData.first_name} ${employeeData.last_name} with client ID: ${employeeData.client_id}`);
+        } else if (employeeDetails && employeeDetails.client_id) {
+          console.log(`Found employee ${employeeDetails.first_name} ${employeeDetails.last_name} with client ID: ${employeeDetails.client_id}`);
+          
+          // Store the complete employee data to return with the response
+          employeeData = {
+            id: employeeDetails.id,
+            clientId: employeeDetails.client_id,
+            email: employeeDetails.email,
+            firstName: employeeDetails.first_name,
+            lastName: employeeDetails.last_name,
+            isSuperAdmin: employeeDetails.is_super_admin,
+            department: employeeDetails.department,
+            employeeType: employeeDetails.employee_type,
+            status: employeeDetails.status,
+            employeeId: employeeDetails.employee_id
+          };
           
           // Get client's configured modules with their access levels
           const { data: clientModules, error: clientModulesError } = await supabase
             .from('client_modules')
             .select('module_id, access_level')
-            .eq('client_id', employeeData.client_id);
+            .eq('client_id', employeeDetails.client_id);
             
           if (clientModulesError) {
             console.error('Error fetching client modules:', clientModulesError);
           } else if (clientModules && clientModules.length > 0) {
-            console.log(`Found ${clientModules.length} module configurations for client ID: ${employeeData.client_id}`);
+            console.log(`Found ${clientModules.length} module configurations for client ID: ${employeeDetails.client_id}`);
             
             // Get module IDs from client modules
             const moduleIds = clientModules.map(cm => cm.module_id);
@@ -138,7 +153,7 @@ serve(async (req) => {
               console.log(`Returning ${modules.length} modules with their access levels`);
             }
           } else {
-            console.log(`No module configurations found for client ID: ${employeeData.client_id}`);
+            console.log(`No module configurations found for client ID: ${employeeDetails.client_id}`);
           }
         } else {
           console.log(`Either employee not found or has no client assignment`);
@@ -181,10 +196,11 @@ serve(async (req) => {
     
     console.log(`Successfully fetched ${modules.length} modules`);
     
-    // Return the modules data
+    // Return the modules data along with employee information
     return new Response(
       JSON.stringify({ 
         modules,
+        employee: employeeData,  // Include the employee data in the response
         success: true 
       }),
       { 

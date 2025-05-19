@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -46,6 +47,7 @@ const ClientModulesList = () => {
   const { getEmployeeId, employee } = useEmployeeAccess(); // Get employee info
   const [configuredModules, setConfiguredModules] = useState<ModuleItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [receivedEmployeeData, setReceivedEmployeeData] = useState(null);
   
   useEffect(() => {
     const fetchConfiguredModules = async () => {
@@ -95,6 +97,12 @@ const ClientModulesList = () => {
           setIsLoading(false);
           toast.error("Failed to load menu items");
           return;
+        }
+        
+        // Store the employee data returned from the edge function if available
+        if (data && data.employee) {
+          console.log("Received employee data from fetch-modules function:", data.employee);
+          setReceivedEmployeeData(data.employee);
         }
         
         if (!data || !data.modules || data.modules.length === 0) {
