@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -202,7 +201,20 @@ async function processModuleAccess(clientId: string, moduleInfoArray: ModuleInfo
       return true;
     }
 
-    // For each module in the array, check if it exists and update or insert
+    // First, remove all existing modules for this client
+    const { error: deleteError } = await supabase
+      .from('client_modules')
+      .delete()
+      .eq('client_id', clientId);
+      
+    if (deleteError) {
+      console.error(`Error deleting existing modules for client ${clientId}:`, deleteError);
+      // Continue anyway to try adding new modules
+    } else {
+      console.log(`Successfully deleted existing modules for client ${clientId}`);
+    }
+
+    // For each module in the array, insert a new record
     for (const moduleInfo of moduleInfoArray) {
       const { module_id, is_admin } = moduleInfo;
       
@@ -213,54 +225,26 @@ async function processModuleAccess(clientId: string, moduleInfoArray: ModuleInfo
       
       console.log(`Processing module: ${moduleInfo.name}, module_id: ${module_id}, is_admin: ${is_admin}`);
       
-      // Check if this module already exists for this client
-      const { data: existingModule, error: fetchError } = await supabase
-        .from('client_modules')
-        .select('id')
-        .eq('client_id', clientId)
-        .eq('module_id', module_id)
-        .maybeSingle();
-        
-      if (fetchError) {
-        console.error(`Error checking for existing module ${module_id}:`, fetchError);
-        continue;
-      }
-      
       const accessLevel = { 
         isAdmin: is_admin,
         isEnabled: true
       };
       
-      if (existingModule) {
-        // Update existing module
-        console.log(`Updating existing module: ${module_id} with access_level:`, accessLevel);
+      // Insert new module
+      console.log(`Inserting new module: ${module_id} with access_level:`, accessLevel);
+      
+      const { error: insertError } = await supabase
+        .from('client_modules')
+        .insert({
+          client_id: clientId,
+          module_id: module_id,
+          enabled: true,
+          access_level: accessLevel
+        });
         
-        const { error: updateError } = await supabase
-          .from('client_modules')
-          .update({ access_level: accessLevel, enabled: true })
-          .eq('id', existingModule.id);
-          
-        if (updateError) {
-          console.error(`Error updating module ${module_id}:`, updateError);
-          continue;
-        }
-      } else {
-        // Insert new module
-        console.log(`Inserting new module: ${module_id} with access_level:`, accessLevel);
-        
-        const { error: insertError } = await supabase
-          .from('client_modules')
-          .insert({
-            client_id: clientId,
-            module_id: module_id,
-            enabled: true,
-            access_level: accessLevel
-          });
-          
-        if (insertError) {
-          console.error(`Error inserting module ${module_id}:`, insertError);
-          continue;
-        }
+      if (insertError) {
+        console.error(`Error inserting module ${module_id}:`, insertError);
+        continue;
       }
     }
     

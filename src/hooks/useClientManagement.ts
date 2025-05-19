@@ -387,13 +387,25 @@ export const useClientManagement = () => {
       
       console.log('Module info for client update:', moduleInfoArray);
       
-      // Update the client first
+      // Step 1: Delete all existing client modules
+      const { error: deleteError } = await supabase
+        .from('client_modules')
+        .delete()
+        .eq('client_id', currentClient.id);
+        
+      if (deleteError) {
+        console.error('Error deleting existing client modules:', deleteError);
+        toast.error('Failed to update client modules');
+        return;
+      }
+      
+      // Step 2: Update the client in database
       await updateClient(currentClient.id, {
         ...formData,
         modules: moduleInfoArray  // Pass the moduleInfoArray directly
       });
       
-      // Update or create the super admin employee
+      // Step 3: Update or create the super admin employee
       await updateEmployeeFromSuperAdminEmail(currentClient.id, formData.superAdminEmail);
       
       toast.success('Client and super admin employee updated successfully');
