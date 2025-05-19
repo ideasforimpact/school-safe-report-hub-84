@@ -23,9 +23,11 @@ type AuthContextType = {
   deleteUser: (id: string) => void;
   deactivateUser: (id: string) => void;
   reactivateUser: (id: string) => void;
-  changeUserPassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
   cachedBackofficeModules: any[];
   cachedClientModules: any[];
+  users: UserWithPassword[]; // Add users to the context type
+  handleUserAuthentication: (user: any) => Promise<void>; // Add handleUserAuthentication
 };
 
 // Create the context
@@ -49,15 +51,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     authError, 
     setAuthError,
     isLoading,
+    setIsLoading,
     isSaasOwner,
     isAdmin,
     modulePermissions,
     employeeData,
-    setEmployeeData
+    setEmployeeData,
+    authInitCompleteRef
   } = useAuthState();
-  
-  // Authentication initialization tracking
-  const authInitCompleteRef = useRef<boolean>(false);
   
   // Cached modules from direct fetch
   const [cachedBackofficeModules, setCachedBackofficeModules] = useState<any[]>([]);
@@ -78,7 +79,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     deleteUser,
     deactivateUser,
     reactivateUser,
-    changeUserPassword,
+    changePassword,
     handleUserAuthentication,
   } = useAuthHandlers({
     user,
@@ -93,9 +94,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Subscribe to Supabase auth changes
   useSupabaseAuth({
+    users,
+    setUser,
     handleUserAuthentication,
     setAuthError,
-    authInitCompleteRef
+    authInitCompleteRef, 
+    setIsAuthInitialized: () => setIsLoading(false) // Map setIsAuthInitialized to setIsLoading
   });
 
   // Force logout on protected routes when unauthenticated
@@ -127,9 +131,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     deleteUser,
     deactivateUser,
     reactivateUser,
-    changeUserPassword,
+    changePassword,
     cachedBackofficeModules,
-    cachedClientModules
+    cachedClientModules,
+    users, // Add users to the context value
+    handleUserAuthentication // Add handleUserAuthentication
   };
 
   return (

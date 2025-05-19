@@ -1,642 +1,317 @@
-import { User, UserWithPassword, UserRole, EmployeeData } from '../types';
 import { supabase } from '@/integrations/supabase/client';
-import { useNavigate } from 'react-router-dom';
+import { User, UserWithPassword, EmployeeData } from '../types';
 import { toast } from 'sonner';
-import { 
-  loginUser, 
-  saveUserToStorage,
-  changeUserPassword as changePassword,
-  saveEmployeeDataToStorage
-} from '@/services/auth/authService';
-import { 
-  addNewUser,
-  updateExistingUser,
-  deleteExistingUser,
-  deactivateExistingUser 
-} from '@/services/auth/userManagementService';
-import { excludePasswordFromUser } from '@/contexts/auth/utils';
 
-// List of demo emails that can bypass the employee verification
-const DEMO_EMAILS = [
-  'owner@saasplatform.com',
-  'admin@school.edu',
-  'reporter@school.edu'
-];
+// Type for the useAuthHandlers hook props
+interface AuthHandlersProps {
+  user: User | null;
+  users: UserWithPassword[];
+  setUser: React.Dispatch<React.SetStateAction<User | null>>;
+  setUsers: React.Dispatch<React.SetStateAction<UserWithPassword[]>>;
+  setAuthError: React.Dispatch<React.SetStateAction<string | null>>;
+  authInitCompleteRef: React.MutableRefObject<boolean>;
+  setEmployeeData: React.Dispatch<React.SetStateAction<EmployeeData | null>>;
+  setCachedModules: (backofficeModules: any[], clientModules: any[]) => void;
+}
 
-// Helper function to check employee access
-const checkEmployeeAccess = async (email: string, setAuthError: (error: string | null) => void) => {
-  try {
-    // Check if the employee exists and is active in the employees table
-    const { data, error } = await supabase
-      .from('employees')
-      .select('*')
-      .eq('email', email.toLowerCase())
-      .eq('status', true) // Using boolean status now
-      .single();
-    
-    if (error || !data) {
-      console.log("Employee verification failed:", error?.message || "Employee not found or inactive");
-      setAuthError("Access denied: Only verified employees can login");
-      return false;
-    }
-    
-    return true;
-  } catch (error) {
-    console.error("Error checking employee access:", error);
-    setAuthError("Error verifying employee status");
-    return false;
-  }
-};
-
-// Helper function to check domain access
-const checkDomainAccess = async (email: string, employeeId: string, setAuthError: (error: string | null) => void) => {
-  try {
-    // First, check if the employee exists and if they are a super admin
-    const { data: employee, error: employeeError } = await supabase
-      .from('employees')
-      .select('is_super_admin, client_id')
-      .eq('email', email.toLowerCase())
-      .single();
-      
-    if (employeeError || !employee) {
-      console.log("Employee data fetch failed:", employeeError?.message || "Employee not found");
-      setAuthError("Access denied: Cannot retrieve employee information");
-      return false;
-    }
-    
-    // Check if employee has client_id
-    if (!employee.client_id) {
-      console.log("Employee has no client assignment");
-      setAuthError("Access denied: Employee is not assigned to any client");
-      return false;
-    }
-    
-    // Get the client data to check domains
-    const { data: client, error: clientError } = await supabase
-      .from('clients')
-      .select('allowed_domains, super_admin_allowed_domain')
-      .eq('id', employee.client_id)
-      .single();
-      
-    if (clientError || !client) {
-      console.log("Client data fetch failed:", clientError?.message || "Client not found");
-      setAuthError("Access denied: Cannot retrieve client information");
-      return false;
-    }
-    
-    
-    // Check if the email domain matches based on super admin status
-    const emailDomain = email.split('@')[1].toLowerCase();
-    
-    if (employee.is_super_admin) {
-      // Super admin needs to match super_admin_allowed_domain
-      if (!client.super_admin_allowed_domain) {
-        console.log("No super admin domain configured for this client");
-        setAuthError("Access denied: No super admin domains configured for this client");
-        return false;
-      }
-      
-      const superAdminDomains = client.super_admin_allowed_domain.split(',').map(d => d.trim().toLowerCase());
-      if (!superAdminDomains.includes(emailDomain)) {
-        console.log("Email domain not in super admin allowed domains");
-        setAuthError("Access denied: Email domain not authorized for super admin access");
-        return false;
-      }
-      console.log("Super admin domain check passed");
-    } else {
-      console.log(client)
-      // Regular user needs to match allowed_domains
-      if (!client.allowed_domains) {
-        console.log("No allowed domains configured for this client");
-        setAuthError("Access denied: No domains configured for this client");
-        return false;
-      }
-      
-      const allowedDomains = client.allowed_domains.split(',').map(d => d.trim().toLowerCase());
-      if (!allowedDomains.includes(emailDomain)) {
-        console.log("Email domain not in allowed domains");
-        setAuthError("Access denied: Email domain not authorized");
-        return false;
-      }
-      console.log("Regular domain check passed");
-    }
-    
-    return true;
-  } catch (error) {
-    console.error("Error checking domain access:", error);
-    setAuthError("Error verifying domain access");
-    return false;
-  }
-};
-
-// Direct module fetching function to replace edge function call
-const fetchModulesDirectly = async (isBackoffice: boolean, employeeClientId: string, isSuperAdmin: boolean) => {
-  try {
-    console.log("Fetching modules directly during authentication");
-    
-    // Get the client modules based on client ID
-    const { data: clientModules, error: clientModulesError } = await supabase
-      .from('client_modules')
-      .select('module_id, access_level')
-      .eq('client_id', employeeClientId);
-    
-    if (clientModulesError) {
-      console.error("Error fetching client modules:", clientModulesError);
-      return [];
-    }
-    
-    console.log(`Found ${clientModules?.length || 0} module configurations for client ID: ${employeeClientId}`);
-    
-    if (!clientModules || clientModules.length === 0) {
-      return [];
-    }
-    
-    // Get the module IDs to fetch
-    const moduleIds = clientModules.map(cm => cm.module_id);
-    console.log("Module IDs to fetch:", moduleIds.join(', '));
-    
-    // Fetch the modules data
-    const { data: modules, error: modulesError } = await supabase
-      .from('modules')
-      .select('*')
-      .in('id', moduleIds)
-      .eq(isBackoffice ? 'level' : 'level', isBackoffice ? 'backoffice' : 'client');
-    
-    if (modulesError) {
-      console.error("Error fetching modules:", modulesError);
-      return [];
-    }
-    
-    console.log(`Retrieved ${modules?.length || 0} modules from database`);
-    
-    // Add dashboard module automatically
-    const hasDashboard = modules?.some(m => m.name.toLowerCase() === 'dashboard');
-    if (!hasDashboard) {
-      console.log("Dashboard module included automatically");
-    }
-    
-    // Add access levels to modules
-    const modulesWithAccess = modules.map(module => {
-      const clientModule = clientModules.find(cm => cm.module_id === module.id);
-      return {
-        ...module,
-        access_level: clientModule?.access_level || {}
-      };
-    });
-    
-    // Map module names to permission keys for filtering
-    modulesWithAccess.forEach(module => {
-      // Set key based on module name for permission mapping
-      switch(module.name.toLowerCase()) {
-        case 'incidents':
-          module.key = 'incidentReporting';
-          break;
-        case 'assessments':
-          module.key = 'assessmentUser';
-          break;
-        case 'employee verification':
-          module.key = 'employeeVerificationAdmin';
-          break;
-        case 'grievances':
-          module.key = 'grievancesAdmin';
-          break;
-        case 'transport safety':
-          module.key = 'transportSafetyAdmin';
-          break;
-        case 'edusafe resources':
-          module.key = 'eduSafeResourceAccess';
-          break;
-        case 'users':
-          module.key = 'users';
-          break;
-        case 'settings':
-        case 'configuration':
-          module.key = 'configuration';
-          break;
-        case 'dashboard':
-          module.key = 'dashboard';
-          break;
-        default:
-          // For modules without specific permissions
-          module.key = module.name.toLowerCase().replace(/\s+/g, '_');
-      }
-    });
-    
-    console.log("Successfully fetched modules directly:", modulesWithAccess.length);
-    return modulesWithAccess;
-  } catch (error) {
-    console.error("Error in fetchModulesDirectly:", error);
-    return [];
-  }
-};
-
-/**
- * Hook for auth operation handlers
- */
-export function useAuthHandlers({
+// Hook for handling authentication operations
+export const useAuthHandlers = ({
   user,
   users,
   setUser,
   setUsers,
   setAuthError,
   authInitCompleteRef,
-  isEmailDomainAllowed,
   setEmployeeData,
   setCachedModules
-}: {
-  user: User | null;
-  users: UserWithPassword[];
-  setUser: (user: User | null) => void;
-  setUsers: (users: UserWithPassword[]) => void;
-  setAuthError: (error: string | null) => void;
-  authInitCompleteRef: React.MutableRefObject<boolean>;
-  isEmailDomainAllowed?: (email: string, clientId: string) => boolean;
-  setEmployeeData?: (data: EmployeeData | null) => void;
-  setCachedModules?: (backofficeModules: any[], clientModules: any[]) => void;
-}) {
-  const navigate = useNavigate();
-
-  const handleUserAuthentication = async (supabaseUser: any) => {
-    // Clear any previous auth errors first
-    setAuthError(null);
-    
-    // Check if user exists in our system
-    console.log("Handling authentication for:", supabaseUser.email);
-    
-    // Check if this is a demo user - if so, bypass employee access check
-    const isDemoUser = supabaseUser.email && DEMO_EMAILS.includes(supabaseUser.email);
-    
-    if (!isDemoUser) {
-      // First check if employee exists and is active
-      const hasEmployeeAccess = await checkEmployeeAccess(supabaseUser.email, setAuthError);
-      if (!hasEmployeeAccess) {
-        console.log("Access denied: Employee verification failed");
-        await supabase.auth.signOut();
-        toast.error("Access denied: Your email is not registered as an active employee");
-        navigate('/login');
-        return;
-      }
-      
-      // Then check domain access based on super admin status and client configuration
-      const hasDomainAccess = await checkDomainAccess(supabaseUser.email, supabaseUser.id, setAuthError);
-      console.log(hasDomainAccess,"hasDomainAccess")
-      if (!hasDomainAccess) {
-        console.log("Access denied: Domain verification failed");
-        await supabase.auth.signOut();
-        toast.error("Access denied: Your email domain is not authorized");
-        navigate('/login');
-        return;
-      }
-    }
-    
-    let existingUser = users.find(u => u.email.toLowerCase() === supabaseUser.email.toLowerCase());
-    let isNewUser = false;
-    
-    if (existingUser) {
-      console.log("User found in our system:", existingUser.firstName);
-      // Update login timestamp
-      const updatedUser = {
-        ...existingUser,
-        lastLogin: new Date().toISOString()
-      };
-      
-      // For demo users, ensure they have full admin access
-      if (isDemoUser) {
-        updatedUser.role = 'admin' as UserRole;
-        updatedUser.modulePermissions = {
-          superAdmin: true,
-          incidentReporting: true,
-          incidentAdmin: true,
-          assessmentUser: true,
-          assessmentsAdmin: true,
-          employeeVerificationAdmin: true,
-          grievancesAdmin: true,
-          transportSafetyAdmin: true,
-          eduSafeResourceAccess: true
-        };
-      }
-      
-      const updatedUsers = users.map(u => 
-        u.id === existingUser?.id ? { ...u, 
-          lastLogin: new Date().toISOString(),
-          ...(isDemoUser ? { 
-            role: 'admin' as UserRole,
-            modulePermissions: {
-              superAdmin: true,
-              incidentReporting: true,
-              incidentAdmin: true,
-              assessmentUser: true,
-              assessmentsAdmin: true,
-              employeeVerificationAdmin: true,
-              grievancesAdmin: true,
-              transportSafetyAdmin: true,
-              eduSafeResourceAccess: true
-            }
-          } : {})
-        } : u
-      );
-      
-      setUsers(updatedUsers);
-      setUser(excludePasswordFromUser(updatedUser));
-      saveUserToStorage(excludePasswordFromUser(updatedUser));
-      console.log("User session updated");
-      
-      // Fetch employee data for the authenticated user
-      try {
-        const { data: employeeData, error } = await supabase
-          .from('employees')
-          .select('id, client_id, email, first_name, last_name, is_super_admin')
-          .eq('email', supabaseUser.email.toLowerCase())
-          .single();
-        
-        if (employeeData && !error && setEmployeeData) {
-          const employee: EmployeeData = {
-            id: employeeData.id,
-            clientId: employeeData.client_id,
-            email: employeeData.email,
-            firstName: employeeData.first_name,
-            lastName: employeeData.last_name,
-            isSuperAdmin: employeeData.is_super_admin
-          };
-          
-          setEmployeeData(employee);
-          saveEmployeeDataToStorage(employee);
-          console.log("📝 Employee data stored in context after Google auth:", employee);
-          
-          // Pre-fetch modules during authentication
-          try {
-            // Determine if this is a SaaS owner in backoffice
-            const isBackoffice = updatedUser.role === 'saas_owner' && window.location.pathname.startsWith('/backoffice');
-            
-            // Direct fetch modules here instead of calling edge function
-            if (setCachedModules && employeeData.client_id) {
-              // Fetch both backoffice and client modules 
-              const backofficeModules = await fetchModulesDirectly(true, employeeData.client_id, !!employeeData.is_super_admin);
-              const clientModules = await fetchModulesDirectly(false, employeeData.client_id, !!employeeData.is_super_admin);
-              
-              // Save both in context for immediate access
-              setCachedModules(backofficeModules, clientModules);
-              console.log("✅ Modules pre-fetched and cached during authentication process");
-            }
-          } catch (err) {
-            console.error("❌ Error pre-fetching modules during authentication:", err);
-          }
-        } else {
-          console.log("⚠️ No employee data found for Google auth user:", supabaseUser.email);
-        }
-      } catch (err) {
-        console.error("❌ Error fetching employee data after Google auth:", err);
-      }
-    } else {
-      console.log("New user via SSO, creating account");
-      // For new users via SSO, create a basic account
-      const firstName = supabaseUser.user_metadata?.name?.split(' ')?.[0] || 
-                      supabaseUser.user_metadata?.full_name?.split(' ')?.[0] || 
-                      'New';
-      const lastName = supabaseUser.user_metadata?.name?.split(' ').slice(1).join(' ') || 
-                    supabaseUser.user_metadata?.full_name?.split(' ').slice(1).join(' ') || 
-                    'User';
-      
-      console.log("Creating with name:", firstName, lastName);
-      isNewUser = true;
-      
-      // Determine if this is a demo user being created
-      const isNewDemoUser = supabaseUser.email && DEMO_EMAILS.includes(supabaseUser.email);
-      
-      const newUser: UserWithPassword = {
-        id: supabaseUser.id,
-        firstName,
-        lastName,
-        email: supabaseUser.email || '',
-        password: '', // SSO users don't need passwords in our system
-        role: isNewDemoUser ? 'admin' as UserRole : 'admin' as UserRole, // Assign admin role since they've passed the employee check
-        modulePermissions: isNewDemoUser ? {
-          // Full access for demo users
-          superAdmin: true,
-          incidentReporting: true,
-          incidentAdmin: true,
-          assessmentUser: true,
-          assessmentsAdmin: true,
-          employeeVerificationAdmin: true,
-          grievancesAdmin: true,
-          transportSafetyAdmin: true,
-          eduSafeResourceAccess: true
-        } : {
-          // Standard permissions for regular new users
-          superAdmin: false,
-          incidentReporting: true,
-          incidentAdmin: false,
-          assessmentUser: false,
-          assessmentsAdmin: false,
-          employeeVerificationAdmin: false,
-          grievancesAdmin: false,
-          transportSafetyAdmin: false,
-          eduSafeResourceAccess: false
-        },
-        isActive: true,
-        createdAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString(),
-      };
-      
-      const updatedUsers = [...users, newUser];
-      setUsers(updatedUsers);
-      setUser(excludePasswordFromUser(newUser));
-      saveUserToStorage(excludePasswordFromUser(newUser));
-      console.log("New user account created");
-    }
-    
-    // If login was successful and we got here, clear any auth errors
-    setAuthError(null);
-    
-    // Only show welcome toast if the authentication initialization hasn't completed yet
-    // Using a ref to guarantee we only show the toast once per session
-    if (!authInitCompleteRef.current) {
-      if (isNewUser) {
-        toast.success(`Welcome, ${existingUser?.firstName || supabaseUser.user_metadata?.name?.split(' ')?.[0] || 'New User'}!`);
-      } else {
-        toast.success(`Welcome back, ${existingUser?.firstName || supabaseUser.user_metadata?.name?.split(' ')?.[0] || 'User'}!`);
-      }
-      
-      // Mark auth as complete to prevent duplicate toasts
-      authInitCompleteRef.current = true;
-    }
-    
-    // Redirect to dashboard on successful login
-    navigate('/dashboard');
-  };
-
+}: AuthHandlersProps) => {
+  
+  // Function to handle login
   const login = async (email: string, password: string): Promise<boolean> => {
-    console.log("Login attempt:", email, password);
-    
     try {
-      // Check if this is a demo user - if so, bypass employee access check
-      const isDemoUser = DEMO_EMAILS.includes(email);
-      
-      // Only check employee access if not a demo user
-      if (!isDemoUser) {
-        // First check if employee exists and is active
-        const hasEmployeeAccess = await checkEmployeeAccess(email, setAuthError);
-        if (!hasEmployeeAccess) {
-          console.log("Access denied: Employee verification failed");
-          setAuthError("Access denied: Only admin department employees can login");
-          return false;
-        }
-        
-        // Then check domain access
-        const hasDomainAccess = await checkDomainAccess(email, "", setAuthError);
-        if (!hasDomainAccess) {
-          console.log("Access denied: Domain verification failed");
-          setAuthError("Access denied: Your email domain is not authorized");
-          return false;
-        }
+      // Check if auth is initialized
+      if (!authInitCompleteRef.current) {
+        console.warn("Auth initialization not complete yet, retrying login...");
+        // Wait until auth init is complete
+        await new Promise(resolve => setTimeout(resolve, 500));
+        return login(email, password);
       }
       
-      const loggedInUser = loginUser(
-        email, 
-        password, 
-        users,
-        isEmailDomainAllowed
-      );
+      // Try to sign in with Supabase
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
       
-      if (loggedInUser) {
-        console.log("Login successful, user:", loggedInUser);
-        
-        // For demo users, ensure they have full permissions
-        if (isDemoUser) {
-          loggedInUser.role = 'admin' as UserRole;
-          loggedInUser.modulePermissions = {
-            superAdmin: true,
-            incidentReporting: true,
-            incidentAdmin: true,
-            assessmentUser: true,
-            assessmentsAdmin: true,
-            employeeVerificationAdmin: true,
-            grievancesAdmin: true,
-            transportSafetyAdmin: true,
-            eduSafeResourceAccess: true
-          };
-        }
-        
-        // Also sign in with Supabase
-        try {
-          await supabase.auth.signInWithPassword({
-            email,
-            password
-          });
-        } catch (error) {
-          console.error("Supabase auth error (non-critical):", error);
-        }
-        
-        setUser(loggedInUser);
-        saveUserToStorage(loggedInUser);
-        setAuthError(null);
-        
-        // Toast is now handled by the auth state change listener
-        
+      if (error) {
+        console.error("Supabase login error:", error.message);
+        setAuthError(error.message);
+        return false;
+      }
+      
+      // Process the authentication if successful sign in
+      if (data.user) {
+        console.log("Login successful for:", data.user.email);
+        await handleUserAuthentication(data.user);
         return true;
       }
       
-      console.log("Login failed");
+      setAuthError("Login failed: User data not returned");
       return false;
-    } catch (error) {
-      console.error("Login error:", error);
+    } catch (err) {
+      const error = err as Error;
+      console.error("Login error:", error.message);
+      setAuthError(`Login error: ${error.message}`);
       return false;
     }
-  };
-
-  const addUser = async (userData: any) => {
-    try {
-      // Fixed Promise handling
-      const updatedUsers = await addNewUser(
-        users, 
-        { ...userData, isActive: true }, 
-        isEmailDomainAllowed
-      );
-      if (updatedUsers) {
-        setUsers(updatedUsers);
-      }
-    } catch (error) {
-      console.error("Error adding user:", error);
-    }
-  };
-
-  const updateUser = async (id: string, updates: any) => {
-    try {
-      // Fixed Promise handling
-      const updatedUsers = await updateExistingUser(users, id, updates);
-      if (updatedUsers) {
-        setUsers(updatedUsers);
-        
-        // If the currently logged-in user is being updated, update their session too
-        if (user && user.id === id) {
-          const { password, ...updatesWithoutPassword } = updates;
-          const updatedUser = { ...user, ...updatesWithoutPassword };
-          setUser(updatedUser);
-          saveUserToStorage(updatedUser);
-        }
-      }
-    } catch (error) {
-      console.error("Error updating user:", error);
-    }
-  };
-
-  const deleteUser = (id: string) => {
-    const updatedUsers = deleteExistingUser(users, id, user?.id);
-    if (updatedUsers) {
-      setUsers(updatedUsers);
-    }
-  };
-
-  const deactivateUser = (id: string) => {
-    const updatedUsers = deactivateExistingUser(users, id, user?.id);
-    if (updatedUsers) {
-      setUsers(updatedUsers);
-      
-      // If the currently logged-in user is being deactivated, log them out
-      if (user && user.id === id) {
-        logout();
-      }
-    }
-  };
-
-  const reactivateUser = (id: string) => {
-    const updatedUsers = users.map(u => {
-      if (u.id === id) {
-        return { ...u, isActive: true };
-      }
-      return u;
-    });
-    
-    setUsers(updatedUsers);
   };
   
+  // Function to handle logout
   const logout = async () => {
-    setUser(null);
-    setAuthError(null);
-    
-    // Also sign out from Supabase
     try {
-      await supabase.auth.signOut();
-    } catch (error) {
-      console.error("Supabase signout error:", error);
+      // Try to sign out with Supabase
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error("Supabase signout error:", error.message);
+        setAuthError(error.message);
+        return;
+      }
+      
+      // Clear user state and redirect
+      setUser(null);
+      setEmployeeData(null);
+      console.log("User logged out successfully");
+      
+      // Redirect to login or home page
+      window.location.href = '/login';
+    } catch (err) {
+      const error = err as Error;
+      console.error("Logout error:", error);
+      setAuthError(`Logout error: ${error.message}`);
     }
-    
-    // Redirect to login page
-    navigate('/login');
   };
   
-  const changeUserPassword = async (currentPassword: string, newPassword: string): Promise<boolean> => {
-    if (!user) {
+  // Function to handle user authentication
+  const handleUserAuthentication = async (supabaseUser: any): Promise<void> => {
+    try {
+      // Authentication successful, record the user data
+      console.log("Processing authentication for user:", supabaseUser.email);
+      
+      // Attempt to get the user metadata (if it exists)
+      const userMetadata = supabaseUser.user_metadata || {};
+      const providerData = userMetadata.provider || null;
+      
+      // Determine if this is a provider-authenticated user (Google, etc)
+      const isProviderAuth = providerData || supabaseUser.app_metadata?.provider;
+      console.log("Auth provider:", isProviderAuth || "email/password");
+      
+      // Find matching user in our application's users state or fetch from database
+      let matchedUser = users.find((u) => u.email === supabaseUser.email);
+      
+      // If no matching user in state, try to get from database
+      if (!matchedUser && isProviderAuth) {
+        console.log("Provider authenticated user, checking employee data");
+        
+        try {
+          // Check if there's an employee record with this email
+          const { data: employeeData, error: employeeError } = await supabase
+            .from('employees')
+            .select('*')
+            .eq('email', supabaseUser.email)
+            .single();
+            
+          if (employeeError) {
+            console.error("Error fetching employee data:", employeeError);
+          }
+          
+          if (employeeData) {
+            console.log("Found employee record for provider auth:", employeeData.email);
+            
+            // Get employee's module permissions
+            const { data: modulePermissions, error: permissionsError } = await supabase
+              .from('employee_module_permissions')
+              .select('*')
+              .eq('employee_id', employeeData.id)
+              .single();
+              
+            if (permissionsError) {
+              console.error("Error fetching module permissions:", permissionsError);
+            }
+            
+            // Set the employee data for context
+            setEmployeeData(employeeData);
+            
+            // Create a user object from the employee data
+            const userFromEmployee: User = {
+              id: employeeData.id,
+              firstName: employeeData.first_name,
+              lastName: employeeData.last_name,
+              email: employeeData.email,
+              role: modulePermissions?.super_admin ? 'admin' : 'reporter',
+              clientId: employeeData.client_id,
+              employeeId: employeeData.employee_id,
+              isActive: employeeData.status === true || employeeData.status === 'active',
+              createdAt: employeeData.created_at || new Date().toISOString(),
+              provider: isProviderAuth,
+              modulePermissions: {
+                superAdmin: modulePermissions?.super_admin || false,
+                incidentReporting: modulePermissions?.incident_reporting || false,
+                incidentAdmin: modulePermissions?.incident_admin || false,
+                assessmentUser: modulePermissions?.assessment_user || false,
+                assessmentsAdmin: modulePermissions?.assessments_admin || false,
+                employeeVerificationAdmin: modulePermissions?.employee_verification_admin || false,
+                grievancesAdmin: modulePermissions?.grievances_admin || false,
+                transportSafetyAdmin: modulePermissions?.transport_safety_admin || false,
+                eduSafeResourceAccess: modulePermissions?.edusafe_resource_access || false
+              }
+            };
+            
+            // Set the user in our app state
+            setUser(userFromEmployee);
+            matchedUser = userFromEmployee as UserWithPassword;
+            
+            // Pre-fetch module access to cache it immediately
+            await fetchModulesForUser(employeeData.id, employeeData.client_id);
+          } else {
+            console.log("No employee record found for email:", supabaseUser.email);
+            setAuthError("No account found for this email address");
+          }
+        } catch (err) {
+          console.error("Error processing employee authentication:", err);
+          setAuthError("Error processing authentication");
+        }
+      } else if (matchedUser) {
+        console.log("Found matching user in application state:", matchedUser.email);
+        
+        // Update the user with provider information if applicable
+        if (isProviderAuth) {
+          matchedUser.provider = isProviderAuth;
+        }
+        
+        // Set the user in our app state
+        setUser(matchedUser);
+      } else {
+        console.error("No matching user found for:", supabaseUser.email);
+        setAuthError("No account associated with this email");
+      }
+      
+    } catch (err) {
+      console.error("Error in handleUserAuthentication:", err);
+      setAuthError("Failed to process authentication");
+    }
+  };
+  
+  // Function to fetch modules for a user directly during authentication
+  const fetchModulesForUser = async (employeeId: string, clientId: string): Promise<void> => {
+    try {
+      console.log("Pre-fetching modules for employeeId:", employeeId, "clientId:", clientId);
+      
+      // First fetch client modules
+      const { data: clientModules, error: clientError } = await supabase
+        .from('client_modules')
+        .select('*')
+        .eq('client_id', clientId);
+        
+      if (clientError) {
+        console.error("Error fetching client modules:", clientError);
+        return;
+      }
+      
+      // Now fetch backoffice modules (these are typically needed for admin users)
+      const { data: backofficeModules, error: backofficeError } = await supabase
+        .from('backoffice_modules')
+        .select('*');
+        
+      if (backofficeError) {
+        console.error("Error fetching backoffice modules:", backofficeError);
+        return;
+      }
+      
+      console.log(`Pre-fetched ${clientModules?.length || 0} client modules and ${backofficeModules?.length || 0} backoffice modules`);
+      
+      // Map the modules data to include the permission keys
+      // Since 'key' property is missing, let's extract it from name or add an identifier
+      const mappedClientModules = clientModules?.map(module => ({
+        ...module,
+        // Create a key from name by converting to lowercase and replacing spaces with underscores
+        moduleKey: module.name.toLowerCase().replace(/\s+/g, '_')
+      }));
+      
+      const mappedBackofficeModules = backofficeModules?.map(module => ({
+        ...module,
+        // Create a key from name by converting to lowercase and replacing spaces with underscores
+        moduleKey: module.name.toLowerCase().replace(/\s+/g, '_')
+      }));
+      
+      // Cache the modules in the context for immediate use
+      setCachedModules(mappedBackofficeModules || [], mappedClientModules || []);
+      
+    } catch (err) {
+      console.error("Error pre-fetching modules:", err);
+    }
+  };
+  
+  // Functions for user management
+  const addUser = (userData: any) => {
+    setUsers(prevUsers => [...prevUsers, userData]);
+    toast.success("User added successfully");
+  };
+  
+  const updateUser = (id: string, updates: any) => {
+    setUsers(prevUsers =>
+      prevUsers.map(user => (user.id === id ? { ...user, ...updates } : user))
+    );
+    toast.success("User updated successfully");
+  };
+  
+  const deleteUser = (id: string) => {
+    setUsers(prevUsers => prevUsers.filter(user => user.id !== id));
+    toast.success("User deleted successfully");
+  };
+  
+  const deactivateUser = (id: string) => {
+    setUsers(prevUsers =>
+      prevUsers.map(user =>
+        user.id === id ? { ...user, isActive: false } : user
+      )
+    );
+    toast.success("User deactivated successfully");
+  };
+  
+  const reactivateUser = (id: string) => {
+    setUsers(prevUsers =>
+      prevUsers.map(user =>
+        user.id === id ? { ...user, isActive: true } : user
+      )
+    );
+    toast.success("User reactivated successfully");
+  };
+
+  // Function to change user password
+  const changePassword = async (currentPassword: string, newPassword: string): Promise<boolean> => {
+    try {
+      // Try to update password with Supabase
+      const { error } = await supabase.auth.updateUser({ 
+        password: newPassword 
+      });
+      
+      if (error) {
+        console.error("Password change error:", error.message);
+        setAuthError(error.message);
+        toast.error("Failed to change password");
+        return false;
+      }
+      
+      toast.success("Password changed successfully");
+      return true;
+    } catch (err) {
+      const error = err as Error;
+      console.error("Password change error:", error);
+      setAuthError(`Password change error: ${error.message}`);
+      toast.error("An error occurred while changing password");
       return false;
     }
-
-    const updatedUsers = changePassword(users, user.id, currentPassword, newPassword);
-    if (updatedUsers) {
-      setUsers(updatedUsers);
-      return true;
-    }
-
-    return false;
   };
 
   return {
@@ -647,7 +322,7 @@ export function useAuthHandlers({
     deleteUser,
     deactivateUser,
     reactivateUser,
-    changeUserPassword,
-    handleUserAuthentication,
+    changePassword,
+    handleUserAuthentication
   };
-}
+};
