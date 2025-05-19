@@ -5,7 +5,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { 
   getSaasOwnerItems, 
   getClientItems, 
-  fetchModules, 
   convertModulesToSidebarItems 
 } from './sidebarConfig';
 import SidebarMenuItem from './SidebarMenuItem';
@@ -16,9 +15,15 @@ import { toast } from 'sonner';
 const SidebarContent = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, isSaasOwner, isAdmin, employeeData } = useAuth();
+  const { 
+    user, 
+    isSaasOwner, 
+    isAdmin, 
+    employeeData, 
+    cachedBackofficeModules, 
+    cachedClientModules 
+  } = useAuth();
   const [dynamicMenuItems, setDynamicMenuItems] = useState<any[]>([]);
-  const [lastFetchPath, setLastFetchPath] = useState('');
   
   // Get user permissions with default fallback
   const defaultPermissions: ModulePermissions = {
@@ -71,40 +76,23 @@ const SidebarContent = () => {
     }
   }, [isSaasOwner, user, location.pathname, navigate]);
   
-  // Memoize the loadModules function to prevent unnecessary re-renders
-  const loadModules = useCallback(async () => {
-    // Skip if the path hasn't changed since last fetch
-    if (lastFetchPath === (isBackofficeRoute ? 'backoffice' : 'client')) {
-      return;
-    }
-
-    try {
-      // For SaaS users in backoffice route, fetch backoffice modules
-      // For others, fetch client modules
+  // Use cached modules from authentication time
+  useEffect(() => {
+    if (user) {
+      // For SaaS users in backoffice route, use backoffice modules
+      // For others, use client modules
       const isBackofficeFetch = isSaasOwner && isBackofficeRoute;
-      console.log(`User is ${isSaasOwner ? 'SaaS owner' : 'client user'}, route is ${isBackofficeRoute ? 'backoffice' : 'client'}`);
-      console.log(`User authenticated via provider: ${user?.provider || 'none'}, will show ${user?.provider ? 'configured' : 'all'} modules`);
       
-      // If this is a provider-authenticated user on client side, we'll use the ClientModulesList
-      // component instead of continuing with this function
+      // If this is a provider-authenticated user on client side, use ClientModulesList component
       if (isProviderAuthenticated && !isBackofficeFetch) {
         console.log("Using ClientModulesList for provider-authenticated user:", user?.email);
-        setLastFetchPath(isBackofficeRoute ? 'backoffice' : 'client');
         return;
       }
       
-      // Fetch modules passing user info and employee data from context
-      const modules = await fetchModules(isBackofficeFetch, user, employeeData);
+      // Use cached modules based on the current route
+      const modules = isBackofficeFetch ? cachedBackofficeModules : cachedClientModules;
       
-      if (modules.length === 0 && !user) {
-        // If no modules and no user, only show dashboard
-        setDynamicMenuItems([{
-          icon: null,
-          label: 'Dashboard',
-          path: '/dashboard',
-          allowed: true
-        }]);
-      } else {
+      if (modules && modules.length > 0) {
         const basePath = isBackofficeFetch ? '/backoffice' : '';
         
         // If user is authenticated via provider (Google, etc.), filter modules based on permissions
@@ -125,31 +113,16 @@ const SidebarContent = () => {
         }
         
         setDynamicMenuItems(items);
+        console.log("Using cached modules for sidebar:", items.length);
+      } else {
+        // Fall back to static configuration if no cached modules
+        console.log("No cached modules available, falling back to static config");
+        const fallbackItems = (isSaasOwner && isBackofficeRoute) ? 
+          getSaasOwnerItems() : getClientItems(effectivePermissions);
+        setDynamicMenuItems(fallbackItems);
       }
-      
-      // Update the last fetch path to prevent duplicate fetches
-      setLastFetchPath(isBackofficeRoute ? 'backoffice' : 'client');
-    } catch (error) {
-      console.error('Error loading modules:', error);
-      // Fall back to static configuration if fetching fails
-      const fallbackItems = (isSaasOwner && isBackofficeRoute) ? 
-        getSaasOwnerItems() : getClientItems(effectivePermissions);
-      setDynamicMenuItems(fallbackItems);
-      
-      // Notify user of the error
-      toast.error("Could not load menu items. Using fallback configuration.");
     }
-  }, [isSaasOwner, isBackofficeRoute, effectivePermissions, lastFetchPath, user, isProviderAuthenticated, employeeData]);
-
-  // Fetch modules only when user is authenticated
-  useEffect(() => {
-    if (user) {
-      // Use requestAnimationFrame to ensure DOM is rendered first
-      requestAnimationFrame(() => {
-        loadModules();
-      });
-    }
-  }, [user, loadModules]);
+  }, [user, isBackofficeRoute, effectivePermissions, cachedBackofficeModules, cachedClientModules, isSaasOwner, isProviderAuthenticated]);
 
   // Get appropriate items based on user role and route
   const menuItems = dynamicMenuItems.length > 0 

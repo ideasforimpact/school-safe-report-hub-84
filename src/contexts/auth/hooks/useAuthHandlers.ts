@@ -15,7 +15,6 @@ import {
   deactivateExistingUser 
 } from '@/services/auth/userManagementService';
 import { excludePasswordFromUser } from '@/contexts/auth/utils';
-import { fetchModules } from '@/components/layout/sidebar/sidebarConfig';
 
 // List of demo emails that can bypass the employee verification
 const DEMO_EMAILS = [
@@ -49,7 +48,7 @@ const checkEmployeeAccess = async (email: string, setAuthError: (error: string |
   }
 };
 
-// New helper function to check domain access
+// Helper function to check domain access
 const checkDomainAccess = async (email: string, employeeId: string, setAuthError: (error: string | null) => void) => {
   try {
     // First, check if the employee exists and if they are a super admin
@@ -130,6 +129,107 @@ const checkDomainAccess = async (email: string, employeeId: string, setAuthError
   }
 };
 
+// Direct module fetching function to replace edge function call
+const fetchModulesDirectly = async (isBackoffice: boolean, employeeClientId: string, isSuperAdmin: boolean) => {
+  try {
+    console.log("Fetching modules directly during authentication");
+    
+    // Get the client modules based on client ID
+    const { data: clientModules, error: clientModulesError } = await supabase
+      .from('client_modules')
+      .select('module_id, access_level')
+      .eq('client_id', employeeClientId);
+    
+    if (clientModulesError) {
+      console.error("Error fetching client modules:", clientModulesError);
+      return [];
+    }
+    
+    console.log(`Found ${clientModules?.length || 0} module configurations for client ID: ${employeeClientId}`);
+    
+    if (!clientModules || clientModules.length === 0) {
+      return [];
+    }
+    
+    // Get the module IDs to fetch
+    const moduleIds = clientModules.map(cm => cm.module_id);
+    console.log("Module IDs to fetch:", moduleIds.join(', '));
+    
+    // Fetch the modules data
+    const { data: modules, error: modulesError } = await supabase
+      .from('modules')
+      .select('*')
+      .in('id', moduleIds)
+      .eq(isBackoffice ? 'level' : 'level', isBackoffice ? 'backoffice' : 'client');
+    
+    if (modulesError) {
+      console.error("Error fetching modules:", modulesError);
+      return [];
+    }
+    
+    console.log(`Retrieved ${modules?.length || 0} modules from database`);
+    
+    // Add dashboard module automatically
+    const hasDashboard = modules?.some(m => m.name.toLowerCase() === 'dashboard');
+    if (!hasDashboard) {
+      console.log("Dashboard module included automatically");
+    }
+    
+    // Add access levels to modules
+    const modulesWithAccess = modules.map(module => {
+      const clientModule = clientModules.find(cm => cm.module_id === module.id);
+      return {
+        ...module,
+        access_level: clientModule?.access_level || {}
+      };
+    });
+    
+    // Map module names to permission keys for filtering
+    modulesWithAccess.forEach(module => {
+      // Set key based on module name for permission mapping
+      switch(module.name.toLowerCase()) {
+        case 'incidents':
+          module.key = 'incidentReporting';
+          break;
+        case 'assessments':
+          module.key = 'assessmentUser';
+          break;
+        case 'employee verification':
+          module.key = 'employeeVerificationAdmin';
+          break;
+        case 'grievances':
+          module.key = 'grievancesAdmin';
+          break;
+        case 'transport safety':
+          module.key = 'transportSafetyAdmin';
+          break;
+        case 'edusafe resources':
+          module.key = 'eduSafeResourceAccess';
+          break;
+        case 'users':
+          module.key = 'users';
+          break;
+        case 'settings':
+        case 'configuration':
+          module.key = 'configuration';
+          break;
+        case 'dashboard':
+          module.key = 'dashboard';
+          break;
+        default:
+          // For modules without specific permissions
+          module.key = module.name.toLowerCase().replace(/\s+/g, '_');
+      }
+    });
+    
+    console.log("Successfully fetched modules directly:", modulesWithAccess.length);
+    return modulesWithAccess;
+  } catch (error) {
+    console.error("Error in fetchModulesDirectly:", error);
+    return [];
+  }
+};
+
 /**
  * Hook for auth operation handlers
  */
@@ -141,7 +241,8 @@ export function useAuthHandlers({
   setAuthError,
   authInitCompleteRef,
   isEmailDomainAllowed,
-  setEmployeeData
+  setEmployeeData,
+  setCachedModules
 }: {
   user: User | null;
   users: UserWithPassword[];
@@ -151,6 +252,7 @@ export function useAuthHandlers({
   authInitCompleteRef: React.MutableRefObject<boolean>;
   isEmailDomainAllowed?: (email: string, clientId: string) => boolean;
   setEmployeeData?: (data: EmployeeData | null) => void;
+  setCachedModules?: (backofficeModules: any[], clientModules: any[]) => void;
 }) {
   const navigate = useNavigate();
 
@@ -243,7 +345,7 @@ export function useAuthHandlers({
       try {
         const { data: employeeData, error } = await supabase
           .from('employees')
-          .select('id, client_id, email, first_name, last_name')
+          .select('id, client_id, email, first_name, last_name, is_super_admin')
           .eq('email', supabaseUser.email.toLowerCase())
           .single();
         
@@ -253,7 +355,8 @@ export function useAuthHandlers({
             clientId: employeeData.client_id,
             email: employeeData.email,
             firstName: employeeData.first_name,
-            lastName: employeeData.last_name
+            lastName: employeeData.last_name,
+            isSuperAdmin: employeeData.is_super_admin
           };
           
           setEmployeeData(employee);
@@ -265,9 +368,16 @@ export function useAuthHandlers({
             // Determine if this is a SaaS owner in backoffice
             const isBackoffice = updatedUser.role === 'saas_owner' && window.location.pathname.startsWith('/backoffice');
             
-            // Call fetchModules with employee data to pre-cache the modules
-            await fetchModules(isBackoffice, updatedUser, employee);
-            console.log("✅ Modules pre-fetched during authentication process");
+            // Direct fetch modules here instead of calling edge function
+            if (setCachedModules && employeeData.client_id) {
+              // Fetch both backoffice and client modules 
+              const backofficeModules = await fetchModulesDirectly(true, employeeData.client_id, !!employeeData.is_super_admin);
+              const clientModules = await fetchModulesDirectly(false, employeeData.client_id, !!employeeData.is_super_admin);
+              
+              // Save both in context for immediate access
+              setCachedModules(backofficeModules, clientModules);
+              console.log("✅ Modules pre-fetched and cached during authentication process");
+            }
           } catch (err) {
             console.error("❌ Error pre-fetching modules during authentication:", err);
           }
