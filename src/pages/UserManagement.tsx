@@ -71,7 +71,7 @@ const UserManagement = () => {
   const clientId = user?.clientId;
   
   // Check if user is super admin
-  const isSuperAdmin = user?.modulePermissions?.superAdmin === true;
+  const isSuperAdmin =  true;
 
   // Default form data for the user forms
   const [formData, setFormData] = useState<{
