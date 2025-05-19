@@ -192,7 +192,7 @@ async function deleteClientEmployees(clientId: string) {
   }
 }
 
-// Direct function to process module access based on the provided module information
+// Function to process module access based on the provided module information
 async function processModuleAccess(clientId: string, moduleInfoArray: ModuleInfo[]): Promise<boolean> {
   try {
     console.log(`Processing modules for client ${clientId}:`, JSON.stringify(moduleInfoArray, null, 2));
@@ -202,92 +202,69 @@ async function processModuleAccess(clientId: string, moduleInfoArray: ModuleInfo
       return true;
     }
 
-    // Create an array to store upsert operations
-    const upsertOperations = moduleInfoArray.map(moduleInfo => {
-      console.log(`Processing module: ${moduleInfo.name}, module_id: ${moduleInfo.module_id}, is_admin: ${moduleInfo.is_admin}`);
+    // For each module in the array, check if it exists and update or insert
+    for (const moduleInfo of moduleInfoArray) {
+      const { module_id, is_admin } = moduleInfo;
       
-      // Prepare the data for upsert
-      return {
-        client_id: clientId,
-        module_id: moduleInfo.module_id,
-        enabled: true,
-        access_level: { 
-          isAdmin: moduleInfo.is_admin,
-          isEnabled: true
-        }
-      };
-    });
-    
-    // Filter out any invalid entries
-    const validOperations = upsertOperations.filter(op => op.module_id);
-    
-    if (validOperations.length === 0) {
-      console.log('No valid modules to process');
-      return true;
-    }
-    
-    console.log(`Processing ${validOperations.length} module operations for client ${clientId}`);
-    
-    // Check for existing entries for this client
-    const { data: existingModules, error: fetchError } = await supabase
-      .from('client_modules')
-      .select('id, module_id')
-      .eq('client_id', clientId);
+      if (!module_id) {
+        console.error('Missing module_id in module info');
+        continue;
+      }
       
-    if (fetchError) {
-      console.error('Error fetching existing client modules:', fetchError);
-      return false;
-    }
-    
-    // Map of existing module entries by module_id
-    const existingModuleMap = new Map();
-    if (existingModules) {
-      existingModules.forEach(module => {
-        existingModuleMap.set(module.module_id, module.id);
-      });
-    }
-    
-    // Process updates for existing modules
-    const updatePromises = validOperations
-      .filter(op => existingModuleMap.has(op.module_id))
-      .map(async op => {
-        const id = existingModuleMap.get(op.module_id);
-        console.log(`Updating existing module: ${op.module_id} with access_level:`, op.access_level);
-        
-        const { error } = await supabase
-          .from('client_modules')
-          .update({ access_level: op.access_level, enabled: op.enabled })
-          .eq('id', id);
-          
-        if (error) {
-          console.error(`Error updating module ${op.module_id}:`, error);
-          return false;
-        }
-        return true;
-      });
+      console.log(`Processing module: ${moduleInfo.name}, module_id: ${module_id}, is_admin: ${is_admin}`);
       
-    // Process inserts for new modules
-    const insertOperations = validOperations
-      .filter(op => !existingModuleMap.has(op.module_id));
-      
-    let insertResult = true;
-    if (insertOperations.length > 0) {
-      console.log(`Inserting ${insertOperations.length} new modules`);
-      const { error: insertError } = await supabase
+      // Check if this module already exists for this client
+      const { data: existingModule, error: fetchError } = await supabase
         .from('client_modules')
-        .insert(insertOperations);
+        .select('id')
+        .eq('client_id', clientId)
+        .eq('module_id', module_id)
+        .maybeSingle();
         
-      if (insertError) {
-        console.error('Error inserting client modules:', insertError);
-        insertResult = false;
+      if (fetchError) {
+        console.error(`Error checking for existing module ${module_id}:`, fetchError);
+        continue;
+      }
+      
+      const accessLevel = { 
+        isAdmin: is_admin,
+        isEnabled: true
+      };
+      
+      if (existingModule) {
+        // Update existing module
+        console.log(`Updating existing module: ${module_id} with access_level:`, accessLevel);
+        
+        const { error: updateError } = await supabase
+          .from('client_modules')
+          .update({ access_level: accessLevel, enabled: true })
+          .eq('id', existingModule.id);
+          
+        if (updateError) {
+          console.error(`Error updating module ${module_id}:`, updateError);
+          continue;
+        }
+      } else {
+        // Insert new module
+        console.log(`Inserting new module: ${module_id} with access_level:`, accessLevel);
+        
+        const { error: insertError } = await supabase
+          .from('client_modules')
+          .insert({
+            client_id: clientId,
+            module_id: module_id,
+            enabled: true,
+            access_level: accessLevel
+          });
+          
+        if (insertError) {
+          console.error(`Error inserting module ${module_id}:`, insertError);
+          continue;
+        }
       }
     }
     
-    // Wait for all update operations to complete
-    const updateResults = await Promise.all(updatePromises);
-    const updateSuccess = updateResults.every(result => result === true);
-    
-    return updateSuccess && insertResult;
+    return true;
   } catch (err) {
     console.error('Error in processModuleAccess:', err);
     return false;
@@ -339,11 +316,8 @@ serve(async (req) => {
           }
         }
         
-        // Remove moduleAccess, superAdminEmail, and modules from client data before insertion
-        const { moduleAccess, superAdminEmail: _, modules, ...clientOnly } = clientData;
-
         // Check if name is provided
-        if (!clientOnly.name) {
+        if (!clientData.name) {
           return new Response(JSON.stringify({ 
             error: 'Client name is required' 
           }), {
@@ -352,10 +326,21 @@ serve(async (req) => {
           });
         }
 
-        // Insert client first
+        // Insert client manually specifying each column
         const { data: newClient, error: clientError } = await supabase
           .from('clients')
-          .insert([clientOnly])
+          .insert([{
+            name: clientData.name,
+            email: clientData.email || null,
+            contact_person: clientData.contact_person || null,
+            phone: clientData.phone || null,
+            active: clientData.active,
+            logo: clientData.logo || null,
+            institution_type: clientData.institution_type || null,
+            allowed_domains: clientData.allowed_domains || null,
+            super_admin_allowed_domain: clientData.super_admin_allowed_domain || null,
+            auth_providers: clientData.auth_providers || null
+          }])
           .select()
           .single();
 
@@ -439,10 +424,24 @@ serve(async (req) => {
           });
         }
 
+        // Create update object with only the fields that are defined
+        const updateData: Record<string, any> = {};
+        
+        if (clientUpdates.name !== undefined) updateData.name = clientUpdates.name;
+        if (clientUpdates.email !== undefined) updateData.email = clientUpdates.email;
+        if (clientUpdates.contact_person !== undefined) updateData.contact_person = clientUpdates.contact_person;
+        if (clientUpdates.phone !== undefined) updateData.phone = clientUpdates.phone;
+        if (clientUpdates.active !== undefined) updateData.active = clientUpdates.active;
+        if (clientUpdates.logo !== undefined) updateData.logo = clientUpdates.logo;
+        if (clientUpdates.institution_type !== undefined) updateData.institution_type = clientUpdates.institution_type;
+        if (clientUpdates.allowed_domains !== undefined) updateData.allowed_domains = clientUpdates.allowed_domains;
+        if (clientUpdates.super_admin_allowed_domain !== undefined) updateData.super_admin_allowed_domain = clientUpdates.super_admin_allowed_domain;
+        if (clientUpdates.auth_providers !== undefined) updateData.auth_providers = clientUpdates.auth_providers;
+
         // Update client data
         const { data: updatedClient, error: clientError } = await supabase
           .from('clients')
-          .update(clientUpdates)
+          .update(updateData)
           .eq('id', id)
           .select()
           .single();
