@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -58,7 +59,7 @@ const convertDepartmentType = (department: EmployeeContextDepartmentType): Depar
 };
 
 const UserManagement = () => {
-  const { isAdmin, users = [], user } = useAuth();
+  const { isAdmin, users = [], user, employeeData } = useAuth();
   const { addEmployee, deactivateEmployee, fetchEmployees } = useEmployee();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -67,11 +68,18 @@ const UserManagement = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [employeeUsers, setEmployeeUsers] = useState<User[]>([]);
   
-  // Get clientId from user context
-  const clientId = user?.clientId;
+  // Get clientId from employee data or user context
+  const clientId = employeeData?.clientId || user?.clientId;
+  
+  // Log the clientId for debugging
+  useEffect(() => {
+    console.log("UserManagement - Current employee data:", employeeData);
+    console.log("UserManagement - Current user data:", user);
+    console.log("UserManagement - ClientId being used:", clientId);
+  }, [employeeData, user, clientId]);
   
   // Check if user is super admin
-  const isSuperAdmin =  true;
+  const isSuperAdmin = true;
 
   // Default form data for the user forms
   const [formData, setFormData] = useState<{
@@ -84,11 +92,13 @@ const UserManagement = () => {
     joiningDate?: string;
     role: UserRole;
     modulePermissions: ModulePermissions;
+    clientId?: string; // Add clientId to form data
   }>({
     firstName: '',
     lastName: '',
     email: '',
     role: 'reporter',
+    clientId: clientId, // Initialize with current clientId
     modulePermissions: {
       superAdmin: false,
       incidentReporting: true,
@@ -101,6 +111,16 @@ const UserManagement = () => {
       eduSafeResourceAccess: false
     }
   });
+
+  // Update formData when clientId changes
+  useEffect(() => {
+    if (clientId) {
+      setFormData(prev => ({
+        ...prev,
+        clientId: clientId
+      }));
+    }
+  }, [clientId]);
 
   // Fetch employees from Supabase and map them to User format
   useEffect(() => {
@@ -131,6 +151,7 @@ const UserManagement = () => {
             modulePermissions: modulePermissions,
             isActive: employee.status === true, // Compare with boolean true instead of string
             createdAt: employee.createdAt || new Date().toISOString(),
+            clientId: employee.clientId, // Make sure to include clientId
           };
         }));
 
@@ -153,11 +174,24 @@ const UserManagement = () => {
     try {
       setIsLoading(true);
       
+      // Make sure clientId is set
+      if (!formData.clientId && clientId) {
+        // Update the form data with the current clientId if not set
+        setFormData(prev => ({
+          ...prev,
+          clientId: clientId
+        }));
+      }
+      
+      console.log("Adding new user with data:", formData);
+      console.log("Client ID being used:", formData.clientId || clientId);
+      
       // In a real app, we'd validate the form data here
       const updatedUsers = await addNewUser(
         users as any, // Type casting to fix TypeScript error
         { 
           ...formData, 
+          clientId: formData.clientId || clientId, // Use form clientId or fall back to context clientId
           password: 'defaultPassword123', // In a real app, we'd generate this or let the user set it
           isActive: true 
         }
@@ -177,6 +211,7 @@ const UserManagement = () => {
               department: formData.department,
               joiningDate: formData.joiningDate,
               status: 'active' as EmploymentStatus, // Explicitly cast to EmploymentStatus
+              clientId: formData.clientId || clientId, // Use form clientId or fall back to context clientId
               modulePermissions: formData.modulePermissions // Include module permissions
             };
             
@@ -412,6 +447,7 @@ const UserManagement = () => {
       lastName: '',
       email: '',
       role: 'reporter',
+      clientId: clientId, // Keep the clientId
       modulePermissions: {
         superAdmin: false,
         incidentReporting: true,
@@ -588,6 +624,7 @@ const UserManagement = () => {
         onSubmit={handleAddUser}
         resetForm={resetForm}
         isLoading={isLoading}
+        clientId={clientId} // Pass clientId to the dialog
       />
 
       {/* Edit User Dialog */}
@@ -599,6 +636,7 @@ const UserManagement = () => {
         onSubmit={handleUpdateUser}
         resetForm={resetForm}
         isLoading={isLoading}
+        clientId={clientId} // Pass clientId to the dialog
       />
 
       {/* Import Employees Dialog */}
@@ -606,7 +644,7 @@ const UserManagement = () => {
         isOpen={isImportDialogOpen}
         setIsOpen={setIsImportDialogOpen}
         onImportEmployees={handleImportEmployees}
-        clientId={clientId}
+        clientId={clientId} // Pass clientId to the dialog
       />
     </Layout>
   );
