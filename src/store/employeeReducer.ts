@@ -10,8 +10,11 @@ export const initialEmployeeState: EmployeeState = {
 
 export const employeeReducer = (
   state: EmployeeState = initialEmployeeState, 
-  action: EmployeeAction
+  action: EmployeeAction | undefined
 ): EmployeeState => {
+  // Guard against undefined actions
+  if (!action) return state;
+
   switch (action.type) {
     case EmployeeActionTypes.SET_EMPLOYEE_DATA:
       return {

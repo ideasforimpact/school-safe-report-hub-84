@@ -8,7 +8,13 @@ interface EmployeeContextType {
   dispatch: React.Dispatch<EmployeeAction>;
 }
 
-const EmployeeContext = createContext<EmployeeContextType | undefined>(undefined);
+// Create context with default value to avoid the 'undefined' error
+const defaultContextValue: EmployeeContextType = {
+  state: initialEmployeeState,
+  dispatch: () => null // This will be replaced by the actual dispatch function
+};
+
+const EmployeeContext = createContext<EmployeeContextType>(defaultContextValue);
 
 export const useEmployeeStore = () => {
   const context = useContext(EmployeeContext);

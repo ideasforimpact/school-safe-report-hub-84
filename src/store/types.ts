@@ -1,3 +1,4 @@
+
 import { EmployeeData } from '@/contexts/auth/types';
 
 export interface Module {
@@ -5,9 +6,9 @@ export interface Module {
   name: string;
   key?: string;
   icon?: string;
-  level: string; // Added level property to match sidebarConfig Module type
+  level: string;
   enabled: boolean;
-  accessLevel?: Record<string, any>; // Changed to Record<string, any> to be more flexible
+  accessLevel?: Record<string, any>;
 }
 
 export interface EmployeeState {
@@ -27,7 +28,7 @@ export enum EmployeeActionTypes {
 
 export interface SetEmployeeDataAction {
   type: EmployeeActionTypes.SET_EMPLOYEE_DATA;
-  payload: EmployeeData;
+  payload: EmployeeData | null;
 }
 
 export interface SetConfiguredModulesAction {
