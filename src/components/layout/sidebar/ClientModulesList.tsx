@@ -60,7 +60,7 @@ const ClientModulesList = () => {
       
       try {
         setIsLoading(true);
-        console.log(user,"user")
+        
         // Get employee data from context or using the hook
         const currentEmployeeData = employeeData || employee;
         console.log("Fetching modules with employee data:", currentEmployeeData);
