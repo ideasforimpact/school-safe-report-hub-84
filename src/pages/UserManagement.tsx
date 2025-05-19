@@ -28,9 +28,8 @@ import { processEmployeeExcel } from '@/services/employee/importEmployeeService'
 import { supabase } from '@/integrations/supabase/client';
 import { getAllEmployeesFromApi } from '@/services/employee/employeeRetrievalService';
 import { getEmployeeModulePermissions, updateEmployeeModulePermissions } from '@/services/employee/employeeModuleService';
-import EmployeeDataProvider from '@/components/employee/EmployeeDataProvider';
 import { useEmployeeStore } from '@/store/EmployeeContext';
-import { getEmployeeData } from '@/store/employeeSelectors';
+import { getEmployeeData, isEmployeeAdmin, isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 
 // Helper function to convert employee type and department type
 const convertEmployeeType = (employeeType: EmployeeContextType): EmployeeType => {
@@ -60,15 +59,22 @@ const convertDepartmentType = (department: EmployeeContextDepartmentType): Depar
   return departmentMapping[department] || 'admin';
 };
 
-// Inner component to receive employee data from Redux
-const UserManagementInner = ({ employeeData, isAdmin, isSuperAdmin, user }: { 
-  employeeData: any;
-  isAdmin: boolean;
-  isSuperAdmin: boolean;
-  user: User | null;
-}) => {
-  const { users = [] } = useAuth();
+// Main UserManagement component
+const UserManagement = () => {
+  const { user } = useAuth();
   const { addEmployee, deactivateEmployee, fetchEmployees } = useEmployee();
+  const { state } = useEmployeeStore();
+  
+  // Get employee data directly from Redux
+  const employeeData = getEmployeeData(state);
+  // Determine admin status from Redux store
+  const isAdmin = isEmployeeAdmin(state);
+  const isSuperAdmin = isEmployeeSuperAdmin(state);
+  
+  console.log("UserManagement - Redux employeeData:", employeeData);
+  console.log("UserManagement - Redux isAdmin:", isAdmin);
+  console.log("UserManagement - Redux isSuperAdmin:", isSuperAdmin);
+  
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
@@ -79,8 +85,6 @@ const UserManagementInner = ({ employeeData, isAdmin, isSuperAdmin, user }: {
   // Get clientId from employee data or user context
   const clientId = employeeData?.clientId || user?.clientId;
 
-  console.log("UserManagement employeeData:", employeeData);
-  
   // Log the clientId for debugging
   useEffect(() => {
     console.log("UserManagement - Current employee data:", employeeData);
@@ -652,25 +656,6 @@ const UserManagementInner = ({ employeeData, isAdmin, isSuperAdmin, user }: {
         setIsOpen={setIsImportDialogOpen}
         onImportEmployees={handleImportEmployees}
         clientId={clientId} // Pass clientId to the dialog
-      />
-    </Layout>
-  );
-};
-
-// Main component that uses EmployeeDataProvider
-const UserManagement = () => {
-  const { user } = useAuth();
-  const { state } = useEmployeeStore();
-  const employeeData = getEmployeeData(state);
-  
-  // Use EmployeeDataProvider directly from Redux instead of wrapping
-  return (
-    <Layout>
-      <UserManagementInner 
-        employeeData={employeeData}
-        isAdmin={state.employeeData ? true : false}
-        isSuperAdmin={state.employeeData?.isSuperAdmin === true}
-        user={user}
       />
     </Layout>
   );

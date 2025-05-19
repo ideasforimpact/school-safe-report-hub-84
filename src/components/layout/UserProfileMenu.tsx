@@ -17,19 +17,19 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { ChangePasswordDialog } from '@/components/ChangePasswordDialog';
-import EmployeeDataProvider from '@/components/employee/EmployeeDataProvider';
+import { useEmployeeStore } from '@/store/EmployeeContext';
+import { getEmployeeData, isEmployeeAdmin, isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 
-interface UserProfileMenuProps {
-  employeeData?: any;
-}
-
-const UserProfileMenuInner: React.FC<UserProfileMenuProps & {
-  isAdmin: boolean;
-  isSuperAdmin: boolean;
-}> = ({ employeeData, isAdmin, isSuperAdmin }) => {
+const UserProfileMenu = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+  const { state } = useEmployeeStore();
+  
+  // Get employee data and admin status from Redux
+  const employeeData = getEmployeeData(state);
+  const isAdmin = isEmployeeAdmin(state);
+  const isSuperAdmin = isEmployeeSuperAdmin(state);
   
   // Show settings only for super admins based on Redux data
   const showSettings = isSuperAdmin;
@@ -110,20 +110,6 @@ const UserProfileMenuInner: React.FC<UserProfileMenuProps & {
         </DialogContent>
       </Dialog>
     </>
-  );
-};
-
-const UserProfileMenu: React.FC<UserProfileMenuProps> = (props) => {
-  return (
-    <EmployeeDataProvider>
-      {({ isAdmin, isSuperAdmin }) => (
-        <UserProfileMenuInner 
-          {...props} 
-          isAdmin={isAdmin} 
-          isSuperAdmin={isSuperAdmin} 
-        />
-      )}
-    </EmployeeDataProvider>
   );
 };
 
