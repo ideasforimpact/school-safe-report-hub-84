@@ -1,7 +1,7 @@
 
 export type UserRole = 'user' | 'admin' | 'reporter' | 'saas_owner';
 
-export type DepartmentType = 'Admin' | 'Teaching' | 'Support' | 'Tech' | 'Management' | 'Security';
+export type DepartmentType = 'Admin' | 'Teaching' | 'Support' | 'Tech' | 'Management' | 'Security' | 'maintenance' | 'transport';
 
 export type EmployeeType = 'permanent' | 'contract' | 'temporary' | 'intern';
 
@@ -46,8 +46,32 @@ export interface User {
   createdAt?: string;
   lastLogin?: string;
   modules?: Module[]; // Add modules array to store client module information
+  
+  // Add the missing properties
+  employeeId?: string;
+  employeeType?: EmployeeType;
+  department?: DepartmentType;
+  joiningDate?: string;
 }
 
 export interface UserWithPassword extends User {
   password: string;
+}
+
+// This is needed by the AuthProvider component
+export interface AuthContextType {
+  user: User | null;
+  isAuthenticated: boolean;
+  isAdmin: boolean;
+  isSaasOwner: boolean;
+  isLoading: boolean;
+  users: User[];
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+  getRequiredPermission: (module: string) => string;
+  registerUser: (userData: Omit<UserWithPassword, 'id'>) => Promise<void>;
+  updateUserInfo: (userId: string, userData: Partial<User>) => void;
+  googleSignIn: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 }
