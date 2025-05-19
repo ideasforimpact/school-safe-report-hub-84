@@ -18,6 +18,7 @@ import {
   Users,
   Settings
 } from 'lucide-react';
+import { EmploymentStatus } from '@/contexts/auth/types';
 
 // Map string icon names to Lucide components
 const iconMap: Record<string, any> = {
@@ -86,11 +87,11 @@ const ClientModulesList = () => {
             email: currentEmployeeData.email,
             firstName: currentEmployeeData.firstName,
             lastName: currentEmployeeData.lastName,
-            department: currentEmployeeData.department,
-            employeeType: currentEmployeeData.employeeType,
-            isSuperAdmin: currentEmployeeData.isSuperAdmin,
-            status: currentEmployeeData.status,
-            employeeId: currentEmployeeData.employeeId
+            department: currentEmployeeData.department || null,
+            employeeType: currentEmployeeData.employeeType || null,
+            isSuperAdmin: currentEmployeeData.isSuperAdmin || false,
+            status: currentEmployeeData.status || true,
+            employeeId: currentEmployeeData.employeeId || null
           };
           console.log("Including comprehensive employee info in fetch-modules request:", requestBody.employeeInfo);
         } else if (employeeData?.id) {

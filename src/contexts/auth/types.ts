@@ -1,3 +1,4 @@
+
 // Define the user with password separately for internal use
 export interface UserWithPassword extends User {
   password: string;
@@ -58,11 +59,19 @@ export interface ModulePermissions {
   [key: string]: boolean; // Add index signature to support dynamic properties
 }
 
-// New interface to store employee data
+// Updated EmployeeData interface with all required properties
 export interface EmployeeData {
   id: string;
   clientId: string | null;
   email: string;
   firstName: string;
   lastName: string;
+  department?: DepartmentType;  // Added from errors
+  employeeType?: EmployeeType;  // Added from errors
+  isSuperAdmin?: boolean;       // Added from errors
+  status?: boolean | EmploymentStatus; // Added from errors
+  employeeId?: string;          // Added from errors
 }
+
+// Add EmploymentStatus type since it's used in the status field
+export type EmploymentStatus = 'active' | 'on_leave' | 'resigned' | 'terminated' | 'retired' | 'inactive';
