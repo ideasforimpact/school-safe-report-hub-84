@@ -1,4 +1,3 @@
-
 export interface Employee {
   id: string;
   employeeId: string;
@@ -20,6 +19,7 @@ export interface Employee {
   // Add these fields to make it compatible with the other Employee type
   firstName: string;
   lastName: string;
+  isSuperAdmin?: boolean; // Added this property to fix the error
 }
 
 export interface DocumentType {

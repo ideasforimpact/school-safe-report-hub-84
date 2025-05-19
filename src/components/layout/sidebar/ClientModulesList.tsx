@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -83,13 +82,13 @@ const ClientModulesList = () => {
           requestBody.employeeInfo = {
             ...currentEmployeeData,
             id: currentEmployeeData.id,
-            clientId: currentEmployeeData.clientId,
+            clientId: currentEmployeeData.clientId || currentEmployeeData.clientId,
             email: currentEmployeeData.email,
-            firstName: currentEmployeeData.firstName,
-            lastName: currentEmployeeData.lastName,
+            firstName: currentEmployeeData.firstName || (typeof currentEmployeeData.name === 'string' ? currentEmployeeData.name.split(' ')[0] : ''),
+            lastName: currentEmployeeData.lastName || (typeof currentEmployeeData.name === 'string' ? currentEmployeeData.name.split(' ').slice(1).join(' ') : ''),
             department: currentEmployeeData.department || null,
             employeeType: currentEmployeeData.employeeType || null,
-            isSuperAdmin: currentEmployeeData.isSuperAdmin || false,
+            isSuperAdmin: 'isSuperAdmin' in currentEmployeeData ? currentEmployeeData.isSuperAdmin : false,
             status: currentEmployeeData.status || true,
             employeeId: currentEmployeeData.employeeId || null
           };
