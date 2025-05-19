@@ -109,16 +109,14 @@ export const fetchModules = async (isBackoffice: boolean, user?: any): Promise<M
 export const convertModulesToSidebarItems = (modules: Module[], permissions: ModulePermissions, basePath: string = '') => {
   return modules.map(module => {
     // Get the icon component from our mapping, or default to LayoutDashboard
-    const IconComponent = module.icon && iconMap[module.icon] ? iconMap[module.icon] : LayoutDashboard;
+    const IconComponent = iconMap[module.icon || 'LayoutDashboard'];
     
     // Determine path based on name
     const path = `${basePath}/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
     
     // Check access level from the module if available
     const isAdmin = module.access_level?.isAdmin || false;
-    const isEnabled = module.access_level?.isEnabled !== false; // Default to true if not specified
-    
-    console.log(`Module ${module.name} - isAdmin: ${isAdmin}, isEnabled: ${isEnabled}`);
+    const isEnabled = module.access_level?.isEnabled || true;
     
     // Module is allowed if it's enabled in access_level
     const allowed = isEnabled;

@@ -1,3 +1,4 @@
+
 import { EmployeeType, DepartmentType, EmploymentStatus } from '@/contexts/employee/types';
 
 /**
@@ -88,53 +89,4 @@ export const validateEmploymentStatus = (value: string): EmploymentStatus | null
   };
   
   return (statusMap[normalizedValue] || normalizedValue) as EmploymentStatus;
-};
-
-export const mapExcelDepartmentToEnum = (department: string): DepartmentType => {
-  const lowercaseDept = department.toLowerCase().trim();
-  
-  // Map department Excel values to our enum values
-  switch (lowercaseDept) {
-    case 'admin':
-    case 'administration':
-    case 'administration department':
-      return 'Admin';
-    case 'teaching':
-    case 'teacher':
-    case 'faculty':
-    case 'academic':
-    case 'academics':
-      return 'Teaching';
-    case 'support':
-    case 'support staff':
-    case 'assistance':
-      return 'Support';
-    case 'security':
-    case 'safety':
-    case 'security department':
-      return 'Security';
-    case 'maintenance':
-    case 'facilities':
-    case 'upkeep':
-    case 'repairs':
-      return 'maintenance';
-    case 'transport':
-    case 'transportation':
-    case 'transit':
-    case 'bus':
-      return 'transport';
-    case 'management':
-    case 'leadership':
-    case 'director':
-    case 'principal':
-      return 'Management';
-    case 'tech':
-    case 'technology':
-    case 'it':
-    case 'information technology':
-    case 'computers':
-      return 'Tech';
-    default:
-      return 'Admin'; // Default value
-  }
 };

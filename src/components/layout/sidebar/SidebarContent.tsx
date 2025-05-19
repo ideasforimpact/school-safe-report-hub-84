@@ -70,25 +70,15 @@ const SidebarContent = () => {
       console.log(`User is ${isSaasOwner ? 'SaaS owner' : 'client user'}, route is ${isBackofficeRoute ? 'backoffice' : 'client'}`);
       console.log("User object:", user);
       
-      // Check if user has modules from login process - PRIORITIZE THIS FIRST
+      // Check if user has modules from login process
       if (user?.modules && user.modules.length > 0) {
         console.log("Using modules from user object:", user.modules);
-        
-        // Filter modules to ensure we only use ones with isEnabled=true in access_level
-        const enabledModules = user.modules.filter(module => 
-          module.access_level?.isEnabled !== false
-        );
-        
-        if (enabledModules.length > 0) {
-          const basePath = isBackofficeFetch ? '/backoffice' : '';
-          const items = convertModulesToSidebarItems(enabledModules, effectivePermissions, basePath);
-          setDynamicMenuItems(items);
-          setIsLoading(false);
-          setLastFetchPath(isBackofficeRoute ? 'backoffice' : 'client');
-          return;
-        } else {
-          console.log("No enabled modules found in user data");
-        }
+        const basePath = isBackofficeFetch ? '/backoffice' : '';
+        const items = convertModulesToSidebarItems(user.modules, effectivePermissions, basePath);
+        setDynamicMenuItems(items);
+        setIsLoading(false);
+        setLastFetchPath(isBackofficeRoute ? 'backoffice' : 'client');
+        return;
       }
       
       // Fetch modules passing user info
@@ -163,8 +153,6 @@ const SidebarContent = () => {
       </div>
     );
   }
-
-  console.log("Rendering sidebar with menuItems:", menuItems);
 
   return (
     <div className="flex-1 py-6">
