@@ -68,6 +68,8 @@ export const fetchModules = async (isBackoffice: boolean, user?: any): Promise<M
       isSaasOwner: user.role === 'saas_owner',
       provider: user.provider // Include provider information
     } : null;
+
+    console.log(user,"user")
     
     // Call our edge function with user info only - edge function will determine level
     const { data, error } = await supabase.functions.invoke('fetch-modules', {
