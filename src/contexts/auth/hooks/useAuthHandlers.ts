@@ -1,4 +1,3 @@
-
 import { User, UserWithPassword, UserRole } from '../types';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
@@ -249,10 +248,11 @@ export function useAuthHandlers({
       // Store the client ID for module access
       clientId = empClientId;
       
-      // Fetch module information if we have a client ID
+      // Fetch module information if we have a client ID - immediately after authentication
       if (clientId) {
+        console.log("Fetching modules for client ID:", clientId);
         userModules = await fetchEmployeeModules(clientId, supabaseUser.email);
-        console.log("User modules:", userModules);
+        console.log("User modules fetched:", userModules.length, "modules");
       }
     }
     
@@ -261,12 +261,12 @@ export function useAuthHandlers({
     
     if (existingUser) {
       console.log("User found in our system:", existingUser.firstName);
-      // Update login timestamp
+      // Update login timestamp and ensure modules are attached
       const updatedUser = {
         ...existingUser,
         lastLogin: new Date().toISOString(),
-        // Add modules information to user
-        modules: userModules
+        // Always add modules information to user
+        modules: userModules.length > 0 ? userModules : existingUser.modules || []
       };
       
       // For demo users, ensure they have full admin access
@@ -286,9 +286,10 @@ export function useAuthHandlers({
       }
       
       const updatedUsers = users.map(u => 
-        u.id === existingUser?.id ? { ...u, 
+        u.id === existingUser?.id ? { 
+          ...u, 
           lastLogin: new Date().toISOString(),
-          modules: userModules,
+          modules: userModules.length > 0 ? userModules : u.modules || [],
           ...(isDemoUser ? { 
             role: 'admin' as UserRole,
             modulePermissions: {
@@ -309,7 +310,7 @@ export function useAuthHandlers({
       setUsers(updatedUsers);
       setUser(excludePasswordFromUser(updatedUser));
       saveUserToStorage(excludePasswordFromUser(updatedUser));
-      console.log("User session updated");
+      console.log("User session updated with modules:", updatedUser.modules?.length || 0);
     } else {
       console.log("New user via SSO, creating account");
       // For new users via SSO, create a basic account
@@ -356,7 +357,7 @@ export function useAuthHandlers({
           transportSafetyAdmin: false,
           eduSafeResourceAccess: false
         },
-        // Add modules information for new user
+        // Add modules information for new user - critical for SSO login
         modules: userModules,
         isActive: true,
         createdAt: new Date().toISOString(),
@@ -367,7 +368,7 @@ export function useAuthHandlers({
       setUsers(updatedUsers);
       setUser(excludePasswordFromUser(newUser));
       saveUserToStorage(excludePasswordFromUser(newUser));
-      console.log("New user account created");
+      console.log("New user account created with modules:", newUser.modules?.length || 0);
     }
     
     // If login was successful and we got here, clear any auth errors

@@ -64,8 +64,7 @@ const SidebarContent = () => {
     setIsLoading(true);
     
     try {
-      // IMPORTANT: If the user has modules from login/SSO, use those first!
-      // This is the key change - prioritize modules coming directly from user object
+      // IMPORTANT: Always prioritize modules from user object first!
       if (user?.modules && user.modules.length > 0) {
         console.log("Using modules from user object:", user.modules);
         const basePath = isBackofficeRoute ? '/backoffice' : '';
@@ -114,10 +113,10 @@ const SidebarContent = () => {
     }
   }, [isSaasOwner, isBackofficeRoute, effectivePermissions, lastFetchPath, user]);
 
-  // Fetch modules only when relevant dependencies change
+  // Fetch modules on component mount and whenever auth state changes
   useEffect(() => {
     loadModules();
-  }, [loadModules]);
+  }, [loadModules, user?.id]); // Added user?.id as a dependency to trigger on login state change
 
   // Get appropriate items based on user role and route
   const menuItems = dynamicMenuItems.length > 0 
