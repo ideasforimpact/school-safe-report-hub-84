@@ -1,6 +1,5 @@
-
 import React, { createContext, useEffect, useState, useRef } from 'react';
-import { User, AuthContextType, UserWithPassword } from './types';
+import { User, AuthContextType, UserWithPassword, EmployeeData } from './types';
 import { 
   getUserFromStorage, 
   logoutUser, 
@@ -10,7 +9,9 @@ import {
   saveUserToStorage, 
   saveUsersToStorage,
   getCurrentUserData,
-  changeUserPassword
+  changeUserPassword,
+  getEmployeeDataFromStorage,
+  saveEmployeeDataToStorage
 } from '@/services/auth/authService';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -32,6 +33,7 @@ export const AuthContext = createContext<AuthContextType>({
   changePassword: async () => false,
   authError: null,
   handleUserAuthentication: async () => {},
+  employeeData: null, // Initialize with null
 });
 
 interface AuthProviderProps {
@@ -45,6 +47,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [displayUsers, setDisplayUsers] = useState<User[]>(
     users.map(({ password, ...user }) => user)
   );
+  const [employeeData, setEmployeeData] = useState<EmployeeData | null>(getEmployeeDataFromStorage());
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
   const [authError, setAuthError] = useState<string | null>(null);
   const [isBackofficeUser, setIsBackofficeUser] = useState<boolean>(false);
@@ -58,7 +61,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUser: setCurrentUser,
     setUsers: setUsersState,
     setAuthError,
-    authInitCompleteRef
+    authInitCompleteRef,
+    setEmployeeData
   });
 
   // Update display users whenever users changes
@@ -95,6 +99,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } else if (event === 'SIGNED_OUT') {
         console.log("🚪 User signed out event detected");
         setCurrentUser(null);
+        setEmployeeData(null); // Clear employee data on logout
+        saveEmployeeDataToStorage(null); // Clear from storage
         setAuthError(null);
       }
     });
@@ -150,6 +156,34 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (user) {
         setCurrentUser(user);
         saveUserToStorage(user);
+        
+        // Fetch employee data after successful login
+        try {
+          const { data: employeeData, error } = await supabase
+            .from('employees')
+            .select('id, client_id, email, first_name, last_name')
+            .eq('email', email.toLowerCase())
+            .single();
+          
+          if (employeeData && !error) {
+            const employee: EmployeeData = {
+              id: employeeData.id,
+              clientId: employeeData.client_id,
+              email: employeeData.email,
+              firstName: employeeData.first_name,
+              lastName: employeeData.last_name
+            };
+            
+            setEmployeeData(employee);
+            saveEmployeeDataToStorage(employee);
+            console.log("📝 Employee data stored in context:", employee);
+          } else {
+            console.log("⚠️ No employee data found for user:", email);
+          }
+        } catch (err) {
+          console.error("❌ Error fetching employee data:", err);
+        }
+        
         toast.success(`Welcome back, ${user.firstName}!`);
         return true;
       }
@@ -228,6 +262,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Handle logout
   const handleLogout = (): void => {
     setCurrentUser(null);
+    setEmployeeData(null); // Clear employee data on logout
+    saveEmployeeDataToStorage(null); // Clear from storage
     setIsBackofficeUser(false);
     logoutUser();
     toast.info("You have been logged out");
@@ -385,6 +421,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     changePassword: handleChangePassword,
     authError,
     handleUserAuthentication,
+    employeeData, // Add employee data to context value
   };
 
   // If still initializing, show nothing

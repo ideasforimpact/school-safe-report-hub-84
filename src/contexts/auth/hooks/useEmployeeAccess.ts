@@ -8,15 +8,31 @@ import { EmploymentStatus } from '@/contexts/employee/types';
  * Hook to check if employee is verified and active
  */
 export const useEmployeeAccess = () => {
-  const { user } = useAuth();
+  const { user, employeeData } = useAuth();
   const { employees } = useEmployeeVerification();
 
   // Find employee associated with current user
   const employee = useMemo(() => {
     if (!user) return null;
     
+    // First check context for employee data
+    if (employeeData) {
+      console.log("Using employee data from context:", employeeData);
+      // Find the full employee record from the employees list
+      const fullEmployee = employees.find(emp => emp.id === employeeData.id);
+      if (fullEmployee) {
+        return fullEmployee;
+      }
+      // If we couldn't find the full employee record, still use the context data
+      return {
+        ...employeeData,
+        status: true // Assume active if in context
+      };
+    }
+    
+    // Fallback to finding by email
     return employees.find(emp => emp.email.toLowerCase() === user.email?.toLowerCase());
-  }, [user, employees]);
+  }, [user, employees, employeeData]);
 
   // Check if employee is active
   const isActiveEmployee = useMemo(() => {
@@ -46,13 +62,33 @@ export const useEmployeeAccess = () => {
 
   // Get employee id if available
   const getEmployeeId = useCallback(() => {
-    return employee?.id || null;
-  }, [employee]);
+    // First try to get from context
+    if (employeeData?.id) {
+      console.log("Getting employee ID from context:", employeeData.id);
+      return employeeData.id;
+    }
+    // Fall back to employee object
+    const id = employee?.id || null;
+    console.log("Getting employee ID from employee object:", id);
+    return id;
+  }, [employee, employeeData]);
+
+  // Get client id if available
+  const getClientId = useCallback(() => {
+    // First try to get from context
+    if (employeeData?.clientId) {
+      console.log("Getting client ID from context:", employeeData.clientId);
+      return employeeData.clientId;
+    }
+    // Fall back to employee object if it has clientId property
+    return (employee as any)?.clientId || null;
+  }, [employee, employeeData]);
 
   return {
     employee,
     isActiveEmployee,
     isVerifiedEmployee,
-    getEmployeeId
+    getEmployeeId,
+    getClientId
   };
 };

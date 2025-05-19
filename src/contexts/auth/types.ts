@@ -1,4 +1,3 @@
-
 // Define the user with password separately for internal use
 export interface UserWithPassword extends User {
   password: string;
@@ -11,26 +10,15 @@ export interface AuthContextType {
   logout: () => void;
   isAdmin: boolean;
   isSaasOwner: boolean;
-  addUser: (userData: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    password: string;
-    role: UserRole;
-    modulePermissions: ModulePermissions;
-    clientId?: string;
-    employeeId?: string;
-    employeeType?: EmployeeType;
-    department?: DepartmentType;
-    joiningDate?: string;
-  }) => void;
-  updateUser: (id: string, updates: Partial<User & { password?: string }>) => void;
+  addUser: (userData: any) => void;
+  updateUser: (id: string, updates: Partial<User>) => void;
   deleteUser: (id: string) => void;
   deactivateUser: (id: string) => void;
   reactivateUser: (id: string) => void;
   changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
   authError: string | null;
-  handleUserAuthentication: (supabaseUser: any) => Promise<void>;
+  handleUserAuthentication: (user: any) => Promise<void>;
+  employeeData: EmployeeData | null; // Add employee data to context
 }
 
 export interface User {
@@ -68,4 +56,13 @@ export interface ModulePermissions {
   transportSafetyAdmin: boolean;
   eduSafeResourceAccess: boolean;
   [key: string]: boolean; // Add index signature to support dynamic properties
+}
+
+// New interface to store employee data
+export interface EmployeeData {
+  id: string;
+  clientId: string | null;
+  email: string;
+  firstName: string;
+  lastName: string;
 }

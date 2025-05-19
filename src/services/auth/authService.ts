@@ -1,5 +1,4 @@
-
-import { User, UserWithPassword } from '@/contexts/auth/types';
+import { User, UserWithPassword, EmployeeData } from '@/contexts/auth/types';
 import { INITIAL_MOCK_USERS } from '@/contexts/auth/initialData';
 import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
@@ -15,6 +14,24 @@ export const getUserFromStorage = (): User | null => {
     return JSON.parse(storedUser);
   } catch (error) {
     return null;
+  }
+};
+
+export const getEmployeeDataFromStorage = (): EmployeeData | null => {
+  const storedData = localStorage.getItem('employeeData');
+  if (!storedData) return null;
+  try {
+    return JSON.parse(storedData);
+  } catch (error) {
+    return null;
+  }
+};
+
+export const saveEmployeeDataToStorage = (data: EmployeeData | null): void => {
+  if (data) {
+    localStorage.setItem('employeeData', JSON.stringify(data));
+  } else {
+    localStorage.removeItem('employeeData');
   }
 };
 

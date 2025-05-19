@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -43,7 +42,7 @@ interface ModuleItem {
 const ClientModulesList = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, employeeData } = useAuth();
   const { getEmployeeId, employee } = useEmployeeAccess(); // Get employee info
   const [configuredModules, setConfiguredModules] = useState<ModuleItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -60,14 +59,21 @@ const ClientModulesList = () => {
       try {
         setIsLoading(true);
         
-        // Get employee ID using the hook
-        const employeeId = getEmployeeId();
+        // Get employee ID from context or using the hook
+        const employeeId = employeeData?.id || getEmployeeId();
         console.log("Fetching modules for employee ID:", employeeId);
+        console.log("Employee data from context:", employeeData);
         
         // Always include the employee ID if available
         const requestBody: any = { 
           fetchLevel: 'client',
-          email: user.email
+          email: user.email,
+          userInfo: {
+            id: user.id,
+            email: user.email,
+            role: user.role,
+            isSaasOwner: user.role === 'saas_owner'
+          }
         };
         
         // Always include employee ID in the request body if available
@@ -152,7 +158,7 @@ const ClientModulesList = () => {
     };
     
     fetchConfiguredModules();
-  }, [user, getEmployeeId]);
+  }, [user, getEmployeeId, employeeData]);
   
   // Determine if a path is active
   const isActive = (path: string) => {

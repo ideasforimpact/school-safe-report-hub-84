@@ -1,20 +1,13 @@
-import { User, UserWithPassword, UserRole } from '../types';
+import { User, UserWithPassword, UserRole, EmployeeData } from '../types';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { 
   loginUser, 
   saveUserToStorage,
-  changeUserPassword as changePassword
+  changeUserPassword as changePassword,
+  saveEmployeeDataToStorage
 } from '@/services/auth/authService';
-import { 
-  addNewUser, 
-  updateExistingUser, 
-  deleteExistingUser, 
-  deactivateExistingUser 
-} from '@/services/auth/userManagementService';
-import { excludePasswordFromUser } from '../utils';
-import { useEmployeeAccess } from './useEmployeeAccess';
 
 // List of demo emails that can bypass the employee verification
 const DEMO_EMAILS = [
@@ -139,7 +132,8 @@ export function useAuthHandlers({
   setUsers,
   setAuthError,
   authInitCompleteRef,
-  isEmailDomainAllowed
+  isEmailDomainAllowed,
+  setEmployeeData
 }: {
   user: User | null;
   users: UserWithPassword[];
@@ -148,6 +142,7 @@ export function useAuthHandlers({
   setAuthError: (error: string | null) => void;
   authInitCompleteRef: React.MutableRefObject<boolean>;
   isEmailDomainAllowed?: (email: string, clientId: string) => boolean;
+  setEmployeeData?: (data: EmployeeData | null) => void;
 }) {
   const navigate = useNavigate();
 
@@ -235,6 +230,33 @@ export function useAuthHandlers({
       setUser(excludePasswordFromUser(updatedUser));
       saveUserToStorage(excludePasswordFromUser(updatedUser));
       console.log("User session updated");
+      
+      // Fetch employee data for the authenticated user
+      try {
+        const { data: employeeData, error } = await supabase
+          .from('employees')
+          .select('id, client_id, email, first_name, last_name')
+          .eq('email', supabaseUser.email.toLowerCase())
+          .single();
+        
+        if (employeeData && !error && setEmployeeData) {
+          const employee: EmployeeData = {
+            id: employeeData.id,
+            clientId: employeeData.client_id,
+            email: employeeData.email,
+            firstName: employeeData.first_name,
+            lastName: employeeData.last_name
+          };
+          
+          setEmployeeData(employee);
+          saveEmployeeDataToStorage(employee);
+          console.log("📝 Employee data stored in context after Google auth:", employee);
+        } else {
+          console.log("⚠️ No employee data found for Google auth user:", supabaseUser.email);
+        }
+      } catch (err) {
+        console.error("❌ Error fetching employee data after Google auth:", err);
+      }
     } else {
       console.log("New user via SSO, creating account");
       // For new users via SSO, create a basic account
