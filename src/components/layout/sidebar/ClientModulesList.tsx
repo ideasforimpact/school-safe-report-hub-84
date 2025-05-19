@@ -61,12 +61,11 @@ const ClientModulesList = () => {
       try {
         setIsLoading(true);
         
-        // Get employee ID from context or using the hook
-        const employeeId = employeeData?.id || getEmployeeId();
-        console.log("Fetching modules for employee ID:", employeeId);
-        console.log("Employee data from context:", employeeData);
+        // Get employee data from context or using the hook
+        const currentEmployeeData = employeeData || employee;
+        console.log("Fetching modules with employee data:", currentEmployeeData);
         
-        // Always include the employee ID if available
+        // Prepare comprehensive request body with all available employee info
         const requestBody: any = { 
           fetchLevel: 'client',
           email: user.email,
@@ -78,15 +77,30 @@ const ClientModulesList = () => {
           }
         };
         
-        // Always include employee ID in the request body if available
-        if (employeeId) {
-          requestBody.employeeId = employeeId;
-          console.log("Including employee ID in fetch-modules request:", employeeId);
+        // Include complete employee data if available
+        if (currentEmployeeData) {
+          requestBody.employeeInfo = {
+            ...currentEmployeeData,
+            id: currentEmployeeData.id,
+            clientId: currentEmployeeData.clientId,
+            email: currentEmployeeData.email,
+            firstName: currentEmployeeData.firstName,
+            lastName: currentEmployeeData.lastName,
+            department: currentEmployeeData.department,
+            employeeType: currentEmployeeData.employeeType,
+            isSuperAdmin: currentEmployeeData.isSuperAdmin,
+            status: currentEmployeeData.status,
+            employeeId: currentEmployeeData.employeeId
+          };
+          console.log("Including comprehensive employee info in fetch-modules request:", requestBody.employeeInfo);
+        } else if (employeeData?.id) {
+          requestBody.employeeId = employeeData.id;
+          console.log("Including employee ID in fetch-modules request:", employeeData.id);
         } else {
-          console.log("No employee ID available - will attempt to find by email only");
+          console.log("No employee data available - will attempt to find by email only");
         }
         
-        // Call the fetch-modules function with request parameters
+        // Call the fetch-modules function with comprehensive request parameters
         const { data, error } = await supabase.functions.invoke('fetch-modules', {
           body: requestBody
         });
@@ -166,7 +180,7 @@ const ClientModulesList = () => {
     };
     
     fetchConfiguredModules();
-  }, [user, getEmployeeId, employeeData]);
+  }, [user, getEmployeeId, employeeData, employee]);
   
   // Determine if a path is active
   const isActive = (path: string) => {

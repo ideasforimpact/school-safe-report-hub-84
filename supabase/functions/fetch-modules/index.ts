@@ -26,7 +26,7 @@ serve(async (req) => {
 
     // Parse request parameters - support both userInfo and explicit level request
     const requestBody = await req.json();
-    const { userInfo, fetchLevel, employeeId, email } = requestBody;
+    const { userInfo, fetchLevel, employeeId, email, employeeInfo } = requestBody;
     
     // Log user details if provided
     if (userInfo) {
@@ -39,6 +39,22 @@ serve(async (req) => {
       })}`);
     } else {
       console.log('No user info provided with module request');
+    }
+    
+    // Log employee info if provided
+    if (employeeInfo) {
+      console.log(`Employee info provided: ${JSON.stringify({
+        id: employeeInfo.id,
+        clientId: employeeInfo.clientId,
+        email: employeeInfo.email,
+        firstName: employeeInfo.firstName,
+        lastName: employeeInfo.lastName,
+        isSuperAdmin: employeeInfo.isSuperAdmin,
+        department: employeeInfo.department,
+        employeeType: employeeInfo.employeeType,
+        status: employeeInfo.status,
+        employeeId: employeeInfo.employeeId
+      })}`);
     }
     
     // Determine level based on explicit request or user role
@@ -58,11 +74,36 @@ serve(async (req) => {
     if (level === 'client') {
       console.log(`Fetching client modules`);
       
-      // Determine employee ID either from request param or finding by email
-      let empId = employeeId;
+      // Determine employee ID from multiple sources - prioritize provided employeeInfo
+      let empId = null;
+      let clientId = null;
       
-      // If no employeeId provided but email is available, lookup employee
-      if (!empId && (email || userInfo?.email)) {
+      if (employeeInfo && employeeInfo.id) {
+        empId = employeeInfo.id;
+        clientId = employeeInfo.clientId;
+        console.log(`Using provided employee info: ID=${empId}, clientId=${clientId}`);
+        
+        // Store the comprehensive employee data to return with the response
+        employeeData = {
+          id: employeeInfo.id,
+          clientId: employeeInfo.clientId,
+          email: employeeInfo.email,
+          firstName: employeeInfo.firstName,
+          lastName: employeeInfo.lastName,
+          isSuperAdmin: employeeInfo.isSuperAdmin,
+          department: employeeInfo.department,
+          employeeType: employeeInfo.employeeType,
+          status: employeeInfo.status,
+          employeeId: employeeInfo.employeeId
+        };
+      } 
+      // If no employeeInfo but employeeId is provided, use that
+      else if (employeeId) {
+        empId = employeeId;
+        console.log(`Using provided employee ID: ${empId}`);
+      } 
+      // If neither employeeInfo nor employeeId is provided but email is available, lookup employee
+      else if (email || userInfo?.email) {
         const emailToUse = email || userInfo?.email;
         console.log(`Looking up employee by email: ${emailToUse}`);
         
@@ -81,7 +122,7 @@ serve(async (req) => {
       }
       
       // Try to get employee info from provided ID or ID found from email
-      if (empId) {
+      if (empId && !employeeData) {
         // Get employee record to find their client
         const { data: employeeDetails, error: employeeError } = await supabase
           .from('employees')
@@ -93,6 +134,7 @@ serve(async (req) => {
           console.error('Error fetching employee:', employeeError);
         } else if (employeeDetails && employeeDetails.client_id) {
           console.log(`Found employee ${employeeDetails.first_name} ${employeeDetails.last_name} with client ID: ${employeeDetails.client_id}`);
+          clientId = employeeDetails.client_id;
           
           // Store the complete employee data to return with the response
           employeeData = {
@@ -107,56 +149,58 @@ serve(async (req) => {
             status: employeeDetails.status,
             employeeId: employeeDetails.employee_id
           };
+        }
+      }
+      
+      // Get client's configured modules with their access levels using clientId from any source
+      if (clientId || (employeeData && employeeData.clientId)) {
+        const clientIdToUse = clientId || employeeData.clientId;
+        
+        const { data: clientModules, error: clientModulesError } = await supabase
+          .from('client_modules')
+          .select('module_id, access_level')
+          .eq('client_id', clientIdToUse);
           
-          // Get client's configured modules with their access levels
-          const { data: clientModules, error: clientModulesError } = await supabase
-            .from('client_modules')
-            .select('module_id, access_level')
-            .eq('client_id', employeeDetails.client_id);
-            
-          if (clientModulesError) {
-            console.error('Error fetching client modules:', clientModulesError);
-          } else if (clientModules && clientModules.length > 0) {
-            console.log(`Found ${clientModules.length} module configurations for client ID: ${employeeDetails.client_id}`);
-            
-            // Get module IDs from client modules
-            const moduleIds = clientModules.map(cm => cm.module_id);
-            console.log(`Module IDs to fetch: ${moduleIds.join(', ')}`);
-            
-            // Create a map of access levels by module ID
-            const accessLevelsByModuleId = {};
-            clientModules.forEach(cm => {
-              if (cm.module_id) {
-                accessLevelsByModuleId[cm.module_id] = cm.access_level;
-              }
-            });
-            
-            // Fetch the module details
-            const { data: modulesData, error: modulesError } = await supabase
-              .from('modules')
-              .select('*')
-              .in('id', moduleIds);
-              
-            if (modulesError) {
-              console.error('Error fetching modules by IDs:', modulesError);
-            } else if (modulesData) {
-              console.log(`Retrieved ${modulesData.length} modules from database`);
-              
-              // Add access_level to each module
-              modules = modulesData.map(module => ({
-                ...module,
-                access_level: accessLevelsByModuleId[module.id] || {},
-                // Map standard permission keys
-                key: mapModuleToPermissionKey(module.name)
-              }));
-              
-              console.log(`Returning ${modules.length} modules with their access levels`);
+        if (clientModulesError) {
+          console.error('Error fetching client modules:', clientModulesError);
+        } else if (clientModules && clientModules.length > 0) {
+          console.log(`Found ${clientModules.length} module configurations for client ID: ${clientIdToUse}`);
+          
+          // Get module IDs from client modules
+          const moduleIds = clientModules.map(cm => cm.module_id);
+          console.log(`Module IDs to fetch: ${moduleIds.join(', ')}`);
+          
+          // Create a map of access levels by module ID
+          const accessLevelsByModuleId = {};
+          clientModules.forEach(cm => {
+            if (cm.module_id) {
+              accessLevelsByModuleId[cm.module_id] = cm.access_level;
             }
-          } else {
-            console.log(`No module configurations found for client ID: ${employeeDetails.client_id}`);
+          });
+          
+          // Fetch the module details
+          const { data: modulesData, error: modulesError } = await supabase
+            .from('modules')
+            .select('*')
+            .in('id', moduleIds);
+            
+          if (modulesError) {
+            console.error('Error fetching modules by IDs:', modulesError);
+          } else if (modulesData) {
+            console.log(`Retrieved ${modulesData.length} modules from database`);
+            
+            // Add access_level to each module
+            modules = modulesData.map(module => ({
+              ...module,
+              access_level: accessLevelsByModuleId[module.id] || {},
+              // Map standard permission keys
+              key: mapModuleToPermissionKey(module.name)
+            }));
+            
+            console.log(`Returning ${modules.length} modules with their access levels`);
           }
         } else {
-          console.log(`Either employee not found or has no client assignment`);
+          console.log(`No module configurations found for client ID: ${clientIdToUse}`);
         }
       }
     }
