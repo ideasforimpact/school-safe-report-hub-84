@@ -4,6 +4,8 @@ import { User, UserRole, EmployeeData } from '../types';
 import { getUserFromStorage, saveUserToStorage, saveEmployeeDataToStorage } from '@/services/auth/authService';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { setEmployeeData, setConfiguredModules, setLoading, setError } from '@/store/employeeActions';
+import { Module } from '@/store/types';
 
 // Define the SupabaseUser type that's missing
 interface SupabaseUser {
@@ -27,6 +29,7 @@ interface UseAuthHandlersProps {
   setAuthError: (error: string | null) => void;
   authInitCompleteRef: React.MutableRefObject<boolean>;
   setEmployeeData: (employeeData: EmployeeData | null) => void;
+  dispatch?: any; // Add dispatch prop for Redux actions
 }
 
 export const useAuthHandlers = ({
@@ -36,9 +39,148 @@ export const useAuthHandlers = ({
   setUsers,
   setAuthError,
   authInitCompleteRef,
-  setEmployeeData
+  setEmployeeData,
+  dispatch
 }: UseAuthHandlersProps) => {
   const [isProcessingAuth, setIsProcessingAuth] = useState(false);
+  
+  // New function to fetch configured modules for an employee
+  const fetchConfiguredModules = useCallback(async (employeeId: string, clientId: string | null, isSuperAdmin: boolean) => {
+    try {
+      console.log("Fetching configured modules during authentication for", { employeeId, clientId, isSuperAdmin });
+      
+      if (!clientId) {
+        console.error("Client ID is missing, cannot fetch modules");
+        if (dispatch) dispatch(setError("Client ID is missing"));
+        return [];
+      }
+      
+      let configuredModules: Module[] = [];
+      
+      if (isSuperAdmin) {
+        console.log("Fetching modules for super admin");
+        // For super admins, fetch all modules enabled for the client
+        const { data: clientModules, error: clientModulesError } = await supabase
+          .from('client_modules')
+          .select(`
+            id,
+            module_id,
+            enabled,
+            access_level,
+            modules(id, name, icon, level)
+          `)
+          .eq('client_id', clientId)
+          .eq('enabled', true);
+
+        if (clientModulesError) {
+          console.error("Error fetching client modules during auth:", clientModulesError);
+          if (dispatch) dispatch(setError(clientModulesError.message));
+          return [];
+        }
+
+        // Convert client modules to the expected format
+        configuredModules = clientModules?.map(cm => {
+          const moduleObj = cm.modules;
+          if (!moduleObj) return null;
+          return {
+            id: moduleObj.id,
+            name: moduleObj.name,
+            key: moduleObj.level, // Using level as key
+            icon: moduleObj.icon || '',
+            level: moduleObj.level, // Include the level property
+            enabled: true,
+            accessLevel: cm.access_level || {}
+          };
+        }).filter(Boolean) as Module[] || [];
+        
+      } else {
+        console.log("Fetching modules for regular employee");
+        // First fetch all client modules to understand what's available
+        const { data: clientModules, error: clientModulesError } = await supabase
+          .from('client_modules')
+          .select(`
+            id,
+            module_id,
+            enabled,
+            access_level,
+            modules(id, name, icon, level)
+          `)
+          .eq('client_id', clientId)
+          .eq('enabled', true);
+
+        if (clientModulesError) {
+          console.error("Error fetching client modules for employee during auth:", clientModulesError);
+          if (dispatch) dispatch(setError(clientModulesError.message));
+          return [];
+        }
+
+        // Then fetch employee-specific module permissions
+        const { data: employeeModules, error: employeeModulesError } = await supabase
+          .from('employee_modules')
+          .select(`
+            module_id,
+            access_level
+          `)
+          .eq('employee_id', employeeId);
+
+        if (employeeModulesError) {
+          console.error("Error fetching employee modules during auth:", employeeModulesError);
+          if (dispatch) dispatch(setError(employeeModulesError.message));
+          return [];
+        }
+
+        // Create a map of employee module permissions for quick lookup
+        const employeeModuleMap = new Map();
+        employeeModules?.forEach(em => {
+          employeeModuleMap.set(em.module_id, em.access_level);
+        });
+
+        // Combine client modules with employee-specific permissions
+        configuredModules = clientModules?.map(cm => {
+          const moduleObj = cm.modules;
+          if (!moduleObj) return null;
+          
+          // Check if this module is assigned to the employee
+          const hasAccess = employeeModules?.some(em => em.module_id === moduleObj.id) || 
+                           employeeModules?.length === 0; // If no modules specified, assume access to all
+          
+          if (!hasAccess && employeeModules?.length > 0) {
+            return null;
+          }
+          
+          return {
+            id: moduleObj.id,
+            name: moduleObj.name,
+            key: moduleObj.level,
+            icon: moduleObj.icon || '',
+            level: moduleObj.level,
+            enabled: true,
+            accessLevel: employeeModuleMap.get(moduleObj.id) || cm.access_level || {}
+          };
+        }).filter(Boolean) as Module[] || [];
+      }
+
+      // If no modules found, provide a dashboard
+      if (configuredModules.length === 0) {
+        configuredModules = [{
+          id: 'dashboard-default',
+          name: 'Dashboard',
+          key: 'dashboard',
+          icon: 'LayoutDashboard',
+          level: 'client',
+          enabled: true,
+          accessLevel: {}
+        }];
+      }
+      
+      console.log("Modules fetched during auth:", configuredModules.length);
+      return configuredModules;
+      
+    } catch (error) {
+      console.error("Error in fetchConfiguredModules during auth:", error);
+      return [];
+    }
+  }, [dispatch]);
 
   // Handle user authentication from various providers (Google, etc.)
   const handleUserAuthentication = useCallback(async (supabaseUser: SupabaseUser | null) => {
@@ -91,7 +233,7 @@ export const useAuthHandlers = ({
       if (supabaseUser.id) {
         const { data, error } = await supabase
           .from('employees')
-          .select('id, client_id, employee_type, first_name, last_name, email, status, user_id',"is_super_admin")
+          .select('id, client_id, employee_type, first_name, last_name, email, status, user_id, is_super_admin')
           .eq('user_id', supabaseUser.id)
           .single();
           
@@ -142,7 +284,7 @@ export const useAuthHandlers = ({
       if (!employeeData && supabaseUser.email) {
         const { data, error } = await supabase
           .from('employees')
-          .select('id, client_id, employee_type, first_name, last_name, email, status, user_id',"is_super_admin")
+          .select('id, client_id, employee_type, first_name, last_name, email, status, user_id, is_super_admin')
           .eq('email', supabaseUser.email.toLowerCase())
           .single();
           
@@ -154,7 +296,6 @@ export const useAuthHandlers = ({
             lastName: data.last_name,
             email: data.email,
             isSuperAdmin: data.is_super_admin
-
           };
           
           // Convert employee_type string to UserRole
@@ -198,47 +339,6 @@ export const useAuthHandlers = ({
         }
       }
       
-      // Fetch module permissions from the database if we have an employee
-      // let modulePermissions = {
-      //   superAdmin: false,
-      //   incidentReporting: false,
-      //   incidentAdmin: false,
-      //   assessmentUser: false,
-      //   assessmentsAdmin: false,
-      //   employeeVerificationAdmin: false,
-      //   grievancesAdmin: false,
-      //   transportSafetyAdmin: false,
-      //   eduSafeResourceAccess: false
-      // };
-      
-      if (employeeData?.id) {
-        try {
-          const { data: moduleData, error: moduleError } = await supabase
-            .from('employee_modules')
-            .select('module_id, roles(key)')
-            .eq('employee_id', employeeData.id);
-          
-          if (!moduleError && moduleData && moduleData.length > 0) {
-            console.log("Employee module permissions:", moduleData);
-            
-            // Map the permissions to our modulePermissions object
-            // moduleData.forEach(module => {
-            //   if (module.roles?.key) {
-            //     const moduleKey = module.roles.key;
-            //     if (moduleKey in modulePermissions) {
-            //       modulePermissions[moduleKey as keyof typeof modulePermissions] = true;
-            //     } else {
-            //       console.log("Unknown module_id:", module.module_id);
-            //     }
-            //   }
-            // });
-          }
-        } catch (error) {
-          console.error("Error fetching module permissions:", error);
-        }
-      }
-      
-      
       // Create a new user object
       const newUser: User = {
         id: supabaseUser.id,
@@ -257,8 +357,34 @@ export const useAuthHandlers = ({
       saveUserToStorage(newUser);
       
       // Save employee data to localStorage and context
+      // AND if Redux dispatch is available, also fetch configured modules
       if (employeeData) {
         console.log("Employee data being saved:", employeeData);
+        
+        // FETCH MODULES HERE if employee is a super admin or has a client ID
+        if (dispatch && employeeData.id && employeeData.clientId) {
+          console.log("Fetching modules during authentication process");
+          dispatch(setLoading(true));
+          
+          // Get configured modules based on super admin status
+          const modules = await fetchConfiguredModules(
+            employeeData.id, 
+            employeeData.clientId,
+            !!employeeData.isSuperAdmin
+          );
+          
+          // Store modules in Redux
+          console.log("Storing modules in Redux during auth:", modules.length);
+          dispatch(setConfiguredModules(modules));
+          dispatch(setLoading(false));
+        }
+        
+        // Store employee data in Redux
+        if (dispatch) {
+          dispatch(setEmployeeData(employeeData));
+        }
+        
+        // Also update context and localStorage for backward compatibility
         setEmployeeData(employeeData);
         saveEmployeeDataToStorage(employeeData);
       }
@@ -276,7 +402,7 @@ export const useAuthHandlers = ({
     } finally {
       setIsProcessingAuth(false);
     }
-  }, [isProcessingAuth, setAuthError, setUser, authInitCompleteRef, setEmployeeData, users, setUsers]);
+  }, [isProcessingAuth, setAuthError, setUser, authInitCompleteRef, setEmployeeData, fetchConfiguredModules, dispatch, users, setUsers]);
 
   return { handleUserAuthentication };
 };

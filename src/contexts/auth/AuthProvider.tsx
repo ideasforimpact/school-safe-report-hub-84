@@ -1,4 +1,3 @@
-
 import React, { createContext, useEffect, useState, useRef } from 'react';
 import { User, AuthContextType, UserWithPassword, EmployeeData } from './types';
 import { 
@@ -17,6 +16,7 @@ import {
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthHandlers } from './hooks/useAuthHandlers';
+import { useEmployeeStore } from '@/store/EmployeeContext';
 
 // Create the context
 export const AuthContext = createContext<AuthContextType>({
@@ -63,7 +63,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUsers: setUsersState,
     setAuthError,
     authInitCompleteRef,
-    setEmployeeData
+    setEmployeeData,
+    dispatch: useEmployeeStore().dispatch // Pass Redux dispatch to useAuthHandlers
   });
 
   // Update display users whenever users changes
