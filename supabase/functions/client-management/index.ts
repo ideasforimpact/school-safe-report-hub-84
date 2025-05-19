@@ -297,61 +297,26 @@ serve(async (req) => {
       console.log(`Processing operation: ${operation}`);
 
       if (operation === 'create') {
-        // Create a new client with module access
-        const clientData: ClientData = requestData.client;
+        // Process modules for a client that has already been created
+        const clientId = requestData.client.id;
         const moduleInfoArray: ModuleInfo[] = requestData.client.modules || [];
-        const superAdminEmail = clientData.superAdminEmail;
+        const superAdminEmail = requestData.client.superAdminEmail;
         
-        console.log('Creating client with modules:', JSON.stringify(moduleInfoArray, null, 2));
+        console.log('Processing modules for client with ID:', clientId);
+        console.log('Modules to process:', JSON.stringify(moduleInfoArray, null, 2));
         
-        // Validate super admin email domain if restrictions are set
-        if (superAdminEmail && clientData.super_admin_allowed_domain) {
-          if (!isSuperAdminEmailDomainAllowed(superAdminEmail, clientData.super_admin_allowed_domain)) {
-            return new Response(JSON.stringify({ 
-              error: 'Super Admin email domain is not allowed. Please check the Super Admin Allowed Domains.' 
-            }), {
-              headers: { 'Content-Type': 'application/json', ...corsHeaders },
-              status: 400,
-            });
-          }
-        }
-        
-        // Check if name is provided
-        if (!clientData.name) {
+        if (!clientId) {
           return new Response(JSON.stringify({ 
-            error: 'Client name is required' 
+            error: 'Client ID is required' 
           }), {
             headers: { 'Content-Type': 'application/json', ...corsHeaders },
             status: 400,
           });
         }
 
-        // Insert client manually specifying each column
-        const { data: newClient, error: clientError } = await supabase
-          .from('clients')
-          .insert([{
-            name: clientData.name,
-            email: clientData.email || null,
-            contact_person: clientData.contact_person || null,
-            phone: clientData.phone || null,
-            active: clientData.active,
-            logo: clientData.logo || null,
-            institution_type: clientData.institution_type || null,
-            allowed_domains: clientData.allowed_domains || null,
-            super_admin_allowed_domain: clientData.super_admin_allowed_domain || null,
-            auth_providers: clientData.auth_providers || null
-          }])
-          .select()
-          .single();
-
-        if (clientError) {
-          console.error('Error creating client:', clientError);
-          throw clientError;
-        }
-
         // Process module access if provided
         if (moduleInfoArray.length > 0) {
-          const success = await processModuleAccess(newClient.id, moduleInfoArray);
+          const success = await processModuleAccess(clientId, moduleInfoArray);
           if (!success) {
             console.error('Failed to process module access');
           }
@@ -360,23 +325,35 @@ serve(async (req) => {
         // Create employee from super admin email if provided
         let employee = null;
         if (superAdminEmail) {
-          employee = await createEmployeeFromSuperAdminEmail(newClient.id, superAdminEmail);
+          employee = await createEmployeeFromSuperAdminEmail(clientId, superAdminEmail);
+        }
+
+        // Get the client data to return
+        const { data: clientData, error: fetchError } = await supabase
+          .from('clients')
+          .select('*')
+          .eq('id', clientId)
+          .single();
+          
+        if (fetchError) {
+          console.error('Error fetching client data:', fetchError);
+          throw fetchError;
         }
 
         return new Response(JSON.stringify({ 
           client: {
-            ...newClient,
+            ...clientData,
             moduleInfoArray,
             superAdminEmail
           },
           employee
         }), {
           headers: { 'Content-Type': 'application/json', ...corsHeaders },
-          status: 201,
+          status: 200,
         });
       } else if (operation === 'update') {
         // Update an existing client with module access
-        const { id, moduleAccess, superAdminEmail, modules: moduleInfoArray = [], ...clientUpdates } = requestData.client;
+        const { id, moduleAccess, superAdminEmail, modules: moduleInfoArray = [] } = requestData.client;
 
         if (!id) {
           return new Response(JSON.stringify({ error: 'Client ID is required' }), {
@@ -399,9 +376,9 @@ serve(async (req) => {
         }
 
         // Validate super admin email domain if restrictions are set
-        if (superAdminEmail && (clientUpdates.super_admin_allowed_domain || 
+        if (superAdminEmail && (requestData.client.super_admin_allowed_domain || 
             (currentClient && currentClient.super_admin_allowed_domain))) {
-          const domains = clientUpdates.super_admin_allowed_domain || 
+          const domains = requestData.client.super_admin_allowed_domain || 
             (currentClient ? currentClient.super_admin_allowed_domain : null);
             
           if (domains && !isSuperAdminEmailDomainAllowed(superAdminEmail, domains)) {
@@ -412,43 +389,6 @@ serve(async (req) => {
               status: 400,
             });
           }
-        }
-
-        // Check if name is provided and not empty when it's being updated
-        if (clientUpdates.name === '') {
-          return new Response(JSON.stringify({ 
-            error: 'Client name cannot be empty' 
-          }), {
-            headers: { 'Content-Type': 'application/json', ...corsHeaders },
-            status: 400,
-          });
-        }
-
-        // Create update object with only the fields that are defined
-        const updateData: Record<string, any> = {};
-        
-        if (clientUpdates.name !== undefined) updateData.name = clientUpdates.name;
-        if (clientUpdates.email !== undefined) updateData.email = clientUpdates.email;
-        if (clientUpdates.contact_person !== undefined) updateData.contact_person = clientUpdates.contact_person;
-        if (clientUpdates.phone !== undefined) updateData.phone = clientUpdates.phone;
-        if (clientUpdates.active !== undefined) updateData.active = clientUpdates.active;
-        if (clientUpdates.logo !== undefined) updateData.logo = clientUpdates.logo;
-        if (clientUpdates.institution_type !== undefined) updateData.institution_type = clientUpdates.institution_type;
-        if (clientUpdates.allowed_domains !== undefined) updateData.allowed_domains = clientUpdates.allowed_domains;
-        if (clientUpdates.super_admin_allowed_domain !== undefined) updateData.super_admin_allowed_domain = clientUpdates.super_admin_allowed_domain;
-        if (clientUpdates.auth_providers !== undefined) updateData.auth_providers = clientUpdates.auth_providers;
-
-        // Update client data
-        const { data: updatedClient, error: clientError } = await supabase
-          .from('clients')
-          .update(updateData)
-          .eq('id', id)
-          .select()
-          .single();
-
-        if (clientError) {
-          console.error('Error updating client:', clientError);
-          throw clientError;
         }
 
         // Process modules if provided
@@ -463,6 +403,18 @@ serve(async (req) => {
         let employee = null;
         if (superAdminEmail) {
           employee = await updateSuperAdminEmployee(id, superAdminEmail);
+        }
+
+        // Get the updated client data
+        const { data: updatedClient, error: clientFetchError } = await supabase
+          .from('clients')
+          .select('*')
+          .eq('id', id)
+          .single();
+          
+        if (clientFetchError) {
+          console.error('Error fetching updated client data:', clientFetchError);
+          throw clientFetchError;
         }
 
         return new Response(JSON.stringify({ 
