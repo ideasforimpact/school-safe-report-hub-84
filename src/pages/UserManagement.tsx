@@ -76,6 +76,8 @@ const UserManagementInner = ({ employeeData, isAdmin, user }: {
   
   // Get clientId from employee data or user context
   const clientId = employeeData?.clientId || user?.clientId;
+
+  console.log(employeeData,"employeeData")
   
   // Log the clientId for debugging
   useEffect(() => {
