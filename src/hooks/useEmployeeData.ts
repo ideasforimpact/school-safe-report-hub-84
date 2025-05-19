@@ -10,9 +10,10 @@ export const useEmployeeData = () => {
   const { user, employeeData: authEmployeeData } = useAuth();
   const { state, dispatch } = useEmployeeStore();
 
-  // Fetch configured modules for the employee
+  // Fetch configured modules for the employee - now optimized to avoid unnecessary calls
   const fetchConfiguredModules = async (employeeId: string, clientId: string | null) => {
     try {
+      console.log("Starting fetchConfiguredModules with:", { employeeId, clientId });
       dispatch(setLoading(true));
       
       if (!clientId) {
@@ -21,7 +22,12 @@ export const useEmployeeData = () => {
         return;
       }
 
-      console.log("Starting to fetch modules with employeeId:", employeeId, "and clientId:", clientId);
+      // Check Redux store first - if modules are already loaded, don't fetch again
+      if (state.configuredModules && state.configuredModules.length > 0) {
+        console.log("Modules already in Redux store, skipping fetch");
+        dispatch(setLoading(false));
+        return;
+      }
 
       // Check if employee is a super admin
       const { data: employeeData, error: employeeError } = await supabase
@@ -175,7 +181,7 @@ export const useEmployeeData = () => {
       }
 
       dispatch(setConfiguredModules(configuredModules));
-      console.log("Total configured modules loaded:", configuredModules.length, configuredModules);
+      console.log("Total configured modules stored in Redux:", configuredModules.length);
     } catch (error) {
       console.error("Error in fetchConfiguredModules:", error);
       dispatch(setError("Failed to fetch configured modules"));
@@ -188,10 +194,11 @@ export const useEmployeeData = () => {
   useEffect(() => {
     if (authEmployeeData) {
       dispatch(setEmployeeData(authEmployeeData));
-      console.log("Employee data loaded in store:", authEmployeeData);
+      console.log("Employee data loaded in Redux store:", authEmployeeData);
       
-      // Fetch modules if we have employeeId and clientId
-      if (authEmployeeData.id && authEmployeeData.clientId) {
+      // Fetch modules if we have employeeId and clientId and there are no modules in the store
+      if (authEmployeeData.id && authEmployeeData.clientId && 
+          (!state.configuredModules || state.configuredModules.length === 0)) {
         fetchConfiguredModules(authEmployeeData.id, authEmployeeData.clientId);
       }
     }

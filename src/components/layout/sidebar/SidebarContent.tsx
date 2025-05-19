@@ -1,27 +1,25 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
   getSaasOwnerItems, 
-  getClientItems, 
-  fetchModules, 
-  convertModulesToSidebarItems 
+  getClientItems
 } from './sidebarConfig';
 import SidebarMenuItem from './SidebarMenuItem';
 import ClientModulesList from './ClientModulesList';
 import { useEmployeeStore } from '@/store/EmployeeContext';
-import { Module as StoreModule } from '@/store/types';
+import { getConfiguredModules } from '@/store/employeeSelectors';
 import { Module as SidebarModule } from './sidebarConfig';
 
 const SidebarContent = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, isSaasOwner, isAdmin, employeeData } = useAuth();
+  const { user, isSaasOwner } = useAuth();
   const { state: employeeState } = useEmployeeStore();
+  const configuredModules = getConfiguredModules(employeeState);
   const [dynamicMenuItems, setDynamicMenuItems] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [lastFetchPath, setLastFetchPath] = useState('');
   
   // Determine if we're in backoffice mode based on the URL path
   const isBackofficeRoute = location.pathname.startsWith('/backoffice');
@@ -36,104 +34,51 @@ const SidebarContent = () => {
     }
   }, [isSaasOwner, user, location.pathname, navigate]);
   
-  // Memoize the loadModules function to prevent unnecessary re-renders
-  const loadModules = useCallback(async () => {
-    // Skip if the path hasn't changed since last fetch
-    if (lastFetchPath === (isBackofficeRoute ? 'backoffice' : 'client')) {
+  // Use modules from Redux
+  useEffect(() => {
+    if (isProviderAuthenticated && !isBackofficeRoute) {
+      // Use ClientModulesList component for provider-authenticated users
       return;
     }
-
+    
     setIsLoading(true);
     
     try {
-      // For SaaS users in backoffice route, fetch backoffice modules
-      // For others, fetch client modules
-      const isBackofficeFetch = isSaasOwner && isBackofficeRoute;
-      
-      // If this is a provider-authenticated user on client side, we'll use the ClientModulesList
-      // component instead of continuing with this function
-      if (isProviderAuthenticated && !isBackofficeFetch) {
-        setIsLoading(false);
-        setLastFetchPath(isBackofficeRoute ? 'backoffice' : 'client');
-        return;
-      }
-      
-      // Use modules from the employee store if available
-      if (employeeState.configuredModules.length > 0 && !isBackofficeFetch) {
+      // If in backoffice mode, use static config
+      if (isSaasOwner && isBackofficeRoute) {
+        const items = getSaasOwnerItems();
+        setDynamicMenuItems(items);
+      } else if (configuredModules.length > 0) {
+        // Convert Redux store modules to sidebar format
         const basePath = '';
         
-        // Convert store modules to sidebar modules format
-        const sidebarModules: SidebarModule[] = employeeState.configuredModules.map((module: StoreModule) => ({
-          id: module.id,
-          name: module.name,
-          icon: module.icon || '',
-          level: module.level || '',
-          key: module.key,
-          access_level: {},
-        }));
-        
-        console.log("Converting modules for sidebar:", sidebarModules);
-        
-        const items = convertModulesToSidebarItems(
-          sidebarModules,
-          {}, // We don't need module permissions anymore
-          basePath
-        );
+        const items = configuredModules.map(module => {
+          const path = `/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
+          return {
+            icon: null, // Will be resolved in ClientModulesList
+            label: module.name,
+            path,
+            allowed: true
+          };
+        });
         
         setDynamicMenuItems(items);
-        setIsLoading(false);
-        setLastFetchPath(isBackofficeRoute ? 'backoffice' : 'client');
-        return;
-      }
-      
-      // Fetch modules passing user info and employee data from context
-      const modules = await fetchModules(isBackofficeFetch, user, employeeData);
-      
-      if (modules.length === 0 && !user) {
-        // If no modules and no user, only show dashboard
-        setDynamicMenuItems([{
-          icon: null,
-          label: 'Dashboard',
-          path: '/dashboard',
-          allowed: true
-        }]);
       } else {
-        const basePath = isBackofficeFetch ? '/backoffice' : '';
-        
-        // For all users, convert modules directly without filtering based on permissions
-        const items = convertModulesToSidebarItems(modules, {}, basePath);
+        // Fallback to static configuration
+        const items = getClientItems({});
         setDynamicMenuItems(items);
       }
-      
-      // Update the last fetch path to prevent duplicate fetches
-      setLastFetchPath(isBackofficeRoute ? 'backoffice' : 'client');
     } catch (error) {
-      console.error('Error loading modules:', error);
-      // Fall back to static configuration if fetching fails
+      console.error('Error preparing sidebar items:', error);
+      // Fall back to static configuration
       const fallbackItems = (isSaasOwner && isBackofficeRoute) ? 
         getSaasOwnerItems() : getClientItems({});
       setDynamicMenuItems(fallbackItems);
     } finally {
       setIsLoading(false);
     }
-  }, [isSaasOwner, isBackofficeRoute, lastFetchPath, user, isProviderAuthenticated, employeeData, employeeState.configuredModules]);
-
-  // Fetch modules only when user is authenticated
-  useEffect(() => {
-    if (user) {
-      // Use requestAnimationFrame to ensure DOM is rendered first
-      requestAnimationFrame(() => {
-        loadModules();
-      });
-    }
-  }, [user, loadModules]);
-
-  // Get appropriate items based on user role and route
-  const menuItems = dynamicMenuItems.length > 0 
-    ? dynamicMenuItems 
-    : (isSaasOwner && isBackofficeRoute) 
-      ? getSaasOwnerItems() 
-      : getClientItems({});
+    
+  }, [isSaasOwner, isBackofficeRoute, user, isProviderAuthenticated, configuredModules]);
 
   // Determine if a path is active, and add '/backoffice' prefix for SaaS owners
   const isActive = (path: string) => {
@@ -172,7 +117,7 @@ const SidebarContent = () => {
     <div className="flex-1 py-6">
       <nav className="px-2">
         <ul className="space-y-5">
-          {menuItems
+          {dynamicMenuItems
             .filter(item => item.allowed)
             .map((item) => (
               <SidebarMenuItem
