@@ -1,13 +1,11 @@
 
-import { createRoot } from 'react-dom/client'
-import { BrowserRouter } from 'react-router-dom'
-import App from './App.tsx'
-import './index.css'
-import { Toaster } from 'sonner'
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import AppWrapper from './App-wrapper';
+import './index.css';
 
-createRoot(document.getElementById("root")!).render(
-  <BrowserRouter>
-    <App />
-    <Toaster position="top-right" closeButton richColors />
-  </BrowserRouter>
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <AppWrapper />
+  </React.StrictMode>,
 );
