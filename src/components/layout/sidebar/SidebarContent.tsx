@@ -32,7 +32,8 @@ const SidebarContent = () => {
     transportSafetyAdmin: false,
     eduSafeResourceAccess: true
   };
-  
+
+  console.log(employeeData,"employeeData")
   // Check if the employee data indicates super admin status
   const isSuperAdmin = employeeData?.isSuperAdmin === true;
   
