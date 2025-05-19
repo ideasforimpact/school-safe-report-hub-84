@@ -1,4 +1,3 @@
-
 import React, { useMemo } from 'react';
 import {
   Table,
@@ -58,6 +57,14 @@ const EmployeesList = () => {
         </span>
       </div>
     );
+  };
+
+  const getStatusClass = (status: boolean | string) => {
+    if (typeof status === 'boolean') {
+      return status ? 'badge-success' : 'badge-error';
+    } else {
+      return status === 'active' ? 'badge-success' : 'badge-error';
+    }
   };
 
   return (
