@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,7 +15,7 @@ import { toast } from 'sonner';
 const SidebarContent = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, isSaasOwner, isAdmin } = useAuth();
+  const { user, isSaasOwner, isAdmin, employeeData } = useAuth();
   const [dynamicMenuItems, setDynamicMenuItems] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [lastFetchPath, setLastFetchPath] = useState('');
@@ -97,8 +96,8 @@ const SidebarContent = () => {
         return;
       }
       
-      // Fetch modules passing user info
-      const modules = await fetchModules(isBackofficeFetch, user);
+      // Fetch modules passing user info and employee data from context
+      const modules = await fetchModules(isBackofficeFetch, user, employeeData);
       
       if (modules.length === 0 && !user) {
         // If no modules and no user, only show dashboard
@@ -145,7 +144,7 @@ const SidebarContent = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [isSaasOwner, isBackofficeRoute, effectivePermissions, lastFetchPath, user, isProviderAuthenticated]);
+  }, [isSaasOwner, isBackofficeRoute, effectivePermissions, lastFetchPath, user, isProviderAuthenticated, employeeData]);
 
   // Fetch modules only when relevant dependencies change
   useEffect(() => {

@@ -51,7 +51,7 @@ const clientRoleKeys = ['incidentReporting', 'incidentAdmin', 'assessmentUser', 
 let cachedBackofficeModules: Module[] | null = null;
 let cachedClientModules: Module[] | null = null;
 
-export const fetchModules = async (isBackoffice: boolean, user?: any): Promise<Module[]> => {
+export const fetchModules = async (isBackoffice: boolean, user?: any, employeeData?: any): Promise<Module[]> => {
   try {
     // Check cache first
     if (isBackoffice && cachedBackofficeModules) {
@@ -69,12 +69,29 @@ export const fetchModules = async (isBackoffice: boolean, user?: any): Promise<M
       provider: user.provider // Include provider information
     } : null;
 
-    console.log(user,"user")
+    console.log(user, "user")
     
-    // Call our edge function with user info only - edge function will determine level
+    // Prepare employee data if available
+    const employeeInfo = employeeData ? {
+      id: employeeData.id,
+      clientId: employeeData.clientId,
+      email: employeeData.email,
+      firstName: employeeData.firstName,
+      lastName: employeeData.lastName,
+      department: employeeData.department,
+      employeeType: employeeData.employeeType,
+      isSuperAdmin: employeeData.isSuperAdmin,
+      status: employeeData.status,
+      employeeId: employeeData.employeeId
+    } : null;
+
+    console.log("Employee data being sent:", employeeInfo);
+    
+    // Call our edge function with user and employee info
     const { data, error } = await supabase.functions.invoke('fetch-modules', {
       body: { 
         userInfo,
+        employeeInfo,
         fetchLevel: isBackoffice ? 'backoffice' : 'client' 
       }
     });
