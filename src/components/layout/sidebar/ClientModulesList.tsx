@@ -64,20 +64,23 @@ const ClientModulesList = () => {
         const employeeId = getEmployeeId();
         console.log("Fetching modules for employee ID:", employeeId);
         
-        if (!employeeId) {
-          console.error("No employee ID available for module fetch");
-          setConfiguredModules([]);
-          setIsLoading(false);
-          return;
+        // Always include the employee ID if available
+        const requestBody: any = { 
+          fetchLevel: 'client',
+          email: user.email
+        };
+        
+        // Always include employee ID in the request body if available
+        if (employeeId) {
+          requestBody.employeeId = employeeId;
+          console.log("Including employee ID in fetch-modules request:", employeeId);
+        } else {
+          console.log("No employee ID available - will attempt to find by email only");
         }
         
-        // Call the fetch-modules function with employeeId parameter
+        // Call the fetch-modules function with request parameters
         const { data, error } = await supabase.functions.invoke('fetch-modules', {
-          body: { 
-            fetchLevel: 'client',
-            employeeId: employeeId,
-            email: user.email
-          }
+          body: requestBody
         });
         
         if (error) {
@@ -101,13 +104,13 @@ const ClientModulesList = () => {
         }
         
         console.log(`Received ${data.modules.length} modules from fetch-modules function:`, 
-          data.modules.map(m => m.name));
+          data.modules.map((m: any) => m.name));
         
         // Map modules to sidebar items with their access levels
         const modules: ModuleItem[] = [];
         
         // Always include dashboard if it's in the returned modules or by default
-        const dashboardModule = data.modules.find(m => m.name.toLowerCase() === 'dashboard');
+        const dashboardModule = data.modules.find((m: any) => m.name.toLowerCase() === 'dashboard');
         modules.push({
           icon: LayoutDashboard,
           label: 'Dashboard',
@@ -117,7 +120,7 @@ const ClientModulesList = () => {
         });
         
         // Add other modules
-        data.modules.forEach(module => {
+        data.modules.forEach((module: any) => {
           // Skip dashboard as it's already added
           if (module.name.toLowerCase() === 'dashboard') {
             return;
