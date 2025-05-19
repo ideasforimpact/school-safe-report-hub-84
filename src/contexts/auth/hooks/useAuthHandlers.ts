@@ -1,7 +1,8 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { User, UserWithPassword, EmployeeData } from '../types';
+import { User, UserWithPassword, EmployeeData, DepartmentType, EmployeeType } from '../types';
 import { toast } from 'sonner';
+import { Json } from '@/integrations/supabase/types';
 
 // Type for the useAuthHandlers hook props
 interface AuthHandlersProps {
@@ -147,8 +148,8 @@ export const useAuthHandlers = ({
               email: employeeData.email,
               firstName: employeeData.first_name,
               lastName: employeeData.last_name,
-              department: employeeData.department,
-              employeeType: employeeData.employee_type,
+              department: employeeData.department as DepartmentType, // Cast to correct type
+              employeeType: employeeData.employee_type as EmployeeType, // Cast to correct type
               status: employeeData.status,
               employeeId: employeeData.employee_id,
               isSuperAdmin: employeeData.is_super_admin
@@ -172,7 +173,8 @@ export const useAuthHandlers = ({
             
             // Add module permissions if found
             if (modulePermissionsData && modulePermissionsData.access_level) {
-              const accessLevel = modulePermissionsData.access_level;
+              const accessLevel = modulePermissionsData.access_level as Record<string, any>;
+              
               // Map database permission fields to frontend permission fields
               modulePermissions.superAdmin = accessLevel.isAdmin || employeeData.is_super_admin || false;
               modulePermissions.incidentReporting = accessLevel.incidentReporting || false;
@@ -241,9 +243,9 @@ export const useAuthHandlers = ({
       console.log("Pre-fetching modules for employeeId:", employeeId, "clientId:", clientId);
       
       // First fetch client modules
-      const { data: clientModules, error: clientError } = await supabase
+      const { data: clientModulesData, error: clientError } = await supabase
         .from('client_modules')
-        .select('*')
+        .select('*, modules(*)')
         .eq('client_id', clientId);
         
       if (clientError) {
@@ -262,16 +264,23 @@ export const useAuthHandlers = ({
         return;
       }
       
+      // Process client modules to include the module details
+      const clientModules = clientModulesData?.map(clientModule => {
+        // Extract the module data from the nested structure
+        const moduleData = clientModule.modules;
+        
+        // Return combined data
+        return {
+          ...moduleData,
+          access_level: clientModule.access_level,
+          // Create a moduleKey from name by converting to lowercase and replacing spaces with underscores
+          moduleKey: moduleData?.name?.toLowerCase().replace(/\s+/g, '_') || ''
+        };
+      });
+      
       console.log(`Pre-fetched ${clientModules?.length || 0} client modules and ${backofficeModules?.length || 0} backoffice modules`);
       
       // Map the modules data to include the permission keys
-      // Since 'key' property is missing, let's extract it from name or add an identifier
-      const mappedClientModules = clientModules?.map(module => ({
-        ...module,
-        // Create a moduleKey from name by converting to lowercase and replacing spaces with underscores
-        moduleKey: module.name?.toLowerCase().replace(/\s+/g, '_') || ''
-      }));
-      
       const mappedBackofficeModules = backofficeModules?.map(module => ({
         ...module,
         // Create a moduleKey from name by converting to lowercase and replacing spaces with underscores
@@ -279,7 +288,7 @@ export const useAuthHandlers = ({
       }));
       
       // Cache the modules in the context for immediate use
-      setCachedModules(mappedBackofficeModules || [], mappedClientModules || []);
+      setCachedModules(mappedBackofficeModules || [], clientModules || []);
       
     } catch (err) {
       console.error("Error pre-fetching modules:", err);

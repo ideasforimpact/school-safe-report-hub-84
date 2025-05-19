@@ -1,11 +1,13 @@
+
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { UserWithPassword } from '../types';
 
 interface SupabaseAuthProps {
   handleUserAuthentication: (supabaseUser: any) => Promise<void>;
   setAuthError: (error: string) => void;
   authInitCompleteRef: React.MutableRefObject<boolean>;
-  users?: any[]; // Make users optional
+  users?: UserWithPassword[]; // Make users optional
   setUser?: (user: any) => void; // Make setUser optional
   setIsAuthInitialized?: (initialized: boolean) => void; // Make setIsAuthInitialized optional
 }
@@ -14,9 +16,9 @@ export const useSupabaseAuth = ({
   handleUserAuthentication,
   setAuthError,
   authInitCompleteRef,
-  users,
-  setUser,
-  setIsAuthInitialized
+  users = [],
+  setUser = () => {},
+  setIsAuthInitialized = () => {}
 }: SupabaseAuthProps) => {
   useEffect(() => {
     // Subscribe to auth changes to keep state in sync
