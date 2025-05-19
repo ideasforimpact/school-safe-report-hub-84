@@ -67,13 +67,14 @@ export interface AuthContextType {
   isLoading: boolean;
   users: User[];
   authError?: string | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<boolean>; // Changed to return Promise<boolean>
   logout: () => Promise<void>;
   getRequiredPermission: (module: string) => string;
   registerUser: (userData: Omit<UserWithPassword, 'id'>) => Promise<void>;
   updateUserInfo: (userId: string, userData: Partial<User>) => Promise<void>;
   googleSignIn: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
-  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>; // Changed to return Promise<boolean>
   addUser?: (userData: Omit<UserWithPassword, 'id'>) => Promise<void>;
+  handleUserAuthentication?: (supabaseUser: any) => Promise<void>; // Add this missing property
 }

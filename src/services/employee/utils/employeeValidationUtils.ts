@@ -1,5 +1,6 @@
 
-import { EmployeeType, DepartmentType, EmploymentStatus } from '@/contexts/employee/types';
+import { EmployeeType, DepartmentType } from '@/contexts/auth/types';
+import { EmploymentStatus } from '@/contexts/employee/types';
 
 /**
  * Validate and normalize employee type from import data
@@ -41,7 +42,7 @@ export const validateDepartment = (value: string): DepartmentType | null => {
   // Normalize department
   const normalizedValue = value.toLowerCase().trim();
   
-  // Map common variations to standard departments
+  // Map common variations to standard departments with correct casing
   const deptMap: Record<string, DepartmentType> = {
     'admin': 'Admin',
     'administration': 'Admin',

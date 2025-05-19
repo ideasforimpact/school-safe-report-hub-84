@@ -1,3 +1,4 @@
+
 import React, { createContext, useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, AuthContextType } from './types';
@@ -16,15 +17,16 @@ export const AuthContext = createContext<AuthContextType>({
   isLoading: true,
   users: [],
   authError: null,
-  login: async () => {},
+  login: async () => false, // Changed to return boolean
   logout: async () => {},
   getRequiredPermission: () => '',
   registerUser: async () => {},
   updateUserInfo: async () => {},
   googleSignIn: async () => {},
   resetPassword: async () => {},
-  changePassword: async () => {},
+  changePassword: async () => false, // Changed to return boolean
   addUser: async () => {},
+  handleUserAuthentication: async () => {}, // Added this
 });
 
 // Auth Provider Component
@@ -218,6 +220,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     resetPassword,
     changePassword: changeUserPassword,
     addUser,
+    handleUserAuthentication, // Add this
   };
 
   // Render the AuthContext.Provider with the context value
