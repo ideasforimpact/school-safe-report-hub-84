@@ -254,8 +254,8 @@ export function useAuthHandlers({
             firstName: employeeData.first_name,
             lastName: employeeData.last_name,
             isSuperAdmin: employeeData.is_super_admin,
-            department: employeeData.department,
-            employeeType: employeeData.employee_type,
+            department: employeeData.department as DepartmentType, // Add type assertion here
+            employeeType: employeeData.employee_type as EmployeeType, // Add type assertion here
             status: employeeData.status,
             employeeId: employeeData.employee_id
           };
