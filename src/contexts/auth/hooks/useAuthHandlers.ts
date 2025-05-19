@@ -1,4 +1,4 @@
-import { User, UserWithPassword, UserRole, EmployeeData } from '../types';
+import { User, UserWithPassword, UserRole, EmployeeData, DepartmentType, EmployeeType } from '../types';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -247,6 +247,9 @@ export function useAuthHandlers({
           .single();
         
         if (employeeData && !error && setEmployeeData) {
+          // This is where the super admin status is determined from database
+          console.log("Super Admin Status from DB:", employeeData.is_super_admin);
+          
           const employee: EmployeeData = {
             id: employeeData.id,
             clientId: employeeData.client_id,
@@ -254,8 +257,8 @@ export function useAuthHandlers({
             firstName: employeeData.first_name,
             lastName: employeeData.last_name,
             isSuperAdmin: employeeData.is_super_admin,
-            department: employeeData.department as DepartmentType, // Add type assertion here
-            employeeType: employeeData.employee_type as EmployeeType, // Add type assertion here
+            department: employeeData.department as DepartmentType,
+            employeeType: employeeData.employee_type as EmployeeType,
             status: employeeData.status,
             employeeId: employeeData.employee_id
           };
@@ -263,7 +266,6 @@ export function useAuthHandlers({
           setEmployeeData(employee);
           saveEmployeeDataToStorage(employee);
           console.log("📝 Employee data stored in context after Google auth:", employee);
-          console.log("Super Admin Status from DB:", employeeData.is_super_admin);
         } else {
           console.log("⚠️ No employee data found for Google auth user:", supabaseUser.email);
         }
