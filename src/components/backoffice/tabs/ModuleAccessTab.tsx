@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
@@ -34,6 +33,7 @@ export interface ModuleInfo {
 interface ModuleAccessTabProps {
   formData: {
     moduleAccess: Partial<ModulePermissions>;
+    moduleInfoArray?: ModuleInfo[];
   };
   handleModuleAccessChange: (module: keyof ModulePermissions, value: boolean) => void;
   onModuleInfoChange?: (moduleInfoArray: ModuleInfo[]) => void;
@@ -68,38 +68,7 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange, onModuleInfoChang
           setModules(data.modules);
           
           // Initialize module access state based on formData
-          const initialModuleAccess: ModuleAccess[] = data.modules.map((module: Module) => {
-            const accessKey = getAccessKeyFromModuleName(module.name);
-            const isEnabled = !!formData.moduleAccess[accessKey];
-            const isAdmin = isEnabled && (accessKey as string).indexOf('Admin') !== -1; // Check if it's an admin module
-            
-            console.log(`Initializing module: ${module.name}, ID: ${module.id}, Enabled: ${isEnabled}, Admin: ${isAdmin}`);
-            
-            return {
-              name: module.name,
-              module_id: module.id,
-              is_admin: isAdmin,
-              is_enabled: isEnabled,
-              access_level: {
-                isAdmin: isAdmin
-              }
-            };
-          });
-          
-          setModuleAccessState(initialModuleAccess);
-          console.log("Initial module access state:", initialModuleAccess);
-          
-          // If onModuleInfoChange callback is provided, use it to update parent
-          if (onModuleInfoChange) {
-            const moduleInfoArray: ModuleInfo[] = initialModuleAccess
-              .filter(module => module.is_enabled)
-              .map(module => ({
-                name: module.name,
-                module_id: module.module_id,
-                is_admin: module.is_admin
-              }));
-            onModuleInfoChange(moduleInfoArray);
-          }
+          initializeModuleAccessState(data.modules);
         }
       } catch (error) {
         console.error("Error in fetchClientModules:", error);
@@ -111,6 +80,94 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange, onModuleInfoChang
 
     fetchClientModules();
   }, []); // Only run on initial mount
+  
+  // Initialize or update module access state when formData or modules change
+  useEffect(() => {
+    if (modules.length > 0) {
+      initializeModuleAccessState(modules);
+    }
+  }, [formData.moduleInfoArray, formData.moduleAccess]);
+  
+  // Initialize module access state based on either moduleInfoArray or moduleAccess
+  const initializeModuleAccessState = (availableModules: Module[]) => {
+    console.log("Initializing module access state with:", { 
+      moduleInfoArray: formData.moduleInfoArray,
+      moduleAccess: formData.moduleAccess 
+    });
+    
+    let initialModuleAccess: ModuleAccess[] = [];
+    
+    // If moduleInfoArray is available and not empty, use it first (it's more specific)
+    if (formData.moduleInfoArray && formData.moduleInfoArray.length > 0) {
+      console.log("Using moduleInfoArray to initialize module states");
+      
+      // Create a map of module info by module_id for quick lookup
+      const moduleInfoMap = new Map<string, ModuleInfo>();
+      formData.moduleInfoArray.forEach(info => {
+        moduleInfoMap.set(info.module_id, info);
+      });
+      
+      initialModuleAccess = availableModules.map(module => {
+        const moduleInfo = moduleInfoMap.get(module.id);
+        
+        // If module is in moduleInfoArray, it's enabled
+        const isEnabled = !!moduleInfo;
+        const isAdmin = moduleInfo ? moduleInfo.is_admin : false;
+        
+        return {
+          name: module.name,
+          module_id: module.id,
+          is_admin: isAdmin,
+          is_enabled: isEnabled,
+          access_level: {
+            isAdmin: isAdmin,
+            isEnabled: isEnabled
+          }
+        };
+      });
+    }
+    // Otherwise, fall back to using moduleAccess
+    else {
+      console.log("Using moduleAccess to initialize module states");
+      initialModuleAccess = availableModules.map((module: Module) => {
+        const accessKey = getAccessKeyFromModuleName(module.name);
+        const isEnabled = !!formData.moduleAccess[accessKey];
+        
+        // Check if it's an admin module
+        const accessKeyStr = accessKey as string;
+        const isAdmin = isEnabled && (accessKeyStr.indexOf('Admin') !== -1 || 
+                                      formData.moduleAccess.superAdmin === true);
+        
+        console.log(`Initializing module: ${module.name}, ID: ${module.id}, Enabled: ${isEnabled}, Admin: ${isAdmin}`);
+        
+        return {
+          name: module.name,
+          module_id: module.id,
+          is_admin: isAdmin,
+          is_enabled: isEnabled,
+          access_level: {
+            isAdmin: isAdmin,
+            isEnabled: isEnabled
+          }
+        };
+      });
+    }
+    
+    setModuleAccessState(initialModuleAccess);
+    console.log("Initial module access state:", initialModuleAccess);
+    
+    // If onModuleInfoChange callback is provided, use it to update parent
+    if (onModuleInfoChange) {
+      const moduleInfoArray: ModuleInfo[] = initialModuleAccess
+        .filter(module => module.is_enabled)
+        .map(module => ({
+          name: module.name,
+          module_id: module.module_id,
+          is_admin: module.is_admin
+        }));
+      onModuleInfoChange(moduleInfoArray);
+    }
+  };
 
   // Sync local state to parent component when moduleAccessState changes
   useEffect(() => {

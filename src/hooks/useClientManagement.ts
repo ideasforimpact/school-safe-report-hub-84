@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Client, useClient, InstitutionType, ModuleInfo } from '@/contexts/ClientContext';
 import { OAuthProviderName } from '@/utils/authProviders';
@@ -22,7 +23,7 @@ export interface ClientFormData {
     [key in OAuthProviderName]?: boolean;
   };
   superAdminAllowedDomains: string[];
-  moduleInfoArray?: ModuleInfo[]; // Add the new moduleInfoArray property
+  moduleInfoArray?: ModuleInfo[]; // Add the moduleInfoArray property
 }
 
 const initialFormData: ClientFormData = {
@@ -250,60 +251,113 @@ export const useClientManagement = () => {
   const handleEditClick = (client: Client) => {
     setCurrentClient(client);
     
-    // Get the super admin employee for this client
-    const getSuperAdminEmail = async (clientId: string) => {
+    // Get the client modules and super admin employee for this client
+    const fetchClientData = async (clientId: string) => {
       try {
-        const { data, error } = await supabase
+        // Fetch client modules
+        console.log("Fetching client modules for edit", clientId);
+        const { data: clientModulesData, error: modulesError } = await supabase
+          .from('client_modules')
+          .select('*')
+          .eq('client_id', clientId);
+          
+        if (modulesError) {
+          console.error('Error fetching client modules:', modulesError);
+          toast.error('Failed to load client modules data');
+        }
+        
+        // Fetch super admin email
+        const { data: employeeData, error: employeeError } = await supabase
           .from('employees')
           .select('email')
           .eq('client_id', clientId)
           .eq('is_super_admin', true)
           .single();
           
-        if (error) {
-          console.log('No super admin employee found for this client');
-          return '';
+        if (employeeError && employeeError.code !== 'PGRST116') {
+          console.error('Error fetching super admin email:', employeeError);
+          toast.error('Failed to load super admin data');
         }
         
-        return data?.email || '';
-      } catch (err) {
-        console.error('Error fetching super admin email:', err);
-        return '';
-      }
-    };
-    
-    getSuperAdminEmail(client.id).then(superAdminEmail => {
-      setFormData({
-        name: client.name,
-        email: client.email,
-        contactPerson: client.contactPerson,
-        phone: client.phone,
-        moduleAccess: {
-          superAdmin: client.moduleAccess?.superAdmin ?? false,
-          incidentReporting: client.moduleAccess?.incidentReporting ?? true,
-          incidentAdmin: client.moduleAccess?.incidentAdmin ?? false,
-          assessmentUser: client.moduleAccess?.assessmentUser ?? true,
-          assessmentsAdmin: client.moduleAccess?.assessmentsAdmin ?? false,
-          employeeVerificationAdmin: client.moduleAccess?.employeeVerificationAdmin ?? false,
-          grievancesAdmin: client.moduleAccess?.grievancesAdmin ?? false,
-          transportSafetyAdmin: client.moduleAccess?.transportSafetyAdmin ?? false,
-          eduSafeResourceAccess: client.moduleAccess?.eduSafeResourceAccess ?? true
-        },
-        active: client.active,
-        logo: client.logo || '',
-        institutionType: (client.institutionType as InstitutionType) || 'Other',
-        allowedDomains: client.allowedDomains || [],
-        superAdminEmail: superAdminEmail,
-        superAdminAllowedDomains: client.superAdminAllowedDomains || [], // Load super admin allowed domains
-        authProviders: {
-          google: client.authProviders?.google ?? false,
-          microsoft: client.authProviders?.microsoft ?? false,
-          zoho: client.authProviders?.zoho ?? false
+        // If we have client modules data, prepare moduleInfoArray
+        let moduleInfoArray: ModuleInfo[] = [];
+        if (clientModulesData && clientModulesData.length > 0) {
+          // Get module details for each client_module
+          const moduleIds = clientModulesData.map(cm => cm.module_id);
+          const { data: modulesData } = await supabase
+            .from('modules')
+            .select('*')
+            .in('id', moduleIds);
+            
+          // Create a mapping of module ids to names
+          const moduleMap = new Map();
+          if (modulesData) {
+            modulesData.forEach(module => {
+              moduleMap.set(module.id, module.name);
+            });
+          }
+          
+          // Now create the module info array with complete information
+          moduleInfoArray = clientModulesData.map(cm => {
+            // Parse access_level if it's a string
+            let accessLevel = cm.access_level;
+            if (typeof accessLevel === 'string') {
+              try {
+                accessLevel = JSON.parse(accessLevel);
+              } catch (e) {
+                accessLevel = {};
+              }
+            }
+            
+            return {
+              name: moduleMap.get(cm.module_id) || "Unknown Module",
+              module_id: cm.module_id,
+              is_admin: accessLevel?.isAdmin === true || false
+            };
+          });
+          
+          console.log("Built moduleInfoArray for editing:", moduleInfoArray);
         }
-      });
+        
+        // Now set the form data with all information
+        setFormData({
+          name: client.name,
+          email: client.email,
+          contactPerson: client.contactPerson,
+          phone: client.phone,
+          moduleAccess: {
+            superAdmin: client.moduleAccess?.superAdmin ?? false,
+            incidentReporting: client.moduleAccess?.incidentReporting ?? true,
+            incidentAdmin: client.moduleAccess?.incidentAdmin ?? false,
+            assessmentUser: client.moduleAccess?.assessmentUser ?? true,
+            assessmentsAdmin: client.moduleAccess?.assessmentsAdmin ?? false,
+            employeeVerificationAdmin: client.moduleAccess?.employeeVerificationAdmin ?? false,
+            grievancesAdmin: client.moduleAccess?.grievancesAdmin ?? false,
+            transportSafetyAdmin: client.moduleAccess?.transportSafetyAdmin ?? false,
+            eduSafeResourceAccess: client.moduleAccess?.eduSafeResourceAccess ?? true
+          },
+          active: client.active,
+          logo: client.logo || '',
+          institutionType: (client.institutionType as InstitutionType) || 'Other',
+          allowedDomains: client.allowedDomains || [],
+          superAdminEmail: employeeData?.email || '',
+          superAdminAllowedDomains: client.superAdminAllowedDomains || [], 
+          authProviders: {
+            google: client.authProviders?.google ?? false,
+            microsoft: client.authProviders?.microsoft ?? false,
+            zoho: client.authProviders?.zoho ?? false
+          },
+          moduleInfoArray: moduleInfoArray // Set the moduleInfoArray with the data from the database
+        });
+      } catch (err) {
+        console.error('Error in fetchClientData:', err);
+        toast.error('Failed to load client data for editing');
+      }
       
       setIsEditDialogOpen(true);
-    });
+    };
+    
+    fetchClientData(client.id);
   };
 
   const handleUpdateClient = async () => {

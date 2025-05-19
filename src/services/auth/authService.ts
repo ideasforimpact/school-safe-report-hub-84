@@ -1,157 +1,54 @@
-import { User, UserWithPassword, EmployeeData } from '@/contexts/auth/types';
+
+import { User, UserWithPassword } from '@/contexts/auth/types';
 import { INITIAL_MOCK_USERS } from '@/contexts/auth/initialData';
-import { toast } from "sonner";
-import { supabase } from '@/integrations/supabase/client';
 
-// In-memory user storage
-let users: UserWithPassword[] = [...INITIAL_MOCK_USERS];
-
-// Storage helper functions
+// Get user from local storage
 export const getUserFromStorage = (): User | null => {
-  const storedUser = localStorage.getItem('currentUser');
-  if (!storedUser) return null;
+  if (typeof localStorage === 'undefined') return null;
+  const savedUser = localStorage.getItem('auth.user');
+  if (!savedUser) return null;
+  
   try {
-    return JSON.parse(storedUser);
+    return JSON.parse(savedUser);
   } catch (error) {
+    console.error('Error parsing user from storage:', error);
     return null;
   }
 };
 
-export const getEmployeeDataFromStorage = (): EmployeeData | null => {
-  const storedData = localStorage.getItem('employeeData');
-  if (!storedData) return null;
-  try {
-    return JSON.parse(storedData);
-  } catch (error) {
-    return null;
-  }
-};
-
-export const saveEmployeeDataToStorage = (data: EmployeeData | null): void => {
-  if (data) {
-    localStorage.setItem('employeeData', JSON.stringify(data));
+// Save user to local storage
+export const saveUserToStorage = (user: User | null): void => {
+  if (typeof localStorage === 'undefined') return;
+  if (user) {
+    localStorage.setItem('auth.user', JSON.stringify(user));
   } else {
-    localStorage.removeItem('employeeData');
+    localStorage.removeItem('auth.user');
   }
 };
 
+// Get users from local storage or use mock data
 export const getUsersFromStorage = (): UserWithPassword[] => {
-  const storedUsers = localStorage.getItem('users');
-  if (!storedUsers) return [...INITIAL_MOCK_USERS];
+  if (typeof localStorage === 'undefined') return INITIAL_MOCK_USERS;
+  
+  const savedUsers = localStorage.getItem('auth.users');
+  if (!savedUsers) return INITIAL_MOCK_USERS;
+  
   try {
-    return JSON.parse(storedUsers);
+    return JSON.parse(savedUsers);
   } catch (error) {
-    return [...INITIAL_MOCK_USERS];
+    console.error('Error parsing users from storage:', error);
+    return INITIAL_MOCK_USERS;
   }
 };
 
-export const saveUserToStorage = (user: User): void => {
-  localStorage.setItem('currentUser', JSON.stringify(user));
-};
-
+// Save users to local storage
 export const saveUsersToStorage = (users: UserWithPassword[]): void => {
-  localStorage.setItem('users', JSON.stringify(users));
+  if (typeof localStorage === 'undefined') return;
+  localStorage.setItem('auth.users', JSON.stringify(users));
 };
 
-// Authentication functions
-export const loginUser = (
-  email: string, 
-  password: string,
-  currentUsers: UserWithPassword[] = users,
-  isEmailDomainAllowed?: (email: string, clientId: string) => boolean
-): User | null => {
-  console.log("Attempting login with:", email, password);
-  console.log("Available users:", currentUsers);
-  
-  // Find user with matching email and password
-  const user = currentUsers.find(
-    (u) => u.email === email && u.password === password && u.isActive !== false
-  );
-  
-  if (!user) {
-    console.error("Login failed - user not found or inactive");
-    return null;
-  }
-  
-  console.log("Login successful for user:", user);
-  
-  // Return user without password
-  const { password: _, ...userWithoutPassword } = user;
+// Remove the password from user
+export const excludePasswordFromUser = (userWithPassword: UserWithPassword): User => {
+  const { password, ...userWithoutPassword } = userWithPassword;
   return userWithoutPassword;
-};
-
-export const logoutUser = (): void => {
-  localStorage.removeItem('currentUser');
-};
-
-export const changeUserPassword = (
-  currentUsers: UserWithPassword[],
-  userId: string,
-  currentPassword: string,
-  newPassword: string
-): UserWithPassword[] | null => {
-  const userIndex = currentUsers.findIndex(
-    (u) => u.id === userId && u.password === currentPassword
-  );
-  
-  if (userIndex === -1) {
-    toast.error("Current password is incorrect");
-    return null;
-  }
-  
-  const updatedUsers = [...currentUsers];
-  updatedUsers[userIndex] = {
-    ...updatedUsers[userIndex],
-    password: newPassword
-  };
-  
-  toast.success("Password updated successfully");
-  return updatedUsers;
-};
-
-export const registerUser = (userData: Omit<UserWithPassword, 'id'>): User => {
-  // Create new user with ID
-  const newUser = {
-    id: Date.now().toString(),
-    ...userData,
-    isActive: true
-  };
-  
-  users = [...users, newUser];
-  
-  // Return user without password
-  const { password: _, ...userWithoutPassword } = newUser;
-  return userWithoutPassword;
-};
-
-export const getUsersForClient = (clientId?: string): User[] => {
-  if (!clientId) {
-    return users.map(({ password, ...user }) => user);
-  }
-  
-  return users
-    .filter(user => user.clientId === clientId || user.role === 'saas_owner')
-    .map(({ password, ...user }) => user);
-};
-
-export const getCurrentUserData = (userId: string): User | undefined => {
-  const user = users.find(u => u.id === userId);
-  if (!user) return undefined;
-  
-  // Return user without password
-  const { password: _, ...userWithoutPassword } = user;
-  return userWithoutPassword;
-};
-
-export const getAllUsers = (): User[] => {
-  // Return all users without passwords
-  return users.map(({ password, ...user }) => user);
-};
-
-// Helper to get in-memory users (for testing/debugging)
-export const getUsers = (): UserWithPassword[] => [...users];
-
-// Helper to set in-memory users (for testing/debugging)
-export const setUsers = (newUsers: UserWithPassword[]): void => {
-  users = [...newUsers];
 };
