@@ -189,6 +189,9 @@ serve(async (req) => {
           } else if (modulesData) {
             console.log(`Retrieved ${modulesData.length} modules from database`);
             
+            // Always include dashboard module if it exists
+            const dashboardModule = modulesData.find(module => module.name.toLowerCase() === 'dashboard');
+            
             // Add access_level to each module
             modules = modulesData.map(module => ({
               ...module,
@@ -196,6 +199,22 @@ serve(async (req) => {
               // Map standard permission keys
               key: mapModuleToPermissionKey(module.name)
             }));
+            
+            // Make sure dashboard is included if it exists
+            if (dashboardModule) {
+              console.log('Dashboard module included automatically');
+            } else {
+              // If dashboard is not found in database modules, create a default one
+              console.log('Adding default dashboard module');
+              modules.unshift({
+                id: 'dashboard-default',
+                name: 'Dashboard',
+                icon: 'LayoutDashboard',
+                level: 'client',
+                key: 'dashboard',
+                access_level: {}
+              });
+            }
             
             console.log(`Returning ${modules.length} modules with their access levels`);
           }
@@ -236,6 +255,19 @@ serve(async (req) => {
         ...module,
         key: mapModuleToPermissionKey(module.name)
       }));
+      
+      // Always ensure dashboard is present for standard query
+      if (!modules.some(m => m.name.toLowerCase() === 'dashboard')) {
+        console.log('Adding default dashboard module to standard query results');
+        modules.unshift({
+          id: 'dashboard-default',
+          name: 'Dashboard',
+          icon: 'LayoutDashboard',
+          level: level,
+          key: 'dashboard',
+          access_level: {}
+        });
+      }
     }
     
     console.log(`Successfully fetched ${modules.length} modules`);

@@ -26,6 +26,7 @@ export interface Module {
   key?: string; // Module key for permission mapping
   active?: boolean;
   description?: string;
+  access_level?: any; // Added to support access levels from client_modules
 }
 
 // Map string icon names to Lucide components
@@ -79,10 +80,13 @@ export const fetchModules = async (isBackoffice: boolean, user?: any, employeeDa
       firstName: employeeData.firstName,
       lastName: employeeData.lastName,
       employeeType: employeeData.employeeType,
-      employeeId: employeeData.id
+      employeeId: employeeData.id,
+      department: employeeData.department || '',
+      isSuperAdmin: typeof employeeData.isSuperAdmin === 'boolean' ? employeeData.isSuperAdmin : false,
+      status: employeeData.status !== undefined ? employeeData.status : true
     } : null;
 
-    console.log("Employee data being sent:", employeeInfo,employeeData);
+    console.log("Employee data being sent:", employeeInfo, employeeData);
     
     // Call our edge function with user and employee info
     const { data, error } = await supabase.functions.invoke('fetch-modules', {
@@ -128,6 +132,16 @@ export const fetchModules = async (isBackoffice: boolean, user?: any, employeeDa
         case 'edusafe resources':
           module.key = 'eduSafeResourceAccess';
           break;
+        case 'users':
+          module.key = 'users';
+          break;
+        case 'settings':
+        case 'configuration':
+          module.key = 'configuration';
+          break;
+        case 'dashboard':
+          module.key = 'dashboard';
+          break;
         default:
           // For modules without specific permissions
           module.key = module.name.toLowerCase().replace(/\s+/g, '_');
@@ -149,21 +163,10 @@ export const fetchModules = async (isBackoffice: boolean, user?: any, employeeDa
 
 // Convert database modules to sidebar items
 export const convertModulesToSidebarItems = (modules: Module[], permissions: ModulePermissions, basePath: string = '') => {
-  // Always include dashboard
-  const items = [{
-    icon: LayoutDashboard,
-    label: 'Dashboard',
-    path: `${basePath}/dashboard`,
-    allowed: true
-  }];
+  const items = [];
   
-  // Process other modules
+  // Process modules
   modules.forEach(module => {
-    // Skip if this is the dashboard module (already added)
-    if (module.name.toLowerCase() === 'dashboard') {
-      return;
-    }
-    
     // Get the icon component from our mapping, or default to LayoutDashboard
     const IconComponent = iconMap[module.icon || 'LayoutDashboard'] || LayoutDashboard;
     
@@ -183,15 +186,8 @@ export const convertModulesToSidebarItems = (modules: Module[], permissions: Mod
       label: module.name,
       path,
       allowed,
+      accessLevel: module.access_level || {},
     });
-  });
-  
-  // Always add settings at the end
-  items.push({
-    icon: Settings,
-    label: 'Settings',
-    path: `${basePath}/configuration`,
-    allowed: true,
   });
   
   return items;
