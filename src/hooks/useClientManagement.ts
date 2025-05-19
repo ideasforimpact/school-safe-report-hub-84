@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Client, useClient, InstitutionType, ModuleInfo } from '@/contexts/ClientContext';
 import { OAuthProviderName } from '@/utils/authProviders';
@@ -196,7 +197,7 @@ export const useClientManagement = () => {
     
     try {
       // Use moduleInfoArray directly from formData
-      let moduleInfoArray = formData.moduleInfoArray;
+      const moduleInfoArray = formData.moduleInfoArray || [];
       
       console.log('Module info for client creation:', moduleInfoArray);
       
@@ -241,6 +242,13 @@ export const useClientManagement = () => {
           console.error('Error fetching client modules:', modulesError);
           toast.error('Failed to load client modules data');
         }
+        
+        // Transform client modules data to moduleInfoArray
+        const moduleInfoArray = clientModulesData ? clientModulesData.map(module => ({
+          name: module.name || '',  // Default to empty string if name is null
+          module_id: module.module_id,
+          is_admin: module.access_level?.isAdmin || false
+        })) : [];
         
         // Fetch super admin email
         const { data: employeeData, error: employeeError } = await supabase
@@ -303,7 +311,7 @@ export const useClientManagement = () => {
     
     try {
       // Use moduleInfoArray directly from formData
-      let moduleInfoArray = formData.moduleInfoArray;
+      const moduleInfoArray = formData.moduleInfoArray || [];
       
       console.log('Module info for client update:', moduleInfoArray);
       
