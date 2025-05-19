@@ -130,7 +130,7 @@ const ClientModulesList = () => {
           requestBody.employeeInfo = {
             ...currentEmployeeData,
             id: currentEmployeeData.id,
-            clientId: currentEmployeeData.clientId || currentEmployeeData.client_id, // Support both formats
+            clientId: currentEmployeeData.clientId || currentEmployeeData.clientId, // Fix: Use clientId consistently
             email: currentEmployeeData.email,
             firstName: nameParts.firstName,
             lastName: nameParts.lastName,
