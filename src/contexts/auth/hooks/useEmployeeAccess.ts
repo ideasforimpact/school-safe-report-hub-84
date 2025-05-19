@@ -27,7 +27,8 @@ export const useEmployeeAccess = () => {
       return employee.status === true;
     }
     
-    return employee.status === 'active'; // Using EmploymentStatus
+    // If status is a string, check if it's 'active'
+    return employee.status === 'active'; 
   }, [employee]);
 
   // Check if employee is verified
@@ -39,7 +40,8 @@ export const useEmployeeAccess = () => {
       return employee.status === true;
     }
     
-    return employee.status === 'active'; // Using EmploymentStatus
+    // If status is a string, check if it's 'active'
+    return employee.status === 'active';
   }, [employee]);
 
   // Get employee id if available

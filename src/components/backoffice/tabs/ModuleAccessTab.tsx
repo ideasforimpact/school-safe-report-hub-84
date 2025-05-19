@@ -71,7 +71,7 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange, onModuleInfoChang
           const initialModuleAccess: ModuleAccess[] = data.modules.map((module: Module) => {
             const accessKey = getAccessKeyFromModuleName(module.name);
             const isEnabled = !!formData.moduleAccess[accessKey];
-            const isAdmin = isEnabled && accessKey.includes('Admin'); // Check if it's an admin module
+            const isAdmin = isEnabled && (accessKey as string).indexOf('Admin') !== -1; // Check if it's an admin module
             
             console.log(`Initializing module: ${module.name}, ID: ${module.id}, Enabled: ${isEnabled}, Admin: ${isAdmin}`);
             
@@ -123,18 +123,18 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange, onModuleInfoChang
     moduleAccessState.forEach(module => {
       const accessKey = getAccessKeyFromModuleName(module.name);
       
-      if (module.name.toLowerCase().includes('admin')) {
+      if (module.name.toLowerCase().indexOf('admin') !== -1) {
         // For admin modules
         updatedPermissions[accessKey as keyof ModulePermissions] = module.is_enabled && module.is_admin;
       } else {
         // For non-admin modules
-        const baseKey = accessKey.replace('Admin', '') as keyof ModulePermissions;
+        const baseKey = (accessKey as string).replace('Admin', '') as keyof ModulePermissions;
         updatedPermissions[baseKey] = module.is_enabled;
         
         // If this is enabled and admin is true, also set the admin version
         if (module.is_enabled && module.is_admin) {
           const adminKey = baseKey.toString() + 'Admin' as keyof ModulePermissions;
-          if (Object.keys(formData.moduleAccess).includes(adminKey)) {
+          if (Object.keys(formData.moduleAccess).indexOf(adminKey as string) !== -1) {
             updatedPermissions[adminKey] = true;
           }
         }
@@ -204,11 +204,11 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange, onModuleInfoChang
     const adminKey = `${key}Admin`;
     
     // Check if these keys exist in the known access keys list - using string comparison
-    if (knownAccessKeys.includes(adminKey)) {
+    if (knownAccessKeys.indexOf(adminKey) !== -1) {
       return adminKey as keyof ModulePermissions;
     }
     
-    if (knownAccessKeys.includes(key)) {
+    if (knownAccessKeys.indexOf(key) !== -1) {
       return key as keyof ModulePermissions;
     }
     
