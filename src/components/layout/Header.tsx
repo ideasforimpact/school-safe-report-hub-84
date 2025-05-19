@@ -72,7 +72,7 @@ const Header = () => {
               {/* Settings Menu - Only visible for admins */}
               {showAdminSettings && !isBackoffice && <AdminSettingsMenu />}
 
-              <UserProfileMenu employeeData={employeeData} />
+              <UserProfileMenu />
             </div>
           ) : (
             <Button 

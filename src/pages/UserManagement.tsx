@@ -199,7 +199,7 @@ const UserManagement = () => {
       
       // In a real app, we'd validate the form data here
       const updatedUsers = await addNewUser(
-        users as any, // Type casting to fix TypeScript error
+        employeeUsers, // Use employeeUsers instead of users
         { 
           ...formData, 
           clientId: formData.clientId || clientId, // Use form clientId or fall back to context clientId
@@ -315,7 +315,7 @@ const UserManagement = () => {
     try {
       setIsLoading(true);
       const updatedUsers = await updateExistingUser(
-        users as any, // Type casting to fix TypeScript error
+        employeeUsers, // Use employeeUsers instead of users
         currentUser.id,
         formData
       );
@@ -379,7 +379,7 @@ const UserManagement = () => {
   const handleDeleteUser = async (userId: string) => {
     try {
       setIsLoading(true);
-      const updatedUsers = deleteExistingUser(users as any, userId); // Type casting to fix TypeScript error
+      const updatedUsers = deleteExistingUser(employeeUsers, userId); // Use employeeUsers instead of users
       if (updatedUsers) {
         // Also delete the employee if it exists
         try {
@@ -415,7 +415,7 @@ const UserManagement = () => {
   const handleDeactivateUser = async (userId: string) => {
     try {
       setIsLoading(true);
-      const updatedUsers = deactivateExistingUser(users as any, userId); // Type casting to fix TypeScript error
+      const updatedUsers = deactivateExistingUser(employeeUsers, userId); // Use employeeUsers instead of users
       if (updatedUsers) {
         try {
           // Call the edge function to deactivate the employee
@@ -616,7 +616,7 @@ const UserManagement = () => {
               </div>
             ) : (
               <UserList 
-                users={employeeUsers.length > 0 ? employeeUsers : users}
+                users={employeeUsers.length > 0 ? employeeUsers : []}
                 onEditClick={handleEditClick}
                 onDeleteUser={handleDeleteUser}
                 onDeactivateUser={handleDeactivateUser}
