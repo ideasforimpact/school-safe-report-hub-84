@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Employee } from '@/contexts/employee/types';
 import { ModulePermissions } from '@/contexts/auth/types';
@@ -205,9 +204,9 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({
       </div>
       
       <div className="mt-6">
-        <h3 className="text-md font-medium mb-3">Module Permissions</h3>
+        <h3 className="text-md font-medium mb-3">Module Access</h3>
         {formData.modulePermissions && (
-          <EmployeeModulePermissionsPlaceholder
+          <EmployeeModulePermissions
             modulePermissions={formData.modulePermissions}
             onModulePermissionChange={handleModulePermissionChange}
           />

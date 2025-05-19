@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -123,7 +122,7 @@ const EmployeeManagement = () => {
     }
   };
 
-  // Handler for importing employees
+  // Handler for importing employees - Updated property name to match ImportEmployeeDialog
   const handleImportEmployees = async (file: File, importClientId?: string) => {
     setIsLoading(true);
     try {
