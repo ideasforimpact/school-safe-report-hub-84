@@ -45,7 +45,8 @@ const ClientModulesList = () => {
   const configuredModules = getConfiguredModules(state); // Use selector
   const isLoading = getEmployeeLoadingState(state); // Use selector
   const [sidebarModules, setSidebarModules] = useState<ModuleItem[]>([]);
-  
+
+console.log(configuredModules,"configuredModules")
   // Transform Redux store modules into sidebar menu items
   useEffect(() => {
     if (configuredModules && configuredModules.length > 0) {
