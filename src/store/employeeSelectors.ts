@@ -11,24 +11,24 @@ export const getEmployeeError = (state: EmployeeState) => state.error;
 export const isEmployeeSuperAdmin = (state: EmployeeState) => 
   state.employeeData?.isSuperAdmin === true;
 
-// Helper function to check if any module permission is enabled
+// Helper function to check if any module is enabled from configured modules
 export const hasAnyModulePermission = (state: EmployeeState): boolean => {
-  const employeeData = state.employeeData;
-  if (!employeeData || !employeeData.modulePermissions) return false;
+  const modules = state.configuredModules;
+  if (!modules || modules.length === 0) return false;
   
-  const permissions = employeeData.modulePermissions;
-  return Object.values(permissions).some(permission => permission === true);
+  return modules.some(module => module.enabled === true);
 };
 
-// Helper function to check if user has specific module permission
+// Helper function to check if user has specific module permission from configured modules
 export const hasModulePermission = (state: EmployeeState, moduleKey: keyof ModulePermissions): boolean => {
-  const employeeData = state.employeeData;
-  
   // Super admins have access to everything
-  if (employeeData?.isSuperAdmin === true) return true;
+  if (isEmployeeSuperAdmin(state)) return true;
   
-  // Otherwise check specific permission
-  if (!employeeData || !employeeData.modulePermissions) return false;
+  // Otherwise check if the module exists and is enabled in configured modules
+  const modules = state.configuredModules;
+  if (!modules || modules.length === 0) return false;
   
-  return employeeData.modulePermissions[moduleKey] === true;
+  return modules.some(module => 
+    module.key === moduleKey && module.enabled === true
+  );
 };
