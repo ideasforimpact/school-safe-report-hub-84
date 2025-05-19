@@ -3,7 +3,8 @@ import React, { useEffect } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import EmployeeDataProvider from '@/components/employee/EmployeeDataProvider';
+import { useEmployeeStore } from '@/store/EmployeeContext';
+import { isEmployeeAdmin, isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 
 interface RouteGuardProps {
   children?: React.ReactNode;
@@ -11,18 +12,18 @@ interface RouteGuardProps {
   requireSaasOwner?: boolean;
 }
 
-const RouteGuardInner = ({ 
+const RouteGuard = ({ 
   children, 
   requireAdmin = false,
-  requireSaasOwner = false,
-  isAdmin,
-  isSuperAdmin 
-}: RouteGuardProps & { 
-  isAdmin: boolean;
-  isSuperAdmin: boolean;
-}) => {
+  requireSaasOwner = false
+}: RouteGuardProps) => {
   const { user, authError } = useAuth();
   const location = useLocation();
+  const { state } = useEmployeeStore();
+  
+  // Get admin status directly from Redux
+  const isAdmin = isEmployeeAdmin(state);
+  const isSuperAdmin = isEmployeeSuperAdmin(state);
 
   // Notice: This component is set to be more permissive now.
   // It will still show warnings but won't block access
@@ -43,20 +44,6 @@ const RouteGuardInner = ({
   // Always allow access, but show different UI based on user status
   // Return children if provided, otherwise return Outlet for nested routes
   return children ? <>{children}</> : <Outlet />;
-};
-
-const RouteGuard = (props: RouteGuardProps) => {
-  return (
-    <EmployeeDataProvider>
-      {({ isAdmin, isSuperAdmin }) => (
-        <RouteGuardInner 
-          {...props} 
-          isAdmin={isAdmin} 
-          isSuperAdmin={isSuperAdmin} 
-        />
-      )}
-    </EmployeeDataProvider>
-  );
 };
 
 export default RouteGuard;

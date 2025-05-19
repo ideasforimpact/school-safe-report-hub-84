@@ -11,19 +11,20 @@ import UserProfileMenu from './UserProfileMenu';
 import HeaderIcons from './HeaderIcons';
 import AdminSettingsMenu from './AdminSettingsMenu';
 import UserRoleBadge from './UserRoleBadge';
-import EmployeeDataProvider from '@/components/employee/EmployeeDataProvider';
+import { useEmployeeStore } from '@/store/EmployeeContext';
+import { getEmployeeData, isEmployeeAdmin, isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 
-// Inner component to receive employee data from Redux
-const HeaderInner = ({ employeeData, user, isSuperAdmin, isAdmin, logout }: {
-  employeeData: any;
-  user: any;
-  isSuperAdmin: boolean;
-  isAdmin: boolean;
-  logout: () => void;
-}) => {
+const Header = () => {
+  const { user, logout } = useAuth();
   const { clients } = useClient();
   const navigate = useNavigate();
   const location = useLocation();
+  const { state } = useEmployeeStore();
+  
+  // Get employee data and admin status from Redux
+  const employeeData = getEmployeeData(state);
+  const isAdmin = isEmployeeAdmin(state);
+  const isSuperAdmin = isEmployeeSuperAdmin(state);
   
   // Check if we're on the home page
   const isHomePage = location.pathname === "/" || location.pathname === "/home";
@@ -84,25 +85,6 @@ const HeaderInner = ({ employeeData, user, isSuperAdmin, isAdmin, logout }: {
         </div>
       </div>
     </div>
-  );
-};
-
-// Main component that uses EmployeeDataProvider
-const Header = () => {
-  const { user, logout } = useAuth();
-
-  return (
-    <EmployeeDataProvider>
-      {({ employeeData, isAdmin, isSuperAdmin }) => (
-        <HeaderInner
-          employeeData={employeeData}
-          user={user}
-          isSuperAdmin={isSuperAdmin}
-          isAdmin={isAdmin}
-          logout={logout}
-        />
-      )}
-    </EmployeeDataProvider>
   );
 };
 

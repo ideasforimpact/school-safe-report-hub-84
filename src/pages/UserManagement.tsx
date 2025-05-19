@@ -29,6 +29,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { getAllEmployeesFromApi } from '@/services/employee/employeeRetrievalService';
 import { getEmployeeModulePermissions, updateEmployeeModulePermissions } from '@/services/employee/employeeModuleService';
 import EmployeeDataProvider from '@/components/employee/EmployeeDataProvider';
+import { useEmployeeStore } from '@/store/EmployeeContext';
+import { getEmployeeData } from '@/store/employeeSelectors';
 
 // Helper function to convert employee type and department type
 const convertEmployeeType = (employeeType: EmployeeContextType): EmployeeType => {
@@ -77,7 +79,7 @@ const UserManagementInner = ({ employeeData, isAdmin, isSuperAdmin, user }: {
   // Get clientId from employee data or user context
   const clientId = employeeData?.clientId || user?.clientId;
 
-  console.log(employeeData,"employeeData")
+  console.log("UserManagement employeeData:", employeeData);
   
   // Log the clientId for debugging
   useEffect(() => {
@@ -658,18 +660,19 @@ const UserManagementInner = ({ employeeData, isAdmin, isSuperAdmin, user }: {
 // Main component that uses EmployeeDataProvider
 const UserManagement = () => {
   const { user } = useAuth();
+  const { state } = useEmployeeStore();
+  const employeeData = getEmployeeData(state);
   
+  // Use EmployeeDataProvider directly from Redux instead of wrapping
   return (
-    <EmployeeDataProvider>
-      {({ employeeData, isAdmin, isSuperAdmin }) => (
-        <UserManagementInner 
-          employeeData={employeeData}
-          isAdmin={isAdmin}
-          isSuperAdmin={isSuperAdmin}
-          user={user}
-        />
-      )}
-    </EmployeeDataProvider>
+    <Layout>
+      <UserManagementInner 
+        employeeData={employeeData}
+        isAdmin={state.employeeData ? true : false}
+        isSuperAdmin={state.employeeData?.isSuperAdmin === true}
+        user={user}
+      />
+    </Layout>
   );
 };
 

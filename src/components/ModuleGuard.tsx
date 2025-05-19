@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
-import { useAuth, ModulePermissions } from '@/contexts/AuthContext';
+import { ModulePermissions } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { hasModulePermission } from '@/store/employeeSelectors';
