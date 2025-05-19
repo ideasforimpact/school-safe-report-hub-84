@@ -1,3 +1,4 @@
+
 import React, { createContext, useEffect, useState, useRef } from 'react';
 import { User, AuthContextType, UserWithPassword, EmployeeData } from './types';
 import { 
@@ -79,25 +80,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Only setup listener once
     if (authListenerSetupRef.current) return;
     
-    console.log("🔵 Setting up Supabase auth state listener");
-    
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("🔔 Auth state changed:", event, session?.user?.email);
-      
       if (event === 'SIGNED_IN' && session?.user) {
-        console.log("👤 User signed in event detected:", session.user.email);
+        console.log("User signed in:", session.user.email);
         
         try {
-          console.log("🔍 Processing authentication for user:", session.user.email);
           // Use setTimeout to avoid potential deadlock issues with Supabase auth
           setTimeout(async () => {
             await handleUserAuthentication(session.user);
           }, 0);
         } catch (error) {
-          console.error("❌ Error in auth state change handler:", error);
+          console.error("Error in auth state change handler:", error);
         }
       } else if (event === 'SIGNED_OUT') {
-        console.log("🚪 User signed out event detected");
         setCurrentUser(null);
         setEmployeeData(null); // Clear employee data on logout
         saveEmployeeDataToStorage(null); // Clear from storage
@@ -109,7 +104,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     // Return cleanup function
     return () => {
-      console.log("🧹 Cleaning up auth state listener");
       subscription.unsubscribe();
     };
   }, [handleUserAuthentication]);
@@ -118,25 +112,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const checkSupabaseAuth = async () => {
       try {
-        console.log("🔍 Checking initial Supabase auth session");
         const { data } = await supabase.auth.getSession();
         
         if (data.session) {
-          console.log("✅ Found existing session for:", data.session.user.email);
-          
           // Check if we already have a user loaded from storage
           if (!currentUser) {
-            console.log("👤 Processing existing session user");
             // Use setTimeout to avoid potential deadlock issues
             setTimeout(async () => {
               await handleUserAuthentication(data.session?.user);
             }, 0);
           }
-        } else {
-          console.log("ℹ️ No existing session found");
         }
       } catch (error) {
-        console.error("❌ Error checking Supabase auth:", error);
+        console.error("Error checking Supabase auth:", error);
       } finally {
         setIsInitializing(false);
       }
@@ -176,12 +164,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             
             setEmployeeData(employee);
             saveEmployeeDataToStorage(employee);
-            console.log("📝 Employee data stored in context:", employee);
-          } else {
-            console.log("⚠️ No employee data found for user:", email);
+            console.log("Employee data stored:", employee);
           }
         } catch (err) {
-          console.error("❌ Error fetching employee data:", err);
+          console.error("Error fetching employee data:", err);
         }
         
         toast.success(`Welcome back, ${user.firstName}!`);

@@ -78,6 +78,7 @@ export const useEmployeeData = () => {
       }) || [];
 
       dispatch(setConfiguredModules(configuredModules));
+      console.log("Employee configured modules loaded:", configuredModules);
     } catch (error) {
       console.error("Error in fetchConfiguredModules:", error);
       dispatch(setError("Failed to fetch configured modules"));
@@ -90,6 +91,7 @@ export const useEmployeeData = () => {
   useEffect(() => {
     if (authEmployeeData) {
       dispatch(setEmployeeData(authEmployeeData));
+      console.log("Employee data loaded in store:", authEmployeeData);
       
       // Fetch modules if we have employeeId and clientId
       if (authEmployeeData.id && authEmployeeData.clientId) {

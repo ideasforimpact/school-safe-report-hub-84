@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -28,13 +27,9 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  console.log("🏁 Login component rendering");
-
   // Check if user is already logged in, redirect if they are
   useEffect(() => {
-    console.log("👤 User state changed:", user?.email);
     if (user) {
-      console.log("🚀 Redirecting logged-in user to dashboard");
       // Get the intended destination from location state or use dashboard as default
       const from = location.state?.from?.pathname || "/dashboard";
 
@@ -50,7 +45,6 @@ const Login = () => {
   // Listen for auth errors from context
   useEffect(() => {
     if (authError) {
-      console.log("❌ Auth error detected:", authError);
       setError(authError);
       setIsLoading(false);
       setGoogleLoading(false);
@@ -63,9 +57,7 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      console.log("🔑 Attempting to log in with email:", email);
       const success = await login(email, password);
-      console.log("Login result:", success ? "Success" : "Failed");
       if (success) {
         // Redirect logic is handled in the useEffect that watches for user changes
       } else {
@@ -75,7 +67,7 @@ const Login = () => {
         setIsLoading(false);
       }
     } catch (err) {
-      console.error("❌ Login error:", err);
+      console.error("Login error:", err);
       setError("An error occurred. Please try again.");
       setIsLoading(false);
     }
@@ -83,7 +75,6 @@ const Login = () => {
 
   const handleGoogleLogin = async () => {
     try {
-      console.log("🔵 Starting Google login process");
       setGoogleLoading(true);
       setError("");
       
@@ -91,8 +82,6 @@ const Login = () => {
       const origin = window.location.origin;
       // Always redirect to dashboard after login
       const redirectTo = `${origin}/dashboard`;
-      
-      console.log("🔄 Initiating Google login with redirect to:", redirectTo);
       
       // Use signInWithOAuth to redirect to Google's login page
       const { error } = await supabase.auth.signInWithOAuth({
@@ -107,7 +96,7 @@ const Login = () => {
       });
       
       if (error) {
-        console.error("❌ Google login error:", error);
+        console.error("Google login error:", error);
         toast.error("Google login failed. Please try again.");
         setError(`Google authentication failed: ${error.message}`);
         setGoogleLoading(false);
@@ -115,7 +104,7 @@ const Login = () => {
       // Successful OAuth will redirect the page, no need for else branch
       
     } catch (err) {
-      console.error("❌ Google login unexpected error:", err);
+      console.error("Google login unexpected error:", err);
       setError("An error occurred with Google login. Please try again.");
       setGoogleLoading(false);
     }
@@ -138,7 +127,6 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      console.log("👤 Using demo credentials:", demoEmail);
       const success = await login(demoEmail, demoPassword);
       if (success) {
         // Redirect logic is handled in the useEffect that watches for user changes
@@ -150,7 +138,7 @@ const Login = () => {
         setIsLoading(false);
       }
     } catch (err) {
-      console.error("❌ Demo login error:", err);
+      console.error("Demo login error:", err);
       setError("An error occurred with demo login. Please try again.");
       setIsLoading(false);
     }

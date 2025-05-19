@@ -12,11 +12,13 @@ import SidebarMenuItem from './SidebarMenuItem';
 import ClientModulesList from './ClientModulesList';
 import { ModulePermissions } from '@/contexts/auth/types';
 import { toast } from 'sonner';
+import { useEmployeeStore } from '@/store/EmployeeContext';
 
 const SidebarContent = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isSaasOwner, isAdmin, employeeData } = useAuth();
+  const { state: employeeState } = useEmployeeStore();
   const [dynamicMenuItems, setDynamicMenuItems] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [lastFetchPath, setLastFetchPath] = useState('');
@@ -90,6 +92,20 @@ const SidebarContent = () => {
         return;
       }
       
+      // Use modules from the employee store if available
+      if (employeeState.configuredModules.length > 0 && !isBackofficeFetch) {
+        const basePath = '';
+        const items = convertModulesToSidebarItems(
+          employeeState.configuredModules,
+          effectivePermissions as ModulePermissions,
+          basePath
+        );
+        setDynamicMenuItems(items);
+        setIsLoading(false);
+        setLastFetchPath(isBackofficeRoute ? 'backoffice' : 'client');
+        return;
+      }
+      
       // Fetch modules passing user info and employee data from context
       const modules = await fetchModules(isBackofficeFetch, user, employeeData);
       
@@ -141,7 +157,7 @@ const SidebarContent = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [isSaasOwner, isBackofficeRoute, effectivePermissions, lastFetchPath, user, isProviderAuthenticated, employeeData, isAdmin]);
+  }, [isSaasOwner, isBackofficeRoute, effectivePermissions, lastFetchPath, user, isProviderAuthenticated, employeeData, isAdmin, employeeState.configuredModules]);
 
   // Fetch modules only when user is authenticated
   useEffect(() => {
