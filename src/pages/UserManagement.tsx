@@ -29,6 +29,7 @@ import { processEmployeeExcel } from '@/services/employee/importEmployeeService'
 import { supabase } from '@/integrations/supabase/client';
 import { getAllEmployeesFromApi } from '@/services/employee/employeeRetrievalService';
 import { getEmployeeModulePermissions, updateEmployeeModulePermissions } from '@/services/employee/employeeModuleService';
+import EmployeeDataProvider from '@/components/employee/EmployeeDataProvider';
 
 // Helper function to convert employee type and department type
 const convertEmployeeType = (employeeType: EmployeeContextType): EmployeeType => {
@@ -58,8 +59,13 @@ const convertDepartmentType = (department: EmployeeContextDepartmentType): Depar
   return departmentMapping[department] || 'admin';
 };
 
-const UserManagement = () => {
-  const { isAdmin, users = [], user, employeeData } = useAuth();
+// Inner component to receive employee data from Redux
+const UserManagementInner = ({ employeeData, isAdmin, user }: { 
+  employeeData: any;
+  isAdmin: boolean;
+  user: User | null;
+}) => {
+  const { users = [] } = useAuth();
   const { addEmployee, deactivateEmployee, fetchEmployees } = useEmployee();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -647,6 +653,23 @@ const UserManagement = () => {
         clientId={clientId} // Pass clientId to the dialog
       />
     </Layout>
+  );
+};
+
+// Main component that uses EmployeeDataProvider
+const UserManagement = () => {
+  const { isAdmin, user } = useAuth();
+  
+  return (
+    <EmployeeDataProvider>
+      {({ employeeData }) => (
+        <UserManagementInner 
+          employeeData={employeeData}
+          isAdmin={isAdmin}
+          user={user}
+        />
+      )}
+    </EmployeeDataProvider>
   );
 };
 

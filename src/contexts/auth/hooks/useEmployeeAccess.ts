@@ -3,30 +3,34 @@ import { useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { EmploymentStatus } from '@/contexts/employee/types';
+import { useEmployeeStore } from '@/store/EmployeeContext';
+import { getEmployeeData } from '@/store/employeeSelectors';
 
 /**
  * Hook to check if employee is verified and active
  */
 export const useEmployeeAccess = () => {
-  const { user, employeeData } = useAuth();
+  const { user } = useAuth();
   const { employees } = useEmployeeVerification();
+  const { state } = useEmployeeStore();
+  const employeeData = getEmployeeData(state);
 
   // Find employee associated with current user
   const employee = useMemo(() => {
     if (!user) return null;
     
-    // First check context for employee data
+    // First check Redux for employee data
     if (employeeData) {
-      console.log("Using employee data from context:", employeeData);
+      console.log("Using employee data from Redux:", employeeData);
       // Find the full employee record from the employees list
       const fullEmployee = employees.find(emp => emp.id === employeeData.id);
       if (fullEmployee) {
         return fullEmployee;
       }
-      // If we couldn't find the full employee record, still use the context data
+      // If we couldn't find the full employee record, still use the Redux data
       return {
         ...employeeData,
-        status: true // Assume active if in context
+        status: true // Assume active if in Redux
       };
     }
     
@@ -62,9 +66,9 @@ export const useEmployeeAccess = () => {
 
   // Get employee id if available
   const getEmployeeId = useCallback(() => {
-    // First try to get from context
+    // First try to get from Redux
     if (employeeData?.id) {
-      console.log("Getting employee ID from context:", employeeData.id);
+      console.log("Getting employee ID from Redux:", employeeData.id);
       return employeeData.id;
     }
     // Fall back to employee object
@@ -75,9 +79,9 @@ export const useEmployeeAccess = () => {
 
   // Get client id if available
   const getClientId = useCallback(() => {
-    // First try to get from context
+    // First try to get from Redux
     if (employeeData?.clientId) {
-      console.log("Getting client ID from context:", employeeData.clientId);
+      console.log("Getting client ID from Redux:", employeeData.clientId);
       return employeeData.clientId;
     }
     // Fall back to employee object if it has clientId property

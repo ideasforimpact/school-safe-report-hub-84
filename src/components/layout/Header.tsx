@@ -11,9 +11,16 @@ import UserProfileMenu from './UserProfileMenu';
 import HeaderIcons from './HeaderIcons';
 import AdminSettingsMenu from './AdminSettingsMenu';
 import UserRoleBadge from './UserRoleBadge';
+import EmployeeDataProvider from '@/components/employee/EmployeeDataProvider';
 
-const Header = () => {
-  const { user, logout, isAdmin, isSaasOwner, employeeData } = useAuth();
+// Inner component to receive employee data from Redux
+const HeaderInner = ({ employeeData, user, isSaasOwner, isAdmin, logout }: {
+  employeeData: any;
+  user: any;
+  isSaasOwner: boolean;
+  isAdmin: boolean;
+  logout: () => void;
+}) => {
   const { clients } = useClient();
   const navigate = useNavigate();
   const location = useLocation();
@@ -60,7 +67,7 @@ const Header = () => {
               {/* Settings Menu - Only visible for admins */}
               {showAdminSettings && !isBackoffice && <AdminSettingsMenu />}
 
-              <UserProfileMenu />
+              <UserProfileMenu employeeData={employeeData} />
             </div>
           ) : (
             <Button 
@@ -73,6 +80,25 @@ const Header = () => {
         </div>
       </div>
     </div>
+  );
+};
+
+// Main component that uses EmployeeDataProvider
+const Header = () => {
+  const { user, logout, isAdmin, isSaasOwner } = useAuth();
+
+  return (
+    <EmployeeDataProvider>
+      {({ employeeData }) => (
+        <HeaderInner
+          employeeData={employeeData}
+          user={user}
+          isSaasOwner={isSaasOwner}
+          isAdmin={isAdmin}
+          logout={logout}
+        />
+      )}
+    </EmployeeDataProvider>
   );
 };
 

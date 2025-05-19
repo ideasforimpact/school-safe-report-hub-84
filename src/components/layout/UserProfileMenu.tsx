@@ -18,7 +18,11 @@ import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { ChangePasswordDialog } from '@/components/ChangePasswordDialog';
 
-const UserProfileMenu = () => {
+interface UserProfileMenuProps {
+  employeeData?: any;
+}
+
+const UserProfileMenu: React.FC<UserProfileMenuProps> = ({ employeeData }) => {
   const { user, logout, isAdmin, isSaasOwner } = useAuth();
   const navigate = useNavigate();
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
