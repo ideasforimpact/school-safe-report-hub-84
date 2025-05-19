@@ -1,42 +1,42 @@
 
-import React, { useEffect } from 'react';
-import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
+import React from 'react';
+import { Navigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 interface RouteGuardProps {
-  children?: React.ReactNode;
-  requireAdmin?: boolean;
-  requireSaasOwner?: boolean;
+  children: React.ReactNode;
+  requiredAuth?: boolean;
+  requiredAdmin?: boolean;
+  requiredRole?: string;
 }
 
-const RouteGuard = ({ 
-  children, 
-  requireAdmin = false,
-  requireSaasOwner = false 
-}: RouteGuardProps) => {
-  const { user, isAdmin, authError } = useAuth();
-  const location = useLocation();
+/**
+ * A component that guards routes based on authentication and roles.
+ */
+const RouteGuard: React.FC<RouteGuardProps> = ({
+  children,
+  requiredAuth = true,
+  requiredAdmin = false,
+  requiredRole = '',
+}) => {
+  const { user, isAdmin } = useAuth();
 
-  // Notice: This component is set to be more permissive now.
-  // It will still show warnings but won't block access
+  // If authentication is required and user is not logged in
+  if (requiredAuth && !user) {
+    return <Navigate to="/login" replace />;
+  }
 
-  useEffect(() => {
-    if (!user) {
-      // Only show if not already showing an auth error and if we're not on the login page
-      if (!authError && location.pathname !== '/login') {
-        toast.info("You're browsing as a guest. Some features may be limited.");
-      }
-    } else if (requireAdmin && !isAdmin) {
-      toast.warning("This page normally requires admin privileges");
-    } else if (requireSaasOwner && user.role !== 'saas_owner') {
-      toast.warning("This page normally requires owner privileges");
-    }
-  }, [user, isAdmin, requireAdmin, requireSaasOwner, authError, location.pathname]);
+  // If admin privileges are required and user is not admin
+  if (requiredAdmin && !isAdmin) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
-  // Always allow access, but show different UI based on user status
-  // Return children if provided, otherwise return Outlet for nested routes
-  return children ? <>{children}</> : <Outlet />;
+  // If a specific role is required and user doesn't have it
+  if (requiredRole && user?.role !== requiredRole) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
 };
 
 export default RouteGuard;

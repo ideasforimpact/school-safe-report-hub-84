@@ -66,12 +66,14 @@ export interface AuthContextType {
   isSaasOwner: boolean;
   isLoading: boolean;
   users: User[];
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   getRequiredPermission: (module: string) => string;
   registerUser: (userData: Omit<UserWithPassword, 'id'>) => Promise<void>;
-  updateUserInfo: (userId: string, userData: Partial<User>) => void;
+  updateUser: (userId: string, userData: Partial<User>) => Promise<void>;
   googleSignIn: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
-  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
+  authError: string | null;
+  handleUserAuthentication: (supabaseUser: any) => Promise<void>;
 }

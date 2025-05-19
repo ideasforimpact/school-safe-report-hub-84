@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -24,7 +23,7 @@ const Login = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
-  const { login, authError, user, handleUserAuthentication } = useAuth();
+  const { login, authError, user, handleUserAuthentication, googleSignIn } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -57,67 +56,33 @@ const Login = () => {
     }
   }, [authError]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Handle form submission
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError("");
     setIsLoading(true);
-
+    
     try {
-      console.log("🔑 Attempting to log in with email:", email);
-      const success = await login(email, password);
-      console.log("Login result:", success ? "Success" : "Failed");
-      if (success) {
-        // Redirect logic is handled in the useEffect that watches for user changes
-      } else {
-        if (!authError) {
-          setError("Invalid email or password");
-        }
-        setIsLoading(false);
-      }
-    } catch (err) {
-      console.error("❌ Login error:", err);
-      setError("An error occurred. Please try again.");
+      await login(email, password);
+      // The navigate after login is handled in the AuthProvider
+    } catch (error) {
+      console.error("Login error:", error);
+      toast.error("Login failed. Please check your credentials.");
+    } finally {
       setIsLoading(false);
     }
   };
 
-  const handleGoogleLogin = async () => {
+  // Handle Google sign in
+  const handleGoogleSignIn = async () => {
     try {
-      console.log("🔵 Starting Google login process");
-      setGoogleLoading(true);
-      setError("");
-      
-      // Get the current origin for constructing redirect URL
-      const origin = window.location.origin;
-      // Always redirect to dashboard after login
-      const redirectTo = `${origin}/dashboard`;
-      
-      console.log("🔄 Initiating Google login with redirect to:", redirectTo);
-      
-      // Use signInWithOAuth to redirect to Google's login page
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: redirectTo,
-          queryParams: {
-            // Add a timestamp to prevent caching issues
-            ts: new Date().getTime().toString()
-          }
-        }
-      });
-      
-      if (error) {
-        console.error("❌ Google login error:", error);
-        toast.error("Google login failed. Please try again.");
-        setError(`Google authentication failed: ${error.message}`);
-        setGoogleLoading(false);
-      }
-      // Successful OAuth will redirect the page, no need for else branch
-      
-    } catch (err) {
-      console.error("❌ Google login unexpected error:", err);
-      setError("An error occurred with Google login. Please try again.");
-      setGoogleLoading(false);
+      setIsLoading(true);
+      await googleSignIn();
+      // The navigate after login is handled in the AuthProvider
+    } catch (error) {
+      console.error("Google sign-in error:", error);
+      toast.error("Google sign-in failed. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -240,7 +205,7 @@ const Login = () => {
                 type="button" 
                 variant="outline" 
                 className="w-full flex items-center gap-2 justify-center"
-                onClick={handleGoogleLogin}
+                onClick={handleGoogleSignIn}
                 disabled={googleLoading || isLoading}
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
