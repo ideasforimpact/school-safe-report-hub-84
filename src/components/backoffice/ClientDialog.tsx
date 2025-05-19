@@ -144,6 +144,7 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
               formData={safeFormData} 
               handleModuleAccessChange={handleModuleAccessChange}
               onModuleInfoChange={handleModuleInfoChange}
+              isEdit={isEdit}
             />
           </TabsContent>
 

@@ -190,7 +190,15 @@ export const useClientManagement = () => {
 
   // Fix the function that prepares module info array
   const prepareModuleInfoArray = (moduleAccess: Partial<ModulePermissions>): ModuleInfo[] => {
-    // Create module info array from moduleAccess
+    // For new clients, we enable all modules but without admin access
+    const isAllEnabled = Object.values(moduleAccess).every(v => v === true);
+    
+    if (isAllEnabled) {
+      // Need to fetch modules to create the moduleInfoArray
+      return []; // This will be populated by the ModuleAccessTab component
+    }
+    
+    // For existing clients or specific configurations
     return Object.entries(moduleAccess)
       .filter(([_, enabled]) => enabled) // Only include enabled modules
       .map(([key, _]) => {
@@ -220,7 +228,15 @@ export const useClientManagement = () => {
     
     try {
       // Use moduleInfoArray if available, or create it from moduleAccess
-      const moduleInfoArray = formData.moduleInfoArray || prepareModuleInfoArray(formData.moduleAccess);
+      let moduleInfoArray = formData.moduleInfoArray;
+      
+      // If moduleInfoArray is not available or empty, but modules should all be enabled
+      if ((!moduleInfoArray || moduleInfoArray.length === 0) && 
+           Object.values(formData.moduleAccess).some(v => v === true)) {
+        // The ModuleAccessTab component will have updated moduleInfoArray in formData
+        // due to its initialization logic, so we should use that
+        console.log('No moduleInfoArray available, will be handled by edge function');
+      }
       
       console.log('Module info for client creation:', moduleInfoArray);
       
@@ -383,7 +399,15 @@ export const useClientManagement = () => {
     
     try {
       // Use moduleInfoArray if available, or create it from moduleAccess
-      const moduleInfoArray = formData.moduleInfoArray || prepareModuleInfoArray(formData.moduleAccess);
+      let moduleInfoArray = formData.moduleInfoArray;
+      
+      // If moduleInfoArray is not available or empty, but modules should all be enabled
+      if ((!moduleInfoArray || moduleInfoArray.length === 0) && 
+           Object.values(formData.moduleAccess).some(v => v === true)) {
+        // The ModuleAccessTab component will have updated moduleInfoArray in formData
+        // due to its initialization logic, so we should use that
+        console.log('No moduleInfoArray available, will be handled by edge function');
+      }
       
       console.log('Module info for client update:', moduleInfoArray);
       

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
@@ -37,9 +38,10 @@ interface ModuleAccessTabProps {
   };
   handleModuleAccessChange: (module: keyof ModulePermissions, value: boolean) => void;
   onModuleInfoChange?: (moduleInfoArray: ModuleInfo[]) => void;
+  isEdit?: boolean; // Add isEdit prop to determine if we're in edit or add mode
 }
 
-const ModuleAccessTab = ({ formData, handleModuleAccessChange, onModuleInfoChange }: ModuleAccessTabProps) => {
+const ModuleAccessTab = ({ formData, handleModuleAccessChange, onModuleInfoChange, isEdit = false }: ModuleAccessTabProps) => {
   const [modules, setModules] = useState<Module[]>([]);
   const [loading, setLoading] = useState(false);
   const [moduleAccessState, setModuleAccessState] = useState<ModuleAccess[]>([]);
@@ -86,13 +88,14 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange, onModuleInfoChang
     if (modules.length > 0) {
       initializeModuleAccessState(modules);
     }
-  }, [formData.moduleInfoArray, formData.moduleAccess]);
+  }, [formData.moduleInfoArray, formData.moduleAccess, isEdit]);
   
   // Initialize module access state based on either moduleInfoArray or moduleAccess
   const initializeModuleAccessState = (availableModules: Module[]) => {
     console.log("Initializing module access state with:", { 
       moduleInfoArray: formData.moduleInfoArray,
-      moduleAccess: formData.moduleAccess 
+      moduleAccess: formData.moduleAccess,
+      isEdit: isEdit
     });
     
     let initialModuleAccess: ModuleAccess[] = [];
@@ -128,15 +131,30 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange, onModuleInfoChang
     }
     // Otherwise, fall back to using moduleAccess
     else {
-      console.log("Using moduleAccess to initialize module states");
+      console.log("Using moduleAccess or default settings to initialize module states");
       initialModuleAccess = availableModules.map((module: Module) => {
+        // For new client (not edit mode), enable all modules by default but without admin access
+        if (!isEdit) {
+          return {
+            name: module.name,
+            module_id: module.id,
+            is_admin: false,
+            is_enabled: true, // Enable all modules by default for new clients
+            access_level: {
+              isAdmin: false,
+              isEnabled: true
+            }
+          };
+        }
+        
+        // For edit mode, use existing moduleAccess if available
         const accessKey = getAccessKeyFromModuleName(module.name);
         const isEnabled = !!formData.moduleAccess[accessKey];
         
         // Check if it's an admin module
         const accessKeyStr = accessKey as string;
         const isAdmin = isEnabled && (accessKeyStr.indexOf('Admin') !== -1 || 
-                                      formData.moduleAccess.superAdmin === true);
+                                    formData.moduleAccess.superAdmin === true);
         
         console.log(`Initializing module: ${module.name}, ID: ${module.id}, Enabled: ${isEnabled}, Admin: ${isAdmin}`);
         
