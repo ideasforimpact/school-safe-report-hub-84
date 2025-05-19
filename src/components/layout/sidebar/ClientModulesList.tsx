@@ -93,7 +93,7 @@ const ClientModulesList = () => {
           return;
         }
         
-        console.log("Configured modules for client:", clientModules);
+        console.log("Client modules from database:", clientModules);
         
         // Get module IDs from client modules
         const moduleIds = clientModules.map(cm => cm.module_id);
@@ -120,12 +120,14 @@ const ClientModulesList = () => {
           return;
         }
         
-        console.log("Fetched module details:", modulesData);
+        console.log("Modules data fetched from database:", modulesData);
         
         // Create a map of module access levels keyed by module ID
-        const moduleAccessLevels = {};
+        const moduleAccessLevels: Record<string, any> = {};
         clientModules.forEach(cm => {
-          moduleAccessLevels[cm.module_id] = cm.access_level;
+          if (cm.module_id) {
+            moduleAccessLevels[cm.module_id] = cm.access_level;
+          }
         });
         
         // Always include dashboard
@@ -159,22 +161,32 @@ const ClientModulesList = () => {
           });
         });
         
-        // Always add users and settings for authenticated users
-        modules.push({
-          icon: Users,
-          label: 'Users',
-          path: '/users',
-          allowed: true
-        });
+        // Always add users and settings modules at the end
+        // ONLY if the client has users and settings modules assigned
+        const hasUsers = modulesData.some(m => m.name.toLowerCase() === 'users');
+        const hasSettings = modulesData.some(m => m.name.toLowerCase() === 'settings');
         
-        modules.push({
-          icon: Settings,
-          label: 'Settings',
-          path: '/configuration',
-          allowed: true
-        });
+        // Only add users module if assigned or specifically found in the modules data
+        if (hasUsers) {
+          modules.push({
+            icon: Users,
+            label: 'Users',
+            path: '/users',
+            allowed: true
+          });
+        }
         
-        console.log("Final configured modules for sidebar:", modules.map(m => ({ label: m.label, accessLevel: m.accessLevel })));
+        // Only add settings module if assigned or specifically found in the modules data
+        if (hasSettings) {
+          modules.push({
+            icon: Settings,
+            label: 'Settings',
+            path: '/configuration',
+            allowed: true
+          });
+        }
+        
+        console.log("Final configured modules for sidebar:", modules.map(m => ({ label: m.label, path: m.path })));
         setConfiguredModules(modules);
       } catch (error) {
         console.error("Error loading configured modules:", error);
