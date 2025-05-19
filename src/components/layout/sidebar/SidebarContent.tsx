@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -172,6 +171,7 @@ const SidebarContent = () => {
 
   // For provider-authenticated users on client routes, use the dedicated component
   if (isProviderAuthenticated && !isBackofficeRoute) {
+    console.log("Using ClientModulesList for provider-authenticated user:", user?.email);
     return <ClientModulesList />;
   }
 

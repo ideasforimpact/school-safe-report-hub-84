@@ -36,6 +36,7 @@ interface ModuleItem {
   label: string;
   path: string;
   allowed: boolean;
+  accessLevel?: any;
 }
 
 const ClientModulesList = () => {
@@ -59,7 +60,7 @@ const ClientModulesList = () => {
         // Find employee by user ID
         const { data: employeeData, error: employeeError } = await supabase
           .from('employees')
-          .select('id, email')
+          .select('id, email, client_id')
           .eq('user_id', user.id)
           .single();
           
@@ -70,22 +71,62 @@ const ClientModulesList = () => {
           return;
         }
         
-        console.log("Found employee with ID:", employeeData.id, "Email:", employeeData.email);
+        console.log("Found employee with ID:", employeeData.id, "Email:", employeeData.email, "Client ID:", employeeData.client_id);
         
-        // Fetch employee's configured modules
-        const { data: moduleEntries, error: modulesError } = await supabase
-          .from('employee_modules')
-          .select('module_id, roles(id, key, name)')
-          .eq('employee_id', employeeData.id);
-          
-        if (modulesError) {
-          console.error("Error fetching employee modules:", modulesError);
+        if (!employeeData.client_id) {
+          console.error("Employee has no client assignment");
           setConfiguredModules([]);
           setIsLoading(false);
           return;
         }
         
-        console.log("Configured modules for employee:", moduleEntries);
+        // Fetch client's configured modules
+        const { data: clientModules, error: clientModulesError } = await supabase
+          .from('client_modules')
+          .select('module_id, access_level')
+          .eq('client_id', employeeData.client_id);
+          
+        if (clientModulesError) {
+          console.error("Error fetching client modules:", clientModulesError);
+          setConfiguredModules([]);
+          setIsLoading(false);
+          return;
+        }
+        
+        console.log("Configured modules for client:", clientModules);
+        
+        // Get module IDs from client modules
+        const moduleIds = clientModules.map(cm => cm.module_id);
+        
+        // If no modules are configured, return empty array
+        if (moduleIds.length === 0) {
+          console.log("No modules configured for this client");
+          setConfiguredModules([]);
+          setIsLoading(false);
+          return;
+        }
+        
+        // Fetch module details
+        const { data: modulesData, error: modulesDataError } = await supabase
+          .from('modules')
+          .select('*')
+          .in('id', moduleIds)
+          .neq('level', 'backoffice');
+          
+        if (modulesDataError || !modulesData) {
+          console.error("Error fetching module details:", modulesDataError);
+          setConfiguredModules([]);
+          setIsLoading(false);
+          return;
+        }
+        
+        console.log("Fetched module details:", modulesData);
+        
+        // Create a map of module access levels keyed by module ID
+        const moduleAccessLevels = {};
+        clientModules.forEach(cm => {
+          moduleAccessLevels[cm.module_id] = cm.access_level;
+        });
         
         // Always include dashboard
         const modules: ModuleItem[] = [{
@@ -95,76 +136,30 @@ const ClientModulesList = () => {
           allowed: true
         }];
         
-        // Map modules to sidebar items
-        if (moduleEntries && moduleEntries.length > 0) {
-          // Get all module data that matches the employee's configured modules
-          const { data: allModules, error: modulesDataError } = await supabase
-            .from('modules')
-            .select('*')
-            .neq('level', 'backoffice');
-            
-          if (modulesDataError || !allModules) {
-            console.error("Error fetching module details:", modulesDataError);
-          } else {
-            // Build a map of module keys for quick lookup
-            const employeeModuleKeys = moduleEntries.map(em => em.roles?.key || '');
-            console.log("Employee module keys:", employeeModuleKeys);
-            
-            // Map modules to paths and icons
-            allModules.forEach(module => {
-              let moduleKey = '';
-              // Set key based on module name for permission mapping
-              switch(module.name.toLowerCase()) {
-                case 'incidents':
-                  moduleKey = 'incidentReporting';
-                  break;
-                case 'assessments':
-                  moduleKey = 'assessmentUser';
-                  break;
-                case 'employee verification':
-                  moduleKey = 'employeeVerificationAdmin';
-                  break;
-                case 'grievances':
-                  moduleKey = 'grievancesAdmin';
-                  break;
-                case 'transport safety':
-                  moduleKey = 'transportSafetyAdmin';
-                  break;
-                case 'edusafe resources':
-                  moduleKey = 'eduSafeResourceAccess';
-                  break;
-                default:
-                  moduleKey = module.name.toLowerCase().replace(/\s+/g, '_');
-              }
-              
-              // Skip if this is the dashboard (already added)
-              if (module.name.toLowerCase() === 'dashboard') {
-                return;
-              }
-              
-              // Check if this module is in the user's configured modules
-              const isAllowed = employeeModuleKeys.includes(moduleKey);
-              
-              // Get icon component
-              const IconComponent = iconMap[module.icon || 'LayoutDashboard'] || LayoutDashboard;
-              
-              // Create path from module name
-              const path = `/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
-              
-              // Add to modules if allowed
-              if (isAllowed) {
-                modules.push({
-                  icon: IconComponent,
-                  label: module.name,
-                  path,
-                  allowed: true
-                });
-              }
-            });
+        // Map modules to sidebar items with their access levels
+        modulesData.forEach(module => {
+          // Skip if this is the dashboard (already added)
+          if (module.name.toLowerCase() === 'dashboard') {
+            return;
           }
-        }
+          
+          // Get icon component
+          const IconComponent = iconMap[module.icon || 'LayoutDashboard'] || LayoutDashboard;
+          
+          // Create path from module name
+          const path = `/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
+          
+          // Add module with its access level
+          modules.push({
+            icon: IconComponent,
+            label: module.name,
+            path,
+            allowed: true,
+            accessLevel: moduleAccessLevels[module.id] || {}
+          });
+        });
         
-        // Always add users and settings for all authenticated users
+        // Always add users and settings for authenticated users
         modules.push({
           icon: Users,
           label: 'Users',
@@ -179,7 +174,7 @@ const ClientModulesList = () => {
           allowed: true
         });
         
-        console.log("Final configured modules for sidebar:", modules.map(m => m.label));
+        console.log("Final configured modules for sidebar:", modules.map(m => ({ label: m.label, accessLevel: m.accessLevel })));
         setConfiguredModules(modules);
       } catch (error) {
         console.error("Error loading configured modules:", error);
