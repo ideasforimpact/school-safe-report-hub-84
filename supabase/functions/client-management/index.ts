@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -416,7 +417,17 @@ serve(async (req) => {
         }
         
         // Remove moduleAccess, superAdminEmail, and modules from client data before insertion
-        const { moduleAccess: _, superAdminEmail: __, modules: ___, ...clientOnly } = clientData;
+        const { moduleAccess, superAdminEmail: _, modules, ...clientOnly } = clientData;
+
+        // Check if name is provided
+        if (!clientOnly.name) {
+          return new Response(JSON.stringify({ 
+            error: 'Client name is required' 
+          }), {
+            headers: { 'Content-Type': 'application/json', ...corsHeaders },
+            status: 400,
+          });
+        }
 
         // Insert client first
         const { data: newClient, error: clientError } = await supabase
@@ -493,6 +504,16 @@ serve(async (req) => {
               status: 400,
             });
           }
+        }
+
+        // Check if name is provided and not empty when it's being updated
+        if (clientUpdates.name === '') {
+          return new Response(JSON.stringify({ 
+            error: 'Client name cannot be empty' 
+          }), {
+            headers: { 'Content-Type': 'application/json', ...corsHeaders },
+            status: 400,
+          });
         }
 
         // Update client data
