@@ -203,12 +203,12 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange, onModuleInfoChang
     // Find if there's an admin version of this key
     const adminKey = `${key}Admin`;
     
-    // Check if these keys exist in the known access keys list
-    if (knownAccessKeys.includes(adminKey as string)) {
+    // Check if these keys exist in the known access keys list - using string comparison
+    if (knownAccessKeys.includes(adminKey)) {
       return adminKey as keyof ModulePermissions;
     }
     
-    if (knownAccessKeys.includes(key as string)) {
+    if (knownAccessKeys.includes(key)) {
       return key as keyof ModulePermissions;
     }
     

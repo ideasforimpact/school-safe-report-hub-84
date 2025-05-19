@@ -21,12 +21,24 @@ export const useEmployeeAccess = () => {
   // Check if employee is active
   const isActiveEmployee = useMemo(() => {
     if (!employee) return false;
+    
+    // Handle both boolean and string status formats
+    if (typeof employee.status === 'boolean') {
+      return employee.status === true;
+    }
+    
     return employee.status === 'active'; // Using EmploymentStatus
   }, [employee]);
 
   // Check if employee is verified
   const isVerifiedEmployee = useMemo(() => {
     if (!employee) return false;
+    
+    // Handle both boolean and string status formats
+    if (typeof employee.status === 'boolean') {
+      return employee.status === true;
+    }
+    
     return employee.status === 'active'; // Using EmploymentStatus
   }, [employee]);
 
