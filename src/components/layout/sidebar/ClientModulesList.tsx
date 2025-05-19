@@ -79,13 +79,32 @@ const ClientModulesList = () => {
         
         // Include complete employee data if available
         if (currentEmployeeData) {
+          // Helper function to safely extract name parts
+          const getNameParts = (emp: any) => {
+            // If the employee has a name property (string)
+            if (typeof emp.name === 'string') {
+              const nameParts = emp.name.split(' ');
+              return {
+                firstName: emp.firstName || nameParts[0] || '',
+                lastName: emp.lastName || (nameParts.length > 1 ? nameParts.slice(1).join(' ') : '')
+              };
+            }
+            // Otherwise use firstName/lastName directly
+            return {
+              firstName: emp.firstName || '',
+              lastName: emp.lastName || ''
+            };
+          };
+          
+          const nameParts = getNameParts(currentEmployeeData);
+          
           requestBody.employeeInfo = {
             ...currentEmployeeData,
             id: currentEmployeeData.id,
             clientId: currentEmployeeData.clientId || currentEmployeeData.clientId,
             email: currentEmployeeData.email,
-            firstName: currentEmployeeData.firstName || (typeof currentEmployeeData.name === 'string' ? currentEmployeeData.name.split(' ')[0] : ''),
-            lastName: currentEmployeeData.lastName || (typeof currentEmployeeData.name === 'string' ? currentEmployeeData.name.split(' ').slice(1).join(' ') : ''),
+            firstName: nameParts.firstName,
+            lastName: nameParts.lastName,
             department: currentEmployeeData.department || null,
             employeeType: currentEmployeeData.employeeType || null,
             isSuperAdmin: 'isSuperAdmin' in currentEmployeeData ? currentEmployeeData.isSuperAdmin : false,

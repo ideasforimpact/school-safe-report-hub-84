@@ -66,11 +66,12 @@ export interface EmployeeData {
   email: string;
   firstName: string;
   lastName: string;
-  department?: DepartmentType;  // Added from errors
-  employeeType?: EmployeeType;  // Added from errors
-  isSuperAdmin?: boolean;       // Added from errors
-  status?: boolean | EmploymentStatus; // Added from errors
-  employeeId?: string;          // Added from errors
+  name?: string;  // Added name property for compatibility with Employee type
+  department?: DepartmentType;
+  employeeType?: EmployeeType;
+  isSuperAdmin?: boolean;
+  status?: boolean | EmploymentStatus;
+  employeeId?: string;
 }
 
 // Add EmploymentStatus type since it's used in the status field
