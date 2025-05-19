@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -6,6 +5,7 @@ import { getSaasOwnerItems, getClientItems, fetchModules, convertModulesToSideba
 import SidebarMenuItem from './SidebarMenuItem';
 import { ModulePermissions } from '@/contexts/auth/types';
 import { toast } from 'sonner';
+import ConfiguredSidebarContent from './ConfiguredSidebarContent';
 
 const SidebarContent = () => {
   const location = useLocation();
@@ -14,6 +14,11 @@ const SidebarContent = () => {
   const [dynamicMenuItems, setDynamicMenuItems] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [lastFetchPath, setLastFetchPath] = useState('');
+  
+  // If user is authenticated with Google, show the configured modules
+  if (user && user.provider === 'google') {
+    return <ConfiguredSidebarContent />;
+  }
   
   // Get user permissions with default fallback
   const defaultPermissions: ModulePermissions = {

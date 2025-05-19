@@ -15,7 +15,7 @@ import { Settings, User as UserIcon, LogOut, Key } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import ChangePasswordDialog from '@/components/ChangePasswordDialog';
+import { ChangePasswordDialog } from '@/components/ChangePasswordDialog';
 
 const UserProfileMenu: React.FC = () => {
   const { user, logout } = useAuth();
@@ -26,7 +26,7 @@ const UserProfileMenu: React.FC = () => {
     try {
       await logout();
       toast.success("Logged out successfully");
-      navigate('/login');
+      navigate('/login'); // Always redirect to /login on logout
     } catch (error) {
       console.error("Logout failed:", error);
       toast.error("Logout failed");
