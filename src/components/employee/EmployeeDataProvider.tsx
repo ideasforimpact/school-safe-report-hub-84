@@ -20,6 +20,7 @@ interface EmployeeDataProviderProps {
 const EmployeeDataProvider: React.FC<EmployeeDataProviderProps> = ({ children }) => {
   const { state } = useEmployeeStore();
   
+  // Get all data from Redux only
   const employeeData = getEmployeeData(state);
   const isLoading = state.isLoading;
   const error = state.error;

@@ -31,13 +31,17 @@ const HeaderInner = ({ employeeData, user, isSuperAdmin, isAdmin, logout }: {
   // Check if we're in the backoffice
   const isBackoffice = location.pathname.startsWith('/backoffice');
   
-  // Find the client associated with the current user
-  const userClient = user?.clientId ? clients.find(c => c.id === user.clientId) : null;
+  // Find the client associated with the current user - Use employeeData.clientId from Redux if available
+  const userClient = employeeData?.clientId 
+    ? clients.find(c => c.id === employeeData.clientId) 
+    : user?.clientId 
+      ? clients.find(c => c.id === user.clientId) 
+      : null;
 
   // Set dashboard path to /dashboard for all users
   const dashboardPath = "/dashboard";
   
-  // Show admin settings menu for all admin users
+  // Show admin settings menu based on Redux state
   const showAdminSettings = isSuperAdmin || isAdmin;
 
   return (

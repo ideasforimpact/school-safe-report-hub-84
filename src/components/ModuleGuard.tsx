@@ -13,16 +13,9 @@ interface ModuleGuardProps {
 
 const ModuleGuard = ({ moduleType, children }: ModuleGuardProps) => {
   const { state } = useEmployeeStore();
-  const { user } = useAuth();
   
-  // First check the Redux store for permissions
-  const hasReduxPermission = hasModulePermission(state, moduleType);
-  
-  // Fallback to auth context if Redux doesn't have the permission
-  const hasAuthPermission = user?.modulePermissions?.[moduleType] || false;
-  
-  // Use Redux permission if available, otherwise fallback to auth context
-  const hasPermission = hasReduxPermission || hasAuthPermission;
+  // Only check the Redux store for permissions, no fallback to auth context
+  const hasPermission = hasModulePermission(state, moduleType);
 
   if (!hasPermission) {
     return (

@@ -13,8 +13,9 @@ export const isEmployeeSuperAdmin = (state: EmployeeState) =>
   state.employeeData?.isSuperAdmin === true;
 
 // Helper function to determine if employee is an admin
+// If we have employee data in Redux, consider them an admin
 export const isEmployeeAdmin = (state: EmployeeState) => 
-  state.employeeData ? true : false; // If we have employee data, consider them an admin
+  state.employeeData ? true : false;
 
 // Helper function to check if any module is enabled from configured modules
 export const hasAnyModulePermission = (state: EmployeeState): boolean => {

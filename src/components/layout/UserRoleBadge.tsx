@@ -12,6 +12,7 @@ const UserRoleBadge: React.FC<UserRoleBadgeProps> = ({
   isAdmin,
   isSuperAdmin = false // We'll keep the prop but not use it differently
 }) => {
+  // Base decisions only on the passed props (which come from Redux)
   if (isSaasOwner) {
     return (
       <Badge variant="default" className="bg-blue-600 hover:bg-blue-700">

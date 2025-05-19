@@ -31,7 +31,7 @@ const UserProfileMenuInner: React.FC<UserProfileMenuProps & {
   const navigate = useNavigate();
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   
-  // Show settings only for SaaS owners or super admins
+  // Show settings only for super admins based on Redux data
   const showSettings = isSuperAdmin;
 
   const getInitials = () => {

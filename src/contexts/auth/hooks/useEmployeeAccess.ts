@@ -70,27 +70,23 @@ export const useEmployeeAccess = () => {
 
   // Get employee id if available
   const getEmployeeId = useCallback(() => {
-    // First try to get from Redux
+    // Only get from Redux, no fallback
     if (employeeData?.id) {
       console.log("Getting employee ID from Redux:", employeeData.id);
       return employeeData.id;
     }
-    // Fall back to employee object
-    const id = employee?.id || null;
-    console.log("Getting employee ID from employee object:", id);
-    return id;
-  }, [employee, employeeData]);
+    return null;
+  }, [employeeData]);
 
   // Get client id if available
   const getClientId = useCallback(() => {
-    // First try to get from Redux
+    // Only get from Redux, no fallback
     if (employeeData?.clientId) {
       console.log("Getting client ID from Redux:", employeeData.clientId);
       return employeeData.clientId;
     }
-    // Fall back to employee object if it has clientId property
-    return (employee as any)?.clientId || null;
-  }, [employee, employeeData]);
+    return null;
+  }, [employeeData]);
 
   return {
     employee,
