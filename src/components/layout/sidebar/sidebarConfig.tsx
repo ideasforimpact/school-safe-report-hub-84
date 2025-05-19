@@ -85,7 +85,7 @@ export const fetchModules = async (isBackoffice: boolean, user?: any, employeeDa
       employeeId: employeeData.employeeId
     } : null;
 
-    console.log("Employee data being sent:", employeeInfo);
+    console.log("Employee data being sent:", employeeInfo,employeeData);
     
     // Call our edge function with user and employee info
     const { data, error } = await supabase.functions.invoke('fetch-modules', {
