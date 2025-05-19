@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -56,6 +57,14 @@ const SidebarContent = () => {
   // Check if user is authenticated via provider (like Google)
   const isProviderAuthenticated = !!user?.provider;
   
+  console.log("AUTH DETAILS:", {
+    email: user?.email,
+    provider: user?.provider || 'none',
+    isProviderAuthenticated,
+    isBackofficeRoute,
+    isSaasOwner
+  });
+  
   // Auto-redirect SaaS owners to backoffice when they're at root path
   useEffect(() => {
     if (isSaasOwner && user?.role === 'saas_owner' && location.pathname === '/') {
@@ -82,6 +91,7 @@ const SidebarContent = () => {
       // If this is a provider-authenticated user on client side, we'll use the ClientModulesList
       // component instead of continuing with this function
       if (isProviderAuthenticated && !isBackofficeFetch) {
+        console.log("Using ClientModulesList for provider-authenticated user:", user?.email);
         setIsLoading(false);
         setLastFetchPath(isBackofficeRoute ? 'backoffice' : 'client');
         return;

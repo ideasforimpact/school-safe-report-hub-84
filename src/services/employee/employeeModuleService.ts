@@ -10,6 +10,8 @@ import { ModulePermissions } from '@/contexts/auth/types';
  */
 export const getEmployeeModulePermissions = async (employeeId: string): Promise<ModulePermissions> => {
   try {
+    console.log("Getting module permissions for employee:", employeeId);
+    
     // Get all module entries for this employee from the database
     const { data, error } = await supabase
       .from('employee_modules')
@@ -36,9 +38,13 @@ export const getEmployeeModulePermissions = async (employeeId: string): Promise<
 
     // If no data, return default permissions
     if (!data || data.length === 0) {
+      console.log("No module permissions found for employee:", employeeId);
       return defaultPermissions;
     }
 
+    console.log("Module entries found for employee:", data.length);
+    console.log("Raw module entries:", data);
+    
     // Map the module keys from the database to the permissions object
     const permissions = { ...defaultPermissions };
 
@@ -47,10 +53,12 @@ export const getEmployeeModulePermissions = async (employeeId: string): Promise<
         const moduleKey = moduleEntry.roles.key as keyof ModulePermissions;
         if (moduleKey in permissions) {
           permissions[moduleKey] = true;
+          console.log(`Setting permission ${moduleKey} to true`);
         }
       }
     });
 
+    console.log("Final module permissions for employee:", permissions);
     return permissions;
   } catch (error) {
     console.error("Error in getEmployeeModulePermissions:", error);

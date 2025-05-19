@@ -51,6 +51,7 @@ const ClientModulesList = () => {
       if (!user || !user.id) {
         setConfiguredModules([]);
         setIsLoading(false);
+        console.log("No user data available for fetching modules");
         return;
       }
       
@@ -93,7 +94,13 @@ const ClientModulesList = () => {
           return;
         }
         
-        console.log("Client modules from database:", clientModules);
+        // Log if client has any modules configured
+        if (!clientModules || clientModules.length === 0) {
+          console.log("IMPORTANT: No modules configured for client ID:", employeeData.client_id);
+        } else {
+          console.log(`IMPORTANT: Found ${clientModules.length} modules configured for client ID:`, employeeData.client_id);
+          console.log("Client modules from database:", clientModules);
+        }
         
         // Get module IDs from client modules
         const moduleIds = clientModules.map(cm => cm.module_id);
@@ -161,10 +168,12 @@ const ClientModulesList = () => {
           });
         });
         
-        // Always add users and settings modules at the end
-        // ONLY if the client has users and settings modules assigned
+        // Check for Users and Settings modules specifically
         const hasUsers = modulesData.some(m => m.name.toLowerCase() === 'users');
         const hasSettings = modulesData.some(m => m.name.toLowerCase() === 'settings');
+        
+        console.log("Has Users module:", hasUsers);
+        console.log("Has Settings module:", hasSettings);
         
         // Only add users module if assigned or specifically found in the modules data
         if (hasUsers) {
