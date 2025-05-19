@@ -1,6 +1,6 @@
 
 import React, { createContext, useEffect, useState, useRef } from 'react';
-import { User, AuthContextType, UserWithPassword, EmployeeData } from './types';
+import { User, AuthContextType, UserWithPassword, EmployeeData, DepartmentType, EmployeeType } from './types';
 import { 
   getUserFromStorage, 
   logoutUser, 
@@ -56,7 +56,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const authListenerSetupRef = useRef<boolean>(false);
 
   // Import useAuthHandlers to get handleUserAuthentication function
-  const { handleUserAuthentication, login: handleLogin } = useAuthHandlers({
+  const { handleUserAuthentication, login } = useAuthHandlers({
     user: currentUser,
     users,
     setUser: setCurrentUser,
@@ -154,8 +154,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
                     firstName: empData.first_name,
                     lastName: empData.last_name,
                     isSuperAdmin: empData.is_super_admin,
-                    department: empData.department,
-                    employeeType: empData.employee_type,
+                    department: empData.department as DepartmentType,
+                    employeeType: empData.employee_type as EmployeeType,
                     status: empData.status,
                     employeeId: empData.employee_id
                   };
@@ -180,116 +180,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
 
     checkSupabaseAuth();
-  }, []);
+  }, [handleUserAuthentication, currentUser, employeeData]);
 
-  // Handle login
-  const handleLogin = async (email: string, password: string): Promise<boolean> => {
+  // Handle login - using the imported function from useAuthHandlers hook
+  const handleLoginLocal = async (email: string, password: string): Promise<boolean> => {
     setAuthError(null);
     
     try {
-      // First try to login as a regular user
-      const user = loginUser(email, password, users);
-
-      if (user) {
-        setCurrentUser(user);
-        saveUserToStorage(user);
-        
-        // Fetch employee data after successful login
-        try {
-          const { data: employeeData, error } = await supabase
-            .from('employees')
-            .select('id, client_id, email, first_name, last_name')
-            .eq('email', email.toLowerCase())
-            .single();
-          
-          if (employeeData && !error) {
-            const employee: EmployeeData = {
-              id: employeeData.id,
-              clientId: employeeData.client_id,
-              email: employeeData.email,
-              firstName: employeeData.first_name,
-              lastName: employeeData.last_name
-            };
-            
-            setEmployeeData(employee);
-            saveEmployeeDataToStorage(employee);
-            console.log("📝 Employee data stored in context:", employee);
-          } else {
-            console.log("⚠️ No employee data found for user:", email);
-          }
-        } catch (err) {
-          console.error("❌ Error fetching employee data:", err);
-        }
-        
-        toast.success(`Welcome back, ${user.firstName}!`);
-        return true;
+      const result = await login(email, password);
+      if (result) {
+        console.log("Login successful via handleLoginLocal");
       }
-
-      // If regular login fails, try backoffice login
-      const { data, error } = await supabase.rpc('verify_password', { 
-        email, 
-        password_attempt: password 
-      });
-
-      if (error) {
-        console.error("Login error:", error);
-        setAuthError("Invalid credentials");
-        return false;
-      }
-
-      if (data === true) {
-        // Fetch the backoffice user
-        const { data: backofficeUser, error: backofficeError } = await supabase
-          .from('backoffice_users')
-          .select('*')
-          .eq('email', email)
-          .single();
-          
-        if (backofficeError || !backofficeUser) {
-          console.error("Error fetching backoffice user:", backofficeError);
-          setAuthError("Error retrieving user data");
-          return false;
-        }
-        
-        // Update last_signed_in
-        await supabase
-          .from('backoffice_users')
-          .update({ last_signed_in: new Date().toISOString() })
-          .eq('id', backofficeUser.id);
-        
-        // Create a user object for the backoffice user
-        const saasUser: User = {
-          id: backofficeUser.id,
-          firstName: 'Backoffice',
-          lastName: 'Admin',
-          email: backofficeUser.email,
-          role: 'saas_owner',
-          isActive: true,
-          modulePermissions: {
-            superAdmin: true,
-            incidentReporting: true,
-            incidentAdmin: true,
-            assessmentUser: true,
-            assessmentsAdmin: true,
-            employeeVerificationAdmin: true,
-            grievancesAdmin: true,
-            transportSafetyAdmin: true,
-            eduSafeResourceAccess: true
-          },
-          createdAt: backofficeUser.created_at
-        };
-        
-        setCurrentUser(saasUser);
-        setIsBackofficeUser(true);
-        saveUserToStorage(saasUser);
-        toast.success(`Welcome back, Backoffice Admin!`);
-        return true;
-      }
-
-      setAuthError("Invalid credentials");
-      return false;
+      return result;
     } catch (error) {
-      console.error("Login error:", error);
+      console.error("Login error in handleLoginLocal:", error);
       setAuthError("Login failed");
       toast.error("Login failed");
       return false;
@@ -446,7 +350,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const value: AuthContextType = {
     user: currentUser,
     users: displayUsers,
-    login: handleLogin,
+    login: handleLoginLocal,
     logout: handleLogout,
     isAdmin,
     isSaasOwner,

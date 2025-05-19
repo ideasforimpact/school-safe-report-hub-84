@@ -1,73 +1,128 @@
 
-import { User, UserWithPassword } from '@/contexts/auth/types';
-import { INITIAL_MOCK_USERS } from '@/contexts/auth/initialData';
+import { User, UserWithPassword, EmployeeData } from '@/contexts/auth/types';
 
-// Get user from local storage
+const USER_STORAGE_KEY = 'school-safe-user';
+const USERS_STORAGE_KEY = 'school-safe-users';
+const EMPLOYEE_DATA_STORAGE_KEY = 'school-safe-employee-data';
+
+// Get current user from storage
 export const getUserFromStorage = (): User | null => {
-  if (typeof localStorage === 'undefined') return null;
-  const savedUser = localStorage.getItem('auth.user');
-  if (!savedUser) return null;
-  
-  try {
-    return JSON.parse(savedUser);
-  } catch (error) {
-    console.error('Error parsing user from storage:', error);
+  const storedUser = localStorage.getItem(USER_STORAGE_KEY);
+  return storedUser ? JSON.parse(storedUser) : null;
+};
+
+// Save user to storage
+export const saveUserToStorage = (user: User | null): void => {
+  if (user) {
+    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+  } else {
+    localStorage.removeItem(USER_STORAGE_KEY);
+  }
+};
+
+// Get all users from storage
+export const getUsersFromStorage = (): UserWithPassword[] => {
+  const storedUsers = localStorage.getItem(USERS_STORAGE_KEY);
+  return storedUsers ? JSON.parse(storedUsers) : [];
+};
+
+// Save users to storage
+export const saveUsersToStorage = (users: UserWithPassword[]): void => {
+  localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+};
+
+// Save employee data to storage
+export const saveEmployeeDataToStorage = (data: EmployeeData | null): void => {
+  if (data) {
+    console.log("Saving employee data to storage:", data);
+    localStorage.setItem(EMPLOYEE_DATA_STORAGE_KEY, JSON.stringify(data));
+  } else {
+    console.log("Removing employee data from storage");
+    localStorage.removeItem(EMPLOYEE_DATA_STORAGE_KEY);
+  }
+};
+
+// Get employee data from storage
+export const getEmployeeDataFromStorage = (): EmployeeData | null => {
+  const storedData = localStorage.getItem(EMPLOYEE_DATA_STORAGE_KEY);
+  if (storedData) {
+    try {
+      const data = JSON.parse(storedData);
+      console.log("Retrieved employee data from storage:", data);
+      return data;
+    } catch (e) {
+      console.error("Error parsing employee data from storage:", e);
+      return null;
+    }
+  }
+  console.log("No employee data found in storage");
+  return null;
+};
+
+// Log current user out
+export const logoutUser = (): void => {
+  localStorage.removeItem(USER_STORAGE_KEY);
+  localStorage.removeItem(EMPLOYEE_DATA_STORAGE_KEY);
+};
+
+// Log in a user with email and password
+export const loginUser = (
+  email: string, 
+  password: string, 
+  users: UserWithPassword[],
+  isEmailDomainAllowed?: (email: string, clientId: string) => boolean
+): User | null => {
+  const user = users.find(
+    (u) => u.email === email && u.password === password && u.isActive
+  );
+
+  if (!user) {
     return null;
   }
-};
 
-// Save user to local storage
-export const saveUserToStorage = (user: User | null): void => {
-  if (typeof localStorage === 'undefined') return;
-  if (user) {
-    localStorage.setItem('auth.user', JSON.stringify(user));
-  } else {
-    localStorage.removeItem('auth.user');
+  // Check domain restriction if function is provided
+  if (isEmailDomainAllowed && user.clientId) {
+    const isAllowed = isEmailDomainAllowed(email, user.clientId);
+    if (!isAllowed) {
+      console.log(`Login denied: Domain not allowed for ${email}`);
+      return null;
+    }
   }
+
+  const { password: _, ...userWithoutPassword } = user;
+  return {
+    ...userWithoutPassword,
+    lastLogin: new Date().toISOString(),
+  };
 };
 
-// Get users from local storage or use mock data
-export const getUsersFromStorage = (): UserWithPassword[] => {
-  if (typeof localStorage === 'undefined') return INITIAL_MOCK_USERS;
-  
-  const savedUsers = localStorage.getItem('auth.users');
-  if (!savedUsers) return INITIAL_MOCK_USERS;
-  
-  try {
-    return JSON.parse(savedUsers);
-  } catch (error) {
-    console.error('Error parsing users from storage:', error);
-    return INITIAL_MOCK_USERS;
-  }
-};
+// Initialize users if none exist
+export const initializeUsers = (): UserWithPassword[] => {
+  const defaultUsers: UserWithPassword[] = [
+    {
+      id: '1',
+      firstName: 'Admin',
+      lastName: 'User',
+      email: 'admin@school.edu',
+      password: 'admin123',
+      role: 'admin',
+      isActive: true,
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: '2',
+      firstName: 'Test',
+      lastName: 'Reporter',
+      email: 'reporter@school.edu',
+      password: 'reporter123',
+      role: 'user',
+      isActive: true,
+      createdAt: new Date().toISOString(),
+    },
+  ];
 
-// Save users to local storage
-export const saveUsersToStorage = (users: UserWithPassword[]): void => {
-  if (typeof localStorage === 'undefined') return;
-  localStorage.setItem('auth.users', JSON.stringify(users));
-};
-
-// Remove the password from user
-export const excludePasswordFromUser = (userWithPassword: UserWithPassword): User => {
-  const { password, ...userWithoutPassword } = userWithPassword;
-  return userWithoutPassword;
-};
-
-// Login user function
-export const loginUser = (email: string, password: string, users: UserWithPassword[], isEmailDomainAllowed?: (email: string, clientId: string) => boolean): User | null => {
-  const user = users.find(u => 
-    u.email.toLowerCase() === email.toLowerCase() && 
-    u.password === password &&
-    u.isActive
-  );
-  
-  if (!user) return null;
-  return excludePasswordFromUser(user);
-};
-
-// Logout user function
-export const logoutUser = (): void => {
-  saveUserToStorage(null);
+  saveUsersToStorage(defaultUsers);
+  return defaultUsers;
 };
 
 // Set users
@@ -75,16 +130,23 @@ export const setUsers = (users: UserWithPassword[]): void => {
   saveUsersToStorage(users);
 };
 
-// Get current user data
-export const getCurrentUserData = (userId: string, users: UserWithPassword[]): UserWithPassword | null => {
-  return users.find(u => u.id === userId) || null;
+// Get the current user's data
+export const getCurrentUserData = (): User | null => {
+  return getUserFromStorage();
 };
 
 // Change user password
-export const changeUserPassword = (users: UserWithPassword[], userId: string, currentPassword: string, newPassword: string): UserWithPassword[] | null => {
-  const userIndex = users.findIndex(u => u.id === userId);
+export const changeUserPassword = (
+  users: UserWithPassword[],
+  userId: string,
+  currentPassword: string,
+  newPassword: string
+): UserWithPassword[] | null => {
+  const userIndex = users.findIndex(user => user.id === userId);
   
-  if (userIndex === -1) return null;
+  if (userIndex === -1) {
+    return null;
+  }
   
   const user = users[userIndex];
   
@@ -93,39 +155,11 @@ export const changeUserPassword = (users: UserWithPassword[], userId: string, cu
   }
   
   const updatedUsers = [...users];
-  updatedUsers[userIndex] = { ...user, password: newPassword };
+  updatedUsers[userIndex] = {
+    ...user,
+    password: newPassword
+  };
   
   saveUsersToStorage(updatedUsers);
   return updatedUsers;
-};
-
-// Employee data storage functions
-export interface EmployeeData {
-  id: string;
-  clientId: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-}
-
-export const getEmployeeDataFromStorage = (): EmployeeData | null => {
-  if (typeof localStorage === 'undefined') return null;
-  const savedData = localStorage.getItem('auth.employeeData');
-  if (!savedData) return null;
-  
-  try {
-    return JSON.parse(savedData);
-  } catch (error) {
-    console.error('Error parsing employee data from storage:', error);
-    return null;
-  }
-};
-
-export const saveEmployeeDataToStorage = (data: EmployeeData | null): void => {
-  if (typeof localStorage === 'undefined') return;
-  if (data) {
-    localStorage.setItem('auth.employeeData', JSON.stringify(data));
-  } else {
-    localStorage.removeItem('auth.employeeData');
-  }
 };

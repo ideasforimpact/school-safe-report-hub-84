@@ -1,8 +1,9 @@
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
-import { EmploymentStatus } from '@/contexts/employee/types';
+import { EmploymentStatus, EmployeeData } from '@/contexts/auth/types';
+import { supabase } from '@/integrations/supabase/client';
 
 /**
  * Hook to check if employee is verified and active
@@ -10,6 +11,51 @@ import { EmploymentStatus } from '@/contexts/employee/types';
 export const useEmployeeAccess = () => {
   const { user, employeeData } = useAuth();
   const { employees } = useEmployeeVerification();
+  const [fetchedEmployeeData, setFetchedEmployeeData] = useState<EmployeeData | null>(null);
+
+  // Fetch employee data directly from DB if needed
+  useEffect(() => {
+    const fetchEmployeeIfNeeded = async () => {
+      // Only fetch if we have a user but no employee data
+      if (user?.email && !employeeData && !fetchedEmployeeData) {
+        console.log("Employee Access: Fetching employee data for", user.email);
+        
+        try {
+          const { data, error } = await supabase
+            .from('employees')
+            .select('id, client_id, email, first_name, last_name, is_super_admin, department, employee_type, status, employee_id')
+            .eq('email', user.email.toLowerCase())
+            .single();
+          
+          if (data && !error) {
+            console.log("Employee Access: Found employee data:", data);
+            
+            const employee: EmployeeData = {
+              id: data.id,
+              clientId: data.client_id,
+              email: data.email,
+              firstName: data.first_name,
+              lastName: data.last_name,
+              isSuperAdmin: data.is_super_admin,
+              department: data.department,
+              employeeType: data.employee_type,
+              status: data.status,
+              employeeId: data.employee_id
+            };
+            
+            setFetchedEmployeeData(employee);
+            console.log("Employee Access: Set fetched employee data:", employee);
+          } else {
+            console.log("Employee Access: No employee data found or error:", error);
+          }
+        } catch (err) {
+          console.error("Employee Access: Error fetching employee data:", err);
+        }
+      }
+    };
+    
+    fetchEmployeeIfNeeded();
+  }, [user, employeeData, fetchedEmployeeData]);
 
   // Find employee associated with current user
   const employee = useMemo(() => {
@@ -30,9 +76,19 @@ export const useEmployeeAccess = () => {
       };
     }
     
+    // Next check if we fetched it directly
+    if (fetchedEmployeeData) {
+      console.log("Using employee data from direct fetch:", fetchedEmployeeData);
+      return {
+        ...fetchedEmployeeData,
+        status: true // Assume active if we fetched it
+      };
+    }
+    
     // Fallback to finding by email
-    return employees.find(emp => emp.email.toLowerCase() === user.email?.toLowerCase());
-  }, [user, employees, employeeData]);
+    console.log("Falling back to finding employee by email:", user.email);
+    return employees.find(emp => emp.email?.toLowerCase() === user.email?.toLowerCase());
+  }, [user, employees, employeeData, fetchedEmployeeData]);
 
   // Check if employee is active
   const isActiveEmployee = useMemo(() => {
@@ -67,11 +123,18 @@ export const useEmployeeAccess = () => {
       console.log("Getting employee ID from context:", employeeData.id);
       return employeeData.id;
     }
+    
+    // Then try from directly fetched data
+    if (fetchedEmployeeData?.id) {
+      console.log("Getting employee ID from fetched data:", fetchedEmployeeData.id);
+      return fetchedEmployeeData.id;
+    }
+    
     // Fall back to employee object
     const id = employee?.id || null;
     console.log("Getting employee ID from employee object:", id);
     return id;
-  }, [employee, employeeData]);
+  }, [employee, employeeData, fetchedEmployeeData]);
 
   // Get client id if available
   const getClientId = useCallback(() => {
@@ -80,15 +143,29 @@ export const useEmployeeAccess = () => {
       console.log("Getting client ID from context:", employeeData.clientId);
       return employeeData.clientId;
     }
-    // Fall back to employee object if it has clientId property
-    return (employee as any)?.clientId || null;
-  }, [employee, employeeData]);
+    
+    // Then try from directly fetched data
+    if (fetchedEmployeeData?.clientId) {
+      console.log("Getting client ID from fetched data:", fetchedEmployeeData.clientId);
+      return fetchedEmployeeData.clientId;
+    }
+    
+    // Fall back to employee object
+    if (employee) {
+      const clientId = (employee as any)?.clientId || (employee as any)?.client_id || null;
+      console.log("Getting client ID from employee object:", clientId);
+      return clientId;
+    }
+    
+    return null;
+  }, [employee, employeeData, fetchedEmployeeData]);
 
   return {
-    employee,
+    employee: employee || fetchedEmployeeData || null,
     isActiveEmployee,
     isVerifiedEmployee,
     getEmployeeId,
-    getClientId
+    getClientId,
+    fetchedEmployeeData
   };
 };
