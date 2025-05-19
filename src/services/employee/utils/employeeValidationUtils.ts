@@ -1,6 +1,5 @@
 
-import { EmployeeType, DepartmentType } from '@/contexts/auth/types';
-import { EmploymentStatus } from '@/contexts/employee/types';
+import { EmployeeType, DepartmentType, EmploymentStatus } from '@/contexts/employee/types';
 
 /**
  * Validate and normalize employee type from import data
@@ -14,9 +13,9 @@ export const validateEmployeeType = (value: string): EmployeeType | null => {
   
   // Map common variations to standard types
   const typeMap: Record<string, EmployeeType> = {
-    'full-time': 'teaching',
-    'fulltime': 'teaching', 
-    'full time': 'teaching',
+    'full-time': 'permanent',
+    'fulltime': 'permanent',
+    'full time': 'permanent',
     'permanent': 'permanent',
     'part-time': 'part_time',
     'parttime': 'part_time', 
@@ -42,25 +41,26 @@ export const validateDepartment = (value: string): DepartmentType | null => {
   // Normalize department
   const normalizedValue = value.toLowerCase().trim();
   
-  // Map common variations to standard departments with correct casing
+  // Map common variations to standard departments
   const deptMap: Record<string, DepartmentType> = {
-    'admin': 'Admin',
-    'administration': 'Admin',
-    'teaching': 'Teaching',
-    'teacher': 'Teaching',
-    'faculty': 'Teaching',
-    'security': 'Security',
-    'safety': 'Security',
+    'admin': 'admin',
+    'administration': 'admin',
+    'teaching': 'teaching',
+    'teacher': 'teaching',
+    'faculty': 'teaching',
+    'security': 'security',
+    'safety': 'security',
     'maintenance': 'maintenance',
     'transport': 'transport',
-    'management': 'Management',
-    'it': 'Tech',
-    'information technology': 'Tech',
-    'hr': 'Admin',
-    'human resources': 'Admin',
-    'finance': 'Admin',
-    'accounting': 'Admin',
-    'operations': 'Management'
+    'transportation': 'transport',
+    'management': 'management',
+    'it': 'it',
+    'information technology': 'it',
+    'hr': 'hr',
+    'human resources': 'hr',
+    'finance': 'finance',
+    'accounting': 'finance',
+    'operations': 'management'
   };
   
   return (deptMap[normalizedValue] || normalizedValue) as DepartmentType;

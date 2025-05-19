@@ -47,12 +47,15 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
     setIsSubmitting(true);
     
     try {
-      await changePassword(currentPassword, newPassword);
-      toast.success("Password changed successfully");
-      onOpenChange(false);
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmPassword("");
+      const success = await changePassword(currentPassword, newPassword);
+      
+      if (success) {
+        toast.success("Password changed successfully");
+        onOpenChange(false);
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+      }
     } catch (error) {
       toast.error("Failed to change password");
     } finally {
@@ -126,5 +129,3 @@ export function ChangePasswordDialog({ open, onOpenChange }: ChangePasswordDialo
     </Dialog>
   );
 }
-
-export default ChangePasswordDialog;

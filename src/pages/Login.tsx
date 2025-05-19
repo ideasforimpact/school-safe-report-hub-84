@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -65,14 +66,14 @@ const Login = () => {
       console.log("🔑 Attempting to log in with email:", email);
       const success = await login(email, password);
       console.log("Login result:", success ? "Success" : "Failed");
-      
-      if (!success) {
+      if (success) {
+        // Redirect logic is handled in the useEffect that watches for user changes
+      } else {
         if (!authError) {
           setError("Invalid email or password");
         }
         setIsLoading(false);
       }
-      // Success case is handled by the useEffect monitoring user state
     } catch (err) {
       console.error("❌ Login error:", err);
       setError("An error occurred. Please try again.");
@@ -139,15 +140,15 @@ const Login = () => {
     try {
       console.log("👤 Using demo credentials:", demoEmail);
       const success = await login(demoEmail, demoPassword);
-      
-      if (!success) {
+      if (success) {
+        // Redirect logic is handled in the useEffect that watches for user changes
+      } else {
         if (!authError) {
           toast.error("Demo login failed. Please try again.");
           setError("Demo login failed. Please check the console for details.");
         }
         setIsLoading(false);
       }
-      // Success case is handled by the useEffect monitoring user state
     } catch (err) {
       console.error("❌ Demo login error:", err);
       setError("An error occurred with demo login. Please try again.");

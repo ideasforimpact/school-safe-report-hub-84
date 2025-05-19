@@ -1,8 +1,7 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/auth';
-import { Avatar } from '@/components/ui/avatar';
-import { AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,59 +10,85 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Settings, User as UserIcon, LogOut, Key } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
+import { LogOut, Settings, User, Key } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { formatUserFullName } from '@/utils/userUtils';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { ChangePasswordDialog } from '@/components/ChangePasswordDialog';
 
-const UserProfileMenu: React.FC = () => {
-  const { user, logout } = useAuth();
+const UserProfileMenu = () => {
+  const { user, logout, isAdmin, isSaasOwner } = useAuth();
   const navigate = useNavigate();
-  const [openChangePasswordDialog, setOpenChangePasswordDialog] = useState(false);
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
+
+  // Check if user is super admin
+  const isSuperAdmin = user?.modulePermissions?.superAdmin === true;
+  
+  // Show settings only for SaaS owners or super admins
+  const showSettings = isSaasOwner || isSuperAdmin;
+
+  const getInitials = () => {
+    if (!user || !user.firstName || !user.lastName) return '';
+    return `${user.firstName.charAt(0)}${user.lastName.charAt(0)}`.toUpperCase();
+  };
 
   const handleLogout = async () => {
     try {
+      console.log('🚪 Logging out user');
+      
+      // First sign out from Supabase
+      await supabase.auth.signOut();
+      console.log('✅ Signed out from Supabase');
+      
+      // Then proceed with our app's logout
       await logout();
-      toast.success("Logged out successfully");
-      navigate('/login'); // Always redirect to /login on logout
+      console.log('✅ Local logout complete');
+      
+      toast.success('You have been logged out successfully');
+      navigate('/login');
     } catch (error) {
-      console.error("Logout failed:", error);
-      toast.error("Logout failed");
+      console.error('❌ Error during logout:', error);
+      toast.error('There was an error logging out');
     }
+  };
+
+  const handleChangePassword = () => {
+    setIsChangePasswordOpen(true);
   };
 
   return (
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+          <button className="flex items-center space-x-2 rounded-full p-1 hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary">
             <Avatar className="h-8 w-8">
-              <AvatarImage src={`https://avatar.vercel.sh/${user?.email}.png`} alt={user?.firstName} />
-              <AvatarFallback>{user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}</AvatarFallback>
+              <AvatarFallback>{getInitials()}</AvatarFallback>
             </Avatar>
-          </Button>
+          </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-56" align="end" forceMount>
+        <DropdownMenuContent align="end" className="w-56">
           <DropdownMenuLabel>
-            {user?.firstName} {user?.lastName}
+            <div className="flex flex-col space-y-1">
+              <p className="text-sm font-medium leading-none">{formatUserFullName(user)}</p>
+              <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
+            </div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem asChild>
-            <Link to="/profile" className="flex items-center gap-2">
-              <UserIcon className="mr-2 h-4 w-4" />
-              <span>Profile</span>
-            </Link>
+          <DropdownMenuItem onClick={() => navigate('/profile')}>
+            <User className="mr-2 h-4 w-4" />
+            <span>Profile</span>
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setOpenChangePasswordDialog(true)} className="cursor-pointer">
-            <Key className="mr-2 h-4 w-4" />
-            <span>Change Password</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link to="/configuration" className="flex items-center gap-2">
+          {showSettings && (
+            <DropdownMenuItem onClick={() => navigate('/settings')}>
               <Settings className="mr-2 h-4 w-4" />
               <span>Settings</span>
-            </Link>
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem onClick={handleChangePassword}>
+            <Key className="mr-2 h-4 w-4" />
+            <span>Change Password</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleLogout}>
@@ -73,10 +98,12 @@ const UserProfileMenu: React.FC = () => {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <ChangePasswordDialog
-        open={openChangePasswordDialog}
-        onOpenChange={setOpenChangePasswordDialog}
-      />
+      <Dialog open={isChangePasswordOpen} onOpenChange={setIsChangePasswordOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogTitle>Change Password</DialogTitle>
+          <ChangePasswordDialog open={isChangePasswordOpen} onOpenChange={setIsChangePasswordOpen} />
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

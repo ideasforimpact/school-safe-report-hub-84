@@ -4,10 +4,8 @@ import { ModulePermissions } from '../auth/types';
 // Custom employee-specific types
 export type EmploymentStatus = 'active' | 'on_leave' | 'resigned' | 'terminated' | 'retired' | 'inactive';
 export type EmployeeGrade = 'junior' | 'mid' | 'senior' | 'lead' | 'manager' | 'director' | 'executive';
-// Update EmployeeType to match auth types
 export type EmployeeType = 'permanent' | 'contract' | 'part_time' | 'consultant' | 'intern';
-// Update DepartmentType to match auth types case
-export type DepartmentType = 'Admin' | 'Teaching' | 'Support' | 'Tech' | 'Management' | 'Security' | 'maintenance' | 'transport' | 'it' | 'hr' | 'finance';
+export type DepartmentType = 'admin' | 'teaching' | 'security' | 'maintenance' | 'transport' | 'management' | 'it' | 'hr' | 'finance';
 
 export interface Employee {
   id: string;

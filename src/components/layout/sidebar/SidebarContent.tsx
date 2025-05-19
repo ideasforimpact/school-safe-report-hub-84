@@ -6,7 +6,6 @@ import { getSaasOwnerItems, getClientItems, fetchModules, convertModulesToSideba
 import SidebarMenuItem from './SidebarMenuItem';
 import { ModulePermissions } from '@/contexts/auth/types';
 import { toast } from 'sonner';
-import ConfiguredSidebarContent from './ConfiguredSidebarContent';
 
 const SidebarContent = () => {
   const location = useLocation();
@@ -15,11 +14,6 @@ const SidebarContent = () => {
   const [dynamicMenuItems, setDynamicMenuItems] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [lastFetchPath, setLastFetchPath] = useState('');
-  
-  // If user is authenticated with Google, show the configured modules
-  if (user && user.provider === 'google') {
-    return <ConfiguredSidebarContent />;
-  }
   
   // Get user permissions with default fallback
   const defaultPermissions: ModulePermissions = {
@@ -70,17 +64,6 @@ const SidebarContent = () => {
     setIsLoading(true);
     
     try {
-      // IMPORTANT: Always prioritize modules from user object first!
-      if (user?.modules && user.modules.length > 0) {
-        console.log("Using modules from user object:", user.modules);
-        const basePath = isBackofficeRoute ? '/backoffice' : '';
-        const items = convertModulesToSidebarItems(user.modules, effectivePermissions, basePath);
-        setDynamicMenuItems(items);
-        setIsLoading(false);
-        setLastFetchPath(isBackofficeRoute ? 'backoffice' : 'client');
-        return;
-      }
-      
       // For SaaS users in backoffice route, fetch backoffice modules
       // For others, fetch client modules
       const isBackofficeFetch = isSaasOwner && isBackofficeRoute;
@@ -119,10 +102,10 @@ const SidebarContent = () => {
     }
   }, [isSaasOwner, isBackofficeRoute, effectivePermissions, lastFetchPath, user]);
 
-  // Fetch modules on component mount and whenever auth state changes
+  // Fetch modules only when relevant dependencies change
   useEffect(() => {
     loadModules();
-  }, [loadModules, user?.id]); // Added user?.id as a dependency to trigger on login state change
+  }, [loadModules]);
 
   // Get appropriate items based on user role and route
   const menuItems = dynamicMenuItems.length > 0 
@@ -131,7 +114,7 @@ const SidebarContent = () => {
       ? getSaasOwnerItems() 
       : getClientItems(effectivePermissions);
 
-  // Determine if a path is active
+  // Determine if a path is active, and add '/backoffice' prefix for SaaS owners
   const isActive = (path: string) => {
     const currentPath = location.pathname;
     const activePath = path;
