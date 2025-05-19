@@ -1,8 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
-import { ModulePermissions } from '@/contexts/auth/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Loader2, Check } from 'lucide-react';
@@ -33,15 +31,13 @@ export interface ModuleInfo {
 
 interface ModuleAccessTabProps {
   formData: {
-    moduleAccess: Partial<ModulePermissions>;
     moduleInfoArray?: ModuleInfo[];
   };
-  handleModuleAccessChange: (module: keyof ModulePermissions, value: boolean) => void;
   onModuleInfoChange?: (moduleInfoArray: ModuleInfo[]) => void;
   isEdit?: boolean; // Add isEdit prop to determine if we're in edit or add mode
 }
 
-const ModuleAccessTab = ({ formData, handleModuleAccessChange, onModuleInfoChange, isEdit = false }: ModuleAccessTabProps) => {
+const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false }: ModuleAccessTabProps) => {
   const [modules, setModules] = useState<Module[]>([]);
   const [loading, setLoading] = useState(false);
   const [moduleAccessState, setModuleAccessState] = useState<ModuleAccess[]>([]);
@@ -88,13 +84,12 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange, onModuleInfoChang
     if (modules.length > 0) {
       initializeModuleAccessState(modules);
     }
-  }, [formData.moduleInfoArray, formData.moduleAccess, isEdit]);
+  }, [formData.moduleInfoArray, isEdit]);
   
-  // Initialize module access state based on either moduleInfoArray or moduleAccess
+  // Initialize module access state based on moduleInfoArray
   const initializeModuleAccessState = (availableModules: Module[]) => {
     console.log("Initializing module access state with:", { 
       moduleInfoArray: formData.moduleInfoArray,
-      moduleAccess: formData.moduleAccess,
       isEdit: isEdit
     });
     
@@ -129,9 +124,9 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange, onModuleInfoChang
         };
       });
     }
-    // Otherwise, fall back to using moduleAccess
+    // Otherwise, set default values based on isEdit flag
     else {
-      console.log("Using moduleAccess or default settings to initialize module states");
+      console.log("Using default settings to initialize module states");
       initialModuleAccess = availableModules.map((module: Module) => {
         // For new client (not edit mode), enable all modules by default but without admin access
         if (!isEdit) {
@@ -147,25 +142,15 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange, onModuleInfoChang
           };
         }
         
-        // For edit mode, use existing moduleAccess if available
-        const accessKey = getAccessKeyFromModuleName(module.name);
-        const isEnabled = !!formData.moduleAccess[accessKey];
-        
-        // Check if it's an admin module
-        const accessKeyStr = accessKey as string;
-        const isAdmin = isEnabled && (accessKeyStr.indexOf('Admin') !== -1 || 
-                                    formData.moduleAccess.superAdmin === true);
-        
-        console.log(`Initializing module: ${module.name}, ID: ${module.id}, Enabled: ${isEnabled}, Admin: ${isAdmin}`);
-        
+        // For edit mode with empty moduleInfoArray, start with everything disabled
         return {
           name: module.name,
           module_id: module.id,
-          is_admin: isAdmin,
-          is_enabled: isEnabled,
+          is_admin: false,
+          is_enabled: false,
           access_level: {
-            isAdmin: isAdmin,
-            isEnabled: isEnabled
+            isAdmin: false,
+            isEnabled: false
           }
         };
       });
@@ -192,42 +177,6 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange, onModuleInfoChang
     // Skip on initial render
     if (moduleAccessState.length === 0) return;
     
-    // Convert moduleAccessState to ModulePermissions format for parent
-    const updatedPermissions: Partial<ModulePermissions> = {};
-    
-    moduleAccessState.forEach(module => {
-      const accessKey = getAccessKeyFromModuleName(module.name);
-      
-      if (module.name.toLowerCase().indexOf('admin') !== -1) {
-        // For admin modules
-        updatedPermissions[accessKey as keyof ModulePermissions] = module.is_enabled && module.is_admin;
-      } else {
-        // For non-admin modules
-        const baseKey = (accessKey as string).replace('Admin', '') as keyof ModulePermissions;
-        updatedPermissions[baseKey] = module.is_enabled;
-        
-        // If this is enabled and admin is true, also set the admin version
-        if (module.is_enabled && module.is_admin) {
-          const adminKey = baseKey.toString() + 'Admin' as keyof ModulePermissions;
-          if (Object.keys(formData.moduleAccess).indexOf(adminKey as string) !== -1) {
-            updatedPermissions[adminKey] = true;
-          }
-        }
-      }
-    });
-    
-    // Compare with formData to avoid unnecessary updates
-    const hasChanges = Object.entries(updatedPermissions).some(
-      ([key, value]) => formData.moduleAccess[key as keyof ModulePermissions] !== value
-    );
-    
-    if (hasChanges) {
-      console.log("Module access state changed, updating parent:", updatedPermissions);
-      Object.entries(updatedPermissions).forEach(([key, value]) => {
-        handleModuleAccessChange(key as keyof ModulePermissions, !!value);
-      });
-    }
-    
     // If onModuleInfoChange callback is provided, use it to update parent
     if (onModuleInfoChange) {
       const moduleInfoArray: ModuleInfo[] = moduleAccessState
@@ -241,55 +190,6 @@ const ModuleAccessTab = ({ formData, handleModuleAccessChange, onModuleInfoChang
       onModuleInfoChange(moduleInfoArray);
     }
   }, [moduleAccessState]);
-
-  // Known module access keys from the ModulePermissions type
-  const knownAccessKeys = [
-    'superAdmin', 
-    'incidentReporting', 
-    'incidentAdmin', 
-    'assessmentUser', 
-    'assessmentsAdmin', 
-    'employeeVerificationAdmin', 
-    'grievancesAdmin', 
-    'transportSafetyAdmin', 
-    'eduSafeResourceAccess'
-  ];
-
-  // Helper function to map module names to formData.moduleAccess keys
-  const getAccessKeyFromModuleName = (moduleName: string): keyof ModulePermissions => {
-    // Convert module name to camelCase for matching with ModulePermissions keys
-    const normalizedName = moduleName.toLowerCase();
-    
-    // Special case mappings
-    if (normalizedName === 'dashboard') return 'superAdmin';
-    if (normalizedName === 'incidents') return 'incidentReporting';
-    if (normalizedName === 'assessments') return 'assessmentUser';
-    if (normalizedName === 'employee verification') return 'employeeVerificationAdmin';
-    if (normalizedName === 'grievances') return 'grievancesAdmin';
-    if (normalizedName === 'transport safety') return 'transportSafetyAdmin';
-    if (normalizedName === 'edusafe resources') return 'eduSafeResourceAccess';
-    
-    // If no direct mapping, try a fuzzy match
-    const key = moduleName.toLowerCase()
-      .replace(/\s(.)/g, ($1) => $1.toUpperCase())
-      .replace(/\s/g, '')
-      .replace(/^(.)/, ($1) => $1.toLowerCase());
-      
-    // Find if there's an admin version of this key
-    const adminKey = `${key}Admin`;
-    
-    // Check if these keys exist in the known access keys list - using string comparison
-    if (knownAccessKeys.indexOf(adminKey) !== -1) {
-      return adminKey as keyof ModulePermissions;
-    }
-    
-    if (knownAccessKeys.indexOf(key) !== -1) {
-      return key as keyof ModulePermissions;
-    }
-    
-    // Default fallback
-    return 'superAdmin';
-  };
 
   // Handle clicking on the module checkbox
   const handleModuleCheckboxChange = (moduleId: string, checked: boolean) => {

@@ -15,7 +15,6 @@ import ModuleAccessTab, { ModuleInfo } from './tabs/ModuleAccessTab';
 import AuthTab from './tabs/AuthTab';
 import { OAuthProviderName } from '@/utils/authProviders';
 import { ClientFormData } from '@/hooks/useClientManagement';
-import { ModulePermissions } from '@/contexts/auth/types';
 import { Loader2, Asterisk } from 'lucide-react'; // Import both loading spinner and asterisk
 
 interface ClientDialogProps {
@@ -48,16 +47,6 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
       };
       reader.readAsDataURL(file);
     }
-  };
-
-  const handleModuleAccessChange = (module: keyof ModulePermissions, value: boolean) => {
-    setFormData({
-      ...formData,
-      moduleAccess: {
-        ...formData.moduleAccess,
-        [module]: value
-      }
-    });
   };
 
   const handleModuleInfoChange = (moduleInfoArray: ModuleInfo[]) => {
@@ -141,8 +130,7 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
 
           <TabsContent value="access">
             <ModuleAccessTab 
-              formData={safeFormData} 
-              handleModuleAccessChange={handleModuleAccessChange}
+              formData={safeFormData}
               onModuleInfoChange={handleModuleInfoChange}
               isEdit={isEdit}
             />

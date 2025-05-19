@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Client, useClient, InstitutionType, ModuleInfo } from '@/contexts/ClientContext';
 import { OAuthProviderName } from '@/utils/authProviders';
-import { ModulePermissions } from '@/contexts/auth/types';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
@@ -11,7 +10,6 @@ export interface ClientFormData {
   email: string;
   contactPerson: string;
   phone: string;
-  moduleAccess: Partial<ModulePermissions>;
   active: boolean;
   logo: string;
   institutionType: InstitutionType;
@@ -22,7 +20,7 @@ export interface ClientFormData {
     [key in OAuthProviderName]?: boolean;
   };
   superAdminAllowedDomains: string[];
-  moduleInfoArray?: ModuleInfo[]; // Add the moduleInfoArray property
+  moduleInfoArray?: ModuleInfo[]; // Only keeping the moduleInfoArray property
 }
 
 const initialFormData: ClientFormData = {
@@ -30,17 +28,6 @@ const initialFormData: ClientFormData = {
   email: '',
   contactPerson: '',
   phone: '',
-  moduleAccess: {
-    superAdmin: false,
-    incidentReporting: true,
-    incidentAdmin: false,
-    assessmentUser: true,
-    assessmentsAdmin: false,
-    employeeVerificationAdmin: false,
-    grievancesAdmin: false,
-    transportSafetyAdmin: false,
-    eduSafeResourceAccess: true
-  },
   active: true,
   logo: '',
   institutionType: 'Other',
@@ -188,30 +175,11 @@ export const useClientManagement = () => {
     }
   };
 
-  // Fix the function that prepares module info array
-  const prepareModuleInfoArray = (moduleAccess: Partial<ModulePermissions>): ModuleInfo[] => {
-    // For new clients, we enable all modules but without admin access
-    const isAllEnabled = Object.values(moduleAccess).every(v => v === true);
-    
-    if (isAllEnabled) {
-      // Need to fetch modules to create the moduleInfoArray
-      return []; // This will be populated by the ModuleAccessTab component
-    }
-    
-    // For existing clients or specific configurations
-    return Object.entries(moduleAccess)
-      .filter(([_, enabled]) => enabled) // Only include enabled modules
-      .map(([key, _]) => {
-        const isAdmin = key.includes("Admin");
-        // Use base name without "Admin" suffix for more consistent naming
-        const baseName = key.replace("Admin", "");
-        
-        return {
-          name: key, // Use the key as the module name for identification
-          module_id: "", // Will be looked up in the edge function
-          is_admin: isAdmin // Modules with "Admin" in name are admin modules
-        };
-      });
+  // Update prepareModuleInfoArray to not depend on moduleAccess
+  const prepareModuleInfoArray = (): ModuleInfo[] => {
+    // When using moduleInfoArray directly, we don't need this function to convert from moduleAccess
+    // It will now just return an empty array as the ModuleAccessTab component handles this
+    return [];
   };
 
   const handleAddClient = async () => {
@@ -227,16 +195,8 @@ export const useClientManagement = () => {
     }
     
     try {
-      // Use moduleInfoArray if available, or create it from moduleAccess
+      // Use moduleInfoArray directly from formData
       let moduleInfoArray = formData.moduleInfoArray;
-      
-      // If moduleInfoArray is not available or empty, but modules should all be enabled
-      if ((!moduleInfoArray || moduleInfoArray.length === 0) && 
-           Object.values(formData.moduleAccess).some(v => v === true)) {
-        // The ModuleAccessTab component will have updated moduleInfoArray in formData
-        // due to its initialization logic, so we should use that
-        console.log('No moduleInfoArray available, will be handled by edge function');
-      }
       
       console.log('Module info for client creation:', moduleInfoArray);
       
@@ -295,68 +255,12 @@ export const useClientManagement = () => {
           toast.error('Failed to load super admin data');
         }
         
-        // If we have client modules data, prepare moduleInfoArray
-        let moduleInfoArray: ModuleInfo[] = [];
-        if (clientModulesData && clientModulesData.length > 0) {
-          // Get module details for each client_module
-          const moduleIds = clientModulesData.map(cm => cm.module_id);
-          const { data: modulesData } = await supabase
-            .from('modules')
-            .select('*')
-            .in('id', moduleIds);
-            
-          // Create a mapping of module ids to names
-          const moduleMap = new Map();
-          if (modulesData) {
-            modulesData.forEach(module => {
-              moduleMap.set(module.id, module.name);
-            });
-          }
-          
-          // Now create the module info array with complete information
-          moduleInfoArray = clientModulesData.map(cm => {
-            // Parse access_level if it's a string
-            let accessLevel: any = cm.access_level;
-            if (typeof accessLevel === 'string') {
-              try {
-                accessLevel = JSON.parse(accessLevel);
-              } catch (e) {
-                accessLevel = {};
-              }
-            }
-            
-            // Make sure we properly handle the access level object
-            const isAdmin = typeof accessLevel === 'object' && accessLevel !== null 
-              ? !!accessLevel.isAdmin 
-              : false;
-            
-            return {
-              name: moduleMap.get(cm.module_id) || "Unknown Module",
-              module_id: cm.module_id,
-              is_admin: isAdmin
-            };
-          });
-          
-          console.log("Built moduleInfoArray for editing:", moduleInfoArray);
-        }
-        
-        // Now set the form data with all information
+        // Now set the form data with all information but without moduleAccess
         setFormData({
           name: client.name,
           email: client.email,
           contactPerson: client.contactPerson,
           phone: client.phone,
-          moduleAccess: {
-            superAdmin: client.moduleAccess?.superAdmin ?? false,
-            incidentReporting: client.moduleAccess?.incidentReporting ?? true,
-            incidentAdmin: client.moduleAccess?.incidentAdmin ?? false,
-            assessmentUser: client.moduleAccess?.assessmentUser ?? true,
-            assessmentsAdmin: client.moduleAccess?.assessmentsAdmin ?? false,
-            employeeVerificationAdmin: client.moduleAccess?.employeeVerificationAdmin ?? false,
-            grievancesAdmin: client.moduleAccess?.grievancesAdmin ?? false,
-            transportSafetyAdmin: client.moduleAccess?.transportSafetyAdmin ?? false,
-            eduSafeResourceAccess: client.moduleAccess?.eduSafeResourceAccess ?? true
-          },
           active: client.active,
           logo: client.logo || '',
           institutionType: (client.institutionType as InstitutionType) || 'Other',
@@ -398,20 +302,12 @@ export const useClientManagement = () => {
     }
     
     try {
-      // Use moduleInfoArray if available, or create it from moduleAccess
+      // Use moduleInfoArray directly from formData
       let moduleInfoArray = formData.moduleInfoArray;
-      
-      // If moduleInfoArray is not available or empty, but modules should all be enabled
-      if ((!moduleInfoArray || moduleInfoArray.length === 0) && 
-           Object.values(formData.moduleAccess).some(v => v === true)) {
-        // The ModuleAccessTab component will have updated moduleInfoArray in formData
-        // due to its initialization logic, so we should use that
-        console.log('No moduleInfoArray available, will be handled by edge function');
-      }
       
       console.log('Module info for client update:', moduleInfoArray);
       
-      // Step 1: Delete all existing client modules
+      // Step 1: Delete all existing client modules (keep this part)
       const { error: deleteError } = await supabase
         .from('client_modules')
         .delete()
