@@ -1,4 +1,5 @@
 
+
 import { EmployeeData, ModulePermissions } from '@/contexts/auth/types';
 
 export interface Module {
@@ -6,7 +7,7 @@ export interface Module {
   name: string;
   key?: string;
   icon?: string;
-  level?: string; // Added level property to match sidebarConfig Module type
+  level: string; // Added level property to match sidebarConfig Module type
   enabled: boolean;
   accessLevel?: ModulePermissions;
 }

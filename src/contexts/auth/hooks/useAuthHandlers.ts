@@ -91,7 +91,7 @@ export const useAuthHandlers = ({
       if (supabaseUser.id) {
         const { data, error } = await supabase
           .from('employees')
-          .select('id, client_id, employee_type, first_name, last_name, email, status')
+          .select('id, client_id, employee_type, first_name, last_name, email, status, user_id')
           .eq('user_id', supabaseUser.id)
           .single();
           

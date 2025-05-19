@@ -40,7 +40,7 @@ export interface User {
   provider?: string; // Add provider field to track authentication method
 }
 
-export type UserRole = 'admin' | 'reporter' | 'viewer' | 'saas_owner';
+export type UserRole = 'admin' | 'reporter' | 'viewer' | 'saas_owner' | 'user';
 
 export type EmployeeType = 'permanent' | 'contract' | 'part_time' | 'consultant' | 'intern';
 
