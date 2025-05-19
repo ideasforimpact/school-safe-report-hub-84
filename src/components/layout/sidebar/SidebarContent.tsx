@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -13,6 +12,8 @@ import ClientModulesList from './ClientModulesList';
 import { ModulePermissions } from '@/contexts/auth/types';
 import { toast } from 'sonner';
 import { useEmployeeStore } from '@/store/EmployeeContext';
+import { Module as StoreModule } from '@/store/types';
+import { Module as SidebarModule } from './sidebarConfig';
 
 const SidebarContent = () => {
   const location = useLocation();
@@ -95,8 +96,19 @@ const SidebarContent = () => {
       // Use modules from the employee store if available
       if (employeeState.configuredModules.length > 0 && !isBackofficeFetch) {
         const basePath = '';
+        
+        // Convert store modules to sidebar modules format
+        const sidebarModules: SidebarModule[] = employeeState.configuredModules.map((module: StoreModule) => ({
+          id: module.id,
+          name: module.name,
+          icon: module.icon || '',
+          level: module.key || '',
+          key: module.key,
+          access_level: module.accessLevel,
+        }));
+        
         const items = convertModulesToSidebarItems(
-          employeeState.configuredModules,
+          sidebarModules,
           effectivePermissions as ModulePermissions,
           basePath
         );

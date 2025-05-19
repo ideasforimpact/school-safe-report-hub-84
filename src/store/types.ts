@@ -6,6 +6,7 @@ export interface Module {
   name: string;
   key?: string;
   icon?: string;
+  level?: string; // Added level property to match sidebarConfig Module type
   enabled: boolean;
   accessLevel?: ModulePermissions;
 }

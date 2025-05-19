@@ -1,9 +1,23 @@
 
 import { useState, useCallback } from 'react';
-import { User, AuthProvider as Provider, SupabaseUser, EmployeeData } from '../types';
+import { User, UserRole, EmployeeData } from '../types';
 import { getUserFromStorage, saveUserToStorage, saveEmployeeDataToStorage } from '@/services/auth/authService';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+
+// Define the SupabaseUser type that's missing
+interface SupabaseUser {
+  id: string;
+  app_metadata?: {
+    provider?: string;
+  };
+  user_metadata?: {
+    full_name?: string;
+    name?: string;
+  };
+  email?: string;
+  created_at?: string;
+}
 
 interface UseAuthHandlersProps {
   user: User | null;
@@ -49,7 +63,7 @@ export const useAuthHandlers = ({
       }
       
       // Extract auth provider from user metadata or email
-      let provider = (supabaseUser.app_metadata?.provider || 'email') as Provider;
+      let provider = (supabaseUser.app_metadata?.provider || 'email') as string;
       
       // If email is present but no provider is specified, assume direct sign-in
       if (supabaseUser.email && !provider) {
@@ -70,7 +84,7 @@ export const useAuthHandlers = ({
       // Now fetch the employee details from the employees table
       // to check if they exist and get their role if they do
       let employeeData = null;
-      let employeeRole = 'user'; // Default role
+      let employeeRole: UserRole = 'user'; // Default role
       let clientId = null;
       
       // First, try to find the employee by user ID if it exists
@@ -90,7 +104,24 @@ export const useAuthHandlers = ({
             email: data.email
           };
           
-          employeeRole = data.employee_type || 'user';
+          // Convert employee_type string to UserRole
+          switch (data.employee_type) {
+            case 'admin':
+              employeeRole = 'admin';
+              break;
+            case 'viewer':
+              employeeRole = 'viewer';
+              break;
+            case 'reporter':
+              employeeRole = 'reporter';
+              break;
+            case 'saas_owner':
+              employeeRole = 'saas_owner';
+              break;
+            default:
+              employeeRole = 'user';
+          }
+          
           clientId = data.client_id;
           
           // Check if employee is inactive
@@ -110,7 +141,7 @@ export const useAuthHandlers = ({
       if (!employeeData && supabaseUser.email) {
         const { data, error } = await supabase
           .from('employees')
-          .select('id, client_id, employee_type, first_name, last_name, email, status')
+          .select('id, client_id, employee_type, first_name, last_name, email, status, user_id')
           .eq('email', supabaseUser.email.toLowerCase())
           .single();
           
@@ -123,7 +154,24 @@ export const useAuthHandlers = ({
             email: data.email
           };
           
-          employeeRole = data.employee_type || 'user';
+          // Convert employee_type string to UserRole
+          switch (data.employee_type) {
+            case 'admin':
+              employeeRole = 'admin';
+              break;
+            case 'viewer':
+              employeeRole = 'viewer';
+              break;
+            case 'reporter':
+              employeeRole = 'reporter';
+              break;
+            case 'saas_owner':
+              employeeRole = 'saas_owner';
+              break;
+            default:
+              employeeRole = 'user';
+          }
+          
           clientId = data.client_id;
           
           // Check if employee is inactive
@@ -195,7 +243,7 @@ export const useAuthHandlers = ({
         firstName,
         lastName,
         email: supabaseUser.email || '',
-        role: employeeRole || 'user',
+        role: employeeRole,
         isActive: true,
         provider,
         clientId,
