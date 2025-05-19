@@ -1,3 +1,4 @@
+
 import React, { createContext, useEffect, useState, useRef } from 'react';
 import { User, AuthContextType, UserWithPassword, EmployeeData } from './types';
 import { 
@@ -55,7 +56,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const authListenerSetupRef = useRef<boolean>(false);
 
   // Import useAuthHandlers to get handleUserAuthentication function
-  const { handleUserAuthentication } = useAuthHandlers({
+  const { handleUserAuthentication, login: handleLogin } = useAuthHandlers({
     user: currentUser,
     users,
     setUser: setCurrentUser,
@@ -131,6 +132,42 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setTimeout(async () => {
               await handleUserAuthentication(data.session?.user);
             }, 0);
+          } else {
+            // If we already have a user but need to fetch employee data
+            if (!employeeData && data.session.user.email) {
+              console.log("🔍 Fetching employee data for existing user:", data.session.user.email);
+              try {
+                const { data: empData, error } = await supabase
+                  .from('employees')
+                  .select('id, client_id, email, first_name, last_name, is_super_admin, department, employee_type, status, employee_id')
+                  .eq('email', data.session.user.email.toLowerCase())
+                  .single();
+                
+                if (empData && !error) {
+                  console.log("Found employee data for existing user:", empData);
+                  console.log("Super Admin Status from DB on init:", empData.is_super_admin);
+                  
+                  const employee: EmployeeData = {
+                    id: empData.id,
+                    clientId: empData.client_id,
+                    email: empData.email,
+                    firstName: empData.first_name,
+                    lastName: empData.last_name,
+                    isSuperAdmin: empData.is_super_admin,
+                    department: empData.department,
+                    employeeType: empData.employee_type,
+                    status: empData.status,
+                    employeeId: empData.employee_id
+                  };
+                  
+                  setEmployeeData(employee);
+                  saveEmployeeDataToStorage(employee);
+                  console.log("📝 Employee data stored in context on init:", employee);
+                }
+              } catch (err) {
+                console.error("❌ Error fetching employee data on init:", err);
+              }
+            }
           }
         } else {
           console.log("ℹ️ No existing session found");

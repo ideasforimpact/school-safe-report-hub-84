@@ -38,8 +38,9 @@ const Header = () => {
     isSuperAdmin,
     employeeData: employeeData ? {
       id: employeeData.id,
-      isSuperAdmin: employeeData.isSuperAdmin
-    } : null
+      isSuperAdmin: employeeData.isSuperAdmin,
+      email: employeeData.email
+    } : 'NULL - No employee data found'
   });
   
   // Show admin settings menu only for SaaS owner or super admin users
