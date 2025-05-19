@@ -16,7 +16,7 @@ import { formatUserFullName } from '@/utils/userUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
-import ChangePasswordDialog from '@/components/ChangePasswordDialog'; // Fixed import
+import { ChangePasswordDialog } from '@/components/ChangePasswordDialog';
 
 const UserProfileMenu = () => {
   const { user, logout, isAdmin, isSaasOwner } = useAuth();
@@ -101,7 +101,7 @@ const UserProfileMenu = () => {
       <Dialog open={isChangePasswordOpen} onOpenChange={setIsChangePasswordOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogTitle>Change Password</DialogTitle>
-          <ChangePasswordDialog isOpen={isChangePasswordOpen} setIsOpen={setIsChangePasswordOpen} />
+          <ChangePasswordDialog open={isChangePasswordOpen} onOpenChange={setIsChangePasswordOpen} />
         </DialogContent>
       </Dialog>
     </>

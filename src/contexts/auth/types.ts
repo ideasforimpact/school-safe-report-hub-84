@@ -3,9 +3,9 @@ export type UserRole = 'user' | 'admin' | 'reporter' | 'saas_owner';
 
 export type DepartmentType = 'Admin' | 'Teaching' | 'Support' | 'Tech' | 'Management' | 'Security' | 'maintenance' | 'transport';
 
-export type EmployeeType = 'permanent' | 'contract' | 'temporary' | 'intern' | 'part_time' | 'consultant';
+export type EmployeeType = 'permanent' | 'contract' | 'temporary' | 'intern';
 
-export type ModulePermissions = {
+export interface ModulePermissions {
   superAdmin: boolean;
   incidentReporting: boolean;
   incidentAdmin: boolean;
@@ -15,7 +15,7 @@ export type ModulePermissions = {
   grievancesAdmin: boolean;
   transportSafetyAdmin: boolean;
   eduSafeResourceAccess: boolean;
-};
+}
 
 export interface Module {
   id: string;
@@ -47,7 +47,7 @@ export interface User {
   lastLogin?: string;
   modules?: Module[]; // Add modules array to store client module information
   
-  // Add the employee-related properties
+  // Add the missing properties
   employeeId?: string;
   employeeType?: EmployeeType;
   department?: DepartmentType;
@@ -76,10 +76,4 @@ export interface AuthContextType {
   changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
   authError: string | null;
   handleUserAuthentication: (supabaseUser: any) => Promise<void>;
-  
-  // Add these missing properties to match the AuthProvider implementation
-  addUser: (userData: any) => void;
-  deleteUser: (id: string) => void;
-  deactivateUser: (id: string) => void;
-  reactivateUser: (id: string) => void;
 }

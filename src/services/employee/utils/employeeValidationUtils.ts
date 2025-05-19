@@ -1,4 +1,3 @@
-
 import { EmployeeType, DepartmentType, EmploymentStatus } from '@/contexts/employee/types';
 
 /**
@@ -43,23 +42,24 @@ export const validateDepartment = (value: string): DepartmentType | null => {
   
   // Map common variations to standard departments
   const deptMap: Record<string, DepartmentType> = {
-    'admin': 'Admin',
-    'administration': 'Admin',
-    'teaching': 'Teaching',
-    'teacher': 'Teaching',
-    'faculty': 'Teaching',
-    'security': 'Security',
-    'safety': 'Security',
+    'admin': 'admin',
+    'administration': 'admin',
+    'teaching': 'teaching',
+    'teacher': 'teaching',
+    'faculty': 'teaching',
+    'security': 'security',
+    'safety': 'security',
     'maintenance': 'maintenance',
     'transport': 'transport',
-    'management': 'Management',
+    'transportation': 'transport',
+    'management': 'management',
     'it': 'it',
     'information technology': 'it',
     'hr': 'hr',
     'human resources': 'hr',
     'finance': 'finance',
     'accounting': 'finance',
-    'operations': 'Management'
+    'operations': 'management'
   };
   
   return (deptMap[normalizedValue] || normalizedValue) as DepartmentType;

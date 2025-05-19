@@ -27,10 +27,10 @@ export const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   isLoading: false,
   addUser: () => {},
+  updateUser: async () => {},
   deleteUser: () => {},
   deactivateUser: () => {},
   reactivateUser: () => {},
-  updateUser: async () => {},
   changePassword: async () => false,
   authError: null,
   handleUserAuthentication: async () => {},
@@ -232,12 +232,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   // Handle logout
-  const handleLogout = async (): Promise<void> => { // Changed to return Promise<void>
+  const handleLogout = (): void => {
     setCurrentUser(null);
     setIsBackofficeUser(false);
     logoutUser();
     toast.info("You have been logged out");
-    return Promise.resolve();
   };
 
   // Add new user
@@ -260,7 +259,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   // Update user
-  const handleUpdateUser = async (id: string, updates: Partial<User & { password?: string }>): Promise<void> => { // Changed to return Promise<void>
+  const handleUpdateUser = (id: string, updates: Partial<User & { password?: string }>): void => {
     setUsersState(prevUsers => {
       const updatedUsers = prevUsers.map(user => {
         if (user.id === id) {
@@ -273,7 +272,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return updatedUsers;
     });
     toast.success("User updated successfully");
-    return Promise.resolve();
   };
 
   // Delete user
@@ -385,8 +383,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     logout: handleLogout,
     isAdmin,
     isSaasOwner,
-    isAuthenticated: !!currentUser,
-    isLoading: isInitializing,
     addUser: handleAddUser,
     updateUser: handleUpdateUser,
     deleteUser: handleDeleteUser, 
@@ -395,10 +391,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     changePassword: handleChangePassword,
     authError,
     handleUserAuthentication,
-    getRequiredPermission: () => "",
-    registerUser: async () => {},
-    googleSignIn: async () => {},
-    resetPassword: async () => {},
   };
 
   // If still initializing, show nothing
