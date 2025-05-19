@@ -19,7 +19,7 @@ export interface AuthContextType {
   changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
   authError: string | null;
   handleUserAuthentication: (user: any) => Promise<void>;
-  employeeData: EmployeeData | null; // Add employee data to context
+  employeeData: EmployeeData | null;
 }
 
 export interface User {
@@ -36,7 +36,8 @@ export interface User {
   joiningDate?: string;
   createdAt: string;
   lastLogin?: string;
-  provider?: string; // Add provider field to track authentication method
+  provider?: string;
+  modulePermissions?: ModulePermissions; // Add this line back
 }
 
 export type UserRole = 'admin' | 'reporter' | 'viewer' | 'saas_owner';
@@ -62,3 +63,16 @@ export interface EmployeeData {
 
 // Add EmploymentStatus type since it's used in the status field
 export type EmploymentStatus = 'active' | 'on_leave' | 'resigned' | 'terminated' | 'retired' | 'inactive';
+
+// Add ModulePermissions type back
+export interface ModulePermissions {
+  superAdmin: boolean;
+  incidentReporting: boolean;
+  incidentAdmin: boolean;
+  assessmentUser: boolean;
+  assessmentsAdmin: boolean;
+  employeeVerificationAdmin: boolean;
+  grievancesAdmin: boolean;
+  transportSafetyAdmin: boolean;
+  eduSafeResourceAccess: boolean;
+}
