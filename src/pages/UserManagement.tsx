@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -86,8 +87,7 @@ const UserManagementInner = ({ employeeData, isAdmin, isSuperAdmin, user }: {
     console.log("UserManagement - ClientId being used:", clientId);
   }, [employeeData, user, clientId]);
   
-  // Check if user is super admin
-  const isSuperAdmin = true;
+  // Removed duplicate isSuperAdmin declaration
 
   // Default form data for the user forms
   const [formData, setFormData] = useState<{
