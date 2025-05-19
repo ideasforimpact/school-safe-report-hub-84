@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { User, UserRole, ModulePermissions, EmployeeType, DepartmentType } from '@/contexts/auth/types';
 import { Loader2 } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Check, X } from "lucide-react";
 
 interface EditUserDialogProps {
   isOpen: boolean;
@@ -104,6 +106,19 @@ const EditUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, re
     }
     onSubmit();
   };
+
+  // Define modules with their display names
+  const modules = [
+    { key: 'superAdmin', name: 'Super Admin' },
+    { key: 'incidentReporting', name: 'Incident Reporting' },
+    { key: 'incidentAdmin', name: 'Incident Admin' },
+    { key: 'assessmentUser', name: 'Assessment User' },
+    { key: 'assessmentsAdmin', name: 'Assessments Admin' },
+    { key: 'employeeVerificationAdmin', name: 'Employee Verification Admin' },
+    { key: 'grievancesAdmin', name: 'Grievances Admin' },
+    { key: 'transportSafetyAdmin', name: 'Transport Safety Admin' },
+    { key: 'eduSafeResourceAccess', name: 'EduSafe Resource Access' }
+  ];
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -225,89 +240,44 @@ const EditUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, re
               value={formData.clientId || clientId || ''} 
             />
 
-            {showAdminOptions && (
-              <div className="space-y-4">
-                <Label>Admin Permissions</Label>
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="superAdmin"
-                      checked={formData.modulePermissions.superAdmin}
-                      onCheckedChange={(checked) => handlePermissionChange('superAdmin', checked === true)}
-                    />
-                    <Label htmlFor="superAdmin">Super Admin (Full access)</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="incidentAdmin"
-                      checked={formData.modulePermissions.incidentAdmin}
-                      onCheckedChange={(checked) => handlePermissionChange('incidentAdmin', checked === true)}
-                    />
-                    <Label htmlFor="incidentAdmin">Incident Admin</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="assessmentsAdmin"
-                      checked={formData.modulePermissions.assessmentsAdmin}
-                      onCheckedChange={(checked) => handlePermissionChange('assessmentsAdmin', checked === true)}
-                    />
-                    <Label htmlFor="assessmentsAdmin">Assessments Admin</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="employeeVerificationAdmin"
-                      checked={formData.modulePermissions.employeeVerificationAdmin}
-                      onCheckedChange={(checked) => handlePermissionChange('employeeVerificationAdmin', checked === true)}
-                    />
-                    <Label htmlFor="employeeVerificationAdmin">Employee Verification Admin</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="grievancesAdmin"
-                      checked={formData.modulePermissions.grievancesAdmin}
-                      onCheckedChange={(checked) => handlePermissionChange('grievancesAdmin', checked === true)}
-                    />
-                    <Label htmlFor="grievancesAdmin">Grievances Admin</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="transportSafetyAdmin"
-                      checked={formData.modulePermissions.transportSafetyAdmin}
-                      onCheckedChange={(checked) => handlePermissionChange('transportSafetyAdmin', checked === true)}
-                    />
-                    <Label htmlFor="transportSafetyAdmin">Transport Safety Admin</Label>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label>User Permissions</Label>
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="incidentReporting"
-                    checked={formData.modulePermissions.incidentReporting}
-                    onCheckedChange={(checked) => handlePermissionChange('incidentReporting', checked === true)}
-                  />
-                  <Label htmlFor="incidentReporting">Incident Reporting</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="assessmentUser"
-                    checked={formData.modulePermissions.assessmentUser}
-                    onCheckedChange={(checked) => handlePermissionChange('assessmentUser', checked === true)}
-                  />
-                  <Label htmlFor="assessmentUser">Assessment User</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="eduSafeResourceAccess"
-                    checked={formData.modulePermissions.eduSafeResourceAccess}
-                    onCheckedChange={(checked) => handlePermissionChange('eduSafeResourceAccess', checked === true)}
-                  />
-                  <Label htmlFor="eduSafeResourceAccess">EduSafe Resource Access</Label>
-                </div>
+            {/* Module Access Section */}
+            <div className="space-y-4">
+              <Label>Module Access</Label>
+              <div className="w-full">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[100px]">Enabled</TableHead>
+                      <TableHead>Module Name</TableHead>
+                      <TableHead className="w-[100px] text-center">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {modules.map((module) => {
+                      const moduleKey = module.key as keyof ModulePermissions;
+                      const isEnabled = formData.modulePermissions[moduleKey] || false;
+                      
+                      return (
+                        <TableRow key={module.key}>
+                          <TableCell>
+                            <Checkbox
+                              checked={isEnabled}
+                              onCheckedChange={(checked) => handlePermissionChange(moduleKey, checked === true)}
+                            />
+                          </TableCell>
+                          <TableCell>{module.name}</TableCell>
+                          <TableCell className="text-center">
+                            {isEnabled ? (
+                              <Check className="h-4 w-4 text-green-500 mx-auto" />
+                            ) : (
+                              <X className="h-4 w-4 text-gray-400 mx-auto" />
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
               </div>
             </div>
           </div>
