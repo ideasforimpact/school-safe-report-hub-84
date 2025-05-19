@@ -128,29 +128,16 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false }: Modul
     else {
       console.log("Using default settings to initialize module states");
       initialModuleAccess = availableModules.map((module: Module) => {
-        // For new client (not edit mode), enable all modules by default but without admin access
-        if (!isEdit) {
-          return {
-            name: module.name,
-            module_id: module.id,
-            is_admin: false,
-            is_enabled: true, // Enable all modules by default for new clients
-            access_level: {
-              isAdmin: false,
-              isEnabled: true
-            }
-          };
-        }
-        
-        // For edit mode with empty moduleInfoArray, start with everything disabled
+        // For new client (not edit mode) or edit mode with empty moduleInfoArray, 
+        // enable all modules by default with admin access
         return {
           name: module.name,
           module_id: module.id,
-          is_admin: false,
-          is_enabled: false,
+          is_admin: true, // Set all as admin by default
+          is_enabled: true, // Enable all modules by default
           access_level: {
-            isAdmin: false,
-            isEnabled: false
+            isAdmin: true, // Set all as admin by default
+            isEnabled: true
           }
         };
       });
