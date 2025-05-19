@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { User, UserWithPassword, EmployeeData } from '../types';
 import { toast } from 'sonner';
@@ -129,18 +130,60 @@ export const useAuthHandlers = ({
             console.log("Found employee record for provider auth:", employeeData.email);
             
             // Get employee's module permissions
-            const { data: modulePermissions, error: permissionsError } = await supabase
-              .from('employee_module_permissions')
+            const { data: modulePermissionsData, error: permissionsError } = await supabase
+              .from('employee_modules')
               .select('*')
               .eq('employee_id', employeeData.id)
-              .single();
+              .maybeSingle();
               
             if (permissionsError) {
               console.error("Error fetching module permissions:", permissionsError);
             }
             
+            // Transform database naming to frontend model naming
+            const transformedEmployeeData: EmployeeData = {
+              id: employeeData.id,
+              clientId: employeeData.client_id,
+              email: employeeData.email,
+              firstName: employeeData.first_name,
+              lastName: employeeData.last_name,
+              department: employeeData.department,
+              employeeType: employeeData.employee_type,
+              status: employeeData.status,
+              employeeId: employeeData.employee_id,
+              isSuperAdmin: employeeData.is_super_admin
+            };
+            
             // Set the employee data for context
-            setEmployeeData(employeeData);
+            setEmployeeData(transformedEmployeeData);
+            
+            // Default module permissions if none are found
+            const modulePermissions = {
+              superAdmin: employeeData.is_super_admin || false,
+              incidentReporting: false,
+              incidentAdmin: false, 
+              assessmentUser: false,
+              assessmentsAdmin: false,
+              employeeVerificationAdmin: false,
+              grievancesAdmin: false,
+              transportSafetyAdmin: false,
+              eduSafeResourceAccess: false
+            };
+            
+            // Add module permissions if found
+            if (modulePermissionsData && modulePermissionsData.access_level) {
+              const accessLevel = modulePermissionsData.access_level;
+              // Map database permission fields to frontend permission fields
+              modulePermissions.superAdmin = accessLevel.isAdmin || employeeData.is_super_admin || false;
+              modulePermissions.incidentReporting = accessLevel.incidentReporting || false;
+              modulePermissions.incidentAdmin = accessLevel.incidentAdmin || false;
+              modulePermissions.assessmentUser = accessLevel.assessmentUser || false;
+              modulePermissions.assessmentsAdmin = accessLevel.assessmentsAdmin || false;
+              modulePermissions.employeeVerificationAdmin = accessLevel.employeeVerificationAdmin || false;
+              modulePermissions.grievancesAdmin = accessLevel.grievancesAdmin || false;
+              modulePermissions.transportSafetyAdmin = accessLevel.transportSafetyAdmin || false;
+              modulePermissions.eduSafeResourceAccess = accessLevel.eduSafeResourceAccess || false;
+            }
             
             // Create a user object from the employee data
             const userFromEmployee: User = {
@@ -148,23 +191,13 @@ export const useAuthHandlers = ({
               firstName: employeeData.first_name,
               lastName: employeeData.last_name,
               email: employeeData.email,
-              role: modulePermissions?.super_admin ? 'admin' : 'reporter',
+              role: modulePermissions.superAdmin ? 'admin' : 'reporter',
               clientId: employeeData.client_id,
               employeeId: employeeData.employee_id,
-              isActive: employeeData.status === true || employeeData.status === 'active',
+              isActive: typeof employeeData.status === 'boolean' ? employeeData.status : employeeData.status === 'active',
               createdAt: employeeData.created_at || new Date().toISOString(),
               provider: isProviderAuth,
-              modulePermissions: {
-                superAdmin: modulePermissions?.super_admin || false,
-                incidentReporting: modulePermissions?.incident_reporting || false,
-                incidentAdmin: modulePermissions?.incident_admin || false,
-                assessmentUser: modulePermissions?.assessment_user || false,
-                assessmentsAdmin: modulePermissions?.assessments_admin || false,
-                employeeVerificationAdmin: modulePermissions?.employee_verification_admin || false,
-                grievancesAdmin: modulePermissions?.grievances_admin || false,
-                transportSafetyAdmin: modulePermissions?.transport_safety_admin || false,
-                eduSafeResourceAccess: modulePermissions?.edusafe_resource_access || false
-              }
+              modulePermissions: modulePermissions
             };
             
             // Set the user in our app state
@@ -220,8 +253,9 @@ export const useAuthHandlers = ({
       
       // Now fetch backoffice modules (these are typically needed for admin users)
       const { data: backofficeModules, error: backofficeError } = await supabase
-        .from('backoffice_modules')
-        .select('*');
+        .from('modules')
+        .select('*')
+        .eq('level', 'backoffice');
         
       if (backofficeError) {
         console.error("Error fetching backoffice modules:", backofficeError);
@@ -234,14 +268,14 @@ export const useAuthHandlers = ({
       // Since 'key' property is missing, let's extract it from name or add an identifier
       const mappedClientModules = clientModules?.map(module => ({
         ...module,
-        // Create a key from name by converting to lowercase and replacing spaces with underscores
-        moduleKey: module.name.toLowerCase().replace(/\s+/g, '_')
+        // Create a moduleKey from name by converting to lowercase and replacing spaces with underscores
+        moduleKey: module.name?.toLowerCase().replace(/\s+/g, '_') || ''
       }));
       
       const mappedBackofficeModules = backofficeModules?.map(module => ({
         ...module,
-        // Create a key from name by converting to lowercase and replacing spaces with underscores
-        moduleKey: module.name.toLowerCase().replace(/\s+/g, '_')
+        // Create a moduleKey from name by converting to lowercase and replacing spaces with underscores
+        moduleKey: module.name?.toLowerCase().replace(/\s+/g, '_') || ''
       }));
       
       // Cache the modules in the context for immediate use

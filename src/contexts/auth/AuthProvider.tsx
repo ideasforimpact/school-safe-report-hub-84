@@ -94,12 +94,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Subscribe to Supabase auth changes
   useSupabaseAuth({
-    users,
-    setUser,
     handleUserAuthentication,
     setAuthError,
-    authInitCompleteRef, 
-    setIsAuthInitialized: () => setIsLoading(false) // Map setIsAuthInitialized to setIsLoading
+    authInitCompleteRef,
+    users,
+    setUser,
+    setIsAuthInitialized: setIsLoading // Map setIsAuthInitialized to setIsLoading
   });
 
   // Force logout on protected routes when unauthenticated
