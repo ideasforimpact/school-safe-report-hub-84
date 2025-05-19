@@ -18,7 +18,7 @@ const SidebarContent = () => {
   const navigate = useNavigate();
   const { user, isSaasOwner, isAdmin, employeeData } = useAuth();
   const [dynamicMenuItems, setDynamicMenuItems] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false); // Changed to false by default
   const [lastFetchPath, setLastFetchPath] = useState('');
   
   // Get user permissions with default fallback
@@ -147,10 +147,15 @@ const SidebarContent = () => {
     }
   }, [isSaasOwner, isBackofficeRoute, effectivePermissions, lastFetchPath, user, isProviderAuthenticated, employeeData]);
 
-  // Fetch modules only when relevant dependencies change
+  // Fetch modules only when user is authenticated
   useEffect(() => {
-    loadModules();
-  }, [loadModules]);
+    if (user) {
+      // Use requestAnimationFrame to ensure DOM is rendered first
+      requestAnimationFrame(() => {
+        loadModules();
+      });
+    }
+  }, [user, loadModules]);
 
   // Get appropriate items based on user role and route
   const menuItems = dynamicMenuItems.length > 0 
