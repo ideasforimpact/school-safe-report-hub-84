@@ -3,7 +3,7 @@ export type UserRole = 'user' | 'admin' | 'reporter' | 'saas_owner';
 
 export type DepartmentType = 'Admin' | 'Teaching' | 'Support' | 'Tech' | 'Management' | 'Security' | 'maintenance' | 'transport';
 
-export type EmployeeType = 'permanent' | 'contract' | 'temporary' | 'intern';
+export type EmployeeType = 'permanent' | 'contract' | 'temporary' | 'intern' | 'part_time' | 'consultant';
 
 export interface ModulePermissions {
   superAdmin: boolean;
@@ -66,12 +66,14 @@ export interface AuthContextType {
   isSaasOwner: boolean;
   isLoading: boolean;
   users: User[];
+  authError?: string | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   getRequiredPermission: (module: string) => string;
   registerUser: (userData: Omit<UserWithPassword, 'id'>) => Promise<void>;
-  updateUserInfo: (userId: string, userData: Partial<User>) => void;
+  updateUserInfo: (userId: string, userData: Partial<User>) => Promise<void>;
   googleSignIn: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  addUser?: (userData: Omit<UserWithPassword, 'id'>) => Promise<void>;
 }

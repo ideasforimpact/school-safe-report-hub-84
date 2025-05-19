@@ -43,24 +43,23 @@ export const validateDepartment = (value: string): DepartmentType | null => {
   
   // Map common variations to standard departments
   const deptMap: Record<string, DepartmentType> = {
-    'admin': 'admin',
-    'administration': 'admin',
-    'teaching': 'teaching',
-    'teacher': 'teaching',
-    'faculty': 'teaching',
-    'security': 'security',
-    'safety': 'security',
+    'admin': 'Admin',
+    'administration': 'Admin',
+    'teaching': 'Teaching',
+    'teacher': 'Teaching',
+    'faculty': 'Teaching',
+    'security': 'Security',
+    'safety': 'Security',
     'maintenance': 'maintenance',
     'transport': 'transport',
-    'transportation': 'transport',
-    'management': 'management',
-    'it': 'it',
-    'information technology': 'it',
-    'hr': 'hr',
-    'human resources': 'hr',
-    'finance': 'finance',
-    'accounting': 'finance',
-    'operations': 'management'
+    'management': 'Management',
+    'it': 'Tech',
+    'information technology': 'Tech',
+    'hr': 'Admin',
+    'human resources': 'Admin',
+    'finance': 'Admin',
+    'accounting': 'Admin',
+    'operations': 'Management'
   };
   
   return (deptMap[normalizedValue] || normalizedValue) as DepartmentType;

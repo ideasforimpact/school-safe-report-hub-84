@@ -64,22 +64,22 @@ const SidebarContent = () => {
     setIsLoading(true);
     
     try {
-      // For SaaS users in backoffice route, fetch backoffice modules
-      // For others, fetch client modules
-      const isBackofficeFetch = isSaasOwner && isBackofficeRoute;
-      console.log(`User is ${isSaasOwner ? 'SaaS owner' : 'client user'}, route is ${isBackofficeRoute ? 'backoffice' : 'client'}`);
-      console.log("User object:", user);
-      
-      // Check if user has modules from login process
+      // IMPORTANT: If the user has modules from login/SSO, use those first!
+      // This is the key change - prioritize modules coming directly from user object
       if (user?.modules && user.modules.length > 0) {
         console.log("Using modules from user object:", user.modules);
-        const basePath = isBackofficeFetch ? '/backoffice' : '';
+        const basePath = isBackofficeRoute ? '/backoffice' : '';
         const items = convertModulesToSidebarItems(user.modules, effectivePermissions, basePath);
         setDynamicMenuItems(items);
         setIsLoading(false);
         setLastFetchPath(isBackofficeRoute ? 'backoffice' : 'client');
         return;
       }
+      
+      // For SaaS users in backoffice route, fetch backoffice modules
+      // For others, fetch client modules
+      const isBackofficeFetch = isSaasOwner && isBackofficeRoute;
+      console.log(`User is ${isSaasOwner ? 'SaaS owner' : 'client user'}, route is ${isBackofficeRoute ? 'backoffice' : 'client'}`);
       
       // Fetch modules passing user info
       const modules = await fetchModules(isBackofficeFetch, user);
@@ -126,7 +126,7 @@ const SidebarContent = () => {
       ? getSaasOwnerItems() 
       : getClientItems(effectivePermissions);
 
-  // Determine if a path is active, and add '/backoffice' prefix for SaaS owners
+  // Determine if a path is active
   const isActive = (path: string) => {
     const currentPath = location.pathname;
     const activePath = path;

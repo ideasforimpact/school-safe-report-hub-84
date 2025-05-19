@@ -23,10 +23,14 @@ export interface Module {
   level: string;
   created_at?: string;
   updated_at?: string;
-  key?: string; // Added as optional since it might be missing in the database
+  key?: string; 
   active?: boolean;
-  description?: string; // Added as optional since it might be missing in the database
-  access_level?: Record<string, any>; // Added to store access level information
+  description?: string;
+  access_level?: {
+    isAdmin?: boolean;
+    isEnabled?: boolean;
+    [key: string]: any;
+  }; 
 }
 
 // Map string icon names to Lucide components
@@ -109,14 +113,14 @@ export const fetchModules = async (isBackoffice: boolean, user?: any): Promise<M
 export const convertModulesToSidebarItems = (modules: Module[], permissions: ModulePermissions, basePath: string = '') => {
   return modules.map(module => {
     // Get the icon component from our mapping, or default to LayoutDashboard
-    const IconComponent = iconMap[module.icon || 'LayoutDashboard'];
+    const IconComponent = module.icon && iconMap[module.icon] ? iconMap[module.icon] : LayoutDashboard;
     
-    // Determine path based on name
+    // Determine path based on module name
     const path = `${basePath}/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
     
     // Check access level from the module if available
     const isAdmin = module.access_level?.isAdmin || false;
-    const isEnabled = module.access_level?.isEnabled || true;
+    const isEnabled = module.access_level?.isEnabled !== false; // Default to true if not specified
     
     // Module is allowed if it's enabled in access_level
     const allowed = isEnabled;

@@ -1,399 +1,228 @@
-
 import React, { createContext, useEffect, useState, useRef } from 'react';
-import { User, AuthContextType, UserWithPassword } from './types';
-import { 
-  getUserFromStorage, 
-  logoutUser, 
-  loginUser, 
-  setUsers, 
-  getUsersFromStorage,
-  saveUserToStorage, 
-  saveUsersToStorage,
-  getCurrentUserData,
-  changeUserPassword
-} from '@/services/auth/authService';
-import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+import { useNavigate } from 'react-router-dom';
+import { User, AuthContextType } from './types';
+import { useLocalStorage } from '@/hooks/useLocalStorage';
+import { INITIAL_MOCK_USERS } from './initialData';
 import { useAuthHandlers } from './hooks/useAuthHandlers';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
-// Create the context
+// Create the context with a default value
 export const AuthContext = createContext<AuthContextType>({
   user: null,
-  users: [],
-  login: async () => false,
-  logout: () => {},
+  isAuthenticated: false,
   isAdmin: false,
   isSaasOwner: false,
-  addUser: () => {},
-  updateUser: () => {},
-  deleteUser: () => {},
-  deactivateUser: () => {},
-  reactivateUser: () => {},
-  changePassword: async () => false,
+  isLoading: true,
+  users: [],
   authError: null,
-  handleUserAuthentication: async () => {},
+  login: async () => {},
+  logout: async () => {},
+  getRequiredPermission: () => '',
+  registerUser: async () => {},
+  updateUserInfo: async () => {},
+  googleSignIn: async () => {},
+  resetPassword: async () => {},
+  changePassword: async () => {},
+  addUser: async () => {},
 });
 
-interface AuthProviderProps {
-  children: React.ReactNode;
-}
-
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  // State for the current user, all users, and auth error
-  const [currentUser, setCurrentUser] = useState<User | null>(getUserFromStorage());
-  const [users, setUsersState] = useState<UserWithPassword[]>(getUsersFromStorage());
-  const [displayUsers, setDisplayUsers] = useState<User[]>(
-    users.map(({ password, ...user }) => user)
-  );
-  const [isInitializing, setIsInitializing] = useState<boolean>(true);
+// Auth Provider Component
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  // State for the current user
+  const [user, setUser] = useLocalStorage<User | null>('currentUser', null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [users, setUsers] = useLocalStorage('users', INITIAL_MOCK_USERS);
   const [authError, setAuthError] = useState<string | null>(null);
-  const [isBackofficeUser, setIsBackofficeUser] = useState<boolean>(false);
-  const authInitCompleteRef = useRef<boolean>(false);
-  const authListenerSetupRef = useRef<boolean>(false);
-
-  // Import useAuthHandlers to get handleUserAuthentication function
-  const { handleUserAuthentication } = useAuthHandlers({
-    user: currentUser,
-    users,
-    setUser: setCurrentUser,
-    setUsers: setUsersState,
-    setAuthError,
-    authInitCompleteRef
-  });
-
-  // Update display users whenever users changes
-  useEffect(() => {
-    setDisplayUsers(users.map(({ password, ...user }) => user));
-  }, [users]);
-
-  // Compute roles
-  const isAdmin = Boolean(currentUser?.role === 'admin' || currentUser?.modulePermissions?.superAdmin);
-  const isSaasOwner = Boolean(currentUser?.role === 'saas_owner' || isBackofficeUser);
-
-  // Setup Supabase auth listener for Google authentication
-  useEffect(() => {
-    // Only setup listener once
-    if (authListenerSetupRef.current) return;
-    
-    console.log("🔵 Setting up Supabase auth state listener");
-    
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("🔔 Auth state changed:", event, session?.user?.email);
-      
-      if (event === 'SIGNED_IN' && session?.user) {
-        console.log("👤 User signed in event detected:", session.user.email);
-        
-        try {
-          console.log("🔍 Processing authentication for user:", session.user.email);
-          // Use setTimeout to avoid potential deadlock issues with Supabase auth
-          setTimeout(async () => {
-            await handleUserAuthentication(session.user);
-          }, 0);
-        } catch (error) {
-          console.error("❌ Error in auth state change handler:", error);
-        }
-      } else if (event === 'SIGNED_OUT') {
-        console.log("🚪 User signed out event detected");
-        setCurrentUser(null);
-        setAuthError(null);
-      }
-    });
-    
-    authListenerSetupRef.current = true;
-    
-    // Return cleanup function
-    return () => {
-      console.log("🧹 Cleaning up auth state listener");
-      subscription.unsubscribe();
-    };
-  }, [handleUserAuthentication]);
-
-  // Fetch users from Supabase on mount
-  useEffect(() => {
-    const checkSupabaseAuth = async () => {
-      try {
-        console.log("🔍 Checking initial Supabase auth session");
-        const { data } = await supabase.auth.getSession();
-        
-        if (data.session) {
-          console.log("✅ Found existing session for:", data.session.user.email);
-          
-          // Check if we already have a user loaded from storage
-          if (!currentUser) {
-            console.log("👤 Processing existing session user");
-            // Use setTimeout to avoid potential deadlock issues
-            setTimeout(async () => {
-              await handleUserAuthentication(data.session?.user);
-            }, 0);
-          }
-        } else {
-          console.log("ℹ️ No existing session found");
-        }
-      } catch (error) {
-        console.error("❌ Error checking Supabase auth:", error);
-      } finally {
-        setIsInitializing(false);
-      }
-    };
-
-    checkSupabaseAuth();
-  }, []);
-
-  // Handle login
-  const handleLogin = async (email: string, password: string): Promise<boolean> => {
-    setAuthError(null);
-    
-    try {
-      // First try to login as a regular user
-      const user = loginUser(email, password, users);
-
-      if (user) {
-        setCurrentUser(user);
-        saveUserToStorage(user);
-        toast.success(`Welcome back, ${user.firstName}!`);
-        return true;
-      }
-
-      // If regular login fails, try backoffice login
-      const { data, error } = await supabase.rpc('verify_password', { 
-        email, 
-        password_attempt: password 
-      });
-
-      if (error) {
-        console.error("Login error:", error);
-        setAuthError("Invalid credentials");
-        return false;
-      }
-
-      if (data === true) {
-        // Fetch the backoffice user
-        const { data: backofficeUser, error: backofficeError } = await supabase
-          .from('backoffice_users')
-          .select('*')
-          .eq('email', email)
-          .single();
-          
-        if (backofficeError || !backofficeUser) {
-          console.error("Error fetching backoffice user:", backofficeError);
-          setAuthError("Error retrieving user data");
-          return false;
-        }
-        
-        // Update last_signed_in
-        await supabase
-          .from('backoffice_users')
-          .update({ last_signed_in: new Date().toISOString() })
-          .eq('id', backofficeUser.id);
-        
-        // Create a user object for the backoffice user
-        const saasUser: User = {
-          id: backofficeUser.id,
-          firstName: 'Backoffice',
-          lastName: 'Admin',
-          email: backofficeUser.email,
-          role: 'saas_owner',
-          isActive: true,
-          modulePermissions: {
-            superAdmin: true,
-            incidentReporting: true,
-            incidentAdmin: true,
-            assessmentUser: true,
-            assessmentsAdmin: true,
-            employeeVerificationAdmin: true,
-            grievancesAdmin: true,
-            transportSafetyAdmin: true,
-            eduSafeResourceAccess: true
-          },
-          createdAt: backofficeUser.created_at
-        };
-        
-        setCurrentUser(saasUser);
-        setIsBackofficeUser(true);
-        saveUserToStorage(saasUser);
-        toast.success(`Welcome back, Backoffice Admin!`);
-        return true;
-      }
-
-      setAuthError("Invalid credentials");
-      return false;
-    } catch (error) {
-      console.error("Login error:", error);
-      setAuthError("Login failed");
-      toast.error("Login failed");
-      return false;
-    }
-  };
-
-  // Handle logout
-  const handleLogout = (): void => {
-    setCurrentUser(null);
-    setIsBackofficeUser(false);
-    logoutUser();
-    toast.info("You have been logged out");
-  };
-
-  // Add new user
-  const handleAddUser = (userData: any): void => {
-    const newUser: UserWithPassword = { 
-      ...userData,
-      id: Date.now().toString(), 
-      isActive: true,
-      password: userData.password || '' 
-    };
-    
-    setUsersState(prevUsers => {
-      const updatedUsers = [...prevUsers, newUser];
-      setUsers(updatedUsers);
-      saveUsersToStorage(updatedUsers);
-      return updatedUsers;
-    });
-    
-    toast.success("User added successfully");
-  };
-
-  // Update user
-  const handleUpdateUser = (id: string, updates: Partial<User & { password?: string }>): void => {
-    setUsersState(prevUsers => {
-      const updatedUsers = prevUsers.map(user => {
-        if (user.id === id) {
-          return { ...user, ...updates };
-        }
-        return user;
-      });
-      setUsers(updatedUsers);
-      saveUsersToStorage(updatedUsers);
-      return updatedUsers;
-    });
-    toast.success("User updated successfully");
-  };
-
-  // Delete user
-  const handleDeleteUser = (id: string): void => {
-    setUsersState(prevUsers => {
-      const updatedUsers = prevUsers.filter(user => user.id !== id);
-      setUsers(updatedUsers);
-      saveUsersToStorage(updatedUsers);
-      return updatedUsers;
-    });
-    toast.success("User deleted successfully");
-  };
-
-  // Deactivate user
-  const handleDeactivateUser = (id: string): void => {
-    setUsersState(prevUsers => {
-      const updatedUsers = prevUsers.map(user => {
-        if (user.id === id) {
-          return { ...user, isActive: false };
-        }
-        return user;
-      });
-      setUsers(updatedUsers);
-      saveUsersToStorage(updatedUsers);
-      return updatedUsers;
-    });
-    toast.success("User deactivated successfully");
-  };
-
-  // Reactivate user
-  const handleReactivateUser = (id: string): void => {
-    setUsersState(prevUsers => {
-      const updatedUsers = prevUsers.map(user => {
-        if (user.id === id) {
-          return { ...user, isActive: true };
-        }
-        return user;
-      });
-      setUsers(updatedUsers);
-      saveUsersToStorage(updatedUsers);
-      return updatedUsers;
-    });
-    toast.success("User reactivated successfully");
-  };
-
-  // Change password
-  const handleChangePassword = async (currentPassword: string, newPassword: string): Promise<boolean> => {
-    if (!currentUser) {
-      toast.error("Not authenticated");
-      return false;
-    }
-    
-    // If it's a backoffice user, use Supabase function to change password
-    if (isBackofficeUser) {
-      // First verify current password
-      const { data: isValid, error: verifyError } = await supabase.rpc('verify_password', {
-        email: currentUser.email,
-        password_attempt: currentPassword
-      });
-      
-      if (verifyError || !isValid) {
-        toast.error("Current password is incorrect");
-        return false;
-      }
-      
-      // Hash the new password
-      const { data: hashedPassword, error: hashError } = await supabase.rpc('hash_password', {
-        password: newPassword
-      });
-      
-      if (hashError) {
-        toast.error("Error updating password");
-        return false;
-      }
-      
-      // Update the password
-      const { error: updateError } = await supabase
-        .from('backoffice_users')
-        .update({ password: hashedPassword })
-        .eq('id', currentUser.id);
-      
-      if (updateError) {
-        toast.error("Error updating password");
-        return false;
-      }
-      
-      toast.success("Password updated successfully");
-      return true;
-    }
-    
-    // Regular user password change
-    const storedUsers = getUsersFromStorage();
-    const updatedUsers = changeUserPassword(storedUsers, currentUser.id, currentPassword, newPassword);
-
-    if (!updatedUsers) {
-      return false;
-    }
-
-    setUsersState(updatedUsers);
-    saveUsersToStorage(updatedUsers);
+  const navigate = useNavigate();
+  // Use a ref to keep track of whether auth initialization has completed
+  const authInitCompleteRef = useRef(false);
+  
+  // Helper function to check if an email domain is allowed for a given client
+  const isEmailDomainAllowed = (email: string, clientId: string) => {
+    // This is a placeholder function - in a full implementation,
+    // we would check against domain restrictions from the client's settings
+    // For now, we allow all emails
     return true;
   };
-
-  // The value to be provided to the context consumers
-  const value: AuthContextType = {
-    user: currentUser,
-    users: displayUsers,
-    login: handleLogin,
-    logout: handleLogout,
-    isAdmin,
-    isSaasOwner,
-    addUser: handleAddUser,
-    updateUser: handleUpdateUser,
-    deleteUser: handleDeleteUser, 
-    deactivateUser: handleDeactivateUser,
-    reactivateUser: handleReactivateUser,
-    changePassword: handleChangePassword,
-    authError,
+  
+  // Use hooks to manage auth operations
+  const {
+    login,
+    logout,
+    addUser,
+    updateUser,
+    deleteUser,
+    deactivateUser,
+    reactivateUser,
+    changeUserPassword,
     handleUserAuthentication,
+  } = useAuthHandlers({
+    user,
+    users,
+    setUser,
+    setUsers,
+    setAuthError,
+    authInitCompleteRef,
+    isEmailDomainAllowed,
+  });
+
+  const isAuthenticated = !!user;
+  const isAdmin = user?.role === 'admin' || user?.role === 'saas_owner';
+  const isSaasOwner = user?.role === 'saas_owner';
+
+  // Registers a new user
+  const registerUser = async (userData: Omit<User & { password: string }, 'id'>) => {
+    // Skip employee check for direct registrations since this is creating a new account
+    try {
+      await addUser(userData);
+      // After registration is complete, log the user in
+      await login(userData.email, userData.password);
+    } catch (error) {
+      console.error("Error during registration:", error);
+      throw error;
+    }
   };
 
-  // If still initializing, show nothing
-  if (isInitializing) {
-    return null;
-  }
+  // Updates user information
+  const updateUserInfo = async (userId: string, userData: Partial<User>) => {
+    await updateUser(userId, userData);
+    return Promise.resolve();
+  };
 
+  // Initialize Supabase auth state listener
+  useEffect(() => {
+    console.info("🔵 Setting up Supabase auth state listener");
+
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        console.log("Auth state changed:", _event, session?.user?.email);
+        
+        if (session) {
+          // User is logged in
+          try {
+            await handleUserAuthentication(session.user);
+          } catch (error) {
+            console.error("Error handling auth state change:", error);
+            setAuthError("Authentication error");
+          }
+        } else {
+          // User is logged out
+          setUser(null);
+        }
+      }
+    );
+
+    // Check the initial session
+    console.info("🔍 Checking initial Supabase auth session");
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        // User is already logged in
+        handleUserAuthentication(session.user).catch(err => {
+          console.error("Error handling initial session:", err);
+          setAuthError("Session initialization error");
+        });
+      } else {
+        console.info("ℹ️ No existing session found");
+        setIsLoading(false);
+      }
+    });
+
+    // Cleanup subscription on unmount
+    return () => {
+      console.info("🧹 Cleaning up auth state listener");
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  // Method to sign in with Google
+  const googleSignIn = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.origin + '/dashboard'
+        }
+      });
+      
+      if (error) {
+        console.error("Google sign-in error:", error);
+        setAuthError(error.message);
+        toast.error("Google sign-in failed");
+        throw error;
+      }
+    } catch (error) {
+      console.error("Google sign-in error:", error);
+      setAuthError("Google sign-in failed");
+      toast.error("Google sign-in failed");
+      throw error;
+    }
+  };
+
+  // Method to reset password - sends reset email
+  const resetPassword = async (email: string) => {
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      
+      if (error) {
+        console.error("Password reset error:", error);
+        setAuthError(error.message);
+        toast.error("Failed to send password reset email");
+        throw error;
+      }
+      
+      toast.success("Password reset email sent. Check your inbox.");
+    } catch (error) {
+      console.error("Password reset error:", error);
+      setAuthError("Failed to send password reset email");
+      toast.error("Failed to send password reset email");
+      throw error;
+    }
+  };
+
+  // Function to get required permission for a module
+  const getRequiredPermission = (module: string): string => {
+    // Simple mapping function - this could be expanded with more logic
+    const modulePermissionMap: Record<string, string> = {
+      'incidents': 'incidentReporting',
+      'incident-management': 'incidentAdmin',
+      'assessments': 'assessmentUser',
+      'assessments-admin': 'assessmentsAdmin',
+      'employee-verification': 'employeeVerificationAdmin',
+      'grievances': 'grievancesAdmin',
+      'transport-safety': 'transportSafetyAdmin',
+      'edusafe-resources': 'eduSafeResourceAccess',
+    };
+    
+    return modulePermissionMap[module] || '';
+  };
+
+  // Combine all values and functions to provide through the context
+  const contextValue: AuthContextType = {
+    user,
+    isAuthenticated,
+    isAdmin,
+    isSaasOwner,
+    isLoading,
+    users,
+    authError,
+    login,
+    logout,
+    getRequiredPermission,
+    registerUser,
+    updateUserInfo,
+    googleSignIn,
+    resetPassword,
+    changePassword: changeUserPassword,
+    addUser,
+  };
+
+  // Render the AuthContext.Provider with the context value
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );
