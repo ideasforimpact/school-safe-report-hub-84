@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -17,7 +18,7 @@ const SidebarContent = () => {
   const navigate = useNavigate();
   const { user, isSaasOwner, isAdmin, employeeData } = useAuth();
   const [dynamicMenuItems, setDynamicMenuItems] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(false); // Changed to false by default
+  const [isLoading, setIsLoading] = useState(false);
   const [lastFetchPath, setLastFetchPath] = useState('');
   
   // Get user permissions with default fallback
@@ -64,14 +65,14 @@ const SidebarContent = () => {
   // Check if user is authenticated via provider (like Google)
   const isProviderAuthenticated = !!user?.provider;
   
+  // Log auth details (removed effectivePermissions from logging)
   console.log("AUTH DETAILS:", {
     email: user?.email,
     provider: user?.provider || 'none',
     isProviderAuthenticated,
     isBackofficeRoute,
     isSaasOwner,
-    isSuperAdmin,
-    effectivePermissions
+    isSuperAdmin
   });
   
   // Auto-redirect SaaS owners to backoffice when they're at root path
@@ -120,11 +121,8 @@ const SidebarContent = () => {
       } else {
         const basePath = isBackofficeFetch ? '/backoffice' : '';
         
-        // For super admins, make sure they have all proper permissions regardless of what was fetched
-        let enhancedPermissions = { ...effectivePermissions };
-        if (isSuperAdmin) {
-          enhancedPermissions.superAdmin = true;
-        }
+        // Ensure we have a valid permissions object
+        const permissionsToUse: ModulePermissions = effectivePermissions as ModulePermissions;
         
         // If user is authenticated via provider (Google, etc.), filter modules based on permissions
         let items = [];
@@ -137,13 +135,13 @@ const SidebarContent = () => {
             
             const moduleKey = module.key;
             // If the module has a key and matches a permission key that is enabled, show it
-            return moduleKey && enhancedPermissions[moduleKey as keyof ModulePermissions];
+            return moduleKey && permissionsToUse[moduleKey as keyof ModulePermissions];
           });
           
-          items = convertModulesToSidebarItems(filteredModules, enhancedPermissions, basePath);
+          items = convertModulesToSidebarItems(filteredModules, permissionsToUse, basePath);
         } else {
           // For regular users, use standard conversion
-          items = convertModulesToSidebarItems(modules, enhancedPermissions, basePath);
+          items = convertModulesToSidebarItems(modules, permissionsToUse, basePath);
         }
         
         setDynamicMenuItems(items);
@@ -155,7 +153,7 @@ const SidebarContent = () => {
       console.error('Error loading modules:', error);
       // Fall back to static configuration if fetching fails
       const fallbackItems = (isSaasOwner && isBackofficeRoute) ? 
-        getSaasOwnerItems() : getClientItems(effectivePermissions);
+        getSaasOwnerItems() : getClientItems(effectivePermissions as ModulePermissions);
       setDynamicMenuItems(fallbackItems);
       
       // Notify user of the error
@@ -180,7 +178,7 @@ const SidebarContent = () => {
     ? dynamicMenuItems 
     : (isSaasOwner && isBackofficeRoute) 
       ? getSaasOwnerItems() 
-      : getClientItems(effectivePermissions);
+      : getClientItems(effectivePermissions as ModulePermissions);
 
   // Determine if a path is active, and add '/backoffice' prefix for SaaS owners
   const isActive = (path: string) => {

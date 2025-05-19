@@ -242,7 +242,7 @@ export function useAuthHandlers({
       try {
         const { data: employeeData, error } = await supabase
           .from('employees')
-          .select('id, client_id, email, first_name, last_name')
+          .select('id, client_id, email, first_name, last_name, is_super_admin, department, employee_type, status, employee_id')
           .eq('email', supabaseUser.email.toLowerCase())
           .single();
         
@@ -252,12 +252,18 @@ export function useAuthHandlers({
             clientId: employeeData.client_id,
             email: employeeData.email,
             firstName: employeeData.first_name,
-            lastName: employeeData.last_name
+            lastName: employeeData.last_name,
+            isSuperAdmin: employeeData.is_super_admin,
+            department: employeeData.department,
+            employeeType: employeeData.employee_type,
+            status: employeeData.status,
+            employeeId: employeeData.employee_id
           };
           
           setEmployeeData(employee);
           saveEmployeeDataToStorage(employee);
           console.log("📝 Employee data stored in context after Google auth:", employee);
+          console.log("Super Admin Status from DB:", employeeData.is_super_admin);
         } else {
           console.log("⚠️ No employee data found for Google auth user:", supabaseUser.email);
         }

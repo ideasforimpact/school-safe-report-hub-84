@@ -30,8 +30,17 @@ const Header = () => {
   // Set dashboard path to /dashboard for all users
   const dashboardPath = "/dashboard";
   
-  // Check if user is super admin based on either the module permissions or the employee data
-  const isSuperAdmin = user?.modulePermissions?.superAdmin === true || employeeData?.isSuperAdmin === true;
+  // Check if user is super admin based on the employee data
+  const isSuperAdmin = employeeData?.isSuperAdmin === true;
+  
+  // Debug super admin status
+  console.log("Header Super Admin Status:", {
+    isSuperAdmin,
+    employeeData: employeeData ? {
+      id: employeeData.id,
+      isSuperAdmin: employeeData.isSuperAdmin
+    } : null
+  });
   
   // Show admin settings menu only for SaaS owner or super admin users
   const showAdminSettings = isSaasOwner || isSuperAdmin;

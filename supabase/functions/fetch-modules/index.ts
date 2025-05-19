@@ -91,10 +91,10 @@ serve(async (req) => {
           email: employeeInfo.email,
           firstName: employeeInfo.firstName,
           lastName: employeeInfo.lastName,
-          isSuperAdmin: employeeInfo.isSuperAdmin,
-          department: employeeInfo.department,
+          isSuperAdmin: employeeInfo.isSuperAdmin, // Ensure this field is properly captured
+          department: employeeInfo.department || '',
           employeeType: employeeInfo.employeeType,
-          status: employeeInfo.status,
+          status: employeeInfo.status !== undefined ? employeeInfo.status : true,
           employeeId: employeeInfo.employeeId
         };
       } 
@@ -145,10 +145,10 @@ serve(async (req) => {
             email: employeeDetails.email,
             firstName: employeeDetails.first_name,
             lastName: employeeDetails.last_name,
-            isSuperAdmin: employeeDetails.is_super_admin,
-            department: employeeDetails.department,
+            isSuperAdmin: employeeDetails.is_super_admin, // Ensure this field is properly captured
+            department: employeeDetails.department || '',
             employeeType: employeeDetails.employee_type,
-            status: employeeDetails.status,
+            status: employeeDetails.status !== undefined ? employeeDetails.status : true,
             employeeId: employeeDetails.employee_id
           };
         }
