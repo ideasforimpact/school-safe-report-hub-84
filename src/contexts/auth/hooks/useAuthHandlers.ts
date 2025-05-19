@@ -195,14 +195,14 @@ export const useAuthHandlers = ({
       const savedUser = getUserFromStorage();
       
       // If the saved user email matches, don't re-process
-      if (savedUser && savedUser.email === supabaseUser.email) {
-        console.log("Using existing user data from storage");
-        setUser(savedUser);
-        setAuthError(null);
-        setIsProcessingAuth(false);
-        authInitCompleteRef.current = true;
-        return;
-      }
+      // if (savedUser && savedUser.email === supabaseUser.email) {
+      //   console.log("Using existing user data from storage");
+      //   setUser(savedUser);
+      //   setAuthError(null);
+      //   setIsProcessingAuth(false);
+      //   authInitCompleteRef.current = true;
+      //   return;
+      // }
       
       // Extract auth provider from user metadata or email
       let provider = (supabaseUser.app_metadata?.provider || 'email') as string;
