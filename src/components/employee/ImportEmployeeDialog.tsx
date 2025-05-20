@@ -4,7 +4,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, UploadCloud } from 'lucide-react';
+import { Loader2, UploadCloud, FileCheck } from 'lucide-react';
+import { toast } from 'sonner';
+import { validateEmployeeExcel } from '@/services/employee/importEmployeeService';
 
 interface ImportEmployeeDialogProps {
   isOpen: boolean;
@@ -16,17 +18,55 @@ interface ImportEmployeeDialogProps {
 const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }: ImportEmployeeDialogProps) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isVerified, setIsVerified] = useState(false);
   const [manualClientId, setManualClientId] = useState<string>(clientId || '');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setSelectedFile(e.target.files[0]);
+      // Reset verification status when file changes
+      setIsVerified(false);
     }
   };
 
   const handleClientIdChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setManualClientId(e.target.value);
+  };
+
+  const handleVerify = async () => {
+    if (!selectedFile) return;
+    
+    setIsVerifying(true);
+    try {
+      const errors = await validateEmployeeExcel(selectedFile);
+      
+      if (errors.length > 0) {
+        // Show the first few errors in toast
+        const displayErrors = errors.slice(0, 3);
+        displayErrors.forEach(error => toast.error(error));
+        
+        // If there are more errors, show a summary toast
+        if (errors.length > 3) {
+          toast.error(`${errors.length - 3} more validation errors. Check console for details.`);
+        }
+        
+        // Log all errors to console for debugging
+        console.error('Excel validation errors:', errors);
+        
+        setIsVerified(false);
+      } else {
+        toast.success('Excel file validated successfully');
+        setIsVerified(true);
+      }
+    } catch (error) {
+      console.error("Error validating file:", error);
+      toast.error(`Validation failed: ${(error as Error).message}`);
+      setIsVerified(false);
+    } finally {
+      setIsVerifying(false);
+    }
   };
 
   const handleImport = async () => {
@@ -39,6 +79,7 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
       await onImportEmployees(selectedFile, effectiveClientId);
       setIsOpen(false);
       setSelectedFile(null);
+      setIsVerified(false);
     } catch (error) {
       console.error("Error importing file:", error);
     } finally {
@@ -80,7 +121,7 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
               <Button 
                 variant="outline" 
                 type="button" 
-                disabled={isLoading}
+                disabled={isLoading || isVerifying}
                 onClick={(e) => {
                   e.stopPropagation(); // Prevent the outer div's onClick from triggering
                   triggerFileSelect();
@@ -108,17 +149,40 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
           </div>
         </div>
         
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setIsOpen(false)} disabled={isLoading}>
-            Cancel
-          </Button>
+        <DialogFooter className="flex flex-col sm:flex-row sm:justify-between items-center">
           <Button 
-            onClick={handleImport} 
-            disabled={!selectedFile || isLoading}
+            variant="secondary" 
+            type="button" 
+            onClick={handleVerify}
+            disabled={!selectedFile || isLoading || isVerifying}
+            className="w-full sm:w-auto mb-2 sm:mb-0"
           >
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Import
+            {isVerifying ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : isVerified ? (
+              <FileCheck className="mr-2 h-4 w-4" />
+            ) : null}
+            Verify
           </Button>
+          
+          <div className="flex flex-col sm:flex-row sm:gap-2 w-full sm:w-auto">
+            <Button 
+              variant="outline" 
+              onClick={() => setIsOpen(false)} 
+              disabled={isLoading || isVerifying}
+              className="w-full sm:w-auto mb-2 sm:mb-0"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleImport} 
+              disabled={!selectedFile || isLoading || !isVerified}
+              className="w-full sm:w-auto"
+            >
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Import
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
