@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -108,25 +107,25 @@ const EmployeeManagement = () => {
         }
       }
       
-      // Ensure we have a moduleAccessPayload correctly formatted for the backend
-      if (!employeeData.moduleAccessPayload && employeeData.modulePermissions) {
-        const moduleAccessPayload = Object.entries(employeeData.modulePermissions)
-          .filter(([_, enabled]) => enabled)
-          .map(([key]) => {
-            // Find the module name from the configured modules
-            const module = state.configuredModules?.find(m => m.key === key || m.id === key);
-            return {
-              name: module?.name || key,
-              employeeId: employeeData.employeeId,
-              key: key
-            };
-          });
-          
-        employeeData.moduleAccessPayload = moduleAccessPayload;
-        console.log("Prepared module access payload:", moduleAccessPayload);
+      // Create the moduleAccessPayload from state.configuredModules if available
+      if (state.configuredModules && state.configuredModules.length > 0) {
+        // We'll select a default subset of modules - this would typically come from user selection
+        // For now, let's just add the 'user' module by default
+        const defaultModules = state.configuredModules
+          .filter(module => module.name === 'User' || module.name === 'Dashboard')
+          .map(module => ({
+            name: module.name,
+            employeeId: employeeData.employeeId,
+            key: module.key || module.id
+          }));
+        
+        if (defaultModules.length > 0) {
+          employeeData.moduleAccessPayload = defaultModules;
+          console.log("Created default moduleAccessPayload:", defaultModules);
+        }
       }
       
-      console.log("Final employee data with clientId:", employeeData);
+      console.log("Final employee data with clientId and modules:", employeeData);
       await addEmployee(employeeData);
       toast.success("Employee added successfully");
     } catch (error) {

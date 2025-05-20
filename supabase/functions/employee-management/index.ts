@@ -23,6 +23,8 @@ async function handleEmployeeOperation(operation: string, employeeData: any) {
       return await getEmployee(employeeData.id);
     case 'list':
       return await listEmployees(employeeData.clientId);
+    case 'add_module_access':
+      return await addEmployeeModuleAccess(employeeData.moduleAccessPayload, employeeData.id);
     default:
       return { error: 'Invalid operation' };
   }

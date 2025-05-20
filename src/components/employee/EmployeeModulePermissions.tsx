@@ -30,6 +30,12 @@ const EmployeeModulePermissions: React.FC<EmployeeModulePermissionsProps> = ({
   if (modules.length === 0) {
     console.warn("No modules found in Redux store. Module permissions may not be displayed correctly.");
   }
+  
+  // Handler for checkbox change that only affects one module at a time
+  const handleModuleChange = (key: keyof ModulePermissions, checked: boolean) => {
+    // Only update the specific module that was clicked
+    onModulePermissionChange(key, checked);
+  };
 
   return (
     <div className="w-full">
@@ -50,7 +56,7 @@ const EmployeeModulePermissions: React.FC<EmployeeModulePermissionsProps> = ({
                 <TableCell>
                   <Checkbox
                     checked={isEnabled}
-                    onCheckedChange={(checked) => onModulePermissionChange(moduleKey, checked === true)}
+                    onCheckedChange={(checked) => handleModuleChange(moduleKey, checked === true)}
                   />
                 </TableCell>
                 <TableCell>{module.name}</TableCell>

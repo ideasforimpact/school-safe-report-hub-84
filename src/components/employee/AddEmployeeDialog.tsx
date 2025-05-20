@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useForm } from 'react-hook-form';
@@ -100,6 +99,7 @@ const AddEmployeeDialog = ({ isOpen, setIsOpen, onAddEmployee, clientId }: AddEm
         joiningDate: values.joiningDate,
         status: 'active',
         clientId: values.clientId || clientId, // Ensure clientId is set from either form or props
+        // Don't set modulePermissions here as we need to format the payload correctly in the parent
       };
       
       console.log("Adding employee with data:", employeeData);
