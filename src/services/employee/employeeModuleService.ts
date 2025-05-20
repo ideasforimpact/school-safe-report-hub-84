@@ -63,6 +63,7 @@ export const addEmployeeModuleAccessBulk = async (
     console.log("Module access payload:", moduleAccessPayload);
     
     // Use the edge function to handle module access
+    // The edge function will handle looking up module_id by name
     const { data, error } = await supabase.functions.invoke('employee-management', {
       body: JSON.stringify({
         operation: 'add_module_access',

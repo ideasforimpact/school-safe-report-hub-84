@@ -104,11 +104,11 @@ const AddEmployeeDialog = ({ isOpen, setIsOpen, onAddEmployee, clientId }: AddEm
       const employeeId = values.employeeId;
       
       // Add the employeeId to each module in the selected modules
+      // We only need to send name and key - the edge function will handle module_id lookup
       const moduleAccessPayload = selectedModules.map(module => ({
         name: module.name,
         employeeId: employeeId,
-        key: module.key,
-        module_id: module.id // Use module_id if available, fall back to id
+        key: module.key
       }));
       
       // Ensure clientId is included in the employee data
