@@ -129,7 +129,7 @@ export const useAuthHandlers = ({
           return [];
         }
 
-        console.log("employeeModules:", employeeModules);
+        console.log(employeeModules,"employeeModules")
         // Create a map of employee module permissions for quick lookup
         const employeeModuleMap = new Map();
         employeeModules?.forEach(em => {
@@ -174,7 +174,7 @@ export const useAuthHandlers = ({
         }];
       }
       
-      console.log("Modules fetched during auth:", configuredModules.length);
+      console.log("Modules fetched during auth:", configuredModules.length, employeeModules);
       return configuredModules;
       
     } catch (error) {
@@ -194,6 +194,16 @@ export const useAuthHandlers = ({
       
       // Check if we already have a saved user
       const savedUser = getUserFromStorage();
+      
+      // If the saved user email matches, don't re-process
+      // if (savedUser && savedUser.email === supabaseUser.email) {
+      //   console.log("Using existing user data from storage");
+      //   setUser(savedUser);
+      //   setAuthError(null);
+      //   setIsProcessingAuth(false);
+      //   authInitCompleteRef.current = true;
+      //   return;
+      // }
       
       // Extract auth provider from user metadata or email
       let provider = (supabaseUser.app_metadata?.provider || 'email') as string;
