@@ -172,7 +172,7 @@ export const useAuthHandlers = ({
         }];
       }
       
-      console.log("Modules fetched during auth:", configuredModules.length);
+      console.log("Modules fetched during auth:", configuredModules.length,employeeModules);
       return configuredModules;
       
     } catch (error) {
