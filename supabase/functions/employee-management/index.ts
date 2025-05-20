@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.20.0';
 
@@ -79,18 +80,25 @@ async function addEmployeeModuleAccess(moduleAccess: any[], employeeId: string) 
   console.log("Module access payload:", moduleAccess);
   
   try {
-    // For each module in the payload, find the module ID by name and insert into employee_modules
+    // For each module in the payload, insert into employee_modules
     const moduleInserts = await Promise.all(moduleAccess.map(async (module) => {
-      // Get module ID from modules table by name
-      const { data: moduleData, error: moduleError } = await supabase
-        .from('modules')
-        .select('id')
-        .eq('name', module.name)
-        .single();
+      let moduleId = module.module_id;
+      
+      // If module_id is not provided, look it up by name
+      if (!moduleId) {
+        // Get module ID from modules table by name
+        const { data: moduleData, error: moduleError } = await supabase
+          .from('modules')
+          .select('id')
+          .eq('name', module.name)
+          .single();
+          
+        if (moduleError || !moduleData) {
+          console.log(`Module not found for name: ${module.name}`);
+          return null;
+        }
         
-      if (moduleError || !moduleData) {
-        console.log(`Module not found for name: ${module.name}`);
-        return null;
+        moduleId = moduleData.id;
       }
       
       // Insert into employee_modules
@@ -98,7 +106,7 @@ async function addEmployeeModuleAccess(moduleAccess: any[], employeeId: string) 
         .from('employee_modules')
         .insert({
           employee_id: employeeId,
-          module_id: moduleData.id,
+          module_id: moduleId,
           access_level: {} // Default empty access level
         });
         

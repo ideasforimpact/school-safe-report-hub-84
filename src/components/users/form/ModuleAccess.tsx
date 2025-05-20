@@ -52,8 +52,7 @@ const ModuleAccess = ({
           name: moduleName,
           employeeId: employeeId,
           key: moduleKey,
-          module_id: moduleId, // Include module_id
-          id: moduleId // Include id for backward compatibility
+          module_id: moduleId // Include module_id if available
         });
         
         console.log(`Added module ${moduleName} (${moduleKey}) to selection`);

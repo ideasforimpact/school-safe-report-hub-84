@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useForm } from 'react-hook-form';
@@ -104,11 +103,12 @@ const AddEmployeeDialog = ({ isOpen, setIsOpen, onAddEmployee, clientId }: AddEm
       const employeeId = values.employeeId;
       
       // Add the employeeId to each module in the selected modules
-      // We only need to send name and key - the edge function will handle module_id lookup
+      // We only need to send name and key - the edge function can handle module_id if provided
       const moduleAccessPayload = selectedModules.map(module => ({
         name: module.name,
         employeeId: employeeId,
-        key: module.key
+        key: module.key,
+        module_id: module.module_id // Include module_id if available, edge function will use it
       }));
       
       // Ensure clientId is included in the employee data
