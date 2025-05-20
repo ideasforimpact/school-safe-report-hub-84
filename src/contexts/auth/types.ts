@@ -1,4 +1,3 @@
-
 // Define the user with password separately for internal use
 export interface UserWithPassword extends User {
   password: string;
@@ -38,6 +37,7 @@ export interface User {
   createdAt: string;
   lastLogin?: string;
   provider?: string; // Add provider field to track authentication method
+  isSuperAdmin?: boolean; // Add isSuperAdmin property
 }
 
 export type UserRole = 'admin' | 'reporter' | 'viewer' | 'saas_owner' | 'user';
