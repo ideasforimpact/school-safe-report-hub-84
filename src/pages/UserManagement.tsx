@@ -166,7 +166,7 @@ const UserManagement = () => {
             isActive: employee.status === true,
             createdAt: employee.createdAt || new Date().toISOString(),
             clientId: employee.clientId,
-            isSuperAdmin: employee.isSuperAdmin, // Changed from is_super_admin to isSuperAdmin
+            isSuperAdmin: employee.is_super_admin, // Changed from is_super_admin to isSuperAdmin
             // Store module access items directly
             moduleAccessPayload: moduleAccessItems,
             // Add default role property to satisfy User interface
@@ -309,7 +309,7 @@ const UserManagement = () => {
             isActive: employee.status === true,
             createdAt: employee.createdAt || new Date().toISOString(),
             clientId: employee.clientId,
-            isSuperAdmin: employee.isSuperAdmin, // Changed from is_super_admin to isSuperAdmin
+            isSuperAdmin: employee.is_super_admin, // Changed from is_super_admin to isSuperAdmin
             // Store module access items directly
             moduleAccessPayload: moduleAccessItems,
             // Add default role property to satisfy User interface
