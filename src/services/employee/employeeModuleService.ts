@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { ModulePermissions } from '@/contexts/auth/types';
 import { ModuleAccessItem } from '@/types/moduleAccess';
@@ -33,11 +32,16 @@ export const updateEmployeeModulePermissions = async (
       // Convert the module permissions object to an array of module access items
       moduleAccessPayload = Object.entries(modulePermissions)
         .filter(([_, enabled]) => enabled)
-        .map(([key]) => ({
-          name: key,
-          employeeId,
-          key
-        }));
+        .map(([key]) => {
+          // Try to get the module_id from the modules table using the key
+          // This is a fallback approach - ideally the module_id would already be known
+          return {
+            name: key,
+            employeeId,
+            key,
+            module_id: key // Use key as module_id as fallback - this will be resolved in the edge function
+          };
+        });
     }
     
     // Add the new module permissions
@@ -63,7 +67,6 @@ export const addEmployeeModuleAccessBulk = async (
     console.log("Module access payload:", moduleAccessPayload);
     
     // Use the edge function to handle module access
-    // The edge function will handle looking up module_id by name
     const { data, error } = await supabase.functions.invoke('employee-management', {
       body: JSON.stringify({
         operation: 'add_module_access',
@@ -79,24 +82,12 @@ export const addEmployeeModuleAccessBulk = async (
       
       // Fall back to direct database calls if edge function fails
       await Promise.all(moduleAccessPayload.map(async (module) => {
-        // Get the module ID from the modules table
-        const { data: moduleData, error: moduleError } = await supabase
-          .from('modules')
-          .select('id')
-          .eq('name', module.name)
-          .single();
-          
-        if (moduleError || !moduleData) {
-          console.log(`Module not found for name: ${module.name}`);
-          return;
-        }
-        
         // Insert into employee_modules
         const { error: insertError } = await supabase
           .from('employee_modules')
           .insert({
             employee_id: employeeId,
-            module_id: moduleData.id,
+            module_id: module.module_id,
             access_level: {}
           });
           
@@ -236,7 +227,8 @@ export const getEmployeeModuleAccessItems = async (
         return {
           name: "Unknown",
           employeeId,
-          key: item.module_id
+          key: item.module_id,
+          module_id: item.module_id
         };
       }
       
@@ -245,7 +237,8 @@ export const getEmployeeModuleAccessItems = async (
       return {
         name: moduleData.name || 'Unknown',
         employeeId,
-        key: moduleData.level || item.module_id
+        key: moduleData.level || item.module_id,
+        module_id: moduleData.id || item.module_id
       };
     });
     

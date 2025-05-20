@@ -7,11 +7,8 @@ export type EmployeeGrade = 'junior' | 'mid' | 'senior' | 'lead' | 'manager' | '
 export type EmployeeType = 'permanent' | 'contract' | 'part_time' | 'consultant' | 'intern';
 export type DepartmentType = 'admin' | 'teaching' | 'security' | 'maintenance' | 'transport' | 'management' | 'it' | 'hr' | 'finance';
 
-export interface ModuleAccessItem {
-  name: string;
-  employeeId?: string;
-  key: string;
-}
+// Import ModuleAccessItem directly from moduleAccess.ts to avoid duplication
+import { ModuleAccessItem } from '@/types/moduleAccess';
 
 export interface Employee {
   id: string;

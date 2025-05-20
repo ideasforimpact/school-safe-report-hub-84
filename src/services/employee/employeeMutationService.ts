@@ -1,9 +1,9 @@
-
 import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
 import { Employee } from '@/contexts/employee/types';
 import { mapDbRecordToEmployee, mapEmployeeToDbRecord } from './utils/employeeMappers';
-import { updateEmployeeModulePermissions, addEmployeeModuleAccessBulk } from './employeeModuleService';
+import { updateEmployeeModulePermissions } from './employeeModuleService';
+import { ModuleAccessItem } from '@/types/moduleAccess';
 
 export const addEmployeeToApi = async (
   employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>
@@ -57,7 +57,18 @@ export const addEmployeeToApi = async (
     // If there's a module access payload, add it
     if (employeeData.moduleAccessPayload) {
       try {
-        await addEmployeeModuleAccessBulk(employeeData.moduleAccessPayload, data.id);
+        // Ensure module_id exists in each ModuleAccessItem
+        const updatedModuleAccessPayload: ModuleAccessItem[] = employeeData.moduleAccessPayload.map(item => {
+          if (!('module_id' in item)) {
+            return {
+              ...item,
+              module_id: item.key // Use key as module_id if not provided
+            } as ModuleAccessItem;
+          }
+          return item as ModuleAccessItem;
+        });
+        
+        await updateEmployeeModulePermissions(data.id, updatedModuleAccessPayload);
       } catch (accessError) {
         console.error("Error adding module access:", accessError);
         // Continue with employee creation even if module access update fails

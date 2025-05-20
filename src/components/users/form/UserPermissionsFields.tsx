@@ -29,7 +29,8 @@ const UserPermissionsFields = ({
   const modules = state.configuredModules && state.configuredModules.length > 0
     ? state.configuredModules.map(module => ({
         key: module.key || module.id,
-        name: module.name
+        name: module.name,
+        module_id: module.id
       }))
     : [];
 
@@ -43,7 +44,7 @@ const UserPermissionsFields = ({
     }
     
     // If not an array, convert from object format
-    const initialSelectedModules = Object.entries(permissions as ModulePermissions)
+    const initialSelectedModules: ModuleAccessItem[] = Object.entries(permissions as ModulePermissions)
       .filter(([_, enabled]) => enabled)
       .map(([key]) => {
         // Find the module name from configured modules
@@ -51,7 +52,8 @@ const UserPermissionsFields = ({
         return {
           name: module?.name || key,
           employeeId: employeeId,
-          key: key
+          key: key,
+          module_id: module?.id || key // Use module ID if found, otherwise use key as fallback
         };
       });
       
@@ -64,8 +66,8 @@ const UserPermissionsFields = ({
   }
 
   // Handler for checkbox change
-  const handleModuleChange = (moduleKey: string, moduleName: string, checked: boolean) => {
-    console.log("Module change:", { moduleKey, moduleName, checked });
+  const handleModuleChange = (moduleKey: string, moduleName: string, moduleId: string, checked: boolean) => {
+    console.log("Module change:", { moduleKey, moduleName, moduleId, checked });
     
     // Create a new array based on current selected modules
     let updatedModules: ModuleAccessItem[];
@@ -82,7 +84,8 @@ const UserPermissionsFields = ({
         const newModule: ModuleAccessItem = {
           name: moduleName,
           employeeId: employeeId,
-          key: moduleKey
+          key: moduleKey,
+          module_id: moduleId
         };
         updatedModules = [...selectedModules, newModule];
       } else {
@@ -122,7 +125,7 @@ const UserPermissionsFields = ({
                 id={isEditMode ? `edit-${module.key}` : module.key}
                 checked={isSelected}
                 onCheckedChange={(checked) => 
-                  handleModuleChange(module.key, module.name, checked === true)
+                  handleModuleChange(module.key, module.name, module.module_id, checked === true)
                 }
               />
               <label 
