@@ -135,7 +135,7 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
             </div>
           </div>
 
-          <div className="space-y-2">
+          {/* <div className="space-y-2">
             <Label htmlFor="clientId">Client ID (Optional)</Label>
             <Input
               id="clientId"
@@ -146,7 +146,7 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
             <p className="text-xs text-gray-500">
               {clientId ? "Default client ID will be used if left blank." : "Enter the client ID for these employees."}
             </p>
-          </div>
+          </div> */}
         </div>
         
         <DialogFooter className="flex flex-col sm:flex-row sm:justify-between items-center">
