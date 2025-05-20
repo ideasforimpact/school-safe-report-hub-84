@@ -62,8 +62,9 @@ const convertDepartmentType = (department: EmployeeContextDepartmentType): Depar
 };
 
 // Define a custom type for employees that we display in the UI
-interface EmployeeUser extends Omit<User, 'modulePermissions' | 'role'> {
+interface EmployeeUser extends Omit<User, 'modulePermissions'> {
   moduleAccessPayload?: ModuleAccessItem[];
+  // No need to explicitly define role here since we're extending from User
 }
 
 // Main UserManagement component
