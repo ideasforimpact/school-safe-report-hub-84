@@ -66,7 +66,7 @@ const UserList = ({ users, onEditClick, onDeleteUser, onDeactivateUser }: UserLi
               )}
             </TableCell>
             <TableCell>
-              { true ?  
+              { !user.isSuperAmin ?  
               <div className="flex space-x-1">
                 <Button 
                   variant="ghost" 
