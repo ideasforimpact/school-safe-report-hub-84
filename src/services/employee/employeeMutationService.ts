@@ -17,6 +17,65 @@ export const addEmployeeToApi = async (
     console.log("Original clientId:", employeeData.clientId);
     console.log("Mapped client_id:", dbEmployee.client_id);
 
+    // Try to use the edge function first
+    try {
+      const { data, error } = await supabase.functions.invoke('employee-management', {
+        body: JSON.stringify({
+          operation: 'create',
+          employee: employeeData
+        })
+      });
+      
+      if (error) {
+        console.error("Edge function error:", error);
+        throw error;
+      }
+      
+      // Check if the response contains an error 
+      if (data && data.error) {
+        console.error("Error response from edge function:", data.error);
+        
+        // Check for duplicate email error
+        if (data.code === 'DUPLICATE_EMAIL') {
+          const errorMessage = data.error;
+          toast.error(errorMessage);
+          throw { 
+            code: "DUPLICATE_EMAIL", 
+            error: errorMessage 
+          };
+        } else {
+          // For other errors, show a generic message
+          toast.error(data.error || "Failed to add employee");
+          throw data;
+        }
+      }
+      
+      // If we got here, it means the operation was successful
+      console.log("Employee created via edge function:", data);
+      
+      // Only show success message if we successfully added the employee
+      if (data && data.data) {
+        toast.success("Employee added successfully");
+        // Convert the response back to our Employee type and return it
+        return mapDbRecordToEmployee(data.data);
+      }
+      
+      // If we don't have data.data, throw an error
+      throw new Error("Invalid response from edge function");
+    } catch (edgeFunctionError: any) {
+      // If the edge function call fails or returns an error, 
+      // we'll log it and fall back to the direct Supabase API
+      console.error("Edge function error, falling back to direct API call:", edgeFunctionError);
+      
+      // If this is a duplicate email error we already handled, re-throw it
+      if (edgeFunctionError.code === "DUPLICATE_EMAIL") {
+        throw edgeFunctionError;
+      }
+      
+      // Otherwise continue with the fallback approach
+    }
+
+    // Fallback: Direct Supabase API call if edge function fails
     // Explicitly define required fields for Supabase insert to prevent type error
     const { data, error } = await supabase
       .from('employees')

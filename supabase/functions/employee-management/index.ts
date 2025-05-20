@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.20.0';
 
@@ -233,7 +232,7 @@ async function createEmployee(employee: any) {
       
     if (error) {
       console.error("Error creating employee:", error);
-      throw error;
+      return { error: error.message };
     }
     
     // If module access payload exists, add employee module access
@@ -241,10 +240,10 @@ async function createEmployee(employee: any) {
       await addEmployeeModuleAccess(employee.moduleAccessPayload, newEmployee.id);
     }
     
-    return { data: newEmployee };
+    return { data: newEmployee, success: true };
   } catch (error) {
     console.error("Error in createEmployee:", error);
-    return { error: error.message };
+    return { error: error.message, success: false };
   }
 }
 
@@ -488,7 +487,7 @@ serve(async (req) => {
     console.error("Error processing request:", error);
     
     return new Response(
-      JSON.stringify({ error: error.message || 'An unexpected error occurred' }),
+      JSON.stringify({ error: error.message || 'An unexpected error occurred', success: false }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
