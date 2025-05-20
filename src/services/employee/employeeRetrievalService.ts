@@ -40,7 +40,7 @@ export const getAllEmployeesFromApi = async (): Promise<Employee[]> => {
         status: record.status === true, // Convert to boolean
         createdAt: record.created_at || new Date().toISOString(),
         updatedAt: record.updated_at || new Date().toISOString(),
-        is_super_admin : record?.is_super_admin
+        is_super_admin : record?.is_super_admin,
         documents: [] // Initialize empty documents array
       };
       return employee;
