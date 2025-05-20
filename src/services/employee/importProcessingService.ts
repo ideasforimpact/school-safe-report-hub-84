@@ -1,3 +1,4 @@
+
 import { toast } from 'sonner';
 import { Employee } from '@/contexts/employee/types';
 import { ModulePermissions } from '@/contexts/auth/types';
@@ -57,6 +58,16 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
           eduSafeResourceAccess: false
         };
         
+        // Create default module access payload with Dashboard module
+        const defaultModuleAccessPayload = [
+          {
+            name: "Dashboard",
+            key: "user",
+            module_id: "f84132f7-48e0-45f1-ad3a-59e794ac9a8d",
+            employeeId: String(row.employeeId).trim()
+          }
+        ];
+        
         // Add default module permissions to each employee record
         // and normalize/validate employee data fields
         return {
@@ -70,7 +81,8 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
           joiningDate: String(row.joiningDate),
           status: String(row.status),
           clientId: clientId, // Ensure clientId is passed through
-          modulePermissions: modulePermissions
+          modulePermissions: modulePermissions,
+          moduleAccessPayload: defaultModuleAccessPayload // Add default module access payload
         };
       } catch (error) {
         console.error(`Error processing row ${index + 2}:`, error);

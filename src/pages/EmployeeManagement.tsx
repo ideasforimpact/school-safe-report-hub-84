@@ -172,7 +172,7 @@ const EmployeeManagement = () => {
     }
   };
 
-  // Handler for importing employees - Updated property name to match ImportEmployeeDialog
+  // Handler for importing employees - Updated to pass configuredModules
   const handleImportEmployees = async (file: File, importClientId?: string) => {
     setIsLoading(true);
     try {
@@ -190,7 +190,8 @@ const EmployeeManagement = () => {
         }
       }
       
-      await processEmployeeExcel(file, effectiveClientId);
+      // Pass configured modules from Redux state
+      await processEmployeeExcel(file, effectiveClientId, state.configuredModules);
       // After import, refresh the employee list
       await fetchEmployees();
       toast.success("Employees imported successfully");
@@ -296,7 +297,7 @@ const EmployeeManagement = () => {
         />
       )}
 
-      {/* Import Employees Dialog */}
+      {/* Import Employees Dialog with clientId */}
       <ImportEmployeeDialog
         isOpen={isImportDialogOpen}
         setIsOpen={setIsImportDialogOpen}
