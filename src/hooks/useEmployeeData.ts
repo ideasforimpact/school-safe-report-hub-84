@@ -1,8 +1,7 @@
-
 import { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmployeeStore } from '@/store/EmployeeContext';
-import { setEmployeeData, setConfiguredModules, setLoading, setError } from '@/store/employeeActions';
+import { setEmployeeData, setConfiguredModules, setLoading, setError, setClientId } from '@/store/employeeActions';
 import { supabase } from '@/integrations/supabase/client';
 import { Module } from '@/store/types';
 
@@ -21,6 +20,9 @@ export const useEmployeeData = () => {
         dispatch(setError("Client ID is missing"));
         return;
       }
+
+      // Set the client ID in Redux store
+      dispatch(setClientId(clientId));
 
       // Check Redux store first - if modules are already loaded, don't fetch again
       if (state.configuredModules && state.configuredModules.length > 0) {
@@ -145,7 +147,7 @@ export const useEmployeeData = () => {
           
           // Check if this module is assigned to the employee
           const hasAccess = employeeModules?.some(em => em.module_id === moduleObj.id) || 
-                           employeeModules?.length === 0; // If no modules specified, assume access to all
+                          employeeModules?.length === 0; // If no modules specified, assume access to all
           
           if (!hasAccess && employeeModules?.length > 0) {
             console.log(`Employee doesn't have access to module: ${moduleObj.name}`);
@@ -199,6 +201,12 @@ export const useEmployeeData = () => {
       console.log("Setting employee data in Redux store:", authEmployeeData);
       dispatch(setEmployeeData(authEmployeeData));
       
+      // Set client ID in Redux store
+      if (authEmployeeData.clientId) {
+        console.log("Setting clientId in Redux store:", authEmployeeData.clientId);
+        dispatch(setClientId(authEmployeeData.clientId));
+      }
+      
       // Fetch modules if we have employeeId and clientId
       if (authEmployeeData.id && authEmployeeData.clientId &&
           (!state.configuredModules || state.configuredModules.length === 0)) {
@@ -240,6 +248,11 @@ export const useEmployeeData = () => {
               // Set employee data in Redux store
               dispatch(setEmployeeData(employeeData));
               
+              // Set client ID in Redux store
+              if (data.client_id) {
+                dispatch(setClientId(data.client_id));
+              }
+              
               // Fetch modules
               if (data.id && data.client_id) {
                 fetchConfiguredModules(data.id, data.client_id);
@@ -260,6 +273,7 @@ export const useEmployeeData = () => {
     configuredModules: state.configuredModules,
     isLoading: state.isLoading,
     error: state.error,
+    clientId: state.clientId, // Include clientId in the return value
     refetchModules: () => {
       if (state.employeeData?.id && state.employeeData?.clientId) {
         fetchConfiguredModules(state.employeeData.id, state.employeeData.clientId);

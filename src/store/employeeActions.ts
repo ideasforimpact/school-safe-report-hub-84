@@ -1,18 +1,19 @@
 
-import { EmployeeData } from '@/contexts/auth/types';
-import { 
-  EmployeeActionTypes, 
-  SetEmployeeDataAction, 
-  SetConfiguredModulesAction, 
-  SetLoadingAction, 
+import {
+  EmployeeActionTypes,
+  SetEmployeeDataAction,
+  SetConfiguredModulesAction,
+  SetLoadingAction,
   SetErrorAction,
   ResetEmployeeAction,
+  SetClientIdAction,
   Module
 } from './types';
+import { EmployeeData } from '@/contexts/auth/types';
 
-export const setEmployeeData = (data: EmployeeData): SetEmployeeDataAction => ({
+export const setEmployeeData = (employeeData: EmployeeData | null): SetEmployeeDataAction => ({
   type: EmployeeActionTypes.SET_EMPLOYEE_DATA,
-  payload: data
+  payload: employeeData
 });
 
 export const setConfiguredModules = (modules: Module[]): SetConfiguredModulesAction => ({
@@ -32,4 +33,9 @@ export const setError = (error: string | null): SetErrorAction => ({
 
 export const resetEmployee = (): ResetEmployeeAction => ({
   type: EmployeeActionTypes.RESET_EMPLOYEE
+});
+
+export const setClientId = (clientId: string | null): SetClientIdAction => ({
+  type: EmployeeActionTypes.SET_CLIENT_ID,
+  payload: clientId
 });

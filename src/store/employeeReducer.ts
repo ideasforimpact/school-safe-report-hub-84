@@ -5,7 +5,8 @@ export const initialEmployeeState: EmployeeState = {
   employeeData: null,
   configuredModules: [],
   isLoading: false,
-  error: null
+  error: null,
+  clientId: null // Initialize clientId as null
 };
 
 export const employeeReducer = (
@@ -17,9 +18,11 @@ export const employeeReducer = (
 
   switch (action.type) {
     case EmployeeActionTypes.SET_EMPLOYEE_DATA:
+      // When setting employee data, also set clientId if available
       return {
         ...state,
-        employeeData: action.payload
+        employeeData: action.payload,
+        clientId: action.payload?.clientId || state.clientId // Set clientId from payload if available
       };
     case EmployeeActionTypes.SET_CONFIGURED_MODULES:
       return {
@@ -35,6 +38,11 @@ export const employeeReducer = (
       return {
         ...state,
         error: action.payload
+      };
+    case EmployeeActionTypes.SET_CLIENT_ID:
+      return {
+        ...state,
+        clientId: action.payload
       };
     case EmployeeActionTypes.RESET_EMPLOYEE:
       return initialEmployeeState;
