@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
@@ -134,7 +135,7 @@ function App() {
                     {/* 404 route */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>
-                  <Toaster position="top-right" />
+                  <Toaster position="top-right" closeButton={true} />
                 </AssessmentProvider>
               </EmployeeVerificationProvider>
             </FacilityProvider>

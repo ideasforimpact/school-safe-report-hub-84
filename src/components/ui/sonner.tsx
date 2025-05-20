@@ -1,6 +1,7 @@
 
 import { useTheme } from "next-themes"
 import { Toaster as Sonner, toast } from "sonner"
+import { X } from "lucide-react"
 
 type ToasterProps = React.ComponentProps<typeof Sonner>
 
@@ -24,8 +25,12 @@ const Toaster = ({ ...props }: ToasterProps) => {
           error: "group-[.toaster]:bg-red-100 group-[.toaster]:text-red-900 group-[.toaster]:border-red-200",
           warning: "group-[.toaster]:bg-amber-100 group-[.toaster]:text-amber-900 group-[.toaster]:border-amber-200",
           info: "group-[.toaster]:bg-blue-100 group-[.toaster]:text-blue-900 group-[.toaster]:border-blue-200",
+          closeButton: "bg-transparent text-foreground opacity-100 !important",
         },
         duration: 5000,
+        closeButton: true,
+        // Use the X component from Lucide as close icon
+        closeIcon: <X className="h-4 w-4" />,
       }}
       {...props}
     />
