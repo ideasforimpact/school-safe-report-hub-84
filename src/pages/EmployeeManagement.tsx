@@ -75,21 +75,45 @@ const EmployeeManagement = () => {
 
   const handleDeactivateEmployee = async (id: string) => {
     try {
-      await deactivateEmployee(id);
-      toast.success("Employee deactivated successfully");
+      setIsLoading(true);
+      // Call the deactivateEmployee function
+      const result = await deactivateEmployee(id);
+      
+      // Check if operation was successful
+      if (result.success) {
+        toast.success("Employee deactivated successfully");
+      } else if (result.error) {
+        console.error("Failed to deactivate employee:", result.error);
+        toast.error(`Failed to deactivate employee: ${result.error}`);
+      }
     } catch (error) {
-      console.error("Failed to deactivate employee:", error);
-      toast.error("Failed to deactivate employee");
+      console.error("Error in handleDeactivateEmployee:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      toast.error(`Failed to deactivate employee: ${errorMessage}`);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleDeleteEmployee = async (id: string) => {
     try {
-      await deleteEmployee(id);
-      toast.success("Employee deleted successfully");
+      setIsLoading(true);
+      // Call the deleteEmployee function
+      const result = await deleteEmployee(id);
+      
+      // Check if operation was successful
+      if (result.success) {
+        toast.success("Employee deleted successfully");
+      } else if (result.error) {
+        console.error("Failed to delete employee:", result.error);
+        toast.error(`Failed to delete employee: ${result.error}`);
+      }
     } catch (error) {
-      console.error("Failed to delete employee:", error);
-      toast.error("Failed to delete employee");
+      console.error("Error in handleDeleteEmployee:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+      toast.error(`Failed to delete employee: ${errorMessage}`);
+    } finally {
+      setIsLoading(false);
     }
   };
 

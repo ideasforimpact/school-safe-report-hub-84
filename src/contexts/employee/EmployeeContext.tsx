@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { Employee, EmployeeContextType } from './types';
 import { 
@@ -217,18 +216,35 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
       
       // Try to delete employee from API first
       try {
-        await deleteEmployeeFromApi(id);
-        setEmployees(prev => prev.filter(emp => emp.id !== id));
-        return;
-      } catch (apiError) {
-        console.error("API error in deleteEmployee, falling back to local:", apiError);
+        const result = await deleteEmployeeFromApi(id);
         
-        // If API fails, fallback to local storage
-        await deleteEmployeeService(id);
-        setEmployees(prev => prev.filter(emp => emp.id !== id));
+        if (result.success) {
+          // Only update UI if the operation was successful
+          setEmployees(prev => prev.filter(emp => emp.id !== id));
+          return { success: true };
+        } else if (result.error) {
+          throw new Error(result.error);
+        }
+      } catch (apiError) {
+        console.error("API error in deleteEmployee:", apiError);
+        
+        const errorMessage = apiError instanceof Error ? apiError.message : "Unknown error";
+        toast.error(`Failed to delete employee: ${errorMessage}`);
+        
+        // Return the error for the caller to handle
+        return { 
+          success: false, 
+          error: errorMessage
+        };
       }
     } catch (error) {
       console.error("Error in deleteEmployee:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      
+      return { 
+        success: false, 
+        error: errorMessage 
+      };
     } finally {
       setLoading(false);
     }

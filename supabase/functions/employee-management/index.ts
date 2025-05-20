@@ -11,6 +11,18 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 async function handleEmployeeOperation(operation: string, employeeData: any) {
   console.log(`Handling operation: ${operation}`);
   
+  // Validate that employeeData exists for operations that require it
+  if (!employeeData && ['create', 'update'].includes(operation)) {
+    return { error: 'Employee data is required for this operation' };
+  }
+  
+  // For delete and deactivate operations, we only need the ID
+  if (['delete', 'deactivate'].includes(operation)) {
+    if (!employeeData || !employeeData.id) {
+      return { error: 'Employee ID is required for this operation' };
+    }
+  }
+  
   switch (operation) {
     case 'create':
       return await createEmployee(employeeData);
@@ -21,11 +33,17 @@ async function handleEmployeeOperation(operation: string, employeeData: any) {
     case 'delete':
       return await deleteEmployee(employeeData.id);
     case 'get':
-      return await getEmployee(employeeData.id);
+      return employeeData && employeeData.id 
+        ? await getEmployee(employeeData.id)
+        : { error: 'Employee ID is required for get operation' };
     case 'list':
-      return await listEmployees(employeeData.clientId);
+      return employeeData && employeeData.clientId 
+        ? await listEmployees(employeeData.clientId)
+        : { error: 'Client ID is required for list operation' };
     case 'add_module_access':
-      return await addEmployeeModuleAccess(employeeData.moduleAccessPayload, employeeData.id);
+      return (employeeData && employeeData.moduleAccessPayload && employeeData.id)
+        ? await addEmployeeModuleAccess(employeeData.moduleAccessPayload, employeeData.id)
+        : { error: 'Module access payload and employee ID are required' };
     default:
       return { error: 'Invalid operation' };
   }
@@ -138,23 +156,129 @@ async function updateEmployee(employee: any) {
 }
 
 async function deactivateEmployee(id: string) {
-  // Implementation for deactivating an employee
-  return { error: 'Not implemented yet' };
+  try {
+    console.log(`Deactivating employee with ID: ${id}`);
+    
+    // First update the employee status to 'inactive' (false)
+    const { data, error } = await supabase
+      .from('employees')
+      .update({ status: false })
+      .eq('id', id)
+      .select('*')
+      .single();
+      
+    if (error) {
+      console.error("Error deactivating employee:", error);
+      return { error: error.message };
+    }
+    
+    // Then clear all module permissions for deactivated employee
+    const { error: moduleError } = await supabase
+      .from('employee_modules')
+      .delete()
+      .eq('employee_id', id);
+      
+    if (moduleError) {
+      console.error("Error removing module permissions:", moduleError);
+      return { 
+        data, 
+        warning: "Employee deactivated but module permissions could not be removed"
+      };
+    }
+    
+    return { data, message: "Employee deactivated successfully" };
+  } catch (error) {
+    console.error("Error in deactivateEmployee:", error);
+    return { error: error.message || "Failed to deactivate employee" };
+  }
 }
 
 async function deleteEmployee(id: string) {
-  // Implementation for deleting an employee
-  return { error: 'Not implemented yet' };
+  try {
+    console.log(`Deleting employee with ID: ${id}`);
+    
+    if (!id) {
+      return { error: "Employee ID is required for deletion" };
+    }
+    
+    // First, delete all module permissions for this employee
+    const { error: moduleError } = await supabase
+      .from('employee_modules')
+      .delete()
+      .eq('employee_id', id);
+
+    if (moduleError) {
+      console.error("Error deleting employee module permissions:", moduleError);
+      // Continue with employee deletion even if module deletion fails
+    }
+
+    // Then delete the employee
+    const { error } = await supabase
+      .from('employees')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error("Error deleting employee:", error);
+      return { error: error.message || "Failed to delete employee" };
+    }
+
+    return { success: true, message: "Employee deleted successfully" };
+  } catch (error) {
+    console.error("Error in deleteEmployee:", error);
+    return { error: error.message || "Failed to delete employee" };
+  }
 }
 
 async function getEmployee(id: string) {
-  // Implementation for getting an employee by ID
-  return { error: 'Not implemented yet' };
+  try {
+    console.log(`Getting employee with ID: ${id}`);
+    
+    if (!id) {
+      return { error: "Employee ID is required" };
+    }
+    
+    const { data, error } = await supabase
+      .from('employees')
+      .select('*')
+      .eq('id', id)
+      .single();
+      
+    if (error) {
+      console.error("Error fetching employee:", error);
+      return { error: error.message };
+    }
+    
+    return { data };
+  } catch (error) {
+    console.error("Error in getEmployee:", error);
+    return { error: error.message || "Failed to get employee" };
+  }
 }
 
 async function listEmployees(clientId: string) {
-  // Implementation for listing employees for a client
-  return { error: 'Not implemented yet' };
+  try {
+    console.log(`Listing employees for client ID: ${clientId}`);
+    
+    if (!clientId) {
+      return { error: "Client ID is required" };
+    }
+    
+    const { data, error } = await supabase
+      .from('employees')
+      .select('*')
+      .eq('client_id', clientId);
+      
+    if (error) {
+      console.error("Error listing employees:", error);
+      return { error: error.message };
+    }
+    
+    return { data };
+  } catch (error) {
+    console.error("Error in listEmployees:", error);
+    return { error: error.message || "Failed to list employees" };
+  }
 }
 
 serve(async (req) => {
@@ -201,8 +325,14 @@ serve(async (req) => {
     // Extract operation and employee data
     const { operation, employee } = reqBody;
     
+    // For delete operations, we need to handle the different request format
+    let employeeData = employee;
+    if (operation === 'delete' && !employee && reqBody.id) {
+      employeeData = { id: reqBody.id };
+    }
+    
     // Handle the employee operation
-    const result = await handleEmployeeOperation(operation, employee);
+    const result = await handleEmployeeOperation(operation, employeeData);
 
     return new Response(
       JSON.stringify(result),
@@ -212,7 +342,7 @@ serve(async (req) => {
     console.error("Error processing request:", error);
     
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error.message || 'An unexpected error occurred' }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

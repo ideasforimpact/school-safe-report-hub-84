@@ -144,7 +144,7 @@ export const deactivateEmployeeInApi = async (id: string): Promise<Employee> => 
 
     if (error) {
       console.error("Error deactivating employee:", error);
-      toast.error("Failed to deactivate employee");
+      toast.error(`Failed to deactivate employee: ${error.message}`);
       throw error;
     }
 
@@ -167,40 +167,68 @@ export const deactivateEmployeeInApi = async (id: string): Promise<Employee> => 
     return mapDbRecordToEmployee(data);
   } catch (error) {
     console.error("Error in deactivateEmployeeInApi:", error);
-    toast.error("Failed to deactivate employee");
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    toast.error(`Failed to deactivate employee: ${errorMessage}`);
     throw error;
   }
 };
 
-export const deleteEmployeeFromApi = async (id: string): Promise<void> => {
+export const deleteEmployeeFromApi = async (id: string): Promise<{ success: boolean, error?: string }> => {
   try {
-    // First, delete all module permissions for this employee
-    const { error: moduleError } = await supabase
-      .from('employee_modules')
-      .delete()
-      .eq('employee_id', id);
-
-    if (moduleError) {
-      console.error("Error deleting employee module permissions:", moduleError);
-      // Continue with employee deletion even if module deletion fails
+    // Try to use the employee-management edge function first
+    const response = await fetch(`https://ybvxkiubnnixntghojyy.supabase.co/functions/v1/employee-management`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${supabase.auth.getSession().then(res => res.data.session?.access_token || '')}`
+      },
+      body: JSON.stringify({
+        operation: 'delete',
+        id: id
+      })
+    });
+    
+    const result = await response.json();
+    
+    if (!response.ok || result.error) {
+      console.error("Error from edge function:", result.error);
+      throw new Error(result.error || "Failed to delete employee");
     }
-
-    // Then delete the employee
-    const { error } = await supabase
-      .from('employees')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      console.error("Error deleting employee:", error);
-      toast.error("Failed to delete employee");
-      throw error;
+    
+    return { success: true };
+  } catch (edgeFunctionError) {
+    console.error("Edge function error, falling back to direct API call:", edgeFunctionError);
+    
+    try {
+      // Fallback: Try direct Supabase API calls if edge function fails
+      
+      // First, delete all module permissions for this employee
+      const { error: moduleError } = await supabase
+        .from('employee_modules')
+        .delete()
+        .eq('employee_id', id);
+  
+      if (moduleError) {
+        console.error("Error deleting employee module permissions:", moduleError);
+        // Continue with employee deletion even if module deletion fails
+      }
+  
+      // Then delete the employee
+      const { error } = await supabase
+        .from('employees')
+        .delete()
+        .eq('id', id);
+  
+      if (error) {
+        console.error("Error deleting employee:", error);
+        throw error;
+      }
+  
+      return { success: true };
+    } catch (error) {
+      console.error("Error in deleteEmployeeFromApi:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      throw new Error(`Failed to delete employee: ${errorMessage}`);
     }
-
-    toast.success("Employee deleted successfully");
-  } catch (error) {
-    console.error("Error in deleteEmployeeFromApi:", error);
-    toast.error("Failed to delete employee");
-    throw error;
   }
 };

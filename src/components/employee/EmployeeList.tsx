@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import {
   Table,
@@ -35,6 +34,8 @@ interface EmployeeListProps {
 const EmployeeList = ({ employees, onEditClick, onDeleteEmployee, onDeactivateEmployee }: EmployeeListProps) => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deactivatingId, setDeactivatingId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeactivating, setIsDeactivating] = useState(false);
 
   const formatDate = (dateString?: string) => {
     if (!dateString) return '-';
@@ -62,10 +63,18 @@ const EmployeeList = ({ employees, onEditClick, onDeleteEmployee, onDeactivateEm
     setDeletingId(id);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (deletingId) {
-      onDeleteEmployee(deletingId);
-      setDeletingId(null);
+      setIsDeleting(true);
+      try {
+        await onDeleteEmployee(deletingId);
+      } catch (error) {
+        console.error("Error deleting employee:", error);
+        // Toast is handled in the parent component
+      } finally {
+        setIsDeleting(false);
+        setDeletingId(null);
+      }
     }
   };
 
@@ -73,10 +82,18 @@ const EmployeeList = ({ employees, onEditClick, onDeleteEmployee, onDeactivateEm
     setDeactivatingId(id);
   };
 
-  const confirmDeactivate = () => {
+  const confirmDeactivate = async () => {
     if (deactivatingId) {
-      onDeactivateEmployee(deactivatingId);
-      setDeactivatingId(null);
+      setIsDeactivating(true);
+      try {
+        await onDeactivateEmployee(deactivatingId);
+      } catch (error) {
+        console.error("Error deactivating employee:", error);
+        // Toast is handled in the parent component
+      } finally {
+        setIsDeactivating(false);
+        setDeactivatingId(null);
+      }
     }
   };
 
@@ -156,7 +173,14 @@ const EmployeeList = ({ employees, onEditClick, onDeleteEmployee, onDeactivateEm
                                 className="bg-orange-600 hover:bg-orange-700"
                                 onClick={confirmDeactivate}
                               >
-                                Deactivate
+                                {isDeactivating ? (
+                                  <>
+                                    <span className="animate-spin mr-2">⏳</span>
+                                    Deactivating...
+                                  </>
+                                ) : (
+                                  'Deactivate'
+                                )}
                               </AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
@@ -190,8 +214,16 @@ const EmployeeList = ({ employees, onEditClick, onDeleteEmployee, onDeactivateEm
                             <AlertDialogAction 
                               className="bg-red-600 hover:bg-red-700"
                               onClick={confirmDelete}
+                              disabled={isDeleting}
                             >
-                              Delete
+                              {isDeleting ? (
+                                <>
+                                  <span className="animate-spin mr-2">⏳</span>
+                                  Deleting...
+                                </>
+                              ) : (
+                                'Delete'
+                              )}
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
