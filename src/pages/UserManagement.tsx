@@ -147,7 +147,7 @@ const UserManagement = () => {
     try {
       setIsLoading(true);
       const employeeData = await getAllEmployeesFromApi();
-      
+      console.log(employeeData,"employeeData124")
       if (employeeData && employeeData.length > 0) {
         // Process each employee to get their module access items
         const processedUsers = await Promise.all(employeeData.map(async employee => {
