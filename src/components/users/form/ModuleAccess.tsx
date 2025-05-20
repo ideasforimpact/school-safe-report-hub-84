@@ -33,37 +33,36 @@ const ModuleAccess = ({
     console.warn("No modules found in Redux store. Modules may not be displayed correctly.");
   }
   
-  // Completely rewritten handler for checkbox change to fix selection issues
+  // Fixed handler for checkbox change
   const handleModuleChange = (moduleKey: string, moduleName: string, checked: boolean) => {
     console.log(`Module ${moduleName} (${moduleKey}) change:`, { checked });
     
+    // Create a deep copy of current selected modules
+    let updatedModules = [...selectedModules];
+    
     if (checked) {
-      // Create new module object
-      const newModule: ModuleAccessItem = {
-        name: moduleName,
-        employeeId: employeeId,
-        key: moduleKey
-      };
-      
-      // Check if this exact module doesn't already exist in the selection
-      const exists = selectedModules.some(m => 
-        (m.key === moduleKey && m.name === moduleName)
-      );
+      // Add the module only if it doesn't already exist with EXACTLY the same key and name
+      const exists = updatedModules.some(m => m.key === moduleKey && m.name === moduleName);
       
       if (!exists) {
-        // Add only this module to the selection
-        const updatedModules = [...selectedModules, newModule];
-        console.log(`Adding ${moduleName} to selection:`, updatedModules);
-        onModuleChange(updatedModules);
+        // Add new module to the selection
+        updatedModules.push({
+          name: moduleName,
+          employeeId: employeeId,
+          key: moduleKey
+        });
+        
+        console.log(`Added module ${moduleName} (${moduleKey}) to selection`);
       }
     } else {
-      // Remove only this specific module from selection
-      const updatedModules = selectedModules.filter(m => 
-        !(m.key === moduleKey && m.name === moduleName)
-      );
-      console.log(`Removing ${moduleName} from selection:`, updatedModules);
-      onModuleChange(updatedModules);
+      // Remove the exact module that matches both key and name
+      updatedModules = updatedModules.filter(m => !(m.key === moduleKey && m.name === moduleName));
+      console.log(`Removed module ${moduleName} (${moduleKey}) from selection`);
     }
+    
+    console.log("Updated modules:", updatedModules);
+    // Only call onModuleChange when we actually make a change to the modules
+    onModuleChange(updatedModules);
   };
 
   return (
@@ -71,12 +70,12 @@ const ModuleAccess = ({
       <label className="font-medium">Module Access</label>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-2">
         {modules.map((module) => {
-          // More strict check - module must match BOTH key AND name exactly
+          // Strict check - module must match BOTH key AND name exactly
           const isSelected = selectedModules.some(m => 
             m.key === module.key && m.name === module.name
           );
           
-          console.log(`Module ${module.name} selected:`, isSelected);
+          console.log(`Module ${module.name} (${module.key}) selected:`, isSelected);
           
           return (
             <div key={module.key} className="flex items-center space-x-2">

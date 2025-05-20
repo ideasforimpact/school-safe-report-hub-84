@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -52,32 +51,16 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
     setShowAdminOptions(role === 'admin');
   };
 
-  // Fixed module change handler to correctly update only the selected modules
+  // Completely rewritten module change handler to send only selected modules
   const handleModuleChange = (moduleAccessItems: ModuleAccessItem[]) => {
     console.log("Module access items changed:", moduleAccessItems);
     
     // Update local state for UI rendering
     setSelectedModules(moduleAccessItems);
     
-    // Also keep the modulePermissions updated for backward compatibility
-    const updatedPermissions = { ...formData.modulePermissions };
-    
-    // First, reset all permissions to false
-    Object.keys(updatedPermissions).forEach(key => {
-      (updatedPermissions as any)[key] = false;
-    });
-    
-    // Then, set only the selected permissions to true
-    moduleAccessItems.forEach(item => {
-      if (item.key && Object.keys(updatedPermissions).includes(item.key)) {
-        (updatedPermissions as any)[item.key] = true;
-      }
-    });
-    
-    // Update formData with both the new modulePermissions and the full moduleAccessPayload
+    // Update formData with ONLY the moduleAccessPayload, no longer setting modulePermissions
     setFormData({
       ...formData,
-      modulePermissions: updatedPermissions,
       moduleAccessPayload: moduleAccessItems
     });
   };

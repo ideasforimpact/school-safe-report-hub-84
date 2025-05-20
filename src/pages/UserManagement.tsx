@@ -27,10 +27,11 @@ import {
 import { processEmployeeExcel } from '@/services/employee/importEmployeeService';
 import { supabase } from '@/integrations/supabase/client';
 import { getAllEmployeesFromApi } from '@/services/employee/employeeRetrievalService';
-import { getEmployeeModulePermissions, updateEmployeeModulePermissions } from '@/services/employee/employeeModuleService';
+import { getEmployeeModulePermissions, updateEmployeeModulePermissions, getEmployeeModuleAccessItems } from '@/services/employee/employeeModuleService';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getEmployeeData, isEmployeeAdmin, isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 import { useEmployeeData } from '@/hooks/useEmployeeData';
+import { ModuleAccessItem } from '@/types/moduleAccess';
 
 // Helper function to convert employee type and department type
 const convertEmployeeType = (employeeType: EmployeeContextType): EmployeeType => {
@@ -93,7 +94,7 @@ const UserManagement = () => {
   const [employeeUsers, setEmployeeUsers] = useState<User[]>([]);
   
   // Get clientId from employee data or user context
-  const clientId = employeeData?.clientId || user?.clientId;
+  const clientId = state.employeeData?.clientId || user?.clientId;
 
   // Log the clientId for debugging
   useEffect(() => {
@@ -102,7 +103,7 @@ const UserManagement = () => {
     console.log("UserManagement - ClientId being used:", clientId);
   }, [employeeData, user, clientId]);
   
-  // Default form data for the user forms
+  // Default form data for the user forms - MODIFIED to include moduleAccessPayload
   const [formData, setFormData] = useState<{
     firstName: string;
     lastName: string;
@@ -113,7 +114,8 @@ const UserManagement = () => {
     joiningDate?: string;
     role: UserRole;
     modulePermissions: ModulePermissions;
-    clientId?: string; // Add clientId to form data
+    moduleAccessPayload?: ModuleAccessItem[]; // Added moduleAccessPayload
+    clientId?: string;
   }>({
     firstName: '',
     lastName: '',
@@ -130,7 +132,8 @@ const UserManagement = () => {
       grievancesAdmin: false,
       transportSafetyAdmin: false,
       eduSafeResourceAccess: false
-    }
+    },
+    moduleAccessPayload: [] // Initialize as empty array
   });
 
   // Update formData when clientId changes
@@ -190,7 +193,7 @@ const UserManagement = () => {
     }
   };
 
-  // Handler for adding a new user
+  // Handler for adding a new user - MODIFIED to use moduleAccessPayload
   const handleAddUser = async () => {
     try {
       setIsLoading(true);
@@ -205,7 +208,12 @@ const UserManagement = () => {
       }
       
       console.log("Adding new user with data:", formData);
-      console.log("Client ID being used:", formData.clientId || clientId);
+      console.log("Module access payload:", formData.moduleAccessPayload);
+      
+      // Check if moduleAccessPayload is defined and has items
+      if (!formData.moduleAccessPayload || formData.moduleAccessPayload.length === 0) {
+        console.warn("No module access items selected.");
+      }
       
       // In a real app, we'd validate the form data here
       const updatedUsers = await addNewUser(
@@ -233,7 +241,7 @@ const UserManagement = () => {
               joiningDate: formData.joiningDate,
               status: 'active' as EmploymentStatus, // Explicitly cast to EmploymentStatus
               clientId: formData.clientId || clientId, // Use form clientId or fall back to context clientId
-              modulePermissions: formData.modulePermissions // Include module permissions
+              moduleAccessPayload: formData.moduleAccessPayload || [] // Use moduleAccessPayload directly
             };
             
             // First try the edge function
@@ -258,7 +266,7 @@ const UserManagement = () => {
               // Fall back to the context function if the edge function fails
               await addEmployee({
                 ...employeeData,
-                modulePermissions: formData.modulePermissions
+                modulePermissions: undefined // Remove modulePermissions completely
               });
               console.log("Employee created via context function");
               toast.success("Employee record created via local storage");
@@ -318,12 +326,16 @@ const UserManagement = () => {
     }
   };
 
-  // Handler for updating an existing user
+  // Handler for updating an existing user - MODIFIED to use moduleAccessPayload
   const handleUpdateUser = async () => {
     if (!currentUser) return;
     
     try {
       setIsLoading(true);
+      
+      console.log("Updating user with data:", formData);
+      console.log("Module access payload:", formData.moduleAccessPayload);
+      
       const updatedUsers = await updateExistingUser(
         [] as any, // Pass an empty array with type assertion to fix TypeScript error
         currentUser.id,
@@ -341,6 +353,7 @@ const UserManagement = () => {
               email: formData.email,
               employeeType: formData.employeeType,
               department: formData.department,
+              moduleAccessPayload: formData.moduleAccessPayload || [] // Use moduleAccessPayload directly
             };
             
             // Try to update via edge function first
@@ -357,14 +370,15 @@ const UserManagement = () => {
               
               if (error) throw error;
               
-              // Update module permissions separately
-              await updateEmployeeModulePermissions(currentUser.id, formData.modulePermissions);
+              // If moduleAccessPayload exists, update it directly instead of using modulePermissions
+              if (formData.moduleAccessPayload && formData.moduleAccessPayload.length > 0) {
+                await updateEmployeeModulePermissions(currentUser.id, formData.moduleAccessPayload);
+              }
               
               console.log("Employee updated via edge function:", data);
             } catch (edgeFuncError) {
               console.error("Edge function update error:", edgeFuncError);
               // Fall back to context if needed
-              // This would require implementing an updateEmployee method in the context
             }
           } catch (empError) {
             console.error("Error updating employee record:", empError);
@@ -461,7 +475,7 @@ const UserManagement = () => {
     }
   };
 
-  // Reset form to default values
+  // Reset form to default values - MODIFIED to include moduleAccessPayload
   const resetForm = () => {
     setFormData({
       firstName: '',
@@ -479,48 +493,65 @@ const UserManagement = () => {
         grievancesAdmin: false,
         transportSafetyAdmin: false,
         eduSafeResourceAccess: false
-      }
+      },
+      moduleAccessPayload: [] // Reset moduleAccessPayload
     });
     setCurrentUser(null);
   };
 
-  // Handle edit user click
+  // Handle edit user click - MODIFIED to use getEmployeeModuleAccessItems
   const handleEditClick = async (user: User) => {
     setCurrentUser(user);
     
-    // If we're editing an existing user, fetch their current module permissions
-    let modulePermissions = user.modulePermissions || {
-      superAdmin: false,
-      incidentReporting: true,
-      incidentAdmin: false,
-      assessmentUser: false,
-      assessmentsAdmin: false,
-      employeeVerificationAdmin: false,
-      grievancesAdmin: false,
-      transportSafetyAdmin: false,
-      eduSafeResourceAccess: false
-    };
-    
-    // If module permissions don't exist in the user object, fetch them from the database
-    if (!user.modulePermissions) {
+    try {
+      // Get the module access items directly instead of module permissions
+      let moduleAccessItems: ModuleAccessItem[] = [];
       try {
-        modulePermissions = await getEmployeeModulePermissions(user.id);
+        moduleAccessItems = await getEmployeeModuleAccessItems(user.id);
+        console.log("Retrieved module access items:", moduleAccessItems);
       } catch (error) {
-        console.error("Error fetching module permissions:", error);
+        console.error("Error fetching module access items:", error);
+        moduleAccessItems = [];
       }
+      
+      // For backward compatibility, also get module permissions
+      let modulePermissions = user.modulePermissions || {
+        superAdmin: false,
+        incidentReporting: true,
+        incidentAdmin: false,
+        assessmentUser: false,
+        assessmentsAdmin: false,
+        employeeVerificationAdmin: false,
+        grievancesAdmin: false,
+        transportSafetyAdmin: false,
+        eduSafeResourceAccess: false
+      };
+      
+      // If module permissions don't exist in the user object, fetch them from the database
+      if (!user.modulePermissions) {
+        try {
+          modulePermissions = await getEmployeeModulePermissions(user.id);
+        } catch (error) {
+          console.error("Error fetching module permissions:", error);
+        }
+      }
+      
+      setFormData({
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        employeeId: user.employeeId,
+        employeeType: user.employeeType,
+        department: user.department,
+        joiningDate: user.joiningDate,
+        role: user.role,
+        modulePermissions: modulePermissions,
+        moduleAccessPayload: moduleAccessItems // Set moduleAccessPayload directly
+      });
+    } catch (error) {
+      console.error("Error preparing user data for edit:", error);
+      toast.error("Failed to prepare user data for editing");
     }
-    
-    setFormData({
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-      employeeId: user.employeeId,
-      employeeType: user.employeeType,
-      department: user.department,
-      joiningDate: user.joiningDate,
-      role: user.role,
-      modulePermissions: modulePermissions
-    });
     
     setIsEditDialogOpen(true);
   };
