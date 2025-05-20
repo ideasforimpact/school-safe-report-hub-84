@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,7 @@ import { Loader2, UploadCloud } from 'lucide-react';
 interface ImportEmployeeDialogProps {
   isOpen: boolean;
   setIsOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  onImportEmployees: (file: File, importClientId?: string) => Promise<void>;  // Updated prop name
+  onImportEmployees: (file: File, importClientId?: string) => Promise<void>;
   clientId?: string;
 }
 
@@ -17,6 +17,7 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [manualClientId, setManualClientId] = useState<string>(clientId || '');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -44,6 +45,11 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
       setIsLoading(false);
     }
   };
+  
+  // Function to programmatically click the file input
+  const triggerFileSelect = () => {
+    fileInputRef.current?.click();
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -54,24 +60,34 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
         
         <div className="grid gap-4 py-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="file">Upload Excel file</Label>
-            <div className="border-2 border-dashed border-gray-300 rounded-md p-6 flex flex-col items-center justify-center">
+            <Label htmlFor="file-upload">Upload Excel file</Label>
+            <div 
+              className="border-2 border-dashed border-gray-300 rounded-md p-6 flex flex-col items-center justify-center cursor-pointer"
+              onClick={triggerFileSelect}
+            >
               <UploadCloud className="h-10 w-10 text-gray-400 mb-2" />
               <p className="text-sm text-gray-600 mb-2">
                 {selectedFile ? selectedFile.name : "Click to upload or drag and drop"}
               </p>
               <Input
-                id="file"
+                id="file-upload"
                 type="file"
-                accept=".xlsx,.xls"
                 className="hidden"
+                ref={fileInputRef}
+                accept=".xlsx,.xls"
                 onChange={handleFileChange}
               />
-              <Label htmlFor="file" className="cursor-pointer">
-                <Button variant="outline" type="button" disabled={isLoading}>
-                  Select File
-                </Button>
-              </Label>
+              <Button 
+                variant="outline" 
+                type="button" 
+                disabled={isLoading}
+                onClick={(e) => {
+                  e.stopPropagation(); // Prevent the outer div's onClick from triggering
+                  triggerFileSelect();
+                }}
+              >
+                Select File
+              </Button>
               <p className="text-xs text-gray-500 mt-2">
                 Supported formats: XLSX, XLS
               </p>
