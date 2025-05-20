@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
 import { Employee, VerificationDocument } from '@/types/employeeVerification';
@@ -40,7 +39,7 @@ export const getAllEmployeesFromApi = async (): Promise<Employee[]> => {
         status: record.status === true, // Convert to boolean
         createdAt: record.created_at || new Date().toISOString(),
         updatedAt: record.updated_at || new Date().toISOString(),
-        isSuperAdmin: record?.is_super_admin, // Changed from is_super_admin to isSuperAdmin
+        isSuperAdmin: record?.is_super_admin, // Correctly mapping from DB's is_super_admin to type's isSuperAdmin
         documents: [] // Initialize empty documents array
       };
       return employee;
