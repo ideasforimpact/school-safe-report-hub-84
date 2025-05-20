@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -141,7 +142,7 @@ const EmployeeManagement = () => {
       }
       
       // Create the moduleAccessPayload from state.configuredModules if available
-      if (state.configuredModules && state.configuredModules.length > 0) {
+      if (state.configuredModules && state.configuredModules.length > 0 && !employeeData.moduleAccessPayload) {
         // We'll select a default subset of modules - this would typically come from user selection
         // For now, let's just add the 'user' module by default
         const defaultModules = state.configuredModules
@@ -163,10 +164,12 @@ const EmployeeManagement = () => {
       const newEmployee = await addEmployee(employeeData);
       console.log("New employee added:", newEmployee);
       
-      // Note: Success toast is now shown in the service, not here
+      // We don't need to show success toast here - it's handled in the service
       // This prevents duplicate toast messages
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to add employee:", error);
+      
+      // Don't show generic error toast if specific error was already handled
       // Only show error toast if it's not already handled (like duplicate email)
       if (!error.code || error.code !== "DUPLICATE_EMAIL") {
         toast.error("Failed to add employee");

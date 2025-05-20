@@ -117,9 +117,10 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
         
         setEmployees(prev => [...prev, newEmployee]);
         return newEmployee;
-      } catch (apiError) {
+      } catch (apiError: any) {
         // Check if this is our known duplicate email error
         if (apiError.code === "DUPLICATE_EMAIL") {
+          // The toast is already shown in the service
           throw apiError; // Re-throw to propagate the error to the caller
         }
         

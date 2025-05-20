@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
 import { Employee } from '@/contexts/employee/types';
@@ -90,19 +89,18 @@ export const addEmployeeToApi = async (
       }
     }
     
+    // Only show success message if we actually succeeded
     toast.success("Employee added successfully");
     
     // Convert the response back to our Employee type
     return mapDbRecordToEmployee(data);
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error in addEmployeeToApi:", error);
     
-    // If the error has already been handled with a toast, don't display a duplicate
-    if (!error.code || error.code !== "DUPLICATE_EMAIL") {
-      toast.error("Failed to add employee");
-    }
+    // Don't show a duplicate error toast - the error has already been shown
+    // or will be handled by the caller
     
-    throw error;
+    throw error; // Always rethrow to allow proper handling upstream
   }
 };
 

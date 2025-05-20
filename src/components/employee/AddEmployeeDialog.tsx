@@ -54,7 +54,7 @@ type FormValues = z.infer<typeof employeeSchema>;
 interface AddEmployeeDialogProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
-  onAddEmployee: (employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  onAddEmployee: (employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Employee>;
   clientId?: string; // Add optional clientId prop
 }
 
@@ -133,15 +133,14 @@ const AddEmployeeDialog = ({ isOpen, setIsOpen, onAddEmployee, clientId }: AddEm
       console.log("Module access payload:", moduleAccessPayload);
       
       await onAddEmployee(employeeData);
-      // Don't show success message here, it's handled in the service
-      handleCloseDialog(); // Close and reset form
-    } catch (error) {
+      // Success message is now handled in the service or context
+      handleCloseDialog(); // Close and reset form on success
+    } catch (error: any) {
       console.error('Error adding employee:', error);
       
-      // If error already has a toast (like duplicate email), don't show generic error
-      if (!error.code || error.code !== "DUPLICATE_EMAIL") {
-        toast.error("Failed to add employee");
-      }
+      // Don't show a generic error message if we already showed a specific one
+      // The error handling in the service or context will display the appropriate toast
+      // No need to show another one here
     } finally {
       setIsSubmitting(false);
     }
