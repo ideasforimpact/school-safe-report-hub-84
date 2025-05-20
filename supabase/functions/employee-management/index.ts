@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.20.0';
 
@@ -64,6 +65,7 @@ async function createEmployee(employee: any) {
     
     // If module access payload exists, add employee module access
     if (employee.moduleAccessPayload && Array.isArray(employee.moduleAccessPayload) && newEmployee) {
+      // Pass the newly created employee ID to the module access function
       await addEmployeeModuleAccess(employee.moduleAccessPayload, newEmployee.id);
     }
     
@@ -79,35 +81,56 @@ async function addEmployeeModuleAccess(moduleAccess: any[], employeeId: string) 
   console.log("Module access payload:", moduleAccess);
   
   try {
-    // For each module in the payload, find the module ID by name and insert into employee_modules
     const moduleInserts = await Promise.all(moduleAccess.map(async (module) => {
-      // Get module ID from modules table by name
-      const { data: moduleData, error: moduleError } = await supabase
-        .from('modules')
-        .select('id')
-        .eq('name', module.name)
-        .single();
-        
-      if (moduleError || !moduleData) {
-        console.log(`Module not found for name: ${module.name}`);
-        return null;
-      }
+      // Check if module_id is provided directly in the payload
+      const moduleId = module.module_id;
       
-      // Insert into employee_modules
-      const { data, error } = await supabase
-        .from('employee_modules')
-        .insert({
-          employee_id: employeeId,
-          module_id: moduleData.id,
-          access_level: {} // Default empty access level
-        });
+      // If module_id isn't provided, try to find it by name
+      if (!moduleId) {
+        // Get module ID from modules table by name
+        const { data: moduleData, error: moduleError } = await supabase
+          .from('modules')
+          .select('id')
+          .eq('name', module.name)
+          .single();
+          
+        if (moduleError || !moduleData) {
+          console.log(`Module not found for name: ${module.name}`);
+          return null;
+        }
         
-      if (error) {
-        console.error(`Error adding module access for ${module.name}:`, error);
-        return null;
+        // Insert into employee_modules using the found module ID
+        const { data, error } = await supabase
+          .from('employee_modules')
+          .insert({
+            employee_id: employeeId,
+            module_id: moduleData.id,
+            access_level: {} // Default empty access level
+          });
+          
+        if (error) {
+          console.error(`Error adding module access for ${module.name}:`, error);
+          return null;
+        }
+        
+        return data;
+      } else {
+        // Use the provided module_id directly
+        const { data, error } = await supabase
+          .from('employee_modules')
+          .insert({
+            employee_id: employeeId,
+            module_id: moduleId,
+            access_level: {} // Default empty access level
+          });
+          
+        if (error) {
+          console.error(`Error adding module access for module_id ${moduleId}:`, error);
+          return null;
+        }
+        
+        return data;
       }
-      
-      return data;
     }));
     
     return moduleInserts.filter(Boolean);

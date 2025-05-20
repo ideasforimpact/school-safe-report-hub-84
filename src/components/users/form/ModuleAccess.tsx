@@ -1,97 +1,122 @@
 
 import React, { useState, useEffect } from 'react';
+import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { ModuleAccessItem } from '@/types/moduleAccess';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ModuleAccessProps {
   selectedModules: ModuleAccessItem[];
-  onModuleChange: (selectedModules: ModuleAccessItem[]) => void;
+  onModuleChange: (modules: ModuleAccessItem[]) => void;
   employeeId?: string;
 }
 
-const ModuleAccess = ({ 
-  selectedModules, 
-  onModuleChange,
-  employeeId
-}: ModuleAccessProps) => {
+const ModuleAccess: React.FC<ModuleAccessProps> = ({ selectedModules, onModuleChange, employeeId }) => {
   const { state } = useEmployeeStore();
-  
-  // Debug log for configured modules
-  console.log("ModuleAccess - Available configured modules:", state.configuredModules);
-  console.log("ModuleAccess - Initial selected modules:", selectedModules);
-  
-  // Use modules from Redux if available
-  const modules = state.configuredModules && state.configuredModules.length > 0
-    ? state.configuredModules.map(module => ({
-        key: module.key || module.id,
-        name: module.name
-      }))
-    : [];
+  const [availableModules, setAvailableModules] = useState<any[]>([]);
 
-  if (modules.length === 0) {
-    console.warn("No modules found in Redux store. Modules may not be displayed correctly.");
-  }
-  
-  // Fixed handler for checkbox change
-  const handleModuleChange = (moduleKey: string, moduleName: string, checked: boolean) => {
-    console.log(`Module ${moduleName} (${moduleKey}) change:`, { checked });
-    
-    // Create a deep copy of current selected modules
+  // Log for debugging
+  console.log("ModuleAccess - Selected Modules:", selectedModules);
+  console.log("ModuleAccess - Employee ID:", employeeId);
+  console.log("ModuleAccess - Configured modules from store:", state.configuredModules);
+
+  // Fetch available modules on component mount
+  useEffect(() => {
+    const fetchModules = async () => {
+      try {
+        // First try to get modules from the Redux store
+        if (state.configuredModules && state.configuredModules.length > 0) {
+          console.log("Using modules from Redux store");
+          setAvailableModules(state.configuredModules);
+        } else {
+          // If not available in Redux, fetch from database
+          console.log("Fetching modules from database");
+          const { data: modules, error } = await supabase
+            .from('modules')
+            .select('*')
+            .order('name');
+
+          if (error) {
+            console.error("Error fetching modules:", error);
+            return;
+          }
+
+          if (modules) {
+            console.log("Modules fetched from database:", modules);
+            setAvailableModules(modules);
+          }
+        }
+      } catch (error) {
+        console.error("Error in fetchModules:", error);
+      }
+    };
+
+    fetchModules();
+  }, [state.configuredModules]);
+
+  const handleModuleChange = (isChecked: boolean, moduleKey: string, moduleName: string, moduleId: string) => {
+    console.log(`Module ${moduleName} (${moduleKey}) changed:`, isChecked);
+
     let updatedModules = [...selectedModules];
-    
-    if (checked) {
-      // Add the module only if it doesn't already exist with EXACTLY the same key and name
-      const exists = updatedModules.some(m => m.key === moduleKey && m.name === moduleName);
-      
-      if (!exists) {
-        // Add new module to the selection
-        updatedModules.push({
+
+    if (isChecked) {
+      // Check if the module is already in the list by checking both name and key
+      const existingIndex = updatedModules.findIndex(
+        m => (m.name === moduleName || m.key === moduleKey)
+      );
+
+      if (existingIndex === -1) {
+        // If not in the list, add it
+        const newModule: ModuleAccessItem = {
           name: moduleName,
-          employeeId: employeeId,
-          key: moduleKey
-        });
-        
-        console.log(`Added module ${moduleName} (${moduleKey}) to selection`);
+          key: moduleKey,
+          module_id: moduleId, // Include the module_id
+          employeeId: employeeId
+        };
+        console.log("Adding module:", newModule);
+        updatedModules.push(newModule);
       }
     } else {
-      // Remove the exact module that matches both key and name
-      updatedModules = updatedModules.filter(m => !(m.key === moduleKey && m.name === moduleName));
-      console.log(`Removed module ${moduleName} (${moduleKey}) from selection`);
+      // Remove the module from the list
+      updatedModules = updatedModules.filter(m => 
+        !(m.name === moduleName || m.key === moduleKey)
+      );
+      console.log("Removed module:", moduleName);
     }
-    
+
     console.log("Updated modules:", updatedModules);
-    // Only call onModuleChange when we actually make a change to the modules
     onModuleChange(updatedModules);
   };
 
+  const isModuleSelected = (moduleName: string, moduleKey: string): boolean => {
+    return selectedModules.some(m => 
+      m.name === moduleName || m.key === moduleKey
+    );
+  };
+
   return (
-    <div className="space-y-2">
-      <label className="font-medium">Module Access</label>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-2">
-        {modules.map((module) => {
-          // Strict check - module must match BOTH key AND name exactly
-          const isSelected = selectedModules.some(m => 
-            m.key === module.key && m.name === module.name
-          );
-          
-          console.log(`Module ${module.name} (${module.key}) selected:`, isSelected);
+    <div className="space-y-4 border rounded-md p-4">
+      <Label className="text-base">Module Access</Label>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+        {availableModules.map((module) => {
+          const isSelected = isModuleSelected(module.name, module.level);
           
           return (
-            <div key={module.key} className="flex items-center space-x-2">
+            <div key={module.id} className="flex items-center space-x-2">
               <Checkbox 
-                id={`module-${module.key}`}
+                id={`module-${module.id}`}
                 checked={isSelected}
                 onCheckedChange={(checked) => 
-                  handleModuleChange(module.key, module.name, checked === true)
+                  handleModuleChange(
+                    checked === true, 
+                    module.level,
+                    module.name,
+                    module.id
+                  )
                 }
               />
-              <label 
-                htmlFor={`module-${module.key}`}
-                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                {module.name}
-              </label>
+              <Label htmlFor={`module-${module.id}`}>{module.name}</Label>
             </div>
           );
         })}
