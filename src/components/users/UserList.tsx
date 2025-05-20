@@ -22,6 +22,7 @@ interface UserListProps {
 }
 
 const UserList = ({ users, onEditClick, onDeleteUser, onDeactivateUser }: UserListProps) => {
+  console.log(users)
   return (
     <Table>
       <TableHeader>
@@ -65,7 +66,7 @@ const UserList = ({ users, onEditClick, onDeleteUser, onDeactivateUser }: UserLi
               )}
             </TableCell>
             <TableCell>
-              { user.is_super_admin ?  
+              { user.isSuperAdmin ?  
               <div className="flex space-x-1">
                 <Button 
                   variant="ghost" 
