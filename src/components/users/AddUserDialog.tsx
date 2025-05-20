@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -7,9 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { User, UserRole, ModulePermissions, EmployeeType, DepartmentType } from '@/contexts/auth/types';
 import { Loader2 } from 'lucide-react';
-import UserPermissionsFields from './form/UserPermissionsFields';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { ModuleAccessItem } from '@/types/moduleAccess';
+import ModuleAccess from './form/ModuleAccess';
 
 interface AddUserDialogProps {
   isOpen: boolean;
@@ -36,6 +35,7 @@ interface AddUserDialogProps {
 const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, resetForm, isLoading, clientId }: AddUserDialogProps) => {
   const [showAdminOptions, setShowAdminOptions] = useState(false);
   const { state } = useEmployeeStore();
+  const [selectedModules, setSelectedModules] = useState<ModuleAccessItem[]>([]);
 
   // Log clientId for debugging
   console.log("AddUserDialog - ClientId from props:", clientId);
@@ -52,8 +52,12 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
   };
 
   // Updated to accept an array of ModuleAccessItem objects
-  const handlePermissionChange = (moduleAccessItems: ModuleAccessItem[]) => {
-    // Convert the array of ModuleAccessItem objects to the modulePermissions object format
+  const handleModuleChange = (moduleAccessItems: ModuleAccessItem[]) => {
+    console.log("Module access items changed:", moduleAccessItems);
+    
+    setSelectedModules(moduleAccessItems);
+    
+    // Also keep the modulePermissions updated for backward compatibility
     const updatedPermissions = { ...formData.modulePermissions };
     
     // First, reset all permissions to false
@@ -79,6 +83,7 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
     setIsOpen(false);
     resetForm();
     setShowAdminOptions(false);
+    setSelectedModules([]);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -92,18 +97,11 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
       });
     }
     
-    // Prepare module access payload for backend processing using the proper format
-    const moduleAccessPayload = Object.entries(formData.modulePermissions)
-      .filter(([_, enabled]) => enabled)
-      .map(([key]) => {
-        // Find the module name from the configured modules
-        const module = state.configuredModules?.find(m => m.key === key || m.id === key);
-        return {
-          name: module?.name || key,
-          employeeId: formData.employeeId,
-          key: key
-        };
-      });
+    // Use the selectedModules directly for backend processing
+    const moduleAccessPayload = selectedModules.map(module => ({
+      ...module,
+      employeeId: formData.employeeId || undefined
+    }));
     
     console.log("Module access payload for backend:", moduleAccessPayload);
     
@@ -242,9 +240,10 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
             {/* Module Access Section */}
             <div className="space-y-4">
               <Label>Module Access</Label>
-              <UserPermissionsFields
-                permissions={formData.modulePermissions}
-                onPermissionChange={handlePermissionChange}
+              <ModuleAccess
+                selectedModules={selectedModules}
+                onModuleChange={handleModuleChange}
+                employeeId={formData.employeeId}
               />
             </div>
           </div>

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useForm } from 'react-hook-form';
@@ -30,8 +31,8 @@ import { Loader2 } from 'lucide-react';
 import { Employee, EmployeeType, DepartmentType } from '@/contexts/employee/types';
 import { toast } from 'sonner';
 import { useEmployeeStore } from '@/store/EmployeeContext';
-import EmployeeModulePermissions from './EmployeeModulePermissions';
 import { ModuleAccessItem } from '@/types/moduleAccess';
+import ModuleAccess from '../users/form/ModuleAccess';
 
 // Define the form schema with zod
 const employeeSchema = z.object({
@@ -91,8 +92,8 @@ const AddEmployeeDialog = ({ isOpen, setIsOpen, onAddEmployee, clientId }: AddEm
     setIsOpen(false);
   };
 
-  // Handle module permission changes
-  const handleModulePermissionChange = (modules: ModuleAccessItem[]) => {
+  // Handle module selection changes
+  const handleModuleChange = (modules: ModuleAccessItem[]) => {
     console.log("Selected modules changed:", modules);
     setSelectedModules(modules);
   };
@@ -272,9 +273,9 @@ const AddEmployeeDialog = ({ isOpen, setIsOpen, onAddEmployee, clientId }: AddEm
             {/* Add module permissions section */}
             <div className="space-y-2">
               <FormLabel>Module Access</FormLabel>
-              <EmployeeModulePermissions 
-                modulePermissions={[]} 
-                onModulePermissionChange={handleModulePermissionChange}
+              <ModuleAccess
+                selectedModules={selectedModules}
+                onModuleChange={handleModuleChange}
                 employeeId={form.getValues("employeeId")}
               />
             </div>
