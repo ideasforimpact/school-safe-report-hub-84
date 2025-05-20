@@ -29,8 +29,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
         },
         duration: 5000,
         closeButton: true,
-        // Use the X component from Lucide as close icon
-        closeIcon: <X className="h-4 w-4" />,
+        // The closeIcon property isn't supported in the type definitions, so we'll rely on CSS styling instead
       }}
       {...props}
     />
