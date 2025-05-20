@@ -22,6 +22,7 @@ const EmployeeModulePermissions: React.FC<EmployeeModulePermissionsProps> = ({
   
   // Debug log for configured modules
   console.log("EmployeeModulePermissions - Available configured modules:", state.configuredModules);
+  console.log("EmployeeModulePermissions - Initial module permissions:", modulePermissions);
   
   // Use modules from Redux if available
   const modules = state.configuredModules && state.configuredModules.length > 0
@@ -35,6 +36,7 @@ const EmployeeModulePermissions: React.FC<EmployeeModulePermissionsProps> = ({
   useEffect(() => {
     // Check if modulePermissions is an array already
     if (Array.isArray(modulePermissions)) {
+      console.log("EmployeeModulePermissions - Setting modules from array:", modulePermissions);
       setSelectedModules(modulePermissions);
       return;
     }
@@ -52,6 +54,7 @@ const EmployeeModulePermissions: React.FC<EmployeeModulePermissionsProps> = ({
         };
       });
       
+    console.log("EmployeeModulePermissions - Setting converted modules:", initialSelectedModules);
     setSelectedModules(initialSelectedModules);
   }, [modulePermissions, employeeId, state.configuredModules]);
 
@@ -61,12 +64,19 @@ const EmployeeModulePermissions: React.FC<EmployeeModulePermissionsProps> = ({
   
   // Handler for checkbox change that only affects one module at a time
   const handleModuleChange = (moduleKey: string, moduleName: string, checked: boolean) => {
+    console.log("Module change:", { moduleKey, moduleName, checked });
+    
     // Create a new array based on current selected modules
     let updatedModules: ModuleAccessItem[];
     
     if (checked) {
       // Add module to selection if it's not already there
-      const moduleExists = selectedModules.some(m => m.name === moduleName || m.key === moduleKey);
+      const moduleExists = selectedModules.some(m => 
+        (m.name === moduleName) || (m.key === moduleKey)
+      );
+      
+      console.log("Module exists:", moduleExists);
+      
       if (!moduleExists) {
         const newModule: ModuleAccessItem = {
           name: moduleName,
@@ -80,9 +90,11 @@ const EmployeeModulePermissions: React.FC<EmployeeModulePermissionsProps> = ({
     } else {
       // Remove module from selection
       updatedModules = selectedModules.filter(m => 
-        m.name !== moduleName && m.key !== moduleKey
+        !(m.name === moduleName || m.key === moduleKey)
       );
     }
+    
+    console.log("Updated modules:", updatedModules);
     
     // Update local state
     setSelectedModules(updatedModules);
@@ -102,10 +114,12 @@ const EmployeeModulePermissions: React.FC<EmployeeModulePermissionsProps> = ({
         </TableHeader>
         <TableBody>
           {modules.map((module) => {
-            // Check if this module is selected
+            // Check if this module is selected - use both name and key for comparison
             const isSelected = selectedModules.some(m => 
-              m.name === module.name || m.key === module.key
+              (m.name === module.name) || (m.key === module.key)
             );
+            
+            console.log(`Module ${module.name} selected:`, isSelected);
             
             return (
               <TableRow key={module.key}>

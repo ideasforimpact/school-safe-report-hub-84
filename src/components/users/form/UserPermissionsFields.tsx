@@ -23,6 +23,7 @@ const UserPermissionsFields = ({
   
   // Debug log for configured modules
   console.log("UserPermissionsFields - Available configured modules:", state.configuredModules);
+  console.log("UserPermissionsFields - Initial permissions:", permissions);
   
   // Use modules from Redux if available
   const modules = state.configuredModules && state.configuredModules.length > 0
@@ -36,6 +37,7 @@ const UserPermissionsFields = ({
   useEffect(() => {
     // Check if permissions is an array already
     if (Array.isArray(permissions)) {
+      console.log("UserPermissionsFields - Setting modules from array:", permissions);
       setSelectedModules(permissions);
       return;
     }
@@ -53,6 +55,7 @@ const UserPermissionsFields = ({
         };
       });
       
+    console.log("UserPermissionsFields - Setting converted modules:", initialSelectedModules);
     setSelectedModules(initialSelectedModules);
   }, [permissions, employeeId, state.configuredModules]);
 
@@ -62,14 +65,19 @@ const UserPermissionsFields = ({
 
   // Handler for checkbox change
   const handleModuleChange = (moduleKey: string, moduleName: string, checked: boolean) => {
+    console.log("Module change:", { moduleKey, moduleName, checked });
+    
     // Create a new array based on current selected modules
     let updatedModules: ModuleAccessItem[];
     
     if (checked) {
       // Add module to selection if it's not already there
       const moduleExists = selectedModules.some(m => 
-        m.name === moduleName || m.key === moduleKey
+        (m.name === moduleName) || (m.key === moduleKey)
       );
+      
+      console.log("Module exists:", moduleExists);
+      
       if (!moduleExists) {
         const newModule: ModuleAccessItem = {
           name: moduleName,
@@ -83,9 +91,11 @@ const UserPermissionsFields = ({
     } else {
       // Remove module from selection
       updatedModules = selectedModules.filter(m => 
-        m.name !== moduleName && m.key !== moduleKey
+        !(m.name === moduleName || m.key === moduleKey)
       );
     }
+    
+    console.log("Updated modules:", updatedModules);
     
     // Update local state
     setSelectedModules(updatedModules);
@@ -99,10 +109,12 @@ const UserPermissionsFields = ({
       <label className="font-medium">Module Permissions</label>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-2">
         {modules.map((module) => {
-          // Check if this module is selected
+          // Check if this module is selected - use both name and key for comparison
           const isSelected = selectedModules.some(m => 
-            m.name === module.name || m.key === module.key
+            (m.name === module.name) || (m.key === module.key)
           );
+          
+          console.log(`Module ${module.name} selected:`, isSelected);
           
           return (
             <div key={module.key} className="flex items-center space-x-2">
