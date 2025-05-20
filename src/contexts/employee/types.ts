@@ -1,37 +1,46 @@
 
-import { ModuleAccessItem } from '@/types/moduleAccess';
-
-export type EmploymentStatus = 'active' | 'inactive' | 'terminated' | 'on_leave';
-export type EmployeeType = 'permanent' | 'contract' | 'part_time' | 'consultant' | 'intern';
-export type DepartmentType = 'admin' | 'teaching' | 'security' | 'maintenance' | 'transport' | 'management' | 'it' | 'hr' | 'finance';
-
 export interface Employee {
   id: string;
   employeeId: string;
-  name: string;
   firstName: string;
   lastName: string;
   email: string;
-  status: boolean | EmploymentStatus;
   employeeType: EmployeeType;
   department: DepartmentType;
   joiningDate: string;
-  createdAt: string;
-  updatedAt: string;
+  status: EmploymentStatus;
   clientId?: string;
+  userId?: string;
+  createdAt?: string;
+  updatedAt?: string;
   isSuperAdmin?: boolean;
-  user_id?: string; // Added to link to auth users
+  modulePermissions?: {
+    [key: string]: boolean;
+  };
   moduleAccessPayload?: ModuleAccessItem[];
 }
 
-export interface EmployeeContextProps {
+export type EmployeeType = 'permanent' | 'contract' | 'part_time' | 'consultant' | 'intern';
+
+export type DepartmentType = 'admin' | 'teaching' | 'security' | 'maintenance' | 'transport' | 'management' | 'it' | 'hr' | 'finance';
+
+export type EmploymentStatus = 'active' | 'inactive' | 'on_leave';
+
+export interface ModuleAccessItem {
+  name: string;
+  employeeId?: string;
+  key: string;
+  module_id: string;
+}
+
+export interface EmployeeContextType {
   employees: Employee[];
   loading: boolean;
-  error: string | null;
-  fetchEmployees: () => Promise<void>;
-  getEmployeeById: (id: string) => Employee | undefined;
-  addEmployee: (employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Employee>;
+  addEmployee: (employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Employee>; // Changed from Promise<void> to Promise<Employee>
   updateEmployee: (id: string, updates: Partial<Employee>) => Promise<void>;
-  deleteEmployee: (id: string) => Promise<{success: boolean; error?: string}>;
-  deactivateEmployee: (id: string) => Promise<{success: boolean; error?: string}>;
+  deactivateEmployee: (id: string) => Promise<{ success: boolean, error?: string }>;
+  deleteEmployee: (id: string) => Promise<{ success: boolean, error?: string }>;
+  getEmployeeById: (id: string) => Employee | undefined;
+  getEmployeeByUserId: (userId: string) => Employee | undefined;
+  fetchEmployees: () => Promise<void>;
 }

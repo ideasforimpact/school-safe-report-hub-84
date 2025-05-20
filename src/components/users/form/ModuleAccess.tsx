@@ -4,20 +4,17 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { ModuleAccessItem } from '@/types/moduleAccess';
-import { Loader2 } from 'lucide-react';
 
 interface ModuleAccessProps {
   selectedModules: ModuleAccessItem[];
   onModuleChange: (moduleAccessItems: ModuleAccessItem[]) => void;
   employeeId?: string;
-  isLoading?: boolean;
 }
 
 const ModuleAccess: React.FC<ModuleAccessProps> = ({
   selectedModules,
   onModuleChange,
-  employeeId,
-  isLoading = false
+  employeeId
 }) => {
   const { state } = useEmployeeStore();
   
@@ -35,11 +32,11 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
     : [];
 
   // Helper function to check if a module is selected
-  const isModuleSelected = (moduleKey: string, moduleName: string, moduleId: string): boolean => {
+  const isModuleSelected = (moduleKey: string, moduleName: string): boolean => {
     return selectedModules.some(m => 
       (m.key === moduleKey) || 
       (m.name === moduleName) ||
-      (m.module_id === moduleId)
+      (m.module_id === moduleKey)
     );
   };
 
@@ -51,7 +48,7 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
     
     if (checked) {
       // Add module to selection if it's not already there
-      if (!isModuleSelected(moduleKey, moduleName, moduleId)) {
+      if (!isModuleSelected(moduleKey, moduleName)) {
         const newModule: ModuleAccessItem = {
           name: moduleName,
           employeeId: employeeId,
@@ -75,15 +72,6 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
     onModuleChange(updatedModules);
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex justify-center items-center p-4">
-        <Loader2 className="h-6 w-6 animate-spin mr-2" />
-        <span>Loading module access...</span>
-      </div>
-    );
-  }
-
   return (
     <div className="w-full">
       <Table>
@@ -95,7 +83,7 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
         </TableHeader>
         <TableBody>
           {availableModules.map((module) => {
-            const isSelected = isModuleSelected(module.key, module.name, module.module_id);
+            const isSelected = isModuleSelected(module.key, module.name);
             
             console.log(`Module ${module.name} selected:`, isSelected);
             
@@ -116,13 +104,6 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
               </TableRow>
             );
           })}
-          {availableModules.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={2} className="text-center py-4">
-                No modules available
-              </TableCell>
-            </TableRow>
-          )}
         </TableBody>
       </Table>
     </div>

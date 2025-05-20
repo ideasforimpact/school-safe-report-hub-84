@@ -1,126 +1,142 @@
-
 import React from 'react';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
-import { Employee } from '@/contexts/employee/types';
-import ModuleAccess from '@/components/users/form/ModuleAccess';
-import { ModuleAccessItem } from '@/types/moduleAccess';
+import { Employee, ModuleAccessItem } from '@/contexts/employee/types';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import EmployeeModulePermissions from './EmployeeModulePermissions';
+import { ModulePermissions } from '@/contexts/auth/types';
 
 interface EmployeeFormProps {
   formData: Partial<Employee>;
   setFormData: React.Dispatch<React.SetStateAction<Partial<Employee>>>;
   isEditMode?: boolean;
-  isLoading?: boolean;
 }
 
-const EmployeeForm = ({ 
-  formData, 
-  setFormData, 
-  isEditMode = false,
-  isLoading = false
-}: EmployeeFormProps) => {
-  // Handle module access changes
-  const handleModuleAccessChange = (moduleAccessItems: ModuleAccessItem[]) => {
-    setFormData({
-      ...formData,
-      moduleAccessPayload: moduleAccessItems
-    });
+const EmployeeForm: React.FC<EmployeeFormProps> = ({
+  formData,
+  setFormData,
+  isEditMode = false
+}) => {
+  // Handle input changes
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  // Handle select changes
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+  
+  // Updated to accept an array of ModuleAccessItem objects
+  const handleModulePermissionChange = (selectedModules: ModuleAccessItem[]) => {
+    // If modulePermissions exists, update it based on the selected modules
+    if (formData.modulePermissions) {
+      const updatedPermissions: {[key: string]: boolean} = { ...formData.modulePermissions };
+      
+      // First, reset all permissions to false
+      Object.keys(updatedPermissions).forEach(key => {
+        updatedPermissions[key] = false;
+      });
+      
+      // Then set the selected permissions to true
+      selectedModules.forEach(module => {
+        if (module.key && Object.keys(updatedPermissions).includes(module.key)) {
+          updatedPermissions[module.key] = true;
+        }
+      });
+      
+      setFormData(prev => ({
+        ...prev,
+        // Convert to proper ModuleAccessItem[] for moduleAccessPayload
+        moduleAccessPayload: selectedModules,
+        // Keep modulePermissions as an object but ensure it matches ModulePermissions type
+        modulePermissions: updatedPermissions as unknown as ModulePermissions
+      }));
+    } else {
+      // If modulePermissions doesn't exist, just store the moduleAccessPayload
+      setFormData(prev => ({
+        ...prev,
+        moduleAccessPayload: selectedModules
+      }));
+    }
   };
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="firstName">First Name</Label>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            First Name
+          </label>
           <Input
-            id="firstName"
+            name="firstName"
             value={formData.firstName || ''}
-            onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+            onChange={handleInputChange}
+            placeholder="Enter first name"
             required
           />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="lastName">Last Name</Label>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Last Name
+          </label>
           <Input
-            id="lastName"
+            name="lastName"
             value={formData.lastName || ''}
-            onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+            onChange={handleInputChange}
+            placeholder="Enter last name"
             required
           />
         </div>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
-        <Input
-          id="email"
-          type="email"
-          value={formData.email || ''}
-          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-          required
-        />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="employeeId">Employee ID</Label>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Email
+          </label>
           <Input
-            id="employeeId"
+            type="email"
+            name="email"
+            value={formData.email || ''}
+            onChange={handleInputChange}
+            placeholder="Enter email address"
+            required
+          />
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Employee ID
+          </label>
+          <Input
+            name="employeeId"
             value={formData.employeeId || ''}
-            onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
+            onChange={handleInputChange}
+            placeholder="Enter employee ID"
+            required
             disabled={isEditMode}
-            required
           />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="joiningDate">Joining Date</Label>
-          <Input
-            id="joiningDate"
-            type="date"
-            value={formData.joiningDate ? new Date(formData.joiningDate).toISOString().split('T')[0] : ''}
-            onChange={(e) => setFormData({ ...formData, joiningDate: e.target.value })}
-            required
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="employeeType">Employee Type</Label>
-          <Select
-            value={formData.employeeType || ''}
-            onValueChange={(value) => setFormData({ ...formData, employeeType: value })}
-          >
-            <SelectTrigger id="employeeType">
-              <SelectValue placeholder="Select type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="permanent">Permanent</SelectItem>
-              <SelectItem value="contract">Contract</SelectItem>
-              <SelectItem value="part_time">Part Time</SelectItem>
-              <SelectItem value="consultant">Consultant</SelectItem>
-              <SelectItem value="intern">Intern</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="department">Department</Label>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Department
+          </label>
           <Select
             value={formData.department || ''}
-            onValueChange={(value) => setFormData({ ...formData, department: value })}
+            onValueChange={(value) => handleSelectChange('department', value)}
           >
-            <SelectTrigger id="department">
+            <SelectTrigger>
               <SelectValue placeholder="Select department" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="admin">Admin</SelectItem>
+              <SelectItem value="admin">Administration</SelectItem>
               <SelectItem value="teaching">Teaching</SelectItem>
               <SelectItem value="security">Security</SelectItem>
               <SelectItem value="maintenance">Maintenance</SelectItem>
@@ -132,17 +148,74 @@ const EmployeeForm = ({
             </SelectContent>
           </Select>
         </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Employee Type
+          </label>
+          <Select
+            value={formData.employeeType || ''}
+            onValueChange={(value) => handleSelectChange('employeeType', value)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select employee type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="permanent">Permanent</SelectItem>
+              <SelectItem value="contract">Contract</SelectItem>
+              <SelectItem value="part_time">Part Time</SelectItem>
+              <SelectItem value="consultant">Consultant</SelectItem>
+              <SelectItem value="intern">Intern</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Joining Date
+          </label>
+          <Input
+            type="date"
+            name="joiningDate"
+            value={formData.joiningDate || ''}
+            onChange={handleInputChange}
+            required
+          />
+        </div>
+        
+        {isEditMode && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Status
+            </label>
+            <Select
+              value={formData.status || 'active'}
+              onValueChange={(value) => handleSelectChange('status', value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="on_leave">On Leave</SelectItem>
+                <SelectItem value="resigned">Resigned</SelectItem>
+                <SelectItem value="terminated">Terminated</SelectItem>
+                <SelectItem value="retired">Retired</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
-
-      {/* Module Access Section */}
-      <div className="space-y-2">
-        <Label>Module Access</Label>
-        <ModuleAccess
-          selectedModules={formData.moduleAccessPayload || []}
-          onModuleChange={handleModuleAccessChange}
-          employeeId={formData.id}
-          isLoading={isLoading}
-        />
+      
+      <div className="mt-6">
+        <h3 className="text-md font-medium mb-3">Module Access</h3>
+        {formData.modulePermissions && (
+          <EmployeeModulePermissions
+            modulePermissions={formData.modulePermissions as ModulePermissions}
+            onModulePermissionChange={handleModulePermissionChange}
+          />
+        )}
       </div>
     </div>
   );

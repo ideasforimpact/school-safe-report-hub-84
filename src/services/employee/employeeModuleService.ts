@@ -65,82 +65,28 @@ export const updateEmployeeModulePermissions = async (
 // Get employee module access items
 export const getEmployeeModuleAccessItems = async (employeeId: string): Promise<ModuleAccessItem[]> => {
   try {
-    console.log("Fetching module access items for employee ID:", employeeId);
-    
-    // First get the employee modules
-    const { data: employeeModules, error: employeeModulesError } = await supabase
+    const { data, error } = await supabase
       .from('employee_modules')
-      .select(`
-        module_id,
-        access_level,
-        modules(id, name, key, icon, level)
-      `)
+      .select('*, modules(id, name)')
       .eq('employee_id', employeeId);
 
-    if (employeeModulesError) {
-      console.error("Error fetching employee modules:", employeeModulesError);
+    if (error) {
+      console.error("Error fetching module permissions:", error);
       return [];
     }
 
-    console.log("Retrieved employee modules:", employeeModules);
-
-    // If no modules found, try fetching client modules as fallback
-    if (!employeeModules || employeeModules.length === 0) {
-      // First get the employee's client ID
-      const { data: employee, error: employeeError } = await supabase
-        .from('employees')
-        .select('client_id')
-        .eq('id', employeeId)
-        .single();
-
-      if (employeeError || !employee || !employee.client_id) {
-        console.error("Error fetching employee client ID:", employeeError);
-        return [];
-      }
-
-      // Now get all available modules for this client
-      const { data: clientModules, error: clientModulesError } = await supabase
-        .from('client_modules')
-        .select(`
-          module_id,
-          access_level,
-          modules(id, name, key, icon, level)
-        `)
-        .eq('client_id', employee.client_id)
-        .eq('enabled', true);
-
-      if (clientModulesError) {
-        console.error("Error fetching client modules:", clientModulesError);
-        return [];
-      }
-
-      console.log("No employee modules found, using client modules:", clientModules);
-
-      // Map client modules to ModuleAccessItem format
-      return clientModules.map(item => {
-        const moduleObj = item.modules;
-        return {
-          name: moduleObj?.name || 'Unknown Module',
-          key: moduleObj?.key || moduleObj?.id || item.module_id,
-          employeeId: employeeId,
-          module_id: item.module_id
-        };
-      }).filter(item => !!item.module_id);
-    }
-
-    // Map the database records to our ModuleAccessItem model
-    const moduleAccessItems: ModuleAccessItem[] = employeeModules.map(item => {
-      const moduleObj = item.modules;
+    // Map to ModuleAccessItem format
+    return data.map(item => {
+      const moduleName = item.modules?.name || 'Unknown Module';
+      const moduleKey = item.module_id;
+      
       return {
-        name: moduleObj?.name || 'Unknown Module',
-        key: moduleObj?.key || moduleObj?.id || item.module_id,
+        name: moduleName,
+        key: moduleKey,
         employeeId: employeeId,
         module_id: item.module_id
       };
-    }).filter(item => !!item.module_id);
-
-    console.log("Mapped module access items:", moduleAccessItems);
-    return moduleAccessItems;
+    });
   } catch (error) {
     console.error("Error getting employee module access items:", error);
     return [];
