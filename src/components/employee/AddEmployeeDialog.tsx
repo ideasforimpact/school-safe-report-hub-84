@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useForm } from 'react-hook-form';
@@ -29,6 +30,8 @@ import {
 import { Loader2 } from 'lucide-react';
 import { Employee, EmployeeType, DepartmentType } from '@/contexts/employee/types';
 import { toast } from 'sonner';
+import { useEmployeeStore } from '@/store/EmployeeContext';
+import EmployeeModulePermissions from './EmployeeModulePermissions';
 
 // Define the form schema with zod
 const employeeSchema = z.object({
@@ -44,6 +47,12 @@ const employeeSchema = z.object({
 
 type FormValues = z.infer<typeof employeeSchema>;
 
+interface ModuleAccessItem {
+  name: string;
+  employeeId?: string;
+  key?: string;
+}
+
 interface AddEmployeeDialogProps {
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
@@ -53,6 +62,8 @@ interface AddEmployeeDialogProps {
 
 const AddEmployeeDialog = ({ isOpen, setIsOpen, onAddEmployee, clientId }: AddEmployeeDialogProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedModules, setSelectedModules] = useState<ModuleAccessItem[]>([]);
+  const { state } = useEmployeeStore();
 
   // Log the clientId prop to verify what's being received
   console.log("AddEmployeeDialog received clientId:", clientId);
@@ -80,14 +91,29 @@ const AddEmployeeDialog = ({ isOpen, setIsOpen, onAddEmployee, clientId }: AddEm
   }, [clientId, form]);
 
   const handleCloseDialog = () => {
-    // Reset the form when dialog closes
+    // Reset the form and selected modules when dialog closes
     form.reset();
+    setSelectedModules([]);
     setIsOpen(false);
+  };
+
+  // Handle module permission changes
+  const handleModulePermissionChange = (modules: ModuleAccessItem[]) => {
+    console.log("Selected modules changed:", modules);
+    setSelectedModules(modules);
   };
 
   const handleSubmit = async (values: FormValues) => {
     setIsSubmitting(true);
     try {
+      const employeeId = values.employeeId;
+      
+      // Add the employeeId to each module in the selected modules
+      const moduleAccessPayload = selectedModules.map(module => ({
+        ...module,
+        employeeId
+      }));
+      
       // Ensure clientId is included in the employee data
       const employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'> = {
         employeeId: values.employeeId,
@@ -99,10 +125,12 @@ const AddEmployeeDialog = ({ isOpen, setIsOpen, onAddEmployee, clientId }: AddEm
         joiningDate: values.joiningDate,
         status: 'active',
         clientId: values.clientId || clientId, // Ensure clientId is set from either form or props
-        // Don't set modulePermissions here as we need to format the payload correctly in the parent
+        moduleAccessPayload // Add the moduleAccessPayload directly
       };
       
       console.log("Adding employee with data:", employeeData);
+      console.log("Module access payload:", moduleAccessPayload);
+      
       await onAddEmployee(employeeData);
       toast.success("Employee added successfully");
       handleCloseDialog(); // Close and reset form
@@ -245,7 +273,18 @@ const AddEmployeeDialog = ({ isOpen, setIsOpen, onAddEmployee, clientId }: AddEm
                 </FormItem>
               )}
             />
-            {/* Add a hidden field for clientId but make it visible during development */}
+            
+            {/* Add module permissions section */}
+            <div className="space-y-2">
+              <FormLabel>Module Access</FormLabel>
+              <EmployeeModulePermissions 
+                modulePermissions={[]} 
+                onModulePermissionChange={handleModulePermissionChange}
+                employeeId={form.getValues("employeeId")}
+              />
+            </div>
+            
+            {/* Hidden field for clientId */}
             <FormField
               control={form.control}
               name="clientId"

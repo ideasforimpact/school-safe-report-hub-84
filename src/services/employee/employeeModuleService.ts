@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 // Function to update module permissions for an employee
 export const updateEmployeeModulePermissions = async (
   employeeId: string,
-  modulePermissions: ModulePermissions
+  modulePermissions: ModulePermissions | ModuleAccessItem[]
 ): Promise<void> => {
   try {
     console.log("Updating module permissions for employee:", employeeId);
@@ -23,14 +23,22 @@ export const updateEmployeeModulePermissions = async (
       throw deleteError;
     }
     
-    // Convert the module permissions object to an array of module access items
-    const moduleAccessPayload = Object.entries(modulePermissions)
-      .filter(([_, enabled]) => enabled)
-      .map(([key]) => ({
-        name: key,
-        employeeId,
-        key
-      }));
+    // Convert the input to a standardized module access array
+    let moduleAccessPayload: ModuleAccessItem[];
+    
+    // Check if modulePermissions is already an array
+    if (Array.isArray(modulePermissions)) {
+      moduleAccessPayload = modulePermissions;
+    } else {
+      // Convert the module permissions object to an array of module access items
+      moduleAccessPayload = Object.entries(modulePermissions)
+        .filter(([_, enabled]) => enabled)
+        .map(([key]) => ({
+          name: key,
+          employeeId,
+          key
+        }));
+    }
     
     // Add the new module permissions
     if (moduleAccessPayload.length > 0) {
@@ -187,5 +195,43 @@ export const getEmployeeModulePermissions = async (
       transportSafetyAdmin: false,
       eduSafeResourceAccess: false
     };
+  }
+};
+
+// Function to get employee module access items
+export const getEmployeeModuleAccessItems = async (
+  employeeId: string
+): Promise<ModuleAccessItem[]> => {
+  try {
+    console.log("Getting module access items for employee:", employeeId);
+    
+    // Get the employee's module permissions and related module details
+    const { data, error } = await supabase
+      .from('employee_modules')
+      .select(`
+        module_id,
+        modules:module_id (
+          id,
+          name,
+          level
+        )
+      `)
+      .eq('employee_id', employeeId);
+      
+    if (error) {
+      console.error("Error fetching employee modules:", error);
+      throw error;
+    }
+    
+    // Map to ModuleAccessItem format
+    return data.map(item => ({
+      name: item.modules?.name || '',
+      employeeId,
+      key: item.modules?.level || item.module_id
+    }));
+    
+  } catch (error) {
+    console.error("Error in getEmployeeModuleAccessItems:", error);
+    return [];
   }
 };
