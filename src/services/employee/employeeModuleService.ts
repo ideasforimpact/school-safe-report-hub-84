@@ -143,7 +143,12 @@ export const getEmployeeModulePermissions = async (
     // Create a mapping of module IDs to module keys
     const moduleIdToKey: Record<string, string> = {};
     allModules?.forEach(module => {
-      moduleIdToKey[module.id] = module.level;
+      // Safely access the 'level' property
+      if (module && typeof module === 'object' && 'level' in module) {
+        moduleIdToKey[module.id] = module.level;
+      } else {
+        console.warn("Module missing level property:", module);
+      }
     });
     
     // Convert to ModulePermissions format
@@ -162,7 +167,7 @@ export const getEmployeeModulePermissions = async (
     // Set permissions based on the employee's modules
     employeeModules?.forEach(module => {
       const moduleKey = moduleIdToKey[module.module_id];
-      if (moduleKey) {
+      if (moduleKey && moduleKey in modulePermissions) {
         // Type assertion to treat the key as a key of ModulePermissions
         (modulePermissions as any)[moduleKey] = true;
       } else {
@@ -225,8 +230,8 @@ export const getEmployeeModuleAccessItems = async (
     
     // Map to ModuleAccessItem format
     return data.map(item => {
-      // Check if modules exists to prevent TypeScript errors
-      if (!item.modules) {
+      // Check if modules exists and has the expected structure
+      if (!item.modules || typeof item.modules !== 'object') {
         return {
           name: "Unknown",
           employeeId,
@@ -234,10 +239,12 @@ export const getEmployeeModuleAccessItems = async (
         };
       }
       
+      const moduleData = item.modules as any;
+      
       return {
-        name: (item.modules as any).name || 'Unknown',
+        name: moduleData.name || 'Unknown',
         employeeId,
-        key: (item.modules as any).level || item.module_id
+        key: moduleData.level || item.module_id
       };
     });
     

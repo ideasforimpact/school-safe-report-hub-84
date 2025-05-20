@@ -73,7 +73,7 @@ const UserPermissionsFields = ({
     if (checked) {
       // Add module to selection if it's not already there
       const moduleExists = selectedModules.some(m => 
-        (m.name === moduleName) || (m.key === moduleKey)
+        (m.key === moduleKey) || (m.name === moduleName)
       );
       
       console.log("Module exists:", moduleExists);
@@ -91,7 +91,7 @@ const UserPermissionsFields = ({
     } else {
       // Remove module from selection
       updatedModules = selectedModules.filter(m => 
-        !(m.name === moduleName || m.key === moduleKey)
+        !(m.key === moduleKey || m.name === moduleName)
       );
     }
     
@@ -109,9 +109,9 @@ const UserPermissionsFields = ({
       <label className="font-medium">Module Permissions</label>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-2">
         {modules.map((module) => {
-          // Check if this module is selected - use both name and key for comparison
+          // Check if this module is selected - use both key and name for comparison
           const isSelected = selectedModules.some(m => 
-            (m.name === module.name) || (m.key === module.key)
+            (m.key === module.key) || (m.name === module.name)
           );
           
           console.log(`Module ${module.name} selected:`, isSelected);

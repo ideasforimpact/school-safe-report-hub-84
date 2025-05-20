@@ -72,7 +72,7 @@ const EmployeeModulePermissions: React.FC<EmployeeModulePermissionsProps> = ({
     if (checked) {
       // Add module to selection if it's not already there
       const moduleExists = selectedModules.some(m => 
-        (m.name === moduleName) || (m.key === moduleKey)
+        (m.key === moduleKey) || (m.name === moduleName)
       );
       
       console.log("Module exists:", moduleExists);
@@ -90,7 +90,7 @@ const EmployeeModulePermissions: React.FC<EmployeeModulePermissionsProps> = ({
     } else {
       // Remove module from selection
       updatedModules = selectedModules.filter(m => 
-        !(m.name === moduleName || m.key === moduleKey)
+        !(m.key === moduleKey || m.name === moduleName)
       );
     }
     
@@ -114,9 +114,9 @@ const EmployeeModulePermissions: React.FC<EmployeeModulePermissionsProps> = ({
         </TableHeader>
         <TableBody>
           {modules.map((module) => {
-            // Check if this module is selected - use both name and key for comparison
+            // Check if this module is selected - use both key and name for comparison
             const isSelected = selectedModules.some(m => 
-              (m.name === module.name) || (m.key === module.key)
+              (m.key === module.key) || (m.name === module.name)
             );
             
             console.log(`Module ${module.name} selected:`, isSelected);
