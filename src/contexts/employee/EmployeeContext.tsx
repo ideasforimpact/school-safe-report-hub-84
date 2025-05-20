@@ -81,7 +81,8 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
           .map(([key]) => ({
             name: key,
             employeeId: employeeData.employeeId,
-            key: key
+            key: key,
+            module_id: key // Use key as module_id temporarily; this will be resolved server-side
           }));
           
         employeeData.moduleAccessPayload = moduleAccessPayload;

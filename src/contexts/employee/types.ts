@@ -7,7 +7,7 @@ export type EmployeeGrade = 'junior' | 'mid' | 'senior' | 'lead' | 'manager' | '
 export type EmployeeType = 'permanent' | 'contract' | 'part_time' | 'consultant' | 'intern';
 export type DepartmentType = 'admin' | 'teaching' | 'security' | 'maintenance' | 'transport' | 'management' | 'it' | 'hr' | 'finance';
 
-// Import ModuleAccessItem directly from moduleAccess.ts to avoid duplication
+// Use the standard ModuleAccessItem from types/moduleAccess.ts
 import { ModuleAccessItem } from '@/types/moduleAccess';
 
 export interface Employee {

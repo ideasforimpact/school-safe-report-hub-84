@@ -116,7 +116,8 @@ const EmployeeManagement = () => {
           .map(module => ({
             name: module.name,
             employeeId: employeeData.employeeId,
-            key: module.key || module.id
+            key: module.key || module.id,
+            module_id: module.id // Include module_id from the module definition
           }));
         
         if (defaultModules.length > 0) {

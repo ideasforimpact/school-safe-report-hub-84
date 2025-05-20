@@ -1,3 +1,4 @@
+
 import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
 import { Employee } from '@/contexts/employee/types';
@@ -58,14 +59,15 @@ export const addEmployeeToApi = async (
     if (employeeData.moduleAccessPayload) {
       try {
         // Ensure module_id exists in each ModuleAccessItem
-        const updatedModuleAccessPayload: ModuleAccessItem[] = employeeData.moduleAccessPayload.map(item => {
-          if (!('module_id' in item)) {
+        const updatedModuleAccessPayload = employeeData.moduleAccessPayload.map(item => {
+          // Type guard to check if module_id exists
+          if (!('module_id' in item) || !item.module_id) {
             return {
               ...item,
               module_id: item.key // Use key as module_id if not provided
-            } as ModuleAccessItem;
+            };
           }
-          return item as ModuleAccessItem;
+          return item;
         });
         
         await updateEmployeeModulePermissions(data.id, updatedModuleAccessPayload);
