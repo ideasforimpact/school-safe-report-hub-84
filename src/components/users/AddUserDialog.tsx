@@ -1,10 +1,11 @@
+
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { User, UserRole, ModulePermissions, EmployeeType, DepartmentType } from '@/contexts/auth/types';
+import { EmployeeType, DepartmentType } from '@/contexts/auth/types';
 import { Loader2 } from 'lucide-react';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { ModuleAccessItem } from '@/types/moduleAccess';
@@ -21,8 +22,7 @@ interface AddUserDialogProps {
     employeeType?: EmployeeType;
     department?: DepartmentType;
     joiningDate?: string;
-    role: UserRole;
-    modulePermissions: ModulePermissions;
+    moduleAccessPayload?: ModuleAccessItem[];
     clientId?: string;
   };
   setFormData: (data: any) => void;
@@ -33,7 +33,6 @@ interface AddUserDialogProps {
 }
 
 const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, resetForm, isLoading, clientId }: AddUserDialogProps) => {
-  const [showAdminOptions, setShowAdminOptions] = useState(false);
   const { state } = useEmployeeStore();
   const [selectedModules, setSelectedModules] = useState<ModuleAccessItem[]>([]);
 
@@ -42,23 +41,14 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
   console.log("AddUserDialog - ClientId in formData:", formData.clientId);
   console.log("AddUserDialog - Available configured modules:", state.configuredModules);
 
-  const handleRoleChange = (value: string) => {
-    const role = value as UserRole;
-    setFormData({
-      ...formData,
-      role,
-    });
-    setShowAdminOptions(role === 'admin');
-  };
-
-  // Completely rewritten module change handler to send only selected modules
+  // Module change handler that directly updates moduleAccessPayload
   const handleModuleChange = (moduleAccessItems: ModuleAccessItem[]) => {
     console.log("Module access items changed:", moduleAccessItems);
     
     // Update local state for UI rendering
     setSelectedModules(moduleAccessItems);
     
-    // Update formData with ONLY the moduleAccessPayload, no longer setting modulePermissions
+    // Update formData with ONLY the moduleAccessPayload
     setFormData({
       ...formData,
       moduleAccessPayload: moduleAccessItems
@@ -68,7 +58,6 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
   const handleClose = () => {
     setIsOpen(false);
     resetForm();
-    setShowAdminOptions(false);
     setSelectedModules([]);
   };
 
@@ -200,19 +189,6 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="role">Role</Label>
-              <Select value={formData.role} onValueChange={handleRoleChange}>
-                <SelectTrigger id="role">
-                  <SelectValue placeholder="Select role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="reporter">Reporter</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
 
             {/* Hidden input for clientId */}

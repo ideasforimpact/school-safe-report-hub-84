@@ -5,11 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
-import { User, UserRole, ModulePermissions, EmployeeType, DepartmentType } from '@/contexts/auth/types';
+import { EmployeeType, DepartmentType } from '@/contexts/auth/types';
 import { Loader2 } from 'lucide-react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Check, X } from "lucide-react";
+import { useEmployeeStore } from '@/store/EmployeeContext';
+import { ModuleAccessItem } from '@/types/moduleAccess';
+import ModuleAccess from './form/ModuleAccess';
 
 interface EditUserDialogProps {
   isOpen: boolean;
@@ -22,8 +22,7 @@ interface EditUserDialogProps {
     employeeType?: EmployeeType;
     department?: DepartmentType;
     joiningDate?: string;
-    role: UserRole;
-    modulePermissions: ModulePermissions;
+    moduleAccessPayload?: ModuleAccessItem[];
     clientId?: string;
   };
   setFormData: (data: any) => void;
@@ -34,20 +33,13 @@ interface EditUserDialogProps {
 }
 
 const EditUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, resetForm, isLoading, clientId }: EditUserDialogProps) => {
-  const [showAdminOptions, setShowAdminOptions] = useState(false);
-  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
+  const { state } = useEmployeeStore();
+  const [selectedModules, setSelectedModules] = useState<ModuleAccessItem[]>([]);
 
-  // When dialog opens, set the appropriate state based on the form data
+  // When dialog opens, set the selectedModules based on the form data
   useEffect(() => {
-    if (isOpen && formData) {
-      setShowAdminOptions(formData.role === 'admin');
-      
-      // Extract enabled permissions
-      const enabledPermissions = Object.entries(formData.modulePermissions)
-        .filter(([_, value]) => value)
-        .map(([key]) => key);
-      
-      setSelectedPermissions(enabledPermissions as string[]);
+    if (isOpen && formData && formData.moduleAccessPayload) {
+      setSelectedModules(formData.moduleAccessPayload);
       
       // Ensure clientId is set in formData
       if (!formData.clientId && clientId) {
@@ -59,44 +51,29 @@ const EditUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, re
     }
   }, [isOpen, formData, setFormData, clientId]);
 
-  const handleRoleChange = (value: string) => {
-    const role = value as UserRole;
+  // Module change handler that directly updates moduleAccessPayload
+  const handleModuleChange = (moduleAccessItems: ModuleAccessItem[]) => {
+    console.log("Module access items changed:", moduleAccessItems);
+    
+    // Update local state for UI rendering
+    setSelectedModules(moduleAccessItems);
+    
+    // Update formData with the moduleAccessPayload
     setFormData({
       ...formData,
-      role,
-      modulePermissions: {
-        ...formData.modulePermissions,
-        superAdmin: role === 'admin' && formData.modulePermissions.superAdmin
-      }
-    });
-    setShowAdminOptions(role === 'admin');
-  };
-
-  const handlePermissionChange = (permission: keyof ModulePermissions, checked: boolean) => {
-    const newSelectedPermissions = checked 
-      ? [...selectedPermissions, permission as string] 
-      : selectedPermissions.filter(p => p !== permission);
-    
-    setSelectedPermissions(newSelectedPermissions);
-    
-    setFormData({
-      ...formData,
-      modulePermissions: {
-        ...formData.modulePermissions,
-        [permission]: checked
-      }
+      moduleAccessPayload: moduleAccessItems
     });
   };
 
   const handleClose = () => {
     setIsOpen(false);
     resetForm();
-    setShowAdminOptions(false);
-    setSelectedPermissions([]);
+    setSelectedModules([]);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
     // Ensure clientId is set before submission
     if (!formData.clientId && clientId) {
       setFormData({
@@ -104,21 +81,23 @@ const EditUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, re
         clientId: clientId
       });
     }
+    
+    // Use the selectedModules directly for backend processing
+    const moduleAccessPayload = selectedModules.map(module => ({
+      ...module,
+      employeeId: formData.employeeId || undefined
+    }));
+    
+    console.log("Module access payload for backend:", moduleAccessPayload);
+    
+    // Update formData with the moduleAccessPayload before submission
+    setFormData(prevData => ({
+      ...prevData,
+      moduleAccessPayload
+    }));
+    
     onSubmit();
   };
-
-  // Define modules with their display names
-  const modules = [
-    { key: 'superAdmin', name: 'Super Admin' },
-    { key: 'incidentReporting', name: 'Incident Reporting' },
-    { key: 'incidentAdmin', name: 'Incident Admin' },
-    { key: 'assessmentUser', name: 'Assessment User' },
-    { key: 'assessmentsAdmin', name: 'Assessments Admin' },
-    { key: 'employeeVerificationAdmin', name: 'Employee Verification Admin' },
-    { key: 'grievancesAdmin', name: 'Grievances Admin' },
-    { key: 'transportSafetyAdmin', name: 'Transport Safety Admin' },
-    { key: 'eduSafeResourceAccess', name: 'EduSafe Resource Access' }
-  ];
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -219,19 +198,6 @@ const EditUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, re
               </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="role">Role</Label>
-              <Select value={formData.role} onValueChange={handleRoleChange}>
-                <SelectTrigger id="role">
-                  <SelectValue placeholder="Select role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin">Admin</SelectItem>
-                  <SelectItem value="reporter">Reporter</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
             {/* Hidden input for clientId */}
             <input 
               type="hidden" 
@@ -243,42 +209,11 @@ const EditUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, re
             {/* Module Access Section */}
             <div className="space-y-4">
               <Label>Module Access</Label>
-              <div className="w-full">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[100px]">Enabled</TableHead>
-                      <TableHead>Module Name</TableHead>
-                      <TableHead className="w-[100px] text-center">Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {modules.map((module) => {
-                      const moduleKey = module.key as keyof ModulePermissions;
-                      const isEnabled = formData.modulePermissions[moduleKey] || false;
-                      
-                      return (
-                        <TableRow key={module.key}>
-                          <TableCell>
-                            <Checkbox
-                              checked={isEnabled}
-                              onCheckedChange={(checked) => handlePermissionChange(moduleKey, checked === true)}
-                            />
-                          </TableCell>
-                          <TableCell>{module.name}</TableCell>
-                          <TableCell className="text-center">
-                            {isEnabled ? (
-                              <Check className="h-4 w-4 text-green-500 mx-auto" />
-                            ) : (
-                              <X className="h-4 w-4 text-gray-400 mx-auto" />
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
+              <ModuleAccess
+                selectedModules={selectedModules}
+                onModuleChange={handleModuleChange}
+                employeeId={formData.employeeId}
+              />
             </div>
           </div>
           <DialogFooter>

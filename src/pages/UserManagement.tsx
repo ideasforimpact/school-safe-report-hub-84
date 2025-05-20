@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { UserPlus, FileUp, RefreshCw } from 'lucide-react';
-import { User, UserRole, ModulePermissions, EmployeeType, DepartmentType } from '@/contexts/auth/types';
+import { User, EmployeeType, DepartmentType } from '@/contexts/auth/types';
 import { EmploymentStatus, EmployeeType as EmployeeContextType, DepartmentType as EmployeeContextDepartmentType } from '@/contexts/employee/types';
 import { toast } from "sonner";
 import { 
@@ -27,7 +27,7 @@ import {
 import { processEmployeeExcel } from '@/services/employee/importEmployeeService';
 import { supabase } from '@/integrations/supabase/client';
 import { getAllEmployeesFromApi } from '@/services/employee/employeeRetrievalService';
-import { getEmployeeModulePermissions, updateEmployeeModulePermissions, getEmployeeModuleAccessItems } from '@/services/employee/employeeModuleService';
+import { getEmployeeModuleAccessItems, updateEmployeeModulePermissions } from '@/services/employee/employeeModuleService';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getEmployeeData, isEmployeeAdmin, isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 import { useEmployeeData } from '@/hooks/useEmployeeData';
@@ -103,7 +103,7 @@ const UserManagement = () => {
     console.log("UserManagement - ClientId being used:", clientId);
   }, [employeeData, user, clientId]);
   
-  // Default form data for the user forms - MODIFIED to include moduleAccessPayload
+  // Default form data for the user forms - REMOVED modulePermissions, keeping only moduleAccessPayload
   const [formData, setFormData] = useState<{
     firstName: string;
     lastName: string;
@@ -112,28 +112,14 @@ const UserManagement = () => {
     employeeType?: EmployeeType;
     department?: DepartmentType;
     joiningDate?: string;
-    role: UserRole;
-    modulePermissions: ModulePermissions;
-    moduleAccessPayload?: ModuleAccessItem[]; // Added moduleAccessPayload
     clientId?: string;
+    moduleAccessPayload?: ModuleAccessItem[];
   }>({
     firstName: '',
     lastName: '',
     email: '',
-    role: 'reporter',
-    clientId: clientId, // Initialize with current clientId
-    modulePermissions: {
-      superAdmin: false,
-      incidentReporting: true,
-      incidentAdmin: false,
-      assessmentUser: false,
-      assessmentsAdmin: false,
-      employeeVerificationAdmin: false,
-      grievancesAdmin: false,
-      transportSafetyAdmin: false,
-      eduSafeResourceAccess: false
-    },
-    moduleAccessPayload: [] // Initialize as empty array
+    clientId: clientId,
+    moduleAccessPayload: []
   });
 
   // Update formData when clientId changes
@@ -157,10 +143,10 @@ const UserManagement = () => {
       const employeeData = await getAllEmployeesFromApi();
       
       if (employeeData && employeeData.length > 0) {
-        // Process each employee to get their module permissions
+        // Process each employee to get their module access items
         const processedUsers = await Promise.all(employeeData.map(async employee => {
-          // Fetch module permissions for this employee
-          const modulePermissions = await getEmployeeModulePermissions(employee.id);
+          // Get module access items directly
+          const moduleAccessItems = await getEmployeeModuleAccessItems(employee.id);
           
           return {
             id: employee.id,
@@ -168,14 +154,14 @@ const UserManagement = () => {
             lastName: employee.lastName,
             email: employee.email,
             employeeId: employee.employeeId,
-            employeeType: employee.employeeType as any, // Type conversion handled by helper function
-            department: employee.department as any, // Type conversion handled by helper function
+            employeeType: employee.employeeType as any,
+            department: employee.department as any,
             joiningDate: employee.joiningDate,
-            role: modulePermissions.superAdmin ? 'admin' : 'reporter' as UserRole,
-            modulePermissions: modulePermissions,
-            isActive: employee.status === true, // Compare with boolean true instead of string
+            isActive: employee.status === true,
             createdAt: employee.createdAt || new Date().toISOString(),
-            clientId: employee.clientId, // Make sure to include clientId
+            clientId: employee.clientId,
+            // Store module access items directly instead of permissions
+            moduleAccessPayload: moduleAccessItems
           };
         }));
 
@@ -193,14 +179,13 @@ const UserManagement = () => {
     }
   };
 
-  // Handler for adding a new user - MODIFIED to use moduleAccessPayload
+  // Handler for adding a new user - Uses only moduleAccessPayload
   const handleAddUser = async () => {
     try {
       setIsLoading(true);
       
       // Make sure clientId is set
       if (!formData.clientId && clientId) {
-        // Update the form data with the current clientId if not set
         setFormData(prev => ({
           ...prev,
           clientId: clientId
@@ -210,19 +195,22 @@ const UserManagement = () => {
       console.log("Adding new user with data:", formData);
       console.log("Module access payload:", formData.moduleAccessPayload);
       
-      // Check if moduleAccessPayload is defined and has items
       if (!formData.moduleAccessPayload || formData.moduleAccessPayload.length === 0) {
         console.warn("No module access items selected.");
       }
       
       // In a real app, we'd validate the form data here
       const updatedUsers = await addNewUser(
-        [] as any, // Pass an empty array with type assertion to fix TypeScript error
+        [] as any,
         { 
           ...formData, 
-          clientId: formData.clientId || clientId, // Use form clientId or fall back to context clientId
-          password: 'defaultPassword123', // In a real app, we'd generate this or let the user set it
-          isActive: true 
+          clientId: formData.clientId || clientId,
+          password: 'defaultPassword123',
+          isActive: true,
+          // Add empty modulePermissions to satisfy interface
+          modulePermissions: {},
+          // Default role
+          role: 'reporter'
         }
       );
       
@@ -239,9 +227,9 @@ const UserManagement = () => {
               employeeType: formData.employeeType,
               department: formData.department,
               joiningDate: formData.joiningDate,
-              status: 'active' as EmploymentStatus, // Explicitly cast to EmploymentStatus
-              clientId: formData.clientId || clientId, // Use form clientId or fall back to context clientId
-              moduleAccessPayload: formData.moduleAccessPayload || [] // Use moduleAccessPayload directly
+              status: 'active' as EmploymentStatus,
+              clientId: formData.clientId || clientId,
+              moduleAccessPayload: formData.moduleAccessPayload || []
             };
             
             // First try the edge function
@@ -266,13 +254,11 @@ const UserManagement = () => {
               // Fall back to the context function if the edge function fails
               await addEmployee({
                 ...employeeData,
-                modulePermissions: undefined // Remove modulePermissions completely
               });
               console.log("Employee created via context function");
               toast.success("Employee record created via local storage");
             }
             
-            // After successful employee creation, refresh the employee list
             refreshEmployeesList();
           } catch (empError) {
             console.error("Error adding employee record:", empError);
@@ -299,8 +285,8 @@ const UserManagement = () => {
       
       if (employeeData && employeeData.length > 0) {
         const processedUsers = await Promise.all(employeeData.map(async employee => {
-          // Fetch module permissions for this employee
-          const modulePermissions = await getEmployeeModulePermissions(employee.id);
+          // Get module access items directly
+          const moduleAccessItems = await getEmployeeModuleAccessItems(employee.id);
           
           return {
             id: employee.id,
@@ -308,13 +294,14 @@ const UserManagement = () => {
             lastName: employee.lastName,
             email: employee.email,
             employeeId: employee.employeeId,
-            employeeType: employee.employeeType as any, // Type conversion handled by helper function
-            department: employee.department as any, // Type conversion handled by helper function
+            employeeType: employee.employeeType as any,
+            department: employee.department as any,
             joiningDate: employee.joiningDate,
-            role: modulePermissions.superAdmin ? 'admin' : 'reporter' as UserRole,
-            modulePermissions: modulePermissions,
-            isActive: employee.status === true, // Compare with boolean true instead of string
+            isActive: employee.status === true,
             createdAt: employee.createdAt || new Date().toISOString(),
+            clientId: employee.clientId,
+            // Store module access items directly
+            moduleAccessPayload: moduleAccessItems
           };
         }));
 
@@ -326,7 +313,7 @@ const UserManagement = () => {
     }
   };
 
-  // Handler for updating an existing user - MODIFIED to use moduleAccessPayload
+  // Handler for updating an existing user - Uses only moduleAccessPayload
   const handleUpdateUser = async () => {
     if (!currentUser) return;
     
@@ -336,10 +323,17 @@ const UserManagement = () => {
       console.log("Updating user with data:", formData);
       console.log("Module access payload:", formData.moduleAccessPayload);
       
+      // Need to provide modulePermissions for API compatibility but we'll use moduleAccessPayload
       const updatedUsers = await updateExistingUser(
-        [] as any, // Pass an empty array with type assertion to fix TypeScript error
+        [] as any,
         currentUser.id,
-        formData
+        {
+          ...formData,
+          // Add empty modulePermissions to satisfy interface
+          modulePermissions: {},
+          // Keep existing role
+          role: currentUser.role || 'reporter'
+        }
       );
       
       if (updatedUsers) {
@@ -353,7 +347,7 @@ const UserManagement = () => {
               email: formData.email,
               employeeType: formData.employeeType,
               department: formData.department,
-              moduleAccessPayload: formData.moduleAccessPayload || [] // Use moduleAccessPayload directly
+              moduleAccessPayload: formData.moduleAccessPayload || []
             };
             
             // Try to update via edge function first
@@ -362,7 +356,7 @@ const UserManagement = () => {
                 body: JSON.stringify({
                   operation: 'update',
                   employee: {
-                    id: currentUser.id, // Assuming the user id matches the employee id
+                    id: currentUser.id,
                     ...updateData
                   }
                 })
@@ -370,7 +364,7 @@ const UserManagement = () => {
               
               if (error) throw error;
               
-              // If moduleAccessPayload exists, update it directly instead of using modulePermissions
+              // If moduleAccessPayload exists, update it directly
               if (formData.moduleAccessPayload && formData.moduleAccessPayload.length > 0) {
                 await updateEmployeeModulePermissions(currentUser.id, formData.moduleAccessPayload);
               }
@@ -389,7 +383,7 @@ const UserManagement = () => {
         toast.success("User updated successfully");
         resetForm();
         setIsEditDialogOpen(false);
-        await refreshEmployeesList(); // Refresh to see the updated user
+        await refreshEmployeesList();
       }
     } catch (error) {
       console.error("Error updating user:", error);
@@ -403,11 +397,9 @@ const UserManagement = () => {
   const handleDeleteUser = async (userId: string) => {
     try {
       setIsLoading(true);
-      const updatedUsers = deleteExistingUser([] as any, userId); // Pass an empty array with type assertion
+      const updatedUsers = deleteExistingUser([] as any, userId);
       if (updatedUsers) {
-        // Also delete the employee if it exists
         try {
-          // Try to delete via edge function
           const { data, error } = await supabase.functions.invoke('employee-management', {
             body: JSON.stringify({
               operation: 'delete',
@@ -418,11 +410,9 @@ const UserManagement = () => {
           if (error) throw error;
           console.log("Employee deleted via edge function:", data);
           
-          // After successful deletion, refresh the employee list
           refreshEmployeesList();
         } catch (edgeFuncError) {
           console.error("Edge function delete error:", edgeFuncError);
-          // No fallback for deletion since we don't have a direct method in context
         }
         
         toast.success("User deleted successfully");
@@ -439,10 +429,9 @@ const UserManagement = () => {
   const handleDeactivateUser = async (userId: string) => {
     try {
       setIsLoading(true);
-      const updatedUsers = deactivateExistingUser([] as any, userId); // Pass an empty array with type assertion
+      const updatedUsers = deactivateExistingUser([] as any, userId);
       if (updatedUsers) {
         try {
-          // Call the edge function to deactivate the employee
           const { data, error } = await supabase.functions.invoke('employee-management', {
             body: JSON.stringify({
               operation: 'deactivate',
@@ -452,14 +441,12 @@ const UserManagement = () => {
           
           if (error) {
             console.error("Edge function deactivate error:", error);
-            // Fall back to the employee context's deactivateEmployee function
             await deactivateEmployee(userId);
             console.log("Employee deactivated via context function");
           } else {
             console.log("Employee deactivated via edge function:", data);
           }
           
-          // After successful deactivation, refresh the employee list
           await refreshEmployeesList();
           toast.success("User deactivated successfully");
         } catch (error) {
@@ -475,36 +462,24 @@ const UserManagement = () => {
     }
   };
 
-  // Reset form to default values - MODIFIED to include moduleAccessPayload
+  // Reset form to default values - REMOVED modulePermissions, keeping only moduleAccessPayload
   const resetForm = () => {
     setFormData({
       firstName: '',
       lastName: '',
       email: '',
-      role: 'reporter',
-      clientId: clientId, // Keep the clientId
-      modulePermissions: {
-        superAdmin: false,
-        incidentReporting: true,
-        incidentAdmin: false,
-        assessmentUser: false,
-        assessmentsAdmin: false,
-        employeeVerificationAdmin: false,
-        grievancesAdmin: false,
-        transportSafetyAdmin: false,
-        eduSafeResourceAccess: false
-      },
-      moduleAccessPayload: [] // Reset moduleAccessPayload
+      clientId: clientId,
+      moduleAccessPayload: []
     });
     setCurrentUser(null);
   };
 
-  // Handle edit user click - MODIFIED to use getEmployeeModuleAccessItems
+  // Handle edit user click - Uses moduleAccessPayload only
   const handleEditClick = async (user: User) => {
     setCurrentUser(user);
     
     try {
-      // Get the module access items directly instead of module permissions
+      // Get the module access items directly
       let moduleAccessItems: ModuleAccessItem[] = [];
       try {
         moduleAccessItems = await getEmployeeModuleAccessItems(user.id);
@@ -512,28 +487,6 @@ const UserManagement = () => {
       } catch (error) {
         console.error("Error fetching module access items:", error);
         moduleAccessItems = [];
-      }
-      
-      // For backward compatibility, also get module permissions
-      let modulePermissions = user.modulePermissions || {
-        superAdmin: false,
-        incidentReporting: true,
-        incidentAdmin: false,
-        assessmentUser: false,
-        assessmentsAdmin: false,
-        employeeVerificationAdmin: false,
-        grievancesAdmin: false,
-        transportSafetyAdmin: false,
-        eduSafeResourceAccess: false
-      };
-      
-      // If module permissions don't exist in the user object, fetch them from the database
-      if (!user.modulePermissions) {
-        try {
-          modulePermissions = await getEmployeeModulePermissions(user.id);
-        } catch (error) {
-          console.error("Error fetching module permissions:", error);
-        }
       }
       
       setFormData({
@@ -544,9 +497,7 @@ const UserManagement = () => {
         employeeType: user.employeeType,
         department: user.department,
         joiningDate: user.joiningDate,
-        role: user.role,
-        modulePermissions: modulePermissions,
-        moduleAccessPayload: moduleAccessItems // Set moduleAccessPayload directly
+        moduleAccessPayload: moduleAccessItems
       });
     } catch (error) {
       console.error("Error preparing user data for edit:", error);
@@ -556,16 +507,14 @@ const UserManagement = () => {
     setIsEditDialogOpen(true);
   };
 
-  // Handler for importing employees - Simplified to focus on validation and processing only
+  // Handler for importing employees
   const handleImportEmployees = async (file: File) => {
     try {
       setIsLoading(true);
       console.log("Importing employees with clientId:", clientId);
       
-      // No authentication check needed - proceed directly to import
       await processEmployeeExcel(file, clientId);
       
-      // Refresh the employee list after successful import
       await fetchEmployeesList();
       toast.success("Employees imported successfully");
       setIsImportDialogOpen(false);
@@ -676,7 +625,7 @@ const UserManagement = () => {
         onSubmit={handleAddUser}
         resetForm={resetForm}
         isLoading={isLoading}
-        clientId={clientId} // Pass clientId to the dialog
+        clientId={clientId}
       />
 
       {/* Edit User Dialog */}
@@ -688,7 +637,7 @@ const UserManagement = () => {
         onSubmit={handleUpdateUser}
         resetForm={resetForm}
         isLoading={isLoading}
-        clientId={clientId} // Pass clientId to the dialog
+        clientId={clientId}
       />
 
       {/* Import Employees Dialog */}
@@ -696,7 +645,7 @@ const UserManagement = () => {
         isOpen={isImportDialogOpen}
         setIsOpen={setIsImportDialogOpen}
         onImportEmployees={handleImportEmployees}
-        clientId={clientId} // Pass clientId to the dialog
+        clientId={clientId}
       />
     </Layout>
   );
