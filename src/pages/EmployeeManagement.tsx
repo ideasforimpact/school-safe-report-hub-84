@@ -190,8 +190,12 @@ const EmployeeManagement = () => {
         }
       }
       
+      console.log("Starting employee import with configured modules:", state.configuredModules);
+      
       // Pass configured modules from Redux state
-      await processEmployeeExcel(file, effectiveClientId, state.configuredModules);
+      const result = await processEmployeeExcel(file, effectiveClientId, state.configuredModules);
+      console.log("Import process completed, result:", result);
+      
       // After import, refresh the employee list
       await fetchEmployees();
       toast.success("Employees imported successfully");
@@ -199,7 +203,6 @@ const EmployeeManagement = () => {
     } catch (error) {
       console.error("Import process failed:", error);
       toast.error(`Failed to process employee import: ${(error as Error).message || 'Unknown error'}`);
-      throw error; // Rethrow to handle in the component
     } finally {
       setIsLoading(false);
     }

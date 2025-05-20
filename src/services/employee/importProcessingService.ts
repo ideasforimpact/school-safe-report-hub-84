@@ -119,6 +119,7 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
 
     // Create proper request body and log it before sending
     const requestBody = { 
+      operation: 'bulk_import', // Explicitly set the operation for bulk importing
       employees,
       clientId, // Include clientId in the request body explicitly
       path: 'bulk-update', // Explicitly specify the path for more clarity

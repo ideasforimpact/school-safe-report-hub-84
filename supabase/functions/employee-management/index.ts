@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.20.0';
 
@@ -10,6 +9,11 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 // Employee management function
 async function handleEmployeeOperation(operation: string, employeeData: any) {
   console.log(`Handling operation: ${operation}`);
+  
+  // Special case for bulk imports
+  if (operation === 'bulk_import' && Array.isArray(employeeData)) {
+    return await handleBulkImport(employeeData);
+  }
   
   // Validate that employeeData exists for operations that require it
   if (!employeeData && ['create', 'update'].includes(operation)) {
@@ -46,6 +50,120 @@ async function handleEmployeeOperation(operation: string, employeeData: any) {
         : { error: 'Module access payload and employee ID are required' };
     default:
       return { error: 'Invalid operation' };
+  }
+}
+
+// Add a new function to handle bulk employee imports
+async function handleBulkImport(employees: any[]) {
+  console.log(`Processing bulk import of ${employees.length} employees`);
+  
+  const results = {
+    created: 0,
+    updated: 0,
+    errors: [],
+    employees: [],
+    success: true
+  };
+  
+  try {
+    // Process each employee in the array
+    for (const employee of employees) {
+      try {
+        // Check if employee with same email already exists
+        if (employee.email && employee.clientId) {
+          const { data: existingEmployee, error: checkError } = await supabase
+            .from('employees')
+            .select('id')
+            .eq('email', employee.email)
+            .eq('client_id', employee.clientId)
+            .single();
+            
+          if (!checkError && existingEmployee) {
+            // Employee exists, update it
+            console.log(`Updating existing employee with email ${employee.email}`);
+            
+            // Map to DB schema
+            const dbEmployee = {
+              first_name: employee.firstName,
+              last_name: employee.lastName,
+              employee_type: employee.employeeType,
+              department: employee.department,
+              joining_date: employee.joiningDate,
+              // Don't update email as it's being used to identify the employee
+              status: employee.status === 'active' ? true : false
+            };
+            
+            const { data: updatedEmp, error: updateError } = await supabase
+              .from('employees')
+              .update(dbEmployee)
+              .eq('id', existingEmployee.id)
+              .select('*')
+              .single();
+              
+            if (updateError) {
+              throw updateError;
+            }
+            
+            // Update module access if provided
+            if (employee.moduleAccessPayload && Array.isArray(employee.moduleAccessPayload)) {
+              await addEmployeeModuleAccess(employee.moduleAccessPayload, existingEmployee.id);
+            }
+            
+            results.updated++;
+            results.employees.push(updatedEmp);
+            
+          } else {
+            // Employee doesn't exist, create new one
+            console.log(`Creating new employee with email ${employee.email}`);
+            
+            // Map to DB schema
+            const dbEmployee = {
+              employee_id: employee.employeeId,
+              first_name: employee.firstName,
+              last_name: employee.lastName,
+              email: employee.email,
+              employee_type: employee.employeeType,
+              department: employee.department,
+              joining_date: employee.joiningDate,
+              status: employee.status === 'active' ? true : false,
+              client_id: employee.clientId,
+              user_id: employee.userId
+            };
+            
+            const { data: newEmployee, error: insertError } = await supabase
+              .from('employees')
+              .insert(dbEmployee)
+              .select('*')
+              .single();
+              
+            if (insertError) {
+              throw insertError;
+            }
+            
+            // Add module access if provided
+            if (employee.moduleAccessPayload && Array.isArray(employee.moduleAccessPayload) && newEmployee) {
+              await addEmployeeModuleAccess(employee.moduleAccessPayload, newEmployee.id);
+            }
+            
+            results.created++;
+            results.employees.push(newEmployee);
+          }
+        } else {
+          throw new Error('Email and clientId are required for each employee');
+        }
+      } catch (employeeError) {
+        console.error(`Error processing employee ${employee.email}:`, employeeError);
+        results.errors.push(`Error processing ${employee.firstName} ${employee.lastName}: ${employeeError.message}`);
+      }
+    }
+    
+    return results;
+  } catch (bulkError) {
+    console.error("Error in bulk import:", bulkError);
+    return { 
+      error: bulkError.message, 
+      success: false 
+    };
   }
 }
 
@@ -319,6 +437,16 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: 'Invalid JSON body' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Check for bulk import operation
+    if (reqBody.operation === 'bulk_import' && Array.isArray(reqBody.employees)) {
+      console.log("Handling bulk import operation");
+      const result = await handleBulkImport(reqBody.employees);
+      return new Response(
+        JSON.stringify(result),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
