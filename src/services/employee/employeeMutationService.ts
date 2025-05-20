@@ -41,7 +41,12 @@ export const addEmployeeToApi = async (
       
       // Check if the error message indicates a duplicate email
       if (error.message.includes('duplicate') && error.message.includes('email')) {
-        toast.error(`An employee with email ${employeeData.email} already exists for this client.`);
+        const errorMessage = `An employee with email ${employeeData.email} already exists for this client.`;
+        toast.error(errorMessage);
+        throw { 
+          code: "DUPLICATE_EMAIL", 
+          error: errorMessage 
+        };
       } else {
         toast.error("Failed to add employee");
       }
@@ -92,8 +97,8 @@ export const addEmployeeToApi = async (
   } catch (error) {
     console.error("Error in addEmployeeToApi:", error);
     
-    // Don't display duplicate toast messages if already handled
-    if (!error.message?.includes('duplicate') && !error.message?.includes('email')) {
+    // If the error has already been handled with a toast, don't display a duplicate
+    if (!error.code || error.code !== "DUPLICATE_EMAIL") {
       toast.error("Failed to add employee");
     }
     

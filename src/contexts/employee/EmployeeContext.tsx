@@ -116,13 +116,19 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
         console.log("New employee clientId:", newEmployee.clientId);
         
         setEmployees(prev => [...prev, newEmployee]);
-        return;
+        return newEmployee;
       } catch (apiError) {
+        // Check if this is our known duplicate email error
+        if (apiError.code === "DUPLICATE_EMAIL") {
+          throw apiError; // Re-throw to propagate the error to the caller
+        }
+        
         console.error("API error in addEmployee, falling back to local:", apiError);
         
-        // If API fails, fallback to local storage
+        // If API fails (for reasons other than duplicate email), fallback to local storage
         const newEmployee = await addEmployeeService(employeeData);
         setEmployees(prev => [...prev, newEmployee]);
+        return newEmployee;
       }
     } catch (error) {
       console.error("Error in addEmployee:", error);

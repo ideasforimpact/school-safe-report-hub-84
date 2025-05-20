@@ -133,11 +133,15 @@ const AddEmployeeDialog = ({ isOpen, setIsOpen, onAddEmployee, clientId }: AddEm
       console.log("Module access payload:", moduleAccessPayload);
       
       await onAddEmployee(employeeData);
-      toast.success("Employee added successfully");
+      // Don't show success message here, it's handled in the service
       handleCloseDialog(); // Close and reset form
     } catch (error) {
       console.error('Error adding employee:', error);
-      toast.error("Failed to add employee");
+      
+      // If error already has a toast (like duplicate email), don't show generic error
+      if (!error.code || error.code !== "DUPLICATE_EMAIL") {
+        toast.error("Failed to add employee");
+      }
     } finally {
       setIsSubmitting(false);
     }

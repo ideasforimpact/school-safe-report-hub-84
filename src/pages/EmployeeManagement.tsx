@@ -161,11 +161,15 @@ const EmployeeManagement = () => {
       
       console.log("Final employee data with clientId and modules:", employeeData);
       await addEmployee(employeeData);
-      toast.success("Employee added successfully");
+      
+      // Note: Success toast is now shown in the service, not here
+      // This prevents duplicate toast messages
     } catch (error) {
       console.error("Failed to add employee:", error);
-      toast.error("Failed to add employee");
-      throw error; // Rethrow to handle in the component
+      // Only show error toast if it's not already handled (like duplicate email)
+      if (!error.code || error.code !== "DUPLICATE_EMAIL") {
+        toast.error("Failed to add employee");
+      }
     }
   };
 
