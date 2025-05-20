@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { Employee, EmployeeContextType } from './types';
 import { 
@@ -26,6 +25,9 @@ import { toast } from 'sonner';
 
 // Import module permission service
 import { updateModulePermissionsInApi } from '@/services/employee/employeeModulePermissionsService';
+
+// Import the supabase client
+import { supabase } from '@/integrations/supabase/client';
 
 const EmployeeContext = createContext<EmployeeContextType | undefined>(undefined);
 
