@@ -27,7 +27,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Loader2 } from 'lucide-react';
-import { Employee, EmployeeType, DepartmentType } from '@/contexts/employee/types';
+import { 
+  Employee, 
+  EmployeeType, 
+  DepartmentType 
+} from '@/contexts/employee/types';
 import { toast } from 'sonner';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { ModuleAccessItem } from '@/types/moduleAccess';

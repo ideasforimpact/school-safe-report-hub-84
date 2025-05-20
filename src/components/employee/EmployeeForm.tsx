@@ -1,6 +1,5 @@
 import React from 'react';
-import { Employee } from '@/contexts/employee/types';
-import { ModulePermissions } from '@/contexts/auth/types';
+import { Employee, ModuleAccessItem } from '@/contexts/employee/types';
 import {
   Select,
   SelectContent,
@@ -10,7 +9,6 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import EmployeeModulePermissions from './EmployeeModulePermissions';
-import { ModuleAccessItem } from '@/types/moduleAccess';
 
 interface EmployeeFormProps {
   formData: Partial<Employee>;

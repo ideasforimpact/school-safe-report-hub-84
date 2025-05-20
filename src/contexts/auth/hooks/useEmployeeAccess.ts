@@ -1,8 +1,9 @@
-
-import { useCallback, useMemo } from 'react';
-import { useAuth } from '@/contexts/auth/AuthContext';
-import { useEmployeeVerification } from '@/contexts/employee-verification';
+import { useAuth } from '@/contexts/AuthContext';
+import { useEffect, useState } from 'react';
+import { User, ModulePermissions } from '@/contexts/auth/types';
+import { Employee } from '@/contexts/employee/types';
 import { EmploymentStatus } from '@/contexts/employee/types';
+import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getEmployeeData, isEmployeeAdmin, isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 

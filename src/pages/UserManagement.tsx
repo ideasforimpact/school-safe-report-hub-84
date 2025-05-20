@@ -15,8 +15,12 @@ import {
 } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { UserPlus, FileUp, RefreshCw } from 'lucide-react';
-import { User, EmployeeType, DepartmentType } from '@/contexts/auth/types';
-import { EmploymentStatus, EmployeeType as EmployeeContextType, DepartmentType as EmployeeContextDepartmentType } from '@/contexts/employee/types';
+import { User } from '@/contexts/auth/types';
+import { 
+  EmploymentStatus, 
+  EmployeeType as EmployeeContextType, 
+  DepartmentType as EmployeeContextDepartmentType 
+} from '@/contexts/employee/types';
 import { toast } from "sonner";
 import { 
   addNewUser, 

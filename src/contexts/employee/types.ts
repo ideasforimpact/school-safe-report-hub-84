@@ -5,10 +5,10 @@ export interface Employee {
   firstName: string;
   lastName: string;
   email: string;
-  employeeType: string;
-  department: string;
+  employeeType: EmployeeType;
+  department: DepartmentType;
   joiningDate: string;
-  status: 'active' | 'inactive' | 'on_leave';
+  status: EmploymentStatus;
   clientId?: string;
   userId?: string;
   createdAt?: string;
@@ -17,12 +17,20 @@ export interface Employee {
   modulePermissions?: {
     [key: string]: boolean;
   };
-  moduleAccessPayload?: Array<{
-    name: string;
-    employeeId: string;
-    key: string;
-    module_id?: string;
-  }>;
+  moduleAccessPayload?: ModuleAccessItem[];
+}
+
+export type EmployeeType = 'permanent' | 'contract' | 'part_time' | 'consultant' | 'intern';
+
+export type DepartmentType = 'admin' | 'teaching' | 'security' | 'maintenance' | 'transport' | 'management' | 'it' | 'hr' | 'finance';
+
+export type EmploymentStatus = 'active' | 'inactive' | 'on_leave';
+
+export interface ModuleAccessItem {
+  name: string;
+  employeeId?: string;
+  key: string;
+  module_id: string;
 }
 
 export interface EmployeeContextType {
