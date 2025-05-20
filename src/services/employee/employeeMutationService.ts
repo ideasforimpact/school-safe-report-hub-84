@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
 import { Employee } from '@/contexts/employee/types';
@@ -38,7 +37,14 @@ export const addEmployeeToApi = async (
 
     if (error) {
       console.error("Error adding employee:", error);
-      toast.error("Failed to add employee");
+      
+      // Check if the error message indicates a duplicate email
+      if (error.message.includes('duplicate') && error.message.includes('email')) {
+        toast.error(`An employee with email ${employeeData.email} already exists for this client.`);
+      } else {
+        toast.error("Failed to add employee");
+      }
+      
       throw error;
     }
 
@@ -84,7 +90,12 @@ export const addEmployeeToApi = async (
     return mapDbRecordToEmployee(data);
   } catch (error) {
     console.error("Error in addEmployeeToApi:", error);
-    toast.error("Failed to add employee");
+    
+    // Don't display duplicate toast messages if already handled
+    if (!error.message?.includes('duplicate') && !error.message?.includes('email')) {
+      toast.error("Failed to add employee");
+    }
+    
     throw error;
   }
 };

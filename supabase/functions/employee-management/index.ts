@@ -35,6 +35,24 @@ async function createEmployee(employee: any) {
   console.log("Creating employee:", employee);
   
   try {
+    // Check if an employee with the same email already exists for this client
+    if (employee.email && employee.clientId) {
+      const { data: existingEmployee, error: checkError } = await supabase
+        .from('employees')
+        .select('id')
+        .eq('email', employee.email)
+        .eq('client_id', employee.clientId)
+        .single();
+      
+      if (!checkError && existingEmployee) {
+        console.log(`Employee with email ${employee.email} already exists for this client`);
+        return { 
+          error: `An employee with email ${employee.email} already exists for this client.`,
+          code: 'DUPLICATE_EMAIL'
+        };
+      }
+    }
+    
     // Map the incoming employee data to database schema
     const dbEmployee = {
       employee_id: employee.employeeId,
