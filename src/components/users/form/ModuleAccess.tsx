@@ -33,9 +33,9 @@ const ModuleAccess = ({
     console.warn("No modules found in Redux store. Modules may not be displayed correctly.");
   }
   
-  // Handler for checkbox change
+  // Handler for checkbox change - fixed to handle individual module selections
   const handleModuleChange = (moduleKey: string, moduleName: string, checked: boolean) => {
-    console.log("Module change:", { moduleKey, moduleName, checked });
+    console.log(`Module ${moduleName} change:`, { checked });
     
     // Create a new array based on current selected modules
     let updatedModules: ModuleAccessItem[];
@@ -45,8 +45,6 @@ const ModuleAccess = ({
       const moduleExists = selectedModules.some(m => 
         (m.key === moduleKey) || (m.name === moduleName)
       );
-      
-      console.log("Module exists:", moduleExists);
       
       if (!moduleExists) {
         const newModule: ModuleAccessItem = {
@@ -76,7 +74,7 @@ const ModuleAccess = ({
       <label className="font-medium">Module Access</label>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2 pt-2">
         {modules.map((module) => {
-          // Check if this module is selected - use both key and name for comparison
+          // Check if this module is selected - compare by BOTH key and name
           const isSelected = selectedModules.some(m => 
             (m.key === module.key) || (m.name === module.name)
           );

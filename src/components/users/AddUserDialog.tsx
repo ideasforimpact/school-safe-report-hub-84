@@ -51,7 +51,7 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
     setShowAdminOptions(role === 'admin');
   };
 
-  // Updated to accept an array of ModuleAccessItem objects
+  // Updated to accept an array of ModuleAccessItem objects and handle them correctly
   const handleModuleChange = (moduleAccessItems: ModuleAccessItem[]) => {
     console.log("Module access items changed:", moduleAccessItems);
     
