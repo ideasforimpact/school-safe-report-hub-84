@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { Employee, EmployeeContextType } from './types';
 import { 
@@ -19,6 +20,9 @@ import {
   deactivateEmployeeInApi,
   deleteEmployeeFromApi,
 } from '@/services/employee/employeeApiService';
+
+// Import the toast from sonner for notifications
+import { toast } from 'sonner';
 
 // Import module permission service
 import { updateModulePermissionsInApi } from '@/services/employee/employeeModulePermissionsService';
@@ -156,7 +160,7 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
     }
   };
 
-  const deactivateEmployee = async (id: string) => {
+  const deactivateEmployee = async (id: string): Promise<{ success: boolean, error?: string }> => {
     try {
       setLoading(true);
       
@@ -167,7 +171,7 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
         
         // Update local state with deactivated employee (status will be 'inactive' and modulePermissions will be cleared)
         setEmployees(prev => prev.map(emp => emp.id === id ? deactivatedEmployee : emp));
-        return;
+        return { success: true };
       } catch (apiError) {
         console.error("API error in deactivateEmployee, falling back to local:", apiError);
         
@@ -202,15 +206,19 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
             eduSafeResourceAccess: false
           }
         } : emp));
+        
+        return { success: true };
       }
     } catch (error) {
       console.error("Error in deactivateEmployee:", error);
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      return { success: false, error: errorMessage };
     } finally {
       setLoading(false);
     }
   };
 
-  const deleteEmployee = async (id: string) => {
+  const deleteEmployee = async (id: string): Promise<{ success: boolean, error?: string }> => {
     try {
       setLoading(true);
       
@@ -237,6 +245,8 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
           error: errorMessage
         };
       }
+      
+      return { success: true }; // Default return if we get here
     } catch (error) {
       console.error("Error in deleteEmployee:", error);
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
