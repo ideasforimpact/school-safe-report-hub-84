@@ -172,8 +172,7 @@ export const useAuthHandlers = ({
         }];
       }
       
-      // Only log the modules length since employeeModules might be undefined or out of scope here
-      console.log("Modules fetched during auth:", configuredModules.length);
+      console.log("Modules fetched during auth:", configuredModules.length,employeeModules);
       return configuredModules;
       
     } catch (error) {
