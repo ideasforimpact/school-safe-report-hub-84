@@ -78,6 +78,13 @@ const EmployeeManagement = () => {
       setIsLoading(true);
       console.log("Deactivating employee with ID:", id);
       
+      // Make sure we have a valid ID
+      if (!id) {
+        console.error("Missing employee ID in handleDeactivateEmployee");
+        toast.error("Cannot deactivate: Missing employee ID");
+        return;
+      }
+      
       // Call the deactivateEmployee function with properly structured data
       const result = await deactivateEmployee(id);
       

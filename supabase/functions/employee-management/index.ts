@@ -10,33 +10,51 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 // Employee management function
 async function handleEmployeeOperation(operation: string, employeeData: any) {
   console.log(`Handling operation: ${operation}`);
+  console.log(`Employee data received:`, employeeData);
   
   // Special case for bulk imports
   if (operation === 'bulk_import' && Array.isArray(employeeData)) {
     return await handleBulkImport(employeeData);
   }
   
-  // Validate that employeeData exists for operations that require it
+  // For delete and deactivate operations, we need to validate the ID is present
+  if (['delete', 'deactivate'].includes(operation)) {
+    // Check if we have a direct ID string or an object with an ID property
+    let employeeId: string | null = null;
+    
+    if (typeof employeeData === 'string') {
+      // Direct ID string
+      employeeId = employeeData;
+      console.log(`Found ID directly in employeeData: ${employeeId}`);
+    } else if (employeeData && typeof employeeData === 'object') {
+      // ID within an object
+      employeeId = employeeData.id;
+      console.log(`Found ID in employeeData.id: ${employeeId}`);
+    }
+    
+    if (!employeeId) {
+      console.error("Missing employee ID for operation:", operation);
+      return { error: 'Employee ID is required for this operation' };
+    }
+    
+    if (operation === 'deactivate') {
+      return await deactivateEmployee(employeeId);
+    } else if (operation === 'delete') {
+      return await deleteEmployee(employeeId);
+    }
+  }
+  
+  // For other operations that require full employeeData
   if (!employeeData && ['create', 'update'].includes(operation)) {
     return { error: 'Employee data is required for this operation' };
   }
   
-  // For delete and deactivate operations, we only need the ID
-  if (['delete', 'deactivate'].includes(operation)) {
-    if (!employeeData || !employeeData.id) {
-      return { error: 'Employee ID is required for this operation' };
-    }
-  }
-  
+  // Continue with the appropriate operation
   switch (operation) {
     case 'create':
       return await createEmployee(employeeData);
     case 'update':
       return await updateEmployee(employeeData);
-    case 'deactivate':
-      return await deactivateEmployee(employeeData.id || employeeData);
-    case 'delete':
-      return await deleteEmployee(employeeData.id || employeeData);
     case 'get':
       return employeeData && employeeData.id 
         ? await getEmployee(employeeData.id)
@@ -419,17 +437,7 @@ serve(async (req) => {
 
   try {
     console.log("Auth header present:", req.headers.has('authorization') ? "Yes" : "No");
-    console.log("Request headers:", JSON.stringify(req.headers, null, 2));
-
-    // Get the request path
-    const url = new URL(req.url);
-    const path = url.pathname.split('/').pop();
-    console.log("Request path:", path);
-
-    // Determine the final path
-    const finalPath = path || 'employee-management';
-    console.log("Final determined path:", finalPath);
-
+    
     // Parse the request body
     const rawBody = await req.text();
     console.log("Raw request body:", rawBody);
@@ -456,13 +464,17 @@ serve(async (req) => {
     }
 
     // Extract operation and employee data
-    const { operation, employee } = reqBody;
+    const { operation, id } = reqBody;
     
-    // For delete/deactivate operations, we need to handle the ID directly
-    let employeeData = employee;
-    if ((operation === 'delete' || operation === 'deactivate') && !employee && reqBody.id) {
-      employeeData = reqBody.id;
-      console.log(`Handling ${operation} operation with ID:`, employeeData);
+    // For delete/deactivate operations, check multiple places for the ID
+    let employeeData = reqBody.employee;
+    
+    // If employeeData is missing but we have a direct ID, use that
+    if ((operation === 'delete' || operation === 'deactivate')) {
+      if (!employeeData && reqBody.id) {
+        employeeData = reqBody.id;
+        console.log(`Using ID directly from request body for ${operation} operation:`, employeeData);
+      }
     }
     
     // Handle the employee operation

@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { Employee, EmployeeContextType } from './types';
 import { 
@@ -170,6 +171,12 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
       try {
         console.log("Sending deactivation request for employee:", id);
         
+        // Validate that we have a valid ID before proceeding
+        if (!id) {
+          console.error("Missing employee ID in deactivateEmployee function");
+          return { success: false, error: "Employee ID is required" };
+        }
+        
         // Call the edge function with the correct operation and payload structure
         const response = await fetch(`https://ybvxkiubnnixntghojyy.supabase.co/functions/v1/employee-management`, {
           method: 'POST',
@@ -179,9 +186,16 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
           },
           body: JSON.stringify({
             operation: 'deactivate',
-            id: id
+            id: id  // Make sure the ID is sent in the expected format
           })
         });
+        
+        // Check if the response is valid
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("Non-OK response from deactivate function:", response.status, errorText);
+          throw new Error(`API error: ${response.status} ${errorText}`);
+        }
         
         const result = await response.json();
         console.log("Deactivation response:", result);

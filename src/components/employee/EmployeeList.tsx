@@ -86,6 +86,7 @@ const EmployeeList = ({ employees, onEditClick, onDeleteEmployee, onDeactivateEm
     if (deactivatingId) {
       setIsDeactivating(true);
       try {
+        console.log("Confirming deactivation for employee ID:", deactivatingId);
         await onDeactivateEmployee(deactivatingId);
       } catch (error) {
         console.error("Error deactivating employee:", error);
