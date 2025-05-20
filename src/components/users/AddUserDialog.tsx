@@ -8,8 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { User, UserRole, ModulePermissions, EmployeeType, DepartmentType } from '@/contexts/auth/types';
 import { Loader2 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Check, X } from "lucide-react";
 import { Checkbox } from '@/components/ui/checkbox';
+import { useEmployeeStore } from '@/store/EmployeeContext';
 
 interface AddUserDialogProps {
   isOpen: boolean;
@@ -36,10 +36,12 @@ interface AddUserDialogProps {
 const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, resetForm, isLoading, clientId }: AddUserDialogProps) => {
   const [showAdminOptions, setShowAdminOptions] = useState(false);
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
+  const { state } = useEmployeeStore();
 
   // Log clientId for debugging
   console.log("AddUserDialog - ClientId from props:", clientId);
   console.log("AddUserDialog - ClientId in formData:", formData.clientId);
+  console.log("AddUserDialog - Available configured modules:", state.configuredModules);
 
   const handleRoleChange = (value: string) => {
     const role = value as UserRole;
@@ -91,18 +93,23 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
     onSubmit();
   };
 
-  // Define modules with their display names
-  const modules = [
-    { key: 'superAdmin', name: 'Super Admin' },
-    { key: 'incidentReporting', name: 'Incident Reporting' },
-    { key: 'incidentAdmin', name: 'Incident Admin' },
-    { key: 'assessmentUser', name: 'Assessment User' },
-    { key: 'assessmentsAdmin', name: 'Assessments Admin' },
-    { key: 'employeeVerificationAdmin', name: 'Employee Verification Admin' },
-    { key: 'grievancesAdmin', name: 'Grievances Admin' },
-    { key: 'transportSafetyAdmin', name: 'Transport Safety Admin' },
-    { key: 'eduSafeResourceAccess', name: 'EduSafe Resource Access' }
-  ];
+  // Use modules from Redux if available, otherwise use default modules
+  const modules = state.configuredModules && state.configuredModules.length > 0
+    ? state.configuredModules.map(module => ({
+        key: module.key || module.id,
+        name: module.name
+      }))
+    : [
+        { key: 'superAdmin', name: 'Super Admin' },
+        { key: 'incidentReporting', name: 'Incident Reporting' },
+        { key: 'incidentAdmin', name: 'Incident Admin' },
+        { key: 'assessmentUser', name: 'Assessment User' },
+        { key: 'assessmentsAdmin', name: 'Assessments Admin' },
+        { key: 'employeeVerificationAdmin', name: 'Employee Verification Admin' },
+        { key: 'grievancesAdmin', name: 'Grievances Admin' },
+        { key: 'transportSafetyAdmin', name: 'Transport Safety Admin' },
+        { key: 'eduSafeResourceAccess', name: 'EduSafe Resource Access' }
+      ];
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -233,7 +240,6 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
                     <TableRow>
                       <TableHead className="w-[100px]">Enabled</TableHead>
                       <TableHead>Module Name</TableHead>
-                      <TableHead className="w-[100px] text-center">Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -250,13 +256,6 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
                             />
                           </TableCell>
                           <TableCell>{module.name}</TableCell>
-                          <TableCell className="text-center">
-                            {isEnabled ? (
-                              <Check className="h-4 w-4 text-green-500 mx-auto" />
-                            ) : (
-                              <X className="h-4 w-4 text-gray-400 mx-auto" />
-                            )}
-                          </TableCell>
                         </TableRow>
                       );
                     })}

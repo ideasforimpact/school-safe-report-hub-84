@@ -3,7 +3,7 @@ import React from 'react';
 import { Checkbox } from "@/components/ui/checkbox";
 import { ModulePermissions } from '@/contexts/auth/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Check, X } from "lucide-react";
+import { useEmployeeStore } from '@/store/EmployeeContext';
 
 interface EmployeeModulePermissionsProps {
   modulePermissions: ModulePermissions;
@@ -14,18 +14,25 @@ const EmployeeModulePermissions: React.FC<EmployeeModulePermissionsProps> = ({
   modulePermissions,
   onModulePermissionChange
 }) => {
-  // Define modules with their display names
-  const modules = [
-    { key: 'superAdmin', name: 'Super Admin' },
-    { key: 'incidentReporting', name: 'Incident Reporting' },
-    { key: 'incidentAdmin', name: 'Incident Admin' },
-    { key: 'assessmentUser', name: 'Assessment User' },
-    { key: 'assessmentsAdmin', name: 'Assessments Admin' },
-    { key: 'employeeVerificationAdmin', name: 'Employee Verification Admin' },
-    { key: 'grievancesAdmin', name: 'Grievances Admin' },
-    { key: 'transportSafetyAdmin', name: 'Transport Safety Admin' },
-    { key: 'eduSafeResourceAccess', name: 'EduSafe Resource Access' }
-  ];
+  const { state } = useEmployeeStore();
+
+  // Use modules from Redux if available, otherwise use default modules
+  const modules = state.configuredModules && state.configuredModules.length > 0
+    ? state.configuredModules.map(module => ({
+        key: module.key || module.id,
+        name: module.name
+      }))
+    : [
+        { key: 'superAdmin', name: 'Super Admin' },
+        { key: 'incidentReporting', name: 'Incident Reporting' },
+        { key: 'incidentAdmin', name: 'Incident Admin' },
+        { key: 'assessmentUser', name: 'Assessment User' },
+        { key: 'assessmentsAdmin', name: 'Assessments Admin' },
+        { key: 'employeeVerificationAdmin', name: 'Employee Verification Admin' },
+        { key: 'grievancesAdmin', name: 'Grievances Admin' },
+        { key: 'transportSafetyAdmin', name: 'Transport Safety Admin' },
+        { key: 'eduSafeResourceAccess', name: 'EduSafe Resource Access' }
+      ];
 
   return (
     <div className="w-full">
@@ -34,7 +41,6 @@ const EmployeeModulePermissions: React.FC<EmployeeModulePermissionsProps> = ({
           <TableRow>
             <TableHead className="w-[100px]">Enabled</TableHead>
             <TableHead>Module Name</TableHead>
-            <TableHead className="w-[100px] text-center">Status</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -51,13 +57,6 @@ const EmployeeModulePermissions: React.FC<EmployeeModulePermissionsProps> = ({
                   />
                 </TableCell>
                 <TableCell>{module.name}</TableCell>
-                <TableCell className="text-center">
-                  {isEnabled ? (
-                    <Check className="h-4 w-4 text-green-500 mx-auto" />
-                  ) : (
-                    <X className="h-4 w-4 text-gray-400 mx-auto" />
-                  )}
-                </TableCell>
               </TableRow>
             );
           })}
