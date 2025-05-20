@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import EmployeeModulePermissions from './EmployeeModulePermissions';
+import { ModulePermissions } from '@/contexts/auth/types';
 
 interface EmployeeFormProps {
   formData: Partial<Employee>;
@@ -54,8 +55,8 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({
         ...prev,
         // Convert to proper ModuleAccessItem[] for moduleAccessPayload
         moduleAccessPayload: selectedModules,
-        // Keep modulePermissions as an object
-        modulePermissions: updatedPermissions
+        // Keep modulePermissions as an object but ensure it matches ModulePermissions type
+        modulePermissions: updatedPermissions as unknown as ModulePermissions
       }));
     } else {
       // If modulePermissions doesn't exist, just store the moduleAccessPayload
@@ -211,7 +212,7 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({
         <h3 className="text-md font-medium mb-3">Module Access</h3>
         {formData.modulePermissions && (
           <EmployeeModulePermissions
-            modulePermissions={formData.modulePermissions}
+            modulePermissions={formData.modulePermissions as ModulePermissions}
             onModulePermissionChange={handleModulePermissionChange}
           />
         )}
