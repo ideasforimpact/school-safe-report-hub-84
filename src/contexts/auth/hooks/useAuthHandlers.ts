@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { User, UserRole, EmployeeData } from '../types';
 import { getUserFromStorage, saveUserToStorage, saveEmployeeDataToStorage } from '@/services/auth/authService';
@@ -128,6 +129,7 @@ export const useAuthHandlers = ({
           return [];
         }
 
+        console.log(employeeModules,"employeeModules")
         // Create a map of employee module permissions for quick lookup
         const employeeModuleMap = new Map();
         employeeModules?.forEach(em => {
@@ -172,8 +174,7 @@ export const useAuthHandlers = ({
         }];
       }
       
-      // Only log the modules length since employeeModules might be undefined or out of scope here
-      console.log("Modules fetched during auth:", configuredModules.length);
+      console.log("Modules fetched during auth:", configuredModules.length, employeeModules);
       return configuredModules;
       
     } catch (error) {
