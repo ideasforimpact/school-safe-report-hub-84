@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { User, UserRole, EmployeeData } from '../types';
 import { getUserFromStorage, saveUserToStorage, saveEmployeeDataToStorage } from '@/services/auth/authService';
@@ -172,7 +173,7 @@ export const useAuthHandlers = ({
         }];
       }
       
-      console.log("Modules fetched during auth:", configuredModules.length,employeeModules);
+      console.log("Modules fetched during auth:", configuredModules.length, employeeModules);
       return configuredModules;
       
     } catch (error) {
