@@ -129,7 +129,6 @@ export const useAuthHandlers = ({
           return [];
         }
 
-        console.log(employeeModules,"employeeModules")
         // Create a map of employee module permissions for quick lookup
         const employeeModuleMap = new Map();
         employeeModules?.forEach(em => {
