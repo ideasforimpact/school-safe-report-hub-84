@@ -61,23 +61,6 @@ const convertDepartmentType = (department: EmployeeContextDepartmentType): Depar
   return departmentMapping[department] || 'admin';
 };
 
-// Define custom user interface to avoid TypeScript errors
-interface CustomUser {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  employeeId?: string;
-  employeeType?: EmployeeType;
-  department?: DepartmentType;
-  joiningDate?: string;
-  isActive: boolean;
-  createdAt: string;
-  clientId?: string;
-  moduleAccessPayload?: ModuleAccessItem[];
-  role?: string; // Make role optional
-}
-
 // Main UserManagement component
 const UserManagement = () => {
   const { user } = useAuth();
@@ -106,9 +89,9 @@ const UserManagement = () => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState<CustomUser | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [employeeUsers, setEmployeeUsers] = useState<CustomUser[]>([]); // Use CustomUser instead of User
+  const [employeeUsers, setEmployeeUsers] = useState<User[]>([]);
   
   // Get clientId from employee data or user context
   const clientId = state.employeeData?.clientId || user?.clientId;
@@ -120,7 +103,7 @@ const UserManagement = () => {
     console.log("UserManagement - ClientId being used:", clientId);
   }, [employeeData, user, clientId]);
   
-  // Default form data for the user forms - removed modulePermissions, only using moduleAccessPayload
+  // Default form data for the user forms - REMOVED modulePermissions, keeping only moduleAccessPayload
   const [formData, setFormData] = useState<{
     firstName: string;
     lastName: string;
@@ -178,8 +161,7 @@ const UserManagement = () => {
             createdAt: employee.createdAt || new Date().toISOString(),
             clientId: employee.clientId,
             // Store module access items directly instead of permissions
-            moduleAccessPayload: moduleAccessItems,
-            role: 'user' // Set a default role
+            moduleAccessPayload: moduleAccessItems
           };
         }));
 
@@ -225,8 +207,10 @@ const UserManagement = () => {
           clientId: formData.clientId || clientId,
           password: 'defaultPassword123',
           isActive: true,
-          // Add default role
-          role: 'user' 
+          // Add empty modulePermissions to satisfy interface
+          modulePermissions: {},
+          // Default role
+          role: 'reporter'
         }
       );
       
@@ -316,8 +300,8 @@ const UserManagement = () => {
             isActive: employee.status === true,
             createdAt: employee.createdAt || new Date().toISOString(),
             clientId: employee.clientId,
-            moduleAccessPayload: moduleAccessItems,
-            role: 'user' // Set a default role
+            // Store module access items directly
+            moduleAccessPayload: moduleAccessItems
           };
         }));
 
@@ -339,12 +323,16 @@ const UserManagement = () => {
       console.log("Updating user with data:", formData);
       console.log("Module access payload:", formData.moduleAccessPayload);
       
+      // Need to provide modulePermissions for API compatibility but we'll use moduleAccessPayload
       const updatedUsers = await updateExistingUser(
         [] as any,
         currentUser.id,
         {
           ...formData,
-          role: currentUser.role || 'user' // Keep existing role or use default
+          // Add empty modulePermissions to satisfy interface
+          modulePermissions: {},
+          // Keep existing role
+          role: currentUser.role || 'reporter'
         }
       );
       
@@ -487,7 +475,7 @@ const UserManagement = () => {
   };
 
   // Handle edit user click - Uses moduleAccessPayload only
-  const handleEditClick = async (user: CustomUser) => {
+  const handleEditClick = async (user: User) => {
     setCurrentUser(user);
     
     try {
@@ -604,7 +592,7 @@ const UserManagement = () => {
             <Button
               variant="ghost"
               size="sm"
-              onClick={refreshEmployeesList}
+              onClick={handleRefreshEmployeesList}
               disabled={isLoading}
               title="Refresh employee list"
             >
@@ -618,10 +606,10 @@ const UserManagement = () => {
               </div>
             ) : (
               <UserList 
-                users={employeeUsers as User[]} 
-                onEditClick={handleEditClick as any}
-                onDeleteUser={deleteExistingUser as any}
-                onDeactivateUser={deactivateExistingUser as any}
+                users={employeeUsers.length > 0 ? employeeUsers : []}
+                onEditClick={handleEditClick}
+                onDeleteUser={handleDeleteUser}
+                onDeactivateUser={handleDeactivateUser}
               />
             )}
           </CardContent>
