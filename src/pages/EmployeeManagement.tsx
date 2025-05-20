@@ -160,7 +160,8 @@ const EmployeeManagement = () => {
       }
       
       console.log("Final employee data with clientId and modules:", employeeData);
-      await addEmployee(employeeData);
+      const newEmployee = await addEmployee(employeeData);
+      console.log("New employee added:", newEmployee);
       
       // Note: Success toast is now shown in the service, not here
       // This prevents duplicate toast messages

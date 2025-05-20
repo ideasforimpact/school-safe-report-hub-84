@@ -36,7 +36,7 @@ export interface ModuleAccessItem {
 export interface EmployeeContextType {
   employees: Employee[];
   loading: boolean;
-  addEmployee: (employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  addEmployee: (employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Employee>; // Changed from Promise<void> to Promise<Employee>
   updateEmployee: (id: string, updates: Partial<Employee>) => Promise<void>;
   deactivateEmployee: (id: string) => Promise<{ success: boolean, error?: string }>;
   deleteEmployee: (id: string) => Promise<{ success: boolean, error?: string }>;
