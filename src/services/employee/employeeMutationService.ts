@@ -135,7 +135,35 @@ export const updateEmployeeInApi = async (
 
 export const deactivateEmployeeInApi = async (id: string): Promise<Employee> => {
   try {
-    // Update the employee status to 'inactive' (false)
+    console.log("deactivateEmployeeInApi called with ID:", id);
+    
+    // Try to use the employee-management edge function first
+    const response = await fetch(`https://ybvxkiubnnixntghojyy.supabase.co/functions/v1/employee-management`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ''}`
+      },
+      body: JSON.stringify({
+        operation: 'deactivate',
+        id: id
+      })
+    });
+    
+    const result = await response.json();
+    console.log("Edge function deactivation response:", result);
+    
+    if (!response.ok || result.error) {
+      console.error("Error from edge function:", result.error);
+      throw new Error(result.error || "Failed to deactivate employee");
+    }
+    
+    if (result.data) {
+      return mapDbRecordToEmployee(result.data);
+    }
+    
+    // Fallback if the edge function doesn't return data
+    // Update the employee status to 'inactive' (false) directly via Supabase
     const { data, error } = await supabase
       .from('employees')
       .update({ status: false })

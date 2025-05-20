@@ -166,12 +166,47 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
       
       // Try to deactivate employee in API first
       try {
-        // This should set status to inactive AND clear module permissions
-        const deactivatedEmployee = await deactivateEmployeeInApi(id);
+        console.log("Sending deactivation request for employee:", id);
         
-        // Update local state with deactivated employee (status will be 'inactive' and modulePermissions will be cleared)
-        setEmployees(prev => prev.map(emp => emp.id === id ? deactivatedEmployee : emp));
-        return { success: true };
+        // Call the edge function with the correct operation and payload structure
+        const response = await fetch(`https://ybvxkiubnnixntghojyy.supabase.co/functions/v1/employee-management`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ''}`
+          },
+          body: JSON.stringify({
+            operation: 'deactivate',
+            id: id
+          })
+        });
+        
+        const result = await response.json();
+        console.log("Deactivation response:", result);
+        
+        if (response.ok && !result.error) {
+          // Update the local state to reflect the deactivated employee
+          setEmployees(prev => prev.map(emp => emp.id === id ? { 
+            ...emp, 
+            status: 'inactive',
+            // Clear module permissions for deactivated employee
+            modulePermissions: {
+              superAdmin: false,
+              incidentReporting: false,
+              incidentAdmin: false,
+              assessmentUser: false,
+              assessmentsAdmin: false,
+              employeeVerificationAdmin: false,
+              grievancesAdmin: false,
+              transportSafetyAdmin: false,
+              eduSafeResourceAccess: false
+            }
+          } : emp));
+          
+          return { success: true };
+        } else {
+          throw new Error(result.error || "Failed to deactivate employee");
+        }
       } catch (apiError) {
         console.error("API error in deactivateEmployee, falling back to local:", apiError);
         

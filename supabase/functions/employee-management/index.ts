@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.20.0';
 
@@ -33,9 +34,9 @@ async function handleEmployeeOperation(operation: string, employeeData: any) {
     case 'update':
       return await updateEmployee(employeeData);
     case 'deactivate':
-      return await deactivateEmployee(employeeData.id);
+      return await deactivateEmployee(employeeData.id || employeeData);
     case 'delete':
-      return await deleteEmployee(employeeData.id);
+      return await deleteEmployee(employeeData.id || employeeData);
     case 'get':
       return employeeData && employeeData.id 
         ? await getEmployee(employeeData.id)
@@ -277,6 +278,10 @@ async function deactivateEmployee(id: string) {
   try {
     console.log(`Deactivating employee with ID: ${id}`);
     
+    if (!id) {
+      return { error: "Employee ID is required for deactivation" };
+    }
+    
     // First update the employee status to 'inactive' (false)
     const { data, error } = await supabase
       .from('employees')
@@ -453,10 +458,11 @@ serve(async (req) => {
     // Extract operation and employee data
     const { operation, employee } = reqBody;
     
-    // For delete operations, we need to handle the different request format
+    // For delete/deactivate operations, we need to handle the ID directly
     let employeeData = employee;
-    if (operation === 'delete' && !employee && reqBody.id) {
-      employeeData = { id: reqBody.id };
+    if ((operation === 'delete' || operation === 'deactivate') && !employee && reqBody.id) {
+      employeeData = reqBody.id;
+      console.log(`Handling ${operation} operation with ID:`, employeeData);
     }
     
     // Handle the employee operation

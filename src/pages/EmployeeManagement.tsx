@@ -76,7 +76,9 @@ const EmployeeManagement = () => {
   const handleDeactivateEmployee = async (id: string) => {
     try {
       setIsLoading(true);
-      // Call the deactivateEmployee function
+      console.log("Deactivating employee with ID:", id);
+      
+      // Call the deactivateEmployee function with properly structured data
       const result = await deactivateEmployee(id);
       
       // Check if operation was successful
