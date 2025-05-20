@@ -74,6 +74,20 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
       console.log("clientId value:", employeeData.clientId);
       console.log("typeof clientId:", typeof employeeData.clientId);
       
+      // Prepare module access payload if employee has module permissions but no moduleAccessPayload
+      if (employeeData.modulePermissions && !employeeData.moduleAccessPayload) {
+        const moduleAccessPayload = Object.entries(employeeData.modulePermissions)
+          .filter(([_, enabled]) => enabled)
+          .map(([key]) => ({
+            name: key,
+            employeeId: employeeData.employeeId,
+            key: key
+          }));
+          
+        employeeData.moduleAccessPayload = moduleAccessPayload;
+        console.log("Generated module access payload:", moduleAccessPayload);
+      }
+      
       // Try to add employee to API first
       try {
         // Make sure clientId is included in the request

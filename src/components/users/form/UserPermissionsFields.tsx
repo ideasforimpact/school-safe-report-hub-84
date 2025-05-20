@@ -16,24 +16,21 @@ const UserPermissionsFields = ({
   isEditMode = false 
 }: UserPermissionsFieldsProps) => {
   const { state } = useEmployeeStore();
-
-  // Use modules from Redux if available, otherwise use default modules
+  
+  // Debug log for configured modules
+  console.log("UserPermissionsFields - Available configured modules:", state.configuredModules);
+  
+  // Use modules from Redux if available
   const modules = state.configuredModules && state.configuredModules.length > 0
     ? state.configuredModules.map(module => ({
         key: module.key || module.id,
         name: module.name
       }))
-    : [
-        { key: 'superAdmin', name: 'Super Admin' },
-        { key: 'incidentReporting', name: 'Incident Reporting' },
-        { key: 'incidentAdmin', name: 'Incident Admin' },
-        { key: 'assessmentUser', name: 'Assessment User' },
-        { key: 'assessmentsAdmin', name: 'Assessments Admin' },
-        { key: 'employeeVerificationAdmin', name: 'Employee Verification Admin' },
-        { key: 'grievancesAdmin', name: 'Grievances Admin' },
-        { key: 'transportSafetyAdmin', name: 'Transport Safety Admin' },
-        { key: 'eduSafeResourceAccess', name: 'EduSafe Resource Access' }
-      ];
+    : [];
+
+  if (modules.length === 0) {
+    console.warn("No modules found in Redux store. Module permissions may not be displayed correctly.");
+  }
 
   return (
     <div className="space-y-2">

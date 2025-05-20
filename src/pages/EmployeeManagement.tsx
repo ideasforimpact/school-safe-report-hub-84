@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -19,6 +20,7 @@ import { Employee } from '@/contexts/employee/types';
 import { toast } from 'sonner';
 import { processEmployeeExcel } from '@/services/employee/importEmployeeService';
 import { supabase } from '@/integrations/supabase/client';
+import { useEmployeeStore } from '@/store/EmployeeContext';
 
 // List of demo emails that can bypass authentication
 const DEMO_EMAILS = [
@@ -30,6 +32,7 @@ const DEMO_EMAILS = [
 const EmployeeManagement = () => {
   const { isAdmin, user } = useAuth();
   const { employees, addEmployee, updateEmployee, deleteEmployee, deactivateEmployee, fetchEmployees } = useEmployee();
+  const { state } = useEmployeeStore();
   
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -37,8 +40,8 @@ const EmployeeManagement = () => {
   const [currentEmployee, setCurrentEmployee] = useState<Employee | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   
-  // Get clientId from user context if available
-  const clientId = user?.clientId;
+  // Get clientId from user context if available, or from Redux state
+  const clientId = user?.clientId || state.clientId;
   
   // Check if this is a demo user
   const isDemoUser = user?.email ? DEMO_EMAILS.includes(user.email) : false;
@@ -47,7 +50,9 @@ const EmployeeManagement = () => {
     // Log the initial state of employees
     console.log("Employee management loaded with employees:", employees);
     console.log("Current user clientId:", clientId);
-  }, [employees, clientId]);
+    console.log("Redux client ID:", state.clientId);
+    console.log("Redux configured modules:", state.configuredModules);
+  }, [employees, clientId, state]);
 
   if (!isAdmin) {
     return (
@@ -93,11 +98,32 @@ const EmployeeManagement = () => {
     try {
       console.log("Adding employee with data before clientId check:", employeeData);
       
-      // Ensure clientId is set, using the current user's clientId if available
-      // We'll explicitly set it here if it's missing to make the flow more robust
-      if (!employeeData.clientId && clientId) {
-        employeeData.clientId = clientId;
-        console.log("Set clientId from user context:", clientId);
+      // Ensure clientId is set, using the current user's clientId if available, or from Redux
+      if (!employeeData.clientId) {
+        if (clientId) {
+          employeeData.clientId = clientId;
+          console.log("Set clientId from context or Redux:", clientId);
+        } else {
+          console.warn("No clientId available from context or Redux!");
+        }
+      }
+      
+      // Prepare module access payload from module permissions
+      if (employeeData.modulePermissions && !employeeData.moduleAccessPayload) {
+        const moduleAccessPayload = Object.entries(employeeData.modulePermissions)
+          .filter(([_, enabled]) => enabled)
+          .map(([key]) => {
+            // Find the module name from the configured modules
+            const module = state.configuredModules?.find(m => m.key === key || m.id === key);
+            return {
+              name: module?.name || key,
+              employeeId: employeeData.employeeId,
+              key: key
+            };
+          });
+          
+        employeeData.moduleAccessPayload = moduleAccessPayload;
+        console.log("Prepared module access payload:", moduleAccessPayload);
       }
       
       console.log("Final employee data with clientId:", employeeData);

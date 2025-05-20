@@ -27,6 +27,9 @@ export interface Employee {
   // Module permissions (now stored in employee_modules table but needed for UI)
   modulePermissions?: ModulePermissions;
   
+  // Module access payload for creating employees with module access
+  moduleAccessPayload?: Array<{name: string, employeeId?: string, key: string}>;
+  
   // Timestamps
   createdAt: string;
   updatedAt: string;

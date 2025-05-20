@@ -7,8 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { User, UserRole, ModulePermissions, EmployeeType, DepartmentType } from '@/contexts/auth/types';
 import { Loader2 } from 'lucide-react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Checkbox } from '@/components/ui/checkbox';
+import UserPermissionsFields from './form/UserPermissionsFields';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 
 interface AddUserDialogProps {
@@ -35,7 +34,6 @@ interface AddUserDialogProps {
 
 const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, resetForm, isLoading, clientId }: AddUserDialogProps) => {
   const [showAdminOptions, setShowAdminOptions] = useState(false);
-  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const { state } = useEmployeeStore();
 
   // Log clientId for debugging
@@ -48,21 +46,11 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
     setFormData({
       ...formData,
       role,
-      modulePermissions: {
-        ...formData.modulePermissions,
-        superAdmin: role === 'admin' && selectedPermissions.includes('superAdmin')
-      }
     });
     setShowAdminOptions(role === 'admin');
   };
 
   const handlePermissionChange = (permission: keyof ModulePermissions, checked: boolean) => {
-    const newSelectedPermissions = checked 
-      ? [...selectedPermissions, permission as string] 
-      : selectedPermissions.filter(p => p !== permission);
-    
-    setSelectedPermissions(newSelectedPermissions);
-    
     setFormData({
       ...formData,
       modulePermissions: {
@@ -76,7 +64,6 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
     setIsOpen(false);
     resetForm();
     setShowAdminOptions(false);
-    setSelectedPermissions([]);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -90,26 +77,23 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
       });
     }
     
+    // Prepare module access payload for backend processing
+    const moduleAccessPayload = Object.entries(formData.modulePermissions)
+      .filter(([_, enabled]) => enabled)
+      .map(([key]) => {
+        // Find the module name from the configured modules
+        const module = state.configuredModules?.find(m => m.key === key || m.id === key);
+        return {
+          name: module?.name || key,
+          employeeId: formData.employeeId,
+          key: key
+        };
+      });
+    
+    console.log("Module access payload for backend:", moduleAccessPayload);
+    
     onSubmit();
   };
-
-  // Use modules from Redux if available, otherwise use default modules
-  const modules = state.configuredModules && state.configuredModules.length > 0
-    ? state.configuredModules.map(module => ({
-        key: module.key || module.id,
-        name: module.name
-      }))
-    : [
-        { key: 'superAdmin', name: 'Super Admin' },
-        { key: 'incidentReporting', name: 'Incident Reporting' },
-        { key: 'incidentAdmin', name: 'Incident Admin' },
-        { key: 'assessmentUser', name: 'Assessment User' },
-        { key: 'assessmentsAdmin', name: 'Assessments Admin' },
-        { key: 'employeeVerificationAdmin', name: 'Employee Verification Admin' },
-        { key: 'grievancesAdmin', name: 'Grievances Admin' },
-        { key: 'transportSafetyAdmin', name: 'Transport Safety Admin' },
-        { key: 'eduSafeResourceAccess', name: 'EduSafe Resource Access' }
-      ];
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -234,34 +218,10 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
             {/* Module Access Section */}
             <div className="space-y-4">
               <Label>Module Access</Label>
-              <div className="w-full">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[100px]">Enabled</TableHead>
-                      <TableHead>Module Name</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {modules.map((module) => {
-                      const moduleKey = module.key as keyof ModulePermissions;
-                      const isEnabled = formData.modulePermissions[moduleKey] || false;
-                      
-                      return (
-                        <TableRow key={module.key}>
-                          <TableCell>
-                            <Checkbox
-                              checked={isEnabled}
-                              onCheckedChange={(checked) => handlePermissionChange(moduleKey, checked === true)}
-                            />
-                          </TableCell>
-                          <TableCell>{module.name}</TableCell>
-                        </TableRow>
-                      );
-                    })}
-                  </TableBody>
-                </Table>
-              </div>
+              <UserPermissionsFields
+                permissions={formData.modulePermissions}
+                onPermissionChange={handlePermissionChange}
+              />
             </div>
           </div>
           <DialogFooter>

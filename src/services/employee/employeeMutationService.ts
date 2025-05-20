@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
 import { Employee } from '@/contexts/employee/types';
 import { mapDbRecordToEmployee, mapEmployeeToDbRecord } from './utils/employeeMappers';
+import { updateEmployeeModulePermissions, addEmployeeModuleAccessBulk } from './employeeModuleService';
 
 export const addEmployeeToApi = async (
   employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>
@@ -41,6 +42,29 @@ export const addEmployeeToApi = async (
     }
 
     console.log("Employee added to API successfully:", data);
+    
+    // If the employee has modulePermissions, update them in the database
+    if (employeeData.modulePermissions) {
+      try {
+        await updateEmployeeModulePermissions(data.id, employeeData.modulePermissions);
+      } catch (moduleError) {
+        console.error("Error updating module permissions:", moduleError);
+        // Continue with employee creation even if module permission update fails
+        toast.warning("Employee created but module permissions could not be set");
+      }
+    }
+    
+    // If there's a module access payload, add it
+    if (employeeData.moduleAccessPayload) {
+      try {
+        await addEmployeeModuleAccessBulk(employeeData.moduleAccessPayload, data.id);
+      } catch (accessError) {
+        console.error("Error adding module access:", accessError);
+        // Continue with employee creation even if module access update fails
+        toast.warning("Employee created but some module access could not be set");
+      }
+    }
+    
     toast.success("Employee added successfully");
     
     // Convert the response back to our Employee type

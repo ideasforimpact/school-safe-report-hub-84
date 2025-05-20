@@ -144,3 +144,81 @@ export const updateEmployeeModulePermissions = async (employeeId: string, permis
     throw error;
   }
 };
+
+/**
+ * Add module access based on a payload (used for bulk operations)
+ * @param moduleAccessPayload Array of module access objects
+ * @param employeeId The UUID of the employee
+ */
+export const addEmployeeModuleAccessBulk = async (
+  moduleAccessPayload: Array<{name: string, employeeId?: string, key: string}>,
+  employeeId: string
+): Promise<void> => {
+  try {
+    console.log("Adding bulk module access for employee:", employeeId);
+    console.log("Module access payload:", moduleAccessPayload);
+    
+    if (!moduleAccessPayload || moduleAccessPayload.length === 0) {
+      console.log("No module access to add");
+      return;
+    }
+
+    // Get the module IDs for each module key
+    const { data: modules, error: moduleError } = await supabase
+      .from('roles')
+      .select('id, key, name');
+
+    if (moduleError) {
+      console.error("Error fetching roles:", moduleError);
+      throw moduleError;
+    }
+
+    if (!modules || modules.length === 0) {
+      console.error("No modules found in database");
+      throw new Error("No modules found in database");
+    }
+
+    console.log("Available modules from database:", modules);
+
+    // Create a permissions object to use with the existing update function
+    const permissions: ModulePermissions = {
+      superAdmin: false,
+      incidentReporting: false,
+      incidentAdmin: false,
+      assessmentUser: false,
+      assessmentsAdmin: false,
+      employeeVerificationAdmin: false,
+      grievancesAdmin: false,
+      transportSafetyAdmin: false,
+      eduSafeResourceAccess: false
+    };
+
+    // Set permissions based on the payload
+    moduleAccessPayload.forEach(access => {
+      // Find the module either by key or by name
+      const module = modules.find(m => 
+        m.key === access.key || 
+        m.name.toLowerCase() === access.name.toLowerCase()
+      );
+
+      if (module && module.key) {
+        const moduleKey = module.key as keyof ModulePermissions;
+        if (moduleKey in permissions) {
+          permissions[moduleKey] = true;
+          console.log(`Setting permission ${moduleKey} to true from payload`);
+        }
+      } else {
+        console.warn(`Module not found for access: ${access.name} (${access.key})`);
+      }
+    });
+
+    // Use the existing function to update permissions
+    await updateEmployeeModulePermissions(employeeId, permissions);
+    
+    console.log("Successfully added bulk module access for employee:", employeeId);
+  } catch (error) {
+    console.error("Error in addEmployeeModuleAccessBulk:", error);
+    toast.error("Failed to add module access");
+    throw error;
+  }
+};
