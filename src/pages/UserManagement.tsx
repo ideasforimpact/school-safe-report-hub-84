@@ -390,15 +390,28 @@ const UserManagement = () => {
               
               if (error) throw error;
               
+              // Check if the response contains an error
+              if (data && data.error) {
+                console.error("Error from edge function:", data.error);
+                toast.error(data.error);
+                return;
+              }
+              
               // If moduleAccessPayload exists, update it directly
               if (formData.moduleAccessPayload && formData.moduleAccessPayload.length > 0) {
                 await updateEmployeeModulePermissions(currentUser.id, formData.moduleAccessPayload);
               }
               
               console.log("Employee updated via edge function:", data);
+              
+              // Only show success message if no error
+              if (!data.error) {
+                toast.success("User updated successfully");
+              }
             } catch (edgeFuncError) {
               console.error("Edge function update error:", edgeFuncError);
               // Fall back to context if needed
+              toast.error("Error updating employee via edge function");
             }
           } catch (empError) {
             console.error("Error updating employee record:", empError);
@@ -406,7 +419,6 @@ const UserManagement = () => {
           }
         }
         
-        toast.success("User updated successfully");
         resetForm();
         setIsEditDialogOpen(false);
         await refreshEmployeesList();
@@ -500,7 +512,7 @@ const UserManagement = () => {
     setCurrentUser(null);
   };
 
-  // Handle edit user click - Uses moduleAccessPayload only
+  // Handler for editing a user click - Uses moduleAccessPayload only
   const handleEditClick = async (user: EmployeeUser) => {
     setCurrentUser(user);
     
@@ -508,8 +520,15 @@ const UserManagement = () => {
       // Get the module access items directly
       let moduleAccessItems: ModuleAccessItem[] = [];
       try {
-        moduleAccessItems = await getEmployeeModuleAccessItems(user.id);
-        console.log("Retrieved module access items:", moduleAccessItems);
+        // Check if user already has moduleAccessPayload
+        if (user.moduleAccessPayload && Array.isArray(user.moduleAccessPayload)) {
+          console.log("Using existing moduleAccessPayload from user:", user.moduleAccessPayload);
+          moduleAccessItems = user.moduleAccessPayload;
+        } else {
+          // Fetch from API if not available
+          moduleAccessItems = await getEmployeeModuleAccessItems(user.id);
+          console.log("Retrieved module access items from API:", moduleAccessItems);
+        }
       } catch (error) {
         console.error("Error fetching module access items:", error);
         moduleAccessItems = [];

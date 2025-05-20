@@ -38,8 +38,15 @@ const EditUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, re
 
   // When dialog opens, set the selectedModules based on the form data
   useEffect(() => {
-    if (isOpen && formData && formData.moduleAccessPayload) {
-      setSelectedModules(formData.moduleAccessPayload);
+    if (isOpen && formData) {
+      // Check if moduleAccessPayload exists and is an array
+      if (formData.moduleAccessPayload && Array.isArray(formData.moduleAccessPayload)) {
+        console.log("Setting selected modules from formData:", formData.moduleAccessPayload);
+        setSelectedModules(formData.moduleAccessPayload);
+      } else {
+        console.log("No moduleAccessPayload found in formData or it's not an array");
+        setSelectedModules([]);
+      }
       
       // Ensure clientId is set in formData
       if (!formData.clientId && clientId) {
@@ -146,6 +153,7 @@ const EditUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, re
                   id="employeeId"
                   value={formData.employeeId || ''}
                   onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
+                  disabled={true}  // Disable editing employee ID
                 />
               </div>
               <div className="space-y-2">
@@ -174,6 +182,7 @@ const EditUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, re
                     <SelectItem value="contract">Contract</SelectItem>
                     <SelectItem value="consultant">Consultant</SelectItem>
                     <SelectItem value="part_time">Part Time</SelectItem>
+                    <SelectItem value="intern">Intern</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -193,6 +202,9 @@ const EditUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, re
                     <SelectItem value="maintenance">Maintenance</SelectItem>
                     <SelectItem value="transport">Transport</SelectItem>
                     <SelectItem value="management">Management</SelectItem>
+                    <SelectItem value="it">IT</SelectItem>
+                    <SelectItem value="hr">HR</SelectItem>
+                    <SelectItem value="finance">Finance</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
