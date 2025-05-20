@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -127,7 +126,7 @@ const EmployeeManagement = () => {
     }
   };
 
-  const handleAddEmployee = async (employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const handleAddEmployee = async (employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>): Promise<Employee> => {
     try {
       console.log("Adding employee with data before clientId check:", employeeData);
       
@@ -166,6 +165,7 @@ const EmployeeManagement = () => {
       
       // We don't need to show success toast here - it's handled in the service
       // This prevents duplicate toast messages
+      return newEmployee; // Return the new employee to match the expected return type
     } catch (error: any) {
       console.error("Failed to add employee:", error);
       
@@ -174,6 +174,8 @@ const EmployeeManagement = () => {
       if (!error.code || error.code !== "DUPLICATE_EMAIL") {
         toast.error("Failed to add employee");
       }
+      
+      throw error; // Re-throw the error to properly propagate it
     }
   };
 
@@ -189,7 +191,7 @@ const EmployeeManagement = () => {
     }
   };
 
-  // Handler for importing employees - Updated to pass configuredModules
+  // Handler for importing employees
   const handleImportEmployees = async (file: File, importClientId?: string) => {
     setIsLoading(true);
     try {
