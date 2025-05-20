@@ -65,6 +65,7 @@ const UserList = ({ users, onEditClick, onDeleteUser, onDeactivateUser }: UserLi
               )}
             </TableCell>
             <TableCell>
+              { user.is_super_admin ?  
               <div className="flex space-x-1">
                 <Button 
                   variant="ghost" 
@@ -126,7 +127,7 @@ const UserList = ({ users, onEditClick, onDeleteUser, onDeactivateUser }: UserLi
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
-              </div>
+              </div> : <div></div> }
             </TableCell>
           </TableRow>
         ))}
