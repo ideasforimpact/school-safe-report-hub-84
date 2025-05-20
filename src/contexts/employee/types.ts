@@ -7,6 +7,12 @@ export type EmployeeGrade = 'junior' | 'mid' | 'senior' | 'lead' | 'manager' | '
 export type EmployeeType = 'permanent' | 'contract' | 'part_time' | 'consultant' | 'intern';
 export type DepartmentType = 'admin' | 'teaching' | 'security' | 'maintenance' | 'transport' | 'management' | 'it' | 'hr' | 'finance';
 
+export interface ModuleAccessItem {
+  name: string;
+  employeeId?: string;
+  key: string;
+}
+
 export interface Employee {
   id: string;
   userId?: string; // Link to auth user if applicable
@@ -28,7 +34,7 @@ export interface Employee {
   modulePermissions?: ModulePermissions;
   
   // Module access payload for creating employees with module access
-  moduleAccessPayload?: Array<{name: string, employeeId?: string, key: string}>;
+  moduleAccessPayload?: ModuleAccessItem[];
   
   // Timestamps
   createdAt: string;

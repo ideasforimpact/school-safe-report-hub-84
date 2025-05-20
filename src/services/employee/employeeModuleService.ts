@@ -1,30 +1,145 @@
 
-import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
 import { ModulePermissions } from '@/contexts/auth/types';
+import { ModuleAccessItem } from '@/contexts/employee/types';
+import { toast } from 'sonner';
 
-/**
- * Get module permissions for an employee
- * @param employeeId The UUID of the employee
- * @returns The module permissions object
- */
-export const getEmployeeModulePermissions = async (employeeId: string): Promise<ModulePermissions> => {
+// Function to update module permissions for an employee
+export const updateEmployeeModulePermissions = async (
+  employeeId: string,
+  modulePermissions: ModulePermissions
+): Promise<void> => {
+  try {
+    console.log("Updating module permissions for employee:", employeeId);
+    
+    // First, remove all existing module permissions for this employee
+    const { error: deleteError } = await supabase
+      .from('employee_modules')
+      .delete()
+      .eq('employee_id', employeeId);
+      
+    if (deleteError) {
+      console.error("Error deleting existing module permissions:", deleteError);
+      throw deleteError;
+    }
+    
+    // Convert the module permissions object to an array of module access items
+    const moduleAccessPayload = Object.entries(modulePermissions)
+      .filter(([_, enabled]) => enabled)
+      .map(([key]) => ({
+        name: key,
+        employeeId,
+        key
+      }));
+    
+    // Add the new module permissions
+    if (moduleAccessPayload.length > 0) {
+      await addEmployeeModuleAccessBulk(moduleAccessPayload, employeeId);
+    }
+    
+    console.log("Module permissions updated successfully");
+  } catch (error) {
+    console.error("Error in updateEmployeeModulePermissions:", error);
+    toast.error("Failed to update module permissions");
+    throw error;
+  }
+};
+
+// Function to add module access in bulk for an employee
+export const addEmployeeModuleAccessBulk = async (
+  moduleAccessPayload: ModuleAccessItem[],
+  employeeId: string
+): Promise<void> => {
+  try {
+    console.log("Adding module access in bulk for employee:", employeeId);
+    console.log("Module access payload:", moduleAccessPayload);
+    
+    // Use the edge function to handle module access
+    const { data, error } = await supabase.functions.invoke('employee-management', {
+      body: JSON.stringify({
+        operation: 'add_module_access',
+        employee: {
+          id: employeeId,
+          moduleAccessPayload
+        }
+      })
+    });
+    
+    if (error) {
+      console.error("Error adding module access with edge function:", error);
+      
+      // Fall back to direct database calls if edge function fails
+      await Promise.all(moduleAccessPayload.map(async (module) => {
+        // Get the module ID from the modules table
+        const { data: moduleData, error: moduleError } = await supabase
+          .from('modules')
+          .select('id')
+          .eq('name', module.name)
+          .single();
+          
+        if (moduleError || !moduleData) {
+          console.log(`Module not found for name: ${module.name}`);
+          return;
+        }
+        
+        // Insert into employee_modules
+        const { error: insertError } = await supabase
+          .from('employee_modules')
+          .insert({
+            employee_id: employeeId,
+            module_id: moduleData.id,
+            access_level: {}
+          });
+          
+        if (insertError) {
+          console.error(`Error adding module access for ${module.name}:`, insertError);
+        }
+      }));
+    } else {
+      console.log("Module access added successfully via edge function:", data);
+    }
+  } catch (error) {
+    console.error("Error in addEmployeeModuleAccessBulk:", error);
+    throw error;
+  }
+};
+
+// Function to get module permissions for an employee
+export const getEmployeeModulePermissions = async (
+  employeeId: string
+): Promise<ModulePermissions> => {
   try {
     console.log("Getting module permissions for employee:", employeeId);
     
-    // Get all module entries for this employee from the database
-    const { data, error } = await supabase
-      .from('employee_modules')
-      .select('module_id, roles(key)')
-      .eq('employee_id', employeeId);
-
-    if (error) {
-      console.error("Error fetching employee modules:", error);
-      throw error;
+    // Get all modules for reference
+    const { data: allModules, error: modulesError } = await supabase
+      .from('modules')
+      .select('id, name, level');
+      
+    if (modulesError) {
+      console.error("Error fetching modules:", modulesError);
+      throw modulesError;
     }
-
-    // Create a default permissions object with all permissions set to false
-    const defaultPermissions: ModulePermissions = {
+    
+    // Get the employee's module permissions
+    const { data: employeeModules, error: permissionsError } = await supabase
+      .from('employee_modules')
+      .select('module_id, access_level')
+      .eq('employee_id', employeeId);
+      
+    if (permissionsError) {
+      console.error("Error fetching employee module permissions:", permissionsError);
+      throw permissionsError;
+    }
+    
+    // Create a mapping of module IDs to module keys
+    const moduleIdToKey: Record<string, string> = {};
+    allModules?.forEach(module => {
+      moduleIdToKey[module.id] = module.level;
+    });
+    
+    // Convert to ModulePermissions format
+    const modulePermissions: ModulePermissions = {
       superAdmin: false,
       incidentReporting: false,
       incidentAdmin: false,
@@ -35,34 +150,32 @@ export const getEmployeeModulePermissions = async (employeeId: string): Promise<
       transportSafetyAdmin: false,
       eduSafeResourceAccess: false
     };
-
-    // If no data, return default permissions
-    if (!data || data.length === 0) {
-      console.log("No module permissions found for employee:", employeeId);
-      return defaultPermissions;
-    }
-
-    console.log("Module entries found for employee:", data.length);
-    console.log("Raw module entries:", data);
     
-    // Map the module keys from the database to the permissions object
-    const permissions = { ...defaultPermissions };
-
-    data.forEach(moduleEntry => {
-      if (moduleEntry.roles?.key) {
-        const moduleKey = moduleEntry.roles.key as keyof ModulePermissions;
-        if (moduleKey in permissions) {
-          permissions[moduleKey] = true;
-          console.log(`Setting permission ${moduleKey} to true`);
-        }
+    // Set permissions based on the employee's modules
+    employeeModules?.forEach(module => {
+      const moduleKey = moduleIdToKey[module.module_id];
+      if (moduleKey) {
+        // Type assertion to treat the key as a key of ModulePermissions
+        (modulePermissions as any)[moduleKey] = true;
+      } else {
+        console.log(`Unknown module_id: ${module.module_id}`);
       }
     });
-
-    console.log("Final module permissions for employee:", permissions);
-    return permissions;
+    
+    // Check if employee is a super admin
+    const { data: employee, error: employeeError } = await supabase
+      .from('employees')
+      .select('is_super_admin')
+      .eq('id', employeeId)
+      .single();
+      
+    if (!employeeError && employee && employee.is_super_admin) {
+      modulePermissions.superAdmin = true;
+    }
+    
+    return modulePermissions;
   } catch (error) {
     console.error("Error in getEmployeeModulePermissions:", error);
-    // Return default permissions on error
     return {
       superAdmin: false,
       incidentReporting: false,
@@ -74,151 +187,5 @@ export const getEmployeeModulePermissions = async (employeeId: string): Promise<
       transportSafetyAdmin: false,
       eduSafeResourceAccess: false
     };
-  }
-};
-
-/**
- * Update module permissions for an employee
- * @param employeeId The UUID of the employee
- * @param permissions The module permissions object
- */
-export const updateEmployeeModulePermissions = async (employeeId: string, permissions: ModulePermissions): Promise<void> => {
-  try {
-    // First, delete all existing module permissions for this employee
-    const { error: deleteError } = await supabase
-      .from('employee_modules')
-      .delete()
-      .eq('employee_id', employeeId);
-
-    if (deleteError) {
-      console.error("Error deleting employee modules:", deleteError);
-      throw deleteError;
-    }
-
-    // Get the module IDs for each module key
-    const { data: modules, error: moduleError } = await supabase
-      .from('roles')
-      .select('id, key');
-
-    if (moduleError) {
-      console.error("Error fetching roles:", moduleError);
-      throw moduleError;
-    }
-
-    // Map module keys to their IDs
-    const moduleKeyToId: Record<string, string> = {};
-    modules?.forEach(module => {
-      moduleKeyToId[module.key] = module.id;
-    });
-
-    // Create array of module entries to insert
-    const moduleEntries = Object.entries(permissions)
-      .filter(([_, enabled]) => enabled)
-      .map(([key, _]) => ({
-        employee_id: employeeId,
-        module_id: moduleKeyToId[key],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }))
-      .filter(entry => entry.module_id); // Ensure we only add entries for modules that exist
-
-    if (moduleEntries.length === 0) {
-      console.log("No module permissions to update");
-      return;
-    }
-
-    // Insert the new module permissions
-    const { error: insertError } = await supabase
-      .from('employee_modules')
-      .insert(moduleEntries);
-
-    if (insertError) {
-      console.error("Error inserting employee modules:", insertError);
-      throw insertError;
-    }
-
-    console.log(`Successfully updated ${moduleEntries.length} module permissions for employee ${employeeId}`);
-  } catch (error) {
-    console.error("Error in updateEmployeeModulePermissions:", error);
-    toast.error("Failed to update employee module permissions");
-    throw error;
-  }
-};
-
-/**
- * Add module access based on a payload (used for bulk operations)
- * @param moduleAccessPayload Array of module access objects
- * @param employeeId The UUID of the employee
- */
-export const addEmployeeModuleAccessBulk = async (
-  moduleAccessPayload: Array<{name: string, employeeId?: string, key: string}>,
-  employeeId: string
-): Promise<void> => {
-  try {
-    console.log("Adding bulk module access for employee:", employeeId);
-    console.log("Module access payload:", moduleAccessPayload);
-    
-    if (!moduleAccessPayload || moduleAccessPayload.length === 0) {
-      console.log("No module access to add");
-      return;
-    }
-
-    // Get the module IDs for each module key
-    const { data: modules, error: moduleError } = await supabase
-      .from('roles')
-      .select('id, key, name');
-
-    if (moduleError) {
-      console.error("Error fetching roles:", moduleError);
-      throw moduleError;
-    }
-
-    if (!modules || modules.length === 0) {
-      console.error("No modules found in database");
-      throw new Error("No modules found in database");
-    }
-
-    console.log("Available modules from database:", modules);
-
-    // Create a permissions object to use with the existing update function
-    const permissions: ModulePermissions = {
-      superAdmin: false,
-      incidentReporting: false,
-      incidentAdmin: false,
-      assessmentUser: false,
-      assessmentsAdmin: false,
-      employeeVerificationAdmin: false,
-      grievancesAdmin: false,
-      transportSafetyAdmin: false,
-      eduSafeResourceAccess: false
-    };
-
-    // Set permissions based on the payload
-    moduleAccessPayload.forEach(access => {
-      // Find the module either by key or by name
-      const module = modules.find(m => 
-        m.key === access.key || 
-        m.name.toLowerCase() === access.name.toLowerCase()
-      );
-
-      if (module && module.key) {
-        const moduleKey = module.key as keyof ModulePermissions;
-        if (moduleKey in permissions) {
-          permissions[moduleKey] = true;
-          console.log(`Setting permission ${moduleKey} to true from payload`);
-        }
-      } else {
-        console.warn(`Module not found for access: ${access.name} (${access.key})`);
-      }
-    });
-
-    // Use the existing function to update permissions
-    await updateEmployeeModulePermissions(employeeId, permissions);
-    
-    console.log("Successfully added bulk module access for employee:", employeeId);
-  } catch (error) {
-    console.error("Error in addEmployeeModuleAccessBulk:", error);
-    toast.error("Failed to add module access");
-    throw error;
   }
 };

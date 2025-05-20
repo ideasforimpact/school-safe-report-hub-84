@@ -77,7 +77,7 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
       });
     }
     
-    // Prepare module access payload for backend processing
+    // Prepare module access payload for backend processing using the proper format
     const moduleAccessPayload = Object.entries(formData.modulePermissions)
       .filter(([_, enabled]) => enabled)
       .map(([key]) => {
@@ -92,7 +92,16 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
     
     console.log("Module access payload for backend:", moduleAccessPayload);
     
-    onSubmit();
+    // Update the formData with the moduleAccessPayload before submission
+    setFormData(prevData => ({
+      ...prevData,
+      moduleAccessPayload
+    }));
+    
+    // Submit the form after a short delay to ensure state is updated
+    setTimeout(() => {
+      onSubmit();
+    }, 0);
   };
 
   return (

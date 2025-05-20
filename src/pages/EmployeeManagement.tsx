@@ -108,8 +108,8 @@ const EmployeeManagement = () => {
         }
       }
       
-      // Prepare module access payload from module permissions
-      if (employeeData.modulePermissions && !employeeData.moduleAccessPayload) {
+      // Ensure we have a moduleAccessPayload correctly formatted for the backend
+      if (!employeeData.moduleAccessPayload && employeeData.modulePermissions) {
         const moduleAccessPayload = Object.entries(employeeData.modulePermissions)
           .filter(([_, enabled]) => enabled)
           .map(([key]) => {
