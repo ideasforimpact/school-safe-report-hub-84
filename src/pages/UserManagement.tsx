@@ -263,6 +263,10 @@ const UserManagement = () => {
                 console.error("Edge function error:", error);
                 throw error;
               }
+
+              if(data?.hasOwnProperty("error")){
+                 toast.error(data?.error);
+              }
               
               console.log("Employee created via edge function:", data);
               toast.success("Employee record created successfully");
@@ -283,7 +287,7 @@ const UserManagement = () => {
           }
         }
         
-        toast.success("User added successfully");
+        // toast.success("User added successfully");
         resetForm();
         setIsAddDialogOpen(false);
       }
