@@ -26,8 +26,7 @@ const ModuleAccess = ({
     ? state.configuredModules.map(module => ({
         key: module.key || module.id,
         name: module.name,
-        module_id: module.id, // Include the module ID from store
-        id: module.id // Include id for backward compatibility
+        module_id: module.id // Include the module ID from store
       }))
     : [];
 
@@ -52,7 +51,7 @@ const ModuleAccess = ({
           name: moduleName,
           employeeId: employeeId,
           key: moduleKey,
-          module_id: moduleId // Include module_id if available
+          module_id: moduleId // Always include module_id
         });
         
         console.log(`Added module ${moduleName} (${moduleKey}) to selection`);
@@ -86,7 +85,7 @@ const ModuleAccess = ({
                 id={`module-${module.key}`}
                 checked={isSelected}
                 onCheckedChange={(checked) => 
-                  handleModuleChange(module.key, module.name, module.id || '', checked === true)
+                  handleModuleChange(module.key, module.name, module.module_id || '', checked === true)
                 }
               />
               <label 

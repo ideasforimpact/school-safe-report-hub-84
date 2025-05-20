@@ -338,7 +338,7 @@ export type Database = {
             foreignKeyName: "employee_modules_module_id_fkey"
             columns: ["module_id"]
             isOneToOne: false
-            referencedRelation: "roles"
+            referencedRelation: "modules"
             referencedColumns: ["id"]
           },
         ]

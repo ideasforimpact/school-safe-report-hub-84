@@ -2,7 +2,6 @@
 export interface ModuleAccessItem {
   name: string;
   employeeId?: string;
-  key: string; // Required field
-  module_id?: string; // Optional since it will be looked up by name in the edge function
-  id?: string; // Add this for backward compatibility
+  key: string;
+  module_id: string; // Now required since we're not looking it up in the edge function
 }

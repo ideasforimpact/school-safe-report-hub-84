@@ -82,23 +82,12 @@ async function addEmployeeModuleAccess(moduleAccess: any[], employeeId: string) 
   try {
     // For each module in the payload, insert into employee_modules
     const moduleInserts = await Promise.all(moduleAccess.map(async (module) => {
-      let moduleId = module.module_id;
+      // We expect module_id to be provided in the payload now
+      const moduleId = module.module_id;
       
-      // If module_id is not provided, look it up by name
       if (!moduleId) {
-        // Get module ID from modules table by name
-        const { data: moduleData, error: moduleError } = await supabase
-          .from('modules')
-          .select('id')
-          .eq('name', module.name)
-          .single();
-          
-        if (moduleError || !moduleData) {
-          console.log(`Module not found for name: ${module.name}`);
-          return null;
-        }
-        
-        moduleId = moduleData.id;
+        console.log(`Module ID missing for module: ${module.name}`);
+        return null;
       }
       
       // Insert into employee_modules
