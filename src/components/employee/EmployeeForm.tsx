@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Employee } from '@/contexts/employee/types';
 import { ModulePermissions } from '@/contexts/auth/types';
@@ -11,6 +10,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import EmployeeModulePermissions from './EmployeeModulePermissions';
+import { ModuleAccessItem } from '@/types/moduleAccess';
 
 interface EmployeeFormProps {
   formData: Partial<Employee>;
@@ -34,25 +34,36 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({
     setFormData(prev => ({ ...prev, [name]: value }));
   };
   
-  // Handle module permission changes
-  const handleModulePermissionChange = (key: keyof ModulePermissions, value: boolean) => {
-    setFormData(prev => ({
-      ...prev,
-      modulePermissions: {
-        ...(prev.modulePermissions || {
-          superAdmin: false,
-          incidentReporting: false,
-          incidentAdmin: false,
-          assessmentUser: false,
-          assessmentsAdmin: false,
-          employeeVerificationAdmin: false,
-          grievancesAdmin: false,
-          transportSafetyAdmin: false,
-          eduSafeResourceAccess: false
-        }),
-        [key]: value
-      }
-    }));
+  // Updated to accept an array of ModuleAccessItem objects
+  const handleModulePermissionChange = (selectedModules: ModuleAccessItem[]) => {
+    // If modulePermissions exists, update it based on the selected modules
+    if (formData.modulePermissions) {
+      const updatedPermissions = { ...formData.modulePermissions };
+      
+      // First, reset all permissions to false
+      Object.keys(updatedPermissions).forEach(key => {
+        (updatedPermissions as any)[key] = false;
+      });
+      
+      // Then set the selected permissions to true
+      selectedModules.forEach(module => {
+        if (module.key && Object.keys(updatedPermissions).includes(module.key)) {
+          (updatedPermissions as any)[module.key] = true;
+        }
+      });
+      
+      setFormData(prev => ({
+        ...prev,
+        modulePermissions: updatedPermissions,
+        moduleAccessPayload: selectedModules
+      }));
+    } else {
+      // If modulePermissions doesn't exist, just store the moduleAccessPayload
+      setFormData(prev => ({
+        ...prev,
+        moduleAccessPayload: selectedModules
+      }));
+    }
   };
 
   return (

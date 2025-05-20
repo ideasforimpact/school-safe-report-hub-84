@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useForm } from 'react-hook-form';
@@ -32,6 +31,7 @@ import { Employee, EmployeeType, DepartmentType } from '@/contexts/employee/type
 import { toast } from 'sonner';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import EmployeeModulePermissions from './EmployeeModulePermissions';
+import { ModuleAccessItem } from '@/types/moduleAccess';
 
 // Define the form schema with zod
 const employeeSchema = z.object({
@@ -46,12 +46,6 @@ const employeeSchema = z.object({
 });
 
 type FormValues = z.infer<typeof employeeSchema>;
-
-interface ModuleAccessItem {
-  name: string;
-  employeeId?: string;
-  key?: string;
-}
 
 interface AddEmployeeDialogProps {
   isOpen: boolean;
@@ -110,8 +104,9 @@ const AddEmployeeDialog = ({ isOpen, setIsOpen, onAddEmployee, clientId }: AddEm
       
       // Add the employeeId to each module in the selected modules
       const moduleAccessPayload = selectedModules.map(module => ({
-        ...module,
-        employeeId
+        name: module.name,
+        employeeId: employeeId,
+        key: module.key
       }));
       
       // Ensure clientId is included in the employee data

@@ -3,12 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { ModulePermissions } from '@/contexts/auth/types';
 import { Checkbox } from "@/components/ui/checkbox";
 import { useEmployeeStore } from '@/store/EmployeeContext';
-
-interface ModuleAccessItem {
-  name: string;
-  employeeId?: string;
-  key?: string;
-}
+import { ModuleAccessItem } from '@/types/moduleAccess';
 
 interface UserPermissionsFieldsProps {
   permissions: ModulePermissions | ModuleAccessItem[];

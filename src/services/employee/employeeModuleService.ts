@@ -1,7 +1,7 @@
 
 import { supabase } from '@/integrations/supabase/client';
 import { ModulePermissions } from '@/contexts/auth/types';
-import { ModuleAccessItem } from '@/contexts/employee/types';
+import { ModuleAccessItem } from '@/types/moduleAccess';
 import { toast } from 'sonner';
 
 // Function to update module permissions for an employee
@@ -224,11 +224,22 @@ export const getEmployeeModuleAccessItems = async (
     }
     
     // Map to ModuleAccessItem format
-    return data.map(item => ({
-      name: item.modules?.name || '',
-      employeeId,
-      key: item.modules?.level || item.module_id
-    }));
+    return data.map(item => {
+      // Check if modules exists to prevent TypeScript errors
+      if (!item.modules) {
+        return {
+          name: "Unknown",
+          employeeId,
+          key: item.module_id
+        };
+      }
+      
+      return {
+        name: (item.modules as any).name || 'Unknown',
+        employeeId,
+        key: (item.modules as any).level || item.module_id
+      };
+    });
     
   } catch (error) {
     console.error("Error in getEmployeeModuleAccessItems:", error);

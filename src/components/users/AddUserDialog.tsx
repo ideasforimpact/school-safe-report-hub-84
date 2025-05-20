@@ -9,6 +9,7 @@ import { User, UserRole, ModulePermissions, EmployeeType, DepartmentType } from 
 import { Loader2 } from 'lucide-react';
 import UserPermissionsFields from './form/UserPermissionsFields';
 import { useEmployeeStore } from '@/store/EmployeeContext';
+import { ModuleAccessItem } from '@/types/moduleAccess';
 
 interface AddUserDialogProps {
   isOpen: boolean;
@@ -50,13 +51,27 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
     setShowAdminOptions(role === 'admin');
   };
 
-  const handlePermissionChange = (permission: keyof ModulePermissions, checked: boolean) => {
+  // Updated to accept an array of ModuleAccessItem objects
+  const handlePermissionChange = (moduleAccessItems: ModuleAccessItem[]) => {
+    // Convert the array of ModuleAccessItem objects to the modulePermissions object format
+    const updatedPermissions = { ...formData.modulePermissions };
+    
+    // First, reset all permissions to false
+    Object.keys(updatedPermissions).forEach(key => {
+      (updatedPermissions as any)[key] = false;
+    });
+    
+    // Then, set the selected permissions to true
+    moduleAccessItems.forEach(item => {
+      if (item.key && Object.keys(updatedPermissions).includes(item.key)) {
+        (updatedPermissions as any)[item.key] = true;
+      }
+    });
+    
     setFormData({
       ...formData,
-      modulePermissions: {
-        ...formData.modulePermissions,
-        [permission]: checked
-      }
+      modulePermissions: updatedPermissions,
+      moduleAccessPayload: moduleAccessItems
     });
   };
 

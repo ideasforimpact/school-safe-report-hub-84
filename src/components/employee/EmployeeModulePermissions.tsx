@@ -4,12 +4,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ModulePermissions } from '@/contexts/auth/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useEmployeeStore } from '@/store/EmployeeContext';
-
-interface ModuleAccessItem {
-  name: string;
-  employeeId?: string;
-  key?: string;
-}
+import { ModuleAccessItem } from '@/types/moduleAccess';
 
 interface EmployeeModulePermissionsProps {
   modulePermissions: ModulePermissions | ModuleAccessItem[];

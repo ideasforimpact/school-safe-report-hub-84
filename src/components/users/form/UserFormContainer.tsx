@@ -3,6 +3,7 @@ import React from 'react';
 import { UserRole, ModulePermissions, EmployeeType, DepartmentType } from '@/contexts/auth/types';
 import UserBasicInfoFields from './UserBasicInfoFields';
 import UserPermissionsFields from './UserPermissionsFields';
+import { ModuleAccessItem } from '@/types/moduleAccess';
 
 interface UserFormContainerProps {
   formData: {
@@ -31,13 +32,26 @@ interface UserFormContainerProps {
 }
 
 const UserFormContainer = ({ formData, setFormData, isEditMode = false }: UserFormContainerProps) => {
-  const handleModulePermissionChange = (module: keyof ModulePermissions, value: boolean) => {
+  // Updated to accept an array of ModuleAccessItem objects
+  const handleModulePermissionChange = (moduleAccessItems: ModuleAccessItem[]) => {
+    // Convert the array of ModuleAccessItem objects to the modulePermissions object format
+    const updatedPermissions = { ...formData.modulePermissions };
+    
+    // First, reset all permissions to false
+    Object.keys(updatedPermissions).forEach(key => {
+      (updatedPermissions as any)[key] = false;
+    });
+    
+    // Then, set the selected permissions to true
+    moduleAccessItems.forEach(item => {
+      if (item.key && Object.keys(updatedPermissions).includes(item.key)) {
+        (updatedPermissions as any)[item.key] = true;
+      }
+    });
+    
     setFormData({
       ...formData,
-      modulePermissions: {
-        ...formData.modulePermissions,
-        [module]: value
-      }
+      modulePermissions: updatedPermissions
     });
   };
 
