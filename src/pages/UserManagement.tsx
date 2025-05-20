@@ -267,9 +267,11 @@ const UserManagement = () => {
               if(data?.hasOwnProperty("error")){
                  toast.error(data?.error);
               }
+              else{
+                  console.log("Employee created via edge function:", data);
+                  toast.success("Employee record created successfully");
+              }
               
-              console.log("Employee created via edge function:", data);
-              toast.success("Employee record created successfully");
             } catch (edgeFuncError) {
               console.error("Edge function error:", edgeFuncError);
               // Fall back to the context function if the edge function fails
