@@ -108,7 +108,7 @@ const AddEmployeeDialog = ({ isOpen, setIsOpen, onAddEmployee, clientId }: AddEm
         name: module.name,
         employeeId: employeeId,
         key: module.key,
-        module_id : module.id
+        module_id: module.module_id || module.id // Use module_id if available, fall back to id
       }));
       
       // Ensure clientId is included in the employee data

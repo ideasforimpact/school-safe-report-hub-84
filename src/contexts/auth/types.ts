@@ -28,7 +28,7 @@ export interface User {
   lastName: string;
   email: string;
   role: UserRole;
-  modulePermissions?: ModulePermissions;
+  modulePermissions?: ModulePermissions; // Make modulePermissions optional
   isActive: boolean;
   clientId?: string;
   employeeId?: string;

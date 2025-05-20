@@ -25,7 +25,9 @@ const ModuleAccess = ({
   const modules = state.configuredModules && state.configuredModules.length > 0
     ? state.configuredModules.map(module => ({
         key: module.key || module.id,
-        name: module.name
+        name: module.name,
+        module_id: module.id, // Include the module ID from store
+        id: module.id // Include id for backward compatibility
       }))
     : [];
 
@@ -34,7 +36,7 @@ const ModuleAccess = ({
   }
   
   // Fixed handler for checkbox change
-  const handleModuleChange = (moduleKey: string, moduleName: string, checked: boolean) => {
+  const handleModuleChange = (moduleKey: string, moduleName: string, moduleId: string, checked: boolean) => {
     console.log(`Module ${moduleName} (${moduleKey}) change:`, { checked });
     
     // Create a deep copy of current selected modules
@@ -49,7 +51,9 @@ const ModuleAccess = ({
         updatedModules.push({
           name: moduleName,
           employeeId: employeeId,
-          key: moduleKey
+          key: moduleKey,
+          module_id: moduleId, // Include module_id
+          id: moduleId // Include id for backward compatibility
         });
         
         console.log(`Added module ${moduleName} (${moduleKey}) to selection`);
@@ -83,7 +87,7 @@ const ModuleAccess = ({
                 id={`module-${module.key}`}
                 checked={isSelected}
                 onCheckedChange={(checked) => 
-                  handleModuleChange(module.key, module.name, checked === true)
+                  handleModuleChange(module.key, module.name, module.id || '', checked === true)
                 }
               />
               <label 
