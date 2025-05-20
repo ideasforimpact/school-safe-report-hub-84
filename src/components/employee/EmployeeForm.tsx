@@ -36,24 +36,26 @@ const EmployeeForm: React.FC<EmployeeFormProps> = ({
   const handleModulePermissionChange = (selectedModules: ModuleAccessItem[]) => {
     // If modulePermissions exists, update it based on the selected modules
     if (formData.modulePermissions) {
-      const updatedPermissions = { ...formData.modulePermissions };
+      const updatedPermissions: {[key: string]: boolean} = { ...formData.modulePermissions };
       
       // First, reset all permissions to false
       Object.keys(updatedPermissions).forEach(key => {
-        (updatedPermissions as any)[key] = false;
+        updatedPermissions[key] = false;
       });
       
       // Then set the selected permissions to true
       selectedModules.forEach(module => {
         if (module.key && Object.keys(updatedPermissions).includes(module.key)) {
-          (updatedPermissions as any)[module.key] = true;
+          updatedPermissions[module.key] = true;
         }
       });
       
       setFormData(prev => ({
         ...prev,
-        modulePermissions: updatedPermissions,
-        moduleAccessPayload: selectedModules
+        // Convert to proper ModuleAccessItem[] for moduleAccessPayload
+        moduleAccessPayload: selectedModules,
+        // Keep modulePermissions as an object
+        modulePermissions: updatedPermissions
       }));
     } else {
       // If modulePermissions doesn't exist, just store the moduleAccessPayload

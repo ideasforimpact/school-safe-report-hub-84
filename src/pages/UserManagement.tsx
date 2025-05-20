@@ -17,9 +17,10 @@ import { Button } from '@/components/ui/button';
 import { UserPlus, FileUp, RefreshCw } from 'lucide-react';
 import { User } from '@/contexts/auth/types';
 import { 
-  EmploymentStatus, 
+  Employee,
   EmployeeType as EmployeeContextType, 
-  DepartmentType as EmployeeContextDepartmentType 
+  DepartmentType as EmployeeContextDepartmentType,
+  EmploymentStatus 
 } from '@/contexts/employee/types';
 import { toast } from "sonner";
 import { 
@@ -36,6 +37,9 @@ import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getEmployeeData, isEmployeeAdmin, isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 import { useEmployeeData } from '@/hooks/useEmployeeData';
 import { ModuleAccessItem } from '@/types/moduleAccess';
+
+// Import the necessary types from auth context
+import { EmployeeType, DepartmentType } from '@/contexts/auth/types';
 
 // Helper function to convert employee type and department type
 const convertEmployeeType = (employeeType: EmployeeContextType): EmployeeType => {

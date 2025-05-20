@@ -4,7 +4,7 @@ import { ModulePermissions } from '@/contexts/auth/types';
 import { parseExcelFile } from './utils/excelProcessingUtils';
 import { validateExcelData } from './utils/excelValidationUtils';
 import { processEmployeeData, showImportResultNotifications } from './importProcessingService';
-import { validateEmployeeType, validateDepartment, validateEmploymentStatus } from './utils/employeeValidationUtils';
+import { isValidEmployeeType, isValidDepartment, isValidStatus } from './utils/employeeValidationUtils';
 import { toast } from 'sonner';
 
 /**
@@ -68,9 +68,9 @@ export const processEmployeeExcel = async (file: File, clientId?: string): Promi
       return {
         ...emp,
         email,
-        employeeType: validateEmployeeType(String(emp.employeeType)),
-        department: validateDepartment(String(emp.department)),
-        status: validateEmploymentStatus(String(emp.status)),
+        employeeType: isValidEmployeeType(String(emp.employeeType)) ? String(emp.employeeType) : 'permanent',
+        department: isValidDepartment(String(emp.department)) ? String(emp.department) : 'admin',
+        status: isValidStatus(String(emp.status)) ? String(emp.status) : 'active',
         modulePermissions: defaultModulePermissions
       };
     });
