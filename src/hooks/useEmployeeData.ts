@@ -192,17 +192,68 @@ export const useEmployeeData = () => {
 
   // Set employee data from auth context and fetch modules when available
   useEffect(() => {
+    console.log("useEmployeeData hook - authEmployeeData:", authEmployeeData);
+    
     if (authEmployeeData) {
+      // Set employee data in Redux store
+      console.log("Setting employee data in Redux store:", authEmployeeData);
       dispatch(setEmployeeData(authEmployeeData));
-      console.log("Employee data loaded in Redux store:", authEmployeeData);
       
-      // Fetch modules if we have employeeId and clientId and there are no modules in the store
-      if (authEmployeeData.id && authEmployeeData.clientId && 
+      // Fetch modules if we have employeeId and clientId
+      if (authEmployeeData.id && authEmployeeData.clientId &&
           (!state.configuredModules || state.configuredModules.length === 0)) {
+        console.log("Fetching modules in useEmployeeData hook");
         fetchConfiguredModules(authEmployeeData.id, authEmployeeData.clientId);
       }
+    } else {
+      console.log("No employeeData available in auth context");
+      
+      // If we have a user but no employee data, try to fetch employee data from the database
+      if (user && user.id) {
+        console.log("Attempting to fetch employee data for user:", user.id);
+        
+        const fetchEmployeeDataFromDB = async () => {
+          try {
+            // Try to get employee data by user ID
+            const { data, error } = await supabase
+              .from('employees')
+              .select('id, client_id, first_name, last_name, email, is_super_admin')
+              .eq('user_id', user.id)
+              .single();
+              
+            if (error) {
+              console.error("Error fetching employee data by user ID:", error);
+              return;
+            }
+            
+            if (data) {
+              console.log("Found employee data by user ID:", data);
+              const employeeData = {
+                id: data.id,
+                clientId: data.client_id,
+                firstName: data.first_name,
+                lastName: data.last_name,
+                email: data.email,
+                isSuperAdmin: data.is_super_admin
+              };
+              
+              // Set employee data in Redux store
+              dispatch(setEmployeeData(employeeData));
+              
+              // Fetch modules
+              if (data.id && data.client_id) {
+                fetchConfiguredModules(data.id, data.client_id);
+              }
+            }
+          } catch (fetchError) {
+            console.error("Error in fetchEmployeeDataFromDB:", fetchError);
+          }
+        };
+        
+        fetchEmployeeDataFromDB();
+      }
     }
-  }, [authEmployeeData]);
+  }, [authEmployeeData, user]);
 
   return {
     employeeData: state.employeeData,

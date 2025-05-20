@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,6 +30,7 @@ import { getAllEmployeesFromApi } from '@/services/employee/employeeRetrievalSer
 import { getEmployeeModulePermissions, updateEmployeeModulePermissions } from '@/services/employee/employeeModuleService';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getEmployeeData, isEmployeeAdmin, isEmployeeSuperAdmin } from '@/store/employeeSelectors';
+import { useEmployeeData } from '@/hooks/useEmployeeData';
 
 // Helper function to convert employee type and department type
 const convertEmployeeType = (employeeType: EmployeeContextType): EmployeeType => {
@@ -66,6 +66,14 @@ const UserManagement = () => {
   const { addEmployee, deactivateEmployee, fetchEmployees } = useEmployee();
   const { state } = useEmployeeStore();
   
+  // Force refresh of employee data
+  const { refetchModules } = useEmployeeData();
+  
+  useEffect(() => {
+    // Ensure employee data is loaded
+    refetchModules();
+  }, []);
+  
   // Get employee data directly from Redux
   const employeeData = getEmployeeData(state);
   // Determine admin status from Redux store
@@ -75,6 +83,7 @@ const UserManagement = () => {
   console.log("UserManagement - Redux employeeData:", employeeData);
   console.log("UserManagement - Redux isAdmin:", isAdmin);
   console.log("UserManagement - Redux isSuperAdmin:", isSuperAdmin);
+  console.log("UserManagement - User from auth context:", user);
   
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -551,7 +560,7 @@ const UserManagement = () => {
     }
   };
 
-  if (!isAdmin) {
+  if (!isAdmin && !isSuperAdmin) {
     return (
       <Layout>
         <Card>

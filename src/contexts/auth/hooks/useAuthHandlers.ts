@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { User, UserRole, EmployeeData } from '../types';
 import { getUserFromStorage, saveUserToStorage, saveEmployeeDataToStorage } from '@/services/auth/authService';
@@ -356,10 +355,15 @@ export const useAuthHandlers = ({
       setUser(newUser);
       saveUserToStorage(newUser);
       
-      // Save employee data to localStorage and context
-      // AND if Redux dispatch is available, also fetch configured modules
+      // Save employee data to localStorage, context, and Redux
       if (employeeData) {
-        console.log("Employee data being saved:", employeeData);
+        console.log("Employee data being saved during auth:", employeeData);
+        
+        // Store employee data in Redux - CRITICAL FIX
+        if (dispatch) {
+          console.log("Dispatching setEmployeeData to Redux during auth:", employeeData);
+          dispatch(setEmployeeData(employeeData));
+        }
         
         // FETCH MODULES HERE if employee is a super admin or has a client ID
         if (dispatch && employeeData.id && employeeData.clientId) {
@@ -377,11 +381,6 @@ export const useAuthHandlers = ({
           console.log("Storing modules in Redux during auth:", modules.length);
           dispatch(setConfiguredModules(modules));
           dispatch(setLoading(false));
-        }
-        
-        // Store employee data in Redux
-        if (dispatch) {
-          dispatch(setEmployeeData(employeeData));
         }
         
         // Also update context and localStorage for backward compatibility
