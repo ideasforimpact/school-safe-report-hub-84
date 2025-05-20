@@ -107,7 +107,8 @@ const AddEmployeeDialog = ({ isOpen, setIsOpen, onAddEmployee, clientId }: AddEm
       const moduleAccessPayload = selectedModules.map(module => ({
         name: module.name,
         employeeId: employeeId,
-        key: module.key
+        key: module.key,
+        module_id : module.id
       }));
       
       // Ensure clientId is included in the employee data
