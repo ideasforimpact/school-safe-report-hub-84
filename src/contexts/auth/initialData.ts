@@ -37,9 +37,9 @@ export const INITIAL_MOCK_USERS: UserWithPassword[] = [
     role: 'saas_owner',
     modulePermissions: DEFAULT_ADMIN_PERMISSIONS,
     isActive: true,
-    employeeId: 'EMP001',
+    employeeId: 'EMP001', // Now properly typed
     employeeType: 'permanent' as EmployeeType,
-    department: 'admin' as DepartmentType,
+    department: 'Administrative' as DepartmentType,
     joiningDate: '2023-01-01',
     createdAt: '2023-01-01T00:00:00.000Z'
   },
@@ -53,9 +53,9 @@ export const INITIAL_MOCK_USERS: UserWithPassword[] = [
     modulePermissions: DEFAULT_ADMIN_PERMISSIONS,
     clientId: '1',
     isActive: true,
-    employeeId: 'EMP002',
+    employeeId: 'EMP002', // Now properly typed
     employeeType: 'permanent' as EmployeeType,
-    department: 'academics' as DepartmentType,
+    department: 'Teaching' as DepartmentType,
     joiningDate: '2023-02-15',
     createdAt: '2023-02-15T00:00:00.000Z'
   },
@@ -69,9 +69,9 @@ export const INITIAL_MOCK_USERS: UserWithPassword[] = [
     modulePermissions: DEFAULT_REPORTER_PERMISSIONS,
     clientId: '1',
     isActive: true,
-    employeeId: 'EMP003',
+    employeeId: 'EMP003', // Now properly typed
     employeeType: 'contract' as EmployeeType,
-    department: 'operations' as DepartmentType,
+    department: 'Operations' as DepartmentType,
     joiningDate: '2023-03-20',
     createdAt: '2023-03-20T00:00:00.000Z'
   }
