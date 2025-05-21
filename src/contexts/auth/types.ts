@@ -19,7 +19,7 @@ export interface AuthContextType {
 }
 
 export type UserRole = 'user' | 'admin' | 'reporter' | 'viewer' | 'saas_owner';
-export type EmployeeType = 'permanent' | 'contract' | 'part-time' | 'full-time' | 'consultant' | 'intern';
+export type EmployeeType = 'permanent' | 'contract' | 'part-time' | 'full-time' | 'consultant';
 export type DepartmentType = 'IT' | 'HR' | 'Finance' | 'Marketing' | 'Operations' | 'Other' | 'Teaching' | 'Administrative' | 'Support';
 
 // Define a ModulePermissions interface
@@ -52,12 +52,6 @@ export interface User {
   updatedAt?: string;
   provider?: string;
   clientId?: string | null;
-  // Add missing properties used in components
-  employeeId?: string;
-  employeeType?: EmployeeType;
-  department?: DepartmentType;
-  joiningDate?: string;
-  isSuperAdmin?: boolean;
 }
 
 export interface UserWithPassword extends User {
@@ -67,8 +61,8 @@ export interface UserWithPassword extends User {
 export interface EmployeeData {
   id: string;
   clientId: string | null;
-  firstName: string; // Changed from optional to required
-  lastName: string; // Changed from optional to required
-  email: string; // Make this required to match the service definition
+  firstName?: string;
+  lastName?: string;
+  email?: string;
   isSuperAdmin?: boolean;
 }

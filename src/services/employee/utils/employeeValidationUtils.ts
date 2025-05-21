@@ -1,5 +1,4 @@
 
-
 import { Employee } from '@/contexts/employee/types';
 import { 
   EmployeeType, 
@@ -50,21 +49,21 @@ export const isValidEmail = (email: string): boolean => {
 };
 
 export const isValidEmployeeType = (employeeType: string): boolean => {
-  const validTypes: EmployeeType[] = ['permanent', 'contract', 'part-time', 'full-time', 'consultant', 'intern'];
+  const validTypes: EmployeeType[] = ['permanent', 'contract', 'part_time', 'consultant', 'intern'];
   return validTypes.includes(employeeType as EmployeeType);
 };
 
 export const isValidDepartment = (department: string): boolean => {
   const validDepartments: DepartmentType[] = [
-    'IT', 
-    'HR', 
-    'Finance', 
-    'Marketing', 
-    'Operations', 
-    'Other', 
-    'Teaching', 
-    'Administrative', 
-    'Support'
+    'admin', 
+    'teaching', 
+    'security', 
+    'maintenance', 
+    'transport', 
+    'management',
+    'it',
+    'hr',
+    'finance'
   ];
   return validDepartments.includes(department as DepartmentType);
 };

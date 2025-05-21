@@ -1,3 +1,4 @@
+
 import { User, UserWithPassword, UserRole, ModulePermissions, EmployeeType, DepartmentType } from '@/contexts/auth/types';
 import { v4 as uuidv4 } from 'uuid';
 import { validateUserEmail, validateAdminDeletion } from '@/contexts/auth/utils';
@@ -15,7 +16,6 @@ export const addNewUser = async (
     modulePermissions: ModulePermissions;
     clientId?: string;
     isActive: boolean;
-    // Adding these properties to fix TypeScript errors
     employeeId?: string;
     employeeType?: EmployeeType;
     department?: DepartmentType;
