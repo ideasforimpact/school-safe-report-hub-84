@@ -31,6 +31,8 @@ const Header = () => {
   console.log("Employee Data from Redux Store:", employeeData);
   console.log("Is Admin from Redux:", isAdmin);
   console.log("Is Super Admin from Redux:", isSuperAdmin);
+  console.log("Department:", employeeData?.department);
+  console.log("Employee Type:", employeeData?.employeeType);
   
   // Check if we're on the home page
   const isHomePage = location.pathname === "/" || location.pathname === "/home";
@@ -73,7 +75,7 @@ const Header = () => {
             <div className="flex items-center gap-3">
               <HeaderIcons />
 
-              {user && <UserRoleBadge isSaasOwner={isSuperAdmin} isAdmin={isAdmin} />}
+              {user && <UserRoleBadge isSaasOwner={isSuperAdmin} isAdmin={isAdmin} department={employeeData?.department} />}
               
               {/* Settings Menu - Only visible for admins */}
               {showAdminSettings && !isBackoffice && <AdminSettingsMenu />}

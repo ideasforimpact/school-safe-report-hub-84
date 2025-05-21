@@ -269,12 +269,15 @@ export const useAuthHandlers = ({
       let employeeData = null;
       let employeeRole: UserRole = 'user'; // Default role
       let clientId = null;
+      let department = null;
+      let employeeType = null;
+      let isSuperAdmin = false;
       
       // First, try to find the employee by user ID if it exists
       if (supabaseUser.id) {
         const { data, error } = await supabase
           .from('employees')
-          .select('id, client_id, employee_type, first_name, last_name, email, status, user_id, is_super_admin')
+          .select('id, client_id, employee_type, first_name, last_name, email, status, user_id, is_super_admin, department')
           .eq('user_id', supabaseUser.id)
           .single();
           
@@ -285,8 +288,15 @@ export const useAuthHandlers = ({
             firstName: data.first_name,
             lastName: data.last_name,
             email: data.email,
-            isSuperAdmin: data.is_super_admin
+            isSuperAdmin: data.is_super_admin,
+            department: data.department,
+            employeeType: data.employee_type
           };
+          
+          // Store values for use later
+          department = data.department;
+          employeeType = data.employee_type;
+          isSuperAdmin = data.is_super_admin;
           
           // Convert employee_type string to UserRole
           switch (data.employee_type) {
@@ -328,7 +338,7 @@ export const useAuthHandlers = ({
       if (!employeeData && supabaseUser.email) {
         const { data, error } = await supabase
           .from('employees')
-          .select('id, client_id, employee_type, first_name, last_name, email, status, user_id, is_super_admin')
+          .select('id, client_id, employee_type, first_name, last_name, email, status, user_id, is_super_admin, department')
           .eq('email', supabaseUser.email.toLowerCase())
           .single();
           
@@ -339,8 +349,15 @@ export const useAuthHandlers = ({
             firstName: data.first_name,
             lastName: data.last_name,
             email: data.email,
-            isSuperAdmin: data.is_super_admin
+            isSuperAdmin: data.is_super_admin,
+            department: data.department,
+            employeeType: data.employee_type
           };
+          
+          // Store values for use later
+          department = data.department;
+          employeeType = data.employee_type;
+          isSuperAdmin = data.is_super_admin;
           
           // Convert employee_type string to UserRole
           switch (data.employee_type) {
@@ -458,7 +475,10 @@ export const useAuthHandlers = ({
         isActive: true,
         provider,
         clientId,
-        createdAt: supabaseUser.created_at || new Date().toISOString()
+        createdAt: supabaseUser.created_at || new Date().toISOString(),
+        department, // Add department
+        employeeType, // Add employeeType
+        isSuperAdmin // Add isSuperAdmin flag
       };
 
       // Save the user to localStorage and context

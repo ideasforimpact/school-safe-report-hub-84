@@ -189,7 +189,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         try {
           const { data: employeeData, error } = await supabase
             .from('employees')
-            .select('id, client_id, email, first_name, last_name')
+            .select('id, client_id, email, first_name, last_name, is_super_admin, department, employee_type')
             .eq('email', email.toLowerCase())
             .single();
           
@@ -199,7 +199,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               clientId: employeeData.client_id,
               email: employeeData.email,
               firstName: employeeData.first_name,
-              lastName: employeeData.last_name
+              lastName: employeeData.last_name,
+              isSuperAdmin: employeeData.is_super_admin,
+              department: employeeData.department, // Add department
+              employeeType: employeeData.employee_type // Add employee_type
             };
             
             // Update local state
@@ -286,7 +289,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           email: backofficeUser.email,
           firstName: 'Backoffice',
           lastName: 'Admin',
-          isSuperAdmin: true
+          isSuperAdmin: true,
+          department: 'Management', // Add default department
+          employeeType: 'admin' // Add default employee type
         };
         
         // Update local state
