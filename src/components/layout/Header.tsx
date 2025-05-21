@@ -25,7 +25,8 @@ const Header = () => {
   const employeeData = getEmployeeData(state);
   const isAdmin = isEmployeeAdmin(state);
   const isSuperAdmin = isEmployeeSuperAdmin(state);
-  
+
+  console.log(user);
   // Check if we're on the home page
   const isHomePage = location.pathname === "/" || location.pathname === "/home";
   
