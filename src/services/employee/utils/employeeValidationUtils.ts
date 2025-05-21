@@ -49,7 +49,7 @@ export const isValidEmail = (email: string): boolean => {
 };
 
 export const isValidEmployeeType = (employeeType: string): boolean => {
-  const validTypes: EmployeeType[] = ['permanent', 'contract', 'part_time', 'consultant', 'intern'];
+  const validTypes: EmployeeType[] = ['permanent', 'contract', 'part_time', 'part-time', 'consultant', 'intern'];
   return validTypes.includes(employeeType as EmployeeType);
 };
 

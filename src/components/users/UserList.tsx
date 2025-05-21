@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { User, UserRole, ModulePermissions } from '@/contexts/auth/types';
+import { User, UserRole } from '@/contexts/auth/types';
 import {
   Table,
   TableBody,

@@ -55,7 +55,7 @@ export const INITIAL_MOCK_USERS: UserWithPassword[] = [
     isActive: true,
     employeeId: 'EMP002',
     employeeType: 'permanent' as EmployeeType,
-    department: 'academics' as DepartmentType,
+    department: 'admin' as DepartmentType,
     joiningDate: '2023-02-15',
     createdAt: '2023-02-15T00:00:00.000Z'
   },
@@ -71,7 +71,7 @@ export const INITIAL_MOCK_USERS: UserWithPassword[] = [
     isActive: true,
     employeeId: 'EMP003',
     employeeType: 'contract' as EmployeeType,
-    department: 'operations' as DepartmentType,
+    department: 'admin' as DepartmentType,
     joiningDate: '2023-03-20',
     createdAt: '2023-03-20T00:00:00.000Z'
   }

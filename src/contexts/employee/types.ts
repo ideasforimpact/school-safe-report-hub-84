@@ -20,7 +20,7 @@ export interface Employee {
   moduleAccessPayload?: ModuleAccessItem[];
 }
 
-export type EmployeeType = 'permanent' | 'contract' | 'part_time' | 'consultant' | 'intern';
+export type EmployeeType = 'permanent' | 'contract' | 'part_time' | 'part-time' | 'consultant' | 'intern';
 
 export type DepartmentType = 'admin' | 'teaching' | 'security' | 'maintenance' | 'transport' | 'management' | 'it' | 'hr' | 'finance';
 
