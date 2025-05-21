@@ -91,20 +91,28 @@ const Login = () => {
       try {
         // Check if we have a hash or code parameter which indicates an SSO callback
         if (location.hash || searchParams.get('code')) {
+          setIsLoading(true);
+          
           // Get the auth data
           const { data, error } = await supabase.auth.getSession();
           
           if (error) {
             console.error("Authentication error:", error);
             toast.error("Authentication failed. Please try again.");
+            setIsLoading(false);
           } else if (data?.session?.user) {
-            // Process the user
+            // Process the user - this will redirect to dashboard if successful
+            // or back to login if there are domain/permission issues
             await handleUserAuthentication(data.session.user);
+            setIsLoading(false);
+          } else {
+            setIsLoading(false);
           }
         }
       } catch (err) {
         console.error("Auth callback error:", err);
         toast.error("An error occurred during authentication.");
+        setIsLoading(false);
       }
     };
     
