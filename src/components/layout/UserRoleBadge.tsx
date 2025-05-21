@@ -1,5 +1,6 @@
 
 import { Badge } from "@/components/ui/badge";
+import { Crown, Shield, User } from "lucide-react";
 
 interface UserRoleBadgeProps {
   isSaasOwner: boolean;
@@ -14,32 +15,53 @@ const UserRoleBadge: React.FC<UserRoleBadgeProps> = ({
   isSuperAdmin = false,
   department 
 }) => {
-  // Base decisions only on the passed props (which come from Redux)
+  // If user is logged in through backoffice, they are a SaaS Owner
   if (isSaasOwner) {
     return (
-      <Badge variant="default" className="bg-blue-600 hover:bg-blue-700">
+      <Badge variant="default" className="bg-blue-600 hover:bg-blue-700 flex items-center gap-1">
+        <Crown className="h-3 w-3" />
         SaaS Owner {department ? `(${department})` : ''}
       </Badge>
     );
   }
   
+  // If user is logged in as employee and is a super admin
+  if (isSuperAdmin) {
+    return (
+      <Badge variant="default" className="bg-purple-600 hover:bg-purple-700 flex items-center gap-1">
+        <Shield className="h-3 w-3" />
+        Super Admin {department ? `(${department})` : ''}
+      </Badge>
+    );
+  }
+  
+  // If user is a regular admin
   if (isAdmin) {
     return (
-      <Badge variant="default" className="bg-green-600 hover:bg-green-700">
+      <Badge variant="default" className="bg-green-600 hover:bg-green-700 flex items-center gap-1">
+        <Shield className="h-3 w-3" />
         Admin {department ? `(${department})` : ''}
       </Badge>
     );
   }
   
+  // If we have a department but user is not any type of admin
   if (department) {
     return (
-      <Badge variant="default" className="bg-gray-600 hover:bg-gray-700">
+      <Badge variant="default" className="bg-gray-600 hover:bg-gray-700 flex items-center gap-1">
+        <User className="h-3 w-3" />
         {department}
       </Badge>
     );
   }
   
-  return null;
+  // Default case - regular user with no department
+  return (
+    <Badge variant="default" className="bg-gray-500 hover:bg-gray-600 flex items-center gap-1">
+      <User className="h-3 w-3" />
+      User
+    </Badge>
+  );
 };
 
 export default UserRoleBadge;

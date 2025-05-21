@@ -1,4 +1,3 @@
-
 import React, { createContext, useEffect, useState, useRef } from 'react';
 import { User, AuthContextType, UserWithPassword, EmployeeData } from './types';
 import { 
@@ -109,7 +108,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setAuthError(null);
         
         // Clear Redux state on logout
-        dispatch(resetEmployee());
+        if (dispatch) {
+          dispatch(resetEmployee());
+        }
         
         // Add a toast message for logout
         toast.info("You have been logged out");
@@ -156,7 +157,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             saveEmployeeDataToStorage(null);
             
             // Clear Redux state
-            dispatch(resetEmployee());
+            if (dispatch) {
+              dispatch(resetEmployee());
+            }
             
             logoutUser();
             toast.info("Your session has expired. Please log in again.");
@@ -351,7 +354,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsBackofficeUser(false);
       
       // Clear Redux state
-      dispatch(resetEmployee());
+      if (dispatch) {
+        dispatch(resetEmployee());
+      }
       
       logoutUser();
       toast.info("You have been logged out");
@@ -367,7 +372,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsBackofficeUser(false);
       
       // Clear Redux state
-      dispatch(resetEmployee());
+      if (dispatch) {
+        dispatch(resetEmployee());
+      }
       
       logoutUser();
       toast.info("You have been logged out");

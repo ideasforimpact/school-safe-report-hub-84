@@ -53,6 +53,9 @@ const Header = () => {
   // Show admin settings menu based on Redux state
   const showAdminSettings = isSuperAdmin || isAdmin;
 
+  // Determine if the user is a SaaS Owner (backoffice user)
+  const isSaasOwner = user?.role === 'saas_owner';
+
   return (
     <div className="w-full h-16 bg-white shadow-sm">
       <div className="w-full h-full px-0">
@@ -60,7 +63,7 @@ const Header = () => {
           {/* Logo Section */}
           <HeaderLogo 
             userClient={userClient} 
-            isSaasOwner={isSuperAdmin} 
+            isSaasOwner={isSuperAdmin || isSaasOwner} 
             dashboardPath={dashboardPath} 
           />
           
@@ -75,7 +78,14 @@ const Header = () => {
             <div className="flex items-center gap-3">
               <HeaderIcons />
 
-              {user && <UserRoleBadge isSaasOwner={isSuperAdmin} isAdmin={isAdmin} department={employeeData?.department} />}
+              {user && (
+                <UserRoleBadge 
+                  isSaasOwner={isSaasOwner} 
+                  isAdmin={isAdmin && !isSuperAdmin && !isSaasOwner} 
+                  isSuperAdmin={isSuperAdmin} 
+                  department={employeeData?.department} 
+                />
+              )}
               
               {/* Settings Menu - Only visible for admins */}
               {showAdminSettings && !isBackoffice && <AdminSettingsMenu />}
