@@ -19,8 +19,8 @@ export interface AuthContextType {
 }
 
 export type UserRole = 'user' | 'admin' | 'reporter' | 'viewer' | 'saas_owner';
-export type EmployeeType = 'permanent' | 'contract' | 'part-time' | 'full-time' | 'consultant' | 'intern';
-export type DepartmentType = 'admin' | 'teaching' | 'security' | 'maintenance' | 'transport' | 'management' | 'it' | 'hr' | 'finance' | 'IT' | 'HR' | 'Finance' | 'Marketing' | 'Operations' | 'Other' | 'Teaching' | 'Administrative' | 'Support';
+export type EmployeeType = 'permanent' | 'contract' | 'part-time' | 'full-time' | 'consultant';
+export type DepartmentType = 'IT' | 'HR' | 'Finance' | 'Marketing' | 'Operations' | 'Other' | 'Teaching' | 'Administrative' | 'Support';
 
 // Define a ModulePermissions interface
 export interface ModulePermissions {
@@ -52,12 +52,6 @@ export interface User {
   updatedAt?: string;
   provider?: string;
   clientId?: string | null;
-  // Add employee properties to User interface
-  employeeId?: string;
-  employeeType?: EmployeeType;
-  department?: DepartmentType;
-  joiningDate?: string;
-  isSuperAdmin?: boolean;
 }
 
 export interface UserWithPassword extends User {
@@ -67,8 +61,8 @@ export interface UserWithPassword extends User {
 export interface EmployeeData {
   id: string;
   clientId: string | null;
-  firstName: string;
-  lastName: string;
-  email: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
   isSuperAdmin?: boolean;
 }
