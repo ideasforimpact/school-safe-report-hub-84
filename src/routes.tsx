@@ -10,3 +10,4 @@ import BackofficeLogin from './pages/BackofficeLogin';
 // <Route path="/employee-verification" element={<EmployeeVerificationPage />} />
 // <Route path="/report-incident" element={<ReportIncident />} />
 // <Route path="/backoffice/login" element={<BackofficeLogin />} />
+

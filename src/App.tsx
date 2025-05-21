@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
@@ -42,6 +41,7 @@ import EmployeeVerificationPage from '@/pages/employee-verification/EmployeeVeri
 import EmployeeDetailPage from '@/pages/employee-verification/EmployeeDetailPage';
 import UploadDocumentPage from '@/pages/employee-verification/UploadDocumentPage';
 import VerificationDashboardPage from '@/pages/employee-verification/VerificationDashboardPage';
+import BackofficeLogin from '@/pages/BackofficeLogin';
 
 // Layout for Backoffice
 import BackofficeLayout from '@/components/layout/BackofficeLayout';
@@ -69,6 +69,7 @@ function App() {
                     <Route path="/login" element={<Login />} />
                     <Route path="/home" element={<Home />} />
                     <Route path="/pricing" element={<Pricing />} />
+                    <Route path="/backoffice/login" element={<BackofficeLogin />} />
                     
                     {/* Make Home page the default route */}
                     <Route path="/" element={<Home />} />
