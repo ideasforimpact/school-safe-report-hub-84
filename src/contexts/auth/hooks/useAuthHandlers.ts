@@ -225,16 +225,14 @@ export const useAuthHandlers = ({
     if (!supabaseUser || isProcessingAuth) {
       // If no user provided or already processing, return early
       if (!supabaseUser) {
-        console.log("No user provided for authentication");
         toast.error("Authentication failed. Please login again.");
-        
         // Clear any existing auth data to ensure clean state
         setUser(null);
         setEmployeeData(null);
         saveEmployeeDataToStorage(null);
         setAuthError(null);
         
-        // Redirect to login page immediately
+        // Redirect to login page
         if (typeof window !== 'undefined') {
           window.location.href = '/login';
         }
