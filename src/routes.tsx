@@ -1,3 +1,4 @@
+
 import React from "react";
 import { Routes, Route } from "react-router-dom";
 import BackofficeLayout from "./components/layout/BackofficeLayout";
@@ -9,9 +10,10 @@ import ModuleGuard from "./components/ModuleGuard";
 // Import pages
 import Home from "./pages/Home";
 import Login from "./pages/Login";
+import BackofficeLogin from "./pages/BackofficeLogin"; // Add import for BackofficeLogin
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
-import AuthCallback from "./pages/AuthCallback"; // Add the Auth Callback page
+import AuthCallback from "./pages/AuthCallback";
 
 // Import feature-specific routes
 import { assessmentRoutes } from "./routes/assessmentRoutes";
@@ -32,7 +34,8 @@ const AppRoutes = () => {
         <Route index element={<Home />} />
         <Route path="home" element={<Home />} />
         <Route path="login" element={<Login />} />
-        <Route path="auth/callback" element={<AuthCallback />} /> {/* New auth callback route */}
+        <Route path="backoffice/login" element={<BackofficeLogin />} /> {/* Add backoffice login route */}
+        <Route path="auth/callback" element={<AuthCallback />} />
         <Route path="*" element={<NotFound />} />
       </Route>
 
