@@ -74,8 +74,8 @@ const Login = () => {
       
       // Get the current origin for constructing redirect URL
       const origin = window.location.origin;
-      // Modified: Don't redirect to dashboard, redirect to a special auth callback path
-      const redirectTo = `${origin}/auth/callback`;
+      // Always redirect to dashboard after login
+      const redirectTo = `${origin}/dashboard`;
       
       // Use signInWithOAuth to redirect to Google's login page
       const { error } = await supabase.auth.signInWithOAuth({
@@ -111,8 +111,7 @@ const Login = () => {
       setError("");
       
       const origin = window.location.origin;
-      // Modified: Don't redirect to dashboard, redirect to a special auth callback path
-      const redirectTo = `${origin}/auth/callback`;
+      const redirectTo = `${origin}/dashboard`;
       
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'azure',

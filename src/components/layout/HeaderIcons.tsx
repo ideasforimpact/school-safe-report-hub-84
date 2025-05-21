@@ -1,24 +1,27 @@
 
-// If HeaderIcons.tsx doesn't exist or you need to create a link elsewhere,
-// you can add the backoffice login link to another relevant component
-
-import React from "react";
-import { Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Shield } from "lucide-react";
+import { Button } from '@/components/ui/button';
+import { HelpCircle, BellIcon } from 'lucide-react';
 
 const HeaderIcons = () => {
   return (
-    <div className="flex items-center space-x-4">
-      {/* Add other header icons or components here */}
+    <>
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        className="text-gray-500 hover:text-gray-700 relative"
+      >
+        <HelpCircle size={20} />
+      </Button>
       
-      <Link to="/backoffice/login">
-        <Button variant="ghost" size="sm" className="flex items-center gap-1">
-          <Shield size={16} />
-          <span className="hidden md:inline">Admin</span>
-        </Button>
-      </Link>
-    </div>
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        className="text-gray-500 hover:text-gray-700 relative"
+      >
+        <BellIcon size={20} />
+        <span className="absolute top-1.5 right-1.5 h-2 w-2 bg-red-500 rounded-full"></span>
+      </Button>
+    </>
   );
 };
 
