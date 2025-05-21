@@ -16,7 +16,7 @@ const UserRoleBadge: React.FC<UserRoleBadgeProps> = ({
   if (isSaasOwner) {
     return (
       <Badge variant="default" className="bg-blue-600 hover:bg-blue-700">
-        SaaS Admin
+        SaaS Owner
       </Badge>
     );
   }

@@ -26,12 +26,7 @@ const Header = () => {
   const isAdmin = isEmployeeAdmin(state);
   const isSuperAdmin = isEmployeeSuperAdmin(state);
 
-  // Log user information from Auth context and Redux store for debugging
-  console.log("Auth Context User:", user);
-  console.log("Redux Employee Data:", employeeData);
-  console.log("Is Admin (Redux):", isAdmin);
-  console.log("Is Super Admin (Redux):", isSuperAdmin);
-  
+  console.log(user);
   // Check if we're on the home page
   const isHomePage = location.pathname === "/" || location.pathname === "/home";
   

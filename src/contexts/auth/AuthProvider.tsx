@@ -195,14 +195,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             
             setEmployeeData(employee);
             saveEmployeeDataToStorage(employee);
-            
-            // Dispatch employee data to Redux store
-            if (dispatch) {
-              dispatch(setEmployeeData(employee));
-              dispatch(setClientId(employeeData.client_id));
-            }
-            
-            console.log("Employee data stored in Redux during login:", employee);
+            console.log("Employee data stored:", employee);
           }
         } catch (err) {
           console.error("Error fetching employee data:", err);
@@ -269,48 +262,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setCurrentUser(saasUser);
         setIsBackofficeUser(true);
         saveUserToStorage(saasUser);
-        
-        // Create employee data for backoffice user and store it in Redux
-        const backofficeEmployeeData: EmployeeData = {
-          id: backofficeUser.id,
-          clientId: null, // Backoffice users don't have a client ID
-          email: backofficeUser.email,
-          firstName: 'Backoffice',
-          lastName: 'Admin',
-          isSuperAdmin: true
-        };
-        
-        // Update employee data in local state and storage
-        setEmployeeData(backofficeEmployeeData);
-        saveEmployeeDataToStorage(backofficeEmployeeData);
-        
-        // Dispatch to Redux store
-        if (dispatch) {
-          dispatch(setEmployeeData(backofficeEmployeeData));
-          // Set configured modules for backoffice user
-          const backofficeModules = [
-            {
-              id: 'admin-dashboard',
-              name: 'Admin Dashboard',
-              key: 'admin',
-              icon: 'LayoutDashboard',
-              level: 'saas',
-              enabled: true
-            },
-            {
-              id: 'client-management',
-              name: 'Client Management',
-              key: 'clients',
-              icon: 'Building',
-              level: 'saas',
-              enabled: true
-            }
-          ];
-          dispatch(setConfiguredModules(backofficeModules));
-        }
-        
-        console.log("Backoffice user data stored in Redux:", backofficeEmployeeData);
-        
         toast.success(`Welcome back, Backoffice Admin!`);
         return true;
       }
@@ -335,12 +286,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       saveEmployeeDataToStorage(null); // Clear from storage
       setIsBackofficeUser(false);
       logoutUser();
-      
-      // Clear Redux state
-      if (dispatch) {
-        dispatch(resetEmployee());
-      }
-      
       toast.info("You have been logged out");
       
       // Redirect to login page after logout
@@ -353,12 +298,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       saveEmployeeDataToStorage(null);
       setIsBackofficeUser(false);
       logoutUser();
-      
-      // Clear Redux state
-      if (dispatch) {
-        dispatch(resetEmployee());
-      }
-      
       toast.info("You have been logged out");
       
       // Redirect to login page after logout even if there's an error
@@ -532,5 +471,3 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     </AuthContext.Provider>
   );
 };
-
-export default AuthProvider;
