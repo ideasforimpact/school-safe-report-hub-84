@@ -63,7 +63,16 @@ export const isValidDepartment = (department: string): boolean => {
     'management',
     'it',
     'hr',
-    'finance'
+    'finance',
+    'IT',
+    'HR',
+    'Finance',
+    'Marketing',
+    'Operations',
+    'Other',
+    'Teaching',
+    'Administrative',
+    'Support'
   ];
   return validDepartments.includes(department as DepartmentType);
 };

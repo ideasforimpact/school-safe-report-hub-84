@@ -19,7 +19,7 @@ export interface AuthContextType {
 }
 
 export type UserRole = 'user' | 'admin' | 'reporter' | 'viewer' | 'saas_owner';
-export type EmployeeType = 'permanent' | 'contract' | 'part-time' | 'full-time' | 'consultant';
+export type EmployeeType = 'permanent' | 'contract' | 'part_time' | 'full-time' | 'consultant';
 export type DepartmentType = 'IT' | 'HR' | 'Finance' | 'Marketing' | 'Operations' | 'Other' | 'Teaching' | 'Administrative' | 'Support' | 'admin' | 'teaching' | 'security' | 'maintenance' | 'transport' | 'management';
 
 // Define a ModulePermissions interface
@@ -67,8 +67,8 @@ export interface UserWithPassword extends User {
 export interface EmployeeData {
   id: string;
   clientId: string | null;
-  firstName?: string;
-  lastName?: string;
+  firstName: string;
+  lastName: string;
   email: string; // Make this required to match authService
   isSuperAdmin?: boolean;
 }

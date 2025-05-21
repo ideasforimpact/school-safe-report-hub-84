@@ -47,6 +47,12 @@ const convertEmployeeType = (employeeType: EmployeeContextType): EmployeeType =>
   if (employeeType === 'intern') {
     return 'consultant' as EmployeeType; // Map intern to consultant as fallback
   }
+  
+  // Handle the difference between 'part_time' and 'part-time'
+  if (employeeType === 'part_time') {
+    return 'part_time' as EmployeeType;
+  }
+  
   return employeeType as EmployeeType;
 };
 
@@ -232,7 +238,7 @@ const UserManagement = () => {
               firstName: formData.firstName,
               lastName: formData.lastName,
               email: formData.email,
-              employeeType: formData.employeeType,
+              employeeType: formData.employeeType === 'part-time' ? 'part_time' as EmployeeType : formData.employeeType as EmployeeType,
               department: formData.department,
               joiningDate: formData.joiningDate,
               status: 'active' as EmploymentStatus,
