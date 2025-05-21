@@ -15,6 +15,9 @@ const UserRoleBadge: React.FC<UserRoleBadgeProps> = ({
   isSuperAdmin = false,
   department 
 }) => {
+  // Log values for debugging
+  console.log("UserRoleBadge Props:", { isSaasOwner, isAdmin, isSuperAdmin, department });
+  
   // If user is logged in through backoffice, they are a SaaS Owner
   if (isSaasOwner) {
     return (

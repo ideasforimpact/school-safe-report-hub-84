@@ -212,8 +212,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setEmployeeData(employee);
             saveEmployeeDataToStorage(employee);
             
-            // Update Redux state - Fixed: Use proper action creators
+            // Update Redux state
             if (dispatch) {
+              // Use the action creators directly
               dispatch(setEmployeeData(employee));
               dispatch(setClientId(employee.clientId));
             }
@@ -303,12 +304,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setEmployeeData(backofficeEmployeeData);
         saveEmployeeDataToStorage(backofficeEmployeeData);
         
-        // Update Redux state - Fixed: Use proper action creators
+        // Update Redux state
         if (dispatch) {
+          // Use the action creators directly
           dispatch(setEmployeeData(backofficeEmployeeData));
           
-          // Also set clientId in Redux
-          if (employeeData.clientId) {
+          // Only set clientId if it exists
+          if (employeeData && employeeData.clientId) {
             dispatch(setClientId(employeeData.clientId));
           }
         }

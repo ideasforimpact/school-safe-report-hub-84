@@ -33,6 +33,7 @@ const Header = () => {
   console.log("Is Super Admin from Redux:", isSuperAdmin);
   console.log("Department:", employeeData?.department);
   console.log("Employee Type:", employeeData?.employeeType);
+  console.log("User isSuperAdmin property:", user?.isSuperAdmin);
   
   // Check if we're on the home page
   const isHomePage = location.pathname === "/" || location.pathname === "/home";

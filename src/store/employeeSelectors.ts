@@ -9,6 +9,7 @@ export const getEmployeeLoadingState = (state: EmployeeState) => state.isLoading
 export const getEmployeeError = (state: EmployeeState) => state.error;
 
 // Helper function to determine if employee is a super admin
+// Explicitly check that the value is true, not just truthy
 export const isEmployeeSuperAdmin = (state: EmployeeState) => 
   state.employeeData?.isSuperAdmin === true;
 
