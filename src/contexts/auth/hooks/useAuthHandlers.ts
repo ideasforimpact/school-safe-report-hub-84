@@ -1,10 +1,9 @@
-
 import { useState, useCallback } from 'react';
 import { User, UserRole, EmployeeData } from '../types';
 import { getUserFromStorage, saveUserToStorage, saveEmployeeDataToStorage } from '@/services/auth/authService';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { setEmployeeData, setConfiguredModules, setLoading, setError } from '@/store/employeeActions';
+import { setEmployeeData, setConfiguredModules, setLoading, setError, setClientId } from '@/store/employeeActions';
 import { Module } from '@/store/types';
 import { extractDomain, isEmailDomainAllowed } from '@/utils/authProviders';
 
@@ -458,6 +457,11 @@ export const useAuthHandlers = ({
         if (dispatch) {
           console.log("Dispatching setEmployeeData to Redux during auth:", employeeData);
           dispatch(setEmployeeData(employeeData));
+          
+          // Also set client ID directly in Redux
+          if (employeeData.clientId) {
+            dispatch(setClientId(employeeData.clientId));
+          }
         }
         
         // FETCH MODULES HERE if employee is a super admin or has a client ID
