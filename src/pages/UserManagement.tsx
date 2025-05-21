@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -238,7 +239,7 @@ const UserManagement = () => {
               firstName: formData.firstName,
               lastName: formData.lastName,
               email: formData.email,
-              employeeType: formData.employeeType === 'part-time' ? 'part_time' as EmployeeType : formData.employeeType as EmployeeType,
+              employeeType: formData.employeeType,
               department: formData.department,
               joiningDate: formData.joiningDate,
               status: 'active' as EmploymentStatus,

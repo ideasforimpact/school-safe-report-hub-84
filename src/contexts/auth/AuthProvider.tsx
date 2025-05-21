@@ -287,6 +287,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsBackofficeUser(false);
       logoutUser();
       toast.info("You have been logged out");
+      
+      // Redirect to login page after logout
+      window.location.href = '/login';
     }).catch((error) => {
       console.error("Error signing out:", error);
       // Still clear local state even if supabase logout fails
@@ -296,6 +299,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsBackofficeUser(false);
       logoutUser();
       toast.info("You have been logged out");
+      
+      // Redirect to login page after logout even if there's an error
+      window.location.href = '/login';
     });
   };
 
