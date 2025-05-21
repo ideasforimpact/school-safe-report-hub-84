@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.20.0';
 
@@ -105,6 +106,28 @@ async function addEmployeeModuleAccess(
     }
   } catch (error) {
     console.error("Error adding employee module access:", error);
+    throw error;
+  }
+}
+
+// Function to delete all module access for an employee
+async function deleteEmployeeModuleAccess(employeeId: string): Promise<void> {
+  try {
+    console.log(`Deleting all module access for employee: ${employeeId}`);
+    
+    const { error } = await supabaseAdmin
+      .from('employee_modules')
+      .delete()
+      .eq('employee_id', employeeId);
+    
+    if (error) {
+      console.error("Error deleting employee module access:", error);
+      throw error;
+    }
+    
+    console.log(`Successfully deleted all module access for employee: ${employeeId}`);
+  } catch (error) {
+    console.error("Error in deleteEmployeeModuleAccess:", error);
     throw error;
   }
 }
@@ -351,9 +374,121 @@ async function handleBulkImport(employees: any[]) {
   }
 }
 
+// Implement the updateEmployee function for updating an employee's information and module access
 async function updateEmployee(employee: any) {
-  // Implementation for updating an employee
-  return { error: 'Not implemented yet' };
+  try {
+    if (!employee || !employee.id) {
+      return { error: "Employee ID is required for update operation" };
+    }
+    
+    console.log(`Updating employee with ID: ${employee.id}`);
+    
+    // Check if email already exists for another employee in the same client
+    if (employee.email && employee.clientId) {
+      const emailExists = await checkForExistingEmail(
+        employee.email, 
+        employee.clientId, 
+        employee.id // Exclude current employee from check
+      );
+      
+      if (emailExists) {
+        return { 
+          error: `Another employee with email ${employee.email} already exists for this client.`,
+          code: 'DUPLICATE_EMAIL',
+          success: false
+        };
+      }
+    }
+    
+    // Prepare the employee data for update
+    const updateData: Record<string, any> = {};
+    
+    // Only include fields that are provided in the update
+    if (employee.firstName !== undefined) updateData.first_name = employee.firstName;
+    if (employee.lastName !== undefined) updateData.last_name = employee.lastName;
+    if (employee.email !== undefined) updateData.email = employee.email;
+    if (employee.employeeType !== undefined) updateData.employee_type = employee.employeeType;
+    if (employee.department !== undefined) updateData.department = employee.department;
+    if (employee.joiningDate !== undefined) updateData.joining_date = employee.joiningDate;
+    if (employee.status !== undefined) {
+      // Convert status to boolean if it's not already
+      updateData.status = employee.status === 'active' || employee.status === true ? true : false;
+    }
+    
+    console.log("Update data:", updateData);
+    
+    // Update the employee in the database if there are fields to update
+    let updatedEmployee;
+    if (Object.keys(updateData).length > 0) {
+      const { data, error } = await supabaseAdmin
+        .from('employees')
+        .update(updateData)
+        .eq('id', employee.id)
+        .select('*')
+        .single();
+      
+      if (error) {
+        console.error("Error updating employee:", error);
+        return { 
+          error: error.message, 
+          success: false 
+        };
+      }
+      
+      updatedEmployee = data;
+    } else {
+      // If no fields to update, just fetch the current employee data
+      const { data, error } = await supabaseAdmin
+        .from('employees')
+        .select('*')
+        .eq('id', employee.id)
+        .single();
+        
+      if (error) {
+        console.error("Error fetching employee:", error);
+        return { 
+          error: error.message, 
+          success: false 
+        };
+      }
+      
+      updatedEmployee = data;
+    }
+    
+    // Handle module access updates if provided
+    if (employee.moduleAccessPayload) {
+      try {
+        // First delete all existing module access for this employee
+        await deleteEmployeeModuleAccess(employee.id);
+        
+        // Then add the new module access if any are provided
+        if (Array.isArray(employee.moduleAccessPayload) && employee.moduleAccessPayload.length > 0) {
+          await addEmployeeModuleAccess(employee.moduleAccessPayload, employee.id);
+        }
+      } catch (moduleError) {
+        console.error("Error updating module access:", moduleError);
+        return {
+          data: updatedEmployee,
+          warning: "Employee updated but there was an issue with module access",
+          success: true
+        };
+      }
+    }
+    
+    console.log("Employee updated successfully:", updatedEmployee);
+    
+    return { 
+      data: updatedEmployee,
+      message: "Employee updated successfully",
+      success: true 
+    };
+  } catch (error) {
+    console.error("Error in updateEmployee:", error);
+    return { 
+      error: error.message || "Failed to update employee", 
+      success: false 
+    };
+  }
 }
 
 async function deactivateEmployee(id: string) {
@@ -534,6 +669,12 @@ serve(async (req) => {
         break;
       case 'bulk_import':
         result = await handleBulkImport(body.employees);
+        break;
+      case 'deactivate':
+        result = await deactivateEmployee(body.id);
+        break;
+      case 'delete':
+        result = await deleteEmployee(body.id);
         break;
       default:
         result = { error: `Unknown operation: ${operation}`, success: false };
