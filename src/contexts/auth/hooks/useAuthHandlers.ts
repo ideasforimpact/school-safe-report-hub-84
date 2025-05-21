@@ -6,7 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { setEmployeeData, setConfiguredModules, setLoading, setError } from '@/store/employeeActions';
 import { Module } from '@/store/types';
-import { useNavigate, useLocation } from 'react-router-dom';
+
 // Define the SupabaseUser type that's missing
 interface SupabaseUser {
   id: string;
@@ -43,7 +43,7 @@ export const useAuthHandlers = ({
   dispatch
 }: UseAuthHandlersProps) => {
   const [isProcessingAuth, setIsProcessingAuth] = useState(false);
-  const navigate = useNavigate();
+  
   // New function to fetch configured modules for an employee
   const fetchConfiguredModules = useCallback(async (employeeId: string, clientId: string | null, isSuperAdmin: boolean) => {
     try {
@@ -185,8 +185,6 @@ export const useAuthHandlers = ({
 
   // Handle user authentication from various providers (Google, etc.)
   const handleUserAuthentication = useCallback(async (supabaseUser: SupabaseUser | null) => {
-    const navigate = useNavigate();
-    
     if (!supabaseUser || isProcessingAuth) {
       // If no user provided or already processing, return early
       if (!supabaseUser) {
@@ -196,8 +194,6 @@ export const useAuthHandlers = ({
         setEmployeeData(null);
         saveEmployeeDataToStorage(null);
         setAuthError(null);
-        await supabase.auth.signOut();
-        navigate('/login');
       }
       return;
     }
@@ -277,7 +273,6 @@ export const useAuthHandlers = ({
             toast.error("Your account has been deactivated. Please contact support.");
             await supabase.auth.signOut();
             setIsProcessingAuth(false);
-            navigate('/login');
             return;
           }
           
@@ -332,7 +327,6 @@ export const useAuthHandlers = ({
             toast.error("Your account has been deactivated. Please contact support.");
             await supabase.auth.signOut();
             setIsProcessingAuth(false);
-            navigate('/login');
             return;
           }
           
@@ -356,7 +350,6 @@ export const useAuthHandlers = ({
         setAuthError("No employee record found for your account. Please contact an administrator.");
         toast.error("No employee record found for your account. Please contact an administrator.");
         await supabase.auth.signOut();
-        navigate('/login');
         setIsProcessingAuth(false);
         return;
       }
@@ -424,7 +417,6 @@ export const useAuthHandlers = ({
       toast.error('Authentication failed. Please try again.');
       // Ensure user is logged out on error
       await supabase.auth.signOut();
-      navigate('/login');
       setUser(null);
       setEmployeeData(null);
       saveEmployeeDataToStorage(null);
