@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { User, UserRole, EmployeeData } from '../types';
 import { getUserFromStorage, saveUserToStorage, saveEmployeeDataToStorage } from '@/services/auth/authService';
@@ -184,25 +185,23 @@ export const useAuthHandlers = ({
 
   // Handle user authentication from various providers (Google, etc.)
   const handleUserAuthentication = useCallback(async (supabaseUser: SupabaseUser | null) => {
-    if (!supabaseUser || isProcessingAuth) return;
+    if (!supabaseUser || isProcessingAuth) {
+      // If no user provided or already processing, return early
+      if (!supabaseUser) {
+        toast.error("Authentication failed. Please login again.");
+        // Clear any existing auth data to ensure clean state
+        setUser(null);
+        setEmployeeData(null);
+        saveEmployeeDataToStorage(null);
+        setAuthError(null);
+      }
+      return;
+    }
     
     try {
       setIsProcessingAuth(true);
 
       console.log("Processing authentication for user:", supabaseUser.email);
-      
-      // Check if we already have a saved user
-      const savedUser = getUserFromStorage();
-      
-      // If the saved user email matches, don't re-process
-      // if (savedUser && savedUser.email === supabaseUser.email) {
-      //   console.log("Using existing user data from storage");
-      //   setUser(savedUser);
-      //   setAuthError(null);
-      //   setIsProcessingAuth(false);
-      //   authInitCompleteRef.current = true;
-      //   return;
-      // }
       
       // Extract auth provider from user metadata or email
       let provider = (supabaseUser.app_metadata?.provider || 'email') as string;
@@ -271,12 +270,15 @@ export const useAuthHandlers = ({
           if (data.status !== true) {
             console.log("User account is inactive");
             setAuthError("Your account has been deactivated. Please contact support.");
+            toast.error("Your account has been deactivated. Please contact support.");
             await supabase.auth.signOut();
             setIsProcessingAuth(false);
             return;
           }
           
           console.log("Found employee record by user_id:", employeeData);
+        } else if (error) {
+          console.log("Error finding employee by user_id:", error);
         }
       }
       
@@ -322,6 +324,7 @@ export const useAuthHandlers = ({
           if (data.status !== true) {
             console.log("User account is inactive");
             setAuthError("Your account has been deactivated. Please contact support.");
+            toast.error("Your account has been deactivated. Please contact support.");
             await supabase.auth.signOut();
             setIsProcessingAuth(false);
             return;
@@ -336,7 +339,19 @@ export const useAuthHandlers = ({
           }
           
           console.log("Found employee record by email:", employeeData);
+        } else if (error) {
+          console.log("Error finding employee by email:", error);
         }
+      }
+
+      // If no employee record was found, alert the user and sign out
+      if (!employeeData) {
+        console.log("No employee record found for authenticated user");
+        setAuthError("No employee record found for your account. Please contact an administrator.");
+        toast.error("No employee record found for your account. Please contact an administrator.");
+        await supabase.auth.signOut();
+        setIsProcessingAuth(false);
+        return;
       }
       
       // Create a new user object
@@ -399,6 +414,12 @@ export const useAuthHandlers = ({
     } catch (error) {
       console.error('Authentication processing error:', error);
       setAuthError('Failed to process authentication');
+      toast.error('Authentication failed. Please try again.');
+      // Ensure user is logged out on error
+      await supabase.auth.signOut();
+      setUser(null);
+      setEmployeeData(null);
+      saveEmployeeDataToStorage(null);
     } finally {
       setIsProcessingAuth(false);
     }

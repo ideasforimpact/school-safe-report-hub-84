@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
@@ -48,6 +49,7 @@ const Login = () => {
       setError(authError);
       setIsLoading(false);
       setGoogleLoading(false);
+      toast.error(authError);
     }
   }, [authError]);
 
@@ -63,12 +65,14 @@ const Login = () => {
       } else {
         if (!authError) {
           setError("Invalid email or password");
+          toast.error("Invalid email or password");
         }
         setIsLoading(false);
       }
     } catch (err) {
       console.error("Login error:", err);
       setError("An error occurred. Please try again.");
+      toast.error("An error occurred. Please try again.");
       setIsLoading(false);
     }
   };
@@ -106,6 +110,7 @@ const Login = () => {
     } catch (err) {
       console.error("Google login unexpected error:", err);
       setError("An error occurred with Google login. Please try again.");
+      toast.error("An error occurred with Google login. Please try again.");
       setGoogleLoading(false);
     }
   };

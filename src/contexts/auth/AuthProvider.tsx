@@ -85,6 +85,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (authListenerSetupRef.current) return;
     
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Auth state change event:", event);
+      
       if (event === 'SIGNED_IN' && session?.user) {
         console.log("User signed in:", session.user.email);
         
@@ -95,12 +97,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }, 0);
         } catch (error) {
           console.error("Error in auth state change handler:", error);
+          toast.error("Authentication failed. Please try again.");
         }
       } else if (event === 'SIGNED_OUT') {
+        console.log("User signed out");
         setCurrentUser(null);
         setEmployeeData(null); // Clear employee data on logout
         saveEmployeeDataToStorage(null); // Clear from storage
         setAuthError(null);
+        
+        // Add a toast message for logout
+        toast.info("You have been logged out");
+        
+        // Clear any local auth data
+        logoutUser();
+      } else if (event === 'TOKEN_REFRESHED') {
+        console.log("Auth token refreshed");
+      } else if (event === 'USER_UPDATED') {
+        console.log("User data updated");
       }
     });
     
@@ -123,12 +137,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           if (!currentUser) {
             // Use setTimeout to avoid potential deadlock issues
             setTimeout(async () => {
+              console.log("Found existing session, authenticating user...");
               await handleUserAuthentication(data.session?.user);
             }, 0);
+          }
+        } else {
+          console.log("No active session found");
+          // If we have a user in storage but no active session, clear it
+          if (currentUser) {
+            console.log("Clearing stale user data from storage");
+            setCurrentUser(null);
+            setEmployeeData(null);
+            saveEmployeeDataToStorage(null);
+            logoutUser();
+            toast.info("Your session has expired. Please log in again.");
           }
         }
       } catch (error) {
         console.error("Error checking Supabase auth:", error);
+        toast.error("Error checking authentication status");
       } finally {
         setIsInitializing(false);
       }
@@ -251,12 +278,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Handle logout
   const handleLogout = (): void => {
-    setCurrentUser(null);
-    setEmployeeData(null); // Clear employee data on logout
-    saveEmployeeDataToStorage(null); // Clear from storage
-    setIsBackofficeUser(false);
-    logoutUser();
-    toast.info("You have been logged out");
+    // First, sign out from Supabase
+    supabase.auth.signOut().then(() => {
+      // Then clear local state
+      setCurrentUser(null);
+      setEmployeeData(null); // Clear employee data on logout
+      saveEmployeeDataToStorage(null); // Clear from storage
+      setIsBackofficeUser(false);
+      logoutUser();
+      toast.info("You have been logged out");
+    }).catch((error) => {
+      console.error("Error signing out:", error);
+      // Still clear local state even if supabase logout fails
+      setCurrentUser(null);
+      setEmployeeData(null);
+      saveEmployeeDataToStorage(null);
+      setIsBackofficeUser(false);
+      logoutUser();
+      toast.info("You have been logged out");
+    });
   };
 
   // Add new user
