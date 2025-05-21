@@ -3,28 +3,21 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, ShieldCheck, LogIn, Facebook, Twitter, Linkedin, Github } from "lucide-react";
+import { AlertCircle, ShieldCheck, LogIn } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-
-// List of demo credentials for verification
-const DEMO_CREDENTIALS = [
-  { email: 'owner@saasplatform.com', password: 'owner123', role: 'SaaS Owner' },
-  { email: 'admin@school.edu', password: 'admin123', role: 'Admin' },
-  { email: 'reporter@school.edu', password: 'reporter123', role: 'Reporter' }
-];
+import { providerConfigs } from "@/utils/authProviders";
 
 const Login = () => {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [microsoftLoading, setMicrosoftLoading] = useState(false);
+  const [zohoLoading, setZohoLoading] = useState(false);
   const [error, setError] = useState("");
-  const { login, authError, user, handleUserAuthentication } = useAuth();
+  const { authError, user, handleUserAuthentication } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -49,33 +42,11 @@ const Login = () => {
       setError(authError);
       setIsLoading(false);
       setGoogleLoading(false);
+      setMicrosoftLoading(false);
+      setZohoLoading(false);
       toast.error(authError);
     }
   }, [authError]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setIsLoading(true);
-
-    try {
-      const success = await login(email, password);
-      if (success) {
-        // Redirect logic is handled in the useEffect that watches for user changes
-      } else {
-        if (!authError) {
-          setError("Invalid email or password");
-          toast.error("Invalid email or password");
-        }
-        setIsLoading(false);
-      }
-    } catch (err) {
-      console.error("Login error:", err);
-      setError("An error occurred. Please try again.");
-      toast.error("An error occurred. Please try again.");
-      setIsLoading(false);
-    }
-  };
 
   const handleGoogleLogin = async () => {
     try {
@@ -115,43 +86,53 @@ const Login = () => {
     }
   };
 
-  const handleDemoLogin = async (demoEmail: string, demoPassword: string) => {
-    // First validate that this is a valid demo credential
-    const isValidDemo = DEMO_CREDENTIALS.some(cred => 
-      cred.email === demoEmail && cred.password === demoPassword
-    );
-
-    if (!isValidDemo) {
-      toast.error("Invalid demo credentials");
-      return;
-    }
-    
-    setEmail(demoEmail);
-    setPassword(demoPassword);
-    setError("");
-    setIsLoading(true);
-
+  const handleMicrosoftLogin = async () => {
     try {
-      const success = await login(demoEmail, demoPassword);
-      if (success) {
-        // Redirect logic is handled in the useEffect that watches for user changes
-      } else {
-        if (!authError) {
-          toast.error("Demo login failed. Please try again.");
-          setError("Demo login failed. Please check the console for details.");
+      setMicrosoftLoading(true);
+      setError("");
+      
+      const origin = window.location.origin;
+      const redirectTo = `${origin}/dashboard`;
+      
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'azure',
+        options: {
+          redirectTo: redirectTo,
+          queryParams: {
+            ts: new Date().getTime().toString()
+          }
         }
-        setIsLoading(false);
+      });
+      
+      if (error) {
+        console.error("Microsoft login error:", error);
+        toast.error("Microsoft login failed. Please try again.");
+        setError(`Microsoft authentication failed: ${error.message}`);
+        setMicrosoftLoading(false);
       }
+      
     } catch (err) {
-      console.error("Demo login error:", err);
-      setError("An error occurred with demo login. Please try again.");
-      setIsLoading(false);
+      console.error("Microsoft login unexpected error:", err);
+      setError("An error occurred with Microsoft login. Please try again.");
+      toast.error("An error occurred with Microsoft login. Please try again.");
+      setMicrosoftLoading(false);
     }
   };
 
-  // This function would be implemented when we connect to real OAuth providers
-  const handleOAuthLogin = (provider: string) => {
-    toast.info(`${provider} authentication is not configured yet. Please use Google or email login.`);
+  const handleZohoLogin = async () => {
+    try {
+      setZohoLoading(true);
+      setError("");
+      
+      toast.info("Zoho authentication is not configured yet. Please use Google or Microsoft login.");
+      setZohoLoading(false);
+      
+    } catch (err) {
+      console.error("Zoho login unexpected error:", err);
+      setError("An error occurred with Zoho login. Please try again.");
+      toast.error("An error occurred with Zoho login. Please try again.");
+      setZohoLoading(false);
+    }
   };
 
   return (
@@ -168,74 +149,27 @@ const Login = () => {
 
         <Card className="border-t-4 border-t-primary animate-scale-in shadow-lg">
           <CardHeader>
-            <CardTitle>Log In</CardTitle>
-            <CardDescription>
-              Enter your credentials to access the system
+            <CardTitle className="text-center">Log In with SSO</CardTitle>
+            <CardDescription className="text-center">
+              Use your organization credentials to access the system
             </CardDescription>
           </CardHeader>
-          <form onSubmit={handleSubmit}>
-            <CardContent className="space-y-4">
-              {error && (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
+          <CardContent className="space-y-4">
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
 
-              <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium">
-                  Email
-                </label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@school.edu"
-                  required
-                  className="transition-all focus:ring-2 focus:ring-primary"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <label htmlFor="password" className="text-sm font-medium">
-                    Password
-                  </label>
-                </div>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                  className="transition-all focus:ring-2 focus:ring-primary"
-                />
-              </div>
-            </CardContent>
-            <CardFooter className="flex-col gap-3">
-              <Button 
-                type="submit" 
-                className="w-full bg-primary hover:bg-primary/80 transition-all" 
-                disabled={isLoading}
-              >
-                {isLoading ? "Logging in..." : "Log in"}
-              </Button>
-              
-              <div className="w-full flex items-center gap-2 my-2">
-                <Separator className="flex-1" />
-                <span className="text-xs text-gray-500">OR</span>
-                <Separator className="flex-1" />
-              </div>
-              
-              {/* Attractive Google SSO button */}
+            <div className="space-y-4">
+              {/* Google SSO button */}
               <Button 
                 type="button" 
                 variant="outline" 
-                className="w-full flex items-center gap-2 justify-center bg-white hover:bg-gray-50 border-gray-300 text-gray-700 shadow-sm transition-all transform hover:scale-[1.02]"
+                className="w-full flex items-center gap-3 justify-center bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 shadow-sm transition-all transform hover:scale-[1.02] py-6"
                 onClick={handleGoogleLogin}
-                disabled={googleLoading || isLoading}
+                disabled={googleLoading || microsoftLoading || zohoLoading || isLoading}
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                   <path
@@ -256,85 +190,60 @@ const Login = () => {
                   />
                   <path fill="none" d="M1 1h22v22H1z" />
                 </svg>
-                <span className="text-sm font-medium">{googleLoading ? "Connecting..." : "Continue with Google"}</span>
+                <span className="text-base font-medium">{googleLoading ? "Connecting..." : "Sign in with Google"}</span>
               </Button>
               
-              {/* More attractive SSO provider buttons */}
-              <div className="grid grid-cols-2 gap-2 w-full mt-3">
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  className="w-full flex items-center justify-center gap-2 bg-[#4267B2] hover:bg-[#4267B2]/90 text-white transition-all"
-                  onClick={() => handleOAuthLogin('Microsoft')}
-                  disabled={isLoading || googleLoading}
-                >
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M11.5 3.5H3.5V11.5H11.5V3.5Z" fill="white"/>
-                    <path d="M11.5 12.5H3.5V20.5H11.5V12.5Z" fill="white"/>
-                    <path d="M20.5 3.5H12.5V11.5H20.5V3.5Z" fill="white"/>
-                    <path d="M20.5 12.5H12.5V20.5H20.5V12.5Z" fill="white"/>
-                  </svg>
-                  Microsoft
-                </Button>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  className="w-full flex items-center justify-center gap-2 bg-[#0073AA] hover:bg-[#0073AA]/90 text-white transition-all"
-                  onClick={() => handleOAuthLogin('Zoho')}
-                  disabled={isLoading || googleLoading}
-                >
-                  <LogIn className="h-4 w-4" />
-                  Zoho
-                </Button>
-              </div>
-              
+              {/* Microsoft SSO button */}
               <Button 
                 type="button" 
                 variant="outline" 
-                onClick={() => navigate('/home')} 
-                className="w-full mt-4 transition-all hover:bg-primary/10"
+                className="w-full flex items-center gap-3 justify-center border bg-[#2F2F2F] hover:bg-[#1E1E1E] text-white transition-all transform hover:scale-[1.02] py-6"
+                onClick={handleMicrosoftLogin}
+                disabled={googleLoading || microsoftLoading || zohoLoading || isLoading}
               >
-                Back to Home
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M11.5 3.5H3.5V11.5H11.5V3.5Z" fill="white"/>
+                  <path d="M11.5 12.5H3.5V20.5H11.5V12.5Z" fill="white"/>
+                  <path d="M20.5 3.5H12.5V11.5H20.5V3.5Z" fill="white"/>
+                  <path d="M20.5 12.5H12.5V20.5H20.5V12.5Z" fill="white"/>
+                </svg>
+                <span className="text-base font-medium">{microsoftLoading ? "Connecting..." : "Sign in with Microsoft"}</span>
               </Button>
-            </CardFooter>
-          </form>
+              
+              {/* Zoho SSO button */}
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="w-full flex items-center gap-3 justify-center border bg-[#0073AA] hover:bg-[#005E8A] text-white transition-all transform hover:scale-[1.02] py-6"
+                onClick={handleZohoLogin}
+                disabled={googleLoading || microsoftLoading || zohoLoading || isLoading}
+              >
+                <LogIn className="h-5 w-5" />
+                <span className="text-base font-medium">{zohoLoading ? "Connecting..." : "Sign in with Zoho"}</span>
+              </Button>
+            </div>
+          </CardContent>
+          <CardFooter className="flex-col gap-3">
+            <div className="w-full flex items-center gap-2 my-2">
+              <Separator className="flex-1" />
+              <span className="text-xs text-gray-500">NEED HELP?</span>
+              <Separator className="flex-1" />
+            </div>
+            
+            <Button 
+              type="button" 
+              variant="ghost" 
+              onClick={() => navigate('/home')} 
+              className="w-full transition-all hover:bg-primary/10"
+            >
+              Back to Home
+            </Button>
+            
+            <p className="text-xs text-center text-gray-500 mt-4">
+              Contact your administrator if you're having trouble signing in
+            </p>
+          </CardFooter>
         </Card>
-
-        {/* Commenting out the demo credentials section as requested */}
-        {/*
-        <div className="text-center mt-6 text-sm text-gray-600 p-4 bg-white/80 rounded-md shadow-sm">
-          <p>Demo Credentials:</p>
-          <div className="mt-2 space-y-2">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="w-full text-xs" 
-              onClick={() => handleDemoLogin("owner@saasplatform.com", "owner123")}
-              disabled={isLoading || googleLoading}
-            >
-              Login as SaaS Owner
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="w-full text-xs" 
-              onClick={() => handleDemoLogin("admin@school.edu", "admin123")}
-              disabled={isLoading || googleLoading}
-            >
-              Login as Admin
-            </Button>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="w-full text-xs" 
-              onClick={() => handleDemoLogin("reporter@school.edu", "reporter123")}
-              disabled={isLoading || googleLoading}
-            >
-              Login as Reporter
-            </Button>
-          </div>
-        </div>
-        */}
       </div>
     </div>
   );
