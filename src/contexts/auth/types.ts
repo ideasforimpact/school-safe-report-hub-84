@@ -67,8 +67,8 @@ export interface UserWithPassword extends User {
 export interface EmployeeData {
   id: string;
   clientId: string | null;
-  firstName?: string;
-  lastName?: string;
+  firstName: string; // Changed from optional to required
+  lastName: string; // Changed from optional to required
   email: string; // Make this required to match the service definition
   isSuperAdmin?: boolean;
 }
