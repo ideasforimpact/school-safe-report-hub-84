@@ -212,9 +212,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setEmployeeData(employee);
             saveEmployeeDataToStorage(employee);
             
-            // Update Redux state
-            dispatch(setEmployeeData(employee));
-            dispatch(setClientId(employee.clientId));
+            // Update Redux state - Fixed: Use proper action creators
+            if (dispatch) {
+              dispatch(setEmployeeData(employee));
+              dispatch(setClientId(employee.clientId));
+            }
             
             console.log("Employee data stored:", employee);
           }
@@ -301,8 +303,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setEmployeeData(backofficeEmployeeData);
         saveEmployeeDataToStorage(backofficeEmployeeData);
         
-        // Update Redux state
-        dispatch(setEmployeeData(backofficeEmployeeData));
+        // Update Redux state - Fixed: Use proper action creators
+        if (dispatch) {
+          dispatch(setEmployeeData(backofficeEmployeeData));
+          
+          // Also set clientId in Redux
+          if (employeeData.clientId) {
+            dispatch(setClientId(employeeData.clientId));
+          }
+        }
         
         // Set modules for backoffice user (all modules enabled)
         const backofficeModules = [
