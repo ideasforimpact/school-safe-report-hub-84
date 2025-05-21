@@ -48,6 +48,25 @@ const Login = () => {
     }
   }, [authError]);
 
+  // Check for authentication errors in URL parameters (for SSO redirects)
+  useEffect(() => {
+    const queryParams = new URLSearchParams(window.location.search);
+    const errorCode = queryParams.get('error');
+    const errorDescription = queryParams.get('error_description');
+    
+    if (errorCode || errorDescription) {
+      const errorMessage = errorDescription || `Authentication error: ${errorCode}`;
+      setError(errorMessage);
+      toast.error(errorMessage);
+      
+      // Clear the error from URL to prevent showing it again on refresh
+      if (window.history && window.history.replaceState) {
+        const newUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, newUrl);
+      }
+    }
+  }, [location]);
+
   const handleGoogleLogin = async () => {
     try {
       setGoogleLoading(true);

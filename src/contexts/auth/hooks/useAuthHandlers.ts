@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { User, UserRole, EmployeeData } from '../types';
 import { getUserFromStorage, saveUserToStorage, saveEmployeeDataToStorage } from '@/services/auth/authService';
@@ -385,8 +386,22 @@ export const useAuthHandlers = ({
         console.log("No employee record found for authenticated user");
         setAuthError("No employee record found for your account. Please contact an administrator.");
         toast.error("No employee record found for your account. Please contact an administrator.");
+        
+        // Sign out the user from Supabase
         await supabase.auth.signOut();
+        
+        // Clear local state
+        setUser(null);
+        setEmployeeData(null);
+        saveEmployeeDataToStorage(null);
+        
         setIsProcessingAuth(false);
+        
+        // Force redirect to login page
+        if (typeof window !== 'undefined') {
+          window.location.href = '/login';
+        }
+        
         return;
       }
       
@@ -398,8 +413,22 @@ export const useAuthHandlers = ({
           console.log("User email domain not authorized for this client");
           setAuthError("Your email domain is not authorized for this application. Please contact an administrator.");
           toast.error("Your email domain is not authorized for this application.");
+          
+          // Sign out the user from Supabase
           await supabase.auth.signOut();
+          
+          // Clear local state
+          setUser(null);
+          setEmployeeData(null);
+          saveEmployeeDataToStorage(null);
+          
           setIsProcessingAuth(false);
+          
+          // Force redirect to login page
+          if (typeof window !== 'undefined') {
+            window.location.href = '/login';
+          }
+          
           return;
         }
       }
@@ -465,11 +494,19 @@ export const useAuthHandlers = ({
       console.error('Authentication processing error:', error);
       setAuthError('Failed to process authentication');
       toast.error('Authentication failed. Please try again.');
+      
       // Ensure user is logged out on error
       await supabase.auth.signOut();
+      
+      // Clear all local state
       setUser(null);
       setEmployeeData(null);
       saveEmployeeDataToStorage(null);
+      
+      // Force redirect to login page on error
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+      }
     } finally {
       setIsProcessingAuth(false);
     }
