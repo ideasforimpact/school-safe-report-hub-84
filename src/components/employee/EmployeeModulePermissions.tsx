@@ -64,6 +64,11 @@ const EmployeeModulePermissions: React.FC<EmployeeModulePermissionsProps> = ({
     console.warn("No modules found in Redux store. Module permissions may not be displayed correctly.");
   }
   
+  // Helper function to check if a module is selected by module_id
+  const isModuleSelected = (moduleId: string): boolean => {
+    return selectedModules.some(m => m.module_id === moduleId);
+  };
+  
   // Handler for checkbox change that only affects one module at a time
   const handleModuleChange = (moduleKey: string, moduleName: string, moduleId: string, checked: boolean) => {
     console.log("Module change:", { moduleKey, moduleName, moduleId, checked });
@@ -73,9 +78,7 @@ const EmployeeModulePermissions: React.FC<EmployeeModulePermissionsProps> = ({
     
     if (checked) {
       // Add module to selection if it's not already there
-      const moduleExists = selectedModules.some(m => 
-        (m.key === moduleKey) || (m.name === moduleName)
-      );
+      const moduleExists = isModuleSelected(moduleId);
       
       console.log("Module exists:", moduleExists);
       
@@ -92,9 +95,7 @@ const EmployeeModulePermissions: React.FC<EmployeeModulePermissionsProps> = ({
       }
     } else {
       // Remove module from selection
-      updatedModules = selectedModules.filter(m => 
-        !(m.key === moduleKey || m.name === moduleName)
-      );
+      updatedModules = selectedModules.filter(m => m.module_id !== moduleId);
     }
     
     console.log("Updated modules:", updatedModules);
@@ -117,17 +118,16 @@ const EmployeeModulePermissions: React.FC<EmployeeModulePermissionsProps> = ({
         </TableHeader>
         <TableBody>
           {modules.map((module) => {
-            // Check if this module is selected - use both key and name for comparison
-            const isSelected = selectedModules.some(m => 
-              (m.key === module.key) || (m.name === module.name)
-            );
+            // Check if this module is selected by its module_id
+            const isSelected = isModuleSelected(module.module_id);
             
             console.log(`Module ${module.name} selected:`, isSelected);
             
             return (
-              <TableRow key={module.key}>
+              <TableRow key={module.key || module.module_id}>
                 <TableCell>
                   <Checkbox
+                    id={`emp-module-${module.module_id}`}
                     checked={isSelected}
                     onCheckedChange={(checked) => handleModuleChange(
                       module.key, 
@@ -137,7 +137,14 @@ const EmployeeModulePermissions: React.FC<EmployeeModulePermissionsProps> = ({
                     )}
                   />
                 </TableCell>
-                <TableCell>{module.name}</TableCell>
+                <TableCell>
+                  <label 
+                    htmlFor={`emp-module-${module.module_id}`} 
+                    className="cursor-pointer"
+                  >
+                    {module.name}
+                  </label>
+                </TableCell>
               </TableRow>
             );
           })}

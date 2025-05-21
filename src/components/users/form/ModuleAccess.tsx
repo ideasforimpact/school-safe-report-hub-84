@@ -32,12 +32,8 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
     : [];
 
   // Helper function to check if a module is selected
-  const isModuleSelected = (moduleKey: string, moduleName: string): boolean => {
-    return selectedModules.some(m => 
-      (m.key === moduleKey) || 
-      (m.name === moduleName) ||
-      (m.module_id === moduleKey)
-    );
+  const isModuleSelected = (moduleId: string): boolean => {
+    return selectedModules.some(m => m.module_id === moduleId);
   };
 
   // Handler for checkbox change
@@ -48,7 +44,7 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
     
     if (checked) {
       // Add module to selection if it's not already there
-      if (!isModuleSelected(moduleKey, moduleName)) {
+      if (!isModuleSelected(moduleId)) {
         const newModule: ModuleAccessItem = {
           name: moduleName,
           employeeId: employeeId,
@@ -61,9 +57,7 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
       }
     } else {
       // Remove module from selection
-      updatedModules = selectedModules.filter(m => 
-        !(m.key === moduleKey || m.name === moduleName || m.module_id === moduleId)
-      );
+      updatedModules = selectedModules.filter(m => m.module_id !== moduleId);
     }
     
     console.log("Updated modules:", updatedModules);
@@ -83,7 +77,7 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
         </TableHeader>
         <TableBody>
           {availableModules.map((module) => {
-            const isSelected = isModuleSelected(module.key, module.name);
+            const isSelected = isModuleSelected(module.module_id);
             
             console.log(`Module ${module.name} selected:`, isSelected);
             
@@ -91,6 +85,7 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
               <TableRow key={module.key || module.module_id}>
                 <TableCell>
                   <Checkbox
+                    id={`module-checkbox-${module.module_id}`}
                     checked={isSelected}
                     onCheckedChange={(checked) => handleModuleChange(
                       module.key, 
@@ -100,7 +95,14 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
                     )}
                   />
                 </TableCell>
-                <TableCell>{module.name}</TableCell>
+                <TableCell>
+                  <label 
+                    htmlFor={`module-checkbox-${module.module_id}`}
+                    className="cursor-pointer"
+                  >
+                    {module.name}
+                  </label>
+                </TableCell>
               </TableRow>
             );
           })}
