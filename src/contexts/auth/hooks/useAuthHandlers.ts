@@ -4,7 +4,7 @@ import { User, UserRole, EmployeeData } from '../types';
 import { getUserFromStorage, saveUserToStorage, saveEmployeeDataToStorage } from '@/services/auth/authService';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { setEmployeeData, setConfiguredModules, setLoading, setError } from '@/store/employeeActions';
+import { setEmployeeData, setConfiguredModules, setLoading, setError, resetEmployee, setClientId } from '@/store/employeeActions';
 import { Module } from '@/store/types';
 import { extractDomain, isEmailDomainAllowed } from '@/utils/authProviders';
 
@@ -231,6 +231,11 @@ export const useAuthHandlers = ({
         setEmployeeData(null);
         saveEmployeeDataToStorage(null);
         setAuthError(null);
+        
+        // Clear Redux state if dispatch is available
+        if (dispatch) {
+          dispatch(resetEmployee());
+        }
       }
       return;
     }
@@ -395,6 +400,11 @@ export const useAuthHandlers = ({
         setEmployeeData(null);
         saveEmployeeDataToStorage(null);
         
+        // Clear Redux state if dispatch is available
+        if (dispatch) {
+          dispatch(resetEmployee());
+        }
+        
         setIsProcessingAuth(false);
         
         // Force redirect to login page
@@ -421,6 +431,11 @@ export const useAuthHandlers = ({
           setUser(null);
           setEmployeeData(null);
           saveEmployeeDataToStorage(null);
+          
+          // Clear Redux state if dispatch is available
+          if (dispatch) {
+            dispatch(resetEmployee());
+          }
           
           setIsProcessingAuth(false);
           
@@ -458,6 +473,11 @@ export const useAuthHandlers = ({
         if (dispatch) {
           console.log("Dispatching setEmployeeData to Redux during auth:", employeeData);
           dispatch(setEmployeeData(employeeData));
+          
+          // Also set clientId in Redux
+          if (employeeData.clientId) {
+            dispatch(setClientId(employeeData.clientId));
+          }
         }
         
         // FETCH MODULES HERE if employee is a super admin or has a client ID
@@ -502,6 +522,11 @@ export const useAuthHandlers = ({
       setUser(null);
       setEmployeeData(null);
       saveEmployeeDataToStorage(null);
+      
+      // Clear Redux state if dispatch is available
+      if (dispatch) {
+        dispatch(resetEmployee());
+      }
       
       // Force redirect to login page on error
       if (typeof window !== 'undefined') {

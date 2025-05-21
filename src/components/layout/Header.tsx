@@ -21,12 +21,17 @@ const Header = () => {
   const location = useLocation();
   const { state } = useEmployeeStore();
   
-  // Get employee data and admin status from Redux
+  // Get employee data and admin status from Redux store
   const employeeData = getEmployeeData(state);
   const isAdmin = isEmployeeAdmin(state);
   const isSuperAdmin = isEmployeeSuperAdmin(state);
 
-  console.log(user);
+  // Log user and Redux state for debugging
+  console.log("User from Auth Context:", user);
+  console.log("Employee Data from Redux Store:", employeeData);
+  console.log("Is Admin from Redux:", isAdmin);
+  console.log("Is Super Admin from Redux:", isSuperAdmin);
+  
   // Check if we're on the home page
   const isHomePage = location.pathname === "/" || location.pathname === "/home";
   

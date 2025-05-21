@@ -1,3 +1,4 @@
+
 import React, { createContext, useEffect, useState, useRef } from 'react';
 import { User, AuthContextType, UserWithPassword, EmployeeData } from './types';
 import { 
@@ -17,6 +18,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthHandlers } from './hooks/useAuthHandlers';
 import { useEmployeeStore } from '@/store/EmployeeContext';
+import { setEmployeeData, setClientId, setConfiguredModules, resetEmployee } from '@/store/employeeActions';
 
 // Create the context
 export const AuthContext = createContext<AuthContextType>({
@@ -106,6 +108,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         saveEmployeeDataToStorage(null); // Clear from storage
         setAuthError(null);
         
+        // Clear Redux state on logout
+        dispatch(resetEmployee());
+        
         // Add a toast message for logout
         toast.info("You have been logged out");
         
@@ -124,7 +129,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [handleUserAuthentication]);
+  }, [handleUserAuthentication, dispatch]);
 
   // Fetch users from Supabase on mount
   useEffect(() => {
@@ -149,6 +154,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setCurrentUser(null);
             setEmployeeData(null);
             saveEmployeeDataToStorage(null);
+            
+            // Clear Redux state
+            dispatch(resetEmployee());
+            
             logoutUser();
             toast.info("Your session has expired. Please log in again.");
           }
@@ -193,8 +202,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               lastName: employeeData.last_name
             };
             
+            // Update local state
             setEmployeeData(employee);
             saveEmployeeDataToStorage(employee);
+            
+            // Update Redux state
+            dispatch(setEmployeeData(employee));
+            dispatch(setClientId(employee.clientId));
+            
             console.log("Employee data stored:", employee);
           }
         } catch (err) {
@@ -259,9 +274,53 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           createdAt: backofficeUser.created_at
         };
         
+        // Update local state
         setCurrentUser(saasUser);
         setIsBackofficeUser(true);
         saveUserToStorage(saasUser);
+        
+        // Create employee data for backoffice user
+        const backofficeEmployeeData: EmployeeData = {
+          id: backofficeUser.id,
+          clientId: null,
+          email: backofficeUser.email,
+          firstName: 'Backoffice',
+          lastName: 'Admin',
+          isSuperAdmin: true
+        };
+        
+        // Update local state
+        setEmployeeData(backofficeEmployeeData);
+        saveEmployeeDataToStorage(backofficeEmployeeData);
+        
+        // Update Redux state
+        dispatch(setEmployeeData(backofficeEmployeeData));
+        
+        // Set modules for backoffice user (all modules enabled)
+        const backofficeModules = [
+          {
+            id: 'dashboard-admin',
+            name: 'Dashboard',
+            key: 'dashboard',
+            icon: 'LayoutDashboard',
+            level: 'admin',
+            enabled: true,
+            accessLevel: {}
+          },
+          {
+            id: 'admin-settings',
+            name: 'Settings',
+            key: 'adminSettings',
+            icon: 'Settings',
+            level: 'admin',
+            enabled: true,
+            accessLevel: {}
+          }
+        ];
+        
+        // Update Redux state with modules
+        dispatch(setConfiguredModules(backofficeModules));
+        
         toast.success(`Welcome back, Backoffice Admin!`);
         return true;
       }
@@ -285,6 +344,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setEmployeeData(null); // Clear employee data on logout
       saveEmployeeDataToStorage(null); // Clear from storage
       setIsBackofficeUser(false);
+      
+      // Clear Redux state
+      dispatch(resetEmployee());
+      
       logoutUser();
       toast.info("You have been logged out");
       
@@ -297,6 +360,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setEmployeeData(null);
       saveEmployeeDataToStorage(null);
       setIsBackofficeUser(false);
+      
+      // Clear Redux state
+      dispatch(resetEmployee());
+      
       logoutUser();
       toast.info("You have been logged out");
       
