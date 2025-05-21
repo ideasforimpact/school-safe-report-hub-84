@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from "react";
-import { useNavigate, useLocation, useSearchParams } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,26 +20,6 @@ const Login = () => {
   const { authError, user, handleUserAuthentication } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams] = useSearchParams();
-
-  // Check for authentication status on mount
-  useEffect(() => {
-    const checkAuthStatus = async () => {
-      try {
-        // Check if we have an auth session
-        const { data } = await supabase.auth.getSession();
-        
-        // If we have a session, try to authenticate the user
-        if (data?.session?.user) {
-          await handleUserAuthentication(data.session.user);
-        }
-      } catch (err) {
-        console.error("Error checking auth status:", err);
-      }
-    };
-    
-    checkAuthStatus();
-  }, [handleUserAuthentication]);
 
   // Check if user is already logged in, redirect if they are
   useEffect(() => {
@@ -67,10 +48,11 @@ const Login = () => {
     }
   }, [authError]);
 
-  // Check for authentication errors in URL parameters
+  // Check for authentication errors in URL parameters (for SSO redirects)
   useEffect(() => {
-    const errorCode = searchParams.get('error');
-    const errorDescription = searchParams.get('error_description');
+    const queryParams = new URLSearchParams(window.location.search);
+    const errorCode = queryParams.get('error');
+    const errorDescription = queryParams.get('error_description');
     
     if (errorCode || errorDescription) {
       const errorMessage = errorDescription || `Authentication error: ${errorCode}`;
@@ -83,33 +65,7 @@ const Login = () => {
         window.history.replaceState({}, document.title, newUrl);
       }
     }
-  }, [searchParams]);
-
-  // Handle SSO redirect in the login page
-  useEffect(() => {
-    const handleAuthCallback = async () => {
-      try {
-        // Check if we have a hash or code parameter which indicates an SSO callback
-        if (location.hash || searchParams.get('code')) {
-          // Get the auth data
-          const { data, error } = await supabase.auth.getSession();
-          
-          if (error) {
-            console.error("Authentication error:", error);
-            toast.error("Authentication failed. Please try again.");
-          } else if (data?.session?.user) {
-            // Process the user
-            await handleUserAuthentication(data.session.user);
-          }
-        }
-      } catch (err) {
-        console.error("Auth callback error:", err);
-        toast.error("An error occurred during authentication.");
-      }
-    };
-    
-    handleAuthCallback();
-  }, [location, searchParams, handleUserAuthentication]);
+  }, [location]);
 
   const handleGoogleLogin = async () => {
     try {
@@ -118,8 +74,8 @@ const Login = () => {
       
       // Get the current origin for constructing redirect URL
       const origin = window.location.origin;
-      // Redirect back to the login page
-      const redirectTo = `${origin}/login`;
+      // Always redirect to dashboard after login
+      const redirectTo = `${origin}/dashboard`;
       
       // Use signInWithOAuth to redirect to Google's login page
       const { error } = await supabase.auth.signInWithOAuth({
@@ -155,8 +111,7 @@ const Login = () => {
       setError("");
       
       const origin = window.location.origin;
-      // Redirect back to the login page
-      const redirectTo = `${origin}/login`;
+      const redirectTo = `${origin}/dashboard`;
       
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'azure',

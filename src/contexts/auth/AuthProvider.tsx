@@ -288,7 +288,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       logoutUser();
       toast.info("You have been logged out");
       
-      // Redirect to login page immediately after logout
+      // Redirect to login page after logout
       window.location.href = '/login';
     }).catch((error) => {
       console.error("Error signing out:", error);
@@ -300,7 +300,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       logoutUser();
       toast.info("You have been logged out");
       
-      // Redirect to login page immediately after logout even if there's an error
+      // Redirect to login page after logout even if there's an error
       window.location.href = '/login';
     });
   };
