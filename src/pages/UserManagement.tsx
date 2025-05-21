@@ -52,26 +52,17 @@ const convertEmployeeType = (employeeType: EmployeeContextType): EmployeeType =>
 
 // Helper function to convert department type
 const convertDepartmentType = (department: EmployeeContextDepartmentType): DepartmentType => {
-  // Handle departments in employee context that don't exist in auth context
-  const authDepartments: DepartmentType[] = ['admin', 'teaching', 'security', 'maintenance', 'transport', 'management'];
-  
-  if (authDepartments.includes(department as DepartmentType)) {
-    return department as DepartmentType;
-  }
-  
-  // Map departments that don't exist in auth types to a default value
-  const departmentMapping: Record<string, DepartmentType> = {
-    'it': 'admin',
-    'hr': 'admin',
-    'finance': 'admin'
-  };
-  
-  return departmentMapping[department] || 'admin';
+  // All departments are now compatible because we've expanded the DepartmentType
+  return department as DepartmentType;
 };
 
 // Define a custom type for employees that we display in the UI
 interface EmployeeUser extends Omit<User, 'modulePermissions'> {
   moduleAccessPayload?: ModuleAccessItem[];
+  employeeId?: string;
+  employeeType?: EmployeeType; 
+  department?: DepartmentType;
+  joiningDate?: string;
   // No need to explicitly define role here since we're extending from User
 }
 

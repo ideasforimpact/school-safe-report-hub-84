@@ -20,9 +20,11 @@ export interface Employee {
   moduleAccessPayload?: ModuleAccessItem[];
 }
 
+// Align with auth/types.ts to ensure compatibility
 export type EmployeeType = 'permanent' | 'contract' | 'part_time' | 'consultant' | 'intern';
 
-export type DepartmentType = 'admin' | 'teaching' | 'security' | 'maintenance' | 'transport' | 'management' | 'it' | 'hr' | 'finance';
+// Include both formats to ensure compatibility
+export type DepartmentType = 'admin' | 'teaching' | 'security' | 'maintenance' | 'transport' | 'management' | 'it' | 'hr' | 'finance' | 'IT' | 'HR' | 'Finance' | 'Marketing' | 'Operations' | 'Other' | 'Teaching' | 'Administrative' | 'Support';
 
 export type EmploymentStatus = 'active' | 'inactive' | 'on_leave';
 

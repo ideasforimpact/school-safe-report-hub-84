@@ -20,7 +20,7 @@ export interface AuthContextType {
 
 export type UserRole = 'user' | 'admin' | 'reporter' | 'viewer' | 'saas_owner';
 export type EmployeeType = 'permanent' | 'contract' | 'part-time' | 'full-time' | 'consultant';
-export type DepartmentType = 'IT' | 'HR' | 'Finance' | 'Marketing' | 'Operations' | 'Other' | 'Teaching' | 'Administrative' | 'Support';
+export type DepartmentType = 'IT' | 'HR' | 'Finance' | 'Marketing' | 'Operations' | 'Other' | 'Teaching' | 'Administrative' | 'Support' | 'admin' | 'teaching' | 'security' | 'maintenance' | 'transport' | 'management';
 
 // Define a ModulePermissions interface
 export interface ModulePermissions {
@@ -52,6 +52,12 @@ export interface User {
   updatedAt?: string;
   provider?: string;
   clientId?: string | null;
+  // Add these fields to fix the errors
+  employeeId?: string;
+  employeeType?: EmployeeType;
+  department?: DepartmentType;
+  joiningDate?: string;
+  isSuperAdmin?: boolean;
 }
 
 export interface UserWithPassword extends User {
@@ -63,6 +69,6 @@ export interface EmployeeData {
   clientId: string | null;
   firstName?: string;
   lastName?: string;
-  email?: string;
+  email: string; // Make this required to match authService
   isSuperAdmin?: boolean;
 }
