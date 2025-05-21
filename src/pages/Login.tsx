@@ -149,7 +149,7 @@ const Login = () => {
 
         <Card className="border-t-4 border-t-primary animate-scale-in shadow-lg">
           <CardHeader>
-            <CardTitle className="text-center">Log In with SSO</CardTitle>
+            <CardTitle className="text-center">Sign In</CardTitle>
             <CardDescription className="text-center">
               Use your organization credentials to access the system
             </CardDescription>
