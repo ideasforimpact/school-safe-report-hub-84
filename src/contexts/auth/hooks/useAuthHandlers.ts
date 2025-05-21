@@ -6,6 +6,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { setEmployeeData, setConfiguredModules, setLoading, setError } from '@/store/employeeActions';
 import { Module } from '@/store/types';
+import { extractDomain, isEmailDomainAllowed } from '@/utils/authProviders';
 
 // Define the SupabaseUser type that's missing
 interface SupabaseUser {
@@ -183,6 +184,42 @@ export const useAuthHandlers = ({
     }
   }, [dispatch]);
 
+  // Function to check if domain is allowed for a client
+  const validateDomain = useCallback(async (email: string | undefined, clientId: string | null): Promise<boolean> => {
+    if (!email || !clientId) return false;
+    
+    try {
+      // Fetch allowed domains for the client
+      const { data, error } = await supabase
+        .from('clients')
+        .select('allowed_domains, super_admin_allowed_domain')
+        .eq('id', clientId)
+        .single();
+      
+      if (error || !data) {
+        console.error("Error fetching client domains:", error);
+        return false;
+      }
+      
+      // Extract domain from email
+      const userDomain = extractDomain(email);
+      if (!userDomain) return false;
+      
+      // Parse allowed domains string into array
+      const allowedDomainsStr = data.allowed_domains || '';
+      const allowedDomains = allowedDomainsStr
+        .split(',')
+        .map(domain => domain.trim())
+        .filter(domain => domain.length > 0);
+      
+      // Check if domain is allowed
+      return allowedDomains.includes(userDomain);
+    } catch (error) {
+      console.error("Error validating domain:", error);
+      return false;
+    }
+  }, []);
+
   // Handle user authentication from various providers (Google, etc.)
   const handleUserAuthentication = useCallback(async (supabaseUser: SupabaseUser | null) => {
     if (!supabaseUser || isProcessingAuth) {
@@ -354,6 +391,20 @@ export const useAuthHandlers = ({
         return;
       }
       
+      // Check domain validation if we have an email and clientId
+      if (supabaseUser.email && clientId) {
+        const isDomainValid = await validateDomain(supabaseUser.email, clientId);
+        
+        if (!isDomainValid && !employeeData.isSuperAdmin) {
+          console.log("User email domain not authorized for this client");
+          setAuthError("Your email domain is not authorized for this application. Please contact an administrator.");
+          toast.error("Your email domain is not authorized for this application.");
+          await supabase.auth.signOut();
+          setIsProcessingAuth(false);
+          return;
+        }
+      }
+      
       // Create a new user object
       const newUser: User = {
         id: supabaseUser.id,
@@ -423,7 +474,7 @@ export const useAuthHandlers = ({
     } finally {
       setIsProcessingAuth(false);
     }
-  }, [isProcessingAuth, setAuthError, setUser, authInitCompleteRef, setEmployeeData, fetchConfiguredModules, dispatch, users, setUsers]);
+  }, [isProcessingAuth, setAuthError, setUser, authInitCompleteRef, setEmployeeData, fetchConfiguredModules, dispatch, validateDomain, users, setUsers]);
 
   return { handleUserAuthentication };
 };
