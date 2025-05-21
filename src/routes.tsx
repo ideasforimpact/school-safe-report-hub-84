@@ -11,7 +11,6 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
-import AuthCallback from "./pages/AuthCallback"; // Add the Auth Callback page
 
 // Import feature-specific routes
 import { assessmentRoutes } from "./routes/assessmentRoutes";
@@ -32,7 +31,6 @@ const AppRoutes = () => {
         <Route index element={<Home />} />
         <Route path="home" element={<Home />} />
         <Route path="login" element={<Login />} />
-        <Route path="auth/callback" element={<AuthCallback />} /> {/* New auth callback route */}
         <Route path="*" element={<NotFound />} />
       </Route>
 

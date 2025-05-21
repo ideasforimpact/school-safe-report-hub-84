@@ -288,10 +288,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       logoutUser();
       toast.info("You have been logged out");
       
-      // Redirect to login page after logout
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login';
-      }
+      // Redirect to login page immediately after logout
+      window.location.href = '/login';
     }).catch((error) => {
       console.error("Error signing out:", error);
       // Still clear local state even if supabase logout fails
@@ -302,10 +300,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       logoutUser();
       toast.info("You have been logged out");
       
-      // Redirect to login page after logout even if there's an error
-      if (typeof window !== 'undefined') {
-        window.location.href = '/login';
-      }
+      // Redirect to login page immediately after logout even if there's an error
+      window.location.href = '/login';
     });
   };
 

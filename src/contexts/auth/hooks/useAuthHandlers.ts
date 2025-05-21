@@ -231,6 +231,11 @@ export const useAuthHandlers = ({
         setEmployeeData(null);
         saveEmployeeDataToStorage(null);
         setAuthError(null);
+        
+        // Redirect to login page
+        if (typeof window !== 'undefined') {
+          window.location.href = '/login';
+        }
       }
       return;
     }
@@ -310,6 +315,11 @@ export const useAuthHandlers = ({
             toast.error("Your account has been deactivated. Please contact support.");
             await supabase.auth.signOut();
             setIsProcessingAuth(false);
+            
+            // Redirect to login page immediately
+            if (typeof window !== 'undefined') {
+              window.location.href = '/login';
+            }
             return;
           }
           
@@ -364,6 +374,11 @@ export const useAuthHandlers = ({
             toast.error("Your account has been deactivated. Please contact support.");
             await supabase.auth.signOut();
             setIsProcessingAuth(false);
+            
+            // Redirect to login page immediately
+            if (typeof window !== 'undefined') {
+              window.location.href = '/login';
+            }
             return;
           }
           
@@ -397,7 +412,7 @@ export const useAuthHandlers = ({
         
         setIsProcessingAuth(false);
         
-        // Force redirect to login page
+        // Force redirect to login page immediately
         if (typeof window !== 'undefined') {
           window.location.href = '/login';
         }
@@ -424,7 +439,7 @@ export const useAuthHandlers = ({
           
           setIsProcessingAuth(false);
           
-          // Force redirect to login page
+          // Force redirect to login page immediately
           if (typeof window !== 'undefined') {
             window.location.href = '/login';
           }
@@ -503,7 +518,7 @@ export const useAuthHandlers = ({
       setEmployeeData(null);
       saveEmployeeDataToStorage(null);
       
-      // Force redirect to login page on error
+      // Force redirect to login page on error immediately
       if (typeof window !== 'undefined') {
         window.location.href = '/login';
       }
