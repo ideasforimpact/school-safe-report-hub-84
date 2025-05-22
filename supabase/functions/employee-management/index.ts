@@ -125,7 +125,7 @@ async function checkForExistingEmail(
   }
 }
 
-// Improved function to add module access for an employee with manual inserts
+// Improved function to add or update module access for an employee
 async function addEmployeeModuleAccess(
   moduleAccessItems: ModuleAccessItem[], 
   employeeId: string,
@@ -156,11 +156,32 @@ async function addEmployeeModuleAccess(
       }
     }
     
-    // First, clean up existing module access entries
-    await deleteEmployeeModuleAccess(employeeId);
+    // Fetch existing module access entries for this employee
+    const { data: existingModules, error: fetchError } = await supabaseAdmin
+      .from('employee_modules')
+      .select('id, module_id, access_level')
+      .eq('employee_id', employeeId);
     
-    // Create new entries by manually inserting each one
+    if (fetchError) {
+      console.error("Error fetching existing module access:", fetchError);
+      throw fetchError;
+    }
+    
+    // Create a map of existing module entries by module_id for easy lookup
+    const existingModuleMap = new Map();
+    if (existingModules) {
+      existingModules.forEach(module => {
+        existingModuleMap.set(module.module_id, module);
+      });
+    }
+    
+    console.log(`Found ${existingModuleMap.size} existing module entries for employee ${employeeId}`);
+    
+    // Process each module access item
     for (const item of moduleAccessItems) {
+      // Get module_id from either the directly provided module_id or the key
+      const moduleId = item.module_id || item.key;
+      
       // Process access_level properly
       let accessLevel = {};
       
@@ -170,41 +191,63 @@ async function addEmployeeModuleAccess(
       } 
       // If is_admin is directly on the item, move it to access_level
       else if (item.hasOwnProperty('is_admin')) {
-        accessLevel = { is_admin: item.is_admin };
+        accessLevel = { is_admin: item.is_admin, isAdmin: item.is_admin, isEnabled: true };
+      } else {
+        // Default values if neither is provided
+        accessLevel = { is_admin: false, isAdmin: false, isEnabled: true };
       }
       
-      // Get module_id from either the directly provided module_id or the key
-      const moduleId = item.module_id || item.key;
-      
-      // Log each entry for debugging
-      console.log(`Creating module entry for module ${moduleId} with access level:`, accessLevel);
-      
-      // Insert each module access entry individually
-      const { error } = await supabaseAdmin
-        .from('employee_modules')
-        .insert({
-          employee_id: employeeId,
-          module_id: moduleId,
-          access_level: accessLevel
-        });
-      
-      if (error) {
-        console.error(`Error inserting module entry for module ${moduleId}:`, error);
-        throw error;
+      // Check if this module already exists for this employee
+      if (existingModuleMap.has(moduleId)) {
+        // Update existing entry
+        const existingModule = existingModuleMap.get(moduleId);
+        console.log(`Updating existing module entry for module ${moduleId} with access level:`, accessLevel);
+        
+        const { error: updateError } = await supabaseAdmin
+          .from('employee_modules')
+          .update({
+            access_level: accessLevel,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', existingModule.id);
+        
+        if (updateError) {
+          console.error(`Error updating module entry for module ${moduleId}:`, updateError);
+          throw updateError;
+        }
+        
+        // Remove from map to track which ones were processed
+        existingModuleMap.delete(moduleId);
+      } else {
+        // Insert new entry
+        console.log(`Creating new module entry for module ${moduleId} with access level:`, accessLevel);
+        
+        const { error: insertError } = await supabaseAdmin
+          .from('employee_modules')
+          .insert({
+            employee_id: employeeId,
+            module_id: moduleId,
+            access_level: accessLevel
+          });
+        
+        if (insertError) {
+          console.error(`Error inserting module entry for module ${moduleId}:`, insertError);
+          throw insertError;
+        }
       }
       
-      console.log(`Successfully added module access for module ${moduleId} to employee ${employeeId}`);
+      console.log(`Successfully processed module access for module ${moduleId} to employee ${employeeId}`);
     }
     
-    console.log(`Successfully completed adding module access entries for employee: ${employeeId}`);
+    console.log(`Successfully completed processing module access entries for employee: ${employeeId}`);
     console.log("Module access updated successfully");
   } catch (error) {
-    console.error("Error adding employee module access:", error);
+    console.error("Error adding/updating employee module access:", error);
     throw error;
   }
 }
 
-// Function to delete all module access for an employee
+// Function to delete all module access for an employee - kept for backward compatibility
 async function deleteEmployeeModuleAccess(employeeId: string): Promise<void> {
   try {
     console.log(`Deleting all module access for employee: ${employeeId}`);
@@ -646,39 +689,32 @@ async function updateEmployee(employee: any) {
       updatedEmployee = data;
     }
     
-    // Handle module access updates
+    // Handle module access updates using the improved function
     if (employee.moduleAccessPayload) {
       try {
-        // Convert any is_admin flags in the moduleAccessPayload to proper access_level objects
+        // Process module access payload to ensure consistent format
         const processedModuleAccess = employee.moduleAccessPayload.map((item: any) => {
-          // If the item already has an access_level property with is_admin, use it
-          if (item.access_level && item.access_level.hasOwnProperty('is_admin')) {
-            return item;
+          // Start with a copy of the item
+          const processedItem = { ...item };
+          
+          // If access_level is not provided, create it 
+          if (!processedItem.access_level) {
+            processedItem.access_level = {};
           }
           
-          // If item has is_admin property directly, move it into access_level
+          // If item has is_admin property directly, add it to access_level
           if (item.hasOwnProperty('is_admin')) {
-            return {
-              ...item,
-              access_level: { 
-                ...item.access_level, 
-                is_admin: item.is_admin,
-                isAdmin: item.is_admin,  // Add both formats to ensure compatibility
-                isEnabled: true          // Add isEnabled flag
-              }
-            };
+            processedItem.access_level.is_admin = item.is_admin;
+            processedItem.access_level.isAdmin = item.is_admin;
           }
           
-          // Otherwise, return the item as is
-          return {
-            ...item,
-            access_level: {
-              ...(item.access_level || {}),
-              isAdmin: item.access_level?.is_admin || false,
-              isEnabled: true
-            }
-          };
+          // Ensure isEnabled is set
+          processedItem.access_level.isEnabled = true;
+          
+          return processedItem;
         });
+        
+        console.log("Processed module access payload:", processedModuleAccess);
         
         // Use the improved function to handle module access with processed payload
         await addEmployeeModuleAccess(processedModuleAccess, employee.id, clientId);
