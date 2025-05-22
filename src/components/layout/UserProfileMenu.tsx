@@ -11,7 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { LogOut, Settings, User, Key } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { formatUserFullName } from '@/utils/userUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -23,6 +23,7 @@ import { getEmployeeData, isEmployeeAdmin, isEmployeeSuperAdmin } from '@/store/
 const UserProfileMenu = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const { state } = useEmployeeStore();
   
@@ -30,6 +31,9 @@ const UserProfileMenu = () => {
   const employeeData = getEmployeeData(state);
   const isAdmin = isEmployeeAdmin(state);
   const isSuperAdmin = isEmployeeSuperAdmin(state);
+  
+  // Check if current route is a backoffice route
+  const isBackofficeRoute = location.pathname.startsWith('/backoffice');
   
   // Show settings only for super admins based on Redux data
   const showSettings = isSuperAdmin;
@@ -91,10 +95,12 @@ const UserProfileMenu = () => {
               <span>Settings</span>
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem onClick={handleChangePassword}>
-            <Key className="mr-2 h-4 w-4" />
-            <span>Change Password</span>
-          </DropdownMenuItem>
+          {isBackofficeRoute && (
+            <DropdownMenuItem onClick={handleChangePassword}>
+              <Key className="mr-2 h-4 w-4" />
+              <span>Change Password</span>
+            </DropdownMenuItem>
+          )}
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleLogout}>
             <LogOut className="mr-2 h-4 w-4" />

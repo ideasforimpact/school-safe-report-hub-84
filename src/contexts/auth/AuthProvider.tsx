@@ -226,12 +226,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
           
           if (dispatch) {
-            dispatch({ type: 'SET_LOADING_STATE', payload: false });
+            dispatch(setLoading(false));
           }
         } catch (err) {
           console.error("Error fetching employee data:", err);
           if (dispatch) {
-            dispatch({ type: 'SET_LOADING_STATE', payload: false });
+            dispatch(setLoading(false));
           }
         }
         
