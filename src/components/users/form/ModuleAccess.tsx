@@ -21,6 +21,7 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
 }) => {
   const [availableModules, setAvailableModules] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [moduleAccessLevels, setModuleAccessLevels] = useState<Record<string, any>>({});
 
   // Fetch available modules on component mount
   useEffect(() => {
@@ -50,6 +51,39 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
     fetchAvailableModules();
   }, []);
 
+  // Fetch employee module access levels if an employeeId is provided
+  useEffect(() => {
+    const fetchEmployeeModuleAccess = async () => {
+      if (!employeeId) return;
+      
+      try {
+        const { data, error } = await supabase
+          .from('employee_modules')
+          .select('module_id, access_level')
+          .eq('employee_id', employeeId);
+          
+        if (error) {
+          console.error('Error fetching employee module access:', error);
+          return;
+        }
+        
+        // Create a map of module_id to access_level
+        const accessLevelMap: Record<string, any> = {};
+        if (data) {
+          data.forEach(item => {
+            accessLevelMap[item.module_id] = item.access_level || { isAdmin: false, is_admin: false, isEnabled: true };
+          });
+          setModuleAccessLevels(accessLevelMap);
+          console.log('Fetched module access levels:', accessLevelMap);
+        }
+      } catch (error) {
+        console.error('Error in fetchEmployeeModuleAccess:', error);
+      }
+    };
+    
+    fetchEmployeeModuleAccess();
+  }, [employeeId]);
+
   // Check if a module is selected
   const isModuleSelected = (moduleId: string): boolean => {
     return selectedModules.some(module => module.module_id === moduleId);
@@ -57,11 +91,23 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
 
   // Check if a module has admin access
   const hasAdminAccess = (moduleId: string): boolean => {
+    // First check if the module exists in selected modules
     const module = selectedModules.find(module => module.module_id === moduleId);
-    if (!module) return false;
     
-    // Check access_level.is_admin or access_level.isAdmin property
-    return !!(module.access_level?.is_admin || module.access_level?.isAdmin);
+    if (module) {
+      // If the module exists in selected modules, check its access_level
+      if (module.access_level) {
+        return !!(module.access_level.is_admin || module.access_level.isAdmin);
+      }
+    }
+    
+    // If module not found in selectedModules or no access_level, check moduleAccessLevels from DB
+    if (moduleAccessLevels[moduleId]) {
+      return !!(moduleAccessLevels[moduleId].is_admin || moduleAccessLevels[moduleId].isAdmin);
+    }
+    
+    // Default to false if no admin access found
+    return false;
   };
 
   // Toggle module selection
@@ -69,16 +115,15 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
     if (checked) {
       // Add module to selected modules if it doesn't exist
       if (!isModuleSelected(module.id)) {
+        // Use existing access_level from the database if available
+        const existingAccessLevel = moduleAccessLevels[module.id] || { is_admin: false, isAdmin: false, isEnabled: true };
+        
         const newModule: ModuleAccessItem = {
           name: module.name,
-          key: module.key || 'user',
+          key: module.key || module.id,
           module_id: module.id,
           employeeId,
-          access_level: {
-            is_admin: false,
-            isAdmin: false,
-            isEnabled: true
-          }
+          access_level: existingAccessLevel
         };
         onModuleChange([...selectedModules, newModule]);
       }
@@ -92,13 +137,18 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
   const handleAdminToggle = (moduleId: string) => {
     const updatedModules = selectedModules.map(module => {
       if (module.module_id === moduleId) {
+        // Get existing access_level or create default
+        const existingAccessLevel = module.access_level || 
+                                  moduleAccessLevels[moduleId] || 
+                                  { is_admin: false, isAdmin: false, isEnabled: true };
+        
         // Toggle the admin status
-        const isAdmin = !(module.access_level?.is_admin || module.access_level?.isAdmin);
+        const isAdmin = !(existingAccessLevel.is_admin || existingAccessLevel.isAdmin);
         
         return {
           ...module,
           access_level: {
-            ...module.access_level,
+            ...existingAccessLevel,
             is_admin: isAdmin,
             isAdmin: isAdmin
           }

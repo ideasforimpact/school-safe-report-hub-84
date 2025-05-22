@@ -9,6 +9,7 @@ import { EmployeeType, DepartmentType } from '@/contexts/auth/types';
 import { Loader2 } from 'lucide-react';
 import { ModuleAccessItem } from '@/types/moduleAccess';
 import ModuleAccess from './form/ModuleAccess';
+import { supabase } from '@/integrations/supabase/client';
 
 interface EditUserDialogProps {
   isOpen: boolean;
@@ -36,20 +37,24 @@ const EditUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, re
   // Initialize selected modules from formData when dialog opens
   useEffect(() => {
     if (isOpen && formData.moduleAccessPayload) {
-      // Transform moduleAccessPayload to ensure it has proper format for the module access component
+      // Transform moduleAccessPayload to ensure it has proper format
       const formattedModules = formData.moduleAccessPayload.map(module => {
-        // Make sure we have a proper access_level object with is_admin property
-        const accessLevel = module.access_level || {};
-        const isAdmin = accessLevel.is_admin === true || accessLevel.isAdmin === true;
+        // Make a deep copy to avoid mutating the original object
+        const moduleCopy = { ...module };
         
-        return {
-          ...module,
-          access_level: {
-            ...accessLevel,
-            is_admin: isAdmin,
-            isAdmin: isAdmin
-          }
-        };
+        // If module doesn't have access_level, check if we need to fetch it from the database
+        if (!moduleCopy.access_level && formData.employeeId && moduleCopy.module_id) {
+          // We will handle this in the ModuleAccess component by fetching from DB
+        } else if (!moduleCopy.access_level) {
+          // If no employeeId or still no access_level, provide a default
+          moduleCopy.access_level = {
+            is_admin: false,
+            isAdmin: false,
+            isEnabled: true
+          };
+        }
+        
+        return moduleCopy;
       });
       
       console.log("Setting selected modules with formatted data:", formattedModules);
@@ -80,11 +85,14 @@ const EditUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, re
     e.preventDefault();
     
     // Ensure proper formatting of module access data before submission
-    const moduleAccessPayload = selectedModules.map(module => ({
-      ...module,
-      employeeId: formData.employeeId || undefined,
-      access_level: module.access_level || { is_admin: false, isAdmin: false, isEnabled: true }
-    }));
+    const moduleAccessPayload = selectedModules.map(module => {
+      // Preserve the existing module structure, including module_id, name, key, etc.
+      // Only ensure employeeId is set
+      return {
+        ...module,
+        employeeId: formData.employeeId || undefined
+      };
+    });
     
     setFormData(prevData => ({
       ...prevData,
