@@ -392,7 +392,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     toast.info("You have been logged out");
     
     // Redirect to login page immediately
-    window.location.href = '/login';
+    // window.location.href = '/login';
     
     // Then proceed with Supabase logout (won't affect the redirection)
     supabase.auth.signOut().catch((error) => {
