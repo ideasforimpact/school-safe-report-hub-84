@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -32,7 +31,7 @@ import {
 } from '@/services/auth/userManagementService';
 import { processEmployeeExcel } from '@/services/employee/importEmployeeService';
 import { supabase } from '@/integrations/supabase/client';
-import { getAllEmployeesFromApi } from '@/services/employee/employeeRetrievalService';
+import { getAllEmployeesFromApi, getEmployeesByClientId } from '@/services/employee/employeeRetrievalService';
 import { getEmployeeModuleAccessItems, updateEmployeeModulePermissions } from '@/services/employee/employeeModuleService';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getEmployeeData, isEmployeeAdmin, isEmployeeSuperAdmin } from '@/store/employeeSelectors';
@@ -147,13 +146,18 @@ const UserManagement = () => {
   // Fetch employees from Supabase and map them to User format
   useEffect(() => {
     fetchEmployeesList();
-  }, []);
+  }, [clientId]); // Add clientId dependency to refetch when it changes
 
   const fetchEmployeesList = async () => {
     try {
       setIsLoading(true);
-      const employeeData = await getAllEmployeesFromApi();
-      console.log(employeeData,"employeeData124")
+      console.log("Fetching employees with client ID:", clientId);
+      
+      // Use the new function that filters by clientId from Redux store
+      const employeeData = await getEmployeesByClientId();
+      
+      console.log(`Fetched ${employeeData.length} employees:`, employeeData);
+      
       if (employeeData && employeeData.length > 0) {
         // Process each employee to get their module access items
         const processedUsers = await Promise.all(employeeData.map(async employee => {
@@ -172,7 +176,7 @@ const UserManagement = () => {
             isActive: employee.status === true,
             createdAt: employee.createdAt || new Date().toISOString(),
             clientId: employee.clientId,
-            isSuperAdmin: employee.isSuperAdmin, // Fixed: Changed from is_super_admin to isSuperAdmin
+            isSuperAdmin: employee.isSuperAdmin, 
             // Store module access items directly
             moduleAccessPayload: moduleAccessItems,
             // Add default role property to satisfy User interface
@@ -181,7 +185,7 @@ const UserManagement = () => {
         }));
 
         setEmployeeUsers(processedUsers);
-        console.log("Fetched employees:", processedUsers);
+        console.log("Processed employees:", processedUsers);
       } else {
         console.log("No employees found or error fetching employees");
         setEmployeeUsers([]);
@@ -570,18 +574,11 @@ const UserManagement = () => {
     }
   };
 
-  // Handle refresh button click
-  const handleRefreshEmployeesList = async () => {
-    try {
-      setIsLoading(true);
-      await fetchEmployeesList();
-      toast.success("Employee list refreshed");
-    } catch (error) {
-      console.error("Failed to refresh employees:", error);
-      toast.error("Failed to refresh employee list");
-    } finally {
-      setIsLoading(false);
-    }
+  // Add a refresh button handler to manually refetch the data
+  const handleRefreshData = () => {
+    console.log("Manually refreshing employee data with clientId:", clientId);
+    fetchEmployeesList();
+    toast.success("Refreshing employee data...");
   };
 
   if (!isAdmin && !isSuperAdmin) {
@@ -600,65 +597,52 @@ const UserManagement = () => {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">User Management</h1>
-          {isSuperAdmin && (
-            <div className="flex gap-2">
-              <Button 
-                onClick={() => setIsImportDialogOpen(true)}
-                className="flex items-center gap-2"
-                variant="secondary"
-                disabled={isLoading}
-              >
-                <FileUp className="h-4 w-4" />
-                <span>Import Employees</span>
-              </Button>
-              <Button 
-                onClick={() => setIsAddDialogOpen(true)}
-                disabled={isLoading}
-              >
-                <UserPlus className="h-4 w-4 mr-2" />
-                Add Employee
-              </Button>
-            </div>
-          )}
-        </div>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Users</CardTitle>
-              <CardDescription>
-                Manage system users and their permissions
-              </CardDescription>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleRefreshEmployeesList}
-              disabled={isLoading}
-              title="Refresh employee list"
+      <Card className="w-full">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>User Management</CardTitle>
+            <CardDescription>
+              View and manage users
+            </CardDescription>
+          </div>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={handleRefreshData} 
+              className="flex items-center gap-1"
             >
-              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              <RefreshCw size={16} />
+              Refresh
             </Button>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <div className="flex justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
-              </div>
-            ) : (
-              <UserList 
-                users={employeeUsers.length > 0 ? employeeUsers : []}
-                onEditClick={handleEditClick}
-                onDeleteUser={handleDeleteUser}
-                onDeactivateUser={handleDeactivateUser}
-              />
-            )}
-          </CardContent>
-        </Card>
-      </div>
+            <Button 
+              onClick={() => setIsAddDialogOpen(true)} 
+              className="flex items-center gap-1"
+            >
+              <UserPlus size={16} />
+              Add User
+            </Button>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsImportDialogOpen(true)} 
+              className="flex items-center gap-1"
+            >
+              <FileUp size={16} />
+              Import
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <UserList 
+            users={employeeUsers} 
+            onEdit={(user) => {
+              setCurrentUser(user);
+              setIsEditDialogOpen(true);
+            }}
+            isLoading={isLoading}
+            currentClientId={clientId}
+          />
+        </CardContent>
+      </Card>
 
       {/* Add User Dialog */}
       <AddUserDialog 

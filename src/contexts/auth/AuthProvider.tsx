@@ -110,7 +110,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Clear Redux state on logout
         if (dispatch) {
-          // FIX: Pass the action object returned by resetEmployee() to dispatch
+          // FIX: Pass the action object directly to dispatch, not the function call
           dispatch(resetEmployee());
         }
         
@@ -160,7 +160,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             
             // Clear Redux state
             if (dispatch) {
-              // FIX: Pass the action object returned by resetEmployee() to dispatch
+              // FIX: Pass the action object directly to dispatch, not the function call
               dispatch(resetEmployee());
             }
             
@@ -219,8 +219,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             if (dispatch) {
               console.log("LOGIN: Dispatching employee data to Redux store:", employee);
               // FIX: Pass the action objects directly to dispatch
-              dispatch(setEmployeeData(employee));
-              dispatch(setClientId(employee.clientId));
+              const employeeAction = setEmployeeData(employee);
+              dispatch(employeeAction);
+              
+              const clientIdAction = setClientId(employee.clientId);
+              dispatch(clientIdAction);
             }
             
             console.log("Employee data stored:", employee);
@@ -368,7 +371,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     // Clear Redux state
     if (dispatch) {
-      dispatch(resetEmployee());
+      const resetAction = resetEmployee();
+      dispatch(resetAction);
     }
     
     // Clear local storage
