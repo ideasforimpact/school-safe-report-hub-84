@@ -124,7 +124,7 @@ async function checkForExistingEmail(
   }
 }
 
-// Improved function to add module access for an employee
+// Improved function to add module access for an employee with manual inserts
 async function addEmployeeModuleAccess(
   moduleAccessItems: ModuleAccessItem[], 
   employeeId: string,
@@ -158,42 +158,44 @@ async function addEmployeeModuleAccess(
     // First, clean up existing module access entries
     await deleteEmployeeModuleAccess(employeeId);
     
-    // Create new entries - FIXED: Properly process access_level from each item
-    const moduleEntries = moduleAccessItems.map(item => {
-      // Extract access_level directly from the item or create a default empty object
+    // Create new entries by manually inserting each one
+    for (const item of moduleAccessItems) {
+      // Process access_level properly
       let accessLevel = {};
       
-      // Check if the item has an access_level property
+      // Check if access_level already exists in the item
       if (item.access_level) {
         accessLevel = item.access_level;
       } 
-      // Handle the case where is_admin is directly set as a property
+      // If is_admin is directly on the item, move it to access_level
       else if (item.hasOwnProperty('is_admin')) {
         accessLevel = { is_admin: item.is_admin };
       }
       
-      // Log each entry for debugging
-      console.log(`Creating module entry for module ${item.module_id} with access level:`, accessLevel);
+      // Get module_id from either the directly provided module_id or the key
+      const moduleId = item.module_id || item.key;
       
-      return {
-        employee_id: employeeId,
-        module_id: item.module_id || item.key, // Use module_id if provided, otherwise fallback to key
-        access_level: accessLevel // Use the processed access level
-      };
-    });
-    
-    console.log("Adding module entries:", moduleEntries);
-    
-    const { error } = await supabaseAdmin
-      .from('employee_modules')
-      .insert(moduleEntries);
-    
-    if (error) {
-      console.error("Error inserting module entries:", error);
-      throw error;
+      // Log each entry for debugging
+      console.log(`Creating module entry for module ${moduleId} with access level:`, accessLevel);
+      
+      // Insert each module access entry individually
+      const { error } = await supabaseAdmin
+        .from('employee_modules')
+        .insert({
+          employee_id: employeeId,
+          module_id: moduleId,
+          access_level: accessLevel
+        });
+      
+      if (error) {
+        console.error(`Error inserting module entry for module ${moduleId}:`, error);
+        throw error;
+      }
+      
+      console.log(`Successfully added module access for module ${moduleId} to employee ${employeeId}`);
     }
     
-    console.log(`Successfully added ${moduleEntries.length} module access entries for employee: ${employeeId}`);
+    console.log(`Successfully completed adding module access entries for employee: ${employeeId}`);
     console.log("Module access updated successfully");
   } catch (error) {
     console.error("Error adding employee module access:", error);
