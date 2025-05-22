@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.20.0';
 
@@ -16,7 +17,6 @@ interface ModuleAccessItem {
     is_admin?: boolean;
     [key: string]: any;
   };
-  is_admin?: boolean;
 }
 
 interface EmployeeData {
@@ -125,137 +125,10 @@ async function checkForExistingEmail(
   }
 }
 
-// NEW FUNCTION: Update or insert employee module access (upsert approach)
-async function updateEmployeeModuleAccess(
-  moduleAccessItems: ModuleAccessItem[], 
-  employeeId: string,
-  clientId: string | null | undefined
-): Promise<void> {
-  try {
-    if (!moduleAccessItems || moduleAccessItems.length === 0) {
-      console.log("No module access items to update");
-      return;
-    }
-    
-    // Validate employee belongs to the client
-    if (clientId) {
-      const { data: employee, error: employeeError } = await supabaseAdmin
-        .from('employees')
-        .select('id, client_id')
-        .eq('id', employeeId)
-        .single();
-        
-      if (employeeError || !employee) {
-        console.error("Error validating employee:", employeeError);
-        throw new Error("Failed to validate employee");
-      }
-      
-      if (employee.client_id !== clientId) {
-        console.error(`Employee ${employeeId} does not belong to client ${clientId}`);
-        throw new Error("Employee does not belong to this client");
-      }
-    }
-    
-    // Fetch existing module access entries for this employee
-    const { data: existingModules, error: fetchError } = await supabaseAdmin
-      .from('employee_modules')
-      .select('id, module_id, access_level')
-      .eq('employee_id', employeeId);
-    
-    if (fetchError) {
-      console.error("Error fetching existing module access:", fetchError);
-      throw fetchError;
-    }
-    
-    // Create a map of existing module entries by module_id for easy lookup
-    const existingModuleMap = new Map();
-    if (existingModules) {
-      existingModules.forEach(module => {
-        existingModuleMap.set(module.module_id, module);
-      });
-    }
-    
-    console.log(`Found ${existingModuleMap.size} existing module entries for employee ${employeeId}`);
-    
-    // Process each module access item - update existing or insert new
-    for (const item of moduleAccessItems) {
-      // Get module_id from either the directly provided module_id or the key
-      const moduleId = item.module_id || item.key;
-      
-      // Process access_level properly
-      let accessLevel = {};
-      
-      // Check if access_level already exists in the item
-      if (item.access_level) {
-        accessLevel = item.access_level;
-      } 
-      // If is_admin is directly on the item, move it to access_level
-      else if (item.hasOwnProperty('is_admin')) {
-        accessLevel = { is_admin: item.is_admin, isAdmin: item.is_admin, isEnabled: true };
-      } else {
-        // Default values if neither is provided
-        accessLevel = { is_admin: false, isAdmin: false, isEnabled: true };
-      }
-      
-      // If empty object {} is passed for access_level, set default values
-      if (accessLevel && Object.keys(accessLevel).length === 0) {
-        accessLevel = { is_admin: false, isAdmin: false, isEnabled: true };
-      }
-      
-      // Check if this module already exists for this employee
-      if (existingModuleMap.has(moduleId)) {
-        // Update existing entry
-        const existingModule = existingModuleMap.get(moduleId);
-        console.log(`Updating existing module entry for module ${moduleId} with access level:`, accessLevel);
-        
-        const { error: updateError } = await supabaseAdmin
-          .from('employee_modules')
-          .update({
-            access_level: accessLevel,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', existingModule.id);
-        
-        if (updateError) {
-          console.error(`Error updating module entry for module ${moduleId}:`, updateError);
-          throw updateError;
-        }
-        
-        console.log(`Successfully updated module access for ${moduleId}`);
-      } else {
-        // Insert new entry
-        console.log(`Creating new module entry for module ${moduleId} with access level:`, accessLevel);
-        
-        const { error: insertError } = await supabaseAdmin
-          .from('employee_modules')
-          .insert({
-            employee_id: employeeId,
-            module_id: moduleId,
-            access_level: accessLevel
-          });
-        
-        if (insertError) {
-          console.error(`Error inserting module entry for module ${moduleId}:`, insertError);
-          throw insertError;
-        }
-        
-        console.log(`Successfully inserted module access for ${moduleId}`);
-      }
-    }
-    
-    console.log(`Successfully completed processing module access entries for employee: ${employeeId}`);
-    console.log("Module access updated successfully");
-  } catch (error) {
-    console.error("Error updating employee module access:", error);
-    throw error;
-  }
-}
-
-// Original function - kept for backward compatibility
+// Function to add module access for an employee
 async function addEmployeeModuleAccess(
   moduleAccessItems: ModuleAccessItem[], 
-  employeeId: string,
-  clientId: string | null | undefined
+  employeeId: string
 ): Promise<void> {
   try {
     if (!moduleAccessItems || moduleAccessItems.length === 0) {
@@ -263,117 +136,36 @@ async function addEmployeeModuleAccess(
       return;
     }
     
-    // Validate employee belongs to the client
-    if (clientId) {
-      const { data: employee, error: employeeError } = await supabaseAdmin
-        .from('employees')
-        .select('id, client_id')
-        .eq('id', employeeId)
-        .single();
-        
-      if (employeeError || !employee) {
-        console.error("Error validating employee:", employeeError);
-        throw new Error("Failed to validate employee");
-      }
+    const moduleEntries = moduleAccessItems.map(item => {
+      // Ensure access_level includes is_admin property
+      const access_level = item.access_level || {};
       
-      if (employee.client_id !== clientId) {
-        console.error(`Employee ${employeeId} does not belong to client ${clientId}`);
-        throw new Error("Employee does not belong to this client");
-      }
-    }
+      return {
+        employee_id: employeeId,
+        module_id: item.module_id || item.key, // Use module_id if provided, otherwise fallback to key
+        access_level: access_level // This now properly includes the is_admin property
+      };
+    });
     
-    // Fetch existing module access entries for this employee
-    const { data: existingModules, error: fetchError } = await supabaseAdmin
+    console.log("Adding module entries:", moduleEntries);
+    
+    const { error } = await supabaseAdmin
       .from('employee_modules')
-      .select('id, module_id, access_level')
-      .eq('employee_id', employeeId);
+      .insert(moduleEntries);
     
-    if (fetchError) {
-      console.error("Error fetching existing module access:", fetchError);
-      throw fetchError;
+    if (error) {
+      console.error("Error inserting module entries:", error);
+      throw error;
     }
     
-    // Create a map of existing module entries by module_id for easy lookup
-    const existingModuleMap = new Map();
-    if (existingModules) {
-      existingModules.forEach(module => {
-        existingModuleMap.set(module.module_id, module);
-      });
-    }
-    
-    console.log(`Found ${existingModuleMap.size} existing module entries for employee ${employeeId}`);
-    
-    // Process each module access item
-    for (const item of moduleAccessItems) {
-      // Get module_id from either the directly provided module_id or the key
-      const moduleId = item.module_id || item.key;
-      
-      // Process access_level properly
-      let accessLevel = {};
-      
-      // Check if access_level already exists in the item
-      if (item.access_level) {
-        accessLevel = item.access_level;
-      } 
-      // If is_admin is directly on the item, move it to access_level
-      else if (item.hasOwnProperty('is_admin')) {
-        accessLevel = { is_admin: item.is_admin, isAdmin: item.is_admin, isEnabled: true };
-      } else {
-        // Default values if neither is provided
-        accessLevel = { is_admin: false, isAdmin: false, isEnabled: true };
-      }
-      
-      // Check if this module already exists for this employee
-      if (existingModuleMap.has(moduleId)) {
-        // Update existing entry
-        const existingModule = existingModuleMap.get(moduleId);
-        console.log(`Updating existing module entry for module ${moduleId} with access level:`, accessLevel);
-        
-        const { error: updateError } = await supabaseAdmin
-          .from('employee_modules')
-          .update({
-            access_level: accessLevel,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', existingModule.id);
-        
-        if (updateError) {
-          console.error(`Error updating module entry for module ${moduleId}:`, updateError);
-          throw updateError;
-        }
-        
-        // Remove from map to track which ones were processed
-        existingModuleMap.delete(moduleId);
-      } else {
-        // Insert new entry
-        console.log(`Creating new module entry for module ${moduleId} with access level:`, accessLevel);
-        
-        const { error: insertError } = await supabaseAdmin
-          .from('employee_modules')
-          .insert({
-            employee_id: employeeId,
-            module_id: moduleId,
-            access_level: accessLevel
-          });
-        
-        if (insertError) {
-          console.error(`Error inserting module entry for module ${moduleId}:`, insertError);
-          throw insertError;
-        }
-      }
-      
-      console.log(`Successfully processed module access for module ${moduleId} to employee ${employeeId}`);
-    }
-    
-    console.log(`Successfully completed processing module access entries for employee: ${employeeId}`);
-    console.log("Module access updated successfully");
+    console.log(`Successfully added ${moduleEntries.length} module access entries for employee: ${employeeId}`);
   } catch (error) {
-    console.error("Error adding/updating employee module access:", error);
+    console.error("Error adding employee module access:", error);
     throw error;
   }
 }
 
-// Function to delete all module access for an employee - kept for backward compatibility
+// Function to delete all module access for an employee
 async function deleteEmployeeModuleAccess(employeeId: string): Promise<void> {
   try {
     console.log(`Deleting all module access for employee: ${employeeId}`);
@@ -461,7 +253,7 @@ async function createEmployee(employee: EmployeeData): Promise<any> {
     
     // If module access payload exists, add employee module access
     if (employee.moduleAccessPayload && employee.moduleAccessPayload.length > 0) {
-      await addEmployeeModuleAccess(employee.moduleAccessPayload, newEmployee.id, employee.clientId);
+      await addEmployeeModuleAccess(employee.moduleAccessPayload, newEmployee.id);
     }
     
     return { 
@@ -550,7 +342,7 @@ async function handleEmployeeOperation(operation: string, employeeData: any) {
         : { error: 'Client ID is required for list operation' };
     case 'add_module_access':
       return (employeeData && employeeData.moduleAccessPayload && employeeData.id)
-        ? await addEmployeeModuleAccess(employeeData.moduleAccessPayload, employeeData.id, employeeData.clientId)
+        ? await addEmployeeModuleAccess(employeeData.moduleAccessPayload, employeeData.id)
         : { error: 'Module access payload and employee ID are required' };
     default:
       return { error: 'Invalid operation' };
@@ -631,7 +423,7 @@ async function handleBulkImport(employees: any[]) {
             
             // Update module access if provided
             if (employee.moduleAccessPayload && Array.isArray(employee.moduleAccessPayload)) {
-              await addEmployeeModuleAccess(employee.moduleAccessPayload, existingEmployee.id, employee.clientId);
+              await addEmployeeModuleAccess(employee.moduleAccessPayload, existingEmployee.id);
             }
             
             results.updated++;
@@ -667,7 +459,7 @@ async function handleBulkImport(employees: any[]) {
             
             // Add module access if provided
             if (employee.moduleAccessPayload && Array.isArray(employee.moduleAccessPayload) && newEmployee) {
-              await addEmployeeModuleAccess(employee.moduleAccessPayload, newEmployee.id, employee.clientId);
+              await addEmployeeModuleAccess(employee.moduleAccessPayload, newEmployee.id);
             }
             
             results.created++;
@@ -692,62 +484,61 @@ async function handleBulkImport(employees: any[]) {
   }
 }
 
-// Improved updateEmployee function that uses updateEmployeeModuleAccess instead of deleting/recreating
+// Implement the updateEmployee function for updating an employee's information and module access
 async function updateEmployee(employee: any) {
   try {
     if (!employee || !employee.id) {
       return { error: "Employee ID is required for update operation" };
     }
     
-    // First, get the current employee details to validate client relationship
-    const { data: existingEmployee, error: fetchError } = await supabaseAdmin
-      .from('employees')
-      .select('id, client_id')
-      .eq('id', employee.id)
-      .single();
+    // Validate client_id if provided
+    if (employee.clientId) {
+      const clientValidation = await validateClient(employee.clientId);
+      if (!clientValidation.valid) {
+        return {
+          error: clientValidation.message,
+          code: 'INVALID_CLIENT',
+          success: false
+        };
+      }
+    } else {
+      // Get the employee's client_id from the database
+      const { data: existingEmployee, error: fetchError } = await supabaseAdmin
+        .from('employees')
+        .select('client_id')
+        .eq('id', employee.id)
+        .single();
+        
+      if (fetchError) {
+        console.error("Error fetching employee client_id:", fetchError);
+        return { error: "Error fetching employee data", success: false };
+      }
       
-    if (fetchError) {
-      console.error("Error fetching employee data:", fetchError);
-      return { error: "Error fetching employee data", success: false };
+      if (!existingEmployee.client_id) {
+        return { error: "Employee has no associated client ID", success: false };
+      }
+      
+      // Validate the existing client
+      const clientValidation = await validateClient(existingEmployee.client_id);
+      if (!clientValidation.valid) {
+        return {
+          error: clientValidation.message,
+          code: 'INVALID_CLIENT',
+          success: false
+        };
+      }
+      
+      // Set the clientId for use in the function
+      employee.clientId = existingEmployee.client_id;
     }
     
-    if (!existingEmployee) {
-      return { error: "Employee not found", success: false };
-    }
+    console.log(`Updating employee with ID: ${employee.id}`);
     
-    // Use clientId from the employee data or the existing record
-    const clientId = employee.clientId || existingEmployee.client_id;
-    
-    if (!clientId) {
-      return { error: "Client ID is required for update", success: false };
-    }
-    
-    // Validate the client
-    const clientValidation = await validateClient(clientId);
-    if (!clientValidation.valid) {
-      return {
-        error: clientValidation.message,
-        code: 'INVALID_CLIENT',
-        success: false
-      };
-    }
-    
-    // Verify employee belongs to this client
-    if (existingEmployee.client_id !== clientId) {
-      return { 
-        error: "Employee does not belong to this client", 
-        code: "CLIENT_MISMATCH",
-        success: false 
-      };
-    }
-    
-    console.log(`Updating employee with ID: ${employee.id} for client: ${clientId}`);
-    
-    // Check for email uniqueness within this client
-    if (employee.email) {
+    // Check if email already exists for another employee in the same client
+    if (employee.email && employee.clientId) {
       const emailExists = await checkForExistingEmail(
         employee.email, 
-        clientId, 
+        employee.clientId, 
         employee.id // Exclude current employee from check
       );
       
@@ -815,36 +606,16 @@ async function updateEmployee(employee: any) {
       updatedEmployee = data;
     }
     
-    // Handle module access updates using the new updateEmployeeModuleAccess function
+    // Handle module access updates if provided
     if (employee.moduleAccessPayload) {
       try {
-        // Process module access payload to ensure consistent format
-        const processedModuleAccess = employee.moduleAccessPayload.map((item: any) => {
-          // Start with a copy of the item
-          const processedItem = { ...item };
-          
-          // If access_level is not provided, create it 
-          if (!processedItem.access_level) {
-            processedItem.access_level = { is_admin: false, isAdmin: false, isEnabled: true };
-          }
-          
-          // If item has is_admin property directly, add it to access_level
-          if (item.hasOwnProperty('is_admin')) {
-            processedItem.access_level.is_admin = item.is_admin;
-            processedItem.access_level.isAdmin = item.is_admin;
-          }
-          
-          // Ensure isEnabled is set
-          processedItem.access_level.isEnabled = true;
-          
-          return processedItem;
-        });
+        // First delete all existing module access for this employee
+        await deleteEmployeeModuleAccess(employee.id);
         
-        console.log("Processed module access payload:", processedModuleAccess);
-        
-        // Use the new function for updating module access
-        await updateEmployeeModuleAccess(processedModuleAccess, employee.id, clientId);
-        console.log("Module access updated successfully");
+        // Then add the new module access if any are provided
+        if (Array.isArray(employee.moduleAccessPayload) && employee.moduleAccessPayload.length > 0) {
+          await addEmployeeModuleAccess(employee.moduleAccessPayload, employee.id);
+        }
       } catch (moduleError) {
         console.error("Error updating module access:", moduleError);
         return {
@@ -1115,6 +886,7 @@ serve(async (req) => {
     switch (operation) {
       case 'create':
         console.log("Employee data received:", body.employee);
+        console.log("Creating employee:", body.employee);
         result = await createEmployee(body.employee);
         break;
       case 'update':
@@ -1128,7 +900,7 @@ serve(async (req) => {
         break;
       case 'add_module_access':
         result = (body.employee && body.employee.moduleAccessPayload && body.employee.id)
-          ? await addEmployeeModuleAccess(body.employee.moduleAccessPayload, body.employee.id, body.employee.clientId)
+          ? await addEmployeeModuleAccess(body.employee.moduleAccessPayload, body.employee.id)
           : { error: 'Module access payload and employee ID are required' };
         break;
       case 'bulk_import':

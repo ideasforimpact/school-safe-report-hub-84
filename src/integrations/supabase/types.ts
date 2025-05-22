@@ -303,7 +303,7 @@ export type Database = {
       }
       employee_modules: {
         Row: {
-          access_level: Json | null
+          access_level: Json
           created_at: string
           employee_id: string
           id: string
@@ -311,7 +311,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          access_level?: Json | null
+          access_level?: Json
           created_at?: string
           employee_id: string
           id?: string
@@ -319,7 +319,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          access_level?: Json | null
+          access_level?: Json
           created_at?: string
           employee_id?: string
           id?: string

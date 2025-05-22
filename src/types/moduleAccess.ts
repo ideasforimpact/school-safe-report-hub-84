@@ -6,8 +6,6 @@ export interface ModuleAccessItem {
   module_id: string;
   access_level?: {
     is_admin?: boolean;
-    isAdmin?: boolean;
-    isEnabled?: boolean;
     [key: string]: any;
   };
 }

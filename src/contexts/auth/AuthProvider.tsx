@@ -17,13 +17,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthHandlers } from './hooks/useAuthHandlers';
 import { useEmployeeStore } from '@/store/EmployeeContext';
-import { 
-  setEmployeeData, 
-  setClientId, 
-  setConfiguredModules, 
-  resetEmployee, 
-  setLoading 
-} from '@/store/employeeActions';
+import { setEmployeeData, setClientId, setConfiguredModules, resetEmployee } from '@/store/employeeActions';
 
 // Create the context
 export const AuthContext = createContext<AuthContextType>({
@@ -196,9 +190,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Fetch employee data after successful login
         try {
-          // Fix: Use setLoading action creator properly
           if (dispatch) {
-            dispatch(setLoading(true));
+            dispatch({ type: 'SET_LOADING', payload: true });
           }
           
           const { data: employeeData, error } = await supabase
@@ -215,32 +208,30 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               firstName: employeeData.first_name,
               lastName: employeeData.last_name,
               isSuperAdmin: employeeData.is_super_admin,
-              department: employeeData.department,
-              employeeType: employeeData.employee_type
+              department: employeeData.department, // Add department
+              employeeType: employeeData.employee_type // Add employee_type
             };
             
             // Update local state
             setEmployeeData(employee);
             saveEmployeeDataToStorage(employee);
             
-            // Fix: Use action creators properly with dispatch
+            // Update Redux state correctly with action creators
             if (dispatch) {
               dispatch(setEmployeeData(employee));
-              if (employee.clientId) {
-                dispatch(setClientId(employee.clientId));
-              }
+              dispatch(setClientId(employee.clientId));
             }
             
             console.log("Employee data stored:", employee);
           }
           
           if (dispatch) {
-            dispatch(setLoading(false));
+            dispatch({ type: 'SET_LOADING', payload: false });
           }
         } catch (err) {
           console.error("Error fetching employee data:", err);
           if (dispatch) {
-            dispatch(setLoading(false));
+            dispatch({ type: 'SET_LOADING', payload: false });
           }
         }
         
@@ -315,15 +306,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           firstName: 'Backoffice',
           lastName: 'Admin',
           isSuperAdmin: true,
-          department: 'Management',
-          employeeType: 'admin'
+          department: 'Management', // Add default department
+          employeeType: 'admin' // Add default employee type
         };
         
         // Update local state
         setEmployeeData(backofficeEmployeeData);
         saveEmployeeDataToStorage(backofficeEmployeeData);
         
-        // Fix: Use action creators properly with dispatch
+        // Update Redux state correctly using action creators
         if (dispatch) {
           dispatch(setEmployeeData(backofficeEmployeeData));
           

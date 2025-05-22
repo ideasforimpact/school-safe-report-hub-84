@@ -76,8 +76,7 @@ const ClientModulesList = () => {
         icon: LayoutDashboard,
         label: 'Dashboard',
         path: '/dashboard',
-        allowed: true,
-        accessLevel: {}
+        allowed: true
       }]);
     }
   }, [configuredModules]);
@@ -89,23 +88,21 @@ const ClientModulesList = () => {
     return currentPath === path || (path !== '/' && currentPath.startsWith(path));
   };
 
-  // Handle module click
-  const handleModuleClick = (path: string, moduleLabel: string, accessLevel: any) => {
-    console.log(`Module clicked: ${moduleLabel} with access level:`, accessLevel);
+  // Handle module click to log and store access level in sessionStorage
+  const handleModuleClick = (module: ModuleItem) => {
+    console.log(`Module clicked: ${module.label}`, module);
     
-    // Store access level in session storage for use across the app
-    try {
-      sessionStorage.setItem('currentModuleAccessLevel', JSON.stringify(accessLevel || {}));
-      sessionStorage.setItem('currentModule', moduleLabel);
+    // Log the access level for this module
+    if (module.accessLevel) {
+      console.log(`Access level for ${module.label}:`, module.accessLevel);
       
-      // Log module access details for debugging
-      console.log(`Stored module access info for ${moduleLabel}:`, accessLevel);
-    } catch (error) {
-      console.error("Error storing module access level in session storage:", error);
+      // Store the current module's access level in sessionStorage
+      sessionStorage.setItem('currentModuleAccessLevel', JSON.stringify(module.accessLevel));
+      sessionStorage.setItem('currentModuleLabel', module.label);
     }
     
     // Navigate to the module path
-    navigate(path);
+    navigate(module.path);
   };
 
   if (isLoading) {
@@ -127,8 +124,8 @@ const ClientModulesList = () => {
               label={item.label}
               path={item.path}
               isActive={isActive(item.path)}
+              onClick={() => handleModuleClick(item)}
               accessLevel={item.accessLevel}
-              onClick={() => handleModuleClick(item.path, item.label, item.accessLevel)}
             />
           ))}
         </ul>
