@@ -19,7 +19,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuthHandlers } from './hooks/useAuthHandlers';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { 
-  setEmployeeData, 
+  setEmployeeData as setEmployeeDataAction, 
   setClientId, 
   setConfiguredModules, 
   resetEmployee, 
@@ -226,7 +226,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             // Update Redux state correctly with action creators
             if (dispatch) {
               // Fix the TypeScript errors by properly calling the action creators
-              dispatch(setEmployeeData(employee));
+              dispatch(setEmployeeDataAction(employee));
               if (employee.clientId) {
                 dispatch(setClientId(employee.clientId));
               }
