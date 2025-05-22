@@ -109,9 +109,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Clear Redux state on logout
         if (dispatch) {
-          // Fix: Call the resetEmployee action creator to get the proper action object
-          const resetAction = resetEmployee();
-          dispatch(resetAction);
+          // FIX: Use action creator function correctly
+          dispatch(resetEmployee());
         }
         
         // Add a toast message for logout
@@ -208,18 +207,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               firstName: employeeData.first_name,
               lastName: employeeData.last_name,
               isSuperAdmin: employeeData.is_super_admin,
-              department: employeeData.department, // Add department
-              employeeType: employeeData.employee_type // Add employee_type
+              department: employeeData.department,
+              employeeType: employeeData.employee_type
             };
             
             // Update local state
             setEmployeeData(employee);
             saveEmployeeDataToStorage(employee);
             
-            // CRITICAL FIX: Update Redux state immediately and unconditionally
+            // CRITICAL FIX: Update Redux state immediately and unconditionally using action creators
             if (dispatch) {
               console.log("LOGIN: Dispatching employee data to Redux store:", employee);
-              // Directly use the action creators to get properly typed actions
               dispatch(setEmployeeData(employee));
               dispatch(setClientId(employee.clientId));
             }
@@ -369,9 +367,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     // Clear Redux state
     if (dispatch) {
-      // Fix: Call the resetEmployee action creator to get the proper action object
-      const resetAction = resetEmployee();
-      dispatch(resetAction);
+      // Fix: Use action creator correctly
+      dispatch(resetEmployee());
     }
     
     // Clear local storage

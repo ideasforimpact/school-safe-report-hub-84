@@ -1,4 +1,3 @@
-
 import { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmployeeStore } from '@/store/EmployeeContext';
@@ -198,11 +197,11 @@ export const useEmployeeData = () => {
     console.log("useEmployeeData hook - authEmployeeData:", authEmployeeData);
     
     if (authEmployeeData) {
-      // Set employee data in Redux store - CRITICAL FIX: Always dispatch action even if data exists
+      // CRITICAL FIX: Always dispatch employee data to Redux regardless of what's in the store
       console.log("Setting employee data in Redux store:", authEmployeeData);
       dispatch(setEmployeeData(authEmployeeData));
       
-      // Set client ID in Redux store - CRITICAL FIX: Always dispatch action even if ID exists
+      // Set client ID in Redux store if available
       if (authEmployeeData.clientId) {
         console.log("Setting clientId in Redux store:", authEmployeeData.clientId);
         dispatch(setClientId(authEmployeeData.clientId));
@@ -247,10 +246,10 @@ export const useEmployeeData = () => {
                 employeeType: data.employee_type
               };
               
-              // Set employee data in Redux store
+              // CRITICAL FIX: Always dispatch employee data to Redux regardless of what's in the store
               dispatch(setEmployeeData(employeeData));
               
-              // Set client ID in Redux store
+              // Set client ID in Redux store if available
               if (data.client_id) {
                 dispatch(setClientId(data.client_id));
               }
@@ -268,7 +267,7 @@ export const useEmployeeData = () => {
         fetchEmployeeDataFromDB();
       }
     }
-  }, [authEmployeeData, user]);
+  }, [authEmployeeData, user, dispatch]);
 
   return {
     employeeData: state.employeeData,

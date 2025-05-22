@@ -233,6 +233,7 @@ export const useAuthHandlers = ({
         
         // Clear Redux state if dispatch is available
         if (dispatch) {
+          // Use action creator correctly
           dispatch(resetEmployee());
         }
       }
@@ -488,7 +489,7 @@ export const useAuthHandlers = ({
       if (employeeData) {
         console.log("Employee data being saved during auth:", employeeData);
         
-        // CRITICAL FIX: Ensure Redux dispatch happens immediately and is not conditional
+        // CRITICAL FIX: Ensure Redux dispatch happens immediately and uses correct action creators
         if (dispatch) {
           console.log("Dispatching setEmployeeData to Redux during auth:", employeeData);
           dispatch(setEmployeeData(employeeData));
@@ -544,6 +545,7 @@ export const useAuthHandlers = ({
       
       // Clear Redux state if dispatch is available
       if (dispatch) {
+        // Fix: Use action creator correctly
         dispatch(resetEmployee());
       }
       
