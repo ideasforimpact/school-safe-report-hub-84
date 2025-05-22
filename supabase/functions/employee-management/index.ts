@@ -86,16 +86,21 @@ async function checkForExistingEmail(
   currentEmployeeId?: string
 ): Promise<boolean> {
   try {
-    // Build query
+    // Validate that client_id is provided
+    if (!clientId) {
+      console.error("Missing client ID in checkForExistingEmail function");
+      // Consider this an error case - we can't properly check without a client ID
+      return true; // Return true (as if duplicate exists) to prevent creation without proper client validation
+    }
+    
+    console.log(`Checking for existing email ${email} for client ${clientId}`);
+    
+    // Build query - always filter by both email AND client_id
     let query = supabaseAdmin
       .from('employees')
-      .select('id, email')
-      .eq('email', email);
-    
-    // Add client_id filter if provided
-    if (clientId) {
-      query = query.eq('client_id', clientId);
-    }
+      .select('id, email, client_id')
+      .eq('email', email)
+      .eq('client_id', clientId);
     
     // Exclude current employee if updating
     if (currentEmployeeId) {
@@ -109,8 +114,11 @@ async function checkForExistingEmail(
       return false; // Assume no duplicate if error (will be caught elsewhere)
     }
     
-    // If data exists and has length, then there's a duplicate
-    return data && data.length > 0;
+    // If data exists and has length, then there's a duplicate within this client
+    const isDuplicate = data && data.length > 0;
+    console.log(`Email ${email} exists for client ${clientId}: ${isDuplicate}`);
+    
+    return isDuplicate;
   } catch (error) {
     console.error("Exception checking for existing email:", error);
     return false;
@@ -370,18 +378,26 @@ async function handleBulkImport(employees: any[]) {
           continue;
         }
         
-        // Check if employee with same email already exists
+        // Check if employee with same email already exists for this client
         if (employee.email && employee.clientId) {
-          const { data: existingEmployee, error: checkError } = await supabaseAdmin
-            .from('employees')
-            .select('id')
-            .eq('email', employee.email)
-            .eq('client_id', employee.clientId)
-            .single();
+          // Using the enhanced checkForExistingEmail function that checks within the same client
+          const emailExists = await checkForExistingEmail(employee.email, employee.clientId);
+          
+          if (emailExists) {
+            // Email exists for this client - update the employee
+            console.log(`Updating existing employee with email ${employee.email} for client ${employee.clientId}`);
             
-          if (!checkError && existingEmployee) {
-            // Employee exists, update it
-            console.log(`Updating existing employee with email ${employee.email}`);
+            // Get the existing employee first
+            const { data: existingEmployee, error: fetchError } = await supabaseAdmin
+              .from('employees')
+              .select('id')
+              .eq('email', employee.email)
+              .eq('client_id', employee.clientId)
+              .single();
+              
+            if (fetchError || !existingEmployee) {
+              throw new Error(`Error fetching existing employee: ${fetchError?.message || 'Employee not found'}`);
+            }
             
             // Map to DB schema
             const dbEmployee = {
@@ -414,8 +430,8 @@ async function handleBulkImport(employees: any[]) {
             results.employees.push(updatedEmp);
             
           } else {
-            // Employee doesn't exist, create new one
-            console.log(`Creating new employee with email ${employee.email}`);
+            // Employee doesn't exist for this client - create new one
+            console.log(`Creating new employee with email ${employee.email} for client ${employee.clientId}`);
             
             // Map to DB schema
             const dbEmployee = {

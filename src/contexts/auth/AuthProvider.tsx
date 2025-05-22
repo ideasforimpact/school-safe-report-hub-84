@@ -190,6 +190,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Fetch employee data after successful login
         try {
+          dispatch({
+            type: 'SET_LOADING',
+            payload: true
+          });
+          
           const { data: employeeData, error } = await supabase
             .from('employees')
             .select('id, client_id, email, first_name, last_name, is_super_admin, department, employee_type')
@@ -220,8 +225,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             
             console.log("Employee data stored:", employee);
           }
+          
+          dispatch({
+            type: 'SET_LOADING', 
+            payload: false
+          });
         } catch (err) {
           console.error("Error fetching employee data:", err);
+          dispatch({
+            type: 'SET_LOADING', 
+            payload: false
+          });
         }
         
         toast.success(`Welcome back, ${user.firstName}!`);
