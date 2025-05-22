@@ -7,7 +7,6 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { EmployeeType, DepartmentType } from '@/contexts/auth/types';
 import { Loader2 } from 'lucide-react';
-import { useEmployeeStore } from '@/store/EmployeeContext';
 import { ModuleAccessItem } from '@/types/moduleAccess';
 import ModuleAccess from './form/ModuleAccess';
 
@@ -23,7 +22,6 @@ interface EditUserDialogProps {
     department?: DepartmentType;
     joiningDate?: string;
     moduleAccessPayload?: ModuleAccessItem[];
-    clientId?: string;
   };
   setFormData: (data: any) => void;
   onSubmit: () => void;
@@ -33,32 +31,16 @@ interface EditUserDialogProps {
 }
 
 const EditUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, resetForm, isLoading, clientId }: EditUserDialogProps) => {
-  const { state } = useEmployeeStore();
   const [selectedModules, setSelectedModules] = useState<ModuleAccessItem[]>([]);
-
-  // When dialog opens, set the selectedModules based on the form data
+  
+  // Initialize selected modules from formData when dialog opens
   useEffect(() => {
-    if (isOpen && formData) {
-      // Check if moduleAccessPayload exists and is an array
-      if (formData.moduleAccessPayload && Array.isArray(formData.moduleAccessPayload)) {
-        console.log("Setting selected modules from formData:", formData.moduleAccessPayload);
-        setSelectedModules(formData.moduleAccessPayload);
-      } else {
-        console.log("No moduleAccessPayload found in formData or it's not an array");
-        setSelectedModules([]);
-      }
-      
-      // Ensure clientId is set in formData
-      if (!formData.clientId && clientId) {
-        setFormData({
-          ...formData,
-          clientId: clientId
-        });
-      }
+    if (isOpen && formData.moduleAccessPayload) {
+      setSelectedModules(formData.moduleAccessPayload);
     }
-  }, [isOpen, formData, setFormData, clientId]);
+  }, [isOpen, formData.moduleAccessPayload]);
 
-  // Module change handler that directly updates moduleAccessPayload
+  // Module change handler that updates selectedModules state and formData
   const handleModuleChange = (moduleAccessItems: ModuleAccessItem[]) => {
     console.log("Module access items changed:", moduleAccessItems);
     
@@ -75,40 +57,31 @@ const EditUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, re
   const handleClose = () => {
     setIsOpen(false);
     resetForm();
-    setSelectedModules([]);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Ensure clientId is set before submission
-    if (!formData.clientId && clientId) {
-      setFormData({
-        ...formData,
-        clientId: clientId
-      });
-    }
-    
-    // Use the selectedModules directly for backend processing
+    // Update the formData with the moduleAccessPayload before submission
     const moduleAccessPayload = selectedModules.map(module => ({
       ...module,
       employeeId: formData.employeeId || undefined
     }));
     
-    console.log("Module access payload for backend:", moduleAccessPayload);
-    
-    // Update formData with the moduleAccessPayload before submission
     setFormData(prevData => ({
       ...prevData,
       moduleAccessPayload
     }));
     
-    onSubmit();
+    // Submit the form after a short delay to ensure state is updated
+    setTimeout(() => {
+      onSubmit();
+    }, 0);
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Edit User</DialogTitle>
         </DialogHeader>
@@ -143,6 +116,7 @@ const EditUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, re
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 required
+                readOnly
               />
             </div>
 
@@ -153,7 +127,7 @@ const EditUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, re
                   id="employeeId"
                   value={formData.employeeId || ''}
                   onChange={(e) => setFormData({ ...formData, employeeId: e.target.value })}
-                  disabled={true}  // Disable editing employee ID
+                  readOnly
                 />
               </div>
               <div className="space-y-2">
@@ -182,7 +156,6 @@ const EditUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, re
                     <SelectItem value="contract">Contract</SelectItem>
                     <SelectItem value="consultant">Consultant</SelectItem>
                     <SelectItem value="part_time">Part Time</SelectItem>
-                    <SelectItem value="intern">Intern</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -202,21 +175,10 @@ const EditUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, re
                     <SelectItem value="maintenance">Maintenance</SelectItem>
                     <SelectItem value="transport">Transport</SelectItem>
                     <SelectItem value="management">Management</SelectItem>
-                    <SelectItem value="it">IT</SelectItem>
-                    <SelectItem value="hr">HR</SelectItem>
-                    <SelectItem value="finance">Finance</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
-
-            {/* Hidden input for clientId */}
-            <input 
-              type="hidden" 
-              id="clientId" 
-              name="clientId" 
-              value={formData.clientId || clientId || ''} 
-            />
 
             {/* Module Access Section */}
             <div className="space-y-4">
