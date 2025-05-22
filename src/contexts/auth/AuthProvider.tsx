@@ -354,44 +354,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Handle logout
+  // Handle logout - Updated to redirect directly to login page
   const handleLogout = (): void => {
-    // First, sign out from Supabase
-    supabase.auth.signOut().then(() => {
-      // Then clear local state
-      setCurrentUser(null);
-      setEmployeeData(null); // Clear employee data on logout
-      saveEmployeeDataToStorage(null); // Clear from storage
-      setIsBackofficeUser(false);
-      
-      // Clear Redux state
-      if (dispatch) {
-        dispatch(resetEmployee());
-      }
-      
-      logoutUser();
-      toast.info("You have been logged out");
-      
-      // Redirect to login page after logout
-      window.location.href = '/login';
-    }).catch((error) => {
-      console.error("Error signing out:", error);
-      // Still clear local state even if supabase logout fails
-      setCurrentUser(null);
-      setEmployeeData(null);
-      saveEmployeeDataToStorage(null);
-      setIsBackofficeUser(false);
-      
-      // Clear Redux state
-      if (dispatch) {
-        dispatch(resetEmployee());
-      }
-      
-      logoutUser();
-      toast.info("You have been logged out");
-      
-      // Redirect to login page after logout even if there's an error
-      window.location.href = '/login';
+    // First clear all local state and Redux store before any Supabase operations
+    setCurrentUser(null);
+    setEmployeeData(null);
+    saveEmployeeDataToStorage(null);
+    setIsBackofficeUser(false);
+    
+    // Clear Redux state
+    if (dispatch) {
+      dispatch(resetEmployee());
+    }
+    
+    // Clear local storage
+    logoutUser();
+    toast.info("You have been logged out");
+    
+    // Redirect to login page immediately
+    window.location.href = '/login';
+    
+    // Then proceed with Supabase logout (won't affect the redirection)
+    supabase.auth.signOut().catch((error) => {
+      console.error("Error signing out from Supabase:", error);
     });
   };
 
