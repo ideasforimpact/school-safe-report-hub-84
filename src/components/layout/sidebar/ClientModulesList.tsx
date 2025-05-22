@@ -46,7 +46,6 @@ const ClientModulesList = () => {
   const isLoading = getEmployeeLoadingState(state); // Use selector
   const [sidebarModules, setSidebarModules] = useState<ModuleItem[]>([]);
 
-console.log(configuredModules,"configuredModules")
   // Transform Redux store modules into sidebar menu items
   useEffect(() => {
     if (configuredModules && configuredModules.length > 0) {
@@ -77,7 +76,8 @@ console.log(configuredModules,"configuredModules")
         icon: LayoutDashboard,
         label: 'Dashboard',
         path: '/dashboard',
-        allowed: true
+        allowed: true,
+        accessLevel: {}
       }]);
     }
   }, [configuredModules]);
@@ -87,6 +87,25 @@ console.log(configuredModules,"configuredModules")
     const currentPath = location.pathname;
     // Check if the current path matches the menu item path or starts with it (for nested routes)
     return currentPath === path || (path !== '/' && currentPath.startsWith(path));
+  };
+
+  // Handle module click
+  const handleModuleClick = (path: string, moduleLabel: string, accessLevel: any) => {
+    console.log(`Module clicked: ${moduleLabel} with access level:`, accessLevel);
+    
+    // Store access level in session storage for use across the app
+    try {
+      sessionStorage.setItem('currentModuleAccessLevel', JSON.stringify(accessLevel || {}));
+      sessionStorage.setItem('currentModule', moduleLabel);
+      
+      // Log module access details for debugging
+      console.log(`Stored module access info for ${moduleLabel}:`, accessLevel);
+    } catch (error) {
+      console.error("Error storing module access level in session storage:", error);
+    }
+    
+    // Navigate to the module path
+    navigate(path);
   };
 
   if (isLoading) {
@@ -108,6 +127,8 @@ console.log(configuredModules,"configuredModules")
               label={item.label}
               path={item.path}
               isActive={isActive(item.path)}
+              accessLevel={item.accessLevel}
+              onClick={() => handleModuleClick(item.path, item.label, item.accessLevel)}
             />
           ))}
         </ul>
