@@ -1,23 +1,20 @@
-
 import React, { useEffect } from 'react';
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import HomePage from './pages/HomePage';
 import NotFound from './pages/NotFound';
-import { useAuth } from './contexts/auth';
+import LoginPage from './pages/auth/LoginPage';
+import PasswordResetPage from './pages/auth/PasswordResetPage';
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
+import DashboardPage from './pages/dashboard/DashboardPage';
+import IncidentsPage from './pages/incidents/IncidentsPage';
+import NewIncidentPage from './pages/incidents/NewIncidentPage';
+import IncidentDetailPage from './pages/incidents/IncidentDetailPage';
 import RouteGuard from './components/RouteGuard';
 import Layout from './components/layout/Layout';
 import PublicLayout from './components/layout/PublicLayout';
+import { useAuth } from './contexts/auth';
 import ModuleGuard from './components/ModuleGuard';
-import ProfilePage from './components/profile/ProfilePage'; // This import is correct
-
-// Import pages that were causing errors - using relative paths to actual files
-import HomePage from './pages/Home';
-import LoginPage from './pages/Login';
-import PasswordResetPage from './pages/auth/PasswordResetPage';
-import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
-import DashboardPage from './pages/Dashboard';
-import IncidentsPage from './pages/IncidentsList';
-import NewIncidentPage from './pages/ReportIncident';
-import IncidentDetailPage from './pages/IncidentDetail';
+import ProfilePage from './components/profile/ProfilePage'; // Add the import here
 
 const App = () => {
   const { user } = useAuth();
@@ -40,7 +37,7 @@ const App = () => {
         <Route path="/profile" element={<Layout><ProfilePage /></Layout>} />
         
         {/* Incident routes */}
-        <Route element={<ModuleGuard moduleType="incidentReporting" />}>
+        <Route element={<ModuleGuard requiredPermission="incidentReporting" />}>
           <Route path="/incidents" element={<Layout><IncidentsPage /></Layout>} />
           <Route path="/incidents/new" element={<Layout><NewIncidentPage /></Layout>} />
           <Route path="/incidents/:id" element={<Layout><IncidentDetailPage /></Layout>} />
