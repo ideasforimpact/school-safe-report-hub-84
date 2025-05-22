@@ -110,7 +110,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Clear Redux state on logout
         if (dispatch) {
-          // FIX: Use action creator function correctly - don't assign the result of dispatch
           dispatch(resetEmployee());
         }
         
@@ -160,8 +159,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             
             // Clear Redux state
             if (dispatch) {
-              // Fix: Call the resetEmployee action creator to get the proper action object
-              // and pass it to dispatch directly
               dispatch(resetEmployee());
             }
             
@@ -219,7 +216,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             // CRITICAL FIX: Update Redux state immediately and unconditionally using action creators
             if (dispatch) {
               console.log("LOGIN: Dispatching employee data to Redux store:", employee);
-              // FIX: Do not assign the result of dispatch - just call it
+              // Fix: Pass action objects to dispatch, not the return value of the action creators
               dispatch(setEmployeeData(employee));
               dispatch(setClientId(employee.clientId));
             }
@@ -311,7 +308,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Update Redux state
         if (dispatch) {
-          // Use the action creators directly - don't assign the result
+          // Fix: Pass action objects to dispatch
           dispatch(setEmployeeData(backofficeEmployeeData));
           
           // Only set clientId if it exists
@@ -369,7 +366,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     // Clear Redux state
     if (dispatch) {
-      // Fix: Use action creator correctly - don't assign the result
       dispatch(resetEmployee());
     }
     
