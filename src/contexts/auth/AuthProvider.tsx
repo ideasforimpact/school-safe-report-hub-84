@@ -1,4 +1,3 @@
-
 import React, { createContext, useEffect, useState, useRef } from 'react';
 import { User, AuthContextType, UserWithPassword, EmployeeData } from './types';
 import { 
@@ -110,7 +109,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Clear Redux state on logout
         if (dispatch) {
-          // FIX: Pass the action object directly to dispatch, not the function call
+          // FIX: We need to pass the action object returned by resetEmployee()
           dispatch(resetEmployee());
         }
         
@@ -218,7 +217,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             // CRITICAL FIX: Update Redux state immediately and unconditionally using action creators
             if (dispatch) {
               console.log("LOGIN: Dispatching employee data to Redux store:", employee);
-              // FIX: Pass the action objects directly to dispatch
+              // FIX: Store the action object in a variable first to ensure it's not called as a function
               const employeeAction = setEmployeeData(employee);
               dispatch(employeeAction);
               
@@ -313,12 +312,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Update Redux state
         if (dispatch) {
-          // Fix: Pass action objects to dispatch
-          dispatch(setEmployeeData(backofficeEmployeeData));
+          // Fix: Store the action object in a variable first
+          const employeeDataAction = setEmployeeData(backofficeEmployeeData);
+          dispatch(employeeDataAction);
           
           // Only set clientId if it exists
           if (employeeData && employeeData.clientId) {
-            dispatch(setClientId(employeeData.clientId));
+            const clientIdAction = setClientId(employeeData.clientId);
+            dispatch(clientIdAction);
           }
         }
         
@@ -345,7 +346,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         ];
         
         // Update Redux state with modules
-        dispatch(setConfiguredModules(backofficeModules));
+        const configModulesAction = setConfiguredModules(backofficeModules);
+        dispatch(configModulesAction);
         
         toast.success(`Welcome back, Backoffice Admin!`);
         return true;
