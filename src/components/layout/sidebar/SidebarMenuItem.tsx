@@ -1,4 +1,5 @@
 
+import { useNavigate, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { LucideIcon } from 'lucide-react';
 
@@ -7,35 +8,18 @@ interface SidebarMenuItemProps {
   label: string;
   path: string;
   isActive: boolean;
-  accessLevel?: any;
-  onClick?: () => void;
 }
 
-const SidebarMenuItem = ({ 
-  icon: IconComponent, 
-  label, 
-  path, 
-  isActive,
-  accessLevel,
-  onClick
-}: SidebarMenuItemProps) => {
+const SidebarMenuItem = ({ icon: IconComponent, label, path, isActive }: SidebarMenuItemProps) => {
+  const navigate = useNavigate();
+  
   // Split the label by newline character to handle multiline labels
   const labelParts = label.split('\n');
-  
-  const handleClick = () => {
-    // Log the access level when clicked for debugging
-    console.log(`Clicked on ${label} with access level:`, accessLevel);
-    
-    // Call the parent's onClick handler if provided
-    if (onClick) {
-      onClick();
-    }
-  };
   
   return (
     <li>
       <button
-        onClick={handleClick}
+        onClick={() => navigate(path)}
         className={cn(
           "w-full flex flex-col items-center justify-center py-3 px-2 rounded-md transition-colors text-center",
           isActive

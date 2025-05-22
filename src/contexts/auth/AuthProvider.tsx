@@ -18,7 +18,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthHandlers } from './hooks/useAuthHandlers';
 import { useEmployeeStore } from '@/store/EmployeeContext';
-import { setEmployeeData, setClientId, setConfiguredModules, resetEmployee, setLoading } from '@/store/employeeActions';
+import { setEmployeeData, setClientId, setConfiguredModules, resetEmployee } from '@/store/employeeActions';
 
 // Create the context
 export const AuthContext = createContext<AuthContextType>({
@@ -192,7 +192,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Fetch employee data after successful login
         try {
           if (dispatch) {
-            dispatch(setLoading(true));
+            dispatch({ type: 'SET_LOADING_STATE', payload: true });
           }
           
           const { data: employeeData, error } = await supabase
@@ -227,12 +227,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
           
           if (dispatch) {
-            dispatch(setLoading(false));
+            dispatch({ type: 'SET_LOADING_STATE', payload: false });
           }
         } catch (err) {
           console.error("Error fetching employee data:", err);
           if (dispatch) {
-            dispatch(setLoading(false));
+            dispatch({ type: 'SET_LOADING_STATE', payload: false });
           }
         }
         
