@@ -13,6 +13,7 @@ import AdminSettingsMenu from './AdminSettingsMenu';
 import UserRoleBadge from './UserRoleBadge';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getEmployeeData, isEmployeeAdmin, isEmployeeSuperAdmin } from '@/store/employeeSelectors';
+import { useEffect } from 'react';
 
 const Header = () => {
   const { user, logout } = useAuth();
@@ -26,14 +27,18 @@ const Header = () => {
   const isAdmin = isEmployeeAdmin(state);
   const isSuperAdmin = isEmployeeSuperAdmin(state);
 
-  // Log user and Redux state for debugging
-  console.log("User from Auth Context:", user);
-  console.log("Employee Data from Redux Store:", employeeData);
-  console.log("Is Admin from Redux:", isAdmin);
-  console.log("Is Super Admin from Redux:", isSuperAdmin);
-  console.log("Department:", employeeData?.department);
-  console.log("Employee Type:", employeeData?.employeeType);
-  console.log("User isSuperAdmin property:", user?.isSuperAdmin);
+  // Debug logging
+  useEffect(() => {
+    console.log("=== HEADER COMPONENT DEBUG ===");
+    console.log("User from Auth Context:", user);
+    console.log("Employee Data from Redux Store:", employeeData);
+    console.log("Is Admin from Redux:", isAdmin);
+    console.log("Is Super Admin from Redux:", isSuperAdmin);
+    console.log("Department:", employeeData?.department);
+    console.log("Employee Type:", employeeData?.employeeType);
+    console.log("User isSuperAdmin property:", user?.isSuperAdmin);
+    console.log("=== END DEBUG ===");
+  }, [user, employeeData, isAdmin, isSuperAdmin]);
   
   // Check if we're on the home page
   const isHomePage = location.pathname === "/" || location.pathname === "/home";

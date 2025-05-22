@@ -50,7 +50,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [displayUsers, setDisplayUsers] = useState<User[]>(
     users.map(({ password, ...user }) => user)
   );
-  const [employeeData, setEmployeeData] = useState<EmployeeData | null>(getEmployeeDataFromStorage());
+  const [employeeData, setEmployeeDataState] = useState<EmployeeData | null>(getEmployeeDataFromStorage());
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
   const [authError, setAuthError] = useState<string | null>(null);
   const [isBackofficeUser, setIsBackofficeUser] = useState<boolean>(false);
@@ -68,7 +68,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUsers: setUsersState,
     setAuthError,
     authInitCompleteRef,
-    setEmployeeData,
+    setEmployeeData: setEmployeeDataState,
     dispatch // Pass Redux dispatch to useAuthHandlers
   });
 
@@ -80,6 +80,29 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Compute roles
   const isAdmin = Boolean(currentUser?.role === 'admin' || currentUser?.modulePermissions?.superAdmin);
   const isSaasOwner = Boolean(currentUser?.role === 'saas_owner' || isBackofficeUser);
+
+  // Enhanced setEmployeeData function that updates both local state and Redux
+  const updateEmployeeData = (data: EmployeeData | null) => {
+    console.log("Updating employee data in AuthProvider:", data);
+    
+    // Update local state
+    setEmployeeDataState(data);
+    
+    // Save to storage
+    saveEmployeeDataToStorage(data);
+    
+    // Update Redux store if dispatch is available
+    if (dispatch && data) {
+      console.log("Dispatching employee data to Redux store:", data);
+      dispatch(setEmployeeData(data));
+      
+      // Also set clientId in Redux if available
+      if (data.clientId) {
+        console.log("Setting clientId in Redux:", data.clientId);
+        dispatch(setClientId(data.clientId));
+      }
+    }
+  };
 
   // Setup Supabase auth listener for Google authentication
   useEffect(() => {
@@ -103,9 +126,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       } else if (event === 'SIGNED_OUT') {
         console.log("User signed out");
+        
+        // Clear local state
         setCurrentUser(null);
-        setEmployeeData(null); // Clear employee data on logout
-        saveEmployeeDataToStorage(null); // Clear from storage
+        setEmployeeDataState(null);
+        saveEmployeeDataToStorage(null);
         setAuthError(null);
         
         // Clear Redux state on logout
@@ -135,7 +160,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     };
   }, [handleUserAuthentication, dispatch]);
 
-  // Fetch users from Supabase on mount
+  // Fetch users from Supabase on mount and ensure Redux store is populated
   useEffect(() => {
     const checkSupabaseAuth = async () => {
       try {
@@ -149,6 +174,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               console.log("Found existing session, authenticating user...");
               await handleUserAuthentication(data.session?.user);
             }, 0);
+          } else {
+            // We already have a user, make sure Redux store is synced with local state
+            if (employeeData && dispatch) {
+              console.log("Syncing existing employee data to Redux:", employeeData);
+              dispatch(setEmployeeData(employeeData));
+              
+              if (employeeData.clientId) {
+                dispatch(setClientId(employeeData.clientId));
+              }
+            }
           }
         } else {
           console.log("No active session found");
@@ -156,7 +191,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           if (currentUser) {
             console.log("Clearing stale user data from storage");
             setCurrentUser(null);
-            setEmployeeData(null);
+            setEmployeeDataState(null);
             saveEmployeeDataToStorage(null);
             
             // Clear Redux state
@@ -180,6 +215,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     checkSupabaseAuth();
   }, []);
+
+  // Sync local state with Redux when employeeData changes
+  useEffect(() => {
+    if (employeeData && dispatch) {
+      console.log("Syncing employee data changes to Redux:", employeeData);
+      dispatch(setEmployeeData(employeeData));
+      
+      if (employeeData.clientId) {
+        dispatch(setClientId(employeeData.clientId));
+      }
+    }
+  }, [employeeData, dispatch]);
 
   // Handle login
   const handleLogin = async (email: string, password: string): Promise<boolean> => {
@@ -209,20 +256,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               firstName: employeeData.first_name,
               lastName: employeeData.last_name,
               isSuperAdmin: employeeData.is_super_admin,
-              department: employeeData.department, // Add department
-              employeeType: employeeData.employee_type // Add employee_type
+              department: employeeData.department, 
+              employeeType: employeeData.employee_type 
             };
             
-            // Update local state
-            setEmployeeData(employee);
-            saveEmployeeDataToStorage(employee);
-            
-            // Update Redux state
-            if (dispatch) {
-              // Use the action creators directly
-              dispatch(setEmployeeData(employee));
-              dispatch(setClientId(employee.clientId));
-            }
+            // Update both local state and Redux
+            updateEmployeeData(employee);
             
             console.log("Employee data stored:", employee);
           }
@@ -301,24 +340,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           firstName: 'Backoffice',
           lastName: 'Admin',
           isSuperAdmin: true,
-          department: 'Management', // Add default department
-          employeeType: 'admin' // Add default employee type
+          department: 'Management', 
+          employeeType: 'admin' 
         };
         
-        // Update local state
-        setEmployeeData(backofficeEmployeeData);
-        saveEmployeeDataToStorage(backofficeEmployeeData);
-        
-        // Update Redux state
-        if (dispatch) {
-          // Use the action creators directly
-          dispatch(setEmployeeData(backofficeEmployeeData));
-          
-          // Only set clientId if it exists
-          if (employeeData && employeeData.clientId) {
-            dispatch(setClientId(employeeData.clientId));
-          }
-        }
+        // Update both local state and Redux
+        updateEmployeeData(backofficeEmployeeData);
         
         // Set modules for backoffice user (all modules enabled)
         const backofficeModules = [
@@ -363,7 +390,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const handleLogout = (): void => {
     // First clear all local state and Redux store before any Supabase operations
     setCurrentUser(null);
-    setEmployeeData(null);
+    setEmployeeDataState(null);
     saveEmployeeDataToStorage(null);
     setIsBackofficeUser(false);
     
