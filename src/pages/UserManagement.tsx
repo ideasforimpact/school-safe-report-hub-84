@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -152,8 +151,10 @@ const UserManagement = () => {
   const fetchEmployeesList = async () => {
     try {
       setIsLoading(true);
-      const employeeData = await getAllEmployeesFromApi();
-      console.log(employeeData,"employeeData124")
+      // Pass clientId to filter employees by client
+      const employeeData = await getAllEmployeesFromApi(clientId);
+      console.log(employeeData, "employeeData124")
+      
       if (employeeData && employeeData.length > 0) {
         // Process each employee to get their module access items
         const processedUsers = await Promise.all(employeeData.map(async employee => {
@@ -303,7 +304,8 @@ const UserManagement = () => {
   // Function to refresh the employees list after changes
   const refreshEmployeesList = async () => {
     try {
-      const employeeData = await getAllEmployeesFromApi();
+      // Pass clientId to filter employees by client
+      const employeeData = await getAllEmployeesFromApi(clientId);
       
       if (employeeData && employeeData.length > 0) {
         const processedUsers = await Promise.all(employeeData.map(async employee => {
