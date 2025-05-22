@@ -1,3 +1,4 @@
+
 import React, { createContext, useEffect, useState, useRef } from 'react';
 import { User, AuthContextType, UserWithPassword, EmployeeData } from './types';
 import { 
@@ -109,7 +110,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Clear Redux state on logout
         if (dispatch) {
-          dispatch(resetEmployee());
+          // Fix: Call the resetEmployee action creator to get the proper action object
+          const resetAction = resetEmployee();
+          dispatch(resetAction);
         }
         
         // Add a toast message for logout
@@ -158,7 +161,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             
             // Clear Redux state
             if (dispatch) {
-              dispatch(resetEmployee());
+              // Fix: Call the resetEmployee action creator to get the proper action object
+              const resetAction = resetEmployee();
+              dispatch(resetAction);
             }
             
             logoutUser();
@@ -364,7 +369,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     // Clear Redux state
     if (dispatch) {
-      dispatch(resetEmployee());
+      // Fix: Call the resetEmployee action creator to get the proper action object
+      const resetAction = resetEmployee();
+      dispatch(resetAction);
     }
     
     // Clear local storage
