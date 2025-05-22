@@ -1,3 +1,4 @@
+
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth';
 import { useClient } from '@/contexts/ClientContext';
@@ -12,6 +13,7 @@ import AdminSettingsMenu from './AdminSettingsMenu';
 import UserRoleBadge from './UserRoleBadge';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getEmployeeData, isEmployeeAdmin, isEmployeeSuperAdmin } from '@/store/employeeSelectors';
+import { useEffect } from 'react';
 
 const Header = () => {
   const { user, logout } = useAuth();
@@ -26,11 +28,13 @@ const Header = () => {
   const isSuperAdmin = isEmployeeSuperAdmin(state);
 
   // Enhanced debug logging to help troubleshoot Redux store issues
-  console.log("User from Auth Context:", user);
-  console.log("Employee Data from Redux Store:", employeeData);
-  console.log("Redux Store Employee State:", state);
-  console.log("Is Admin from Redux:", isAdmin);
-  console.log("Is Super Admin from Redux:", isSuperAdmin);
+  useEffect(() => {
+    console.log("Header component - User from Auth Context:", user);
+    console.log("Header component - Employee Data from Redux Store:", employeeData);
+    console.log("Header component - Redux Store Employee State:", state);
+    console.log("Header component - Is Admin from Redux:", isAdmin);
+    console.log("Header component - Is Super Admin from Redux:", isSuperAdmin);
+  }, [user, employeeData, state, isAdmin, isSuperAdmin]);
   
   // Check if we're on the home page
   const isHomePage = location.pathname === "/" || location.pathname === "/home";
