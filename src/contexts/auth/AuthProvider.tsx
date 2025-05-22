@@ -1,3 +1,4 @@
+
 import React, { createContext, useEffect, useState, useRef } from 'react';
 import { User, AuthContextType, UserWithPassword, EmployeeData } from './types';
 import { 
@@ -196,7 +197,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Fetch employee data after successful login
         try {
-          // Fix: Use setLoading action creator properly
           if (dispatch) {
             dispatch(setLoading(true));
           }
@@ -223,8 +223,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setEmployeeData(employee);
             saveEmployeeDataToStorage(employee);
             
-            // Fix: Use action creators properly with dispatch
+            // Update Redux state correctly with action creators
             if (dispatch) {
+              // Fix the TypeScript errors by properly calling the action creators
               dispatch(setEmployeeData(employee));
               if (employee.clientId) {
                 dispatch(setClientId(employee.clientId));
@@ -323,8 +324,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setEmployeeData(backofficeEmployeeData);
         saveEmployeeDataToStorage(backofficeEmployeeData);
         
-        // Fix: Use action creators properly with dispatch
+        // Update Redux state correctly using action creators
         if (dispatch) {
+          // Fix the TypeScript errors by properly calling the action creators
           dispatch(setEmployeeData(backofficeEmployeeData));
           
           // Only set clientId if it exists
