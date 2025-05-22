@@ -1,3 +1,4 @@
+
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth';
 import { useClient } from '@/contexts/ClientContext';
@@ -26,6 +27,7 @@ const Header = () => {
   const isSuperAdmin = isEmployeeSuperAdmin(state);
 
   // Enhanced debug logging to help troubleshoot Redux store issues
+  console.log("==== HEADER DEBUG ====");
   console.log("User from Auth Context:", user);
   console.log("Employee Data from Redux Store:", employeeData);
   console.log("Redux Store Employee State:", state);
@@ -33,7 +35,10 @@ const Header = () => {
   console.log("Is Super Admin from Redux:", isSuperAdmin);
   console.log("Department:", employeeData?.department);
   console.log("Employee Type:", employeeData?.employeeType);
+  console.log("Client ID:", employeeData?.clientId);
+  console.log("Client ID from Redux:", state.clientId);
   console.log("User isSuperAdmin property:", user?.isSuperAdmin);
+  console.log("==== END DEBUG ====");
   
   // Check if we're on the home page
   const isHomePage = location.pathname === "/" || location.pathname === "/home";
