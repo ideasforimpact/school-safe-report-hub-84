@@ -1,3 +1,4 @@
+
 import React, { createContext, useEffect, useState, useRef } from 'react';
 import { User, AuthContextType, UserWithPassword, EmployeeData } from './types';
 import { 
@@ -224,6 +225,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             
             // Update Redux state correctly with action creators
             if (dispatch) {
+              // Fix the TypeScript errors by properly calling the action creators
               dispatch(setEmployeeData(employee));
               if (employee.clientId) {
                 dispatch(setClientId(employee.clientId));
@@ -324,6 +326,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Update Redux state correctly using action creators
         if (dispatch) {
+          // Fix the TypeScript errors by properly calling the action creators
           dispatch(setEmployeeData(backofficeEmployeeData));
           
           // Only set clientId if it exists
