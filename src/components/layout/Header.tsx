@@ -13,10 +13,9 @@ import AdminSettingsMenu from './AdminSettingsMenu';
 import UserRoleBadge from './UserRoleBadge';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getEmployeeData, isEmployeeAdmin, isEmployeeSuperAdmin } from '@/store/employeeSelectors';
-import { useEffect } from 'react';
 
 const Header = () => {
-  const { user, logout, employeeData: authEmployeeData } = useAuth();
+  const { user, logout } = useAuth();
   const { clients } = useClient();
   const navigate = useNavigate();
   const location = useLocation();
@@ -27,26 +26,14 @@ const Header = () => {
   const isAdmin = isEmployeeAdmin(state);
   const isSuperAdmin = isEmployeeSuperAdmin(state);
 
-  // Enhanced debug logging to help troubleshoot Redux store issues
-  useEffect(() => {
-    console.log("Header component - User from Auth Context:", user);
-    console.log("Header component - Auth Context employeeData:", authEmployeeData);
-    console.log("Header component - Employee Data from Redux Store:", employeeData);
-    console.log("Header component - Redux Store Employee State:", state);
-    console.log("Header component - Is Admin from Redux:", isAdmin);
-    console.log("Header component - Is Super Admin from Redux:", isSuperAdmin);
-    console.log("Header component - Current location:", location.pathname);
-    
-    // Additional debugging to compare auth context with Redux
-    if (authEmployeeData && !employeeData) {
-      console.warn("SYNC ISSUE DETECTED: employeeData exists in Auth Context but not in Redux store");
-    } else if (authEmployeeData && employeeData) {
-      if (authEmployeeData.id !== employeeData.id) {
-        console.warn("SYNC ISSUE DETECTED: employeeData ID mismatch between Auth Context and Redux");
-      }
-      console.log("Auth and Redux employee data in sync:", authEmployeeData.id === employeeData.id);
-    }
-  }, [user, authEmployeeData, employeeData, state, isAdmin, isSuperAdmin, location.pathname]);
+  // Log user and Redux state for debugging
+  console.log("User from Auth Context:", user);
+  console.log("Employee Data from Redux Store:", employeeData);
+  console.log("Is Admin from Redux:", isAdmin);
+  console.log("Is Super Admin from Redux:", isSuperAdmin);
+  console.log("Department:", employeeData?.department);
+  console.log("Employee Type:", employeeData?.employeeType);
+  console.log("User isSuperAdmin property:", user?.isSuperAdmin);
   
   // Check if we're on the home page
   const isHomePage = location.pathname === "/" || location.pathname === "/home";
@@ -97,7 +84,7 @@ const Header = () => {
                   isSaasOwner={isSaasOwner} 
                   isAdmin={isAdmin && !isSuperAdmin && !isSaasOwner} 
                   isSuperAdmin={isSuperAdmin} 
-                  department={employeeData?.department || authEmployeeData?.department} 
+                  department={employeeData?.department} 
                 />
               )}
               

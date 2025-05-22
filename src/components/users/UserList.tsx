@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+
+import React from 'react';
+import { User, UserRole, ModulePermissions } from '@/contexts/auth/types';
 import {
   Table,
   TableBody,
@@ -7,160 +9,131 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Edit, Search, AlertCircle } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
-import { User } from '@/contexts/auth/types';
-import { formatDate } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Edit, Trash2, UserX } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 interface UserListProps {
   users: User[];
-  onEdit: (user: User) => void;
-  isLoading?: boolean;
-  currentClientId?: string | null;
+  onEditClick: (user: User) => void;
+  onDeleteUser: (id: string) => void;
+  onDeactivateUser: (id: string) => void;
 }
 
-const UserList: React.FC<UserListProps> = ({ users, onEdit, isLoading = false, currentClientId }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-
-  // Filter users by search term and potentially by client ID
-  const filteredUsers = users.filter(user => {
-    // Only apply clientId filter if specified and the user has a clientId
-    if (currentClientId && user.clientId && user.clientId !== currentClientId) {
-      return false;
-    }
-    
-    const searchTermLower = searchTerm.toLowerCase();
-    return (
-      user.firstName.toLowerCase().includes(searchTermLower) ||
-      user.lastName.toLowerCase().includes(searchTermLower) ||
-      user.email.toLowerCase().includes(searchTermLower) ||
-      (user.department && user.department.toLowerCase().includes(searchTermLower)) ||
-      (user.employeeType && user.employeeType.toLowerCase().includes(searchTermLower))
-    );
-  });
-
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center px-2 pb-4">
-          <Skeleton className="h-10 w-full" />
-        </div>
-        <div className="rounded-md border">
-          <div className="relative w-full overflow-auto">
-            <table className="w-full caption-bottom">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Department</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Joined</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <tbody>
-                {Array(5).fill(0).map((_, index) => (
-                  <TableRow key={index} className="border-b">
-                    <TableCell className="p-4"><Skeleton className="h-5 w-40" /></TableCell>
-                    <TableCell className="p-4"><Skeleton className="h-5 w-40" /></TableCell>
-                    <TableCell className="p-4"><Skeleton className="h-5 w-40" /></TableCell>
-                    <TableCell className="p-4"><Skeleton className="h-5 w-20" /></TableCell>
-                    <TableCell className="p-4"><Skeleton className="h-10 w-20" /></TableCell>
-                  </TableRow>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
+const UserList = ({ users, onEditClick, onDeleteUser, onDeactivateUser }: UserListProps) => {
+  console.log(users)
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-4 pb-4">
-        <div className="relative flex-grow">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-          <Input
-            type="search"
-            placeholder="Search users..."
-            className="w-full pl-8"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-      </div>
-
-      {filteredUsers.length > 0 ? (
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Department</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Joined</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredUsers.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell className="font-medium">
-                    {user.firstName} {user.lastName}
-                    {user.isSuperAdmin && (
-                      <Badge variant="outline" className="ml-2 bg-purple-100">Admin</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell>{user.department || "—"}</TableCell>
-                  <TableCell>
-                    {user.employeeType === 'permanent' && <Badge>Permanent</Badge>}
-                    {user.employeeType === 'contract' && <Badge variant="outline">Contract</Badge>}
-                    {user.employeeType === 'part_time' && <Badge variant="secondary">Part-time</Badge>}
-                    {!user.employeeType && "—"}
-                  </TableCell>
-                  <TableCell>
-                    {user.isActive ? (
-                      <Badge className="bg-green-500">Active</Badge>
-                    ) : (
-                      <Badge variant="destructive">Inactive</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>{user.joiningDate ? formatDate(user.joiningDate) : "—"}</TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => onEdit(user)}
-                      title="Edit user"
-                    >
-                      <Edit className="h-4 w-4" />
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Employee ID</TableHead>
+          <TableHead>Name</TableHead>
+          <TableHead>Email</TableHead>
+          <TableHead>Department</TableHead>
+          <TableHead>Type</TableHead>
+          <TableHead>Joining Date</TableHead>
+          <TableHead>Role</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead className="w-[150px]">Actions</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {users.map((user) => (
+          <TableRow key={user.id} className={!user.isActive ? "bg-muted/20" : ""}>
+            <TableCell>{user.employeeId || '-'}</TableCell>
+            <TableCell>{user.firstName} {user.lastName}</TableCell>
+            <TableCell>{user.email}</TableCell>
+            <TableCell>{user.department ? user.department.charAt(0).toUpperCase() + user.department.slice(1) : '-'}</TableCell>
+            <TableCell>{user.employeeType ? user.employeeType.charAt(0).toUpperCase() + user.employeeType.slice(1) : '-'}</TableCell>
+            <TableCell>{user.joiningDate || '-'}</TableCell>
+            <TableCell>
+              <span className={`px-2 py-1 rounded-full text-xs ${
+                user.role === 'admin' || user.role === 'saas_owner' ? 'bg-primary-100 text-primary-800' : 'bg-gray-100 text-gray-800'
+              }`}>
+                {user.role === 'admin' ? 'Admin' : user.role === 'saas_owner' ? 'SaaS Owner' : 'Reporter'}
+              </span>
+            </TableCell>
+            <TableCell>
+              {user.isActive ? (
+                <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
+                  Active
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-200">
+                  Inactive
+                </Badge>
+              )}
+            </TableCell>
+            <TableCell>
+              { !user.isSuperAdmin ?  
+              <div className="flex space-x-1">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => onEditClick(user)}
+                  disabled={!user.isActive}
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+                
+                {user.isActive && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <UserX className="h-4 w-4 text-amber-600" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Deactivate User</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to deactivate this user? They will no longer be able to log in to the system.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction 
+                          className="bg-amber-600 hover:bg-amber-700"
+                          onClick={() => onDeactivateUser(user.id)}
+                        >
+                          Deactivate
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+                
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      ) : (
-        <div className="flex h-[300px] items-center justify-center rounded-md border border-dashed">
-          <div className="flex flex-col items-center text-center">
-            <AlertCircle className="h-8 w-8 text-gray-400" />
-            <h3 className="mt-2 text-lg font-semibold">No users found</h3>
-            <p className="text-sm text-gray-500">
-              {searchTerm ? "Try changing your search terms." : "No users have been added yet."}
-            </p>
-          </div>
-        </div>
-      )}
-    </div>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete User</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to permanently delete this user? This action cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction 
+                        className="bg-destructive hover:bg-destructive/90"
+                        onClick={() => onDeleteUser(user.id)}
+                      >
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div> : <div></div> }
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 };
 

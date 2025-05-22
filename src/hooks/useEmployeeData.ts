@@ -194,85 +194,86 @@ export const useEmployeeData = () => {
 
   // Set employee data from auth context and fetch modules when available
   useEffect(() => {
-    console.log("useEmployeeData hook running with authEmployeeData:", authEmployeeData);
-    console.log("useEmployeeData hook - current Redux employeeData:", state.employeeData);
+    console.log("useEmployeeData hook - authEmployeeData:", authEmployeeData);
     
     if (authEmployeeData) {
-      console.log("Auth context has employeeData - syncing to Redux...");
-      // CRITICAL FIX: Always dispatch employee data to Redux regardless of what's in the store
+      // Set employee data in Redux store
+      console.log("Setting employee data in Redux store:", authEmployeeData);
       dispatch(setEmployeeData(authEmployeeData));
       
-      // Set client ID in Redux store if available
+      // Set client ID in Redux store
       if (authEmployeeData.clientId) {
+        console.log("Setting clientId in Redux store:", authEmployeeData.clientId);
         dispatch(setClientId(authEmployeeData.clientId));
       }
       
       // Fetch modules if we have employeeId and clientId
-      if (authEmployeeData.id && authEmployeeData.clientId) {
+      if (authEmployeeData.id && authEmployeeData.clientId &&
+          (!state.configuredModules || state.configuredModules.length === 0)) {
         console.log("Fetching modules in useEmployeeData hook");
         fetchConfiguredModules(authEmployeeData.id, authEmployeeData.clientId);
       }
-    } else if (!state.employeeData && user && user.id) {
-      console.log("No employeeData in auth context, but we have a user - fetching from database");
+    } else {
+      console.log("No employeeData available in auth context");
       
       // If we have a user but no employee data, try to fetch employee data from the database
-      const fetchEmployeeDataFromDB = async () => {
-        try {
-          // Try to get employee data by user ID
-          const { data, error } = await supabase
-            .from('employees')
-            .select('id, client_id, first_name, last_name, email, is_super_admin, department, employee_type')
-            .eq('user_id', user.id)
-            .single();
-            
-          if (error) {
-            console.error("Error fetching employee data by user ID:", error);
-            return;
-          }
-          
-          if (data) {
-            console.log("Found employee data by user ID:", data);
-            const employeeData = {
-              id: data.id,
-              clientId: data.client_id,
-              firstName: data.first_name,
-              lastName: data.last_name,
-              email: data.email,
-              isSuperAdmin: data.is_super_admin,
-              department: data.department,
-              employeeType: data.employee_type
-            };
-            
-            // CRITICAL FIX: Always dispatch employee data to Redux regardless of what's in the store
-            dispatch(setEmployeeData(employeeData));
-            
-            // Set client ID in Redux store if available
-            if (data.client_id) {
-              dispatch(setClientId(data.client_id));
+      if (user && user.id) {
+        console.log("Attempting to fetch employee data for user:", user.id);
+        
+        const fetchEmployeeDataFromDB = async () => {
+          try {
+            // Try to get employee data by user ID
+            const { data, error } = await supabase
+              .from('employees')
+              .select('id, client_id, first_name, last_name, email, is_super_admin')
+              .eq('user_id', user.id)
+              .single();
+              
+            if (error) {
+              console.error("Error fetching employee data by user ID:", error);
+              return;
             }
             
-            // Fetch modules
-            if (data.id && data.client_id) {
-              fetchConfiguredModules(data.id, data.client_id);
+            if (data) {
+              console.log("Found employee data by user ID:", data);
+              const employeeData = {
+                id: data.id,
+                clientId: data.client_id,
+                firstName: data.first_name,
+                lastName: data.last_name,
+                email: data.email,
+                isSuperAdmin: data.is_super_admin
+              };
+              
+              // Set employee data in Redux store
+              dispatch(setEmployeeData(employeeData));
+              
+              // Set client ID in Redux store
+              if (data.client_id) {
+                dispatch(setClientId(data.client_id));
+              }
+              
+              // Fetch modules
+              if (data.id && data.client_id) {
+                fetchConfiguredModules(data.id, data.client_id);
+              }
             }
+          } catch (fetchError) {
+            console.error("Error in fetchEmployeeDataFromDB:", fetchError);
           }
-        } catch (fetchError) {
-          console.error("Error in fetchEmployeeDataFromDB:", fetchError);
-        }
-      };
-      
-      fetchEmployeeDataFromDB();
-    } else {
-      console.log("No employeeData or user available - nothing to sync");
+        };
+        
+        fetchEmployeeDataFromDB();
+      }
     }
-  }, [authEmployeeData, user, dispatch, state.employeeData]);
+  }, [authEmployeeData, user]);
 
   return {
     employeeData: state.employeeData,
     configuredModules: state.configuredModules,
     isLoading: state.isLoading,
     error: state.error,
-    clientId: state.clientId,
+    clientId: state.clientId, // Include clientId in the return value
     refetchModules: () => {
       if (state.employeeData?.id && state.employeeData?.clientId) {
         fetchConfiguredModules(state.employeeData.id, state.employeeData.clientId);

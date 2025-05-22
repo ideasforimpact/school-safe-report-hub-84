@@ -2,24 +2,14 @@ import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
 import { Employee, VerificationDocument } from '@/types/employeeVerification';
 import { mapDbRecordToEmployee } from './utils/employeeMappers';
-import { useEmployeeStore } from '@/store/EmployeeContext'; 
-import { getEmployeeData } from '@/store/employeeSelectors';
 
-export const getAllEmployeesFromApi = async (clientId?: string | null): Promise<Employee[]> => {
+export const getAllEmployeesFromApi = async (): Promise<Employee[]> => {
   try {
-    console.log("Calling getAllEmployeesFromApi with clientId:", clientId);
-    
-    // Build query with client_id filter if provided
-    let query = supabase.from('employees').select('*');
-    
-    // Filter by client_id if provided
-    if (clientId) {
-      console.log(`Filtering employees by client_id: ${clientId}`);
-      query = query.eq('client_id', clientId);
-    }
-    
-    // Execute query
-    const { data, error } = await query;
+    console.log("Calling getAllEmployeesFromApi...");
+    // Fetch all employees without trying to join with documents
+    const { data, error } = await supabase
+      .from('employees')
+      .select('*');
 
     if (error) {
       console.error("Error fetching employees:", error);
@@ -50,8 +40,7 @@ export const getAllEmployeesFromApi = async (clientId?: string | null): Promise<
         createdAt: record.created_at || new Date().toISOString(),
         updatedAt: record.updated_at || new Date().toISOString(),
         isSuperAdmin: record?.is_super_admin, // Correctly mapping from DB's is_super_admin to type's isSuperAdmin
-        documents: [], // Initialize empty documents array
-        clientId: record.client_id // Include clientId from the record
+        documents: [] // Initialize empty documents array
       };
       return employee;
     });
@@ -225,24 +214,4 @@ export const getEmployeeByUserIdFromApi = async (userId: string): Promise<Employ
     toast.error("Failed to fetch employee");
     throw error;
   }
-};
-
-// New helper function to get employees filtered by client ID from Redux store
-export const getEmployeesByClientId = async () => {
-  // Get the current client ID from local storage since we can't use hooks here
-  const employeeDataStr = localStorage.getItem('employeeData');
-  let clientId = null;
-  
-  if (employeeDataStr) {
-    try {
-      const parsedData = JSON.parse(employeeDataStr);
-      clientId = parsedData.clientId;
-      console.log("Retrieved clientId from localStorage:", clientId);
-    } catch (e) {
-      console.error("Error parsing employeeData from localStorage:", e);
-    }
-  }
-  
-  // Call the main function with the client ID
-  return await getAllEmployeesFromApi(clientId);
 };

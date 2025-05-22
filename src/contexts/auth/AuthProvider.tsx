@@ -109,9 +109,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Clear Redux state on logout
         if (dispatch) {
-          // Create action object and pass it to dispatch
-          const resetAction = resetEmployee();
-          dispatch(resetAction);
+          dispatch(resetEmployee());
         }
         
         // Add a toast message for logout
@@ -160,9 +158,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             
             // Clear Redux state
             if (dispatch) {
-              // Create action object and pass it to dispatch
-              const resetAction = resetEmployee();
-              dispatch(resetAction);
+              dispatch(resetEmployee());
             }
             
             logoutUser();
@@ -180,7 +176,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkSupabaseAuth();
   }, []);
 
-  // Handle login - Critical area where employee data needs to be synchronized with Redux
+  // Handle login
   const handleLogin = async (email: string, password: string): Promise<boolean> => {
     setAuthError(null);
     
@@ -208,24 +204,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               firstName: employeeData.first_name,
               lastName: employeeData.last_name,
               isSuperAdmin: employeeData.is_super_admin,
-              department: employeeData.department,
-              employeeType: employeeData.employee_type
+              department: employeeData.department, // Add department
+              employeeType: employeeData.employee_type // Add employee_type
             };
             
             // Update local state
             setEmployeeData(employee);
             saveEmployeeDataToStorage(employee);
             
-            // CRITICAL FIX: Update Redux state immediately and unconditionally using action creators
+            // Update Redux state
             if (dispatch) {
-              console.log("LOGIN: Dispatching employee data to Redux store:", employee);
-              
-              // Create the action objects first, then pass them to dispatch
-              const employeeAction = setEmployeeData(employee);
-              dispatch(employeeAction);
-              
-              const clientIdAction = setClientId(employee.clientId);
-              dispatch(clientIdAction);
+              // Use the action creators directly
+              dispatch(setEmployeeData(employee));
+              dispatch(setClientId(employee.clientId));
             }
             
             console.log("Employee data stored:", employee);
@@ -315,14 +306,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Update Redux state
         if (dispatch) {
-          // Create the action objects first, then pass them to dispatch
-          const employeeDataAction = setEmployeeData(backofficeEmployeeData);
-          dispatch(employeeDataAction);
+          // Use the action creators directly
+          dispatch(setEmployeeData(backofficeEmployeeData));
           
           // Only set clientId if it exists
           if (employeeData && employeeData.clientId) {
-            const clientIdAction = setClientId(employeeData.clientId);
-            dispatch(clientIdAction);
+            dispatch(setClientId(employeeData.clientId));
           }
         }
         
@@ -349,8 +338,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         ];
         
         // Update Redux state with modules
-        const configModulesAction = setConfiguredModules(backofficeModules);
-        dispatch(configModulesAction);
+        dispatch(setConfiguredModules(backofficeModules));
         
         toast.success(`Welcome back, Backoffice Admin!`);
         return true;
@@ -376,8 +364,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     // Clear Redux state
     if (dispatch) {
-      const resetAction = resetEmployee();
-      dispatch(resetAction);
+      dispatch(resetEmployee());
     }
     
     // Clear local storage
