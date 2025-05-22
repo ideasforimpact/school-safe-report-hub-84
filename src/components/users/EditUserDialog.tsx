@@ -36,7 +36,24 @@ const EditUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, re
   // Initialize selected modules from formData when dialog opens
   useEffect(() => {
     if (isOpen && formData.moduleAccessPayload) {
-      setSelectedModules(formData.moduleAccessPayload);
+      // Transform moduleAccessPayload to ensure it has proper format for the module access component
+      const formattedModules = formData.moduleAccessPayload.map(module => {
+        // Make sure we have a proper access_level object with is_admin property
+        const accessLevel = module.access_level || {};
+        const isAdmin = accessLevel.is_admin === true || accessLevel.isAdmin === true;
+        
+        return {
+          ...module,
+          access_level: {
+            ...accessLevel,
+            is_admin: isAdmin,
+            isAdmin: isAdmin
+          }
+        };
+      });
+      
+      console.log("Setting selected modules with formatted data:", formattedModules);
+      setSelectedModules(formattedModules);
     }
   }, [isOpen, formData.moduleAccessPayload]);
 
@@ -62,10 +79,11 @@ const EditUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, re
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Update the formData with the moduleAccessPayload before submission
+    // Ensure proper formatting of module access data before submission
     const moduleAccessPayload = selectedModules.map(module => ({
       ...module,
-      employeeId: formData.employeeId || undefined
+      employeeId: formData.employeeId || undefined,
+      access_level: module.access_level || { is_admin: false, isAdmin: false, isEnabled: true }
     }));
     
     setFormData(prevData => ({

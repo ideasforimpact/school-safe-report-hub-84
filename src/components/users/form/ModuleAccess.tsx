@@ -1,172 +1,161 @@
 
 import React, { useState, useEffect } from 'react';
-import { Checkbox } from "@/components/ui/checkbox";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useEmployeeStore } from '@/store/EmployeeContext';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Check } from 'lucide-react';
 import { ModuleAccessItem } from '@/types/moduleAccess';
-import { Badge } from "@/components/ui/badge";
-import { Check, ToggleLeft, ToggleRight } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
 interface ModuleAccessProps {
   selectedModules: ModuleAccessItem[];
-  onModuleChange: (moduleAccessItems: ModuleAccessItem[]) => void;
+  onModuleChange: (modules: ModuleAccessItem[]) => void;
   employeeId?: string;
 }
 
-const ModuleAccess: React.FC<ModuleAccessProps> = ({
-  selectedModules,
+const ModuleAccess: React.FC<ModuleAccessProps> = ({ 
+  selectedModules, 
   onModuleChange,
-  employeeId
+  employeeId 
 }) => {
-  const { state } = useEmployeeStore();
-  
-  // Debug log for configured modules and selected modules
-  console.log("ModuleAccess - Available configured modules:", state.configuredModules);
-  console.log("ModuleAccess - Selected modules:", selectedModules);
-  
-  // Create a mapping from modules in Redux
-  const availableModules = state.configuredModules && state.configuredModules.length > 0
-    ? state.configuredModules.map(module => ({
-        key: module.key || module.id,
-        name: module.name,
-        module_id: module.id
-      }))
-    : [];
+  const [availableModules, setAvailableModules] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  // Helper function to check if a module is selected
+  // Fetch available modules on component mount
+  useEffect(() => {
+    const fetchAvailableModules = async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase.functions.invoke('fetch-modules', {
+          body: { fetchLevel: 'client' }
+        });
+
+        if (error) {
+          console.error('Error fetching modules:', error);
+          return;
+        }
+
+        if (data && data.modules) {
+          console.log('Available modules:', data.modules);
+          setAvailableModules(data.modules);
+        }
+      } catch (error) {
+        console.error('Failed to fetch modules:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAvailableModules();
+  }, []);
+
+  // Check if a module is selected
   const isModuleSelected = (moduleId: string): boolean => {
-    return selectedModules.some(m => m.module_id === moduleId);
+    return selectedModules.some(module => module.module_id === moduleId);
   };
 
-  // Helper function to check if a module has admin access
-  const isModuleAdmin = (moduleId: string): boolean => {
-    const module = selectedModules.find(m => m.module_id === moduleId);
-    return module?.access_level?.is_admin === true;
+  // Check if a module has admin access
+  const hasAdminAccess = (moduleId: string): boolean => {
+    const module = selectedModules.find(module => module.module_id === moduleId);
+    if (!module) return false;
+    
+    // Check access_level.is_admin or access_level.isAdmin property
+    return !!(module.access_level?.is_admin || module.access_level?.isAdmin);
   };
 
-  // Handler for checkbox change
-  const handleModuleChange = (moduleKey: string, moduleName: string, moduleId: string, checked: boolean) => {
-    console.log("Module change:", { moduleKey, moduleName, moduleId, checked });
-    
-    let updatedModules: ModuleAccessItem[];
-    
+  // Toggle module selection
+  const handleModuleToggle = (checked: boolean, module: any) => {
     if (checked) {
-      // Add module to selection if it's not already there
-      if (!isModuleSelected(moduleId)) {
+      // Add module to selected modules if it doesn't exist
+      if (!isModuleSelected(module.id)) {
         const newModule: ModuleAccessItem = {
-          name: moduleName,
-          employeeId: employeeId,
-          key: moduleKey,
-          module_id: moduleId,
-          access_level: { is_admin: false }  // Default to not admin
+          name: module.name,
+          key: module.key || 'user',
+          module_id: module.id,
+          employeeId,
+          access_level: {
+            is_admin: false,
+            isAdmin: false,
+            isEnabled: true
+          }
         };
-        updatedModules = [...selectedModules, newModule];
-      } else {
-        updatedModules = [...selectedModules]; // No change needed
+        onModuleChange([...selectedModules, newModule]);
       }
     } else {
-      // Remove module from selection
-      updatedModules = selectedModules.filter(m => m.module_id !== moduleId);
+      // Remove module from selected modules
+      onModuleChange(selectedModules.filter(m => m.module_id !== module.id));
     }
-    
-    console.log("Updated modules:", updatedModules);
-    
-    // Notify parent component of change
-    onModuleChange(updatedModules);
   };
 
-  // Handler for admin toggle
+  // Toggle admin access for a module
   const handleAdminToggle = (moduleId: string) => {
-    const moduleToUpdate = selectedModules.find(m => m.module_id === moduleId);
-    if (!moduleToUpdate) return;
-    
-    console.log(`Admin toggle - Module ID: ${moduleId}, Current admin: ${moduleToUpdate.access_level?.is_admin}`);
-    
-    // Toggle the admin access state for this module
-    const updatedModules = selectedModules.map(m => {
-      if (m.module_id === moduleId) {
-        return { 
-          ...m, 
-          access_level: { 
-            ...m.access_level,
-            is_admin: !m.access_level?.is_admin 
+    const updatedModules = selectedModules.map(module => {
+      if (module.module_id === moduleId) {
+        // Toggle the admin status
+        const isAdmin = !(module.access_level?.is_admin || module.access_level?.isAdmin);
+        
+        return {
+          ...module,
+          access_level: {
+            ...module.access_level,
+            is_admin: isAdmin,
+            isAdmin: isAdmin
           }
         };
       }
-      return m;
+      return module;
     });
-    
-    console.log("After admin toggle, modules:", updatedModules);
-    
-    // Notify parent component of change
+
     onModuleChange(updatedModules);
   };
 
+  if (loading) {
+    return <div>Loading modules...</div>;
+  }
+
   return (
-    <div className="w-full">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[100px]">Enabled</TableHead>
-            <TableHead>Module Name</TableHead>
-            <TableHead className="w-[120px]">Access Level</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {availableModules.map((module) => {
-            const isSelected = isModuleSelected(module.module_id);
-            const isAdmin = isModuleAdmin(module.module_id);
-            
-            console.log(`Module ${module.name} selected: ${isSelected}, admin: ${isAdmin}`);
-            
-            return (
-              <TableRow key={module.key || module.module_id}>
-                <TableCell>
-                  <Checkbox
-                    id={`module-checkbox-${module.module_id}`}
-                    checked={isSelected}
-                    onCheckedChange={(checked) => handleModuleChange(
-                      module.key, 
-                      module.name, 
-                      module.module_id,
-                      checked === true
-                    )}
-                  />
-                </TableCell>
-                <TableCell>
-                  <label 
-                    htmlFor={`module-checkbox-${module.module_id}`}
-                    className="cursor-pointer"
-                  >
-                    {module.name}
-                  </label>
-                </TableCell>
-                <TableCell>
-                  {isSelected && (
-                    <div 
-                      className="flex items-center cursor-pointer"
-                      onClick={() => handleAdminToggle(module.module_id)}
-                    >
-                      {isAdmin ? (
-                        <ToggleRight className="text-green-500 h-6 w-6 mr-2" />
-                      ) : (
-                        <ToggleLeft className="text-gray-400 h-6 w-6 mr-2" />
-                      )}
-                      <span className={cn(
-                        "text-sm font-medium",
-                        isAdmin ? "text-green-600" : "text-gray-500"
-                      )}>
-                        Admin
-                      </span>
-                    </div>
-                  )}
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+    <div className="space-y-4">
+      {availableModules.map((module) => (
+        <div key={module.id} className="flex items-center justify-between border p-3 rounded-md">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id={`module-${module.id}`}
+              checked={isModuleSelected(module.id)}
+              onCheckedChange={(checked) => handleModuleToggle(!!checked, module)}
+            />
+            <Label htmlFor={`module-${module.id}`} className="cursor-pointer">
+              {module.name}
+            </Label>
+          </div>
+          
+          {isModuleSelected(module.id) && (
+            <Badge
+              variant={hasAdminAccess(module.id) ? "default" : "outline"}
+              className={cn(
+                "relative pr-7 transition-all duration-200 cursor-pointer",
+                hasAdminAccess(module.id) 
+                  ? "bg-green-500 text-white hover:bg-green-600" 
+                  : "text-muted-foreground hover:bg-gray-100"
+              )}
+              onClick={() => handleAdminToggle(module.id)}
+            >
+              Admin
+              {hasAdminAccess(module.id) && (
+                <span className="absolute right-1.5 top-1/2 -translate-y-1/2">
+                  <Check className="h-3 w-3" />
+                </span>
+              )}
+            </Badge>
+          )}
+        </div>
+      ))}
+      
+      {availableModules.length === 0 && (
+        <div className="text-center p-4 text-muted-foreground">
+          No modules available
+        </div>
+      )}
     </div>
   );
 };
