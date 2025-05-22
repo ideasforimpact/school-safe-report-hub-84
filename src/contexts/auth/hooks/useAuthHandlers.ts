@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { User, UserRole, EmployeeData } from '../types';
 import { getUserFromStorage, saveUserToStorage, saveEmployeeDataToStorage } from '@/services/auth/authService';
@@ -468,12 +467,12 @@ export const useAuthHandlers = ({
       // Create a new user object
       const newUser: User = {
         id: supabaseUser.id,
-        firstName,
-        lastName,
+        firstName: employeeData.firstName || 'User',
+        lastName: employeeData.lastName || '',
         email: supabaseUser.email || '',
         role: employeeRole,
         isActive: true,
-        provider,
+        provider: 'email', // Default to email
         clientId,
         createdAt: supabaseUser.created_at || new Date().toISOString(),
         department, // Add department
@@ -489,12 +488,12 @@ export const useAuthHandlers = ({
       if (employeeData) {
         console.log("Employee data being saved during auth:", employeeData);
         
-        // Store employee data in Redux - CRITICAL FIX
+        // CRITICAL FIX: Ensure Redux dispatch happens immediately and is not conditional
         if (dispatch) {
           console.log("Dispatching setEmployeeData to Redux during auth:", employeeData);
           dispatch(setEmployeeData(employeeData));
           
-          // Also set clientId in Redux
+          // Also set clientId in Redux immediately
           if (employeeData.clientId) {
             dispatch(setClientId(employeeData.clientId));
           }
@@ -526,7 +525,7 @@ export const useAuthHandlers = ({
       // Clear any auth errors
       setAuthError(null);
       
-      toast.success(`Welcome, ${firstName}!`);
+      toast.success(`Welcome, ${employeeData.firstName || 'User'}!`);
       
       // Mark auth initialization as complete
       authInitCompleteRef.current = true;

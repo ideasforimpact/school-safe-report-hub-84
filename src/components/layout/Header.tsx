@@ -1,4 +1,3 @@
-
 import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth';
 import { useClient } from '@/contexts/ClientContext';
@@ -26,9 +25,10 @@ const Header = () => {
   const isAdmin = isEmployeeAdmin(state);
   const isSuperAdmin = isEmployeeSuperAdmin(state);
 
-  // Log user and Redux state for debugging
+  // Enhanced debug logging to help troubleshoot Redux store issues
   console.log("User from Auth Context:", user);
   console.log("Employee Data from Redux Store:", employeeData);
+  console.log("Redux Store Employee State:", state);
   console.log("Is Admin from Redux:", isAdmin);
   console.log("Is Super Admin from Redux:", isSuperAdmin);
   console.log("Department:", employeeData?.department);

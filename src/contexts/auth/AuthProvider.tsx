@@ -1,4 +1,3 @@
-
 import React, { createContext, useEffect, useState, useRef } from 'react';
 import { User, AuthContextType, UserWithPassword, EmployeeData } from './types';
 import { 
@@ -181,7 +180,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkSupabaseAuth();
   }, []);
 
-  // Handle login
+  // Handle login - Critical area where employee data needs to be synchronized with Redux
   const handleLogin = async (email: string, password: string): Promise<boolean> => {
     setAuthError(null);
     
@@ -217,9 +216,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setEmployeeData(employee);
             saveEmployeeDataToStorage(employee);
             
-            // Update Redux state
+            // CRITICAL FIX: Update Redux state immediately and unconditionally
             if (dispatch) {
-              // Use the action creators directly
+              console.log("LOGIN: Dispatching employee data to Redux store:", employee);
+              // Directly use the action creators to get properly typed actions
               dispatch(setEmployeeData(employee));
               dispatch(setClientId(employee.clientId));
             }

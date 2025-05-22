@@ -1,3 +1,4 @@
+
 import { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmployeeStore } from '@/store/EmployeeContext';
@@ -197,19 +198,18 @@ export const useEmployeeData = () => {
     console.log("useEmployeeData hook - authEmployeeData:", authEmployeeData);
     
     if (authEmployeeData) {
-      // Set employee data in Redux store
+      // Set employee data in Redux store - CRITICAL FIX: Always dispatch action even if data exists
       console.log("Setting employee data in Redux store:", authEmployeeData);
       dispatch(setEmployeeData(authEmployeeData));
       
-      // Set client ID in Redux store
+      // Set client ID in Redux store - CRITICAL FIX: Always dispatch action even if ID exists
       if (authEmployeeData.clientId) {
         console.log("Setting clientId in Redux store:", authEmployeeData.clientId);
         dispatch(setClientId(authEmployeeData.clientId));
       }
       
       // Fetch modules if we have employeeId and clientId
-      if (authEmployeeData.id && authEmployeeData.clientId &&
-          (!state.configuredModules || state.configuredModules.length === 0)) {
+      if (authEmployeeData.id && authEmployeeData.clientId) {
         console.log("Fetching modules in useEmployeeData hook");
         fetchConfiguredModules(authEmployeeData.id, authEmployeeData.clientId);
       }
@@ -225,7 +225,7 @@ export const useEmployeeData = () => {
             // Try to get employee data by user ID
             const { data, error } = await supabase
               .from('employees')
-              .select('id, client_id, first_name, last_name, email, is_super_admin')
+              .select('id, client_id, first_name, last_name, email, is_super_admin, department, employee_type')
               .eq('user_id', user.id)
               .single();
               
@@ -242,7 +242,9 @@ export const useEmployeeData = () => {
                 firstName: data.first_name,
                 lastName: data.last_name,
                 email: data.email,
-                isSuperAdmin: data.is_super_admin
+                isSuperAdmin: data.is_super_admin,
+                department: data.department,
+                employeeType: data.employee_type
               };
               
               // Set employee data in Redux store
@@ -273,7 +275,7 @@ export const useEmployeeData = () => {
     configuredModules: state.configuredModules,
     isLoading: state.isLoading,
     error: state.error,
-    clientId: state.clientId, // Include clientId in the return value
+    clientId: state.clientId,
     refetchModules: () => {
       if (state.employeeData?.id && state.employeeData?.clientId) {
         fetchConfiguredModules(state.employeeData.id, state.employeeData.clientId);
