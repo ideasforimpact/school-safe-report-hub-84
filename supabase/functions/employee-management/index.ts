@@ -124,7 +124,7 @@ async function checkForExistingEmail(
   }
 }
 
-// Improved function to add module access for an employee with one-by-one manual inserts
+// Improved function to add module access for an employee with manual inserts
 async function addEmployeeModuleAccess(
   moduleAccessItems: ModuleAccessItem[], 
   employeeId: string,
@@ -158,7 +158,7 @@ async function addEmployeeModuleAccess(
     // First, clean up existing module access entries
     await deleteEmployeeModuleAccess(employeeId);
     
-    // Loop through each module access item and insert individually
+    // Create new entries by manually inserting each one
     for (const item of moduleAccessItems) {
       // Process access_level properly
       let accessLevel = {};
