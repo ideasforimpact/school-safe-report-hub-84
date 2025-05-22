@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.20.0';
 
@@ -159,15 +158,27 @@ async function addEmployeeModuleAccess(
     // First, clean up existing module access entries
     await deleteEmployeeModuleAccess(employeeId);
     
-    // Create new entries
+    // Create new entries - FIXED: Properly process access_level from each item
     const moduleEntries = moduleAccessItems.map(item => {
-      // Ensure access_level includes is_admin property
-      const access_level = item.access_level || {};
+      // Extract access_level directly from the item or create a default empty object
+      let accessLevel = {};
+      
+      // Check if the item has an access_level property
+      if (item.access_level) {
+        accessLevel = item.access_level;
+      } 
+      // Handle the case where is_admin is directly set as a property
+      else if (item.hasOwnProperty('is_admin')) {
+        accessLevel = { is_admin: item.is_admin };
+      }
+      
+      // Log each entry for debugging
+      console.log(`Creating module entry for module ${item.module_id} with access level:`, accessLevel);
       
       return {
         employee_id: employeeId,
         module_id: item.module_id || item.key, // Use module_id if provided, otherwise fallback to key
-        access_level: access_level // This now properly includes the is_admin property
+        access_level: accessLevel // Use the processed access level
       };
     });
     
@@ -183,6 +194,7 @@ async function addEmployeeModuleAccess(
     }
     
     console.log(`Successfully added ${moduleEntries.length} module access entries for employee: ${employeeId}`);
+    console.log("Module access updated successfully");
   } catch (error) {
     console.error("Error adding employee module access:", error);
     throw error;
@@ -634,9 +646,27 @@ async function updateEmployee(employee: any) {
     // Handle module access updates
     if (employee.moduleAccessPayload) {
       try {
-        // Use the improved function to handle module access
-        // It already handles removal of existing entries
-        await addEmployeeModuleAccess(employee.moduleAccessPayload, employee.id, clientId);
+        // Convert any is_admin flags in the moduleAccessPayload to proper access_level objects
+        const processedModuleAccess = employee.moduleAccessPayload.map((item: any) => {
+          // If the item already has an access_level property with is_admin, use it
+          if (item.access_level && item.access_level.hasOwnProperty('is_admin')) {
+            return item;
+          }
+          
+          // If item has is_admin property directly, move it into access_level
+          if (item.hasOwnProperty('is_admin')) {
+            return {
+              ...item,
+              access_level: { ...item.access_level, is_admin: item.is_admin }
+            };
+          }
+          
+          // Otherwise, return the item as is
+          return item;
+        });
+        
+        // Use the improved function to handle module access with processed payload
+        await addEmployeeModuleAccess(processedModuleAccess, employee.id, clientId);
         console.log("Module access updated successfully");
       } catch (moduleError) {
         console.error("Error updating module access:", moduleError);

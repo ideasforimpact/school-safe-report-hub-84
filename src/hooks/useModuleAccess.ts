@@ -17,11 +17,17 @@ export const useModuleAccess = () => {
       
       if (accessLevelString) {
         const accessLevel = JSON.parse(accessLevelString);
+        console.log("Retrieved module access level from session storage:", accessLevel);
         setModuleAccessLevel(accessLevel);
+      } else {
+        console.log("No module access level found in session storage");
       }
       
       if (currentModule) {
+        console.log("Retrieved current module name:", currentModule);
         setModuleName(currentModule);
+      } else {
+        console.log("No current module name found in session storage");
       }
     } catch (error) {
       console.error("Error retrieving module access level from session storage:", error);
@@ -32,6 +38,7 @@ export const useModuleAccess = () => {
    * Check if the current user has admin access for this module
    */
   const isAdmin = (): boolean => {
+    // Check specifically for the is_admin property in the access level
     return Boolean(moduleAccessLevel?.is_admin);
   };
   
