@@ -214,8 +214,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               firstName: employeeData.first_name,
               lastName: employeeData.last_name,
               isSuperAdmin: employeeData.is_super_admin,
-              department: employeeData.department, // Add department
-              employeeType: employeeData.employee_type // Add employee_type
+              department: employeeData.department,
+              employeeType: employeeData.employee_type
             };
             
             // Update local state
@@ -314,8 +314,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           firstName: 'Backoffice',
           lastName: 'Admin',
           isSuperAdmin: true,
-          department: 'Management', // Add default department
-          employeeType: 'admin' // Add default employee type
+          department: 'Management',
+          employeeType: 'admin'
         };
         
         // Update local state

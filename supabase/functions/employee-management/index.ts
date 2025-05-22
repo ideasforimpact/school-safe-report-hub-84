@@ -16,6 +16,7 @@ interface ModuleAccessItem {
     is_admin?: boolean;
     [key: string]: any;
   };
+  is_admin?: boolean;
 }
 
 interface EmployeeData {
@@ -522,7 +523,7 @@ async function handleBulkImport(employees: any[]) {
   }
 }
 
-// Improved updateEmployee function with simplified module access handling
+// Improved updateEmployee function with fixed module access handling
 async function updateEmployee(employee: any) {
   try {
     if (!employee || !employee.id) {
@@ -659,12 +660,24 @@ async function updateEmployee(employee: any) {
           if (item.hasOwnProperty('is_admin')) {
             return {
               ...item,
-              access_level: { ...item.access_level, is_admin: item.is_admin }
+              access_level: { 
+                ...item.access_level, 
+                is_admin: item.is_admin,
+                isAdmin: item.is_admin,  // Add both formats to ensure compatibility
+                isEnabled: true          // Add isEnabled flag
+              }
             };
           }
           
           // Otherwise, return the item as is
-          return item;
+          return {
+            ...item,
+            access_level: {
+              ...(item.access_level || {}),
+              isAdmin: item.access_level?.is_admin || false,
+              isEnabled: true
+            }
+          };
         });
         
         // Use the improved function to handle module access with processed payload
