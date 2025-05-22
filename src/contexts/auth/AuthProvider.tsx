@@ -109,8 +109,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Clear Redux state on logout
         if (dispatch) {
-          // FIX: We need to pass the action object returned by resetEmployee()
-          dispatch(resetEmployee());
+          // Create action object and pass it to dispatch
+          const resetAction = resetEmployee();
+          dispatch(resetAction);
         }
         
         // Add a toast message for logout
@@ -159,8 +160,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             
             // Clear Redux state
             if (dispatch) {
-              // FIX: Pass the action object directly to dispatch, not the function call
-              dispatch(resetEmployee());
+              // Create action object and pass it to dispatch
+              const resetAction = resetEmployee();
+              dispatch(resetAction);
             }
             
             logoutUser();
@@ -217,7 +219,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             // CRITICAL FIX: Update Redux state immediately and unconditionally using action creators
             if (dispatch) {
               console.log("LOGIN: Dispatching employee data to Redux store:", employee);
-              // FIX: Store the action object in a variable first to ensure it's not called as a function
+              
+              // Create the action objects first, then pass them to dispatch
               const employeeAction = setEmployeeData(employee);
               dispatch(employeeAction);
               
@@ -312,7 +315,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Update Redux state
         if (dispatch) {
-          // Fix: Store the action object in a variable first
+          // Create the action objects first, then pass them to dispatch
           const employeeDataAction = setEmployeeData(backofficeEmployeeData);
           dispatch(employeeDataAction);
           
