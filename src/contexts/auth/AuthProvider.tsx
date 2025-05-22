@@ -1,3 +1,4 @@
+
 import React, { createContext, useEffect, useState, useRef } from 'react';
 import { User, AuthContextType, UserWithPassword, EmployeeData } from './types';
 import { 
@@ -190,10 +191,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Fetch employee data after successful login
         try {
-          dispatch({
-            type: 'SET_LOADING',
-            payload: true
-          });
+          if (dispatch) {
+            dispatch({ type: 'SET_LOADING_STATE', payload: true });
+          }
           
           const { data: employeeData, error } = await supabase
             .from('employees')
@@ -226,16 +226,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             console.log("Employee data stored:", employee);
           }
           
-          dispatch({
-            type: 'SET_LOADING', 
-            payload: false
-          });
+          if (dispatch) {
+            dispatch({ type: 'SET_LOADING_STATE', payload: false });
+          }
         } catch (err) {
           console.error("Error fetching employee data:", err);
-          dispatch({
-            type: 'SET_LOADING', 
-            payload: false
-          });
+          if (dispatch) {
+            dispatch({ type: 'SET_LOADING_STATE', payload: false });
+          }
         }
         
         toast.success(`Welcome back, ${user.firstName}!`);
