@@ -5,7 +5,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { ModuleAccessItem } from '@/types/moduleAccess';
 import { Badge } from "@/components/ui/badge";
-import { Check } from 'lucide-react';
+import { Check, ToggleLeft, ToggleRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ModuleAccessProps {
@@ -76,12 +76,12 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
     onModuleChange(updatedModules);
   };
 
-  // Handler for admin badge click
-  const handleAdminBadgeClick = (moduleId: string) => {
+  // Handler for admin toggle
+  const handleAdminToggle = (moduleId: string) => {
     const moduleToUpdate = selectedModules.find(m => m.module_id === moduleId);
     if (!moduleToUpdate) return;
     
-    console.log(`Admin badge click - Module ID: ${moduleId}, Current admin: ${moduleToUpdate.access_level?.is_admin}`);
+    console.log(`Admin toggle - Module ID: ${moduleId}, Current admin: ${moduleToUpdate.access_level?.is_admin}`);
     
     // Toggle the admin access state for this module
     const updatedModules = selectedModules.map(m => {
@@ -144,23 +144,22 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
                 </TableCell>
                 <TableCell>
                   {isSelected && (
-                    <Badge
-                      variant={isAdmin ? "default" : "outline"}
-                      className={cn(
-                        "relative pr-7 transition-all duration-200 cursor-pointer",
-                        isAdmin 
-                          ? "bg-green-500 text-white hover:bg-green-600" 
-                          : "text-muted-foreground hover:bg-gray-100"
-                      )}
-                      onClick={() => handleAdminBadgeClick(module.module_id)}
+                    <div 
+                      className="flex items-center cursor-pointer"
+                      onClick={() => handleAdminToggle(module.module_id)}
                     >
-                      Admin
-                      {isAdmin && (
-                        <span className="absolute right-1.5 top-1/2 -translate-y-1/2">
-                          <Check className="h-3 w-3" />
-                        </span>
+                      {isAdmin ? (
+                        <ToggleRight className="text-green-500 h-6 w-6 mr-2" />
+                      ) : (
+                        <ToggleLeft className="text-gray-400 h-6 w-6 mr-2" />
                       )}
-                    </Badge>
+                      <span className={cn(
+                        "text-sm font-medium",
+                        isAdmin ? "text-green-600" : "text-gray-500"
+                      )}>
+                        Admin
+                      </span>
+                    </div>
                   )}
                 </TableCell>
               </TableRow>

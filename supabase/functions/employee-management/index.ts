@@ -90,20 +90,28 @@ async function addEmployeeModuleAccess(
     }
     
     const moduleEntries = moduleAccessItems.map(item => {
+      // Ensure access_level includes is_admin property
+      const access_level = item.access_level || {};
+      
       return {
         employee_id: employeeId,
         module_id: item.module_id || item.key, // Use module_id if provided, otherwise fallback to key
-        access_level: {}
+        access_level: access_level // This now properly includes the is_admin property
       };
     });
+    
+    console.log("Adding module entries:", moduleEntries);
     
     const { error } = await supabaseAdmin
       .from('employee_modules')
       .insert(moduleEntries);
     
     if (error) {
+      console.error("Error inserting module entries:", error);
       throw error;
     }
+    
+    console.log(`Successfully added ${moduleEntries.length} module access entries for employee: ${employeeId}`);
   } catch (error) {
     console.error("Error adding employee module access:", error);
     throw error;
