@@ -1,5 +1,4 @@
 
-import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { LucideIcon } from 'lucide-react';
 
@@ -8,40 +7,61 @@ interface SidebarMenuItemProps {
   label: string;
   path: string;
   isActive: boolean;
-  onClick?: () => void;  // Add onClick handler prop
-  accessLevel?: any;     // Add accessLevel prop
+  accessLevel?: any;
+  onClick?: () => void;
 }
 
 const SidebarMenuItem = ({ 
-  icon: Icon, 
+  icon: IconComponent, 
   label, 
   path, 
-  isActive, 
-  onClick, 
-  accessLevel 
+  isActive,
+  accessLevel,
+  onClick
 }: SidebarMenuItemProps) => {
-  const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    // If onClick handler is provided, call it
+  // Split the label by newline character to handle multiline labels
+  const labelParts = label.split('\n');
+  
+  const handleClick = () => {
+    // Log the access level when clicked for debugging
+    console.log(`Clicked on ${label} with access level:`, accessLevel);
+    
+    // Call the parent's onClick handler if provided
     if (onClick) {
       onClick();
     }
   };
-
+  
   return (
     <li>
-      <Link
-        to={path}
+      <button
         onClick={handleClick}
         className={cn(
-          "flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors",
-          isActive 
-            ? "bg-white/10 text-white" 
-            : "text-gray-200 hover:bg-white/5 hover:text-white"
+          "w-full flex flex-col items-center justify-center py-3 px-2 rounded-md transition-colors text-center",
+          isActive
+            ? "bg-blue-700 text-white"
+            : "text-blue-100 hover:bg-blue-800 hover:text-white"
         )}
+        aria-current={isActive ? 'page' : undefined}
       >
-        <Icon className="h-5 w-5 flex-shrink-0" />
-        <span>{label}</span>
-      </Link>
+        <IconComponent className="h-6 w-6 mb-1" />
+        {labelParts.length > 1 ? (
+          <div className="flex flex-col">
+            {labelParts.map((part, index) => (
+              <span 
+                key={index} 
+                className="text-[11px] font-medium whitespace-normal text-center leading-tight"
+              >
+                {part}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <span className="text-[11px] font-medium whitespace-normal text-center">
+            {label}
+          </span>
+        )}
+      </button>
     </li>
   );
 };

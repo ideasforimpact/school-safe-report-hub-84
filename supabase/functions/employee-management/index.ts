@@ -125,10 +125,11 @@ async function checkForExistingEmail(
   }
 }
 
-// Function to add module access for an employee
+// Improved function to add module access for an employee
 async function addEmployeeModuleAccess(
   moduleAccessItems: ModuleAccessItem[], 
-  employeeId: string
+  employeeId: string,
+  clientId: string | null | undefined
 ): Promise<void> {
   try {
     if (!moduleAccessItems || moduleAccessItems.length === 0) {
@@ -136,6 +137,29 @@ async function addEmployeeModuleAccess(
       return;
     }
     
+    // Validate employee belongs to the client
+    if (clientId) {
+      const { data: employee, error: employeeError } = await supabaseAdmin
+        .from('employees')
+        .select('id, client_id')
+        .eq('id', employeeId)
+        .single();
+        
+      if (employeeError || !employee) {
+        console.error("Error validating employee:", employeeError);
+        throw new Error("Failed to validate employee");
+      }
+      
+      if (employee.client_id !== clientId) {
+        console.error(`Employee ${employeeId} does not belong to client ${clientId}`);
+        throw new Error("Employee does not belong to this client");
+      }
+    }
+    
+    // First, clean up existing module access entries
+    await deleteEmployeeModuleAccess(employeeId);
+    
+    // Create new entries
     const moduleEntries = moduleAccessItems.map(item => {
       // Ensure access_level includes is_admin property
       const access_level = item.access_level || {};
@@ -253,7 +277,7 @@ async function createEmployee(employee: EmployeeData): Promise<any> {
     
     // If module access payload exists, add employee module access
     if (employee.moduleAccessPayload && employee.moduleAccessPayload.length > 0) {
-      await addEmployeeModuleAccess(employee.moduleAccessPayload, newEmployee.id);
+      await addEmployeeModuleAccess(employee.moduleAccessPayload, newEmployee.id, employee.clientId);
     }
     
     return { 
@@ -342,7 +366,7 @@ async function handleEmployeeOperation(operation: string, employeeData: any) {
         : { error: 'Client ID is required for list operation' };
     case 'add_module_access':
       return (employeeData && employeeData.moduleAccessPayload && employeeData.id)
-        ? await addEmployeeModuleAccess(employeeData.moduleAccessPayload, employeeData.id)
+        ? await addEmployeeModuleAccess(employeeData.moduleAccessPayload, employeeData.id, employeeData.clientId)
         : { error: 'Module access payload and employee ID are required' };
     default:
       return { error: 'Invalid operation' };
@@ -423,7 +447,7 @@ async function handleBulkImport(employees: any[]) {
             
             // Update module access if provided
             if (employee.moduleAccessPayload && Array.isArray(employee.moduleAccessPayload)) {
-              await addEmployeeModuleAccess(employee.moduleAccessPayload, existingEmployee.id);
+              await addEmployeeModuleAccess(employee.moduleAccessPayload, existingEmployee.id, employee.clientId);
             }
             
             results.updated++;
@@ -459,7 +483,7 @@ async function handleBulkImport(employees: any[]) {
             
             // Add module access if provided
             if (employee.moduleAccessPayload && Array.isArray(employee.moduleAccessPayload) && newEmployee) {
-              await addEmployeeModuleAccess(employee.moduleAccessPayload, newEmployee.id);
+              await addEmployeeModuleAccess(employee.moduleAccessPayload, newEmployee.id, employee.clientId);
             }
             
             results.created++;
@@ -484,61 +508,62 @@ async function handleBulkImport(employees: any[]) {
   }
 }
 
-// Implement the updateEmployee function for updating an employee's information and module access
+// Improved updateEmployee function with simplified module access handling
 async function updateEmployee(employee: any) {
   try {
     if (!employee || !employee.id) {
       return { error: "Employee ID is required for update operation" };
     }
     
-    // Validate client_id if provided
-    if (employee.clientId) {
-      const clientValidation = await validateClient(employee.clientId);
-      if (!clientValidation.valid) {
-        return {
-          error: clientValidation.message,
-          code: 'INVALID_CLIENT',
-          success: false
-        };
-      }
-    } else {
-      // Get the employee's client_id from the database
-      const { data: existingEmployee, error: fetchError } = await supabaseAdmin
-        .from('employees')
-        .select('client_id')
-        .eq('id', employee.id)
-        .single();
-        
-      if (fetchError) {
-        console.error("Error fetching employee client_id:", fetchError);
-        return { error: "Error fetching employee data", success: false };
-      }
+    // First, get the current employee details to validate client relationship
+    const { data: existingEmployee, error: fetchError } = await supabaseAdmin
+      .from('employees')
+      .select('id, client_id')
+      .eq('id', employee.id)
+      .single();
       
-      if (!existingEmployee.client_id) {
-        return { error: "Employee has no associated client ID", success: false };
-      }
-      
-      // Validate the existing client
-      const clientValidation = await validateClient(existingEmployee.client_id);
-      if (!clientValidation.valid) {
-        return {
-          error: clientValidation.message,
-          code: 'INVALID_CLIENT',
-          success: false
-        };
-      }
-      
-      // Set the clientId for use in the function
-      employee.clientId = existingEmployee.client_id;
+    if (fetchError) {
+      console.error("Error fetching employee data:", fetchError);
+      return { error: "Error fetching employee data", success: false };
     }
     
-    console.log(`Updating employee with ID: ${employee.id}`);
+    if (!existingEmployee) {
+      return { error: "Employee not found", success: false };
+    }
     
-    // Check if email already exists for another employee in the same client
-    if (employee.email && employee.clientId) {
+    // Use clientId from the employee data or the existing record
+    const clientId = employee.clientId || existingEmployee.client_id;
+    
+    if (!clientId) {
+      return { error: "Client ID is required for update", success: false };
+    }
+    
+    // Validate the client
+    const clientValidation = await validateClient(clientId);
+    if (!clientValidation.valid) {
+      return {
+        error: clientValidation.message,
+        code: 'INVALID_CLIENT',
+        success: false
+      };
+    }
+    
+    // Verify employee belongs to this client
+    if (existingEmployee.client_id !== clientId) {
+      return { 
+        error: "Employee does not belong to this client", 
+        code: "CLIENT_MISMATCH",
+        success: false 
+      };
+    }
+    
+    console.log(`Updating employee with ID: ${employee.id} for client: ${clientId}`);
+    
+    // Check for email uniqueness within this client
+    if (employee.email) {
       const emailExists = await checkForExistingEmail(
         employee.email, 
-        employee.clientId, 
+        clientId, 
         employee.id // Exclude current employee from check
       );
       
@@ -606,16 +631,13 @@ async function updateEmployee(employee: any) {
       updatedEmployee = data;
     }
     
-    // Handle module access updates if provided
+    // Handle module access updates
     if (employee.moduleAccessPayload) {
       try {
-        // First delete all existing module access for this employee
-        await deleteEmployeeModuleAccess(employee.id);
-        
-        // Then add the new module access if any are provided
-        if (Array.isArray(employee.moduleAccessPayload) && employee.moduleAccessPayload.length > 0) {
-          await addEmployeeModuleAccess(employee.moduleAccessPayload, employee.id);
-        }
+        // Use the improved function to handle module access
+        // It already handles removal of existing entries
+        await addEmployeeModuleAccess(employee.moduleAccessPayload, employee.id, clientId);
+        console.log("Module access updated successfully");
       } catch (moduleError) {
         console.error("Error updating module access:", moduleError);
         return {
@@ -886,7 +908,6 @@ serve(async (req) => {
     switch (operation) {
       case 'create':
         console.log("Employee data received:", body.employee);
-        console.log("Creating employee:", body.employee);
         result = await createEmployee(body.employee);
         break;
       case 'update':
@@ -900,7 +921,7 @@ serve(async (req) => {
         break;
       case 'add_module_access':
         result = (body.employee && body.employee.moduleAccessPayload && body.employee.id)
-          ? await addEmployeeModuleAccess(body.employee.moduleAccessPayload, body.employee.id)
+          ? await addEmployeeModuleAccess(body.employee.moduleAccessPayload, body.employee.id, body.employee.clientId)
           : { error: 'Module access payload and employee ID are required' };
         break;
       case 'bulk_import':
