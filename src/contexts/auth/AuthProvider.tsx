@@ -215,7 +215,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             // Update Redux state
             if (dispatch) {
               // Use the action creators and properly dispatch the action object
-              dispatch(setEmployeeData(employee));
+              // dispatch(setEmployeeData(employee));
+                dispatch({
+                   type:"SET_EMPLOYEE_DATA",
+                   payload:employee
+                });
               dispatch(setClientId(employee.clientId));
             }
             
@@ -307,7 +311,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Update Redux state
         if (dispatch) {
           // Use the action creators and properly dispatch the action object
-          dispatch(setEmployeeData(backofficeEmployeeData));
+          // dispatch(setEmployeeData(backofficeEmployeeData));
+          dispatch({
+             type:"SET_EMPLOYEE_DATA",
+             payload:backofficeEmployeeData
+          })
           
           // Only set clientId if it exists
           if (employeeData && employeeData.clientId) {
