@@ -1,9 +1,10 @@
+
 import { useState, useCallback } from 'react';
 import { User, UserRole, EmployeeData } from '../types';
 import { getUserFromStorage, saveUserToStorage, saveEmployeeDataToStorage } from '@/services/auth/authService';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { setEmployeeData, setConfiguredModules, setLoading, setError, setClientId } from '@/store/employeeActions';
+import { setEmployeeData, setConfiguredModules, setLoading, setError, resetEmployee, setClientId } from '@/store/employeeActions';
 import { Module } from '@/store/types';
 import { extractDomain, isEmailDomainAllowed } from '@/utils/authProviders';
 
@@ -51,10 +52,7 @@ export const useAuthHandlers = ({
       
       if (!clientId) {
         console.error("Client ID is missing, cannot fetch modules");
-        if (dispatch) {
-          const errorAction = setError("Client ID is missing");
-          dispatch(errorAction);
-        }
+        if (dispatch) dispatch(setError("Client ID is missing"));
         return [];
       }
       
@@ -236,8 +234,7 @@ export const useAuthHandlers = ({
         
         // Clear Redux state if dispatch is available
         if (dispatch) {
-          const resetAction = require('@/store/employeeActions').resetEmployee();
-          dispatch(resetAction);
+          dispatch(resetEmployee());
         }
       }
       return;
@@ -422,8 +419,7 @@ export const useAuthHandlers = ({
         
         // Clear Redux state if dispatch is available
         if (dispatch) {
-          const resetAction = require('@/store/employeeActions').resetEmployee();
-          dispatch(resetAction);
+          dispatch(resetEmployee());
         }
         
         setIsProcessingAuth(false);
@@ -455,8 +451,7 @@ export const useAuthHandlers = ({
           
           // Clear Redux state if dispatch is available
           if (dispatch) {
-            const resetAction = require('@/store/employeeActions').resetEmployee();
-            dispatch(resetAction);
+            dispatch(resetEmployee());
           }
           
           setIsProcessingAuth(false);
@@ -494,31 +489,21 @@ export const useAuthHandlers = ({
       if (employeeData) {
         console.log("Employee data being saved during auth:", employeeData);
         
-        // Update local state and storage
-        setEmployeeData(employeeData);
-        saveEmployeeDataToStorage(employeeData);
-        
         // Store employee data in Redux - CRITICAL FIX
         if (dispatch) {
           console.log("Dispatching setEmployeeData to Redux during auth:", employeeData);
-          const employeeAction = require('@/store/employeeActions').setEmployeeData(employeeData);
-          dispatch(employeeAction);
+          dispatch(setEmployeeData(employeeData));
           
           // Also set clientId in Redux
           if (employeeData.clientId) {
-            const clientAction = require('@/store/employeeActions').setClientId(employeeData.clientId);
-            dispatch(clientAction);
+            dispatch(setClientId(employeeData.clientId));
           }
-          
-          // Debug log for Redux dispatch
-          console.log("Redux actions dispatched for employee data");
         }
         
         // FETCH MODULES HERE if employee is a super admin or has a client ID
         if (dispatch && employeeData.id && employeeData.clientId) {
           console.log("Fetching modules during authentication process");
-          const loadingAction = require('@/store/employeeActions').setLoading(true);
-          dispatch(loadingAction);
+          dispatch(setLoading(true));
           
           // Get configured modules based on super admin status
           const modules = await fetchConfiguredModules(
@@ -529,12 +514,13 @@ export const useAuthHandlers = ({
           
           // Store modules in Redux
           console.log("Storing modules in Redux during auth:", modules.length);
-          const modulesAction = require('@/store/employeeActions').setConfiguredModules(modules);
-          dispatch(modulesAction);
-          
-          const loadingDoneAction = require('@/store/employeeActions').setLoading(false);
-          dispatch(loadingDoneAction);
+          dispatch(setConfiguredModules(modules));
+          dispatch(setLoading(false));
         }
+        
+        // Also update context and localStorage for backward compatibility
+        setEmployeeData(employeeData);
+        saveEmployeeDataToStorage(employeeData);
       }
 
       // Clear any auth errors
@@ -559,8 +545,7 @@ export const useAuthHandlers = ({
       
       // Clear Redux state if dispatch is available
       if (dispatch) {
-        const resetAction = require('@/store/employeeActions').resetEmployee();
-        dispatch(resetAction);
+        dispatch(resetEmployee());
       }
       
       // Force redirect to login page on error

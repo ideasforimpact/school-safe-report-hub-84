@@ -1,4 +1,3 @@
-
 import { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmployeeStore } from '@/store/EmployeeContext';
@@ -14,25 +13,21 @@ export const useEmployeeData = () => {
   const fetchConfiguredModules = async (employeeId: string, clientId: string | null) => {
     try {
       console.log("Starting fetchConfiguredModules with:", { employeeId, clientId });
-      const loadingAction = setLoading(true);
-      dispatch(loadingAction);
+      dispatch(setLoading(true));
       
       if (!clientId) {
         console.error("Client ID is missing, cannot fetch modules");
-        const errorAction = setError("Client ID is missing");
-        dispatch(errorAction);
+        dispatch(setError("Client ID is missing"));
         return;
       }
 
       // Set the client ID in Redux store
-      const clientIdAction = setClientId(clientId);
-      dispatch(clientIdAction);
+      dispatch(setClientId(clientId));
 
       // Check Redux store first - if modules are already loaded, don't fetch again
       if (state.configuredModules && state.configuredModules.length > 0) {
         console.log("Modules already in Redux store, skipping fetch");
-        const loadingDoneAction = setLoading(false);
-        dispatch(loadingDoneAction);
+        dispatch(setLoading(false));
         return;
       }
 
@@ -45,8 +40,7 @@ export const useEmployeeData = () => {
 
       if (employeeError) {
         console.error("Error fetching employee data:", employeeError);
-        const errorAction = setError(employeeError.message);
-        dispatch(errorAction);
+        dispatch(setError(employeeError.message));
         return;
       }
 
@@ -188,16 +182,13 @@ export const useEmployeeData = () => {
         }];
       }
 
-      const modulesAction = setConfiguredModules(configuredModules);
-      dispatch(modulesAction);
+      dispatch(setConfiguredModules(configuredModules));
       console.log("Total configured modules stored in Redux:", configuredModules.length);
     } catch (error) {
       console.error("Error in fetchConfiguredModules:", error);
-      const errorAction = setError("Failed to fetch configured modules");
-      dispatch(errorAction);
+      dispatch(setError("Failed to fetch configured modules"));
     } finally {
-      const loadingDoneAction = setLoading(false);
-      dispatch(loadingDoneAction);
+      dispatch(setLoading(false));
     }
   };
 
@@ -208,14 +199,12 @@ export const useEmployeeData = () => {
     if (authEmployeeData) {
       // Set employee data in Redux store
       console.log("Setting employee data in Redux store:", authEmployeeData);
-      const employeeAction = setEmployeeData(authEmployeeData);
-      dispatch(employeeAction);
+      dispatch(setEmployeeData(authEmployeeData));
       
       // Set client ID in Redux store
       if (authEmployeeData.clientId) {
         console.log("Setting clientId in Redux store:", authEmployeeData.clientId);
-        const clientIdAction = setClientId(authEmployeeData.clientId);
-        dispatch(clientIdAction);
+        dispatch(setClientId(authEmployeeData.clientId));
       }
       
       // Fetch modules if we have employeeId and clientId
@@ -236,7 +225,7 @@ export const useEmployeeData = () => {
             // Try to get employee data by user ID
             const { data, error } = await supabase
               .from('employees')
-              .select('id, client_id, first_name, last_name, email, is_super_admin, department, employee_type')
+              .select('id, client_id, first_name, last_name, email, is_super_admin')
               .eq('user_id', user.id)
               .single();
               
@@ -253,19 +242,15 @@ export const useEmployeeData = () => {
                 firstName: data.first_name,
                 lastName: data.last_name,
                 email: data.email,
-                isSuperAdmin: data.is_super_admin,
-                department: data.department,
-                employeeType: data.employee_type
+                isSuperAdmin: data.is_super_admin
               };
               
               // Set employee data in Redux store
-              const employeeAction = setEmployeeData(employeeData);
-              dispatch(employeeAction);
+              dispatch(setEmployeeData(employeeData));
               
               // Set client ID in Redux store
               if (data.client_id) {
-                const clientIdAction = setClientId(data.client_id);
-                dispatch(clientIdAction);
+                dispatch(setClientId(data.client_id));
               }
               
               // Fetch modules
