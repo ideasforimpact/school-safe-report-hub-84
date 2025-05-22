@@ -5,6 +5,7 @@ import Sidebar from './Sidebar';
 import MobileNav from './MobileNav';
 import { useAuth } from '@/contexts/auth';
 import { useClient } from '@/contexts/ClientContext';
+import { useEmployeeValidation } from '@/hooks/useEmployeeValidation';
 
 interface LayoutProps {
   children: ReactNode;
@@ -20,6 +21,9 @@ const Layout = ({
   const {
     clients
   } = useClient();
+  
+  // Use the employee validation hook
+  useEmployeeValidation();
   
   // Find the client associated with the current user
   const userClient = user?.clientId ? clients.find(c => c.id === user.clientId) : null;
