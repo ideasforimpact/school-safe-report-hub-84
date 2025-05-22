@@ -13,6 +13,10 @@ interface ModuleAccessItem {
   key: string;
   module_id?: string;
   employeeId?: string;
+  access_level?: {
+    is_admin?: boolean;
+    [key: string]: any;
+  };
 }
 
 interface EmployeeData {
@@ -39,6 +43,41 @@ const supabaseAdmin = createClient(
   // Supabase service role key - env var exported by default when deployed
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 );
+
+// Function to validate client exists and is active
+async function validateClient(clientId: string | undefined): Promise<{ valid: boolean; message: string }> {
+  try {
+    if (!clientId) {
+      return { valid: false, message: 'Client ID is required' };
+    }
+    
+    console.log(`Validating client with ID: ${clientId}`);
+    
+    const { data: client, error } = await supabaseAdmin
+      .from('clients')
+      .select('id, active')
+      .eq('id', clientId)
+      .single();
+      
+    if (error) {
+      console.error("Error validating client:", error);
+      return { valid: false, message: 'Failed to validate client' };
+    }
+    
+    if (!client) {
+      return { valid: false, message: 'Client not found' };
+    }
+    
+    if (!client.active) {
+      return { valid: false, message: 'Client is not active' };
+    }
+    
+    return { valid: true, message: 'Client is valid' };
+  } catch (error) {
+    console.error("Exception in validateClient:", error);
+    return { valid: false, message: 'Error validating client' };
+  }
+}
 
 // Function to check if an email already exists for a client
 async function checkForExistingEmail(
@@ -143,6 +182,25 @@ async function deleteEmployeeModuleAccess(employeeId: string): Promise<void> {
 // Function to create a new employee
 async function createEmployee(employee: EmployeeData): Promise<any> {
   try {
+    // Validate client_id
+    if (!employee.clientId) {
+      return { 
+        error: 'Client ID is required', 
+        code: 'MISSING_CLIENT_ID',
+        success: false 
+      };
+    }
+    
+    // Validate client exists and is active
+    const clientValidation = await validateClient(employee.clientId);
+    if (!clientValidation.valid) {
+      return {
+        error: clientValidation.message,
+        code: 'INVALID_CLIENT',
+        success: false
+      };
+    }
+    
     // Check if an employee with the same email already exists for this client
     const emailExists = await checkForExistingEmail(employee.email, employee.clientId);
     
@@ -217,6 +275,7 @@ async function handleEmployeeOperation(operation: string, employeeData: any) {
   if (['delete', 'deactivate'].includes(operation)) {
     // Check if we have a direct ID string or an object with an ID property
     let employeeId: string | null = null;
+    let clientId: string | null = null;
     
     if (typeof employeeData === 'string') {
       // Direct ID string
@@ -225,7 +284,9 @@ async function handleEmployeeOperation(operation: string, employeeData: any) {
     } else if (employeeData && typeof employeeData === 'object') {
       // ID within an object
       employeeId = employeeData.id;
+      clientId = employeeData.clientId;
       console.log(`Found ID in employeeData.id: ${employeeId}`);
+      console.log(`Found clientId in employeeData.clientId: ${clientId}`);
     }
     
     if (!employeeId) {
@@ -233,10 +294,22 @@ async function handleEmployeeOperation(operation: string, employeeData: any) {
       return { error: 'Employee ID is required for this operation' };
     }
     
+    // If clientId is provided, validate it
+    if (clientId) {
+      const clientValidation = await validateClient(clientId);
+      if (!clientValidation.valid) {
+        return {
+          error: clientValidation.message,
+          code: 'INVALID_CLIENT',
+          success: false
+        };
+      }
+    }
+    
     if (operation === 'deactivate') {
-      return await deactivateEmployee(employeeId);
+      return await deactivateEmployee(employeeId, clientId);
     } else if (operation === 'delete') {
-      return await deleteEmployee(employeeId);
+      return await deleteEmployee(employeeId, clientId);
     }
   }
   
@@ -284,6 +357,19 @@ async function handleBulkImport(employees: any[]) {
     // Process each employee in the array
     for (const employee of employees) {
       try {
+        // Validate client_id
+        if (!employee.clientId) {
+          results.errors.push(`Missing client ID for employee ${employee.email}`);
+          continue;
+        }
+        
+        // Validate client exists and is active
+        const clientValidation = await validateClient(employee.clientId);
+        if (!clientValidation.valid) {
+          results.errors.push(`${clientValidation.message} for employee ${employee.email}`);
+          continue;
+        }
+        
         // Check if employee with same email already exists
         if (employee.email && employee.clientId) {
           const { data: existingEmployee, error: checkError } = await supabaseAdmin
@@ -387,6 +473,47 @@ async function updateEmployee(employee: any) {
   try {
     if (!employee || !employee.id) {
       return { error: "Employee ID is required for update operation" };
+    }
+    
+    // Validate client_id if provided
+    if (employee.clientId) {
+      const clientValidation = await validateClient(employee.clientId);
+      if (!clientValidation.valid) {
+        return {
+          error: clientValidation.message,
+          code: 'INVALID_CLIENT',
+          success: false
+        };
+      }
+    } else {
+      // Get the employee's client_id from the database
+      const { data: existingEmployee, error: fetchError } = await supabaseAdmin
+        .from('employees')
+        .select('client_id')
+        .eq('id', employee.id)
+        .single();
+        
+      if (fetchError) {
+        console.error("Error fetching employee client_id:", fetchError);
+        return { error: "Error fetching employee data", success: false };
+      }
+      
+      if (!existingEmployee.client_id) {
+        return { error: "Employee has no associated client ID", success: false };
+      }
+      
+      // Validate the existing client
+      const clientValidation = await validateClient(existingEmployee.client_id);
+      if (!clientValidation.valid) {
+        return {
+          error: clientValidation.message,
+          code: 'INVALID_CLIENT',
+          success: false
+        };
+      }
+      
+      // Set the clientId for use in the function
+      employee.clientId = existingEmployee.client_id;
     }
     
     console.log(`Updating employee with ID: ${employee.id}`);
@@ -499,7 +626,7 @@ async function updateEmployee(employee: any) {
   }
 }
 
-async function deactivateEmployee(id: string) {
+async function deactivateEmployee(id: string, clientId?: string | null) {
   try {
     console.log(`Deactivating employee with ID: ${id}`);
     
@@ -507,17 +634,48 @@ async function deactivateEmployee(id: string) {
       return { error: "Employee ID is required for deactivation" };
     }
     
+    // If clientId is not provided, get it from the employee record
+    if (!clientId) {
+      const { data: employee, error: fetchError } = await supabaseAdmin
+        .from('employees')
+        .select('client_id')
+        .eq('id', id)
+        .single();
+        
+      if (fetchError) {
+        console.error("Error fetching employee client_id:", fetchError);
+        return { error: "Error fetching employee data", success: false };
+      }
+      
+      clientId = employee?.client_id;
+    }
+    
+    // Validate client exists and is active
+    if (clientId) {
+      const clientValidation = await validateClient(clientId);
+      if (!clientValidation.valid) {
+        return {
+          error: clientValidation.message,
+          code: 'INVALID_CLIENT',
+          success: false
+        };
+      }
+    } else {
+      return { error: "Client ID is required for deactivation", success: false };
+    }
+    
     // First update the employee status to 'inactive' (false)
     const { data, error } = await supabaseAdmin
       .from('employees')
       .update({ status: false })
       .eq('id', id)
+      .eq('client_id', clientId)
       .select('*')
       .single();
       
     if (error) {
       console.error("Error deactivating employee:", error);
-      return { error: error.message };
+      return { error: error.message, success: false };
     }
     
     // Then clear all module permissions for deactivated employee
@@ -530,18 +688,19 @@ async function deactivateEmployee(id: string) {
       console.error("Error removing module permissions:", moduleError);
       return { 
         data, 
-        warning: "Employee deactivated but module permissions could not be removed"
+        warning: "Employee deactivated but module permissions could not be removed",
+        success: true
       };
     }
     
-    return { data, message: "Employee deactivated successfully" };
+    return { data, message: "Employee deactivated successfully", success: true };
   } catch (error) {
     console.error("Error in deactivateEmployee:", error);
-    return { error: error.message || "Failed to deactivate employee" };
+    return { error: error.message || "Failed to deactivate employee", success: false };
   }
 }
 
-async function deleteEmployee(id: string) {
+async function deleteEmployee(id: string, clientId?: string | null) {
   try {
     console.log(`Deleting employee with ID: ${id}`);
     
@@ -549,6 +708,36 @@ async function deleteEmployee(id: string) {
       return { error: "Employee ID is required for deletion" };
     }
     
+    // If clientId is not provided, get it from the employee record
+    if (!clientId) {
+      const { data: employee, error: fetchError } = await supabaseAdmin
+        .from('employees')
+        .select('client_id')
+        .eq('id', id)
+        .single();
+        
+      if (fetchError) {
+        console.error("Error fetching employee client_id:", fetchError);
+        return { error: "Error fetching employee data", success: false };
+      }
+      
+      clientId = employee?.client_id;
+    }
+    
+    // Validate client exists and is active
+    if (clientId) {
+      const clientValidation = await validateClient(clientId);
+      if (!clientValidation.valid) {
+        return {
+          error: clientValidation.message,
+          code: 'INVALID_CLIENT',
+          success: false
+        };
+      }
+    } else {
+      return { error: "Client ID is required for deletion", success: false };
+    }
+
     // First, delete all module permissions for this employee
     const { error: moduleError } = await supabaseAdmin
       .from('employee_modules')
@@ -564,17 +753,18 @@ async function deleteEmployee(id: string) {
     const { error } = await supabaseAdmin
       .from('employees')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('client_id', clientId);
 
     if (error) {
       console.error("Error deleting employee:", error);
-      return { error: error.message || "Failed to delete employee" };
+      return { error: error.message || "Failed to delete employee", success: false };
     }
 
     return { success: true, message: "Employee deleted successfully" };
   } catch (error) {
     console.error("Error in deleteEmployee:", error);
-    return { error: error.message || "Failed to delete employee" };
+    return { error: error.message || "Failed to delete employee", success: false };
   }
 }
 
@@ -597,6 +787,18 @@ async function getEmployee(id: string) {
       return { error: error.message };
     }
     
+    // Validate client exists and is active
+    if (data.client_id) {
+      const clientValidation = await validateClient(data.client_id);
+      if (!clientValidation.valid) {
+        return {
+          error: clientValidation.message,
+          code: 'INVALID_CLIENT',
+          success: false
+        };
+      }
+    }
+    
     return { data };
   } catch (error) {
     console.error("Error in getEmployee:", error);
@@ -610,6 +812,16 @@ async function listEmployees(clientId: string) {
     
     if (!clientId) {
       return { error: "Client ID is required" };
+    }
+    
+    // Validate client exists and is active
+    const clientValidation = await validateClient(clientId);
+    if (!clientValidation.valid) {
+      return {
+        error: clientValidation.message,
+        code: 'INVALID_CLIENT',
+        success: false
+      };
     }
     
     const { data, error } = await supabaseAdmin
@@ -679,10 +891,10 @@ serve(async (req) => {
         result = await handleBulkImport(body.employees);
         break;
       case 'deactivate':
-        result = await deactivateEmployee(body.id);
+        result = await deactivateEmployee(body.id, body.clientId);
         break;
       case 'delete':
-        result = await deleteEmployee(body.id);
+        result = await deleteEmployee(body.id, body.clientId);
         break;
       default:
         result = { error: `Unknown operation: ${operation}`, success: false };

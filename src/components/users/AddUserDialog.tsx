@@ -98,8 +98,8 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
         <DialogHeader>
           <DialogTitle>Add New User</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
+        <form onSubmit={handleSubmit} className="space-y-4 overflow-y-auto pr-1">
+          <div className="grid gap-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="firstName">First Name</Label>
@@ -200,7 +200,7 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
             />
 
             {/* Module Access Section */}
-            <div className="space-y-4">
+            <div className="space-y-2">
               <Label>Module Access</Label>
               <ModuleAccess
                 selectedModules={selectedModules}
