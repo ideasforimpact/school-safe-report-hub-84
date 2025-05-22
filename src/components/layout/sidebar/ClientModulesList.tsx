@@ -46,6 +46,7 @@ const ClientModulesList = () => {
   const isLoading = getEmployeeLoadingState(state); // Use selector
   const [sidebarModules, setSidebarModules] = useState<ModuleItem[]>([]);
 
+console.log(configuredModules,"configuredModules")
   // Transform Redux store modules into sidebar menu items
   useEffect(() => {
     if (configuredModules && configuredModules.length > 0) {
@@ -88,23 +89,6 @@ const ClientModulesList = () => {
     return currentPath === path || (path !== '/' && currentPath.startsWith(path));
   };
 
-  // Handle module click to log and store access level in sessionStorage
-  const handleModuleClick = (module: ModuleItem) => {
-    console.log(`Module clicked: ${module.label}`, module);
-    
-    // Log the access level for this module
-    if (module.accessLevel) {
-      console.log(`Access level for ${module.label}:`, module.accessLevel);
-      
-      // Store the current module's access level in sessionStorage
-      sessionStorage.setItem('currentModuleAccessLevel', JSON.stringify(module.accessLevel));
-      sessionStorage.setItem('currentModuleLabel', module.label);
-    }
-    
-    // Navigate to the module path
-    navigate(module.path);
-  };
-
   if (isLoading) {
     return (
       <div className="flex-1 py-6 text-white flex justify-center items-center">
@@ -124,8 +108,6 @@ const ClientModulesList = () => {
               label={item.label}
               path={item.path}
               isActive={isActive(item.path)}
-              onClick={() => handleModuleClick(item)}
-              accessLevel={item.accessLevel}
             />
           ))}
         </ul>

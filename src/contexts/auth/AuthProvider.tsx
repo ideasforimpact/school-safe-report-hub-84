@@ -1,3 +1,4 @@
+
 import React, { createContext, useEffect, useState, useRef } from 'react';
 import { User, AuthContextType, UserWithPassword, EmployeeData } from './types';
 import { 
@@ -191,7 +192,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Fetch employee data after successful login
         try {
           if (dispatch) {
-            dispatch({ type: 'SET_LOADING', payload: true });
+            dispatch({ type: 'SET_LOADING_STATE', payload: true });
           }
           
           const { data: employeeData, error } = await supabase
@@ -226,12 +227,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
           
           if (dispatch) {
-            dispatch({ type: 'SET_LOADING', payload: false });
+            dispatch({ type: 'SET_LOADING_STATE', payload: false });
           }
         } catch (err) {
           console.error("Error fetching employee data:", err);
           if (dispatch) {
-            dispatch({ type: 'SET_LOADING', payload: false });
+            dispatch({ type: 'SET_LOADING_STATE', payload: false });
           }
         }
         
