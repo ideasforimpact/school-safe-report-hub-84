@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { User, UserRole, EmployeeData } from '../types';
 import { getUserFromStorage, saveUserToStorage, saveEmployeeDataToStorage } from '@/services/auth/authService';
@@ -489,10 +488,6 @@ export const useAuthHandlers = ({
       if (employeeData) {
         console.log("Employee data being saved during auth:", employeeData);
         
-        // CRITICAL FIX: Update local state
-        setEmployeeData(employeeData);
-        saveEmployeeDataToStorage(employeeData);
-        
         // CRITICAL FIX: Ensure Redux dispatch happens immediately and is not conditional
         if (dispatch) {
           console.log("Dispatching setEmployeeData to Redux during auth:", employeeData);
@@ -521,6 +516,10 @@ export const useAuthHandlers = ({
           dispatch(setConfiguredModules(modules));
           dispatch(setLoading(false));
         }
+        
+        // Also update context and localStorage for backward compatibility
+        setEmployeeData(employeeData);
+        saveEmployeeDataToStorage(employeeData);
       }
 
       // Clear any auth errors

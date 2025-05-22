@@ -110,7 +110,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Clear Redux state on logout
         if (dispatch) {
           // Fix: Call the resetEmployee action creator to get the proper action object
-          dispatch(resetEmployee());
+          const resetAction = resetEmployee();
+          dispatch(resetAction);
         }
         
         // Add a toast message for logout
@@ -160,7 +161,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             // Clear Redux state
             if (dispatch) {
               // Fix: Call the resetEmployee action creator to get the proper action object
-              dispatch(resetEmployee());
+              const resetAction = resetEmployee();
+              dispatch(resetAction);
             }
             
             logoutUser();
@@ -368,7 +370,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Clear Redux state
     if (dispatch) {
       // Fix: Call the resetEmployee action creator to get the proper action object
-      dispatch(resetEmployee());
+      const resetAction = resetEmployee();
+      dispatch(resetAction);
     }
     
     // Clear local storage

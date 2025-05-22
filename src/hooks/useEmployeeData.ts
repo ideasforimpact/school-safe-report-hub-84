@@ -196,7 +196,6 @@ export const useEmployeeData = () => {
   // Set employee data from auth context and fetch modules when available
   useEffect(() => {
     console.log("useEmployeeData hook - authEmployeeData:", authEmployeeData);
-    console.log("useEmployeeData hook - Redux state:", state);
     
     if (authEmployeeData) {
       // Set employee data in Redux store - CRITICAL FIX: Always dispatch action even if data exists
@@ -269,7 +268,7 @@ export const useEmployeeData = () => {
         fetchEmployeeDataFromDB();
       }
     }
-  }, [authEmployeeData, user, dispatch, state.employeeData]);
+  }, [authEmployeeData, user]);
 
   return {
     employeeData: state.employeeData,
