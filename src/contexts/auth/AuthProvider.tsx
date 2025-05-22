@@ -110,6 +110,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Clear Redux state on logout
         if (dispatch) {
+          // FIX: Pass the action object returned by resetEmployee() to dispatch
           dispatch(resetEmployee());
         }
         
@@ -159,6 +160,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             
             // Clear Redux state
             if (dispatch) {
+              // FIX: Pass the action object returned by resetEmployee() to dispatch
               dispatch(resetEmployee());
             }
             
@@ -216,7 +218,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             // CRITICAL FIX: Update Redux state immediately and unconditionally using action creators
             if (dispatch) {
               console.log("LOGIN: Dispatching employee data to Redux store:", employee);
-              // Fix: Pass action objects to dispatch, not the return value of the action creators
+              // FIX: Pass the action objects directly to dispatch
               dispatch(setEmployeeData(employee));
               dispatch(setClientId(employee.clientId));
             }

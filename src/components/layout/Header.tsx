@@ -36,6 +36,16 @@ const Header = () => {
     console.log("Header component - Is Admin from Redux:", isAdmin);
     console.log("Header component - Is Super Admin from Redux:", isSuperAdmin);
     console.log("Header component - Current location:", location.pathname);
+    
+    // Additional debugging to compare auth context with Redux
+    if (authEmployeeData && !employeeData) {
+      console.warn("SYNC ISSUE DETECTED: employeeData exists in Auth Context but not in Redux store");
+    } else if (authEmployeeData && employeeData) {
+      if (authEmployeeData.id !== employeeData.id) {
+        console.warn("SYNC ISSUE DETECTED: employeeData ID mismatch between Auth Context and Redux");
+      }
+      console.log("Auth and Redux employee data in sync:", authEmployeeData.id === employeeData.id);
+    }
   }, [user, authEmployeeData, employeeData, state, isAdmin, isSuperAdmin, location.pathname]);
   
   // Check if we're on the home page
