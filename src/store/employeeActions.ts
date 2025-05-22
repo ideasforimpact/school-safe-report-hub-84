@@ -11,7 +11,7 @@ import {
 } from './types';
 import { EmployeeData } from '@/contexts/auth/types';
 
-export const setEmployeeData = (employeeData: EmployeeData | null): SetEmployeeDataAction => ({
+export const setEmployeeData = (employeeData: EmployeeData | any): SetEmployeeDataAction => ({
   type: EmployeeActionTypes.SET_EMPLOYEE_DATA,
   payload: employeeData
 });
