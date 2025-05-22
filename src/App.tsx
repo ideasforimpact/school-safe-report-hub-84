@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import HomePage from './pages/HomePage';
@@ -14,7 +15,7 @@ import Layout from './components/layout/Layout';
 import PublicLayout from './components/layout/PublicLayout';
 import { useAuth } from './contexts/auth';
 import ModuleGuard from './components/ModuleGuard';
-import ProfilePage from './components/profile/ProfilePage'; // Add the import here
+import ProfilePage from './components/profile/ProfilePage';
 
 const App = () => {
   const { user } = useAuth();
@@ -37,7 +38,7 @@ const App = () => {
         <Route path="/profile" element={<Layout><ProfilePage /></Layout>} />
         
         {/* Incident routes */}
-        <Route element={<ModuleGuard requiredPermission="incidentReporting" />}>
+        <Route element={<ModuleGuard moduleType="incidentReporting" />}>
           <Route path="/incidents" element={<Layout><IncidentsPage /></Layout>} />
           <Route path="/incidents/new" element={<Layout><NewIncidentPage /></Layout>} />
           <Route path="/incidents/:id" element={<Layout><IncidentDetailPage /></Layout>} />
