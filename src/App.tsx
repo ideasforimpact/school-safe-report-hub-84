@@ -126,6 +126,9 @@ function App() {
                     <Route path="/backoffice/dashboard" element={<BackofficeWrapper component={Dashboard} />} />
                     <Route path="/backoffice/clients" element={<BackofficeWrapper component={ClientManagement} />} />
                     
+                    {/* Backoffice Profile route */}
+                    <Route path="/backoffice/profile" element={<BackofficeWrapper component={ProfilePage} />} />
+                    
                     {/* Backoffice Assessment routes */}
                     <Route path="/backoffice/assessments" element={<BackofficeWrapper component={AssessmentsPage} />} />
                     <Route path="/backoffice/assessments/templates" element={<BackofficeWrapper component={AssessmentsPage} />} />

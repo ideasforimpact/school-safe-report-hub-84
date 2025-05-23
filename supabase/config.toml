@@ -88,3 +88,4 @@ verify_jwt = true
 
 [functions.profile_info]
 verify_jwt = true
+

@@ -1,4 +1,3 @@
-
 import React, { createContext, useEffect, useState, useRef } from 'react';
 import { User, AuthContextType, UserWithPassword, EmployeeData } from './types';
 import { 
@@ -192,6 +191,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Fetch employee data after successful login
         try {
           if (dispatch) {
+            // Fix TypeScript error: Use the action creator and then pass the action to dispatch
             dispatch(setLoading(true));
           }
           
@@ -219,26 +219,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             
             // Update Redux state correctly with action creators
             if (dispatch) {
-              // Fix the TypeScript error by using the return value from action creators
-              const employeeAction = setEmployeeData(employee);
-              dispatch(employeeAction);
+              dispatch(setEmployeeData(employee));
               
-              const clientIdAction = setClientId(employee.clientId);
-              dispatch(clientIdAction);
+              if (employee.clientId) {
+                dispatch(setClientId(employee.clientId));
+              }
             }
             
             console.log("Employee data stored:", employee);
           }
           
           if (dispatch) {
-            const loadingAction = setLoading(false);
-            dispatch(loadingAction);
+            dispatch(setLoading(false));
           }
         } catch (err) {
           console.error("Error fetching employee data:", err);
           if (dispatch) {
-            const loadingAction = setLoading(false);
-            dispatch(loadingAction);
+            dispatch(setLoading(false));
           }
         }
         
@@ -323,14 +320,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Update Redux state correctly using action creators
         if (dispatch) {
-          // Fix TypeScript error by using the action return values
-          const employeeAction = setEmployeeData(backofficeEmployeeData);
-          dispatch(employeeAction);
+          dispatch(setEmployeeData(backofficeEmployeeData));
           
           // Only set clientId if it exists
           if (backofficeEmployeeData.clientId) {
-            const clientAction = setClientId(backofficeEmployeeData.clientId);
-            dispatch(clientAction);
+            dispatch(setClientId(backofficeEmployeeData.clientId));
           }
         }
         
@@ -357,8 +351,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         ];
         
         // Update Redux state with modules using action creator
-        const modulesAction = setConfiguredModules(backofficeModules);
-        dispatch(modulesAction);
+        dispatch(setConfiguredModules(backofficeModules));
         
         toast.success(`Welcome back, Backoffice Admin!`);
         return true;
@@ -384,8 +377,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     // Clear Redux state correctly using action creator
     if (dispatch) {
-      const resetAction = resetEmployee();
-      dispatch(resetAction);
+      dispatch(resetEmployee());
     }
     
     // Clear local storage

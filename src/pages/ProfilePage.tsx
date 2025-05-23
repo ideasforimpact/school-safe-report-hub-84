@@ -8,6 +8,7 @@ import { getEmployeeData } from '@/store/employeeSelectors';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import Layout from '@/components/layout/Layout';
 
 interface ClientInfo {
   name: string;
@@ -80,17 +81,17 @@ const ProfilePage: React.FC = () => {
     fetchProfileInfo();
   }, [employeeData]);
 
-  if (loading) {
+  const ProfileContent = () => {
+    if (loading) {
+      return (
+        <div className="flex justify-center items-center h-96">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      );
+    }
+    
     return (
-      <div className="flex justify-center items-center h-96">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  return (
-    <div className="container mx-auto py-6">
-      <Card className="mx-auto max-w-4xl">
+      <Card className="mx-auto">
         <CardHeader>
           <CardTitle className="text-2xl">Profile</CardTitle>
           <CardDescription>
@@ -130,7 +131,15 @@ const ProfilePage: React.FC = () => {
           </Tabs>
         </CardContent>
       </Card>
-    </div>
+    );
+  }
+
+  return (
+    <Layout>
+      <div className="container mx-auto py-6">
+        <ProfileContent />
+      </div>
+    </Layout>
   );
 };
 

@@ -64,6 +64,8 @@ const UserProfileMenu = () => {
   };
 
   const handleProfileClick = () => {
+    // Navigate to profile page using React Router's navigate
+    console.log("Navigating to profile page");
     navigate('/profile');
   };
 
