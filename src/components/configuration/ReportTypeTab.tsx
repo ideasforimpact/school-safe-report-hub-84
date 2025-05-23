@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Pencil } from 'lucide-react';
@@ -216,23 +217,8 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
           </TableBody>
         </Table>
       ) : (
-        <div className="text-center p-12 border rounded-md bg-gray-50">
-          <div className="max-w-md mx-auto">
-            <h4 className="text-lg font-medium text-gray-900 mb-2">No Report Types Found</h4>
-            <p className="text-gray-500 mb-4">
-              You haven't created any report types yet. Report types help categorize and organize incidents in your system.
-            </p>
-            <p className="text-sm text-gray-400 mb-6">
-              Common examples include: Incident, Near Miss, Unsafe Condition, Safety Violation, etc.
-            </p>
-            <Button 
-              onClick={() => setIsAddDialogOpen(true)}
-              className="flex items-center gap-2"
-            >
-              <PlusCircle className="h-4 w-4" />
-              Create Your First Report Type
-            </Button>
-          </div>
+        <div className="text-center py-8">
+          <p className="text-gray-500">No report types have been added yet</p>
         </div>
       )}
 

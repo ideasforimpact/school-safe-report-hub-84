@@ -19,6 +19,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { toast } from 'sonner';
+import { useAuth } from '@/contexts/auth/useAuth';
+import { contributingFactorService } from '@/services/incident/contributingFactorService';
 
 interface ContributingFactor {
   id: string;
@@ -37,9 +40,9 @@ interface ContributingFactorTabProps {
 
 export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
   factors,
-  addFactor,
-  updateFactor,
-  deleteFactor,
+  addFactor: propAddFactor,
+  updateFactor: propUpdateFactor,
+  deleteFactor: propDeleteFactor,
 }) => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -47,19 +50,76 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
   const [currentDescription, setCurrentDescription] = useState('');
   const [currentWeight, setCurrentWeight] = useState('Medium');
   const [currentId, setCurrentId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const { employeeData } = useAuth();
 
-  const handleAdd = () => {
-    addFactor(currentName, currentDescription, currentWeight);
-    setCurrentName('');
-    setCurrentDescription('');
-    setCurrentWeight('Medium');
-    setIsAddDialogOpen(false);
+  const handleAdd = async () => {
+    if (!employeeData?.clientId) {
+      toast.error('Client information not available');
+      return;
+    }
+
+    if (!currentName.trim()) {
+      toast.error('Name is required');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await contributingFactorService.addContributingFactor(
+        currentName.trim(), 
+        currentDescription.trim(), 
+        currentWeight,
+        employeeData.clientId
+      );
+      setCurrentName('');
+      setCurrentDescription('');
+      setCurrentWeight('Medium');
+      setIsAddDialogOpen(false);
+      
+      // Call the prop function to refresh the parent component
+      propAddFactor(currentName.trim(), currentDescription.trim(), currentWeight);
+      
+      toast.success('Contributing factor added successfully');
+    } catch (error) {
+      console.error('Error adding contributing factor:', error);
+      toast.error('Failed to add contributing factor');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleEdit = () => {
-    if (currentId) {
-      updateFactor(currentId, currentName, currentDescription, currentWeight);
+  const handleEdit = async () => {
+    if (!employeeData?.clientId) {
+      toast.error('Client information not available');
+      return;
+    }
+
+    if (!currentId || !currentName.trim()) {
+      toast.error('Name is required');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await contributingFactorService.updateContributingFactor(
+        currentId, 
+        currentName.trim(), 
+        currentDescription.trim(), 
+        currentWeight,
+        employeeData.clientId
+      );
+      
+      // Call the prop function to refresh the parent component
+      propUpdateFactor(currentId, currentName.trim(), currentDescription.trim(), currentWeight);
+      
       setIsEditDialogOpen(false);
+      toast.success('Contributing factor updated successfully');
+    } catch (error) {
+      console.error('Error updating contributing factor:', error);
+      toast.error('Failed to update contributing factor');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -69,6 +129,30 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
     setCurrentDescription(factor.description || '');
     setCurrentWeight(factor.weight || 'Medium');
     setIsEditDialogOpen(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!employeeData?.clientId) {
+      toast.error('Client information not available');
+      return;
+    }
+
+    if (confirm('Are you sure you want to delete this contributing factor?')) {
+      try {
+        setLoading(true);
+        await contributingFactorService.deleteContributingFactor(id, employeeData.clientId);
+        
+        // Call the prop function to refresh the parent component
+        propDeleteFactor(id);
+        
+        toast.success('Contributing factor deleted successfully');
+      } catch (error) {
+        console.error('Error deleting contributing factor:', error);
+        toast.error('Failed to delete contributing factor');
+      } finally {
+        setLoading(false);
+      }
+    }
   };
 
   const getWeightBadgeClass = (weight: string | null | undefined) => {
@@ -84,11 +168,24 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
     }
   };
 
+  if (!employeeData?.clientId) {
+    return (
+      <div className="text-center p-8 border rounded-md bg-gray-50">
+        <p className="text-gray-500 text-lg">Client information not available</p>
+        <p className="text-gray-400 text-sm mt-2">Please contact your administrator to resolve this issue.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-medium">Contributing Factors</h3>
-        <Button variant="outline" onClick={() => setIsAddDialogOpen(true)}>
+        <Button 
+          variant="outline" 
+          onClick={() => setIsAddDialogOpen(true)}
+          disabled={loading}
+        >
           <Plus className="h-4 w-4 mr-2" /> Add Factor
         </Button>
       </div>
@@ -127,7 +224,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
             {factors.length === 0 ? (
               <tr>
                 <td colSpan={4} className="px-6 py-4 text-center text-gray-500">
-                  No contributing factors have been added yet.
+                  No contributing factors have been added yet
                 </td>
               </tr>
             ) : (
@@ -152,13 +249,15 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
                         variant="ghost"
                         size="sm"
                         onClick={() => openEditDialog(factor)}
+                        disabled={loading}
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => deleteFactor(factor.id)}
+                        onClick={() => handleDelete(factor.id)}
+                        disabled={loading}
                       >
                         <Trash2 className="h-4 w-4 text-red-500" />
                       </Button>
@@ -217,11 +316,11 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} disabled={loading}>
               Cancel
             </Button>
-            <Button onClick={handleAdd} disabled={!currentName}>
-              Add
+            <Button onClick={handleAdd} disabled={!currentName || loading}>
+              {loading ? 'Adding...' : 'Add'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -273,11 +372,11 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={loading}>
               Cancel
             </Button>
-            <Button onClick={handleEdit} disabled={!currentName}>
-              Save Changes
+            <Button onClick={handleEdit} disabled={!currentName || loading}>
+              {loading ? 'Saving...' : 'Save Changes'}
             </Button>
           </DialogFooter>
         </DialogContent>
