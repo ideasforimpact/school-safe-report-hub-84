@@ -375,7 +375,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     saveEmployeeDataToStorage(null);
     setIsBackofficeUser(false);
     
-    // Clear Redux state - action creators return void, so don't check truthiness
+    // Clear Redux state - action creators return void, so don't check if dispatch returns anything
     if (dispatch) {
       dispatch(resetEmployee());
     }

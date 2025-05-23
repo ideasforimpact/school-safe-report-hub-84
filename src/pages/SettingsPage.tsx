@@ -5,9 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AlertTriangle, Users, GraduationCap } from "lucide-react";
 import { useAuth } from '@/contexts/auth';
-import StudentManagementContent from '@/components/configuration/StudentManagementContent';
 import IncidentConfigurationContent from '@/components/configuration/IncidentConfigurationContent';
 import UserManagement from '@/pages/UserManagement';
+import StudentManagement from '@/pages/StudentManagement';
 
 const SettingsPage = () => {
   return (
@@ -65,7 +65,7 @@ const SettingsPage = () => {
                 <CardDescription>Manage student records and information</CardDescription>
               </CardHeader>
               <CardContent>
-                <StudentManagementContent />
+                <StudentManagement />
               </CardContent>
             </Card>
           </TabsContent>
