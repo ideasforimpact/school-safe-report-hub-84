@@ -39,7 +39,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
 
   const handleVerifyDocument = async (documentId: string) => {
     try {
-      await verifyDocument(documentId, 'verified');
+      await verifyDocument(documentId, 'verified', ''); // Added missing third parameter (notes)
     } catch (error) {
       console.error('Error verifying document:', error);
     }
