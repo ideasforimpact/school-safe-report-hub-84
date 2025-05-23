@@ -5,9 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AlertTriangle, Users, GraduationCap } from "lucide-react";
 import { useAuth } from '@/contexts/auth';
-import UserManagementContent from '@/components/configuration/UserManagementContent';
 import StudentManagementContent from '@/components/configuration/StudentManagementContent';
 import IncidentConfigurationContent from '@/components/configuration/IncidentConfigurationContent';
+import UserManagement from '@/pages/UserManagement';
 
 const SettingsPage = () => {
   return (
@@ -53,7 +53,7 @@ const SettingsPage = () => {
                 <CardDescription>Manage system users and their permissions</CardDescription>
               </CardHeader>
               <CardContent>
-                <UserManagementContent />
+                <UserManagement />
               </CardContent>
             </Card>
           </TabsContent>
