@@ -51,7 +51,7 @@ const SettingsPage = () => {
           </TabsContent>
           
           <TabsContent value="student" className="p-0">
-            <StudentManagement />
+            <StudentManagement embedded={true} />
           </TabsContent>
         </Tabs>
       </div>

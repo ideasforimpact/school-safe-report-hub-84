@@ -24,7 +24,11 @@ import { toast } from 'sonner';
 import { Skeleton } from "@/components/ui/skeleton";
 import { processStudentExcel } from '@/services/student/importStudentService';
 
-const StudentManagement = () => {
+interface StudentManagementProps {
+  embedded?: boolean;
+}
+
+const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
   const { students, deleteStudent, isLoading } = useStudents();
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -81,107 +85,115 @@ const StudentManagement = () => {
       student.campus.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const content = (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Student Management</h1>
+          <p className="text-muted-foreground">
+            Manage students in your institution
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button 
+            onClick={() => setIsImportDialogOpen(true)}
+            className="flex items-center gap-2"
+            variant="secondary"
+          >
+            <FileUp className="h-4 w-4" />
+            <span>Import Students</span>
+          </Button>
+          <Button onClick={() => setIsAddDialogOpen(true)}>
+            <PlusCircle className="mr-2 h-4 w-4" /> Add Student
+          </Button>
+        </div>
+      </div>
+
+      {/* Search and filter */}
+      <div className="flex items-center space-x-2">
+        <div className="relative flex-1">
+          <UserSearch className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+          <Input
+            placeholder="Search students..."
+            className="pl-8"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+      </div>
+
+      {/* Loading state */}
+      {isLoading ? (
+        <div className="space-y-3">
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
+        </div>
+      ) : (
+        /* Students list */
+        <StudentsList
+          students={filteredStudents}
+          onEditClick={handleEditClick}
+          onDeleteStudent={handleDeleteClick}
+        />
+      )}
+
+      {/* Add Student Dialog */}
+      <AddStudentDialog
+        open={isAddDialogOpen}
+        onOpenChange={setIsAddDialogOpen}
+      />
+
+      {/* Edit Student Dialog */}
+      {selectedStudent && (
+        <EditStudentDialog
+          open={isEditDialogOpen}
+          onOpenChange={setIsEditDialogOpen}
+          student={selectedStudent}
+        />
+      )}
+
+      {/* Import Students Dialog */}
+      <ImportStudentDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        onImportStudents={handleImportStudents}
+      />
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the student record 
+              from the database.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={confirmDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+
+  if (embedded) {
+    return content;
+  }
+
   return (
     <Layout>
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">Student Management</h1>
-            <p className="text-muted-foreground">
-              Manage students in your institution
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <Button 
-              onClick={() => setIsImportDialogOpen(true)}
-              className="flex items-center gap-2"
-              variant="secondary"
-            >
-              <FileUp className="h-4 w-4" />
-              <span>Import Students</span>
-            </Button>
-            <Button onClick={() => setIsAddDialogOpen(true)}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Student
-            </Button>
-          </div>
-        </div>
-
-        {/* Search and filter */}
-        <div className="flex items-center space-x-2">
-          <div className="relative flex-1">
-            <UserSearch className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-            <Input
-              placeholder="Search students..."
-              className="pl-8"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-        </div>
-
-        {/* Loading state */}
-        {isLoading ? (
-          <div className="space-y-3">
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-            <Skeleton className="h-12 w-full" />
-          </div>
-        ) : (
-          /* Students list */
-          <StudentsList
-            students={filteredStudents}
-            onEditClick={handleEditClick}
-            onDeleteStudent={handleDeleteClick}
-          />
-        )}
-
-        {/* Add Student Dialog */}
-        <AddStudentDialog
-          open={isAddDialogOpen}
-          onOpenChange={setIsAddDialogOpen}
-        />
-
-        {/* Edit Student Dialog */}
-        {selectedStudent && (
-          <EditStudentDialog
-            open={isEditDialogOpen}
-            onOpenChange={setIsEditDialogOpen}
-            student={selectedStudent}
-          />
-        )}
-
-        {/* Import Students Dialog */}
-        <ImportStudentDialog
-          open={isImportDialogOpen}
-          onOpenChange={setIsImportDialogOpen}
-          onImportStudents={handleImportStudents}
-        />
-
-        {/* Delete Confirmation */}
-        <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This action cannot be undone. This will permanently delete the student record 
-                from the database.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-              <AlertDialogAction
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                onClick={confirmDelete}
-                disabled={isDeleting}
-              >
-                {isDeleting ? 'Deleting...' : 'Delete'}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
+      {content}
     </Layout>
   );
 };
