@@ -4,7 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.0.0";
 // Set up CORS headers for cross-origin requests
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, path, id",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, path, id, client-id",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
 };
 
@@ -28,6 +28,15 @@ serve(async (req) => {
     const headers = req.headers;
     const path = headers.get("path") || "";
     const id = headers.get("id") || "";
+    const clientId = headers.get("client-id") || "";
+
+    // Validate client_id for all operations
+    if (!clientId && path !== "validate") {
+      return new Response(
+        JSON.stringify({ error: "Client ID is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Parse request body if not GET or OPTIONS method
     let body = {};
@@ -35,10 +44,12 @@ serve(async (req) => {
       body = await req.json();
     }
 
+    console.log(`Processing ${path} request with clientId: ${clientId}`);
+
     // Handle different API endpoints
     switch (path) {
       case "list":
-        return await handleListStudents(req, corsHeaders);
+        return await handleListStudents(req, corsHeaders, clientId);
 
       case "get":
         if (!id) {
@@ -47,10 +58,10 @@ serve(async (req) => {
             { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
-        return await handleGetStudent(id, corsHeaders);
+        return await handleGetStudent(id, corsHeaders, clientId);
 
       case "create":
-        return await handleCreateStudent(body, corsHeaders);
+        return await handleCreateStudent(body, corsHeaders, clientId);
 
       case "update":
         if (!id) {
@@ -59,7 +70,7 @@ serve(async (req) => {
             { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
-        return await handleUpdateStudent(id, body, corsHeaders);
+        return await handleUpdateStudent(id, body, corsHeaders, clientId);
 
       case "delete":
         if (!id) {
@@ -68,13 +79,16 @@ serve(async (req) => {
             { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
-        return await handleDeleteStudent(id, corsHeaders);
+        return await handleDeleteStudent(id, corsHeaders, clientId);
         
       case "validate":
         return await handleValidateImport(body, corsHeaders);
         
       case "bulk-update":
-        return await handleBulkUpdate(body, corsHeaders);
+        return await handleBulkUpdate(body, corsHeaders, clientId);
+
+      case "bulk-import":
+        return await handleBulkImport(body, corsHeaders, clientId);
 
       default:
         return new Response(
@@ -94,11 +108,11 @@ serve(async (req) => {
 
 // Handler functions for different operations
 
-async function handleListStudents(req: Request, corsHeaders: Record<string, string>) {
+async function handleListStudents(req: Request, corsHeaders: Record<string, string>, clientId: string) {
   const url = new URL(req.url);
   const searchTerm = url.searchParams.get("search") || "";
   
-  let query = supabaseClient.from("students").select("*");
+  let query = supabaseClient.from("students").select("*").eq("client_id", clientId);
   
   // Apply search filter if provided
   if (searchTerm) {
@@ -132,11 +146,12 @@ async function handleListStudents(req: Request, corsHeaders: Record<string, stri
   );
 }
 
-async function handleGetStudent(id: string, corsHeaders: Record<string, string>) {
+async function handleGetStudent(id: string, corsHeaders: Record<string, string>, clientId: string) {
   const { data, error } = await supabaseClient
     .from("students")
     .select("*")
     .eq("id", id)
+    .eq("client_id", clientId)
     .single();
   
   if (error) {
@@ -160,7 +175,7 @@ async function handleGetStudent(id: string, corsHeaders: Record<string, string>)
   );
 }
 
-async function handleCreateStudent(body: any, corsHeaders: Record<string, string>) {
+async function handleCreateStudent(body: any, corsHeaders: Record<string, string>, clientId: string) {
   // Validate required fields
   const requiredFields = ["studentId", "name", "grade", "section", "campus"];
   for (const field of requiredFields) {
@@ -181,13 +196,14 @@ async function handleCreateStudent(body: any, corsHeaders: Record<string, string
     );
   }
   
-  // Transform data to match database schema
+  // Transform data to match database schema and include client_id
   const studentData = {
     student_id: body.studentId,
     name: body.name,
     grade: body.grade,
     section: body.section,
-    campus: body.campus
+    campus: body.campus,
+    client_id: clientId
   };
   
   const { data, error } = await supabaseClient
@@ -404,7 +420,7 @@ async function handleValidateImport(body: any, corsHeaders: Record<string, strin
   );
 }
 
-async function handleUpdateStudent(id: string, body: any, corsHeaders: Record<string, string>) {
+async function handleUpdateStudent(id: string, body: any, corsHeaders: Record<string, string>, clientId: string) {
   // Validate campus, grade, and section if they are being updated
   if (body.campus && body.grade && body.section) {
     const isValid = await validateEducationalStructure(body.campus, body.grade, body.section);
@@ -428,6 +444,7 @@ async function handleUpdateStudent(id: string, body: any, corsHeaders: Record<st
     .from("students")
     .update(updates)
     .eq("id", id)
+    .eq("client_id", clientId)
     .select();
   
   if (error) {
@@ -458,11 +475,12 @@ async function handleUpdateStudent(id: string, body: any, corsHeaders: Record<st
   );
 }
 
-async function handleDeleteStudent(id: string, corsHeaders: Record<string, string>) {
+async function handleDeleteStudent(id: string, corsHeaders: Record<string, string>, clientId: string) {
   const { error } = await supabaseClient
     .from("students")
     .delete()
-    .eq("id", id);
+    .eq("id", id)
+    .eq("client_id", clientId);
   
   if (error) {
     return new Response(
@@ -478,10 +496,79 @@ async function handleDeleteStudent(id: string, corsHeaders: Record<string, strin
 }
 
 /**
- * Handle bulk update of students
- * This function processes a batch of student updates in a single operation
+ * Handle bulk import of students
  */
-async function handleBulkUpdate(body: any, corsHeaders: Record<string, string>) {
+async function handleBulkImport(body: any, corsHeaders: Record<string, string>, clientId: string) {
+  const students = body.students || [];
+  if (!Array.isArray(students) || students.length === 0) {
+    return new Response(
+      JSON.stringify({ error: "No student data provided for import" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+
+  console.log(`Processing bulk import for ${students.length} students for client ${clientId}`);
+  
+  try {
+    const result = {
+      addedStudents: [],
+      successCount: 0,
+      errorCount: 0,
+      errors: [],
+      updatedCount: 0
+    };
+
+    // Process students in batches
+    const BATCH_SIZE = 50;
+    for (let i = 0; i < students.length; i += BATCH_SIZE) {
+      const batch = students.slice(i, i + BATCH_SIZE);
+      
+      // Prepare students data with client_id
+      const studentsToCreate = batch.map(student => ({
+        student_id: String(student.studentId),
+        name: String(student.name),
+        grade: String(student.grade),
+        section: String(student.section),
+        campus: String(student.campus),
+        client_id: clientId
+      }));
+      
+      // Insert batch
+      const { data, error } = await supabaseClient
+        .from("students")
+        .insert(studentsToCreate)
+        .select();
+      
+      if (error) {
+        console.error(`Error in batch ${i}:`, error);
+        result.errors.push(`Batch ${i}: ${error.message}`);
+        result.errorCount += batch.length;
+      } else if (data) {
+        const transformedData = data.map(item => ({
+          ...item,
+          studentId: item.student_id,
+          createdAt: item.created_at,
+          updatedAt: item.updated_at
+        }));
+        result.addedStudents.push(...transformedData);
+        result.successCount += data.length;
+      }
+    }
+    
+    return new Response(
+      JSON.stringify(result),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Error in bulk import:", error);
+    return new Response(
+      JSON.stringify({ error: `Bulk import failed: ${error.message}` }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+}
+
+async function handleBulkUpdate(body: any, corsHeaders: Record<string, string>, clientId: string) {
   const students = body.students || [];
   if (!Array.isArray(students) || students.length === 0) {
     return new Response(
@@ -490,7 +577,7 @@ async function handleBulkUpdate(body: any, corsHeaders: Record<string, string>) 
     );
   }
 
-  console.log(`Processing bulk update for ${students.length} students`);
+  console.log(`Processing bulk update for ${students.length} students for client ${clientId}`);
   
   try {
     const updatedStudents = [];

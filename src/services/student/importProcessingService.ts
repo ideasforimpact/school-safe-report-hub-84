@@ -8,7 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
  * Process the raw student data from Excel/CSV and add valid students to the system
  * Handles both new student insertion and existing student updates
  */
-export const processStudentData = async (rawData: RawStudentData[]): Promise<ImportResult> => {
+export const processStudentData = async (rawData: RawStudentData[], clientId: string): Promise<ImportResult> => {
   const result: ImportResult = {
     addedStudents: [],
     successCount: 0,
@@ -17,129 +17,33 @@ export const processStudentData = async (rawData: RawStudentData[]): Promise<Imp
     updatedCount: 0
   };
 
-  console.log("Processing student data:", rawData);
+  console.log("Processing student data for client:", clientId, "Data:", rawData);
   
   try {
-    // First, identify existing students by student_id for bulk processing
-    const studentIds = rawData.map(row => String(row.studentId));
-    
-    // Fetch all existing students matching these IDs in a single query
-    const { data: existingStudents, error: fetchError } = await supabase
-      .from('students')
-      .select('id, student_id')
-      .in('student_id', studentIds);
-      
-    if (fetchError) {
-      console.error('Error fetching existing students:', fetchError);
-      throw new Error(`Database error: ${fetchError.message}`);
-    }
-    
-    // Create maps for fast lookups
-    const existingStudentsMap = new Map();
-    if (existingStudents) {
-      existingStudents.forEach(student => {
-        existingStudentsMap.set(student.student_id.toLowerCase(), student.id);
-      });
-    }
-    
-    // Prepare arrays for bulk operations
-    const studentsToCreate: any[] = [];
-    const studentsToUpdate: any[] = [];
-    const rowErrors: string[] = [];
-    
-    // Process each row and sort into create/update arrays
-    rawData.forEach((row, index) => {
-      try {
-        // Ensure all required fields are present and not empty
-        const requiredFields = ['studentId', 'name', 'grade', 'section', 'campus'];
-        const missingFields = requiredFields.filter(field => {
-          const value = row[field];
-          return value === undefined || value === null || 
-                (typeof value === 'string' && value.trim() === '') ||
-                value === 0;
-        });
-        
-        if (missingFields.length > 0) {
-          rowErrors.push(`Row ${index + 2}: Missing required fields: ${missingFields.join(', ')}`);
-          return;
-        }
-        
-        // Prepare student data
-        const studentData = {
-          student_id: String(row.studentId),
-          name: String(row.name),
-          grade: String(row.grade),
-          section: String(row.section),
-          campus: String(row.campus)
-        };
-        
-        const studentIdLower = studentData.student_id.toLowerCase();
-        const existingId = existingStudentsMap.get(studentIdLower);
-        
-        if (existingId) {
-          // Add to update array
-          studentsToUpdate.push({
-            ...studentData,
-            id: existingId
-          });
-        } else {
-          // Add to create array
-          studentsToCreate.push(studentData);
-        }
-      } catch (error) {
-        console.error(`Error processing row ${index + 2}:`, error);
-        rowErrors.push(`Row ${index + 2}: ${(error as Error).message || 'Unknown error'}`);
+    // Use the edge function for bulk processing with client_id
+    const { data: processedResult, error } = await supabase.functions.invoke('student-management', {
+      method: 'POST',
+      headers: { 
+        path: 'bulk-import',
+        'client-id': clientId
+      },
+      body: {
+        students: rawData,
+        client_id: clientId
       }
     });
-    
-    result.errors = rowErrors;
-    result.errorCount = rowErrors.length;
-    
-    // Execute bulk create operation if needed
-    if (studentsToCreate.length > 0) {
-      const { data: createdData, error: createError } = await supabase
-        .from('students')
-        .insert(studentsToCreate)
-        .select();
-        
-      if (createError) {
-        console.error('Error creating students in bulk:', createError);
-        throw new Error(`Failed to add students: ${createError.message}`);
-      }
-      
-      if (createdData) {
-        result.addedStudents = result.addedStudents.concat(
-          createdData.map(transformStudentData)
-        );
-        result.successCount = createdData.length;
-        console.log(`Successfully added ${createdData.length} new students`);
-      }
+
+    if (error) {
+      console.error('Error in bulk import:', error);
+      throw new Error(`Bulk import failed: ${error.message}`);
     }
-    
-    // Execute bulk update operation if needed
-    if (studentsToUpdate.length > 0) {
-      // Supabase doesn't support bulk upserts with multiple ids, so we need to use the edge function
-      const { data: updatedData, error: updateError } = await supabase.functions.invoke('student-management', {
-        method: 'POST',
-        headers: { path: 'bulk-update' },
-        body: {
-          students: studentsToUpdate
-        }
-      });
-        
-      if (updateError) {
-        console.error('Error updating students in bulk:', updateError);
-        throw new Error(`Failed to update students: ${updateError.message}`);
-      }
-      
-      if (updatedData && updatedData.updated) {
-        result.updatedCount = updatedData.count || studentsToUpdate.length;
-        console.log(`Successfully updated ${result.updatedCount} existing students`);
-        
-        if (updatedData.students) {
-          result.addedStudents = result.addedStudents.concat(updatedData.students);
-        }
-      }
+
+    if (processedResult) {
+      result.addedStudents = processedResult.addedStudents || [];
+      result.successCount = processedResult.successCount || 0;
+      result.updatedCount = processedResult.updatedCount || 0;
+      result.errorCount = processedResult.errorCount || 0;
+      result.errors = processedResult.errors || [];
     }
 
     return result;
@@ -149,22 +53,6 @@ export const processStudentData = async (rawData: RawStudentData[]): Promise<Imp
     result.errorCount += 1;
     return result;
   }
-};
-
-/**
- * Transform database student data to match frontend Student type
- */
-const transformStudentData = (dbStudent: any): Student => {
-  return {
-    id: dbStudent.id,
-    studentId: dbStudent.student_id,
-    name: dbStudent.name,
-    grade: dbStudent.grade,
-    section: dbStudent.section,
-    campus: dbStudent.campus,
-    createdAt: dbStudent.created_at,
-    updatedAt: dbStudent.updated_at
-  };
 };
 
 /**

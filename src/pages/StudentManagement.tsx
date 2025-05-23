@@ -24,11 +24,7 @@ import { toast } from 'sonner';
 import { Skeleton } from "@/components/ui/skeleton";
 import { processStudentExcel } from '@/services/student/importStudentService';
 
-interface StudentManagementProps {
-  embedded?: boolean;
-}
-
-const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
+const StudentManagement = () => {
   const { students, deleteStudent, isLoading } = useStudents();
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -85,7 +81,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
       student.campus.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const content = (
+  return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
@@ -185,16 +181,6 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  );
-
-  if (embedded) {
-    return content;
-  }
-
-  return (
-    <Layout>
-      {content}
-    </Layout>
   );
 };
 
