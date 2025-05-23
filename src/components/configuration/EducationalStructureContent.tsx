@@ -1,10 +1,6 @@
 
 import React from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { CampusTab } from '@/components/configuration/CampusTab';
-import { ClassTab } from '@/components/configuration/ClassTab';
-import { SectionTab } from '@/components/configuration/SectionTab';
-import { FacilityTab } from '@/components/configuration/FacilityTab';
 import { useEducationalConfigurationManagement } from '@/hooks/useEducationalConfigurationManagement';
 
 const EducationalStructureContent = () => {
@@ -41,43 +37,31 @@ const EducationalStructureContent = () => {
         </TabsList>
         
         <TabsContent value="campuses">
-          <CampusTab
-            campuses={campuses}
-            loading={loading}
-            onAdd={handleAddCampus}
-            onUpdate={handleUpdateCampus}
-            onDelete={handleDeleteCampus}
-          />
+          <div className="p-4 border rounded-md">
+            <h3 className="text-lg font-medium mb-4">Campus Management</h3>
+            <p>Loading campus management interface...</p>
+          </div>
         </TabsContent>
         
         <TabsContent value="classes">
-          <ClassTab
-            classes={classes}
-            loading={loading}
-            onAdd={handleAddClass}
-            onUpdate={handleUpdateClass}
-            onDelete={handleDeleteClass}
-          />
+          <div className="p-4 border rounded-md">
+            <h3 className="text-lg font-medium mb-4">Class Management</h3>
+            <p>Loading class management interface...</p>
+          </div>
         </TabsContent>
         
         <TabsContent value="sections">
-          <SectionTab
-            sections={sections}
-            loading={loading}
-            onAdd={handleAddSection}
-            onUpdate={handleUpdateSection}
-            onDelete={handleDeleteSection}
-          />
+          <div className="p-4 border rounded-md">
+            <h3 className="text-lg font-medium mb-4">Section Management</h3>
+            <p>Loading section management interface...</p>
+          </div>
         </TabsContent>
         
         <TabsContent value="facilities">
-          <FacilityTab
-            facilities={facilities}
-            loading={loading}
-            onAdd={handleAddFacility}
-            onUpdate={handleUpdateFacility}
-            onDelete={handleDeleteFacility}
-          />
+          <div className="p-4 border rounded-md">
+            <h3 className="text-lg font-medium mb-4">Facility Management</h3>
+            <p>Loading facility management interface...</p>
+          </div>
         </TabsContent>
       </Tabs>
     </div>

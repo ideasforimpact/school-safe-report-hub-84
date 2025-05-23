@@ -5,15 +5,21 @@ import { AuthContextType } from './types';
 // Create a default value that matches the AuthContextType shape
 const defaultValue: AuthContextType = {
   user: null,
+  users: [],
   isAdmin: false,
-  isSuperAdmin: false,
+  isSaasOwner: false,
   isAuthenticated: false,
-  isLoading: false,
-  error: null,
+  authError: null,
   login: async () => false,
   logout: async () => {},
-  resetPassword: async () => {},
-  updatePassword: async () => {},
+  addUser: () => {},
+  updateUser: () => {},
+  deleteUser: () => {},
+  deactivateUser: () => {},
+  reactivateUser: () => {},
+  changePassword: async () => false,
+  handleUserAuthentication: async () => {},
+  employeeData: null,
 };
 
 // Create and export the context
