@@ -3,10 +3,6 @@ import React from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { CategoryTab } from '@/components/configuration/CategoryTab';
 import { SubcategoryTab } from '@/components/configuration/SubcategoryTab';
-import { PriorityTab } from '@/components/configuration/PriorityTab';
-import { LocationTab } from '@/components/configuration/LocationTab';
-import { ContributingFactorTab } from '@/components/configuration/ContributingFactorTab';
-import { ReportTypeTab } from '@/components/configuration/ReportTypeTab';
 import { useCategoryManagement } from '@/hooks/config/useCategoryManagement';
 
 const IncidentConfigurationContent = () => {
@@ -14,7 +10,6 @@ const IncidentConfigurationContent = () => {
   const {
     categories,
     subcategoryMappings,
-    loading,
     addCategory,
     updateCategory,
     deleteCategory,
@@ -26,7 +21,7 @@ const IncidentConfigurationContent = () => {
   return (
     <div className="space-y-6">
       <Tabs value={activeConfigTab} onValueChange={setActiveConfigTab} className="w-full">
-        <TabsList className="grid grid-cols-3 lg:grid-cols-6 mb-4">
+        <TabsList className="grid grid-cols-2 mb-4">
           <TabsTrigger value="categories">Categories</TabsTrigger>
           <TabsTrigger value="subcategories">Subcategories</TabsTrigger>
         </TabsList>
@@ -34,7 +29,6 @@ const IncidentConfigurationContent = () => {
         <TabsContent value="categories">
           <CategoryTab
             categories={categories}
-            loading={loading}
             onAdd={addCategory}
             onUpdate={updateCategory}
             onDelete={deleteCategory}
@@ -44,8 +38,7 @@ const IncidentConfigurationContent = () => {
         <TabsContent value="subcategories">
           <SubcategoryTab
             categories={categories}
-            subcategories={subcategoryMappings}
-            loading={loading}
+            subcategoryMap={subcategoryMappings}
             onAdd={addSubcategory}
             onUpdate={updateSubcategory}
             onDelete={deleteSubcategory}

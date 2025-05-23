@@ -8,7 +8,6 @@ const defaultValue: AuthContextType = {
   users: [],
   isAdmin: false,
   isSaasOwner: false,
-  isAuthenticated: false,
   authError: null,
   login: async () => false,
   logout: async () => {},

@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { StudentsList } from '@/components/students/StudentsList';
+import StudentsList from '@/components/students/StudentsList';
 
 const StudentManagementContent = () => {
   return (
