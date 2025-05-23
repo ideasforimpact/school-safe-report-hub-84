@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import {
   Table,
@@ -55,7 +56,7 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
   const { employeeData } = useAuth();
   
   // Use the hook to get priorities with proper client_id validation
-  const { priorities: hookPriorities, loading } = usePriorities();
+  const { priorities: hookPriorities, loading, refetch } = usePriorities();
   
   // Use hook data, ignoring props data
   const priorities = hookPriorities;
@@ -80,7 +81,8 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
         setNewPriorityColor('#10B981');
         setNewPriorityWeight('0');
         setIsAddDialogOpen(false);
-        // Refresh will happen automatically via the hook
+        // Refresh data immediately
+        await refetch();
         toast.success('Priority added successfully');
       } catch (error) {
         console.error('Error adding priority:', error);
@@ -109,7 +111,8 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
         );
         setIsEditDialogOpen(false);
         setSelectedPriority(null);
-        // Refresh will happen automatically via the hook
+        // Refresh data immediately
+        await refetch();
         toast.success('Priority updated successfully');
       } catch (error) {
         console.error('Error updating priority:', error);
@@ -138,7 +141,8 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
     const newStatus = !priority.is_active;
     try {
       await priorityService.togglePriorityStatus(priority.id, newStatus, employeeData.clientId);
-      // Refresh will happen automatically via the hook
+      // Refresh data immediately
+      await refetch();
       toast.success(`Priority ${newStatus ? 'activated' : 'deactivated'} successfully`);
     } catch (error) {
       console.error('Error toggling priority status:', error);
@@ -155,7 +159,8 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
     if (confirm('Are you sure you want to delete this priority?')) {
       try {
         await priorityService.deletePriority(id, employeeData.clientId);
-        // Refresh will happen automatically via the hook
+        // Refresh data immediately
+        await refetch();
         toast.success('Priority deleted successfully');
       } catch (error) {
         console.error('Error deleting priority:', error);
@@ -253,19 +258,13 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
       ) : (
         <div className="text-center p-12 border rounded-md bg-gray-50">
           <div className="max-w-md mx-auto">
-            <h4 className="text-lg font-medium text-gray-900 mb-2">No Priorities Found</h4>
-            <p className="text-gray-500 mb-4">
-              You haven't created any priorities yet. Priorities help determine the urgency and importance of incidents.
-            </p>
-            <p className="text-sm text-gray-400 mb-6">
-              Common examples include: Low, Medium, High, Critical, etc.
-            </p>
+            <p className="text-gray-500 mb-4">No priorities found.</p>
             <Button 
               onClick={() => setIsAddDialogOpen(true)}
               className="flex items-center gap-2"
             >
               <Plus className="h-4 w-4" />
-              Create Your First Priority
+              Add Priority
             </Button>
           </div>
         </div>

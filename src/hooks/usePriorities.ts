@@ -9,31 +9,31 @@ export function usePriorities() {
   const [error, setError] = useState<string | null>(null);
   const { employeeData } = useAuth();
 
-  useEffect(() => {
-    async function fetchPriorities() {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        if (!employeeData?.clientId) {
-          console.warn('Client ID not available for fetching priorities');
-          setPriorities([]);
-          return;
-        }
-        
-        const data = await priorityService.getPriorities(employeeData.clientId, true);
-        setPriorities(data || []);
-      } catch (err: any) {
-        console.error("Error fetching priorities:", err);
-        setError(err.message);
+  const fetchPriorities = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      if (!employeeData?.clientId) {
+        console.warn('Client ID not available for fetching priorities');
         setPriorities([]);
-      } finally {
-        setLoading(false);
+        return;
       }
+      
+      const data = await priorityService.getPriorities(employeeData.clientId, true);
+      setPriorities(data || []);
+    } catch (err: any) {
+      console.error("Error fetching priorities:", err);
+      setError(err.message);
+      setPriorities([]);
+    } finally {
+      setLoading(false);
     }
+  };
 
+  useEffect(() => {
     fetchPriorities();
   }, [employeeData?.clientId]);
 
-  return { priorities, loading, error };
+  return { priorities, loading, error, refetch: fetchPriorities };
 }
