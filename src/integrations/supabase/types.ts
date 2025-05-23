@@ -526,6 +526,7 @@ export type Database = {
       }
       incident_priorities: {
         Row: {
+          client_id: string | null
           color: string | null
           created_at: string
           description: string | null
@@ -536,6 +537,7 @@ export type Database = {
           weight: number | null
         }
         Insert: {
+          client_id?: string | null
           color?: string | null
           created_at?: string
           description?: string | null
@@ -546,6 +548,7 @@ export type Database = {
           weight?: number | null
         }
         Update: {
+          client_id?: string | null
           color?: string | null
           created_at?: string
           description?: string | null
@@ -555,10 +558,19 @@ export type Database = {
           updated_at?: string
           weight?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "incident_priorities_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       incident_report_types: {
         Row: {
+          client_id: string | null
           created_at: string | null
           description: string | null
           id: string
@@ -567,6 +579,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          client_id?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -575,6 +588,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          client_id?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -582,10 +596,19 @@ export type Database = {
           name?: string
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "incident_report_types_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       incident_status: {
         Row: {
+          client_id: string | null
           created_at: string
           description: string | null
           id: string
@@ -593,6 +616,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          client_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -600,17 +624,27 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          client_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
           name?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "incident_status_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       incident_subcategories: {
         Row: {
           category_id: string | null
+          client_id: string | null
           created_at: string | null
           description: string | null
           id: string
@@ -620,6 +654,7 @@ export type Database = {
         }
         Insert: {
           category_id?: string | null
+          client_id?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -629,6 +664,7 @@ export type Database = {
         }
         Update: {
           category_id?: string | null
+          client_id?: string | null
           created_at?: string | null
           description?: string | null
           id?: string
@@ -642,6 +678,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "incident_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "incident_subcategories_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
         ]
