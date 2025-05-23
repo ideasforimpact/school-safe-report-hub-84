@@ -506,27 +506,28 @@ const UserManagement = () => {
   const handleReactivateUser = async (userId: string) => {
     try {
       setIsLoading(true);
-      // Use the existing reactivateExistingUser function or similar logic
-      // For now, just update the employee status via edge function
-      try {
-        const { data, error } = await supabase.functions.invoke('employee-management', {
-          body: JSON.stringify({
-            operation: 'reactivate',
-            id: userId
-          })
-        });
-        
-        if (error) {
-          console.error("Edge function reactivate error:", error);
-        } else {
-          console.log("Employee reactivated via edge function:", data);
+      const updatedUsers = reactivateExistingUser([] as any, userId);
+      if (updatedUsers) {
+        try {
+          const { data, error } = await supabase.functions.invoke('employee-management', {
+            body: JSON.stringify({
+              operation: 'reactivate',
+              id: userId
+            })
+          });
+          
+          if (error) {
+            console.error("Edge function reactivate error:", error);
+          } else {
+            console.log("Employee reactivated via edge function:", data);
+          }
+          
+          await refreshEmployeesList();
+          toast.success("User reactivated successfully");
+        } catch (error) {
+          console.error("Error reactivating employee:", error);
+          toast.error("Failed to reactivate user");
         }
-        
-        await refreshEmployeesList();
-        toast.success("User reactivated successfully");
-      } catch (error) {
-        console.error("Error reactivating employee:", error);
-        toast.error("Failed to reactivate user");
       }
     } catch (error) {
       console.error("Error reactivating user:", error);

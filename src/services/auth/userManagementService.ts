@@ -1,4 +1,3 @@
-
 import { User, UserWithPassword, UserRole, ModulePermissions, EmployeeType, DepartmentType } from '@/contexts/auth/types';
 import { v4 as uuidv4 } from 'uuid';
 import { validateUserEmail, validateAdminDeletion } from '@/contexts/auth/utils';
@@ -210,6 +209,36 @@ export const deactivateExistingUser = (
   });
 
   toast.success("Employee deactivated successfully");
+  return updatedUsers;
+};
+
+export const reactivateExistingUser = (
+  currentUsers: UserWithPassword[],
+  id: string,
+  currentUserId?: string
+): UserWithPassword[] | null => {
+  try {
+    // In a real implementation with Supabase, we would reactivate the user
+    // Example:
+    // await supabase.auth.admin.updateUserById(id, { 
+    //   user_metadata: { isActive: true } 
+    // });
+    
+    console.log("Employee reactivated:", id);
+  } catch (error) {
+    console.error("Error reactivating employee:", error);
+    toast.error("Failed to reactivate employee");
+    return null;
+  }
+
+  const updatedUsers = currentUsers.map(u => {
+    if (u.id === id) {
+      return { ...u, isActive: true };
+    }
+    return u;
+  });
+
+  toast.success("Employee reactivated successfully");
   return updatedUsers;
 };
 
