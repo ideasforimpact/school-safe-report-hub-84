@@ -18,12 +18,18 @@ export interface SubcategoryItem {
 
 export const categoryService = {
   // Categories
-  getCategories: async () => {
+  getCategories: async (clientId?: string) => {
     try {
-      const { data: categories, error } = await supabase
+      let query = supabase
         .from('incident_categories')
         .select('*')
         .order('name');
+
+      if (clientId) {
+        query = query.eq('client_id', clientId);
+      }
+
+      const { data: categories, error } = await query;
 
       if (error) {
         throw error;
@@ -37,12 +43,12 @@ export const categoryService = {
     }
   },
 
-  addCategory: async (name: string, description?: string) => {
+  addCategory: async (name: string, description?: string, clientId?: string) => {
     try {
       const { data, error } = await supabase
         .from('incident_categories')
         .insert([
-          { name, description: description || null, is_active: true }
+          { name, description: description || null, client_id: clientId, is_active: true }
         ])
         .select();
 

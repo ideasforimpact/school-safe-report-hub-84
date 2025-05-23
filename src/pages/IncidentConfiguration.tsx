@@ -1,9 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
 import { IncidentRelatedConfig } from './configuration/IncidentRelatedConfig';
 import { toast } from 'sonner';
 import { useIncidentCategories } from '@/hooks/useIncidentCategories';
+import { useAuth } from '@/contexts/auth/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ContributingFactor {
@@ -36,6 +38,7 @@ const IncidentConfiguration = () => {
   const [reportTypes, setReportTypes] = useState<ReportType[]>([]);
   const [priorities, setPriorities] = useState<PriorityItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const { employeeData } = useAuth();
 
   // Use the custom hook for categories and subcategories
   const {
@@ -61,10 +64,15 @@ const IncidentConfiguration = () => {
   // Fetch contributing factors
   useEffect(() => {
     async function fetchContributingFactors() {
+      if (!employeeData?.clientId) {
+        return;
+      }
+
       try {
         const { data, error } = await supabase
           .from('contributing_factors')
           .select('id, name, description, weight')
+          .eq('client_id', employeeData.clientId)
           .order('name');
         
         if (error) {
@@ -83,15 +91,20 @@ const IncidentConfiguration = () => {
     }
 
     fetchContributingFactors();
-  }, []);
+  }, [employeeData?.clientId]);
 
   // Fetch report types
   useEffect(() => {
     async function fetchReportTypes() {
+      if (!employeeData?.clientId) {
+        return;
+      }
+
       try {
         const { data, error } = await supabase
           .from('incident_report_types')
           .select('id, name, description, is_active')
+          .eq('client_id', employeeData.clientId)
           .order('name');
         
         if (error) {
@@ -108,15 +121,20 @@ const IncidentConfiguration = () => {
     }
 
     fetchReportTypes();
-  }, []);
+  }, [employeeData?.clientId]);
 
   // Fetch priorities
   useEffect(() => {
     async function fetchPriorities() {
+      if (!employeeData?.clientId) {
+        return;
+      }
+
       try {
         const { data, error } = await supabase
           .from('incident_priorities')
           .select('id, name, description, color, weight, is_active')
+          .eq('client_id', employeeData.clientId)
           .order('weight');
         
         if (error) {
@@ -133,15 +151,20 @@ const IncidentConfiguration = () => {
     }
 
     fetchPriorities();
-  }, []);
+  }, [employeeData?.clientId]);
 
   // Handle contributing factors operations
   const handleAddContributingFactor = async (name: string, description: string, weight: string) => {
+    if (!employeeData?.clientId) {
+      toast.error('Client information not available');
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('contributing_factors')
         .insert([
-          { name, description: description || null, weight },
+          { name, description: description || null, weight, client_id: employeeData.clientId },
         ])
         .select()
         .single();
@@ -165,7 +188,8 @@ const IncidentConfiguration = () => {
       const { error } = await supabase
         .from('contributing_factors')
         .update({ name, description: description || null, weight })
-        .eq('id', id);
+        .eq('id', id)
+        .eq('client_id', employeeData?.clientId);
 
       if (error) {
         console.error('Error updating contributing factor:', error);
@@ -193,7 +217,8 @@ const IncidentConfiguration = () => {
       const { error } = await supabase
         .from('contributing_factors')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('client_id', employeeData?.clientId);
 
       if (error) {
         console.error('Error deleting contributing factor:', error);
@@ -211,11 +236,16 @@ const IncidentConfiguration = () => {
 
   // Handle report types operations
   const handleAddReportType = async (name: string, description: string) => {
+    if (!employeeData?.clientId) {
+      toast.error('Client information not available');
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('incident_report_types')
         .insert([
-          { name, description: description || null }
+          { name, description: description || null, client_id: employeeData.clientId }
         ])
         .select()
         .single();
@@ -239,7 +269,8 @@ const IncidentConfiguration = () => {
       const { error } = await supabase
         .from('incident_report_types')
         .update({ name, description: description || null })
-        .eq('id', id);
+        .eq('id', id)
+        .eq('client_id', employeeData?.clientId);
 
       if (error) {
         console.error('Error updating report type:', error);
@@ -267,7 +298,8 @@ const IncidentConfiguration = () => {
       const { error } = await supabase
         .from('incident_report_types')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('client_id', employeeData?.clientId);
 
       if (error) {
         console.error('Error deleting report type:', error);
@@ -288,7 +320,8 @@ const IncidentConfiguration = () => {
       const { error } = await supabase
         .from('incident_report_types')
         .update({ is_active: isActive })
-        .eq('id', id);
+        .eq('id', id)
+        .eq('client_id', employeeData?.clientId);
 
       if (error) {
         console.error('Error toggling report type status:', error);
@@ -313,11 +346,16 @@ const IncidentConfiguration = () => {
 
   // Handle priorities operations
   const handleAddPriority = async (name: string, description: string, color: string, weight: number) => {
+    if (!employeeData?.clientId) {
+      toast.error('Client information not available');
+      return;
+    }
+
     try {
       const { data, error } = await supabase
         .from('incident_priorities')
         .insert([
-          { name, description: description || null, color, weight }
+          { name, description: description || null, color, weight, client_id: employeeData.clientId }
         ])
         .select()
         .single();
@@ -341,7 +379,8 @@ const IncidentConfiguration = () => {
       const { error } = await supabase
         .from('incident_priorities')
         .update({ name, description: description || null, color, weight })
-        .eq('id', id);
+        .eq('id', id)
+        .eq('client_id', employeeData?.clientId);
 
       if (error) {
         console.error('Error updating priority:', error);
@@ -369,7 +408,8 @@ const IncidentConfiguration = () => {
       const { error } = await supabase
         .from('incident_priorities')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('client_id', employeeData?.clientId);
 
       if (error) {
         console.error('Error deleting priority:', error);
@@ -390,7 +430,8 @@ const IncidentConfiguration = () => {
       const { error } = await supabase
         .from('incident_priorities')
         .update({ is_active: isActive })
-        .eq('id', id);
+        .eq('id', id)
+        .eq('client_id', employeeData?.clientId);
 
       if (error) {
         console.error('Error toggling priority status:', error);
@@ -413,14 +454,27 @@ const IncidentConfiguration = () => {
     }
   };
 
+  // Show loading or no client access message
+  if (!employeeData?.clientId) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-screen">
+          <div className="text-center">
+            <p className="text-gray-500">Client information not available. Please contact your administrator.</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
   // Wait for data to load
   if (loading || categoriesLoading) {
     return (
       <Layout>
         <div className="flex items-center justify-center h-screen">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading configuration...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-gray-500">Loading configuration...</p>
           </div>
         </div>
       </Layout>
@@ -429,15 +483,13 @@ const IncidentConfiguration = () => {
 
   return (
     <Layout>
-      <div className="space-y-6 max-w-6xl mx-auto p-4">
-        <div>
-          <h1 className="text-2xl font-bold">Incident Related Configuration</h1>
-          <p className="text-gray-600 mt-1">
-            Manage incident categories, subcategories, contributing factors, report types, and priorities
-          </p>
+      <div className="container mx-auto p-6">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900">Incident Configuration</h1>
+          <p className="text-gray-600 mt-2">Configure incident-related settings and data</p>
         </div>
-
-        <IncidentRelatedConfig 
+        
+        <IncidentRelatedConfig
           activeTab={activeTab}
           setActiveTab={setActiveTab}
           categories={categories}
