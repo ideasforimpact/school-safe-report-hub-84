@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, RefreshCcw, Upload, Calendar } from 'lucide-react';
@@ -50,7 +51,7 @@ const EmployeeDetailPage = () => {
       setIsRefreshing(true);
       try {
         // Fetch employee documents using the selected timeframe filter
-        const result = await fetchEmployeeDocuments(employeeId);
+        const result = await fetchEmployeeDocuments(employeeId, timeframeFilter);
         console.log('Documents refreshed for employee:', employeeId, 'with timeframe:', timeframeFilter || 'all');
         console.log('Refresh result:', result);
         
@@ -81,7 +82,7 @@ const EmployeeDetailPage = () => {
       setIsRefreshing(true);
       try {
         const timeframe = value === 'all' ? undefined : value;
-        const result = await fetchEmployeeDocuments(employeeId);
+        const result = await fetchEmployeeDocuments(employeeId, timeframe);
         console.log('Filter applied, documents fetched:', result);
         
         toast({
