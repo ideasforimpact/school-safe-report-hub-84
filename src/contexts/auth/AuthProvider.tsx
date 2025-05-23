@@ -1,3 +1,4 @@
+
 import React, { createContext, useEffect, useState, useRef } from 'react';
 import { User, AuthContextType, UserWithPassword, EmployeeData } from './types';
 import { 
@@ -319,10 +320,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Update Redux state correctly using action creators
         if (dispatch) {
-          dispatch(setEmployeeData(backofficeEmployeeData));
+          const action = setEmployeeData(backofficeEmployeeData);
+          if (action) dispatch(action);
           
           if (backofficeEmployeeData.clientId) {
-            dispatch(setClientId(backofficeEmployeeData.clientId));
+            const clientAction = setClientId(backofficeEmployeeData.clientId);
+            if (clientAction) dispatch(clientAction);
           }
         }
         
@@ -350,7 +353,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Update Redux state with modules using action creator
         if (dispatch) {
-          dispatch(setConfiguredModules(backofficeModules));
+          const modulesAction = setConfiguredModules(backofficeModules);
+          if (modulesAction) dispatch(modulesAction);
         }
         
         toast.success(`Welcome back, Backoffice Admin!`);
@@ -377,7 +381,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     // Clear Redux state correctly using action creator
     if (dispatch) {
-      dispatch(resetEmployee());
+      const action = resetEmployee();
+      if (action) dispatch(action);
     }
     
     // Clear local storage
