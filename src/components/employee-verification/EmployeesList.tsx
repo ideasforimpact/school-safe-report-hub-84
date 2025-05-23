@@ -1,3 +1,4 @@
+
 import React, { useMemo } from 'react';
 import {
   Table,
@@ -59,14 +60,6 @@ const EmployeesList = () => {
     );
   };
 
-  const getStatusClass = (status: boolean | string) => {
-    if (typeof status === 'boolean') {
-      return status ? 'badge-success' : 'badge-error';
-    } else {
-      return status === 'active' ? 'badge-success' : 'badge-error';
-    }
-  };
-
   return (
     <div className="w-full">
       <div className="rounded-md border">
@@ -90,9 +83,7 @@ const EmployeesList = () => {
             ) : (
               employees.map((employee) => {
                 // Determine if employee is inactive (for verification system)
-                // Handle both boolean and string values for status
-                const isInactive = employee.status === false || 
-                                   (typeof employee.status === 'string' && employee.status === 'inactive');
+                const isInactive = employee.status === false; // Updated to use boolean
                 
                 return (
                   <TableRow key={employee.id} className={isInactive ? "bg-gray-100" : ""}>

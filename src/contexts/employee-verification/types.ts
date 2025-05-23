@@ -1,28 +1,27 @@
 
-import { Employee, VerificationDocument, DocumentType, DocumentStatus } from '@/types/employeeVerification';
+import { Employee, DocumentType, DocumentStatus, VerificationDocument } from '@/types/employeeVerification';
 
-// Type definition for the employee verification context
 export interface EmployeeVerificationContextType {
-  // Employee verification
+  // Original verification context values
   verifyEmployee: (employeeId: string) => Promise<boolean>;
   isVerifying: boolean;
   verificationError: string | null;
   
   // Employee management
   employees: Employee[];
-  addEmployee: (employee: Partial<Employee>) => Promise<Employee | null>;
-  updateEmployee: (id: string, updates: Partial<Employee>) => Promise<boolean>;
+  addEmployee: (employee: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Employee>;
+  updateEmployee: (id: string, employee: Partial<Employee>) => Promise<Employee>;
   deleteEmployee: (id: string) => Promise<boolean>;
   getEmployee: (id: string) => Employee | undefined;
-  fetchEmployees: (clientId?: string | null) => Promise<Employee[]>;
+  fetchEmployees: () => Promise<Employee[]>;
   
   // Document management
   documents: VerificationDocument[];
-  addDocument: (document: Partial<VerificationDocument>, file: File) => Promise<VerificationDocument | null>;
-  verifyDocument: (documentId: string, status: 'verified' | 'failed', notes: string) => Promise<boolean>;
-  deleteDocument: (documentId: string) => Promise<boolean>;
+  addDocument: (document: Omit<VerificationDocument, 'id' | 'createdAt' | 'updatedAt'>) => Promise<VerificationDocument>;
+  verifyDocument: (id: string, status: 'verified' | 'failed', notes?: string) => Promise<void>;
+  deleteDocument: (id: string) => Promise<void>;
   getEmployeeDocuments: (employeeId: string) => VerificationDocument[];
-  fetchEmployeeDocuments: (employeeId: string) => Promise<VerificationDocument[]>;
+  fetchEmployeeDocuments: (employeeId: string, timeframe?: string) => Promise<VerificationDocument[]>;
   
   // Document types and statuses
   documentTypes: DocumentType[];
@@ -34,7 +33,5 @@ export interface EmployeeVerificationContextType {
   isLoading: boolean;
 }
 
-export type { Employee, VerificationDocument, DocumentType, DocumentStatus };
-
-// Re-export the initial data
-export { initialDocumentTypes, initialDocumentStatuses } from './initialData';
+// Re-export types to avoid import confusion
+export type { Employee, DocumentType, DocumentStatus, VerificationDocument } from '@/types/employeeVerification';

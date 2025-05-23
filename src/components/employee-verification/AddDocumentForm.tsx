@@ -1,191 +1,207 @@
 
 import React, { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent } from '@/components/ui/card';
+import { Upload, Loader2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
-import { Employee, VerificationDocument } from '@/contexts/employee-verification/types';
-import { toast } from 'sonner';
-import { FileUploader } from '@/components/file/FileUploader'; // Correct import path
-import { Loader2 } from 'lucide-react';
+import { FileItem } from '@/types/fileTypes';
+import DocumentForm from './form/DocumentForm';
+import DocumentTypeSelector from './DocumentTypeSelector';
 
 interface AddDocumentFormProps {
-  employee: Employee;
+  employeeId: string;
   onSuccess?: () => void;
-  onCancel?: () => void;
 }
 
-const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employee, onSuccess, onCancel }) => {
-  const [documentTypeId, setDocumentTypeId] = useState<string>('');
-  const [documentNumber, setDocumentNumber] = useState<string>('');
-  const [notes, setNotes] = useState<string>('');
-  const [file, setFile] = useState<File | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
+const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess }) => {
+  const [selectedTypeId, setSelectedTypeId] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [files, setFiles] = useState<FileItem[]>([]);
+  const { toast } = useToast();
   const { 
-    documentTypes, 
-    fetchDocumentTypes, 
     addDocument, 
-    fetchEmployeeDocuments 
+    fetchEmployeeDocuments, 
+    documentTypes, 
+    fetchDocumentStatuses, 
+    documentStatuses 
   } = useEmployeeVerification();
 
+  // Fetch document statuses only once when the component mounts
   useEffect(() => {
-    fetchDocumentTypes();
-  }, [fetchDocumentTypes]);
-
-  const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
-
-    if (!documentTypeId) {
-      newErrors.documentTypeId = 'Document type is required';
+    fetchDocumentStatuses();
+  }, [fetchDocumentStatuses]);
+  
+  // Only fetch employee documents once when the component mounts
+  useEffect(() => {
+    // Only fetch if employeeId is available
+    if (employeeId) {
+      fetchEmployeeDocuments(employeeId);
     }
+  }, [employeeId, fetchEmployeeDocuments]);
 
-    if (!documentNumber) {
-      newErrors.documentNumber = 'Document number is required';
-    }
-
-    if (!file) {
-      newErrors.file = 'Document file is required';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+  const handleFileUploaded = (base64: string) => {
+    // This function will be called when a file is uploaded
+    console.log('File uploaded, size:', base64.length);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const getDocumentTypeLabel = (typeId: string): string => {
+    const docType = documentTypes.find(type => type.id === typeId);
+    return docType?.description || docType?.name || 'Document';
+  };
 
-    if (!validateForm()) {
+  // Check if selected type is driving license
+  const isDrivingLicense = (typeId: string): boolean => {
+    const docType = documentTypes.find(type => type.id === typeId);
+    return docType?.name === 'driving_license' || typeId === '4';
+  };
+
+  // Check if selected type is bank account
+  const isBankAccount = (typeId: string): boolean => {
+    const docType = documentTypes.find(type => type.id === typeId);
+    return docType?.name === 'bank_account' || typeId === '3';
+  };
+
+  const handleSubmit = async (values: any) => {
+    if (!selectedTypeId) {
+      toast({
+        title: 'Error',
+        description: 'Please select a document type',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!values.documentImage) {
+      toast({
+        title: 'Error',
+        description: 'Please upload a document image',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // For driving license, validate date of birth
+    if (isDrivingLicense(selectedTypeId) && !values.dateOfBirth) {
+      toast({
+        title: 'Error',
+        description: 'Please provide date of birth for driving license',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // For bank account, validate account number and IFSC code
+    if (isBankAccount(selectedTypeId) && (!values.accountNumber || !values.ifscCode)) {
+      toast({
+        title: 'Error',
+        description: 'Please provide account number and IFSC code for bank account',
+        variant: 'destructive',
+      });
       return;
     }
 
     setIsSubmitting(true);
-
     try {
-      if (!file) {
-        toast.error('Please select a file to upload');
-        return;
+      // Find the pending status ID
+      const pendingStatus = documentStatuses.find(status => status.name.toLowerCase() === 'pending');
+
+      // Prepare params object based on document type
+      let params;
+      if (isDrivingLicense(selectedTypeId) && values.dateOfBirth) {
+        params = { DOB: values.dateOfBirth };
+      } else if (isBankAccount(selectedTypeId)) {
+        params = { 
+          accountNumber: values.accountNumber,
+          ifscCode: values.ifscCode,
+          'ifsc-details': true
+        };
       }
 
-      const newDocument: Partial<VerificationDocument> = {
-        employeeId: employee.id,
-        documentTypeId,
-        documentNumber,
-        employee_docs_log: [
-          {
-            timestamp: new Date().toISOString(),
-            action: 'document_added',
-            notes: notes || 'Document added',
-            response: {}
-          }
-        ]
+      const documentData = {
+        employeeId,
+        documentTypeId: selectedTypeId,
+        documentNumber: values.documentNumber,
+        documentImage: values.documentImage,
+        documentStatusId: pendingStatus?.id,
+        verificationStatus: 'pending' as 'pending' | 'verified' | 'failed',
+        params: params // Add params object with DOB for driving license or account details for bank
       };
 
-      const result = await addDocument(newDocument, file);
+      console.log('Adding document with data:', {
+        employeeId: documentData.employeeId,
+        documentTypeId: documentData.documentTypeId,
+        documentNumber: documentData.documentNumber ? 'Provided' : 'Not provided',
+        documentStatusId: documentData.documentStatusId || 'Not provided',
+        verificationStatus: documentData.verificationStatus,
+        params: params ? JSON.stringify(params) : 'Not provided',
+        // Don't log entire base64 string
+        documentImageSize: documentData.documentImage ? documentData.documentImage.length : 0,
+      });
 
-      if (result) {
-        toast.success('Document added successfully');
-        // Refresh the employee documents
-        fetchEmployeeDocuments(employee.id);
-        if (onSuccess) {
-          onSuccess();
-        }
-      } else {
-        toast.error('Failed to add document');
-      }
+      await addDocument(documentData);
+      
+      toast({
+        title: 'Document Added',
+        description: `The ${getDocumentTypeLabel(selectedTypeId)} has been uploaded successfully and is pending verification.`,
+      });
+      
+      // Reset form
+      setSelectedTypeId(null);
+      setFiles([]);
+      if (onSuccess) onSuccess();
     } catch (error) {
       console.error('Error adding document:', error);
-      toast.error('An error occurred while adding the document');
+      toast({
+        title: 'Error',
+        description: 'Failed to add document. Please try again.',
+        variant: 'destructive',
+      });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleFileChange = (file: File | null) => {
-    setFile(file);
-    if (file) {
-      setErrors(prev => ({ ...prev, file: '' }));
-    }
-  };
-
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="documentType">Document Type</Label>
-        <Select
-          value={documentTypeId}
-          onValueChange={(value) => {
-            setDocumentTypeId(value);
-            setErrors(prev => ({ ...prev, documentTypeId: '' }));
-          }}
-        >
-          <SelectTrigger id="documentType" className={errors.documentTypeId ? 'border-red-500' : ''}>
-            <SelectValue placeholder="Select document type" />
-          </SelectTrigger>
-          <SelectContent>
-            {documentTypes.map((type) => (
-              <SelectItem key={type.id} value={type.id}>
-                {type.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {errors.documentTypeId && <p className="text-red-500 text-sm">{errors.documentTypeId}</p>}
-      </div>
+    <Card className="border border-blue-100 bg-gradient-to-br from-white to-blue-50">
+      <CardContent className="pt-6">
+        <div className="flex items-center mb-4">
+          <Upload className="h-5 w-5 mr-2 text-primary" />
+          <h3 className="text-lg font-medium">Upload Document for Verification</h3>
+        </div>
+        
+        <div className="space-y-6 w-full">
+          <div>
+            <h4 className="text-sm font-medium mb-3">Select Document Type <span className="text-red-500">*</span></h4>
+            <div className="w-full">
+              <DocumentTypeSelector 
+                selectedTypeId={selectedTypeId} 
+                onChange={setSelectedTypeId} 
+              />
+            </div>
+            {!selectedTypeId && <p className="text-xs text-red-500 mt-2">Please select a document type</p>}
+          </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="documentNumber">Document Number</Label>
-        <Input
-          id="documentNumber"
-          value={documentNumber}
-          onChange={(e) => {
-            setDocumentNumber(e.target.value);
-            setErrors(prev => ({ ...prev, documentNumber: '' }));
-          }}
-          className={errors.documentNumber ? 'border-red-500' : ''}
-        />
-        {errors.documentNumber && <p className="text-red-500 text-sm">{errors.documentNumber}</p>}
-      </div>
+          {selectedTypeId && (
+            <DocumentForm
+              employeeId={employeeId}
+              selectedTypeId={selectedTypeId}
+              files={files}
+              isSubmitting={isSubmitting}
+              onSubmit={handleSubmit}
+              onCancel={onSuccess || (() => {})}
+              onFileUploaded={handleFileUploaded}
+            />
+          )}
 
-      <div className="space-y-2">
-        <Label htmlFor="notes">Notes (Optional)</Label>
-        <Textarea
-          id="notes"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Add any additional notes about this document"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label>Upload Document</Label>
-        <FileUploader
-          onFileSelect={handleFileChange}
-          accept=".pdf,.jpg,.jpeg,.png"
-          maxSize={5 * 1024 * 1024} // 5MB
-          className={errors.file ? 'border-red-500' : ''}
-        />
-        {errors.file && <p className="text-red-500 text-sm">{errors.file}</p>}
-        <p className="text-xs text-gray-500">
-          Accepted formats: PDF, JPG, PNG. Max size: 5MB
-        </p>
-      </div>
-
-      <div className="flex justify-end space-x-2 pt-4">
-        {onCancel && (
-          <Button type="button" variant="outline" onClick={onCancel}>
-            Cancel
-          </Button>
-        )}
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Add Document
-        </Button>
-      </div>
-    </form>
+          {isSubmitting && (
+            <div className="flex justify-center items-center py-4">
+              <Loader2 className="h-8 w-8 text-primary animate-spin" />
+              <p className="ml-2 text-gray-600">Uploading document...</p>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 

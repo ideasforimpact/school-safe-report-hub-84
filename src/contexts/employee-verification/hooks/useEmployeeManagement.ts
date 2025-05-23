@@ -1,147 +1,175 @@
 
-import { useState, useCallback } from 'react';
-import { Employee } from '../types';
-import { getAllEmployeesFromApi, getEmployeeByIdFromApi } from '@/services/employee/employeeApiService';
+import { useState, useCallback, useEffect } from 'react';
+import { v4 as uuidv4 } from 'uuid';
+import { Employee, VerificationDocument } from '@/types/employeeVerification';
+import { initialEmployees } from '../initialData';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
 
 export const useEmployeeManagement = () => {
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
 
-  // Fetch all employees, optionally filtered by client ID
-  const fetchEmployees = useCallback(async (clientId?: string | null) => {
-    setIsLoading(true);
+  // Fetch employees from the database
+  const fetchEmployees = useCallback(async () => {
     try {
-      console.log("Fetching employees with client ID:", clientId);
-      const fetchedEmployees = await getAllEmployeesFromApi(clientId);
-      setEmployees(fetchedEmployees);
-      return fetchedEmployees;
-    } catch (error) {
-      console.error('Error fetching employees:', error);
-      toast.error('Failed to fetch employees');
-      return [];
-    } finally {
-      setIsLoading(false);
+      // Attempt to fetch employees from the database
+      const { data, error } = await supabase
+        .from('employees')
+        .select('*');
+
+      if (error) {
+        console.error('Error fetching employees:', error);
+        return initialEmployees;
+      }
+
+      // Map the database employees to our Employee type
+      if (data && data.length > 0) {
+        const employeesList: Employee[] = data.map((emp): Employee => ({
+          id: emp.id,
+          employeeId: emp.employee_id || '',
+          name: `${emp.first_name} ${emp.last_name}`,
+          firstName: emp.first_name,
+          lastName: emp.last_name,
+          email: emp.email || '',
+          // Use default values for fields that don't exist in the database
+          phone: '',
+          dateOfBirth: '',
+          address: '',
+          joiningDate: emp.joining_date || new Date().toISOString(),
+          department: emp.department || '',
+          position: emp.employee_type || '', // Use employee_type as position since it doesn't exist
+          employeeType: (emp.employee_type as Employee['employeeType']) || 'permanent',
+          status: emp.status === true, // Convert to boolean
+          createdAt: emp.created_at || new Date().toISOString(),
+          updatedAt: emp.updated_at || new Date().toISOString(),
+          documents: [] // Initialize empty documents array
+        }));
+        
+        // Now fetch documents for each employee
+        const employeesWithDocs = await Promise.all(
+          employeesList.map(async (employee) => {
+            try {
+              const { data: docs, error: docsError } = await supabase
+                .from('employee_documents')
+                .select('*')
+                .eq('employee_id', employee.id);
+                
+              if (!docsError && docs) {
+                // Add the documents to the employee object
+                const mappedDocs: VerificationDocument[] = docs.map(doc => ({
+                  id: doc.id,
+                  employeeId: doc.employee_id,
+                  documentTypeId: doc.document_type_id,
+                  documentNumber: doc.document_number || '',
+                  documentImage: doc.document_url ? 
+                    `https://ybvxkiubnnixntghojyy.supabase.co/storage/v1/object/public/employee-documents/${doc.document_url}` : '',
+                  verificationStatus: doc.verification_status as 'pending' | 'verified' | 'failed' || 'pending',
+                  documentStatusId: doc.document_status_id,
+                  // Properly cast employee_docs_log to match the expected type
+                  employee_docs_log: Array.isArray(doc.employee_docs_log) ? 
+                    doc.employee_docs_log.map((log: any) => ({
+                      timestamp: log.timestamp || '',
+                      action: log.action || '',
+                      response: log.response || {},
+                      notes: log.notes || ''
+                    })) : [],
+                  createdAt: doc.created_at || new Date().toISOString(),
+                  updatedAt: doc.updated_at || new Date().toISOString()
+                }));
+                
+                employee.documents = mappedDocs;
+              }
+            } catch (docError) {
+              console.error(`Error fetching documents for employee ${employee.id}:`, docError);
+            }
+            return employee;
+          })
+        );
+        
+        setEmployees(employeesWithDocs);
+        return employeesWithDocs;
+      }
+      
+      return initialEmployees;
+    } catch (err) {
+      console.error('Failed to fetch employees:', err);
+      return initialEmployees;
     }
   }, []);
 
-  // Get an employee by ID
-  const getEmployee = useCallback((id: string): Employee | undefined => {
-    return employees.find(employee => employee.id === id);
-  }, [employees]);
+  // Call fetchEmployees initially
+  useEffect(() => {
+    fetchEmployees();
+  }, [fetchEmployees]);
 
-  // Add a new employee
-  const addEmployee = useCallback(async (employee: Partial<Employee>): Promise<Employee | null> => {
-    setIsLoading(true);
+  const addEmployee = async (employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
-      // Format employee data for API
-      const { data, error } = await supabase.from('employees').insert([{
-        employee_id: employee.employeeId,
-        first_name: employee.firstName || employee.name?.split(' ')[0] || '',
-        last_name: employee.lastName || employee.name?.split(' ')[1] || '',
-        email: employee.email || '',
-        employee_type: employee.employeeType || 'permanent',
-        department: employee.department || '',
-        joining_date: employee.joiningDate || new Date().toISOString(),
-        status: employee.status === undefined ? true : employee.status,
-        client_id: employee.clientId || null,
-      }]).select().single();
-
-      if (error) {
-        throw error;
-      }
-
-      // Convert API response to our Employee model
+      const now = new Date().toISOString();
       const newEmployee: Employee = {
-        id: data.id,
-        employeeId: data.employee_id,
-        name: `${data.first_name} ${data.last_name}`,
-        firstName: data.first_name,
-        lastName: data.last_name,
-        email: data.email || '',
-        phone: '',
-        dateOfBirth: '',
-        address: '',
-        joiningDate: data.joining_date,
-        department: data.department || '',
-        position: data.employee_type || '', // Map employee_type to position since position doesn't exist in DB
-        employeeType: data.employee_type as Employee['employeeType'],
-        status: data.status,
-        createdAt: data.created_at,
-        updatedAt: data.updated_at,
-        clientId: data.client_id,
-        documents: [],
+        ...employeeData,
+        id: uuidv4(),
+        status: true, // Default to true (active)
+        createdAt: now,
+        updatedAt: now
       };
-
-      // Update local state
-      setEmployees(prev => [...prev, newEmployee]);
+      setEmployees([...employees, newEmployee]);
       return newEmployee;
     } catch (error) {
       console.error('Error adding employee:', error);
-      toast.error('Failed to add employee');
-      return null;
-    } finally {
-      setIsLoading(false);
+      throw error;
     }
-  }, []);
+  };
 
-  // Update an employee
-  const updateEmployee = useCallback(async (id: string, updates: Partial<Employee>): Promise<boolean> => {
-    setIsLoading(true);
+  const updateEmployee = async (id: string, updates: Partial<Employee>): Promise<Employee> => {
     try {
-      const { data, error } = await supabase
-        .from('employees')
-        .update(updates)
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) {
-        throw error;
+      const employeeToUpdate = employees.find(emp => emp.id === id);
+      
+      if (!employeeToUpdate) {
+        throw new Error(`Employee with id ${id} not found`);
       }
-
-      setEmployees(prev =>
-        prev.map(employee => (employee.id === id ? { ...employee, ...data } : employee))
-      );
-      return true;
+      
+      const updatedEmployee = { 
+        ...employeeToUpdate, 
+        ...updates, 
+        updatedAt: new Date().toISOString() 
+      };
+      
+      setEmployees(employees.map(emp => 
+        emp.id === id ? updatedEmployee : emp
+      ));
+      
+      return updatedEmployee;
     } catch (error) {
       console.error('Error updating employee:', error);
-      toast.error('Failed to update employee');
-      return false;
-    } finally {
-      setIsLoading(false);
+      throw error;
     }
-  }, []);
+  };
 
-  // Delete an employee
-  const deleteEmployee = useCallback(async (id: string): Promise<boolean> => {
-    setIsLoading(true);
+  const deleteEmployee = async (id: string): Promise<boolean> => {
     try {
-      const { error } = await supabase.from('employees').delete().eq('id', id);
-
-      if (error) {
-        throw error;
+      const employeeExists = employees.some(emp => emp.id === id);
+      
+      if (!employeeExists) {
+        return false;
       }
-
-      setEmployees(prev => prev.filter(employee => employee.id !== id));
+      
+      setEmployees(employees.filter(emp => emp.id !== id));
       return true;
     } catch (error) {
       console.error('Error deleting employee:', error);
-      toast.error('Failed to delete employee');
-      return false;
-    } finally {
-      setIsLoading(false);
+      throw error;
     }
-  }, []);
+  };
+
+  const getEmployee = (id: string) => {
+    return employees.find(emp => emp.id === id);
+  };
 
   return {
     employees,
-    fetchEmployees,
-    getEmployee,
     addEmployee,
     updateEmployee,
     deleteEmployee,
-    isLoading,
+    getEmployee,
+    fetchEmployees
   };
 };

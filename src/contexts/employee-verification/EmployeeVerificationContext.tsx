@@ -11,7 +11,6 @@ import {
 import { useEmployeeManagement } from './hooks/useEmployeeManagement';
 import { useDocumentManagement } from './hooks/useDocumentManagement';
 import { initialDocumentTypes, initialDocumentStatuses } from './initialData';
-import { useEmployeeStore } from '@/store/EmployeeContext';
 
 const EmployeeVerificationContext = createContext<EmployeeVerificationContextType | undefined>(undefined);
 
@@ -22,8 +21,6 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
   const [documentStatuses, setDocumentStatuses] = useState<DocumentStatus[]>(initialDocumentStatuses);
   const [isLoading, setIsLoading] = useState(false);
   const [lastFetchTime, setLastFetchTime] = useState<Record<string, number>>({});
-  const { state } = useEmployeeStore();
-  const defaultClientId = state.clientId; // Get client ID from employee store
 
   // Use the employee management hook
   const { 
@@ -35,23 +32,14 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
     fetchEmployees
   } = useEmployeeManagement();
 
-  // Auto-fetch employees with client ID on mount
-  useEffect(() => {
-    if (defaultClientId) {
-      fetchEmployees(defaultClientId);
-    }
-  }, [defaultClientId, fetchEmployees]);
-
-  // Update employee status based on document verifications - returns boolean as expected by useDocumentManagement
-  const updateEmployeeStatus = useCallback(async (employeeId: string, status: boolean): Promise<boolean> => {
+  // Update employee status based on document verifications
+  const updateEmployeeStatus = useCallback(async (employeeId: string, status: boolean) => {
     try {
       await updateEmployee(employeeId, { status });
-      // Return true on success
-      return true;
+      return Promise.resolve();
     } catch (error) {
       console.error('Error updating employee status:', error);
-      // Return false on error
-      return false;
+      throw error;
     }
   }, [updateEmployee]);
 
@@ -182,11 +170,13 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
   };
 
   // Use memoized value for context to prevent unnecessary re-renders
-  const contextValue: EmployeeVerificationContextType = useMemo(() => ({
+  const contextValue = useMemo(() => ({
+    // Original verification context values
     verifyEmployee,
     isVerifying,
     verificationError,
     
+    // Employee management
     employees,
     addEmployee,
     updateEmployee,
@@ -194,6 +184,7 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
     getEmployee,
     fetchEmployees,
     
+    // Document management
     documents,
     addDocument,
     verifyDocument,
@@ -201,11 +192,13 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
     getEmployeeDocuments,
     fetchEmployeeDocuments,
     
+    // Document types and statuses
     documentTypes,
     documentStatuses,
     fetchDocumentTypes,
     fetchDocumentStatuses,
     
+    // Loading state
     isLoading: isLoading || isDocumentLoading
   }), [
     verifyEmployee, isVerifying, verificationError,
@@ -219,7 +212,7 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
   useEffect(() => {
     fetchDocumentTypes();
     fetchDocumentStatuses();
-  }, [fetchDocumentTypes, fetchDocumentStatuses]);
+  }, []);
 
   return (
     <EmployeeVerificationContext.Provider value={contextValue}>
