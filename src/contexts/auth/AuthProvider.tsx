@@ -350,10 +350,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
         ];
         
-        // Update Redux state with modules using action creators
+        // Update Redux state with modules using action creator
         if (dispatch) {
-          const action = setConfiguredModules(backofficeModules);
-          dispatch(action);
+          dispatch(setConfiguredModules(backofficeModules));
         }
         
         toast.success(`Welcome back, Backoffice Admin!`);
