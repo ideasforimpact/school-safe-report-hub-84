@@ -1,3 +1,4 @@
+
 import React, { createContext, useEffect, useState, useRef } from 'react';
 import { User, AuthContextType, UserWithPassword, EmployeeData } from './types';
 import { 
@@ -216,7 +217,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setEmployeeData(employee);
             saveEmployeeDataToStorage(employee);
             
-            // Update Redux state - action creators return void, so don't check truthiness
+            // Update Redux state
             if (dispatch) {
               dispatch(setEmployeeData(employee));
               
@@ -317,7 +318,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setEmployeeData(backofficeEmployeeData);
         saveEmployeeDataToStorage(backofficeEmployeeData);
         
-        // Update Redux state - action creators return void, so don't check truthiness
+        // Update Redux state
         if (dispatch) {
           dispatch(setEmployeeData(backofficeEmployeeData));
           
@@ -348,7 +349,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
         ];
         
-        // Update Redux state with modules - action creators return void, so don't check truthiness
+        // Update Redux state with modules
         if (dispatch) {
           dispatch(setConfiguredModules(backofficeModules));
         }
@@ -375,7 +376,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     saveEmployeeDataToStorage(null);
     setIsBackofficeUser(false);
     
-    // Clear Redux state - action creators return void, so don't check if dispatch returns anything
+    // Clear Redux state
     if (dispatch) {
       dispatch(resetEmployee());
     }

@@ -46,28 +46,12 @@ const SettingsPage = () => {
             </Card>
           </TabsContent>
           
-          <TabsContent value="user">
-            <Card>
-              <CardHeader>
-                <CardTitle>User Management</CardTitle>
-                <CardDescription>Manage system users and their permissions</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <UserManagement />
-              </CardContent>
-            </Card>
+          <TabsContent value="user" className="p-0">
+            <UserManagement />
           </TabsContent>
           
-          <TabsContent value="student">
-            <Card>
-              <CardHeader>
-                <CardTitle>Student Management</CardTitle>
-                <CardDescription>Manage student records and information</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <StudentManagement />
-              </CardContent>
-            </Card>
+          <TabsContent value="student" className="p-0">
+            <StudentManagement />
           </TabsContent>
         </Tabs>
       </div>
