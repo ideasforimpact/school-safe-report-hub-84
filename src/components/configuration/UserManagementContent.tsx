@@ -18,10 +18,6 @@ const UserManagementContent = () => {
     deactivateUser(id);
   };
 
-  const handleReactivateUser = (id: string) => {
-    reactivateUser(id);
-  };
-
   return (
     <div className="space-y-6">
       <UserList
@@ -29,7 +25,6 @@ const UserManagementContent = () => {
         onEditClick={handleEditClick}
         onDeleteUser={handleDeleteUser}
         onDeactivateUser={handleDeactivateUser}
-        onReactivateUser={handleReactivateUser}
       />
     </div>
   );
