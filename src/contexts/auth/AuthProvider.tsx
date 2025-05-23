@@ -1,3 +1,4 @@
+
 import React, { createContext, useEffect, useState, useRef } from 'react';
 import { User, AuthContextType, UserWithPassword, EmployeeData } from './types';
 import { 
@@ -17,7 +18,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuthHandlers } from './hooks/useAuthHandlers';
 import { useEmployeeStore } from '@/store/EmployeeContext';
-import { setEmployeeData, setClientId, setConfiguredModules, resetEmployee, setLoading } from '@/store/employeeActions';
+import * as employeeActions from '@/store/employeeActions';
 
 // Create the context
 export const AuthContext = createContext<AuthContextType>({
@@ -49,7 +50,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [displayUsers, setDisplayUsers] = useState<User[]>(
     users.map(({ password, ...user }) => user)
   );
-  const [employeeData, setEmployeeData] = useState<EmployeeData | null>(getEmployeeDataFromStorage());
+  const [employeeData, setEmployeeDataState] = useState<EmployeeData | null>(getEmployeeDataFromStorage());
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
   const [authError, setAuthError] = useState<string | null>(null);
   const [isBackofficeUser, setIsBackofficeUser] = useState<boolean>(false);
@@ -67,7 +68,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUsers: setUsersState,
     setAuthError,
     authInitCompleteRef,
-    setEmployeeData,
+    setEmployeeData: (data) => {
+      setEmployeeDataState(data);
+    },
     dispatch // Pass Redux dispatch to useAuthHandlers
   });
 
@@ -103,13 +106,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } else if (event === 'SIGNED_OUT') {
         console.log("User signed out");
         setCurrentUser(null);
-        setEmployeeData(null); // Clear employee data on logout
+        setEmployeeDataState(null); // Clear employee data on logout
         saveEmployeeDataToStorage(null); // Clear from storage
         setAuthError(null);
         
         // Clear Redux state on logout
         if (dispatch) {
-          dispatch(resetEmployee());
+          dispatch(employeeActions.resetEmployee());
         }
         
         // Add a toast message for logout
@@ -153,12 +156,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           if (currentUser) {
             console.log("Clearing stale user data from storage");
             setCurrentUser(null);
-            setEmployeeData(null);
+            setEmployeeDataState(null);
             saveEmployeeDataToStorage(null);
             
             // Clear Redux state
             if (dispatch) {
-              dispatch(resetEmployee());
+              dispatch(employeeActions.resetEmployee());
             }
             
             logoutUser();
@@ -191,7 +194,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Fetch employee data after successful login
         try {
           if (dispatch) {
-            dispatch(setLoading(true));
+            dispatch(employeeActions.setLoading(true));
           }
           
           const { data: employeeData, error } = await supabase
@@ -213,15 +216,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             };
             
             // Update local state
-            setEmployeeData(employee);
+            setEmployeeDataState(employee);
             saveEmployeeDataToStorage(employee);
             
             // Update Redux state
             if (dispatch) {
-              dispatch(setEmployeeData(employee));
+              dispatch(employeeActions.setEmployeeData(employee));
               
               if (employee.clientId) {
-                dispatch(setClientId(employee.clientId));
+                dispatch(employeeActions.setClientId(employee.clientId));
               }
             }
             
@@ -229,12 +232,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
           
           if (dispatch) {
-            dispatch(setLoading(false));
+            dispatch(employeeActions.setLoading(false));
           }
         } catch (err) {
           console.error("Error fetching employee data:", err);
           if (dispatch) {
-            dispatch(setLoading(false));
+            dispatch(employeeActions.setLoading(false));
           }
         }
         
@@ -314,15 +317,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         };
         
         // Update local state
-        setEmployeeData(backofficeEmployeeData);
+        setEmployeeDataState(backofficeEmployeeData);
         saveEmployeeDataToStorage(backofficeEmployeeData);
         
         // Update Redux state
         if (dispatch) {
-          dispatch(setEmployeeData(backofficeEmployeeData));
+          dispatch(employeeActions.setEmployeeData(backofficeEmployeeData));
           
           if (backofficeEmployeeData.clientId) {
-            dispatch(setClientId(backofficeEmployeeData.clientId));
+            dispatch(employeeActions.setClientId(backofficeEmployeeData.clientId));
           }
         }
         
@@ -350,7 +353,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Update Redux state with modules
         if (dispatch) {
-          dispatch(setConfiguredModules(backofficeModules));
+          dispatch(employeeActions.setConfiguredModules(backofficeModules));
         }
         
         toast.success(`Welcome back, Backoffice Admin!`);
@@ -371,13 +374,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const handleLogout = (): void => {
     // First clear all local state and Redux store before any Supabase operations
     setCurrentUser(null);
-    setEmployeeData(null);
+    setEmployeeDataState(null);
     saveEmployeeDataToStorage(null);
     setIsBackofficeUser(false);
     
     // Clear Redux state
     if (dispatch) {
-      dispatch(resetEmployee());
+      dispatch(employeeActions.resetEmployee());
     }
     
     // Clear local storage

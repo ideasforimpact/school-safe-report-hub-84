@@ -10,8 +10,14 @@ import { toast } from 'sonner';
  * Handles both new student insertion and existing student updates
  * Uses bulk operations for better performance
  */
-export const processStudentExcel = async (file: File): Promise<Student[]> => {
+export const processStudentExcel = async (file: File, clientId: string | null = null): Promise<Student[]> => {
   try {
+    // Check if clientId is provided
+    if (!clientId) {
+      toast.error('Client ID is required for student import');
+      throw new Error('Client ID is required');
+    }
+    
     // Parse the Excel/CSV file
     const rawData = await parseExcelFile(file);
     
@@ -21,7 +27,7 @@ export const processStudentExcel = async (file: File): Promise<Student[]> => {
     }
     
     // Validate the data before processing
-    const validationErrors = await validateExcelData(rawData);
+    const validationErrors = await validateExcelData(rawData, clientId);
     if (validationErrors.length > 0) {
       toast.error(`Validation failed with ${validationErrors.length} errors`);
       console.error('Validation errors:', validationErrors);
@@ -30,7 +36,7 @@ export const processStudentExcel = async (file: File): Promise<Student[]> => {
     
     // Process the data and add/update students using bulk operations
     console.time('Bulk import processing');
-    const result = await processStudentData(rawData);
+    const result = await processStudentData(rawData, clientId);
     console.timeEnd('Bulk import processing');
     
     // Show notifications
@@ -47,13 +53,13 @@ export const processStudentExcel = async (file: File): Promise<Student[]> => {
  * Validate Excel/CSV file without importing
  * This function can be used to verify the data before actual import
  */
-export const validateStudentExcel = async (file: File): Promise<string[]> => {
+export const validateStudentExcel = async (file: File, clientId: string | null = null): Promise<string[]> => {
   try {
     // Parse the Excel/CSV file
     const rawData = await parseExcelFile(file);
     
     // Validate the data
-    const errors = await validateExcelData(rawData);
+    const errors = await validateExcelData(rawData, clientId);
     return errors;
   } catch (error) {
     console.error('Error in validateStudentExcel:', error);

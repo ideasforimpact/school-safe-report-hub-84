@@ -34,23 +34,23 @@ const SettingsPage = () => {
             </TabsTrigger>
           </TabsList>
           
-          <TabsContent value="incident">
-            <Card>
-              <CardHeader>
+          <TabsContent value="incident" className="bg-white p-6 rounded-lg border">
+            <Card className="border-0 shadow-none">
+              <CardHeader className="px-0 pt-0">
                 <CardTitle>Incident Configuration</CardTitle>
                 <CardDescription>Configure incident categories, priorities, and other settings</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="px-0 pb-0">
                 <IncidentConfigurationContent />
               </CardContent>
             </Card>
           </TabsContent>
           
-          <TabsContent value="user" className="p-0">
-            <UserManagement />
+          <TabsContent value="user" className="bg-white p-0 rounded-lg border">
+            <UserManagement embedded={true} />
           </TabsContent>
           
-          <TabsContent value="student" className="p-0">
+          <TabsContent value="student" className="bg-white p-0 rounded-lg border">
             <StudentManagement embedded={true} />
           </TabsContent>
         </Tabs>

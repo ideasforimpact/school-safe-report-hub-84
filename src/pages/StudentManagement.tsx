@@ -23,6 +23,7 @@ import {
 import { toast } from 'sonner';
 import { Skeleton } from "@/components/ui/skeleton";
 import { processStudentExcel } from '@/services/student/importStudentService';
+import { useAuth } from '@/contexts/auth';
 
 interface StudentManagementProps {
   embedded?: boolean;
@@ -30,6 +31,7 @@ interface StudentManagementProps {
 
 const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
   const { students, deleteStudent, isLoading } = useStudents();
+  const { employeeData } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -38,6 +40,8 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [studentToDelete, setStudentToDelete] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  const clientId = employeeData?.clientId || null;
 
   const handleEditClick = (student: Student) => {
     setSelectedStudent(student);
@@ -86,7 +90,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
   );
 
   const content = (
-    <div className="space-y-6">
+    <div className={embedded ? "p-6 space-y-6" : "space-y-6"}>
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Student Management</h1>
@@ -144,6 +148,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
       <AddStudentDialog
         open={isAddDialogOpen}
         onOpenChange={setIsAddDialogOpen}
+        clientId={clientId}
       />
 
       {/* Edit Student Dialog */}
@@ -152,6 +157,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
           open={isEditDialogOpen}
           onOpenChange={setIsEditDialogOpen}
           student={selectedStudent}
+          clientId={clientId}
         />
       )}
 
@@ -160,6 +166,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
         open={isImportDialogOpen}
         onOpenChange={setIsImportDialogOpen}
         onImportStudents={handleImportStudents}
+        clientId={clientId}
       />
 
       {/* Delete Confirmation */}
