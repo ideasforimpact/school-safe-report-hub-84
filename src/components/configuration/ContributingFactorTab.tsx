@@ -23,8 +23,9 @@ import {
 interface ContributingFactor {
   id: string;
   name: string;
-  description: string | null;
-  weight: string | null;
+  description?: string | null;
+  weight?: string | null;
+  client_id?: string | null;
 }
 
 interface ContributingFactorTabProps {

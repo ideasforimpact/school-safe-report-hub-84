@@ -11,8 +11,9 @@ import { contributingFactorService, ContributingFactorItem } from '@/services/in
 interface ContributingFactor {
   id: string;
   name: string;
-  description: string | null;
-  weight: string | null;
+  description?: string | null;
+  weight?: string | null;
+  client_id?: string | null;
 }
 
 interface ReportType {
@@ -34,7 +35,7 @@ interface PriorityItem {
 const IncidentConfiguration = () => {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('categories');
-  const [contributingFactors, setContributingFactors] = useState<ContributingFactorItem[]>([]);
+  const [contributingFactors, setContributingFactors] = useState<ContributingFactor[]>([]);
   const [reportTypes, setReportTypes] = useState<ReportType[]>([]);
   const [priorities, setPriorities] = useState<PriorityItem[]>([]);
   const [loading, setLoading] = useState(true);
