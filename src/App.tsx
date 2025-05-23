@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
@@ -35,6 +36,7 @@ import FacilityManagement from '@/pages/FacilityManagement';
 import AssessmentsPage from '@/pages/AssessmentsPage';
 import AssessmentResponsePage from '@/pages/AssessmentResponsePage';
 import IncidentConfiguration from '@/pages/IncidentConfiguration';
+import ProfilePage from '@/pages/ProfilePage';
 
 // Employee Verification Pages
 import EmployeeVerificationPage from '@/pages/employee-verification/EmployeeVerificationPage';
@@ -85,6 +87,9 @@ function App() {
                     <Route path="/facilities-configuration" element={<FacilityManagement />} />
                     <Route path="/facility-management" element={<FacilityManagement />} />
                     <Route path="/incident-configuration" element={<IncidentConfiguration />} />
+                    
+                    {/* Profile route */}
+                    <Route path="/profile" element={<ProfilePage />} />
 
                     {/* Incident routes */}
                     <Route path="/incidents" element={<IncidentsList />} />

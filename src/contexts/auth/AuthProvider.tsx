@@ -1,3 +1,4 @@
+
 import React, { createContext, useEffect, useState, useRef } from 'react';
 import { User, AuthContextType, UserWithPassword, EmployeeData } from './types';
 import { 
@@ -218,20 +219,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             
             // Update Redux state correctly with action creators
             if (dispatch) {
-              dispatch(setEmployeeData(employee));
-              dispatch(setClientId(employee.clientId));
+              // Fix the TypeScript error by using the return value from action creators
+              const employeeAction = setEmployeeData(employee);
+              dispatch(employeeAction);
+              
+              const clientIdAction = setClientId(employee.clientId);
+              dispatch(clientIdAction);
             }
             
             console.log("Employee data stored:", employee);
           }
           
           if (dispatch) {
-            dispatch(setLoading(false));
+            const loadingAction = setLoading(false);
+            dispatch(loadingAction);
           }
         } catch (err) {
           console.error("Error fetching employee data:", err);
           if (dispatch) {
-            dispatch(setLoading(false));
+            const loadingAction = setLoading(false);
+            dispatch(loadingAction);
           }
         }
         
@@ -316,11 +323,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Update Redux state correctly using action creators
         if (dispatch) {
-          dispatch(setEmployeeData(backofficeEmployeeData));
+          // Fix TypeScript error by using the action return values
+          const employeeAction = setEmployeeData(backofficeEmployeeData);
+          dispatch(employeeAction);
           
           // Only set clientId if it exists
           if (backofficeEmployeeData.clientId) {
-            dispatch(setClientId(backofficeEmployeeData.clientId));
+            const clientAction = setClientId(backofficeEmployeeData.clientId);
+            dispatch(clientAction);
           }
         }
         
@@ -347,7 +357,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         ];
         
         // Update Redux state with modules using action creator
-        dispatch(setConfiguredModules(backofficeModules));
+        const modulesAction = setConfiguredModules(backofficeModules);
+        dispatch(modulesAction);
         
         toast.success(`Welcome back, Backoffice Admin!`);
         return true;
@@ -373,7 +384,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     // Clear Redux state correctly using action creator
     if (dispatch) {
-      dispatch(resetEmployee());
+      const resetAction = resetEmployee();
+      dispatch(resetAction);
     }
     
     // Clear local storage

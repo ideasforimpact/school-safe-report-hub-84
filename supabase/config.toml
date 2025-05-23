@@ -85,3 +85,6 @@ gcp_jwt_path = "supabase/gcloud.json"
 # Configure Supabase functions
 [functions.validate-employee]
 verify_jwt = true
+
+[functions.profile_info]
+verify_jwt = true
