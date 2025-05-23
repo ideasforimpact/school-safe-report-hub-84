@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus, Edit, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -20,25 +20,17 @@ import {
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth/useAuth';
-import { contributingFactorService } from '@/services/incident/contributingFactorService';
-
-interface ContributingFactor {
-  id: string;
-  name: string;
-  description?: string | null;
-  weight?: string | null;
-  client_id?: string | null;
-}
+import { contributingFactorService, ContributingFactorItem } from '@/services/incident/contributingFactorService';
 
 interface ContributingFactorTabProps {
-  factors: ContributingFactor[];
+  factors: ContributingFactorItem[];
   addFactor: (name: string, description: string, weight: string) => void;
   updateFactor: (id: string, name: string, description: string, weight: string) => void;
   deleteFactor: (id: string) => void;
 }
 
 export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
-  factors,
+  factors: propFactors,
   addFactor: propAddFactor,
   updateFactor: propUpdateFactor,
   deleteFactor: propDeleteFactor,
@@ -49,8 +41,31 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
   const [currentDescription, setCurrentDescription] = useState('');
   const [currentWeight, setCurrentWeight] = useState('Medium');
   const [currentId, setCurrentId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const { employeeData } = useAuth();
+  const [factors, setFactors] = useState<ContributingFactorItem[]>([]);
+  
+  // Fetch contributing factors directly using the service
+  useEffect(() => {
+    async function fetchContributingFactors() {
+      if (!employeeData?.clientId) {
+        setLoading(false);
+        return;
+      }
+      
+      try {
+        const result = await contributingFactorService.getContributingFactors(employeeData.clientId);
+        setFactors(result);
+      } catch (error) {
+        console.error('Error fetching contributing factors:', error);
+        toast.error('Failed to fetch contributing factors');
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    fetchContributingFactors();
+  }, [employeeData?.clientId]);
 
   const handleAdd = async () => {
     if (!employeeData?.clientId) {
@@ -73,7 +88,11 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
         employeeData.clientId
       );
       
-      // Call the prop function to refresh the parent component
+      // Refresh factors from service
+      const updatedFactors = await contributingFactorService.getContributingFactors(employeeData.clientId);
+      setFactors(updatedFactors);
+      
+      // Call the prop function to notify parent 
       propAddFactor(currentName.trim(), currentDescription.trim(), currentWeight);
       
       // Reset form and close dialog
@@ -113,7 +132,11 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
         employeeData.clientId
       );
       
-      // Call the prop function to refresh the parent component
+      // Refresh factors from service
+      const updatedFactors = await contributingFactorService.getContributingFactors(employeeData.clientId);
+      setFactors(updatedFactors);
+      
+      // Call the prop function to notify parent
       propUpdateFactor(currentId, currentName.trim(), currentDescription.trim(), currentWeight);
       
       setIsEditDialogOpen(false);
@@ -126,7 +149,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
     }
   };
 
-  const openEditDialog = (factor: ContributingFactor) => {
+  const openEditDialog = (factor: ContributingFactorItem) => {
     setCurrentId(factor.id);
     setCurrentName(factor.name);
     setCurrentDescription(factor.description || '');
@@ -146,7 +169,11 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
         // Strictly using contributingFactorService and passing clientId
         await contributingFactorService.deleteContributingFactor(id, employeeData.clientId);
         
-        // Call the prop function to refresh the parent component
+        // Refresh factors from service 
+        const updatedFactors = await contributingFactorService.getContributingFactors(employeeData.clientId);
+        setFactors(updatedFactors);
+        
+        // Call the prop function to notify parent
         propDeleteFactor(id);
         
         toast.success('Contributing factor deleted successfully');
@@ -194,85 +221,92 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
         </Button>
       </div>
 
-      <div className="border rounded-md">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th
-                scope="col"
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Name
-              </th>
-              <th
-                scope="col"
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Weight
-              </th>
-              <th
-                scope="col"
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Description
-              </th>
-              <th
-                scope="col"
-                className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
-              >
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {factors.length === 0 ? (
+      {loading ? (
+        <div className="text-center p-8 border rounded-md bg-gray-50">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-gray-500">Loading contributing factors...</p>
+        </div>
+      ) : (
+        <div className="border rounded-md">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
               <tr>
-                <td colSpan={4} className="px-6 py-4 text-center text-gray-500">
-                  No contributing factors have been added yet
-                </td>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Name
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Weight
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Description
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Actions
+                </th>
               </tr>
-            ) : (
-              factors.map((factor) => (
-                <tr key={factor.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    {factor.name}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <span className={`px-2 py-1 rounded-full text-xs ${getWeightBadgeClass(factor.weight)}`}>
-                      {factor.weight || 'Medium'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm">
-                    <div className="truncate max-w-xs">
-                      {factor.description || 'No description'}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex justify-end space-x-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openEditDialog(factor)}
-                        disabled={loading}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(factor.id)}
-                        disabled={loading}
-                      >
-                        <Trash2 className="h-4 w-4 text-red-500" />
-                      </Button>
-                    </div>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {factors.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-6 py-4 text-center text-gray-500">
+                    No contributing factors have been added yet
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+              ) : (
+                factors.map((factor) => (
+                  <tr key={factor.id}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      {factor.name}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <span className={`px-2 py-1 rounded-full text-xs ${getWeightBadgeClass(factor.weight)}`}>
+                        {factor.weight || 'Medium'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm">
+                      <div className="truncate max-w-xs">
+                        {factor.description || 'No description'}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex justify-end space-x-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => openEditDialog(factor)}
+                          disabled={loading}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(factor.id)}
+                          disabled={loading}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Add Factor Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>

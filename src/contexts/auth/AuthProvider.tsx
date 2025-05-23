@@ -216,7 +216,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setEmployeeData(employee);
             saveEmployeeDataToStorage(employee);
             
-            // Update Redux state - Fix TS error by using action creators
+            // Update Redux state using action creators properly
             if (dispatch) {
               dispatch(setEmployeeData(employee));
               
@@ -348,7 +348,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
         ];
         
-        // Update Redux state with modules - Fix TS error by using action creators
+        // Update Redux state with modules using action creators properly
         if (dispatch) {
           dispatch(setConfiguredModules(backofficeModules));
         }

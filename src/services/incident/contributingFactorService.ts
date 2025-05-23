@@ -7,12 +7,12 @@ export interface ContributingFactorItem {
   name: string;
   description?: string | null;
   weight?: string | null;
-  client_id?: string | null;
+  client_id: string | null;
 }
 
 export const contributingFactorService = {
-  // Get contributing factors
-  getContributingFactors: async (clientId?: string) => {
+  // Get contributing factors - always requiring clientId
+  getContributingFactors: async (clientId: string) => {
     try {
       if (!clientId) {
         throw new Error('Client ID is required');
@@ -20,7 +20,7 @@ export const contributingFactorService = {
 
       const { data: factors, error } = await supabase
         .from('contributing_factors')
-        .select('*')
+        .select('id, name, description, weight, client_id')
         .eq('client_id', clientId)
         .order('name');
 
@@ -36,8 +36,8 @@ export const contributingFactorService = {
     }
   },
 
-  // Add contributing factor
-  addContributingFactor: async (name: string, description?: string, weight?: string, clientId?: string) => {
+  // Add contributing factor - always requiring clientId
+  addContributingFactor: async (name: string, description: string, weight: string, clientId: string) => {
     try {
       if (!clientId) {
         throw new Error('Client ID is required');
@@ -68,8 +68,8 @@ export const contributingFactorService = {
     }
   },
 
-  // Update contributing factor
-  updateContributingFactor: async (id: string, name: string, description?: string, weight?: string, clientId?: string) => {
+  // Update contributing factor - always requiring clientId
+  updateContributingFactor: async (id: string, name: string, description: string, weight: string, clientId: string) => {
     try {
       if (!clientId) {
         throw new Error('Client ID is required');
@@ -103,8 +103,8 @@ export const contributingFactorService = {
     }
   },
 
-  // Delete contributing factor
-  deleteContributingFactor: async (id: string, clientId?: string) => {
+  // Delete contributing factor - always requiring clientId
+  deleteContributingFactor: async (id: string, clientId: string) => {
     try {
       if (!clientId) {
         throw new Error('Client ID is required');
