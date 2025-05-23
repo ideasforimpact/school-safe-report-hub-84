@@ -692,6 +692,7 @@ export type Database = {
       incidents: {
         Row: {
           category_id: string | null
+          client_id: string | null
           created_at: string
           date: string
           description: string | null
@@ -711,6 +712,7 @@ export type Database = {
         }
         Insert: {
           category_id?: string | null
+          client_id?: string | null
           created_at?: string
           date: string
           description?: string | null
@@ -730,6 +732,7 @@ export type Database = {
         }
         Update: {
           category_id?: string | null
+          client_id?: string | null
           created_at?: string
           date?: string
           description?: string | null
@@ -760,6 +763,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "incident_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "incidents_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
           {
