@@ -20,8 +20,12 @@ serve(async (req) => {
   );
 
   try {
-    const { action, id, name, gradeId, clientId } = await req.json();
-    console.log(`Section management: Action=${action}, ID=${id}, Name=${name}, GradeID=${gradeId}, ClientID=${clientId}`);
+    const { action, id, name, gradeId, campusId, clientId } = await req.json();
+    console.log(`Section management: Action=${action}, ID=${id}, Name=${name}, GradeID=${gradeId}, CampusID=${campusId}, ClientID=${clientId}`);
+
+    if (!clientId) {
+      throw new Error("Client ID is required for all operations");
+    }
 
     switch (action) {
       case 'list': {
@@ -38,11 +42,13 @@ serve(async (req) => {
       }
 
       case 'create': {
+        // Include campus_id in the insert operation
         const { data, error } = await supabaseClient
           .from('sections')
           .insert({
             name,
             grade_id: gradeId,
+            campus_id: campusId,
             client_id: clientId
           })
           .select()
@@ -56,13 +62,31 @@ serve(async (req) => {
       }
 
       case 'update': {
+        // Verify ownership before update
+        const { data: existingSection, error: verifyError } = await supabaseClient
+          .from('sections')
+          .select('id')
+          .eq('id', id)
+          .eq('client_id', clientId)
+          .single();
+          
+        if (verifyError || !existingSection) {
+          return new Response(
+            JSON.stringify({ error: 'Section not found or access denied' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 404 }
+          );
+        }
+
+        // Include campus_id in the update operation
         const { data, error } = await supabaseClient
           .from('sections')
           .update({
             name,
-            grade_id: gradeId
+            grade_id: gradeId,
+            campus_id: campusId
           })
           .eq('id', id)
+          .eq('client_id', clientId)
           .select()
           .single();
 
@@ -74,10 +98,26 @@ serve(async (req) => {
       }
 
       case 'delete': {
+        // Verify ownership before delete
+        const { data: existingSection, error: verifyError } = await supabaseClient
+          .from('sections')
+          .select('id')
+          .eq('id', id)
+          .eq('client_id', clientId)
+          .single();
+          
+        if (verifyError || !existingSection) {
+          return new Response(
+            JSON.stringify({ error: 'Section not found or access denied' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 404 }
+          );
+        }
+
         const { error } = await supabaseClient
           .from('sections')
           .delete()
-          .eq('id', id);
+          .eq('id', id)
+          .eq('client_id', clientId);
 
         if (error) throw error;
         return new Response(

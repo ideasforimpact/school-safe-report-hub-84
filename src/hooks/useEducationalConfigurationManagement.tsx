@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -84,7 +85,7 @@ export function useEducationalConfigurationManagement() {
     }
   };
 
-  // Fetch sections from the new Supabase function
+  // Fetch sections with campus_id
   const fetchSections = async () => {
     if (!employeeData?.clientId) return;
     
@@ -99,7 +100,8 @@ export function useEducationalConfigurationManagement() {
       setSections(data.sections.map((section: any) => ({
         id: section.id,
         name: section.name,
-        classId: section.grade_id
+        classId: section.grade_id,
+        campusId: section.campus_id
       })));
     } catch (error) {
       console.error("Error fetching sections:", error);
@@ -200,6 +202,13 @@ export function useEducationalConfigurationManagement() {
     const hasFacilities = facilities.some((facility: any) => facility.campusId === id);
     if (hasFacilities) {
       toast.error("Cannot delete campus with associated facilities. Remove the facilities first.");
+      return;
+    }
+    
+    // Check if campus has associated sections
+    const hasSections = sections.some((section: any) => section.campusId === id);
+    if (hasSections) {
+      toast.error("Cannot delete campus with associated sections. Remove the sections first.");
       return;
     }
     
@@ -310,8 +319,8 @@ export function useEducationalConfigurationManagement() {
     }
   };
 
-  // Section management with the new API
-  const handleAddSection = async (classId: string, name: string) => {
+  // Section management with the new API and campus_id
+  const handleAddSection = async (classId: string, campusId: string, name: string) => {
     if (!employeeData?.clientId) {
       toast.error("No client selected");
       return;
@@ -320,7 +329,13 @@ export function useEducationalConfigurationManagement() {
     try {
       setLoading(true);
       const { data, error } = await supabase.functions.invoke('section-management', {
-        body: { name, gradeId: classId, clientId: employeeData.clientId, action: 'create' }
+        body: { 
+          name, 
+          gradeId: classId, 
+          campusId: campusId, 
+          clientId: employeeData.clientId, 
+          action: 'create' 
+        }
       });
 
       if (error) throw error;
@@ -328,7 +343,8 @@ export function useEducationalConfigurationManagement() {
       setSections(prev => [...prev, { 
         id: data.section.id, 
         name: data.section.name,
-        classId: data.section.grade_id
+        classId: data.section.grade_id,
+        campusId: data.section.campus_id
       }]);
       toast.success("Section added successfully");
     } catch (error) {
@@ -339,7 +355,7 @@ export function useEducationalConfigurationManagement() {
     }
   };
 
-  const handleUpdateSection = async (id: string, classId: string, name: string) => {
+  const handleUpdateSection = async (id: string, classId: string, campusId: string, name: string) => {
     if (!employeeData?.clientId) {
       toast.error("No client selected");
       return;
@@ -348,7 +364,14 @@ export function useEducationalConfigurationManagement() {
     try {
       setLoading(true);
       const { data, error } = await supabase.functions.invoke('section-management', {
-        body: { id, name, gradeId: classId, clientId: employeeData.clientId, action: 'update' }
+        body: { 
+          id, 
+          name, 
+          gradeId: classId, 
+          campusId: campusId,
+          clientId: employeeData.clientId, 
+          action: 'update' 
+        }
       });
 
       if (error) throw error;
@@ -356,7 +379,8 @@ export function useEducationalConfigurationManagement() {
       setSections(prev => prev.map(section => section.id === id ? { 
         ...section, 
         name: data.section.name, 
-        classId: data.section.grade_id 
+        classId: data.section.grade_id,
+        campusId: data.section.campus_id
       } : section));
       
       toast.success("Section updated successfully");
