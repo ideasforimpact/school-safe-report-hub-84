@@ -3,13 +3,21 @@ import React from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { AlertTriangle, Users, GraduationCap } from "lucide-react";
+import { AlertTriangle, Users, GraduationCap, Building } from "lucide-react";
 import { useAuth } from '@/contexts/auth';
 import IncidentConfigurationContent from '@/components/configuration/IncidentConfigurationContent';
 import UserManagement from '@/pages/UserManagement';
 import StudentManagement from '@/pages/StudentManagement';
+import { EducationalStructureConfig } from '@/pages/configuration/EducationalStructureConfig';
+import { useEducationalConfigurationManagement } from '@/hooks/useEducationalConfigurationManagement';
 
 const SettingsPage = () => {
+  const { activeTab, setActiveTab, loading, campuses, classes, sections, facilities, 
+          handleAddCampus, handleUpdateCampus, handleDeleteCampus,
+          handleAddClass, handleUpdateClass, handleDeleteClass,
+          handleAddSection, handleUpdateSection, handleDeleteSection,
+          handleAddFacility, handleUpdateFacility, handleDeleteFacility } = useEducationalConfigurationManagement();
+
   return (
     <Layout>
       <div className="space-y-8">
@@ -32,6 +40,10 @@ const SettingsPage = () => {
               <GraduationCap className="h-4 w-4" />
               <span>Student Management</span>
             </TabsTrigger>
+            <TabsTrigger value="educational" className="flex items-center gap-2">
+              <Building className="h-4 w-4" />
+              <span>Educational Structure</span>
+            </TabsTrigger>
           </TabsList>
           
           <TabsContent value="incident">
@@ -52,6 +64,38 @@ const SettingsPage = () => {
           
           <TabsContent value="student" className="p-0">
             <StudentManagement embedded={true} />
+          </TabsContent>
+          
+          <TabsContent value="educational" className="p-0 bg-white rounded-md">
+            <Card>
+              <CardHeader>
+                <CardTitle>Educational Structure Configuration</CardTitle>
+                <CardDescription>Manage campuses, classes, sections, and facilities</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <EducationalStructureConfig 
+                  activeTab={activeTab}
+                  setActiveTab={setActiveTab}
+                  loading={loading}
+                  campuses={campuses}
+                  addCampus={handleAddCampus}
+                  updateCampus={handleUpdateCampus}
+                  deleteCampus={handleDeleteCampus}
+                  classes={classes}
+                  addClass={handleAddClass}
+                  updateClass={handleUpdateClass}
+                  deleteClass={handleDeleteClass}
+                  sections={sections}
+                  addSection={handleAddSection}
+                  updateSection={handleUpdateSection}
+                  deleteSection={handleDeleteSection}
+                  facilities={facilities}
+                  addFacility={handleAddFacility}
+                  updateFacility={handleUpdateFacility}
+                  deleteFacility={handleDeleteFacility}
+                />
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

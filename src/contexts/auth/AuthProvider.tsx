@@ -377,7 +377,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     // Clear Redux state
     if (dispatch) {
-      dispatch(resetEmployee());
+      dispatch({ type: 'LOGOUT' });
     }
     
     // Clear local storage

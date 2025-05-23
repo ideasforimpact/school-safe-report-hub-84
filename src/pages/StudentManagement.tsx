@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useStudents } from '@/contexts/StudentContext';
@@ -44,6 +43,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
     setIsEditDialogOpen(true);
   };
 
+  // Update the handleDeleteClick function to pass two arguments
   const handleDeleteClick = (id: string) => {
     setStudentToDelete(id);
     setIsDeleteAlertOpen(true);
