@@ -8,7 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
  * Process the raw student data from Excel/CSV and add valid students to the system
  * Handles both new student insertion and existing student updates
  */
-export const processStudentData = async (rawData: RawStudentData[], clientId: string | null): Promise<ImportResult> => {
+export const processStudentData = async (rawData: RawStudentData[]): Promise<ImportResult> => {
   const result: ImportResult = {
     addedStudents: [],
     successCount: 0,
@@ -16,12 +16,6 @@ export const processStudentData = async (rawData: RawStudentData[], clientId: st
     errors: [],
     updatedCount: 0
   };
-
-  if (!clientId) {
-    result.errors.push('Client ID is required for student import');
-    result.errorCount = 1;
-    return result;
-  }
 
   console.log("Processing student data:", rawData);
   
@@ -33,8 +27,7 @@ export const processStudentData = async (rawData: RawStudentData[], clientId: st
     const { data: existingStudents, error: fetchError } = await supabase
       .from('students')
       .select('id, student_id')
-      .in('student_id', studentIds)
-      .eq('client_id', clientId);
+      .in('student_id', studentIds);
       
     if (fetchError) {
       console.error('Error fetching existing students:', fetchError);
@@ -71,14 +64,13 @@ export const processStudentData = async (rawData: RawStudentData[], clientId: st
           return;
         }
         
-        // Prepare student data with client_id
+        // Prepare student data
         const studentData = {
           student_id: String(row.studentId),
           name: String(row.name),
           grade: String(row.grade),
           section: String(row.section),
-          campus: String(row.campus),
-          client_id: clientId
+          campus: String(row.campus)
         };
         
         const studentIdLower = studentData.student_id.toLowerCase();
@@ -129,7 +121,7 @@ export const processStudentData = async (rawData: RawStudentData[], clientId: st
       // Supabase doesn't support bulk upserts with multiple ids, so we need to use the edge function
       const { data: updatedData, error: updateError } = await supabase.functions.invoke('student-management', {
         method: 'POST',
-        headers: { path: 'bulk-update', clientId: clientId },
+        headers: { path: 'bulk-update' },
         body: {
           students: studentsToUpdate
         }
