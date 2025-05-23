@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/auth';
 import UserList from '@/components/users/UserList';
 
 const UserManagementContent = () => {
-  const { users, updateUser, deleteUser, deactivateUser, reactivateUser } = useAuth();
+  const { users, updateUser, deleteUser, deactivateUser } = useAuth();
 
   const handleEditClick = (user: any) => {
     console.log('Edit user:', user);
