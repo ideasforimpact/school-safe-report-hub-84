@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useStudents } from '@/contexts/StudentContext';
@@ -22,6 +23,7 @@ import {
 import { toast } from 'sonner';
 import { Skeleton } from "@/components/ui/skeleton";
 import { processStudentExcel } from '@/services/student/importStudentService';
+import { useAuth } from '@/contexts/auth';
 
 interface StudentManagementProps {
   embedded?: boolean;
@@ -29,6 +31,8 @@ interface StudentManagementProps {
 
 const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
   const { students, deleteStudent, isLoading } = useStudents();
+  const { employeeData } = useAuth();
+  const clientId = employeeData?.clientId;
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -43,7 +47,6 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
     setIsEditDialogOpen(true);
   };
 
-  // Update the handleDeleteClick function to pass two arguments
   const handleDeleteClick = (id: string) => {
     setStudentToDelete(id);
     setIsDeleteAlertOpen(true);
@@ -67,8 +70,13 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
   };
 
   const handleImportStudents = async (file: File) => {
+    if (!clientId) {
+      toast.error('Client ID is missing');
+      return;
+    }
+    
     try {
-      await processStudentExcel(file);
+      await processStudentExcel(file, clientId);
       toast.success("Students imported successfully");
     } catch (error) {
       console.error("Import process failed:", error);

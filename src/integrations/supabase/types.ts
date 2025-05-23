@@ -862,6 +862,7 @@ export type Database = {
       students: {
         Row: {
           campus: string
+          client_id: string | null
           created_at: string
           grade: string
           id: string
@@ -872,6 +873,7 @@ export type Database = {
         }
         Insert: {
           campus: string
+          client_id?: string | null
           created_at?: string
           grade: string
           id?: string
@@ -882,6 +884,7 @@ export type Database = {
         }
         Update: {
           campus?: string
+          client_id?: string | null
           created_at?: string
           grade?: string
           id?: string
@@ -890,7 +893,15 @@ export type Database = {
           student_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "students_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       vehicle_documents: {
         Row: {

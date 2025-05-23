@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -7,6 +8,7 @@ import { toast } from 'sonner';
 import { processStudentExcel, validateStudentExcel } from '@/services/student/importStudentService';
 import { useStudents } from '@/contexts/StudentContext';
 import { Progress } from '@/components/ui/progress';
+import { useAuth } from '@/contexts/auth';
 
 interface ImportStudentDialogProps {
   open: boolean;
@@ -16,6 +18,8 @@ interface ImportStudentDialogProps {
 
 const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStudentDialogProps) => {
   const { students } = useStudents();
+  const { employeeData } = useAuth();
+  const clientId = employeeData?.clientId;
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
@@ -41,6 +45,11 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
       toast.error('Please select a file first');
       return;
     }
+    
+    if (!clientId) {
+      toast.error('Client ID is missing');
+      return;
+    }
 
     // Check if file is CSV or Excel
     const validTypes = ['text/csv', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'];
@@ -58,7 +67,7 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
         toast.info('Validating a large file. This might take a moment...');
       }
       
-      const errors = await validateStudentExcel(selectedFile);
+      const errors = await validateStudentExcel(selectedFile, clientId);
       setValidationErrors(errors);
       
       // Estimate number of records from file size or extract it during validation
@@ -100,6 +109,11 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
   const handleImport = async () => {
     if (!file) {
       toast.error('Please select a file first');
+      return;
+    }
+
+    if (!clientId) {
+      toast.error('Client ID is missing');
       return;
     }
 
