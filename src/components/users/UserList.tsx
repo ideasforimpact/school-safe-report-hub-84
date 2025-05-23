@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Edit, Trash2, UserX } from 'lucide-react';
+import { Edit, Trash2, UserX, UserCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 interface UserListProps {
@@ -19,9 +19,10 @@ interface UserListProps {
   onEditClick: (user: User) => void;
   onDeleteUser: (id: string) => void;
   onDeactivateUser: (id: string) => void;
+  onReactivateUser: (id: string) => void;
 }
 
-const UserList = ({ users, onEditClick, onDeleteUser, onDeactivateUser }: UserListProps) => {
+const UserList = ({ users, onEditClick, onDeleteUser, onDeactivateUser, onReactivateUser }: UserListProps) => {
   console.log("UserList component - Users:", users);
   return (
     <Table>
@@ -77,7 +78,7 @@ const UserList = ({ users, onEditClick, onDeleteUser, onDeactivateUser }: UserLi
                   <Edit className="h-4 w-4" />
                 </Button>
                 
-                {user.isActive && (
+                {user.isActive ? (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="ghost" size="icon">
@@ -102,6 +103,14 @@ const UserList = ({ users, onEditClick, onDeleteUser, onDeactivateUser }: UserLi
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
+                ) : (
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={() => onReactivateUser(user.id)}
+                  >
+                    <UserCheck className="h-4 w-4 text-green-600" />
+                  </Button>
                 )}
                 
                 <AlertDialog>
