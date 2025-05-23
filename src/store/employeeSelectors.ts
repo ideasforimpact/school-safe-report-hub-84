@@ -1,6 +1,4 @@
-
 import { EmployeeState } from './types';
-import { ModulePermissions } from '@/contexts/auth/types';
 
 // Helper selector functions to get data from the Redux store
 export const getEmployeeData = (state: EmployeeState) => state.employeeData;
@@ -27,7 +25,7 @@ export const hasAnyModulePermission = (state: EmployeeState): boolean => {
 };
 
 // Helper function to check if user has specific module permission from configured modules
-export const hasModulePermission = (state: EmployeeState, moduleKey: keyof ModulePermissions): boolean => {
+export const hasModulePermission = (state: EmployeeState, moduleKey: string): boolean => {
   // Super admins have access to everything
   if (isEmployeeSuperAdmin(state)) return true;
   
