@@ -42,7 +42,7 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
     }
   }, [defaultClientId, fetchEmployees]);
 
-  // Update employee status based on document verifications - fixed to return boolean
+  // Update employee status based on document verifications - returns boolean as expected by useDocumentManagement
   const updateEmployeeStatus = useCallback(async (employeeId: string, status: boolean): Promise<boolean> => {
     try {
       await updateEmployee(employeeId, { status });
@@ -55,7 +55,7 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
     }
   }, [updateEmployee]);
 
-  // Use the document management hook with the updated function signature
+  // Use the document management hook
   const { 
     documents, 
     addDocument,

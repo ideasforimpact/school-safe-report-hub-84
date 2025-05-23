@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { VerificationDocument } from '../types';
@@ -86,17 +87,17 @@ export const useDocumentManagement = (
         id: doc.id,
         employeeId: doc.employee_id,
         documentTypeId: doc.document_type_id,
-        documentTypeName: doc.document_type_name,
+        documentTypeName: doc.document_type_id, // Use ID since name is not available
         documentNumber: doc.document_number,
-        documentImage: doc.document_image,
+        documentImage: doc.document_url, // Use document_url instead of document_image
         verificationStatus: doc.verification_status,
         documentStatusId: doc.document_status_id,
-        documentStatusName: doc.document_status_name,
-        verificationDate: doc.verification_date,
-        verificationNotes: doc.verification_notes,
-        verificationMethod: doc.verification_method,
+        documentStatusName: doc.document_status_id, // Use ID since name is not available
+        verificationDate: doc.updated_at, // Use updated_at as verification date
+        verificationNotes: "", // Not available in the response
+        verificationMethod: "manual", // Default value
         employee_docs_log: doc.employee_docs_log,
-        details: doc.details,
+        details: {}, // Default empty object
         params: doc.params,
         createdAt: doc.created_at,
         updatedAt: doc.updated_at

@@ -34,4 +34,3 @@ export const isEmailDomainAllowed = (email: string, allowedDomains: string[]): b
   const domain = extractDomain(email);
   return domain !== null && allowedDomains.includes(domain);
 };
-
