@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   Table,
   TableBody,
@@ -12,10 +11,61 @@ import { Button } from '@/components/ui/button';
 import { Eye } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
+import { Badge } from '@/components/ui/badge';
 
 const EmployeesList = () => {
-  const { employees } = useEmployeeVerification();
+  const { employees, getEmployeeDocuments } = useEmployeeVerification();
   const navigate = useNavigate();
+
+  // Use both sources of employee documents - direct from API and from context
+  const renderDocumentsInfo = (employee) => {
+    // First check if we have documents directly on the employee (from API)
+    const documents = employee.documents || getEmployeeDocuments(employee.id) || [];
+    
+    // Group by verification status
+    const verified = documents.filter(doc => doc.verificationStatus === 'verified');
+    const failed = documents.filter(doc => doc.verificationStatus === 'failed');
+    const pending = documents.filter(doc => doc.verificationStatus === 'pending');
+    const total = documents.length;
+
+    if (total === 0) {
+      return <span className="text-gray-500 text-sm">No documents</span>;
+    }
+
+    return (
+      <div className="flex flex-wrap gap-2">
+        {verified.length > 0 && (
+          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+            Verified ({verified.length})
+          </Badge>
+        )}
+        
+        {failed.length > 0 && (
+          <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+            Failed ({failed.length})
+          </Badge>
+        )}
+
+        {pending.length > 0 && (
+          <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">
+            Pending ({pending.length})
+          </Badge>
+        )}
+
+        <span className="text-xs text-gray-500 ml-1">
+          ({total} total)
+        </span>
+      </div>
+    );
+  };
+
+  const getStatusClass = (status: boolean | string) => {
+    if (typeof status === 'boolean') {
+      return status ? 'badge-success' : 'badge-error';
+    } else {
+      return status === 'active' ? 'badge-success' : 'badge-error';
+    }
+  };
 
   return (
     <div className="w-full">
@@ -25,47 +75,49 @@ const EmployeesList = () => {
             <TableRow>
               <TableHead>Employee ID</TableHead>
               <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
               <TableHead>Department</TableHead>
-              <TableHead>Status</TableHead>
+              <TableHead>Documents</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {employees.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-6 text-gray-500">
-                  No employees found.
+                <TableCell colSpan={5} className="text-center py-6 text-gray-500">
+                  No employees found. Add your first employee to get started.
                 </TableCell>
               </TableRow>
             ) : (
-              employees.map((employee) => (
-                <TableRow key={employee.id}>
-                  <TableCell>{employee.employeeId}</TableCell>
-                  <TableCell>{employee.name}</TableCell>
-                  <TableCell>{employee.email}</TableCell>
-                  <TableCell>{employee.department}</TableCell>
-                  <TableCell>
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      employee.status 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-red-100 text-red-800'
-                    }`}>
-                      {employee.status ? 'Active' : 'Inactive'}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => navigate(`/employee-verification/${employee.id}`)}
-                    >
-                      <Eye className="h-4 w-4 mr-1" />
-                      View
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
+              employees.map((employee) => {
+                // Determine if employee is inactive (for verification system)
+                // Handle both boolean and string values for status
+                const isInactive = employee.status === false || 
+                                   (typeof employee.status === 'string' && employee.status === 'inactive');
+                
+                return (
+                  <TableRow key={employee.id} className={isInactive ? "bg-gray-100" : ""}>
+                    <TableCell>{employee.employeeId}</TableCell>
+                    <TableCell>{employee.name}</TableCell>
+                    <TableCell>{employee.department}</TableCell>
+                    <TableCell className="max-w-md">
+                      {renderDocumentsInfo(employee)}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => navigate(`/employee-verification/${employee.id}`)}
+                          disabled={isInactive}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          View
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>

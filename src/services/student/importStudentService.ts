@@ -26,7 +26,7 @@ export const processStudentExcel = async (file: File, clientId: string): Promise
     }
     
     // Validate the data before processing
-    const validationErrors = await validateExcelData(rawData);
+    const validationErrors = await validateExcelData(rawData, clientId);
     if (validationErrors.length > 0) {
       toast.error(`Validation failed with ${validationErrors.length} errors`);
       console.error('Validation errors:', validationErrors);
@@ -62,7 +62,7 @@ export const validateStudentExcel = async (file: File, clientId: string): Promis
     const rawData = await parseExcelFile(file);
     
     // Validate the data
-    const errors = await validateExcelData(rawData);
+    const errors = await validateExcelData(rawData, clientId);
     return errors;
   } catch (error) {
     console.error('Error in validateStudentExcel:', error);

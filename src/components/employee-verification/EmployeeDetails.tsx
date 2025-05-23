@@ -1,7 +1,11 @@
-
 import React from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Employee } from '@/types/employeeVerification';
+import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
+import EditEmployeeDialog from './EditEmployeeDialog';
+import { useEmployeeVerification } from '@/contexts/employee-verification';
+import VerificationStatusBadge from './VerificationStatusBadge';
 
 interface EmployeeDetailsProps {
   employee: Employee;
@@ -16,49 +20,74 @@ const EmployeeDetails: React.FC<EmployeeDetailsProps> = ({ employee }) => {
     }
   };
 
+  const getEmployeeTypeDisplay = (type?: string) => {
+    if (!type) return 'Not Specified';
+    
+    return type.charAt(0).toUpperCase() + type.slice(1);
+  };
+
+  // Convert boolean status to string status for the badge
+  const getStatusString = (status: boolean): 'verified' | 'pending' | 'failed' => {
+    return status ? 'verified' : 'failed';
+  };
+
   return (
-    <div className="p-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <h3 className="text-sm font-medium text-gray-500 mb-1">Employee ID</h3>
-          <p className="text-base">{employee.employeeId}</p>
+    <Card>
+      <CardContent className="pt-6 text-left">
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h2 className="text-2xl font-bold text-left">{employee.name}</h2>
+            <p className="text-gray-500 text-left">{employee.position} · {employee.department}</p>
+          </div>
+          <VerificationStatusBadge status={getStatusString(employee.status)} className="text-sm px-3 py-1" />
         </div>
-        <div>
-          <h3 className="text-sm font-medium text-gray-500 mb-1">Email</h3>
-          <p className="text-base">{employee.email}</p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-6 mt-6">
+          <div>
+            <p className="text-sm text-gray-500 text-left">Employee ID</p>
+            <p className="font-medium text-left">{employee.employeeId}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500 text-left">Email</p>
+            <p className="font-medium text-left">{employee.email}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500 text-left">Phone</p>
+            <p className="font-medium text-left">{employee.phone}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500 text-left">Date of Birth</p>
+            <p className="font-medium text-left">{formatDate(employee.dateOfBirth)}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500 text-left">Joining Date</p>
+            <p className="font-medium text-left">{formatDate(employee.joiningDate)}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500 text-left">Department</p>
+            <p className="font-medium text-left">{employee.department}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500 text-left">Position</p>
+            <p className="font-medium text-left">{employee.position}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500 text-left">Employee Type</p>
+            <p className="font-medium text-left">{getEmployeeTypeDisplay(employee.employeeType)}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500 text-left">Verification Status</p>
+            <div className="font-medium text-left">
+              <VerificationStatusBadge status={getStatusString(employee.status)} />
+            </div>
+          </div>
+          <div className="md:col-span-2">
+            <p className="text-sm text-gray-500 text-left">Address</p>
+            <p className="font-medium text-left">{employee.address}</p>
+          </div>
         </div>
-        <div>
-          <h3 className="text-sm font-medium text-gray-500 mb-1">Phone</h3>
-          <p className="text-base">{employee.phone || 'N/A'}</p>
-        </div>
-        <div>
-          <h3 className="text-sm font-medium text-gray-500 mb-1">Department</h3>
-          <p className="text-base">{employee.department}</p>
-        </div>
-        <div>
-          <h3 className="text-sm font-medium text-gray-500 mb-1">Position</h3>
-          <p className="text-base">{employee.position}</p>
-        </div>
-        <div>
-          <h3 className="text-sm font-medium text-gray-500 mb-1">Joining Date</h3>
-          <p className="text-base">{formatDate(employee.joiningDate)}</p>
-        </div>
-        <div>
-          <h3 className="text-sm font-medium text-gray-500 mb-1">Status</h3>
-          <span className={`px-2 py-1 rounded-full text-xs ${
-            employee.status 
-              ? 'bg-green-100 text-green-800' 
-              : 'bg-red-100 text-red-800'
-          }`}>
-            {employee.status ? 'Active' : 'Inactive'}
-          </span>
-        </div>
-        <div className="md:col-span-2">
-          <h3 className="text-sm font-medium text-gray-500 mb-1">Address</h3>
-          <p className="text-base">{employee.address || 'N/A'}</p>
-        </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 
