@@ -39,6 +39,11 @@ export interface ModulePermissions {
   assessmentsAdmin?: boolean;
   grievancesAdmin?: boolean;
   eduSafeResourceAccess?: boolean;
+  incidents?: boolean;
+  assessments?: boolean;
+  reports?: boolean;
+  edusafe?: boolean;
+  transport?: boolean;
   [key: string]: boolean | undefined;
 }
 
@@ -54,7 +59,6 @@ export interface User {
   updatedAt?: string;
   provider?: string;
   clientId?: string | null;
-  // Add these fields to fix the errors
   employeeId?: string;
   employeeType?: EmployeeType;
   department?: DepartmentType;
@@ -71,8 +75,25 @@ export interface EmployeeData {
   clientId: string | null;
   firstName: string;
   lastName: string;
-  email: string; // Make this required to match authService
+  email: string;
   isSuperAdmin?: boolean;
-  department?: string; // Add department field
-  employeeType?: string; // Add employeeType field
+  department?: string;
+  employeeType?: string;
+}
+
+export interface AuthProviderProps {
+  children: React.ReactNode;
+}
+
+export interface AuthState {
+  user: User | null;
+  users: User[];
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  error: string | null;
+}
+
+export interface AuthAction {
+  type: string;
+  payload?: any;
 }
