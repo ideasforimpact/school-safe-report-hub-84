@@ -46,12 +46,19 @@ serve(async (req) => {
           );
         }
 
+        console.log(`Fetching campuses for client: ${clientId}`);
+
         const { data: campuses, error } = await supabase
           .from('campuses')
           .select('*')
           .eq('client_id', clientId);
 
-        if (error) throw error;
+        if (error) {
+          console.error('Database error:', error);
+          throw error;
+        }
+
+        console.log(`Successfully fetched ${campuses.length} campuses`);
 
         return new Response(
           JSON.stringify({ campuses }),
@@ -69,13 +76,20 @@ serve(async (req) => {
           );
         }
         
+        console.log(`Creating campus "${name}" for client: ${clientId}`);
+        
         const { data: campus, error } = await supabase
           .from('campuses')
           .insert({ name, client_id: clientId })
           .select()
           .single();
         
-        if (error) throw error;
+        if (error) {
+          console.error('Database error:', error);
+          throw error;
+        }
+        
+        console.log(`Successfully created campus: ${campus.id}`);
         
         return new Response(
           JSON.stringify({ campus }),
@@ -84,12 +98,29 @@ serve(async (req) => {
       }
         
       case 'update': {
-        const { id, name } = body;
+        const { id, name, clientId } = body;
         
-        if (!id || !name) {
+        if (!id || !name || !clientId) {
           return new Response(
-            JSON.stringify({ error: 'ID and name are required' }),
+            JSON.stringify({ error: 'ID, name, and Client ID are required' }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+          );
+        }
+        
+        console.log(`Updating campus ${id} to "${name}" for client: ${clientId}`);
+        
+        // Verify the campus belongs to the client before updating
+        const { data: existingCampus, error: checkError } = await supabase
+          .from('campuses')
+          .select('id')
+          .eq('id', id)
+          .eq('client_id', clientId)
+          .single();
+        
+        if (checkError || !existingCampus) {
+          return new Response(
+            JSON.stringify({ error: 'Campus not found or access denied' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 404 }
           );
         }
         
@@ -97,10 +128,16 @@ serve(async (req) => {
           .from('campuses')
           .update({ name })
           .eq('id', id)
+          .eq('client_id', clientId)
           .select()
           .single();
         
-        if (error) throw error;
+        if (error) {
+          console.error('Database error:', error);
+          throw error;
+        }
+        
+        console.log(`Successfully updated campus: ${campus.id}`);
         
         return new Response(
           JSON.stringify({ campus }),
@@ -109,21 +146,44 @@ serve(async (req) => {
       }
         
       case 'delete': {
-        const { id } = body;
+        const { id, clientId } = body;
         
-        if (!id) {
+        if (!id || !clientId) {
           return new Response(
-            JSON.stringify({ error: 'ID is required' }),
+            JSON.stringify({ error: 'ID and Client ID are required' }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
+          );
+        }
+        
+        console.log(`Deleting campus ${id} for client: ${clientId}`);
+        
+        // Verify the campus belongs to the client before deleting
+        const { data: existingCampus, error: checkError } = await supabase
+          .from('campuses')
+          .select('id')
+          .eq('id', id)
+          .eq('client_id', clientId)
+          .single();
+        
+        if (checkError || !existingCampus) {
+          return new Response(
+            JSON.stringify({ error: 'Campus not found or access denied' }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 404 }
           );
         }
         
         const { error } = await supabase
           .from('campuses')
           .delete()
-          .eq('id', id);
+          .eq('id', id)
+          .eq('client_id', clientId);
         
-        if (error) throw error;
+        if (error) {
+          console.error('Database error:', error);
+          throw error;
+        }
+        
+        console.log(`Successfully deleted campus: ${id}`);
         
         return new Response(
           JSON.stringify({ success: true }),

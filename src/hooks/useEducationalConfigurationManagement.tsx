@@ -2,13 +2,13 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { ConfigItem, CampusItem, ClassItem, SectionItem } from '@/contexts/types';
-import { useClient } from '@/contexts/ClientContext';
+import { useAuth } from '@/contexts/auth';
 import { supabase } from '@/integrations/supabase/client';
 
 export function useEducationalConfigurationManagement() {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('campuses');
-  const { client } = useClient();
+  const { employeeData } = useAuth();
   
   // Local states
   const [loading, setLoading] = useState(false);
@@ -25,24 +25,24 @@ export function useEducationalConfigurationManagement() {
     }
   }, [searchParams]);
 
-  // Fetch data from Supabase when client changes
+  // Fetch data from Supabase when employeeData changes
   useEffect(() => {
-    if (client?.id) {
+    if (employeeData?.clientId) {
       fetchCampuses();
       fetchClasses();
       fetchSections();
       fetchFacilities();
     }
-  }, [client?.id]);
+  }, [employeeData?.clientId]);
 
   // Fetch campuses
   const fetchCampuses = async () => {
-    if (!client?.id) return;
+    if (!employeeData?.clientId) return;
     
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('campus-management', {
-        body: { clientId: client.id, action: 'list' }
+        body: { clientId: employeeData.clientId, action: 'list' }
       });
 
       if (error) throw error;
@@ -61,12 +61,12 @@ export function useEducationalConfigurationManagement() {
 
   // Fetch classes/grades
   const fetchClasses = async () => {
-    if (!client?.id) return;
+    if (!employeeData?.clientId) return;
     
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('grade-management', {
-        body: { clientId: client.id, action: 'list' }
+        body: { clientId: employeeData.clientId, action: 'list' }
       });
 
       if (error) throw error;
@@ -86,12 +86,12 @@ export function useEducationalConfigurationManagement() {
 
   // Fetch sections from the new Supabase function
   const fetchSections = async () => {
-    if (!client?.id) return;
+    if (!employeeData?.clientId) return;
     
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('section-management', {
-        body: { clientId: client.id, action: 'list' }
+        body: { clientId: employeeData.clientId, action: 'list' }
       });
 
       if (error) throw error;
@@ -111,12 +111,12 @@ export function useEducationalConfigurationManagement() {
 
   // Fetch facilities
   const fetchFacilities = async () => {
-    if (!client?.id) return;
+    if (!employeeData?.clientId) return;
     
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('facility-management', {
-        body: { clientId: client.id, action: 'list' }
+        body: { clientId: employeeData.clientId, action: 'list' }
       });
 
       if (error) throw error;
@@ -136,7 +136,7 @@ export function useEducationalConfigurationManagement() {
 
   // Campus management with Supabase
   const handleAddCampus = async (name: string) => {
-    if (!client?.id) {
+    if (!employeeData?.clientId) {
       toast.error("No client selected");
       return;
     }
@@ -144,7 +144,7 @@ export function useEducationalConfigurationManagement() {
     try {
       setLoading(true);
       const { data, error } = await supabase.functions.invoke('campus-management', {
-        body: { name, clientId: client.id, action: 'create' }
+        body: { name, clientId: employeeData.clientId, action: 'create' }
       });
 
       if (error) throw error;
@@ -160,10 +160,15 @@ export function useEducationalConfigurationManagement() {
   };
 
   const handleUpdateCampus = async (id: string, name: string) => {
+    if (!employeeData?.clientId) {
+      toast.error("No client selected");
+      return;
+    }
+
     try {
       setLoading(true);
       const { data, error } = await supabase.functions.invoke('campus-management', {
-        body: { id, name, action: 'update' }
+        body: { id, name, clientId: employeeData.clientId, action: 'update' }
       });
 
       if (error) throw error;
@@ -179,6 +184,11 @@ export function useEducationalConfigurationManagement() {
   };
 
   const handleDeleteCampus = async (id: string) => {
+    if (!employeeData?.clientId) {
+      toast.error("No client selected");
+      return;
+    }
+
     // Check if campus has associated classes/grades
     const hasClasses = classes.some(cls => cls.campusId === id);
     if (hasClasses) {
@@ -196,7 +206,7 @@ export function useEducationalConfigurationManagement() {
     try {
       setLoading(true);
       const { error } = await supabase.functions.invoke('campus-management', {
-        body: { id, action: 'delete' }
+        body: { id, clientId: employeeData.clientId, action: 'delete' }
       });
 
       if (error) throw error;
@@ -213,7 +223,7 @@ export function useEducationalConfigurationManagement() {
 
   // Class/Grade management
   const handleAddClass = async (campusId: string, name: string) => {
-    if (!client?.id) {
+    if (!employeeData?.clientId) {
       toast.error("No client selected");
       return;
     }
@@ -221,7 +231,7 @@ export function useEducationalConfigurationManagement() {
     try {
       setLoading(true);
       const { data, error } = await supabase.functions.invoke('grade-management', {
-        body: { name, campusId, clientId: client.id, action: 'create' }
+        body: { name, campusId, clientId: employeeData.clientId, action: 'create' }
       });
 
       if (error) throw error;
@@ -241,10 +251,15 @@ export function useEducationalConfigurationManagement() {
   };
 
   const handleUpdateClass = async (id: string, campusId: string, name: string) => {
+    if (!employeeData?.clientId) {
+      toast.error("No client selected");
+      return;
+    }
+
     try {
       setLoading(true);
       const { data, error } = await supabase.functions.invoke('grade-management', {
-        body: { id, name, campusId, action: 'update' }
+        body: { id, name, campusId, clientId: employeeData.clientId, action: 'update' }
       });
 
       if (error) throw error;
@@ -265,6 +280,11 @@ export function useEducationalConfigurationManagement() {
   };
 
   const handleDeleteClass = async (id: string) => {
+    if (!employeeData?.clientId) {
+      toast.error("No client selected");
+      return;
+    }
+
     // Check if class has associated sections
     const hasSections = sections.some(section => section.classId === id);
     if (hasSections) {
@@ -275,7 +295,7 @@ export function useEducationalConfigurationManagement() {
     try {
       setLoading(true);
       const { error } = await supabase.functions.invoke('grade-management', {
-        body: { id, action: 'delete' }
+        body: { id, clientId: employeeData.clientId, action: 'delete' }
       });
 
       if (error) throw error;
@@ -292,7 +312,7 @@ export function useEducationalConfigurationManagement() {
 
   // Section management with the new API
   const handleAddSection = async (classId: string, name: string) => {
-    if (!client?.id) {
+    if (!employeeData?.clientId) {
       toast.error("No client selected");
       return;
     }
@@ -300,7 +320,7 @@ export function useEducationalConfigurationManagement() {
     try {
       setLoading(true);
       const { data, error } = await supabase.functions.invoke('section-management', {
-        body: { name, gradeId: classId, clientId: client.id, action: 'create' }
+        body: { name, gradeId: classId, clientId: employeeData.clientId, action: 'create' }
       });
 
       if (error) throw error;
@@ -320,10 +340,15 @@ export function useEducationalConfigurationManagement() {
   };
 
   const handleUpdateSection = async (id: string, classId: string, name: string) => {
+    if (!employeeData?.clientId) {
+      toast.error("No client selected");
+      return;
+    }
+
     try {
       setLoading(true);
       const { data, error } = await supabase.functions.invoke('section-management', {
-        body: { id, name, gradeId: classId, action: 'update' }
+        body: { id, name, gradeId: classId, clientId: employeeData.clientId, action: 'update' }
       });
 
       if (error) throw error;
@@ -344,10 +369,15 @@ export function useEducationalConfigurationManagement() {
   };
 
   const handleDeleteSection = async (id: string) => {
+    if (!employeeData?.clientId) {
+      toast.error("No client selected");
+      return;
+    }
+
     try {
       setLoading(true);
       const { error } = await supabase.functions.invoke('section-management', {
-        body: { id, action: 'delete' }
+        body: { id, clientId: employeeData.clientId, action: 'delete' }
       });
 
       if (error) throw error;
@@ -364,7 +394,7 @@ export function useEducationalConfigurationManagement() {
 
   // Facility management
   const handleAddFacility = async (name: string, campusId: string) => {
-    if (!client?.id) {
+    if (!employeeData?.clientId) {
       toast.error("No client selected");
       return;
     }
@@ -372,7 +402,7 @@ export function useEducationalConfigurationManagement() {
     try {
       setLoading(true);
       const { data, error } = await supabase.functions.invoke('facility-management', {
-        body: { name, campusId, clientId: client.id, action: 'create' }
+        body: { name, campusId, clientId: employeeData.clientId, action: 'create' }
       });
 
       if (error) throw error;
@@ -392,10 +422,15 @@ export function useEducationalConfigurationManagement() {
   };
 
   const handleUpdateFacility = async (id: string, name: string, campusId: string) => {
+    if (!employeeData?.clientId) {
+      toast.error("No client selected");
+      return;
+    }
+
     try {
       setLoading(true);
       const { data, error } = await supabase.functions.invoke('facility-management', {
-        body: { id, name, campusId, action: 'update' }
+        body: { id, name, campusId, clientId: employeeData.clientId, action: 'update' }
       });
 
       if (error) throw error;
@@ -416,10 +451,15 @@ export function useEducationalConfigurationManagement() {
   };
 
   const handleDeleteFacility = async (id: string) => {
+    if (!employeeData?.clientId) {
+      toast.error("No client selected");
+      return;
+    }
+
     try {
       setLoading(true);
       const { error } = await supabase.functions.invoke('facility-management', {
-        body: { id, action: 'delete' }
+        body: { id, clientId: employeeData.clientId, action: 'delete' }
       });
 
       if (error) throw error;
