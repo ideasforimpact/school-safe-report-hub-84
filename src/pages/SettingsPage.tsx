@@ -4,7 +4,6 @@ import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AlertTriangle, Users, GraduationCap, Building } from "lucide-react";
-import { useAuth } from '@/contexts/auth';
 import IncidentConfigurationContent from '@/components/configuration/IncidentConfigurationContent';
 import UserManagement from '@/pages/UserManagement';
 import StudentManagement from '@/pages/StudentManagement';
@@ -59,7 +58,7 @@ const SettingsPage = () => {
           </TabsContent>
           
           <TabsContent value="user" className="p-0">
-            <UserManagement />
+            <UserManagement embedded={true} />
           </TabsContent>
           
           <TabsContent value="student" className="p-0">
