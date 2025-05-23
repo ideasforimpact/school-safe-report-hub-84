@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { Student } from '@/types/student';
 import {
   Table,
   TableBody,
@@ -9,22 +10,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from '@/components/ui/button';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Edit, Trash2 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { Edit, Trash2, School, IdCard, User } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
 
-interface Student {
-  id: string;
-  firstName: string;
-  lastName: string;
-  studentId: string;
-  grade: string;
-  section: string;
-  parentName: string;
-  parentContact: string;
-}
-
-export interface StudentsListProps {
+interface StudentsListProps {
   students: Student[];
   onEditClick: (student: Student) => void;
   onDeleteStudent: (id: string) => void;
@@ -35,12 +24,12 @@ const StudentsList = ({ students, onEditClick, onDeleteStudent }: StudentsListPr
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>Student ID</TableHead>
-          <TableHead>Name</TableHead>
-          <TableHead>Grade</TableHead>
+          <TableHead><IdCard className="h-4 w-4 mr-2" /> Student ID</TableHead>
+          <TableHead><User className="h-4 w-4 mr-2" /> Name</TableHead>
+          <TableHead><School className="h-4 w-4 mr-2" /> Grade</TableHead>
           <TableHead>Section</TableHead>
-          <TableHead>Parent Name</TableHead>
-          <TableHead>Contact</TableHead>
+          <TableHead>Campus</TableHead>
+          <TableHead>Added</TableHead>
           <TableHead className="w-[100px]">Actions</TableHead>
         </TableRow>
       </TableHeader>
@@ -48,13 +37,13 @@ const StudentsList = ({ students, onEditClick, onDeleteStudent }: StudentsListPr
         {students.map((student) => (
           <TableRow key={student.id}>
             <TableCell>{student.studentId}</TableCell>
-            <TableCell>{student.firstName} {student.lastName}</TableCell>
+            <TableCell>{student.name}</TableCell>
             <TableCell>{student.grade}</TableCell>
             <TableCell>{student.section}</TableCell>
-            <TableCell>{student.parentName}</TableCell>
-            <TableCell>{student.parentContact}</TableCell>
+            <TableCell>{student.campus}</TableCell>
+            <TableCell>{formatDistanceToNow(new Date(student.createdAt), { addSuffix: true })}</TableCell>
             <TableCell>
-              <div className="flex space-x-1">
+              <div className="flex space-x-2">
                 <Button 
                   variant="ghost" 
                   size="icon" 
@@ -62,35 +51,24 @@ const StudentsList = ({ students, onEditClick, onDeleteStudent }: StudentsListPr
                 >
                   <Edit className="h-4 w-4" />
                 </Button>
-                
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete Student</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Are you sure you want to delete this student? This action cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction 
-                        className="bg-destructive hover:bg-destructive/90"
-                        onClick={() => onDeleteStudent(student.id)}
-                      >
-                        Delete
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  onClick={() => onDeleteStudent(student.id)}
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
               </div>
             </TableCell>
           </TableRow>
         ))}
+        {students.length === 0 && (
+          <TableRow>
+            <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+              No students found. Add your first student to get started.
+            </TableCell>
+          </TableRow>
+        )}
       </TableBody>
     </Table>
   );
