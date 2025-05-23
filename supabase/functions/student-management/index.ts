@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.0.0";
 
@@ -69,7 +68,7 @@ serve(async (req) => {
             { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
-        return await handleDeleteStudent(id, body, corsHeaders);
+        return await handleDeleteStudent(id, corsHeaders);
         
       case "validate":
         return await handleValidateImport(body, corsHeaders);
@@ -99,27 +98,7 @@ async function handleListStudents(req: Request, corsHeaders: Record<string, stri
   const url = new URL(req.url);
   const searchTerm = url.searchParams.get("search") || "";
   
-  // Get client_id from body
-  let clientId;
-  try {
-    const body = await req.json();
-    clientId = body.client_id;
-  } catch (e) {
-    // If body parsing fails, try to get from URL param
-    clientId = url.searchParams.get("client_id");
-  }
-  
-  if (!clientId) {
-    return new Response(
-      JSON.stringify({ error: "Client ID is required" }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-  
   let query = supabaseClient.from("students").select("*");
-  
-  // Apply client_id filter first (very important for security)
-  query = query.eq("client_id", clientId);
   
   // Apply search filter if provided
   if (searchTerm) {
@@ -183,7 +162,7 @@ async function handleGetStudent(id: string, corsHeaders: Record<string, string>)
 
 async function handleCreateStudent(body: any, corsHeaders: Record<string, string>) {
   // Validate required fields
-  const requiredFields = ["studentId", "name", "grade", "section", "campus", "client_id"];
+  const requiredFields = ["studentId", "name", "grade", "section", "campus"];
   for (const field of requiredFields) {
     if (!body[field]) {
       return new Response(
@@ -194,7 +173,7 @@ async function handleCreateStudent(body: any, corsHeaders: Record<string, string
   }
   
   // Validate campus, grade, and section exist in the database
-  const isValid = await validateEducationalStructure(body.campus, body.grade, body.section, body.client_id);
+  const isValid = await validateEducationalStructure(body.campus, body.grade, body.section);
   if (!isValid.valid) {
     return new Response(
       JSON.stringify({ error: isValid.error }),
@@ -208,8 +187,7 @@ async function handleCreateStudent(body: any, corsHeaders: Record<string, string
     name: body.name,
     grade: body.grade,
     section: body.section,
-    campus: body.campus,
-    client_id: body.client_id
+    campus: body.campus
   };
   
   const { data, error } = await supabaseClient
@@ -245,17 +223,16 @@ async function handleCreateStudent(body: any, corsHeaders: Record<string, string
   );
 }
 
-async function validateEducationalStructure(campus: string, grade: string, section: string, clientId: string) {
-  if (!campus || !grade || !section || !clientId) {
-    return { valid: false, error: "Campus, grade, section, and client_id are all required" };
+async function validateEducationalStructure(campus: string, grade: string, section: string) {
+  if (!campus || !grade || !section) {
+    return { valid: false, error: "Campus, grade and section are all required" };
   }
   
-  // Check if campus exists and belongs to the client
+  // Check if campus exists
   const { data: campusData, error: campusError } = await supabaseClient
     .from("campuses")
     .select("id")
     .ilike("name", campus)
-    .eq("client_id", clientId)
     .maybeSingle();
   
   if (campusError) {
@@ -264,7 +241,7 @@ async function validateEducationalStructure(campus: string, grade: string, secti
   }
   
   if (!campusData) {
-    return { valid: false, error: `Campus "${campus}" does not exist for the specified client` };
+    return { valid: false, error: `Campus "${campus}" does not exist in the system` };
   }
   
   // Check if grade exists and belongs to the campus
@@ -273,7 +250,6 @@ async function validateEducationalStructure(campus: string, grade: string, secti
     .select("id")
     .ilike("name", grade)
     .eq("campus_id", campusData.id)
-    .eq("client_id", clientId)
     .maybeSingle();
   
   if (gradeError) {
@@ -291,7 +267,6 @@ async function validateEducationalStructure(campus: string, grade: string, secti
     .select("id")
     .ilike("name", section)
     .eq("grade_id", gradeData.id)
-    .eq("client_id", clientId)
     .maybeSingle();
   
   if (sectionError) {
@@ -308,15 +283,6 @@ async function validateEducationalStructure(campus: string, grade: string, secti
 
 async function handleValidateImport(body: any, corsHeaders: Record<string, string>) {
   const students = body.students || [];
-  const clientId = body.client_id;
-  
-  if (!clientId) {
-    return new Response(
-      JSON.stringify({ error: "Client ID is required" }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-  
   if (!Array.isArray(students) || students.length === 0) {
     return new Response(
       JSON.stringify({ error: "No student data provided" }),
@@ -325,17 +291,17 @@ async function handleValidateImport(body: any, corsHeaders: Record<string, strin
   }
   
   const errors: string[] = [];
+  const validEntries: Record<string, boolean> = {};
   
   // Get all distinct campuses, grades, and sections from the import data
   const uniqueCampuses = new Set(students.map(s => s.campus?.toLowerCase()));
   const uniqueGrades = new Set(students.map(s => s.grade?.toLowerCase()));
   const uniqueSections = new Set(students.map(s => s.section?.toLowerCase()));
   
-  // Fetch all valid campuses, grades and sections for this client
+  // Fetch all valid campuses, grades and sections
   const { data: campusData, error: campusError } = await supabaseClient
     .from("campuses")
-    .select("id, name")
-    .eq("client_id", clientId);
+    .select("id, name");
   
   if (campusError) {
     return new Response(
@@ -346,8 +312,7 @@ async function handleValidateImport(body: any, corsHeaders: Record<string, strin
   
   const { data: gradeData, error: gradeError } = await supabaseClient
     .from("grades")
-    .select("id, name, campus_id")
-    .eq("client_id", clientId);
+    .select("id, name, campus_id");
   
   if (gradeError) {
     return new Response(
@@ -358,8 +323,7 @@ async function handleValidateImport(body: any, corsHeaders: Record<string, strin
   
   const { data: sectionData, error: sectionError } = await supabaseClient
     .from("sections")
-    .select("id, name, grade_id")
-    .eq("client_id", clientId);
+    .select("id, name, grade_id");
   
   if (sectionError) {
     return new Response(
@@ -408,7 +372,7 @@ async function handleValidateImport(body: any, corsHeaders: Record<string, strin
     const campusLower = student.campus.toLowerCase();
     const campusId = validCampuses.get(campusLower);
     if (!campusId) {
-      errors.push(`Row ${rowNumber}: Campus "${student.campus}" does not exist in the system for this client`);
+      errors.push(`Row ${rowNumber}: Campus "${student.campus}" does not exist in the system`);
       return;
     }
     
@@ -441,39 +405,9 @@ async function handleValidateImport(body: any, corsHeaders: Record<string, strin
 }
 
 async function handleUpdateStudent(id: string, body: any, corsHeaders: Record<string, string>) {
-  // Verify client_id
-  if (!body.client_id) {
-    return new Response(
-      JSON.stringify({ error: "Client ID is required" }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-  
-  // First check if student belongs to client
-  const { data: existingStudent, error: checkError } = await supabaseClient
-    .from("students")
-    .select("client_id")
-    .eq("id", id)
-    .single();
-    
-  if (checkError) {
-    return new Response(
-      JSON.stringify({ error: "Student not found" }),
-      { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-  
-  // Verify client ownership
-  if (existingStudent.client_id !== body.client_id) {
-    return new Response(
-      JSON.stringify({ error: "You don't have permission to update this student" }),
-      { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-  
   // Validate campus, grade, and section if they are being updated
   if (body.campus && body.grade && body.section) {
-    const isValid = await validateEducationalStructure(body.campus, body.grade, body.section, body.client_id);
+    const isValid = await validateEducationalStructure(body.campus, body.grade, body.section);
     if (!isValid.valid) {
       return new Response(
         JSON.stringify({ error: isValid.error }),
@@ -494,7 +428,6 @@ async function handleUpdateStudent(id: string, body: any, corsHeaders: Record<st
     .from("students")
     .update(updates)
     .eq("id", id)
-    .eq("client_id", body.client_id) // Make sure we're only updating records for this client
     .select();
   
   if (error) {
@@ -525,43 +458,11 @@ async function handleUpdateStudent(id: string, body: any, corsHeaders: Record<st
   );
 }
 
-async function handleDeleteStudent(id: string, body: any, corsHeaders: Record<string, string>) {
-  // Verify client_id
-  if (!body.client_id) {
-    return new Response(
-      JSON.stringify({ error: "Client ID is required" }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-  
-  // Check if student belongs to client
-  const { data: existingStudent, error: checkError } = await supabaseClient
-    .from("students")
-    .select("client_id")
-    .eq("id", id)
-    .single();
-    
-  if (checkError) {
-    return new Response(
-      JSON.stringify({ error: "Student not found" }),
-      { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-  
-  // Verify client ownership
-  if (existingStudent.client_id !== body.client_id) {
-    return new Response(
-      JSON.stringify({ error: "You don't have permission to delete this student" }),
-      { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-  
-  // Delete the student
+async function handleDeleteStudent(id: string, corsHeaders: Record<string, string>) {
   const { error } = await supabaseClient
     .from("students")
     .delete()
-    .eq("id", id)
-    .eq("client_id", body.client_id); // Make sure we're only deleting records for this client
+    .eq("id", id);
   
   if (error) {
     return new Response(
@@ -582,15 +483,6 @@ async function handleDeleteStudent(id: string, body: any, corsHeaders: Record<st
  */
 async function handleBulkUpdate(body: any, corsHeaders: Record<string, string>) {
   const students = body.students || [];
-  const clientId = body.client_id;
-  
-  if (!clientId) {
-    return new Response(
-      JSON.stringify({ error: "Client ID is required" }),
-      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-  
   if (!Array.isArray(students) || students.length === 0) {
     return new Response(
       JSON.stringify({ error: "No student data provided for update" }),
@@ -609,22 +501,10 @@ async function handleBulkUpdate(body: any, corsHeaders: Record<string, string>) 
     for (let i = 0; i < students.length; i += BATCH_SIZE) {
       const batch = students.slice(i, i + BATCH_SIZE);
       
-      // For each student in batch, verify client ownership and prepare update
+      // For each student in batch, prepare update
       for (const student of batch) {
         if (!student.id) {
           console.error("Student ID missing in update request", student);
-          continue;
-        }
-        
-        // Verify student belongs to client
-        const { data: existingStudent, error: checkError } = await supabaseClient
-          .from("students")
-          .select("client_id")
-          .eq("id", student.id)
-          .single();
-          
-        if (checkError || existingStudent.client_id !== clientId) {
-          console.error(`Student ${student.id} does not belong to client ${clientId}`);
           continue;
         }
         
@@ -636,7 +516,6 @@ async function handleBulkUpdate(body: any, corsHeaders: Record<string, string>) 
           .from("students")
           .update(updates)
           .eq("id", id)
-          .eq("client_id", clientId)  // Ensure we only update students for this client
           .select();
         
         if (error) {

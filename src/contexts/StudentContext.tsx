@@ -3,7 +3,6 @@ import React, { createContext, useState, useContext, ReactNode, useEffect } from
 import { Student } from '@/types/student';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { useAuth } from '@/contexts/auth';
 
 interface StudentContextType {
   students: Student[];
@@ -19,32 +18,25 @@ const StudentContext = createContext<StudentContextType | undefined>(undefined);
 export const StudentProvider = ({ children }: { children: ReactNode }) => {
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const { employeeData } = useAuth();
-  const clientId = employeeData?.clientId;
 
   // Fetch students using the edge function on component mount
   useEffect(() => {
-    if (clientId) {
-      fetchStudents();
-    }
-  }, [clientId]);
+    fetchStudents();
+  }, []);
 
   const fetchStudents = async () => {
-    if (!clientId) return;
-    
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('student-management', {
         method: 'GET',
-        headers: { path: 'list' },
-        body: { client_id: clientId }
+        headers: { path: 'list' }
       });
 
       if (error) {
         throw error;
       }
 
-      setStudents(data || []);
+      setStudents(data);
     } catch (error) {
       console.error('Error fetching students:', error);
       toast.error('Failed to load students');
@@ -54,19 +46,9 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const addStudent = async (student: Omit<Student, 'id' | 'createdAt' | 'updatedAt'>) => {
-    if (!clientId) {
-      toast.error('Client ID is missing');
-      return;
-    }
-    
     try {
-      const studentWithClientId = {
-        ...student,
-        client_id: clientId
-      };
-      
       const { data, error } = await supabase.functions.invoke('student-management', {
-        body: studentWithClientId,
+        body: student,
         method: 'POST',
         headers: { path: 'create' }
       });
@@ -84,19 +66,9 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const updateStudent = async (id: string, updates: Partial<Student>) => {
-    if (!clientId) {
-      toast.error('Client ID is missing');
-      return;
-    }
-    
     try {
-      const updatesWithClientId = {
-        ...updates,
-        client_id: clientId
-      };
-      
       const { data, error } = await supabase.functions.invoke('student-management', {
-        body: updatesWithClientId,
+        body: updates,
         method: 'PUT',
         headers: { path: `update`, id }
       });
@@ -118,14 +90,11 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const deleteStudent = async (id: string) => {
-    if (!clientId) {
-      toast.error('Client ID is missing');
-      return;
-    }
-    
     try {
+      // Need to use JSON.stringify with an empty object to ensure we send a valid JSON body
+      // This prevents "Unexpected end of JSON input" errors
       const { error } = await supabase.functions.invoke('student-management', {
-        body: { id, client_id: clientId },
+        body: { id }, // Send the id in the body too as a fallback
         method: 'DELETE',
         headers: { path: `delete`, id }
       });

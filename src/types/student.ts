@@ -8,5 +8,4 @@ export interface Student {
   campus: string;
   createdAt: Date;
   updatedAt: Date;
-  client_id?: string;
 }
