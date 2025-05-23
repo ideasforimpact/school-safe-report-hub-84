@@ -57,7 +57,7 @@ const UploadDocumentPage = () => {
 
         <div className="bg-white rounded-lg border shadow">
           <div className="p-6">
-            <AddDocumentForm employeeId={employeeId || ''} onSuccess={handleSuccess} />
+            <AddDocumentForm employee={employee} onSuccess={handleSuccess} />
           </div>
         </div>
       </div>

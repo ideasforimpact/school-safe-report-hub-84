@@ -14,7 +14,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
   employeeId, 
   onAddDocument
 }) => {
-  const { getEmployeeDocuments, fetchEmployeeDocuments, isLoading } = useEmployeeVerification();
+  const { getEmployeeDocuments, fetchEmployeeDocuments, isLoading, verifyDocument } = useEmployeeVerification();
   
   const documents = getEmployeeDocuments(employeeId);
 
@@ -37,6 +37,14 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
     document.body.removeChild(link);
   };
 
+  const handleVerifyDocument = async (documentId: string) => {
+    try {
+      await verifyDocument(documentId, 'verified');
+    } catch (error) {
+      console.error('Error verifying document:', error);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -55,6 +63,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
       documents={documents}
       onViewDocument={handleViewDocument}
       onDownloadDocument={handleDownloadDocument}
+      onVerifyDocument={handleVerifyDocument}
     />
   );
 };
