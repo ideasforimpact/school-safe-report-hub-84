@@ -24,7 +24,7 @@ const Header = () => {
   // Get employee data and admin status from Redux store
   const employeeData = getEmployeeData(state);
   const isAdmin = isEmployeeAdmin(state);
-  const isSuperAdmin = isEmployeeSuperAdmin(state);
+  const isSuperAdmin = user?.isSuperAdmin;
 
   // Log user and Redux state for debugging
   console.log("User from Auth Context:", user);
