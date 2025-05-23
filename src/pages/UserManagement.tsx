@@ -27,7 +27,8 @@ import {
   addNewUser, 
   updateExistingUser,
   deleteExistingUser, 
-  deactivateExistingUser
+  deactivateExistingUser,
+  reactivateExistingUser
 } from '@/services/auth/userManagementService';
 import { processEmployeeExcel } from '@/services/employee/importEmployeeService';
 import { supabase } from '@/integrations/supabase/client';
@@ -501,6 +502,40 @@ const UserManagement = () => {
     }
   };
 
+  // Handler for reactivating a user
+  const handleReactivateUser = async (userId: string) => {
+    try {
+      setIsLoading(true);
+      // Use the existing reactivateExistingUser function or similar logic
+      // For now, just update the employee status via edge function
+      try {
+        const { data, error } = await supabase.functions.invoke('employee-management', {
+          body: JSON.stringify({
+            operation: 'reactivate',
+            id: userId
+          })
+        });
+        
+        if (error) {
+          console.error("Edge function reactivate error:", error);
+        } else {
+          console.log("Employee reactivated via edge function:", data);
+        }
+        
+        await refreshEmployeesList();
+        toast.success("User reactivated successfully");
+      } catch (error) {
+        console.error("Error reactivating employee:", error);
+        toast.error("Failed to reactivate user");
+      }
+    } catch (error) {
+      console.error("Error reactivating user:", error);
+      toast.error("Failed to reactivate user");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Reset form to default values - Using only moduleAccessPayload
   const resetForm = () => {
     setFormData({
@@ -656,6 +691,7 @@ const UserManagement = () => {
                 onEditClick={handleEditClick}
                 onDeleteUser={handleDeleteUser}
                 onDeactivateUser={handleDeactivateUser}
+                onReactivateUser={handleReactivateUser}
               />
             )}
           </CardContent>

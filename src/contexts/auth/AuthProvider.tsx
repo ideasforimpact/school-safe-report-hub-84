@@ -216,18 +216,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setEmployeeData(employee);
             saveEmployeeDataToStorage(employee);
             
-            // Update Redux state correctly with action creators
+            // Update Redux state - action creators return void, so don't check truthiness
             if (dispatch) {
-              const action = setEmployeeData(employee);
-              if (action) {
-                dispatch(action);
-              }
+              dispatch(setEmployeeData(employee));
               
               if (employee.clientId) {
-                const clientAction = setClientId(employee.clientId);
-                if (clientAction) {
-                  dispatch(clientAction);
-                }
+                dispatch(setClientId(employee.clientId));
               }
             }
             
@@ -323,18 +317,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setEmployeeData(backofficeEmployeeData);
         saveEmployeeDataToStorage(backofficeEmployeeData);
         
-        // Update Redux state correctly using action creators
+        // Update Redux state - action creators return void, so don't check truthiness
         if (dispatch) {
-          const action = setEmployeeData(backofficeEmployeeData);
-          if (action) {
-            dispatch(action);
-          }
+          dispatch(setEmployeeData(backofficeEmployeeData));
           
           if (backofficeEmployeeData.clientId) {
-            const clientAction = setClientId(backofficeEmployeeData.clientId);
-            if (clientAction) {
-              dispatch(clientAction);
-            }
+            dispatch(setClientId(backofficeEmployeeData.clientId));
           }
         }
         
@@ -360,12 +348,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
         ];
         
-        // Update Redux state with modules using action creator
+        // Update Redux state with modules - action creators return void, so don't check truthiness
         if (dispatch) {
-          const modulesAction = setConfiguredModules(backofficeModules);
-          if (modulesAction) {
-            dispatch(modulesAction);
-          }
+          dispatch(setConfiguredModules(backofficeModules));
         }
         
         toast.success(`Welcome back, Backoffice Admin!`);
@@ -390,12 +375,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     saveEmployeeDataToStorage(null);
     setIsBackofficeUser(false);
     
-    // Clear Redux state correctly using action creator
+    // Clear Redux state - action creators return void, so don't check truthiness
     if (dispatch) {
-      const action = resetEmployee();
-      if (action) {
-        dispatch(action);
-      }
+      dispatch(resetEmployee());
     }
     
     // Clear local storage
