@@ -23,6 +23,7 @@ interface ExtraField {
   label: string;
   value: string;
   options?: SelectOption[];
+  disabled?: boolean;
   onChange: (value: string) => void;
 }
 
@@ -38,13 +39,12 @@ interface EditDialogProps {
   description?: string;
   fieldLabel?: string;
   value?: string;
-  defaultValue?: string;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   onChange?: (value: string) => void;
   onClose?: () => void;
   triggerButton?: React.ReactNode;
-  extraField?: ExtraField;
+  extraFields?: ExtraField[];
 }
 
 export const EditDialog: React.FC<EditDialogProps> = ({
@@ -59,17 +59,16 @@ export const EditDialog: React.FC<EditDialogProps> = ({
   description,
   fieldLabel,
   value = '',
-  defaultValue = '',
   open,
   onOpenChange,
   onChange,
   onClose,
   triggerButton,
-  extraField,
+  extraFields,
 }) => {
   const [formData, setFormData] = React.useState<Record<string, string>>(initialValues);
   const [isOpen, setIsOpen] = React.useState(false);
-  const [localValue, setLocalValue] = React.useState(value || defaultValue || '');
+  const [localValue, setLocalValue] = React.useState(value || '');
 
   // Handle controlled vs. uncontrolled open state
   const dialogOpen = open !== undefined ? open : isOpen;
@@ -89,10 +88,9 @@ export const EditDialog: React.FC<EditDialogProps> = ({
 
   React.useEffect(() => {
     if (!dialogOpen) {
-      // Reset state when dialog closes
-      setLocalValue(defaultValue || '');
+      setLocalValue('');
     }
-  }, [dialogOpen, defaultValue]);
+  }, [dialogOpen]);
 
   const handleChange = (name: string, value: string) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -109,10 +107,8 @@ export const EditDialog: React.FC<EditDialogProps> = ({
     e.preventDefault();
     
     if (fields) {
-      // For direct form handling
       onSave(formData);
     } else {
-      // For controlled usage
       onSave({});
     }
     
@@ -163,7 +159,7 @@ export const EditDialog: React.FC<EditDialogProps> = ({
         </form>
       );
     } else {
-      // Render single input with optional extra field
+      // Render single input with optional extra fields
       return (
         <form onSubmit={handleSubmit}>
           <div className="space-y-4 py-4">
@@ -184,14 +180,18 @@ export const EditDialog: React.FC<EditDialogProps> = ({
               </div>
             )}
             
-            {extraField && (
-              <div className="grid grid-cols-4 items-center gap-4">
-                <label htmlFor="extraField" className="text-right text-sm font-medium col-span-1">
+            {extraFields && extraFields.map((extraField, index) => (
+              <div className="grid grid-cols-4 items-center gap-4" key={index}>
+                <label htmlFor={`extraField-${index}`} className="text-right text-sm font-medium col-span-1">
                   {extraField.label}
                 </label>
                 <div className="col-span-3">
                   {extraField.type === 'select' ? (
-                    <Select value={extraField.value} onValueChange={extraField.onChange}>
+                    <Select 
+                      value={extraField.value} 
+                      onValueChange={extraField.onChange}
+                      disabled={extraField.disabled}
+                    >
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder={`Select ${extraField.label}`} />
                       </SelectTrigger>
@@ -203,23 +203,25 @@ export const EditDialog: React.FC<EditDialogProps> = ({
                     </Select>
                   ) : extraField.type === 'textarea' ? (
                     <Textarea
-                      id="extraField"
+                      id={`extraField-${index}`}
                       value={extraField.value}
                       onChange={(e) => extraField.onChange(e.target.value)}
                       className="w-full"
+                      disabled={extraField.disabled}
                     />
                   ) : (
                     <Input
-                      id="extraField"
+                      id={`extraField-${index}`}
                       type={extraField.type === 'color' ? 'color' : extraField.type === 'number' ? 'number' : 'text'}
                       value={extraField.value}
                       onChange={(e) => extraField.onChange(e.target.value)}
                       className="w-full"
+                      disabled={extraField.disabled}
                     />
                   )}
                 </div>
               </div>
-            )}
+            ))}
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={handleCancel}>

@@ -35,7 +35,7 @@ export const AuthContext = createContext<AuthContextType>({
   changePassword: async () => false,
   authError: null,
   handleUserAuthentication: async () => {},
-  employeeData: null, // Initialize with null
+  employeeData: null,
 });
 
 interface AuthProviderProps {
@@ -545,7 +545,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     changePassword: handleChangePassword,
     authError,
     handleUserAuthentication,
-    employeeData, // Add employee data to context value
+    employeeData,
   };
 
   // If still initializing, show nothing

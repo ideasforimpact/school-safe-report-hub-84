@@ -21,6 +21,7 @@ export interface ClassItem extends ConfigItem {
 
 export interface SectionItem extends ConfigItem {
   classId: string;
+  campusId?: string;
 }
 
 // Re-export types from incident.ts to avoid circular dependencies

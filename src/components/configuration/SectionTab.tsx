@@ -115,6 +115,7 @@ export const SectionTab = ({
       editingSection.campusId, 
       editingSection.name.trim()
     );
+    setEditingSection(null);
   };
 
   const getClassName = (classId: string) => {
@@ -245,7 +246,7 @@ export const SectionTab = ({
                         title="Edit Section"
                         description="Update the section details below"
                         fieldLabel="Section name"
-                        value={section.name}
+                        value={editingSection?.id === section.id ? editingSection.name : section.name}
                         extraFields={[
                           {
                             type: "select",
@@ -253,7 +254,6 @@ export const SectionTab = ({
                             options: campuses.map(campus => ({ value: campus.id, label: campus.name })),
                             value: editingSection?.id === section.id ? editingSection.campusId : section.campusId || '',
                             onChange: (value) => {
-                              // Update campus and reset class if needed
                               const newCampusId = value;
                               setEditingSection(prev => {
                                 if (!prev || prev.id !== section.id) {
@@ -265,7 +265,6 @@ export const SectionTab = ({
                                   };
                                 }
                                 
-                                // If campus changed, check if class needs to be updated
                                 const classStillValid = classes.some(
                                   cls => cls.id === prev.classId && cls.campusId === newCampusId
                                 );

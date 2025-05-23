@@ -809,6 +809,7 @@ export type Database = {
       }
       sections: {
         Row: {
+          campus_id: string | null
           client_id: string
           created_at: string
           grade_id: string
@@ -817,6 +818,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          campus_id?: string | null
           client_id: string
           created_at?: string
           grade_id: string
@@ -825,6 +827,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          campus_id?: string | null
           client_id?: string
           created_at?: string
           grade_id?: string
@@ -833,6 +836,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "sections_campus_id_fkey"
+            columns: ["campus_id"]
+            isOneToOne: false
+            referencedRelation: "campuses"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sections_client_id_fkey"
             columns: ["client_id"]
