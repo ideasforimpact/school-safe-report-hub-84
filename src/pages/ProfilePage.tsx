@@ -9,6 +9,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import Layout from '@/components/layout/Layout';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 interface ClientInfo {
   name: string;
@@ -229,8 +231,8 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({ modules, loading }) => {
               {modules.map((module, index) => (
                 <tr key={index}>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{module.name}</td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {determineAccessLevel(module.access_level)}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <AccessLevelBadge accessLevel={module.access_level} />
                   </td>
                 </tr>
               ))}
@@ -240,6 +242,28 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({ modules, loading }) => {
       </div>
     </div>
   );
+};
+
+const AccessLevelBadge: React.FC<{ accessLevel: { is_admin?: boolean; [key: string]: any } | undefined }> = ({ accessLevel }) => {
+  const isAdmin = accessLevel?.is_admin === true;
+  
+  if (!accessLevel || Object.keys(accessLevel).length === 0) {
+    return <Badge variant="outline" className="text-gray-500 border-gray-300">Regular User</Badge>;
+  }
+  
+  if (isAdmin) {
+    return <Badge variant="success" className="bg-green-100 text-green-800 border-green-500 font-medium">Administrator</Badge>;
+  }
+  
+  // Check if there are any other access level indicators
+  const accessKeys = Object.keys(accessLevel).filter(key => key !== 'is_admin');
+  if (accessKeys.length > 0) {
+    return <Badge variant="outline" className="text-blue-700 border-blue-500 bg-blue-50">
+      {accessKeys.map(key => `${key}: ${accessLevel[key]}`).join(', ')}
+    </Badge>;
+  }
+  
+  return <Badge variant="outline" className="text-gray-600 border-gray-300 bg-gray-50">Regular User</Badge>;
 };
 
 const determineAccessLevel = (accessLevel: { is_admin?: boolean; [key: string]: any } | undefined): string => {
