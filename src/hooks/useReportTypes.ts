@@ -20,7 +20,8 @@ export function useReportTypes() {
       setLoading(true);
       
       if (!employeeData?.clientId) {
-        console.warn('Client ID not available, using default report types');
+        console.warn('Client ID not available for fetching report types');
+        setReportTypes(DEFAULT_REPORT_TYPES);
         return;
       }
       
@@ -30,9 +31,11 @@ export function useReportTypes() {
         setReportTypes(types);
       } else {
         console.warn('No report types found in database, using defaults');
+        setReportTypes(DEFAULT_REPORT_TYPES);
       }
     } catch (error) {
       console.error('Error in useReportTypes hook:', error);
+      setReportTypes(DEFAULT_REPORT_TYPES);
     } finally {
       setLoading(false);
     }

@@ -109,8 +109,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Clear Redux state on logout
         if (dispatch) {
-          const resetAction = resetEmployee();
-          dispatch(resetAction);
+          dispatch(resetEmployee());
         }
         
         // Add a toast message for logout
@@ -159,8 +158,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             
             // Clear Redux state
             if (dispatch) {
-              const resetAction = resetEmployee();
-              dispatch(resetAction);
+              dispatch(resetEmployee());
             }
             
             logoutUser();

@@ -16,7 +16,9 @@ export const priorityService = {
   getPriorities: async (clientId?: string, activeOnly: boolean = false) => {
     try {
       if (!clientId) {
-        throw new Error('Client ID is required');
+        console.error('Client ID is required for fetching priorities');
+        toast.error('Client information is required');
+        return [];
       }
 
       let query = supabase
@@ -31,7 +33,9 @@ export const priorityService = {
       const { data, error } = await query.order('weight');
       
       if (error) {
-        throw error;
+        console.error('Error fetching priorities:', error);
+        toast.error(`Failed to fetch priorities: ${error.message}`);
+        return [];
       }
 
       return data as PriorityItem[];
@@ -46,6 +50,8 @@ export const priorityService = {
   addPriority: async (name: string, description: string | null = null, color: string | null = null, weight: number | null = 0, clientId?: string) => {
     try {
       if (!clientId) {
+        console.error('Client ID is required for adding priority');
+        toast.error('Client information is required');
         throw new Error('Client ID is required');
       }
       
@@ -64,6 +70,8 @@ export const priorityService = {
         .single();
 
       if (error) {
+        console.error('Error adding priority:', error);
+        toast.error(`Failed to add priority: ${error.message}`);
         throw error;
       }
 
@@ -79,6 +87,8 @@ export const priorityService = {
   updatePriority: async (id: string, name: string, description: string | null = null, color: string | null = null, weight: number | null = 0, clientId?: string) => {
     try {
       if (!clientId) {
+        console.error('Client ID is required for updating priority');
+        toast.error('Client information is required');
         throw new Error('Client ID is required');
       }
 
@@ -96,11 +106,16 @@ export const priorityService = {
         .single();
 
       if (error) {
+        console.error('Error updating priority:', error);
+        toast.error(`Failed to update priority: ${error.message}`);
         throw error;
       }
 
       if (!data) {
-        throw new Error('Priority not found or access denied');
+        const errorMsg = 'Priority not found or access denied';
+        console.error(errorMsg);
+        toast.error(errorMsg);
+        throw new Error(errorMsg);
       }
 
       return data as PriorityItem;
@@ -115,6 +130,8 @@ export const priorityService = {
   deletePriority: async (id: string, clientId?: string) => {
     try {
       if (!clientId) {
+        console.error('Client ID is required for deleting priority');
+        toast.error('Client information is required');
         throw new Error('Client ID is required');
       }
 
@@ -125,6 +142,8 @@ export const priorityService = {
         .eq('client_id', clientId);
 
       if (error) {
+        console.error('Error deleting priority:', error);
+        toast.error(`Failed to delete priority: ${error.message}`);
         throw error;
       }
 
@@ -140,6 +159,8 @@ export const priorityService = {
   togglePriorityStatus: async (id: string, isActive: boolean, clientId?: string) => {
     try {
       if (!clientId) {
+        console.error('Client ID is required for toggling priority status');
+        toast.error('Client information is required');
         throw new Error('Client ID is required');
       }
 
@@ -154,11 +175,16 @@ export const priorityService = {
         .single();
 
       if (error) {
+        console.error('Error toggling priority status:', error);
+        toast.error(`Failed to update priority status: ${error.message}`);
         throw error;
       }
 
       if (!data) {
-        throw new Error('Priority not found or access denied');
+        const errorMsg = 'Priority not found or access denied';
+        console.error(errorMsg);
+        toast.error(errorMsg);
+        throw new Error(errorMsg);
       }
 
       return data as PriorityItem;

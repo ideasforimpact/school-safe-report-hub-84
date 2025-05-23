@@ -14,7 +14,9 @@ export const reportTypeService = {
   getReportTypes: async (clientId?: string, activeOnly: boolean = false) => {
     try {
       if (!clientId) {
-        throw new Error('Client ID is required');
+        console.error('Client ID is required for fetching report types');
+        toast.error('Client information is required');
+        return [];
       }
 
       let query = supabase
@@ -29,7 +31,9 @@ export const reportTypeService = {
       const { data, error } = await query.order('name');
       
       if (error) {
-        throw error;
+        console.error('Error fetching report types:', error);
+        toast.error(`Failed to fetch report types: ${error.message}`);
+        return [];
       }
 
       return data as ReportTypeItem[];
@@ -44,6 +48,8 @@ export const reportTypeService = {
   addReportType: async (name: string, description: string | null = null, clientId?: string) => {
     try {
       if (!clientId) {
+        console.error('Client ID is required for adding report type');
+        toast.error('Client information is required');
         throw new Error('Client ID is required');
       }
       
@@ -60,6 +66,8 @@ export const reportTypeService = {
         .single();
 
       if (error) {
+        console.error('Error adding report type:', error);
+        toast.error(`Failed to add report type: ${error.message}`);
         throw error;
       }
 
@@ -75,6 +83,8 @@ export const reportTypeService = {
   updateReportType: async (id: string, name: string, description: string | null = null, clientId?: string) => {
     try {
       if (!clientId) {
+        console.error('Client ID is required for updating report type');
+        toast.error('Client information is required');
         throw new Error('Client ID is required');
       }
 
@@ -90,11 +100,16 @@ export const reportTypeService = {
         .single();
 
       if (error) {
+        console.error('Error updating report type:', error);
+        toast.error(`Failed to update report type: ${error.message}`);
         throw error;
       }
 
       if (!data) {
-        throw new Error('Report type not found or access denied');
+        const errorMsg = 'Report type not found or access denied';
+        console.error(errorMsg);
+        toast.error(errorMsg);
+        throw new Error(errorMsg);
       }
 
       return data as ReportTypeItem;
@@ -109,6 +124,8 @@ export const reportTypeService = {
   deleteReportType: async (id: string, clientId?: string) => {
     try {
       if (!clientId) {
+        console.error('Client ID is required for deleting report type');
+        toast.error('Client information is required');
         throw new Error('Client ID is required');
       }
 
@@ -119,6 +136,8 @@ export const reportTypeService = {
         .eq('client_id', clientId);
 
       if (error) {
+        console.error('Error deleting report type:', error);
+        toast.error(`Failed to delete report type: ${error.message}`);
         throw error;
       }
 
@@ -134,6 +153,8 @@ export const reportTypeService = {
   toggleReportTypeStatus: async (id: string, isActive: boolean, clientId?: string) => {
     try {
       if (!clientId) {
+        console.error('Client ID is required for toggling report type status');
+        toast.error('Client information is required');
         throw new Error('Client ID is required');
       }
 
@@ -148,11 +169,16 @@ export const reportTypeService = {
         .single();
 
       if (error) {
+        console.error('Error toggling report type status:', error);
+        toast.error(`Failed to update report type status: ${error.message}`);
         throw error;
       }
 
       if (!data) {
-        throw new Error('Report type not found or access denied');
+        const errorMsg = 'Report type not found or access denied';
+        console.error(errorMsg);
+        toast.error(errorMsg);
+        throw new Error(errorMsg);
       }
 
       return data as ReportTypeItem;

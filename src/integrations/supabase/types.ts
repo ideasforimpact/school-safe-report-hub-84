@@ -691,19 +691,19 @@ export type Database = {
       }
       incidents: {
         Row: {
+          assigned_to: string | null
           category_id: string | null
           client_id: string | null
           created_at: string
+          created_by: string
           date: string
           description: string | null
           documents: Json | null
           facility_id: string | null
           id: string
           location_id: string | null
-          owner_id: string | null
           people_involved: Json
           priority_id: string | null
-          reported_by_id: string
           status_id: string
           subcategory_id: string | null
           ticket_id: string
@@ -711,19 +711,19 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          assigned_to?: string | null
           category_id?: string | null
           client_id?: string | null
           created_at?: string
+          created_by: string
           date: string
           description?: string | null
           documents?: Json | null
           facility_id?: string | null
           id?: string
           location_id?: string | null
-          owner_id?: string | null
           people_involved?: Json
           priority_id?: string | null
-          reported_by_id: string
           status_id: string
           subcategory_id?: string | null
           ticket_id: string
@@ -731,19 +731,19 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          assigned_to?: string | null
           category_id?: string | null
           client_id?: string | null
           created_at?: string
+          created_by?: string
           date?: string
           description?: string | null
           documents?: Json | null
           facility_id?: string | null
           id?: string
           location_id?: string | null
-          owner_id?: string | null
           people_involved?: Json
           priority_id?: string | null
-          reported_by_id?: string
           status_id?: string
           subcategory_id?: string | null
           ticket_id?: string
