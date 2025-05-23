@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useEffect, useContext, ReactNode, useReducer } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -90,6 +91,7 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
 // Authentication provider component
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
+  const [users, setUsers] = useState<User[]>([]);
   const navigate = useNavigate();
 
   // Function to convert Supabase user to your application's user type
@@ -123,8 +125,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       firstName: firstName || 'No First Name',
       lastName: lastName || 'No Last Name',
       employeeId: employeeId || 'No Employee ID',
-      employeeType: employeeType || 'No Employee Type',
-      department: department || 'No Department',
+      employeeType: (employeeType || 'permanent') as EmployeeType,
+      department: (department || 'admin') as DepartmentType,
       joiningDate: joiningDate || 'No Joining Date',
       clientId: clientId || 'No Client ID',
       isSuperAdmin: is_super_admin || false,
@@ -134,7 +136,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   // Function to handle user login
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<boolean> => {
     dispatch({ type: 'SET_LOADING', payload: true });
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -146,6 +148,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.error('Login error:', error);
         toast.error(`Login failed: ${error.message}`);
         dispatch({ type: 'SET_ERROR', payload: error.message });
+        return false;
       } else {
         // Convert Supabase user to your application's user type
         const user = convertSupabaseUser(data.user);
@@ -154,12 +157,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           dispatch({ type: 'LOGIN', payload: user });
           toast.success('Login successful!');
           navigate('/dashboard');
+          return true;
         }
+        return false;
       }
     } catch (error: any) {
       console.error('Login exception:', error);
       toast.error(`Login failed: ${error.message || 'An unexpected error occurred'}`);
       dispatch({ type: 'SET_ERROR', payload: error.message || 'An unexpected error occurred' });
+      return false;
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
@@ -326,14 +332,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Set up Supabase auth state listener on component mount
   useEffect(() => {
-    supabase.auth.onAuthStateChange(handleSessionChange);
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(handleSessionChange);
 
     // Perform initial auth check
     checkInitialAuth();
 
     // Clean up the listener when the component unmounts
     return () => {
-      supabase.auth.removeAuthStateChange(handleSessionChange);
+      subscription?.unsubscribe();
     };
   }, []);
 
@@ -343,18 +351,60 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     determineSuperAdminStatus(state.user);
   }, [state.user]);
 
+  // Mock methods for user management
+  const addUser = (userData: Partial<User>) => {
+    console.log('Add user:', userData);
+    // Implementation would connect to a backend service
+  };
+
+  const updateUser = (id: string, userData: Partial<User>) => {
+    console.log('Update user:', id, userData);
+    // Implementation would connect to a backend service
+  };
+
+  const deleteUser = (id: string) => {
+    console.log('Delete user:', id);
+    // Implementation would connect to a backend service
+  };
+
+  const deactivateUser = (id: string) => {
+    console.log('Deactivate user:', id);
+    // Implementation would connect to a backend service
+  };
+
+  const reactivateUser = (id: string) => {
+    console.log('Reactivate user:', id);
+    // Implementation would connect to a backend service
+  };
+
+  const changePassword = async (currentPassword: string, newPassword: string): Promise<boolean> => {
+    console.log('Change password');
+    // Implementation would connect to a backend service
+    return true;
+  };
+
+  const handleUserAuthentication = async (userData: any) => {
+    console.log('Handle user authentication:', userData);
+    // Implementation would connect to a backend service
+  };
+
   // Provide the authentication context value
   const value: AuthContextType = {
     user: state.user,
+    users: users,
     isAdmin: state.isAdmin,
-    isSuperAdmin: state.isSuperAdmin,
-    isAuthenticated: state.isAuthenticated,
-    isLoading: state.isLoading,
-    error: state.error,
+    isSaasOwner: state.isSuperAdmin,
+    authError: state.error,
     login,
     logout,
-    resetPassword,
-    updatePassword,
+    addUser,
+    updateUser,
+    deleteUser,
+    deactivateUser,
+    reactivateUser,
+    changePassword,
+    handleUserAuthentication,
+    employeeData: null,
   };
 
   return (
@@ -364,11 +414,4 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   );
 };
 
-// Custom hook to use the authentication context
-export const useAuth = (): AuthContextType => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+export { AuthContext };

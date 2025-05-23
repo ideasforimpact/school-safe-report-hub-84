@@ -1,78 +1,89 @@
 
-// Update the AuthContextType to include the employeeData property
-export interface AuthContextType {
-  user: User | null;
-  users: User[];
-  login: (email: string, password: string) => Promise<boolean>;
-  logout: () => void;
-  isAdmin: boolean;
-  isSaasOwner: boolean;
-  addUser: (userData: any) => void;
-  updateUser: (id: string, updates: Partial<User>) => void;
-  deleteUser: (id: string) => void;
-  deactivateUser: (id: string) => void;
-  reactivateUser: (id: string) => void;
-  changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
-  authError: string | null;
-  handleUserAuthentication: (supabaseUser: any) => Promise<void>;
-  employeeData: EmployeeData | null;
-}
+// User roles
+export type UserRole = 'admin' | 'reporter' | 'user' | 'saas_owner';
 
-export type UserRole = 'user' | 'admin' | 'reporter' | 'viewer' | 'saas_owner';
-export type EmployeeType = 'permanent' | 'contract' | 'part_time' | 'full-time' | 'consultant' | 'admin';
-export type DepartmentType = 'IT' | 'HR' | 'Finance' | 'Marketing' | 'Operations' | 'Other' | 'Teaching' | 
-  'Administrative' | 'Support' | 'admin' | 'teaching' | 'security' | 'maintenance' | 'transport' | 
-  'management' | 'Management';
+// Employee types
+export type EmployeeType = 'permanent' | 'temporary' | 'contract' | 'consultant' | 'part_time';
 
-// Define a ModulePermissions interface
+// Department types
+export type DepartmentType = 'admin' | 'academics' | 'operations' | 'teaching' | 'security' | 'maintenance' | 'transport' | 'management';
+
+// Module permissions interface
 export interface ModulePermissions {
-  superAdmin?: boolean;
-  userManagement?: boolean;
-  clientManagement?: boolean;
-  employeeVerification?: boolean;
-  employeeVerificationAdmin?: boolean;
-  incidentReporting?: boolean;
-  incidentAdmin?: boolean;
-  transportSafety?: boolean;
-  transportSafetyAdmin?: boolean;
-  assessmentUser?: boolean;
-  assessmentsAdmin?: boolean;
-  grievancesAdmin?: boolean;
-  eduSafeResourceAccess?: boolean;
-  [key: string]: boolean | undefined;
+  incidents: boolean;
+  assessments: boolean;
+  reports: boolean;
+  edusafe: boolean;
+  transport: boolean;
+  [key: string]: boolean;
 }
 
+// Employee data
+export interface EmployeeData {
+  id: string;
+  name: string;
+  role: string;
+  department?: DepartmentType;
+  employeeType?: EmployeeType;
+}
+
+// User interface
 export interface User {
   id: string;
+  email: string;
   firstName: string;
   lastName: string;
-  email: string;
-  role: UserRole;
-  isActive: boolean;
-  modulePermissions?: ModulePermissions;
-  createdAt?: string;
-  updatedAt?: string;
-  provider?: string;
-  clientId?: string | null;
-  // Add these fields to fix the errors
   employeeId?: string;
   employeeType?: EmployeeType;
   department?: DepartmentType;
   joiningDate?: string;
+  clientId?: string;
+  role: UserRole;
+  isActive?: boolean;
   isSuperAdmin?: boolean;
+  modulePermissions?: ModulePermissions;
 }
 
-export interface UserWithPassword extends User {
-  password: string;
+// Auth context type
+export interface AuthContextType {
+  user: User | null;
+  users: User[];
+  isAdmin: boolean;
+  isSaasOwner: boolean;
+  authError: string | null;
+  employeeData: EmployeeData | null;
+  login: (email: string, password: string) => Promise<boolean>;
+  logout: () => Promise<void>;
+  addUser: (userData: Partial<User>) => void;
+  updateUser: (id: string, userData: Partial<User>) => void;
+  deleteUser: (id: string) => void;
+  deactivateUser: (id: string) => void;
+  reactivateUser: (id: string) => void;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
+  handleUserAuthentication: (userData: any) => Promise<void>;
 }
 
-export interface EmployeeData {
-  id: string;
-  clientId: string | null;
-  firstName: string;
-  lastName: string;
-  email: string; // Make this required to match authService
-  isSuperAdmin?: boolean;
-  department?: string; // Add department field
-  employeeType?: string; // Add employeeType field
+// Auth provider props
+export interface AuthProviderProps {
+  children: React.ReactNode;
 }
+
+// Auth state interface
+export interface AuthState {
+  user: User | null;
+  isAdmin: boolean;
+  isSuperAdmin: boolean;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  error: string | null;
+}
+
+// Auth action types
+export type AuthAction =
+  | { type: 'LOGIN'; payload: User }
+  | { type: 'LOGOUT' }
+  | { type: 'SET_ADMIN'; payload: boolean }
+  | { type: 'SET_SUPER_ADMIN'; payload: boolean }
+  | { type: 'SET_LOADING'; payload: boolean }
+  | { type: 'SET_ERROR'; payload: string }
+  | { type: 'SET_USER'; payload: User | null };

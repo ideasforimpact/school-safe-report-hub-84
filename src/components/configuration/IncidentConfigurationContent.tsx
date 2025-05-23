@@ -5,6 +5,21 @@ import { CategoryTab } from '@/components/configuration/CategoryTab';
 import { SubcategoryTab } from '@/components/configuration/SubcategoryTab';
 import { useCategoryManagement } from '@/hooks/config/useCategoryManagement';
 
+interface CategoryTabProps {
+  categories: any[];
+  onAdd: (name: string) => any;
+  onUpdate: (id: string, name: string) => void;
+  onDelete: (id: string) => void;
+}
+
+interface SubcategoryTabProps {
+  categories: any[];
+  subcategoryMap: Record<string, any[]>;
+  onAdd: (categoryId: string, name: string) => any;
+  onUpdate: (categoryId: string, id: string, name: string) => void;
+  onDelete: (categoryId: string, id: string) => void;
+}
+
 const IncidentConfigurationContent = () => {
   const [activeConfigTab, setActiveConfigTab] = React.useState('categories');
   const {
