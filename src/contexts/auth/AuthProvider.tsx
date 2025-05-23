@@ -1,4 +1,3 @@
-
 import React, { createContext, useEffect, useState, useRef } from 'react';
 import { User, AuthContextType, UserWithPassword, EmployeeData } from './types';
 import { 
@@ -217,7 +216,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setEmployeeData(employee);
             saveEmployeeDataToStorage(employee);
             
-            // Update Redux state
+            // Update Redux state - Fix TS error by using action creators
             if (dispatch) {
               dispatch(setEmployeeData(employee));
               
@@ -349,7 +348,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
         ];
         
-        // Update Redux state with modules
+        // Update Redux state with modules - Fix TS error by using action creators
         if (dispatch) {
           dispatch(setConfiguredModules(backofficeModules));
         }

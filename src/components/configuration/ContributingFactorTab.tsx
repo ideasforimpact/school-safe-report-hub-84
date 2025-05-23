@@ -2,7 +2,6 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus, Edit, Trash2 } from 'lucide-react';
-import { EditDialog } from './EditDialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { 
@@ -66,19 +65,22 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
 
     try {
       setLoading(true);
+      // Strictly using contributingFactorService and passing clientId
       await contributingFactorService.addContributingFactor(
         currentName.trim(), 
         currentDescription.trim(), 
         currentWeight,
         employeeData.clientId
       );
+      
+      // Call the prop function to refresh the parent component
+      propAddFactor(currentName.trim(), currentDescription.trim(), currentWeight);
+      
+      // Reset form and close dialog
       setCurrentName('');
       setCurrentDescription('');
       setCurrentWeight('Medium');
       setIsAddDialogOpen(false);
-      
-      // Call the prop function to refresh the parent component
-      propAddFactor(currentName.trim(), currentDescription.trim(), currentWeight);
       
       toast.success('Contributing factor added successfully');
     } catch (error) {
@@ -102,6 +104,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
 
     try {
       setLoading(true);
+      // Strictly using contributingFactorService and passing clientId
       await contributingFactorService.updateContributingFactor(
         currentId, 
         currentName.trim(), 
@@ -140,6 +143,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
     if (confirm('Are you sure you want to delete this contributing factor?')) {
       try {
         setLoading(true);
+        // Strictly using contributingFactorService and passing clientId
         await contributingFactorService.deleteContributingFactor(id, employeeData.clientId);
         
         // Call the prop function to refresh the parent component
