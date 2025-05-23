@@ -3,7 +3,6 @@ import React, { createContext, useState, useContext, ReactNode, useEffect } from
 import { Student } from '@/types/student';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { useAuth } from '@/contexts/auth';
 
 interface StudentContextType {
   students: Student[];
@@ -19,47 +18,25 @@ const StudentContext = createContext<StudentContextType | undefined>(undefined);
 export const StudentProvider = ({ children }: { children: ReactNode }) => {
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const { user, employeeData } = useAuth();
-
-  // Get client_id from authenticated user's employee data
-  const getClientId = () => {
-    if (employeeData?.client_id) {
-      return employeeData.client_id;
-    }
-    console.warn('No client_id found in employee data');
-    return null;
-  };
 
   // Fetch students using the edge function on component mount
   useEffect(() => {
-    if (user && employeeData) {
-      fetchStudents();
-    }
-  }, [user, employeeData]);
+    fetchStudents();
+  }, []);
 
   const fetchStudents = async () => {
-    const clientId = getClientId();
-    if (!clientId) {
-      console.error('Cannot fetch students: No client_id available');
-      setIsLoading(false);
-      return;
-    }
-
     setIsLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('student-management', {
         method: 'GET',
-        headers: { 
-          path: 'list',
-          'client-id': clientId
-        }
+        headers: { path: 'list' }
       });
 
       if (error) {
         throw error;
       }
 
-      setStudents(data || []);
+      setStudents(data);
     } catch (error) {
       console.error('Error fetching students:', error);
       toast.error('Failed to load students');
@@ -69,19 +46,11 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const addStudent = async (student: Omit<Student, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const clientId = getClientId();
-    if (!clientId) {
-      throw new Error('Cannot add student: No client_id available');
-    }
-
     try {
       const { data, error } = await supabase.functions.invoke('student-management', {
-        body: { ...student, client_id: clientId },
+        body: student,
         method: 'POST',
-        headers: { 
-          path: 'create',
-          'client-id': clientId
-        }
+        headers: { path: 'create' }
       });
 
       if (error) {
@@ -97,20 +66,11 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const updateStudent = async (id: string, updates: Partial<Student>) => {
-    const clientId = getClientId();
-    if (!clientId) {
-      throw new Error('Cannot update student: No client_id available');
-    }
-
     try {
       const { data, error } = await supabase.functions.invoke('student-management', {
-        body: { ...updates, client_id: clientId },
+        body: updates,
         method: 'PUT',
-        headers: { 
-          path: `update`, 
-          id,
-          'client-id': clientId
-        }
+        headers: { path: `update`, id }
       });
 
       if (error) {
@@ -130,20 +90,13 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const deleteStudent = async (id: string) => {
-    const clientId = getClientId();
-    if (!clientId) {
-      throw new Error('Cannot delete student: No client_id available');
-    }
-
     try {
+      // Need to use JSON.stringify with an empty object to ensure we send a valid JSON body
+      // This prevents "Unexpected end of JSON input" errors
       const { error } = await supabase.functions.invoke('student-management', {
-        body: { id, client_id: clientId },
+        body: { id }, // Send the id in the body too as a fallback
         method: 'DELETE',
-        headers: { 
-          path: `delete`, 
-          id,
-          'client-id': clientId
-        }
+        headers: { path: `delete`, id }
       });
 
       if (error) {

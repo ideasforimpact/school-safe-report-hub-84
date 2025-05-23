@@ -7,7 +7,6 @@ import { Upload, FileUp, AlertCircle, Check, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { processStudentExcel, validateStudentExcel } from '@/services/student/importStudentService';
 import { useStudents } from '@/contexts/StudentContext';
-import { useAuth } from '@/contexts/auth';
 import { Progress } from '@/components/ui/progress';
 
 interface ImportStudentDialogProps {
@@ -18,21 +17,12 @@ interface ImportStudentDialogProps {
 
 const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStudentDialogProps) => {
   const { students } = useStudents();
-  const { employeeData } = useAuth();
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [isValidated, setIsValidated] = useState(false);
   const [recordCount, setRecordCount] = useState<number | null>(null);
-
-  const getClientId = () => {
-    if (employeeData?.client_id) {
-      return employeeData.client_id;
-    }
-    console.warn('No client_id found in employee data');
-    return null;
-  };
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0] || null;
@@ -119,12 +109,6 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
       return;
     }
 
-    const clientId = getClientId();
-    if (!clientId) {
-      toast.error('Cannot import: No client information available');
-      return;
-    }
-
     setIsUploading(true);
 
     try {
@@ -133,7 +117,7 @@ const ImportStudentDialog = ({ open, onOpenChange, onImportStudents }: ImportStu
         toast.info(`Processing ${recordCount} records. This may take a moment...`);
       }
       
-      await processStudentExcel(file, clientId);
+      await onImportStudents(file);
       handleDialogClose();
     } catch (error) {
       console.error('Import error:', error);

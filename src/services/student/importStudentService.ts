@@ -10,7 +10,7 @@ import { toast } from 'sonner';
  * Handles both new student insertion and existing student updates
  * Uses bulk operations for better performance
  */
-export const processStudentExcel = async (file: File, clientId: string): Promise<Student[]> => {
+export const processStudentExcel = async (file: File): Promise<Student[]> => {
   try {
     // Parse the Excel/CSV file
     const rawData = await parseExcelFile(file);
@@ -30,7 +30,7 @@ export const processStudentExcel = async (file: File, clientId: string): Promise
     
     // Process the data and add/update students using bulk operations
     console.time('Bulk import processing');
-    const result = await processStudentData(rawData, clientId);
+    const result = await processStudentData(rawData);
     console.timeEnd('Bulk import processing');
     
     // Show notifications

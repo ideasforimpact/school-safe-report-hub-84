@@ -12,54 +12,48 @@ import StudentManagement from '@/pages/StudentManagement';
 const SettingsPage = () => {
   return (
     <Layout>
-      <div className="bg-white min-h-screen">
-        <div className="max-w-7xl mx-auto p-6 space-y-8">
-          <div>
-            <h1 className="text-3xl font-bold">Settings</h1>
-            <p className="text-gray-500 mt-1">Configure system settings</p>
-          </div>
-          
-          <Tabs defaultValue="incident" className="w-full">
-            <TabsList className="mb-6">
-              <TabsTrigger value="incident" className="flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4" />
-                <span>Incident Configuration</span>
-              </TabsTrigger>
-              <TabsTrigger value="user" className="flex items-center gap-2">
-                <Users className="h-4 w-4" />
-                <span>User Management</span>
-              </TabsTrigger>
-              <TabsTrigger value="student" className="flex items-center gap-2">
-                <GraduationCap className="h-4 w-4" />
-                <span>Student Management</span>
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="incident">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Incident Configuration</CardTitle>
-                  <CardDescription>Configure incident categories, priorities, and other settings</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <IncidentConfigurationContent />
-                </CardContent>
-              </Card>
-            </TabsContent>
-            
-            <TabsContent value="user" className="p-0">
-              <UserManagement />
-            </TabsContent>
-            
-            <TabsContent value="student" className="p-0">
-              <div className="bg-white rounded-lg border">
-                <div className="p-6">
-                  <StudentManagement />
-                </div>
-              </div>
-            </TabsContent>
-          </Tabs>
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-3xl font-bold">Settings</h1>
+          <p className="text-gray-500 mt-1">Configure system settings</p>
         </div>
+        
+        <Tabs defaultValue="incident" className="w-full">
+          <TabsList className="mb-6">
+            <TabsTrigger value="incident" className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4" />
+              <span>Incident Configuration</span>
+            </TabsTrigger>
+            <TabsTrigger value="user" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              <span>User Management</span>
+            </TabsTrigger>
+            <TabsTrigger value="student" className="flex items-center gap-2">
+              <GraduationCap className="h-4 w-4" />
+              <span>Student Management</span>
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="incident">
+            <Card>
+              <CardHeader>
+                <CardTitle>Incident Configuration</CardTitle>
+                <CardDescription>Configure incident categories, priorities, and other settings</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <IncidentConfigurationContent />
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="user" className="p-0">
+            <UserManagement />
+          </TabsContent>
+          
+          <TabsContent value="student" className="p-0">
+            <StudentManagement embedded={true} />
+          </TabsContent>
+        </Tabs>
       </div>
     </Layout>
   );
