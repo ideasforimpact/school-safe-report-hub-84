@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
@@ -7,7 +6,7 @@ import { toast } from 'sonner';
 import { useIncidentCategories } from '@/hooks/useIncidentCategories';
 import { useAuth } from '@/contexts/auth/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { contributingFactorService } from '@/services/incident/contributingFactorService';
+import { contributingFactorService, ContributingFactorItem } from '@/services/incident/contributingFactorService';
 
 interface ContributingFactor {
   id: string;
@@ -35,7 +34,7 @@ interface PriorityItem {
 const IncidentConfiguration = () => {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('categories');
-  const [contributingFactors, setContributingFactors] = useState<ContributingFactor[]>([]);
+  const [contributingFactors, setContributingFactors] = useState<ContributingFactorItem[]>([]);
   const [reportTypes, setReportTypes] = useState<ReportType[]>([]);
   const [priorities, setPriorities] = useState<PriorityItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -165,12 +164,10 @@ const IncidentConfiguration = () => {
     }
 
     try {
-      await contributingFactorService.updateContributingFactor(id, name, description, weight, employeeData.clientId);
+      const updatedFactor = await contributingFactorService.updateContributingFactor(id, name, description, weight, employeeData.clientId);
       setContributingFactors(
         contributingFactors.map(factor =>
-          factor.id === id
-            ? { ...factor, name, description: description || null, weight }
-            : factor
+          factor.id === id ? updatedFactor : factor
         )
       );
       toast.success('Contributing factor updated successfully');
