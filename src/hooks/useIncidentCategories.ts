@@ -97,7 +97,7 @@ export function useIncidentCategories() {
     }
   };
 
-  // Subcategory operations - Updated to include client_id
+  // Subcategory operations - Ensure client_id is passed
   const addSubcategory = async (categoryId: string, name: string) => {
     if (!employeeData?.clientId) {
       toast.error('Client information not available');

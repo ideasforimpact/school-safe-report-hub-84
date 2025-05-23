@@ -46,6 +46,10 @@ export const categoryService = {
 
   addCategory: async (name: string, description?: string, clientId?: string) => {
     try {
+      if (!clientId) {
+        throw new Error('Client ID is required');
+      }
+      
       const { data, error } = await supabase
         .from('incident_categories')
         .insert([
@@ -113,16 +117,17 @@ export const categoryService = {
   // Subcategories - Updated to include client_id validation
   getSubcategories: async (categoryId?: string, clientId?: string) => {
     try {
+      if (!clientId) {
+        throw new Error('Client ID is required');
+      }
+      
       let query = supabase
         .from('incident_subcategories')
-        .select('*');
+        .select('*')
+        .eq('client_id', clientId);
       
       if (categoryId) {
         query = query.eq('category_id', categoryId);
-      }
-
-      if (clientId) {
-        query = query.eq('client_id', clientId);
       }
       
       const { data: subcategories, error } = await query.order('name');

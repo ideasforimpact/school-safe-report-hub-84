@@ -16,6 +16,7 @@ import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { CategoryItem, SubcategoryItem } from '@/services/incident/categoryService';
 import { EditDialog } from './EditDialog';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/auth/useAuth';
 
 interface SubcategoryTabProps {
   categories: CategoryItem[];
@@ -35,6 +36,7 @@ export const SubcategoryTab = ({
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('');
   const [newSubcategoryName, setNewSubcategoryName] = useState('');
   const [editingSubcategory, setEditingSubcategory] = useState<{id: string, name: string, categoryId: string} | null>(null);
+  const { employeeData } = useAuth();
   
   const handleAddSubcategory = (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,6 +51,7 @@ export const SubcategoryTab = ({
       return;
     }
     
+    // Client ID check is now handled in the hook and service
     addSubcategory(selectedCategoryId, newSubcategoryName.trim());
     setNewSubcategoryName('');
   };
