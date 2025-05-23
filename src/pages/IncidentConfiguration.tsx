@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { useIncidentCategories } from '@/hooks/useIncidentCategories';
 import { useAuth } from '@/contexts/auth/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { contributingFactorService } from '@/services/incident/contributingFactorService';
 
 interface ContributingFactor {
   id: string;
@@ -61,7 +62,7 @@ const IncidentConfiguration = () => {
     }
   }, [searchParams]);
 
-  // Fetch contributing factors
+  // Fetch contributing factors using the new service
   useEffect(() => {
     async function fetchContributingFactors() {
       if (!employeeData?.clientId) {
@@ -69,22 +70,10 @@ const IncidentConfiguration = () => {
       }
 
       try {
-        const { data, error } = await supabase
-          .from('contributing_factors')
-          .select('id, name, description, weight')
-          .eq('client_id', employeeData.clientId)
-          .order('name');
-        
-        if (error) {
-          console.error('Error fetching contributing factors:', error);
-          toast.error('Failed to load contributing factors');
-          return;
-        }
-        
-        setContributingFactors(data || []);
+        const factors = await contributingFactorService.getContributingFactors(employeeData.clientId);
+        setContributingFactors(factors);
       } catch (error) {
         console.error('Exception fetching contributing factors:', error);
-        toast.error('An unexpected error occurred');
       } finally {
         setLoading(false);
       }
@@ -153,7 +142,7 @@ const IncidentConfiguration = () => {
     fetchPriorities();
   }, [employeeData?.clientId]);
 
-  // Handle contributing factors operations
+  // Handle contributing factors operations using the new service
   const handleAddContributingFactor = async (name: string, description: string, weight: string) => {
     if (!employeeData?.clientId) {
       toast.error('Client information not available');
@@ -161,42 +150,22 @@ const IncidentConfiguration = () => {
     }
 
     try {
-      const { data, error } = await supabase
-        .from('contributing_factors')
-        .insert([
-          { name, description: description || null, weight, client_id: employeeData.clientId },
-        ])
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error adding contributing factor:', error);
-        toast.error('Failed to add contributing factor');
-        return;
-      }
-
-      setContributingFactors([...contributingFactors, data]);
+      const newFactor = await contributingFactorService.addContributingFactor(name, description, weight, employeeData.clientId);
+      setContributingFactors([...contributingFactors, newFactor]);
       toast.success('Contributing factor added successfully');
     } catch (error) {
       console.error('Exception adding contributing factor:', error);
-      toast.error('An unexpected error occurred');
     }
   };
 
   const handleUpdateContributingFactor = async (id: string, name: string, description: string, weight: string) => {
+    if (!employeeData?.clientId) {
+      toast.error('Client information not available');
+      return;
+    }
+
     try {
-      const { error } = await supabase
-        .from('contributing_factors')
-        .update({ name, description: description || null, weight })
-        .eq('id', id)
-        .eq('client_id', employeeData?.clientId);
-
-      if (error) {
-        console.error('Error updating contributing factor:', error);
-        toast.error('Failed to update contributing factor');
-        return;
-      }
-
+      await contributingFactorService.updateContributingFactor(id, name, description, weight, employeeData.clientId);
       setContributingFactors(
         contributingFactors.map(factor =>
           factor.id === id
@@ -204,33 +173,24 @@ const IncidentConfiguration = () => {
             : factor
         )
       );
-      
       toast.success('Contributing factor updated successfully');
     } catch (error) {
       console.error('Exception updating contributing factor:', error);
-      toast.error('An unexpected error occurred');
     }
   };
 
   const handleDeleteContributingFactor = async (id: string) => {
+    if (!employeeData?.clientId) {
+      toast.error('Client information not available');
+      return;
+    }
+
     try {
-      const { error } = await supabase
-        .from('contributing_factors')
-        .delete()
-        .eq('id', id)
-        .eq('client_id', employeeData?.clientId);
-
-      if (error) {
-        console.error('Error deleting contributing factor:', error);
-        toast.error('Failed to delete contributing factor');
-        return;
-      }
-
+      await contributingFactorService.deleteContributingFactor(id, employeeData.clientId);
       setContributingFactors(contributingFactors.filter(factor => factor.id !== id));
       toast.success('Contributing factor deleted successfully');
     } catch (error) {
       console.error('Exception deleting contributing factor:', error);
-      toast.error('An unexpected error occurred');
     }
   };
 
