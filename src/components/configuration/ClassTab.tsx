@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -181,18 +182,20 @@ export const ClassTab = ({
                         description="Update the grade details below"
                         fieldLabel="Grade name"
                         value={cls.name}
-                        extraField={{
-                          type: "select",
-                          label: "Campus",
-                          options: campuses.map(campus => ({ value: campus.id, label: campus.name })),
-                          value: editingClass?.id === cls.id ? editingClass.campusId : cls.campusId,
-                          onChange: (value) => {
-                            setEditingClass(prev => 
-                              prev && prev.id === cls.id ? {...prev, campusId: value} : 
-                              { id: cls.id, name: cls.name, campusId: value }
-                            );
+                        extraFields={[
+                          {
+                            type: "select",
+                            label: "Campus",
+                            options: campuses.map(campus => ({ value: campus.id, label: campus.name })),
+                            value: editingClass?.id === cls.id ? editingClass.campusId : cls.campusId,
+                            onChange: (value) => {
+                              setEditingClass(prev => 
+                                prev && prev.id === cls.id ? {...prev, campusId: value} : 
+                                { id: cls.id, name: cls.name, campusId: value }
+                              );
+                            }
                           }
-                        }}
+                        ]}
                         onOpenChange={(open) => {
                           if (open) {
                             setEditingClass({

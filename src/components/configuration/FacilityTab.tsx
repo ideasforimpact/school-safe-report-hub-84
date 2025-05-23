@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -173,18 +174,20 @@ export const FacilityTab = ({
                         description="Update the facility name below"
                         fieldLabel="Facility name"
                         value={facility.name}
-                        extraField={{
-                          type: "select",
-                          label: "Campus",
-                          options: campuses.map(campus => ({ value: campus.id, label: campus.name })),
-                          value: editingFacility?.id === facility.id ? editingFacility.campusId : facility.campusId || "",
-                          onChange: (value) => {
-                            setEditingFacility(prev => 
-                              prev && prev.id === facility.id ? {...prev, campusId: value} : 
-                              { id: facility.id, name: facility.name, campusId: value }
-                            );
+                        extraFields={[
+                          {
+                            type: "select",
+                            label: "Campus",
+                            options: campuses.map(campus => ({ value: campus.id, label: campus.name })),
+                            value: editingFacility?.id === facility.id ? editingFacility.campusId : facility.campusId || "",
+                            onChange: (value) => {
+                              setEditingFacility(prev => 
+                                prev && prev.id === facility.id ? {...prev, campusId: value} : 
+                                { id: facility.id, name: facility.name, campusId: value }
+                              );
+                            }
                           }
-                        }}
+                        ]}
                         onOpenChange={(open) => {
                           if (open) {
                             setEditingFacility({

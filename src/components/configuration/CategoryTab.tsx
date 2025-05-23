@@ -105,7 +105,6 @@ export const CategoryTab = ({
                         description="Update the category name below"
                         fieldLabel="Category name"
                         value={editingCategory?.id === category.id ? editingCategory.name : category.name}
-                        defaultValue={category.name}
                         onOpenChange={(open) => {
                           if (open) {
                             setEditingCategory({id: category.id, name: category.name});

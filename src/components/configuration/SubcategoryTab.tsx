@@ -152,7 +152,6 @@ export const SubcategoryTab = ({
                           description="Update the subcategory name below"
                           fieldLabel="Subcategory name"
                           value={editingSubcategory?.id === subcategory.id ? editingSubcategory.name : subcategory.name}
-                          defaultValue={subcategory.name}
                           onOpenChange={(open) => {
                             if (open) {
                               setEditingSubcategory({

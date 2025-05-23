@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Pencil } from 'lucide-react';
@@ -163,18 +164,19 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
         description="Enter the details for the new report type."
         fieldLabel="Name"
         value={newTypeName}
-        defaultValue=""
         open={isAddDialogOpen}
         onOpenChange={setIsAddDialogOpen}
         onChange={setNewTypeName}
         onSave={handleAddReportType}
         triggerButton={<Button className="hidden">Add</Button>}
-        extraField={{
-          type: 'text',
-          label: 'Description',
-          value: newTypeDescription,
-          onChange: setNewTypeDescription
-        }}
+        extraFields={[
+          {
+            type: 'text',
+            label: 'Description',
+            value: newTypeDescription,
+            onChange: setNewTypeDescription
+          }
+        ]}
       />
 
       {/* Edit Dialog */}
@@ -183,18 +185,19 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
         description="Update the report type details."
         fieldLabel="Name"
         value={editTypeName}
-        defaultValue={selectedType?.name || ''}
         open={isEditDialogOpen}
         onOpenChange={setIsEditDialogOpen}
         onChange={setEditTypeName}
         onSave={handleEditReportType}
         triggerButton={<Button className="hidden">Edit</Button>}
-        extraField={{
-          type: 'text',
-          label: 'Description',
-          value: editTypeDescription,
-          onChange: setEditTypeDescription
-        }}
+        extraFields={[
+          {
+            type: 'text',
+            label: 'Description',
+            value: editTypeDescription,
+            onChange: setEditTypeDescription
+          }
+        ]}
       />
     </div>
   );
