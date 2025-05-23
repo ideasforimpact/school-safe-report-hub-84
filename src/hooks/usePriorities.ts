@@ -1,46 +1,37 @@
 
 import { useState, useEffect } from 'react';
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-
-export interface Priority {
-  id: string;
-  name: string;
-  description?: string;
-  color?: string;
-  weight?: number;
-  is_active: boolean;
-}
+import { useAuth } from '@/contexts/auth/useAuth';
+import { priorityService, PriorityItem } from '@/services/incident/priorityService';
 
 export function usePriorities() {
-  const [priorities, setPriorities] = useState<Priority[]>([]);
+  const [priorities, setPriorities] = useState<PriorityItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { employeeData } = useAuth();
 
   useEffect(() => {
     async function fetchPriorities() {
       try {
         setLoading(true);
-        const { data, error } = await supabase
-          .from('incident_priorities')
-          .select('*')
-          .eq('is_active', true)
-          .order('weight', { ascending: true });
-
-        if (error) throw error;
         
+        if (!employeeData?.clientId) {
+          console.warn('Client ID not available, cannot fetch priorities');
+          setError('Client information not available');
+          return;
+        }
+        
+        const data = await priorityService.getPriorities(employeeData.clientId, true);
         setPriorities(data || []);
       } catch (err: any) {
         console.error("Error fetching priorities:", err);
         setError(err.message);
-        toast.error("Failed to load priorities");
       } finally {
         setLoading(false);
       }
     }
 
     fetchPriorities();
-  }, []);
+  }, [employeeData?.clientId]);
 
   return { priorities, loading, error };
 }
