@@ -14,6 +14,7 @@ export interface SubcategoryItem {
   name: string;
   description?: string;
   category_id?: string | null;
+  client_id?: string | null;
 }
 
 export const categoryService = {
@@ -109,8 +110,8 @@ export const categoryService = {
     }
   },
 
-  // Subcategories
-  getSubcategories: async (categoryId?: string) => {
+  // Subcategories - Updated to include client_id validation
+  getSubcategories: async (categoryId?: string, clientId?: string) => {
     try {
       let query = supabase
         .from('incident_subcategories')
@@ -118,6 +119,10 @@ export const categoryService = {
       
       if (categoryId) {
         query = query.eq('category_id', categoryId);
+      }
+
+      if (clientId) {
+        query = query.eq('client_id', clientId);
       }
       
       const { data: subcategories, error } = await query.order('name');
@@ -134,12 +139,22 @@ export const categoryService = {
     }
   },
 
-  addSubcategory: async (name: string, categoryId: string, description?: string) => {
+  addSubcategory: async (name: string, categoryId: string, description?: string, clientId?: string) => {
     try {
+      if (!clientId) {
+        throw new Error('Client ID is required');
+      }
+
       const { data, error } = await supabase
         .from('incident_subcategories')
         .insert([
-          { name, category_id: categoryId, description: description || null, is_active: true }
+          { 
+            name, 
+            category_id: categoryId, 
+            description: description || null, 
+            client_id: clientId,
+            is_active: true 
+          }
         ])
         .select();
 
@@ -155,8 +170,12 @@ export const categoryService = {
     }
   },
 
-  updateSubcategory: async (id: string, name: string, categoryId?: string, description?: string) => {
+  updateSubcategory: async (id: string, name: string, categoryId?: string, description?: string, clientId?: string) => {
     try {
+      if (!clientId) {
+        throw new Error('Client ID is required');
+      }
+
       let updateData: any = { name, description: description || null };
       
       if (categoryId) {
@@ -167,10 +186,15 @@ export const categoryService = {
         .from('incident_subcategories')
         .update(updateData)
         .eq('id', id)
+        .eq('client_id', clientId)
         .select();
 
       if (error) {
         throw error;
+      }
+
+      if (data.length === 0) {
+        throw new Error('Subcategory not found or access denied');
       }
 
       return data[0] as SubcategoryItem;
@@ -181,12 +205,17 @@ export const categoryService = {
     }
   },
 
-  deleteSubcategory: async (id: string) => {
+  deleteSubcategory: async (id: string, clientId?: string) => {
     try {
+      if (!clientId) {
+        throw new Error('Client ID is required');
+      }
+
       const { error } = await supabase
         .from('incident_subcategories')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .eq('client_id', clientId);
 
       if (error) {
         throw error;

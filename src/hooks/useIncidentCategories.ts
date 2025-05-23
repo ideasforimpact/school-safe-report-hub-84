@@ -23,7 +23,7 @@ export function useIncidentCategories() {
 
         const [categoriesData, subcategoriesData] = await Promise.all([
           categoryService.getCategories(employeeData.clientId),
-          categoryService.getSubcategories()
+          categoryService.getSubcategories(undefined, employeeData.clientId)
         ]);
 
         setCategories(categoriesData);
@@ -97,10 +97,15 @@ export function useIncidentCategories() {
     }
   };
 
-  // Subcategory operations
+  // Subcategory operations - Updated to include client_id
   const addSubcategory = async (categoryId: string, name: string) => {
+    if (!employeeData?.clientId) {
+      toast.error('Client information not available');
+      return;
+    }
+
     try {
-      const newSubcategory = await categoryService.addSubcategory(name, categoryId);
+      const newSubcategory = await categoryService.addSubcategory(name, categoryId, undefined, employeeData.clientId);
       setSubcategoryMappings(prev => ({
         ...prev,
         [categoryId]: [...(prev[categoryId] || []), newSubcategory]
@@ -112,8 +117,13 @@ export function useIncidentCategories() {
   };
 
   const updateSubcategory = async (categoryId: string, id: string, name: string) => {
+    if (!employeeData?.clientId) {
+      toast.error('Client information not available');
+      return;
+    }
+
     try {
-      await categoryService.updateSubcategory(id, name, categoryId);
+      await categoryService.updateSubcategory(id, name, categoryId, undefined, employeeData.clientId);
       setSubcategoryMappings(prev => ({
         ...prev,
         [categoryId]: prev[categoryId].map(subcat =>
@@ -127,8 +137,13 @@ export function useIncidentCategories() {
   };
 
   const deleteSubcategory = async (categoryId: string, id: string) => {
+    if (!employeeData?.clientId) {
+      toast.error('Client information not available');
+      return;
+    }
+
     try {
-      await categoryService.deleteSubcategory(id);
+      await categoryService.deleteSubcategory(id, employeeData.clientId);
       setSubcategoryMappings(prev => ({
         ...prev,
         [categoryId]: prev[categoryId].filter(subcat => subcat.id !== id)
