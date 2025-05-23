@@ -22,3 +22,16 @@ export const updateProviderConfig = (
   // In a real application, we would save this to a database or local storage
   console.log(`Updated ${provider} configuration:`, providerConfigs[provider]);
 };
+
+// Extract domain from email
+export const extractDomain = (email: string): string | null => {
+  const parts = email.split('@');
+  return parts.length === 2 ? parts[1] : null;
+};
+
+// Check if email domain is allowed
+export const isEmailDomainAllowed = (email: string, allowedDomains: string[]): boolean => {
+  const domain = extractDomain(email);
+  return domain !== null && allowedDomains.includes(domain);
+};
+

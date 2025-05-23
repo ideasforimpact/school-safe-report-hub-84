@@ -42,20 +42,20 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
     }
   }, [defaultClientId, fetchEmployees]);
 
-  // Update employee status based on document verifications
-  const updateEmployeeStatus = useCallback(async (employeeId: string, status: boolean) => {
+  // Update employee status based on document verifications - fixed to return boolean
+  const updateEmployeeStatus = useCallback(async (employeeId: string, status: boolean): Promise<boolean> => {
     try {
       await updateEmployee(employeeId, { status });
-      // Return true to maintain compatibility with the interface
+      // Return true on success
       return true;
     } catch (error) {
       console.error('Error updating employee status:', error);
-      // Return false on error to maintain compatibility with the interface
+      // Return false on error
       return false;
     }
   }, [updateEmployee]);
 
-  // Use the document management hook
+  // Use the document management hook with the updated function signature
   const { 
     documents, 
     addDocument,
@@ -183,12 +183,10 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
 
   // Use memoized value for context to prevent unnecessary re-renders
   const contextValue: EmployeeVerificationContextType = useMemo(() => ({
-    // Original verification context values
     verifyEmployee,
     isVerifying,
     verificationError,
     
-    // Employee management
     employees,
     addEmployee,
     updateEmployee,
@@ -196,7 +194,6 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
     getEmployee,
     fetchEmployees,
     
-    // Document management
     documents,
     addDocument,
     verifyDocument,
@@ -204,13 +201,11 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
     getEmployeeDocuments,
     fetchEmployeeDocuments,
     
-    // Document types and statuses
     documentTypes,
     documentStatuses,
     fetchDocumentTypes,
     fetchDocumentStatuses,
     
-    // Loading state
     isLoading: isLoading || isDocumentLoading
   }), [
     verifyEmployee, isVerifying, verificationError,

@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Settings, AlertTriangle, School, Users, GraduationCap } from "lucide-react";
+import { Settings, AlertTriangle, School, Users, GraduationCap, Shield, Key, BellRing, Globe } from "lucide-react";
 import GeneralSettingsForm from '@/components/backoffice/settings/GeneralSettingsForm';
 import SecuritySettingsForm from '@/components/backoffice/settings/SecuritySettingsForm';
 import OAuthSettingsForm from '@/components/backoffice/settings/OAuthSettingsForm';

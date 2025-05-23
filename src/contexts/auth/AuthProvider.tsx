@@ -192,7 +192,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         try {
           if (dispatch) {
             // Use action creator correctly
-            dispatch(setLoading(true));
+            const loadingAction = setLoading(true);
+            dispatch(loadingAction);
           }
           
           const { data: employeeData, error } = await supabase
@@ -219,10 +220,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             
             // Update Redux state correctly with action creators
             if (dispatch) {
-              dispatch(setEmployeeData(employee));
+              const employeeAction = setEmployeeData(employee);
+              dispatch(employeeAction);
               
               if (employee.clientId) {
-                dispatch(setClientId(employee.clientId));
+                const clientAction = setClientId(employee.clientId);
+                dispatch(clientAction);
               }
             }
             
@@ -230,12 +233,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
           
           if (dispatch) {
-            dispatch(setLoading(false));
+            const loadingAction = setLoading(false);
+            dispatch(loadingAction);
           }
         } catch (err) {
           console.error("Error fetching employee data:", err);
           if (dispatch) {
-            dispatch(setLoading(false));
+            const loadingAction = setLoading(false);
+            dispatch(loadingAction);
           }
         }
         
@@ -379,7 +384,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     // Clear Redux state correctly using action creator
     if (dispatch) {
-      dispatch(resetEmployee());
+      const resetAction = resetEmployee();
+      dispatch(resetAction);
     }
     
     // Clear local storage
