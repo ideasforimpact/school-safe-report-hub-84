@@ -1,12 +1,13 @@
 
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
+import { ModulePermissions } from '@/contexts/AuthContext';
 import { Card, CardContent } from '@/components/ui/card';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { hasModulePermission } from '@/store/employeeSelectors';
 
 interface ModuleGuardProps {
-  moduleType: string; // Changed from keyof ModulePermissions to string
+  moduleType: keyof ModulePermissions;
   children?: React.ReactNode;
 }
 

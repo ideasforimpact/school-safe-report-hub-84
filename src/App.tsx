@@ -1,22 +1,21 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import HomePage from './pages/HomePage';
 import NotFound from './pages/NotFound';
-import { useAuth } from './contexts/auth';
+import LoginPage from './pages/auth/LoginPage';
+import PasswordResetPage from './pages/auth/PasswordResetPage';
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
+import DashboardPage from './pages/dashboard/DashboardPage';
+import IncidentsPage from './pages/incidents/IncidentsPage';
+import NewIncidentPage from './pages/incidents/NewIncidentPage';
+import IncidentDetailPage from './pages/incidents/IncidentDetailPage';
 import RouteGuard from './components/RouteGuard';
 import Layout from './components/layout/Layout';
 import PublicLayout from './components/layout/PublicLayout';
+import { useAuth } from './contexts/auth';
 import ModuleGuard from './components/ModuleGuard';
 import ProfilePage from './components/profile/ProfilePage';
-
-// Import placeholder components for pages that don't exist in the codebase
-const DashboardPage = () => <div>Dashboard Page</div>;
-const IncidentsPage = () => <div>Incidents Page</div>;
-const NewIncidentPage = () => <div>New Incident Page</div>;
-const IncidentDetailPage = () => <div>Incident Detail Page</div>;
-const LoginPage = () => <div>Login Page</div>;
-const PasswordResetPage = () => <div>Password Reset Page</div>;
-const ForgotPasswordPage = () => <div>Forgot Password Page</div>;
 
 const App = () => {
   const { user } = useAuth();
