@@ -51,8 +51,9 @@ const Header = () => {
   // Set dashboard path to /dashboard for all users
   const dashboardPath = "/dashboard";
   
-  // Show admin settings menu based on Redux state
-  const showAdminSettings = isSuperAdmin || isAdmin;
+  // Show admin settings menu based on Redux state or employeeData.isSuperAdmin
+  // Changed to check isSuperAdmin in employeeData as well
+  const showAdminSettings = isSuperAdmin || isAdmin || employeeData?.isSuperAdmin;
 
   // Determine if the user is a SaaS Owner (backoffice user)
   const isSaasOwner = user?.role === 'saas_owner';
@@ -88,7 +89,7 @@ const Header = () => {
                 />
               )}
               
-              {/* Settings Menu - Only visible for admins */}
+              {/* Settings Menu - Show on all routes if admin/superadmin */}
               {showAdminSettings && !isBackoffice && <AdminSettingsMenu />}
 
               <UserProfileMenu />

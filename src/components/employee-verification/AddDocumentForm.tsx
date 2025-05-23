@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { Employee, VerificationDocument } from '@/contexts/employee-verification/types';
 import { toast } from 'sonner';
-import { FileUploader } from '@/components/FileUploader'; // Fixed import path
+import { FileUploader } from '../FileUploader'; // Fixed import path to use relative import
 import { Loader2 } from 'lucide-react';
 
 interface AddDocumentFormProps {

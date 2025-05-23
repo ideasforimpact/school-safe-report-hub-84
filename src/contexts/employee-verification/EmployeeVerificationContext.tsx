@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -44,13 +43,12 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
   }, [defaultClientId, fetchEmployees]);
 
   // Update employee status based on document verifications
-  const updateEmployeeStatus = useCallback(async (employeeId: string, status: boolean) => {
+  // Modified to return void instead of boolean to match expected type
+  const updateEmployeeStatus = useCallback(async (employeeId: string, status: boolean): Promise<void> => {
     try {
       await updateEmployee(employeeId, { status });
-      return true; // Return a boolean to match the expected return type
     } catch (error) {
       console.error('Error updating employee status:', error);
-      return false; // Return a boolean to match the expected return type
     }
   }, [updateEmployee]);
 

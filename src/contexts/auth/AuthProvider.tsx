@@ -191,7 +191,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Fetch employee data after successful login
         try {
           if (dispatch) {
-            // Fix TypeScript error: Use the action creator and then pass the action to dispatch
+            // Fixed: Use action creator and dispatch the returned action
             dispatch(setLoading(true));
           }
           
@@ -209,8 +209,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               firstName: employeeData.first_name,
               lastName: employeeData.last_name,
               isSuperAdmin: employeeData.is_super_admin,
-              department: employeeData.department, // Add department
-              employeeType: employeeData.employee_type // Add employee_type
+              department: employeeData.department, 
+              employeeType: employeeData.employee_type
             };
             
             // Update local state
@@ -219,12 +219,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             
             // Update Redux state correctly with action creators
             if (dispatch) {
-              const employeeAction = setEmployeeData(employee);
-              dispatch(employeeAction);
+              // Fixed: Use the action creator properly
+              dispatch(setEmployeeData(employee));
               
               if (employee.clientId) {
-                const clientAction = setClientId(employee.clientId);
-                dispatch(clientAction);
+                // Fixed: Use the action creator properly
+                dispatch(setClientId(employee.clientId));
               }
             }
             
@@ -322,13 +322,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Update Redux state correctly using action creators
         if (dispatch) {
-          const employeeAction = setEmployeeData(backofficeEmployeeData);
-          dispatch(employeeAction);
+          // Fixed: Use action creator properly
+          dispatch(setEmployeeData(backofficeEmployeeData));
           
           // Only set clientId if it exists
           if (backofficeEmployeeData.clientId) {
-            const clientAction = setClientId(backofficeEmployeeData.clientId);
-            dispatch(clientAction);
+            // Fixed: Use action creator properly
+            dispatch(setClientId(backofficeEmployeeData.clientId));
           }
         }
         
@@ -384,6 +384,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     // Clear Redux state correctly using action creator
     if (dispatch) {
+      // Fixed: Use action creator properly
       dispatch(resetEmployee());
     }
     
