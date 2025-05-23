@@ -1,10 +1,20 @@
 
-// This file re-exports the refactored auth components to maintain backward compatibility
-// with existing imports that reference @/contexts/auth/AuthContext
+import { createContext } from 'react';
+import { AuthContextType } from './types';
 
-import { AuthContext, AuthProvider } from './AuthProvider';
-import { useAuth } from './useAuth';
-import { User, UserRole, ModulePermissions, EmployeeType, DepartmentType } from './types';
+// Create a default value that matches the AuthContextType shape
+const defaultValue: AuthContextType = {
+  user: null,
+  isAdmin: false,
+  isSuperAdmin: false,
+  isAuthenticated: false,
+  isLoading: false,
+  error: null,
+  login: async () => false,
+  logout: async () => {},
+  resetPassword: async () => {},
+  updatePassword: async () => {},
+};
 
-export { AuthContext, AuthProvider, useAuth };
-export type { User, UserRole, ModulePermissions, EmployeeType, DepartmentType };
+// Create and export the context
+export const AuthContext = createContext<AuthContextType>(defaultValue);

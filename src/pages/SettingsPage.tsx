@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -10,21 +10,6 @@ import UserManagementContent from '@/components/configuration/UserManagementCont
 import StudentManagementContent from '@/components/configuration/StudentManagementContent';
 
 const SettingsPage = () => {
-  const [generalSettings, setGeneralSettings] = useState({
-    siteName: "Safe School Management",
-    supportEmail: "support@safeschool.com",
-    notificationsEnabled: true,
-    maintenanceMode: false,
-    autoLogout: true
-  });
-  
-  const handleGeneralSettingChange = (key: string, value: string | boolean) => {
-    setGeneralSettings(prev => ({
-      ...prev,
-      [key]: value
-    }));
-  };
-  
   return (
     <Layout>
       <div className="space-y-8">
