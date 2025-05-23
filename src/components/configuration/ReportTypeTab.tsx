@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Pencil } from 'lucide-react';
@@ -52,8 +51,8 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
   // Use the hook to get report types with proper client_id validation
   const { reportTypes: hookReportTypes, loading, fetchReportTypes } = useReportTypes();
   
-  // Use hook data if available, otherwise fall back to props
-  const reportTypes = hookReportTypes.length > 0 ? hookReportTypes : propReportTypes;
+  // Use hook data, ignoring props data
+  const reportTypes = hookReportTypes;
 
   const handleAddReportType = async () => {
     if (!employeeData?.clientId) {
@@ -146,8 +145,9 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
 
   if (!employeeData?.clientId) {
     return (
-      <div className="text-center p-4 border rounded-md bg-gray-50">
-        <p className="text-gray-500">Client information not available. Please contact your administrator.</p>
+      <div className="text-center p-8 border rounded-md bg-gray-50">
+        <p className="text-gray-500 text-lg">Client information not available</p>
+        <p className="text-gray-400 text-sm mt-2">Please contact your administrator to resolve this issue.</p>
       </div>
     );
   }
@@ -169,8 +169,8 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
       </div>
 
       {loading ? (
-        <div className="text-center p-4 border rounded-md bg-gray-50">
-          <p className="text-gray-500">Loading report types...</p>
+        <div className="text-center p-8 border rounded-md bg-gray-50">
+          <p className="text-gray-500 text-lg">Loading report types...</p>
         </div>
       ) : reportTypes.length > 0 ? (
         <Table>
@@ -216,8 +216,23 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
           </TableBody>
         </Table>
       ) : (
-        <div className="text-center p-4 border rounded-md bg-gray-50">
-          <p className="text-gray-500">No report types found. Add one to get started.</p>
+        <div className="text-center p-12 border rounded-md bg-gray-50">
+          <div className="max-w-md mx-auto">
+            <h4 className="text-lg font-medium text-gray-900 mb-2">No Report Types Found</h4>
+            <p className="text-gray-500 mb-4">
+              You haven't created any report types yet. Report types help categorize and organize incidents in your system.
+            </p>
+            <p className="text-sm text-gray-400 mb-6">
+              Common examples include: Incident, Near Miss, Unsafe Condition, Safety Violation, etc.
+            </p>
+            <Button 
+              onClick={() => setIsAddDialogOpen(true)}
+              className="flex items-center gap-2"
+            >
+              <PlusCircle className="h-4 w-4" />
+              Create Your First Report Type
+            </Button>
+          </div>
         </div>
       )}
 
