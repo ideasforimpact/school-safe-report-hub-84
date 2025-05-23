@@ -38,7 +38,7 @@ const SettingsPage = () => {
             </TabsTrigger>
           </TabsList>
           
-          <TabsContent value="incident">
+          {/* <TabsContent value="incident">
             <Card>
               <CardHeader>
                 <CardTitle>Incident Configuration</CardTitle>
@@ -60,7 +60,7 @@ const SettingsPage = () => {
                 <EducationalStructureContent />
               </CardContent>
             </Card>
-          </TabsContent>
+          </TabsContent> */}
           
           <TabsContent value="user">
             <Card>
