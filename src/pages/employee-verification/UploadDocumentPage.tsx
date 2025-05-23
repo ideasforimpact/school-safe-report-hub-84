@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
-import AddDocumentForm from '@/components/employee-verification/AddDocumentForm';
+import OriginalDocumentUpload from '@/components/employee-verification/OriginalDocumentUpload';
 import Layout from '@/components/layout/Layout';
 
 const UploadDocumentPage = () => {
@@ -36,6 +36,10 @@ const UploadDocumentPage = () => {
     navigate(`/employee-verification/${employeeId}`);
   };
 
+  const handleCancel = () => {
+    navigate(`/employee-verification/${employeeId}`);
+  };
+
   return (
     <Layout>
       <div className="container mx-auto py-6">
@@ -56,9 +60,11 @@ const UploadDocumentPage = () => {
         </div>
 
         <div className="bg-white rounded-lg border shadow">
-          <div className="p-6">
-            <AddDocumentForm employee={employee} onSuccess={handleSuccess} />
-          </div>
+          <OriginalDocumentUpload 
+            employee={employee} 
+            onSuccess={handleSuccess}
+            onCancel={handleCancel}
+          />
         </div>
       </div>
     </Layout>
