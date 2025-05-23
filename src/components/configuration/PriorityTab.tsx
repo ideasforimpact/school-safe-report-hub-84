@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import {
   Table,
@@ -256,17 +255,8 @@ export const PriorityTab: React.FC<PriorityTabProps> = ({
           </TableBody>
         </Table>
       ) : (
-        <div className="text-center p-12 border rounded-md bg-gray-50">
-          <div className="max-w-md mx-auto">
-            <p className="text-gray-500 mb-4">No priorities found.</p>
-            <Button 
-              onClick={() => setIsAddDialogOpen(true)}
-              className="flex items-center gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              Add Priority
-            </Button>
-          </div>
+        <div className="text-center py-8">
+          <p className="text-gray-500">No priorities have been added yet</p>
         </div>
       )}
 
