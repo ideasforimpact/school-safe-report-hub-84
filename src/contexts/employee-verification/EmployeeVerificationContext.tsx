@@ -41,16 +41,16 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
     if (defaultClientId) {
       fetchEmployees(defaultClientId);
     }
-  }, [defaultClientId]);
+  }, [defaultClientId, fetchEmployees]);
 
   // Update employee status based on document verifications
   const updateEmployeeStatus = useCallback(async (employeeId: string, status: boolean) => {
     try {
       await updateEmployee(employeeId, { status });
-      return Promise.resolve();
+      return true; // Return a boolean to match the expected return type
     } catch (error) {
       console.error('Error updating employee status:', error);
-      throw error;
+      return false; // Return a boolean to match the expected return type
     }
   }, [updateEmployee]);
 
@@ -223,7 +223,7 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
   useEffect(() => {
     fetchDocumentTypes();
     fetchDocumentStatuses();
-  }, []);
+  }, [fetchDocumentTypes, fetchDocumentStatuses]);
 
   return (
     <EmployeeVerificationContext.Provider value={contextValue}>

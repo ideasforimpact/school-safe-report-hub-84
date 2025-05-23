@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { Employee } from '../types';
 import { getAllEmployeesFromApi, getEmployeeByIdFromApi } from '@/services/employee/employeeApiService';
@@ -64,7 +65,7 @@ export const useEmployeeManagement = () => {
         address: '',
         joiningDate: data.joining_date,
         department: data.department || '',
-        position: data.position || '',
+        position: data.employee_type || '', // Map employee_type to position since position doesn't exist in DB
         employeeType: data.employee_type as Employee['employeeType'],
         status: data.status,
         createdAt: data.created_at,

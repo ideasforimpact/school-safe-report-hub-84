@@ -1,8 +1,6 @@
-
 import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
 import { Employee, VerificationDocument } from '@/types/employeeVerification';
-import { mapDbRecordToEmployee } from './utils/employeeMappers';
 
 export const getAllEmployeesFromApi = async (clientId?: string | null): Promise<Employee[]> => {
   try {
