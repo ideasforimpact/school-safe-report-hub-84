@@ -71,7 +71,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
     setIsEditDialogOpen(true);
   };
 
-  const getWeightBadgeClass = (weight: string | null) => {
+  const getWeightBadgeClass = (weight: string | null | undefined) => {
     switch (weight) {
       case 'High':
         return 'bg-red-100 text-red-800';

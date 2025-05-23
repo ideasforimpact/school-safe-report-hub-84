@@ -1,4 +1,3 @@
-
 import React, { createContext, useEffect, useState, useRef } from 'react';
 import { User, AuthContextType, UserWithPassword, EmployeeData } from './types';
 import { 
@@ -110,7 +109,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Clear Redux state on logout
         if (dispatch) {
-          dispatch(resetEmployee());
+          const resetAction = resetEmployee();
+          dispatch(resetAction);
         }
         
         // Add a toast message for logout
@@ -159,7 +159,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             
             // Clear Redux state
             if (dispatch) {
-              dispatch(resetEmployee());
+              const resetAction = resetEmployee();
+              dispatch(resetAction);
             }
             
             logoutUser();
@@ -192,7 +193,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Fetch employee data after successful login
         try {
           if (dispatch) {
-            dispatch(setLoading(true));
+            const loadingAction = setLoading(true);
+            dispatch(loadingAction);
           }
           
           const { data: employeeData, error } = await supabase
@@ -219,10 +221,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             
             // Update Redux state
             if (dispatch) {
-              dispatch(setEmployeeData(employee));
+              const employeeAction = setEmployeeData(employee);
+              dispatch(employeeAction);
               
               if (employee.clientId) {
-                dispatch(setClientId(employee.clientId));
+                const clientAction = setClientId(employee.clientId);
+                dispatch(clientAction);
               }
             }
             
@@ -230,12 +234,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
           
           if (dispatch) {
-            dispatch(setLoading(false));
+            const loadingAction = setLoading(false);
+            dispatch(loadingAction);
           }
         } catch (err) {
           console.error("Error fetching employee data:", err);
           if (dispatch) {
-            dispatch(setLoading(false));
+            const loadingAction = setLoading(false);
+            dispatch(loadingAction);
           }
         }
         
@@ -320,10 +326,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Update Redux state
         if (dispatch) {
-          dispatch(setEmployeeData(backofficeEmployeeData));
+          const employeeAction = setEmployeeData(backofficeEmployeeData);
+          dispatch(employeeAction);
           
           if (backofficeEmployeeData.clientId) {
-            dispatch(setClientId(backofficeEmployeeData.clientId));
+            const clientAction = setClientId(backofficeEmployeeData.clientId);
+            dispatch(clientAction);
           }
         }
         
@@ -351,7 +359,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Update Redux state with modules
         if (dispatch) {
-          dispatch(setConfiguredModules(backofficeModules));
+          const modulesAction = setConfiguredModules(backofficeModules);
+          dispatch(modulesAction);
         }
         
         toast.success(`Welcome back, Backoffice Admin!`);
@@ -378,7 +387,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     // Clear Redux state
     if (dispatch) {
-      dispatch(resetEmployee());
+      const resetAction = resetEmployee();
+      dispatch(resetAction);
     }
     
     // Clear local storage

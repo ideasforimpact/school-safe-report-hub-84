@@ -25,6 +25,14 @@ interface PriorityItem {
   is_active: boolean;
 }
 
+interface ContributingFactor {
+  id: string;
+  name: string;
+  description?: string | null;
+  weight?: string | null;
+  client_id?: string | null;
+}
+
 interface IncidentRelatedConfigProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
@@ -36,12 +44,7 @@ interface IncidentRelatedConfigProps {
   addSubcategory: (categoryId: string, name: string) => void;
   updateSubcategory: (categoryId: string, id: string, name: string) => void;
   deleteSubcategory: (categoryId: string, id: string) => void;
-  contributingFactors: {
-    id: string;
-    name: string;
-    description: string | null;
-    weight: string | null;
-  }[];
+  contributingFactors: ContributingFactor[];
   addContributingFactor: (name: string, description: string, weight: string) => void;
   updateContributingFactor: (id: string, name: string, description: string, weight: string) => void;
   deleteContributingFactor: (id: string) => void;
