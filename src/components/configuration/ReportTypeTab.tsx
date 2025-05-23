@@ -14,6 +14,9 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/auth/useAuth';
+import { reportTypeService } from '@/services/incident/reportTypeService';
+import { useReportTypes } from '@/hooks/useReportTypes';
 
 interface ReportType {
   id: string;
@@ -31,11 +34,11 @@ interface ReportTypeTabProps {
 }
 
 export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
-  reportTypes,
-  addReportType,
-  updateReportType,
-  deleteReportType,
-  toggleReportTypeStatus
+  reportTypes: propReportTypes,
+  addReportType: propAddReportType,
+  updateReportType: propUpdateReportType,
+  deleteReportType: propDeleteReportType,
+  toggleReportTypeStatus: propToggleReportTypeStatus
 }) => {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -44,14 +47,28 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
   const [selectedType, setSelectedType] = useState<ReportType | null>(null);
   const [editTypeName, setEditTypeName] = useState('');
   const [editTypeDescription, setEditTypeDescription] = useState('');
+  const { employeeData } = useAuth();
+  
+  // Use the hook to get report types with proper client_id validation
+  const { reportTypes: hookReportTypes, loading, fetchReportTypes } = useReportTypes();
+  
+  // Use hook data if available, otherwise fall back to props
+  const reportTypes = hookReportTypes.length > 0 ? hookReportTypes : propReportTypes;
 
-  const handleAddReportType = () => {
+  const handleAddReportType = async () => {
+    if (!employeeData?.clientId) {
+      toast.error('Client information not available');
+      return;
+    }
+
     if (newTypeName.trim()) {
       try {
-        addReportType(newTypeName.trim(), newTypeDescription.trim());
+        await reportTypeService.addReportType(newTypeName.trim(), newTypeDescription.trim(), employeeData.clientId);
         setNewTypeName('');
         setNewTypeDescription('');
         setIsAddDialogOpen(false);
+        // Refresh the data
+        await fetchReportTypes();
         toast.success('Report type added successfully');
       } catch (error) {
         console.error('Error adding report type:', error);
@@ -62,12 +79,19 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
     }
   };
 
-  const handleEditReportType = () => {
+  const handleEditReportType = async () => {
+    if (!employeeData?.clientId) {
+      toast.error('Client information not available');
+      return;
+    }
+
     if (selectedType && editTypeName.trim()) {
       try {
-        updateReportType(selectedType.id, editTypeName.trim(), editTypeDescription.trim());
+        await reportTypeService.updateReportType(selectedType.id, editTypeName.trim(), editTypeDescription.trim(), employeeData.clientId);
         setIsEditDialogOpen(false);
         setSelectedType(null);
+        // Refresh the data
+        await fetchReportTypes();
         toast.success('Report type updated successfully');
       } catch (error) {
         console.error('Error updating report type:', error);
@@ -85,16 +109,48 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
     setIsEditDialogOpen(true);
   };
 
-  const handleToggleStatus = (type: ReportType) => {
+  const handleToggleStatus = async (type: ReportType) => {
+    if (!employeeData?.clientId) {
+      toast.error('Client information not available');
+      return;
+    }
+
     const newStatus = !type.is_active;
     try {
-      toggleReportTypeStatus(type.id, newStatus);
+      await reportTypeService.toggleReportTypeStatus(type.id, newStatus, employeeData.clientId);
+      // Refresh the data
+      await fetchReportTypes();
       toast.success(`Report type ${newStatus ? 'activated' : 'deactivated'} successfully`);
     } catch (error) {
       console.error('Error toggling report type status:', error);
       toast.error(`Failed to ${newStatus ? 'activate' : 'deactivate'} report type`);
     }
   };
+
+  const handleDeleteReportType = async (id: string) => {
+    if (!employeeData?.clientId) {
+      toast.error('Client information not available');
+      return;
+    }
+
+    try {
+      await reportTypeService.deleteReportType(id, employeeData.clientId);
+      // Refresh the data
+      await fetchReportTypes();
+      toast.success('Report type deleted successfully');
+    } catch (error) {
+      console.error('Error deleting report type:', error);
+      toast.error('Failed to delete report type');
+    }
+  };
+
+  if (!employeeData?.clientId) {
+    return (
+      <div className="text-center p-4 border rounded-md bg-gray-50">
+        <p className="text-gray-500">Client information not available. Please contact your administrator.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -105,13 +161,18 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
           size="sm" 
           onClick={() => setIsAddDialogOpen(true)}
           className="flex items-center gap-2"
+          disabled={loading}
         >
           <PlusCircle className="h-4 w-4" />
           Add Report Type
         </Button>
       </div>
 
-      {reportTypes.length > 0 ? (
+      {loading ? (
+        <div className="text-center p-4 border rounded-md bg-gray-50">
+          <p className="text-gray-500">Loading report types...</p>
+        </div>
+      ) : reportTypes.length > 0 ? (
         <Table>
           <TableHeader>
             <TableRow>
@@ -139,14 +200,16 @@ export const ReportTypeTab: React.FC<ReportTypeTabProps> = ({
                   </div>
                 </TableCell>
                 <TableCell>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={() => handleEditClick(type)}
-                  >
-                    <Pencil className="h-4 w-4" />
-                    <span className="sr-only">Edit</span>
-                  </Button>
+                  <div className="flex gap-1">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => handleEditClick(type)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                      <span className="sr-only">Edit</span>
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

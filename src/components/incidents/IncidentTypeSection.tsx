@@ -8,6 +8,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { usePriorities } from '@/hooks/usePriorities';
+import { useReportTypes } from '@/hooks/useReportTypes';
 
 interface IncidentTypeSectionProps {
   type: string;
@@ -20,7 +21,8 @@ const IncidentTypeSection: React.FC<IncidentTypeSectionProps> = ({
   priority,
   onSelectChange,
 }) => {
-  const { priorities, loading } = usePriorities();
+  const { priorities, loading: prioritiesLoading } = usePriorities();
+  const { reportTypes, loading: reportTypesLoading } = useReportTypes();
 
   return (
     <>
@@ -32,14 +34,19 @@ const IncidentTypeSection: React.FC<IncidentTypeSectionProps> = ({
           value={type}
           onValueChange={(value) => onSelectChange('type', value)}
           required
+          disabled={reportTypesLoading}
         >
           <SelectTrigger>
-            <SelectValue placeholder="Select type" />
+            <SelectValue placeholder={reportTypesLoading ? "Loading report types..." : "Select type"} />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="Incident">Incident</SelectItem>
-            <SelectItem value="Near Miss">Near Miss</SelectItem>
-            <SelectItem value="Unsafe Condition">Unsafe Condition</SelectItem>
+            {reportTypesLoading ? (
+              <SelectItem value="" disabled>Loading...</SelectItem>
+            ) : (
+              reportTypes.map(reportType => (
+                <SelectItem key={reportType.id} value={reportType.name}>{reportType.name}</SelectItem>
+              ))
+            )}
           </SelectContent>
         </Select>
       </div>
@@ -52,13 +59,13 @@ const IncidentTypeSection: React.FC<IncidentTypeSectionProps> = ({
           value={priority}
           onValueChange={(value) => onSelectChange('priority', value)}
           required
-          disabled={loading}
+          disabled={prioritiesLoading}
         >
           <SelectTrigger>
-            <SelectValue placeholder={loading ? "Loading priorities..." : "Select priority"} />
+            <SelectValue placeholder={prioritiesLoading ? "Loading priorities..." : "Select priority"} />
           </SelectTrigger>
           <SelectContent>
-            {loading ? (
+            {prioritiesLoading ? (
               <SelectItem value="" disabled>Loading...</SelectItem>
             ) : (
               priorities.map(priority => (
