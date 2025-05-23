@@ -21,6 +21,9 @@ export const categoryService = {
   // Categories
   getCategories: async (clientId?: string) => {
     try {
+      if (!clientId) {
+        throw new Error('Client ID is required');
+      }
       let query = supabase
         .from('incident_categories')
         .select('*')
