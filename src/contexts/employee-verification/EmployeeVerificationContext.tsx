@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,6 +12,7 @@ import {
 import { useEmployeeManagement } from './hooks/useEmployeeManagement';
 import { useDocumentManagement } from './hooks/useDocumentManagement';
 import { initialDocumentTypes, initialDocumentStatuses } from './initialData';
+import { useEmployeeStore } from '@/store/EmployeeContext';
 
 const EmployeeVerificationContext = createContext<EmployeeVerificationContextType | undefined>(undefined);
 
@@ -21,6 +23,8 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
   const [documentStatuses, setDocumentStatuses] = useState<DocumentStatus[]>(initialDocumentStatuses);
   const [isLoading, setIsLoading] = useState(false);
   const [lastFetchTime, setLastFetchTime] = useState<Record<string, number>>({});
+  const { state } = useEmployeeStore();
+  const defaultClientId = state.clientId; // Get client ID from employee store
 
   // Use the employee management hook
   const { 
@@ -31,6 +35,13 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
     getEmployee,
     fetchEmployees
   } = useEmployeeManagement();
+
+  // Auto-fetch employees with client ID on mount
+  useEffect(() => {
+    if (defaultClientId) {
+      fetchEmployees(defaultClientId);
+    }
+  }, [defaultClientId]);
 
   // Update employee status based on document verifications
   const updateEmployeeStatus = useCallback(async (employeeId: string, status: boolean) => {

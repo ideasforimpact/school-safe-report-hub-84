@@ -24,7 +24,7 @@ export const getAllEmployeesFromApi = async (clientId?: string | null): Promise<
       throw error;
     }
 
-    console.log(`Successfully fetched ${data.length} employees from API`);
+    console.log(`Successfully fetched ${data.length} employees from API ${clientId ? 'for client ' + clientId : 'across all clients'}`);
     
     // Map the database records to our Employee model
     const employees = data.map(record => {

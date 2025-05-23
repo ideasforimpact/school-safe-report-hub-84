@@ -219,10 +219,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             
             // Update Redux state correctly with action creators
             if (dispatch) {
-              dispatch(setEmployeeData(employee));
+              const employeeAction = setEmployeeData(employee);
+              dispatch(employeeAction);
               
               if (employee.clientId) {
-                dispatch(setClientId(employee.clientId));
+                const clientAction = setClientId(employee.clientId);
+                dispatch(clientAction);
               }
             }
             
@@ -320,11 +322,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Update Redux state correctly using action creators
         if (dispatch) {
-          dispatch(setEmployeeData(backofficeEmployeeData));
+          const employeeAction = setEmployeeData(backofficeEmployeeData);
+          dispatch(employeeAction);
           
           // Only set clientId if it exists
           if (backofficeEmployeeData.clientId) {
-            dispatch(setClientId(backofficeEmployeeData.clientId));
+            const clientAction = setClientId(backofficeEmployeeData.clientId);
+            dispatch(clientAction);
           }
         }
         
@@ -352,7 +356,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Update Redux state with modules using action creator
         if (dispatch) {
-          dispatch(setConfiguredModules(backofficeModules));
+          const modulesAction = setConfiguredModules(backofficeModules);
+          dispatch(modulesAction);
         }
         
         toast.success(`Welcome back, Backoffice Admin!`);

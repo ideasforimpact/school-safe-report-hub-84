@@ -1,17 +1,26 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import EmployeesList from '@/components/employee-verification/EmployeesList';
 import { FileCheck, BarChart2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import { useEmployeeVerification } from '@/contexts/employee-verification';
+import { useEmployeeStore } from '@/store/EmployeeContext';
 
 const EmployeeVerificationPage = () => {
   const { fetchEmployees } = useEmployeeVerification();
+  const { state } = useEmployeeStore();
+  const clientId = state.clientId;
+  
+  // Use an effect to fetch employees filtered by client ID when the component mounts
+  useEffect(() => {
+    handleRefresh();
+  }, [clientId]);
   
   const handleRefresh = () => {
-    fetchEmployees();
+    // Pass the client ID when fetching employees
+    fetchEmployees(clientId);
   };
 
   return (
