@@ -3,6 +3,7 @@ import React, { createContext, useState, useContext, ReactNode, useEffect } from
 import { Student } from '@/types/student';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/auth';
 
 interface StudentContextType {
   students: Student[];
@@ -18,6 +19,7 @@ const StudentContext = createContext<StudentContextType | undefined>(undefined);
 export const StudentProvider = ({ children }: { children: ReactNode }) => {
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const { employeeData } = useAuth();
 
   // Fetch students using the edge function on component mount
   useEffect(() => {
@@ -47,8 +49,14 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
 
   const addStudent = async (student: Omit<Student, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
+      // Add client_id to the student data
+      const studentWithClientId = {
+        ...student,
+        client_id: employeeData?.clientId
+      };
+
       const { data, error } = await supabase.functions.invoke('student-management', {
-        body: student,
+        body: studentWithClientId,
         method: 'POST',
         headers: { path: 'create' }
       });
@@ -67,8 +75,14 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
 
   const updateStudent = async (id: string, updates: Partial<Student>) => {
     try {
+      // Add client_id to the updates if it's not present
+      const updatesWithClientId = {
+        ...updates,
+        client_id: employeeData?.clientId
+      };
+
       const { data, error } = await supabase.functions.invoke('student-management', {
-        body: updates,
+        body: updatesWithClientId,
         method: 'PUT',
         headers: { path: `update`, id }
       });
@@ -91,10 +105,12 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
 
   const deleteStudent = async (id: string) => {
     try {
-      // Need to use JSON.stringify with an empty object to ensure we send a valid JSON body
-      // This prevents "Unexpected end of JSON input" errors
+      // Include client_id in the delete request
       const { error } = await supabase.functions.invoke('student-management', {
-        body: { id }, // Send the id in the body too as a fallback
+        body: { 
+          id,
+          client_id: employeeData?.clientId
+        },
         method: 'DELETE',
         headers: { path: `delete`, id }
       });

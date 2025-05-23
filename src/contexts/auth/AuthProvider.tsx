@@ -1,3 +1,4 @@
+
 import React, { createContext, useEffect, useState, useRef } from 'react';
 import { User, AuthContextType, UserWithPassword, EmployeeData } from './types';
 import { 
@@ -377,7 +378,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     // Clear Redux state
     if (dispatch) {
-      dispatch({ type: 'LOGOUT' });
+      dispatch(resetEmployee());
     }
     
     // Clear local storage

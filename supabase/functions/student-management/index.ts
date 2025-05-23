@@ -38,7 +38,7 @@ serve(async (req) => {
     // Handle different API endpoints
     switch (path) {
       case "list":
-        return await handleListStudents(req, corsHeaders);
+        return await handleListStudents(req, corsHeaders, body);
 
       case "get":
         if (!id) {
@@ -47,7 +47,7 @@ serve(async (req) => {
             { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
-        return await handleGetStudent(id, corsHeaders);
+        return await handleGetStudent(id, corsHeaders, body);
 
       case "create":
         return await handleCreateStudent(body, corsHeaders);
@@ -68,7 +68,7 @@ serve(async (req) => {
             { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
-        return await handleDeleteStudent(id, corsHeaders);
+        return await handleDeleteStudent(id, corsHeaders, body);
         
       case "validate":
         return await handleValidateImport(body, corsHeaders);
@@ -94,11 +94,17 @@ serve(async (req) => {
 
 // Handler functions for different operations
 
-async function handleListStudents(req: Request, corsHeaders: Record<string, string>) {
+async function handleListStudents(req: Request, corsHeaders: Record<string, string>, body: any) {
   const url = new URL(req.url);
   const searchTerm = url.searchParams.get("search") || "";
+  const clientId = body.client_id;
   
   let query = supabaseClient.from("students").select("*");
+  
+  // Filter by client_id if provided
+  if (clientId) {
+    query = query.eq("client_id", clientId);
+  }
   
   // Apply search filter if provided
   if (searchTerm) {
@@ -132,12 +138,18 @@ async function handleListStudents(req: Request, corsHeaders: Record<string, stri
   );
 }
 
-async function handleGetStudent(id: string, corsHeaders: Record<string, string>) {
-  const { data, error } = await supabaseClient
+async function handleGetStudent(id: string, corsHeaders: Record<string, string>, body: any) {
+  let query = supabaseClient
     .from("students")
     .select("*")
-    .eq("id", id)
-    .single();
+    .eq("id", id);
+
+  // Filter by client_id if provided
+  if (body.client_id) {
+    query = query.eq("client_id", body.client_id);
+  }
+
+  const { data, error } = await query.single();
   
   if (error) {
     return new Response(
@@ -173,7 +185,7 @@ async function handleCreateStudent(body: any, corsHeaders: Record<string, string
   }
   
   // Validate campus, grade, and section exist in the database
-  const isValid = await validateEducationalStructure(body.campus, body.grade, body.section);
+  const isValid = await validateEducationalStructure(body.campus, body.grade, body.section, body.client_id);
   if (!isValid.valid) {
     return new Response(
       JSON.stringify({ error: isValid.error }),
@@ -187,7 +199,8 @@ async function handleCreateStudent(body: any, corsHeaders: Record<string, string
     name: body.name,
     grade: body.grade,
     section: body.section,
-    campus: body.campus
+    campus: body.campus,
+    client_id: body.client_id
   };
   
   const { data, error } = await supabaseClient
@@ -223,17 +236,22 @@ async function handleCreateStudent(body: any, corsHeaders: Record<string, string
   );
 }
 
-async function validateEducationalStructure(campus: string, grade: string, section: string) {
+async function validateEducationalStructure(campus: string, grade: string, section: string, clientId?: string) {
   if (!campus || !grade || !section) {
     return { valid: false, error: "Campus, grade and section are all required" };
   }
   
   // Check if campus exists
-  const { data: campusData, error: campusError } = await supabaseClient
+  let campusQuery = supabaseClient
     .from("campuses")
     .select("id")
-    .ilike("name", campus)
-    .maybeSingle();
+    .ilike("name", campus);
+
+  if (clientId) {
+    campusQuery = campusQuery.eq("client_id", clientId);
+  }
+
+  const { data: campusData, error: campusError } = await campusQuery.maybeSingle();
   
   if (campusError) {
     console.error("Error checking campus:", campusError);
@@ -245,12 +263,17 @@ async function validateEducationalStructure(campus: string, grade: string, secti
   }
   
   // Check if grade exists and belongs to the campus
-  const { data: gradeData, error: gradeError } = await supabaseClient
+  let gradeQuery = supabaseClient
     .from("grades")
     .select("id")
     .ilike("name", grade)
-    .eq("campus_id", campusData.id)
-    .maybeSingle();
+    .eq("campus_id", campusData.id);
+
+  if (clientId) {
+    gradeQuery = gradeQuery.eq("client_id", clientId);
+  }
+
+  const { data: gradeData, error: gradeError } = await gradeQuery.maybeSingle();
   
   if (gradeError) {
     console.error("Error checking grade:", gradeError);
@@ -262,12 +285,17 @@ async function validateEducationalStructure(campus: string, grade: string, secti
   }
   
   // Check if section exists and belongs to the grade
-  const { data: sectionData, error: sectionError } = await supabaseClient
+  let sectionQuery = supabaseClient
     .from("sections")
     .select("id")
     .ilike("name", section)
-    .eq("grade_id", gradeData.id)
-    .maybeSingle();
+    .eq("grade_id", gradeData.id);
+
+  if (clientId) {
+    sectionQuery = sectionQuery.eq("client_id", clientId);
+  }
+
+  const { data: sectionData, error: sectionError } = await sectionQuery.maybeSingle();
   
   if (sectionError) {
     console.error("Error checking section:", sectionError);
@@ -283,6 +311,8 @@ async function validateEducationalStructure(campus: string, grade: string, secti
 
 async function handleValidateImport(body: any, corsHeaders: Record<string, string>) {
   const students = body.students || [];
+  const clientId = body.client_id;
+  
   if (!Array.isArray(students) || students.length === 0) {
     return new Response(
       JSON.stringify({ error: "No student data provided" }),
@@ -298,10 +328,12 @@ async function handleValidateImport(body: any, corsHeaders: Record<string, strin
   const uniqueGrades = new Set(students.map(s => s.grade?.toLowerCase()));
   const uniqueSections = new Set(students.map(s => s.section?.toLowerCase()));
   
-  // Fetch all valid campuses, grades and sections
-  const { data: campusData, error: campusError } = await supabaseClient
-    .from("campuses")
-    .select("id, name");
+  // Fetch all valid campuses, grades and sections for this client
+  let campusQuery = supabaseClient.from("campuses").select("id, name");
+  if (clientId) {
+    campusQuery = campusQuery.eq("client_id", clientId);
+  }
+  const { data: campusData, error: campusError } = await campusQuery;
   
   if (campusError) {
     return new Response(
@@ -310,9 +342,11 @@ async function handleValidateImport(body: any, corsHeaders: Record<string, strin
     );
   }
   
-  const { data: gradeData, error: gradeError } = await supabaseClient
-    .from("grades")
-    .select("id, name, campus_id");
+  let gradeQuery = supabaseClient.from("grades").select("id, name, campus_id");
+  if (clientId) {
+    gradeQuery = gradeQuery.eq("client_id", clientId);
+  }
+  const { data: gradeData, error: gradeError } = await gradeQuery;
   
   if (gradeError) {
     return new Response(
@@ -321,9 +355,11 @@ async function handleValidateImport(body: any, corsHeaders: Record<string, strin
     );
   }
   
-  const { data: sectionData, error: sectionError } = await supabaseClient
-    .from("sections")
-    .select("id, name, grade_id");
+  let sectionQuery = supabaseClient.from("sections").select("id, name, grade_id");
+  if (clientId) {
+    sectionQuery = sectionQuery.eq("client_id", clientId);
+  }
+  const { data: sectionData, error: sectionError } = await sectionQuery;
   
   if (sectionError) {
     return new Response(
@@ -407,7 +443,7 @@ async function handleValidateImport(body: any, corsHeaders: Record<string, strin
 async function handleUpdateStudent(id: string, body: any, corsHeaders: Record<string, string>) {
   // Validate campus, grade, and section if they are being updated
   if (body.campus && body.grade && body.section) {
-    const isValid = await validateEducationalStructure(body.campus, body.grade, body.section);
+    const isValid = await validateEducationalStructure(body.campus, body.grade, body.section, body.client_id);
     if (!isValid.valid) {
       return new Response(
         JSON.stringify({ error: isValid.error }),
@@ -423,12 +459,19 @@ async function handleUpdateStudent(id: string, body: any, corsHeaders: Record<st
   if (body.grade) updates.grade = body.grade;
   if (body.section) updates.section = body.section;
   if (body.campus) updates.campus = body.campus;
+  if (body.client_id) updates.client_id = body.client_id;
   
-  const { data, error } = await supabaseClient
+  let query = supabaseClient
     .from("students")
     .update(updates)
-    .eq("id", id)
-    .select();
+    .eq("id", id);
+
+  // Filter by client_id if provided
+  if (body.client_id) {
+    query = query.eq("client_id", body.client_id);
+  }
+
+  const { data, error } = await query.select();
   
   if (error) {
     return new Response(
@@ -458,11 +501,18 @@ async function handleUpdateStudent(id: string, body: any, corsHeaders: Record<st
   );
 }
 
-async function handleDeleteStudent(id: string, corsHeaders: Record<string, string>) {
-  const { error } = await supabaseClient
+async function handleDeleteStudent(id: string, corsHeaders: Record<string, string>, body: any) {
+  let query = supabaseClient
     .from("students")
     .delete()
     .eq("id", id);
+
+  // Filter by client_id if provided
+  if (body.client_id) {
+    query = query.eq("client_id", body.client_id);
+  }
+
+  const { error } = await query;
   
   if (error) {
     return new Response(
@@ -483,6 +533,8 @@ async function handleDeleteStudent(id: string, corsHeaders: Record<string, strin
  */
 async function handleBulkUpdate(body: any, corsHeaders: Record<string, string>) {
   const students = body.students || [];
+  const clientId = body.client_id;
+  
   if (!Array.isArray(students) || students.length === 0) {
     return new Response(
       JSON.stringify({ error: "No student data provided for update" }),
@@ -511,12 +563,22 @@ async function handleBulkUpdate(body: any, corsHeaders: Record<string, string>) 
         // Extract updates for this student
         const { id, ...updates } = student;
         
-        // Apply update
-        const { data, error } = await supabaseClient
+        // Add client_id to updates
+        if (clientId) {
+          updates.client_id = clientId;
+        }
+        
+        // Apply update with client_id filter
+        let query = supabaseClient
           .from("students")
           .update(updates)
-          .eq("id", id)
-          .select();
+          .eq("id", id);
+
+        if (clientId) {
+          query = query.eq("client_id", clientId);
+        }
+
+        const { data, error } = await query.select();
         
         if (error) {
           console.error(`Error updating student ${id}:`, error);
