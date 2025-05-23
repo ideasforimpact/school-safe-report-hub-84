@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -7,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useEmployeeVerification } from '@/contexts/employee-verification';
 import { Employee, VerificationDocument } from '@/contexts/employee-verification/types';
 import { toast } from 'sonner';
-import { FileUploader } from '../FileUploader';
+import { FileUploader } from '@/components/FileUploader'; // Fixed import path
 import { Loader2 } from 'lucide-react';
 
 interface AddDocumentFormProps {
