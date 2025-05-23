@@ -43,12 +43,15 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
   }, [defaultClientId, fetchEmployees]);
 
   // Update employee status based on document verifications
-  // Modified to return void instead of boolean to match expected type
-  const updateEmployeeStatus = useCallback(async (employeeId: string, status: boolean): Promise<void> => {
+  const updateEmployeeStatus = useCallback(async (employeeId: string, status: boolean) => {
     try {
       await updateEmployee(employeeId, { status });
+      // Return true to maintain compatibility with the interface
+      return true;
     } catch (error) {
       console.error('Error updating employee status:', error);
+      // Return false on error to maintain compatibility with the interface
+      return false;
     }
   }, [updateEmployee]);
 
@@ -179,7 +182,7 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
   };
 
   // Use memoized value for context to prevent unnecessary re-renders
-  const contextValue = useMemo(() => ({
+  const contextValue: EmployeeVerificationContextType = useMemo(() => ({
     // Original verification context values
     verifyEmployee,
     isVerifying,

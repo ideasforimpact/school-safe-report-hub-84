@@ -191,7 +191,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         // Fetch employee data after successful login
         try {
           if (dispatch) {
-            // Fixed: Use action creator and dispatch the returned action
+            // Use action creator correctly
             dispatch(setLoading(true));
           }
           
@@ -219,11 +219,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             
             // Update Redux state correctly with action creators
             if (dispatch) {
-              // Fixed: Use the action creator properly
               dispatch(setEmployeeData(employee));
               
               if (employee.clientId) {
-                // Fixed: Use the action creator properly
                 dispatch(setClientId(employee.clientId));
               }
             }
@@ -322,12 +320,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Update Redux state correctly using action creators
         if (dispatch) {
-          // Fixed: Use action creator properly
           dispatch(setEmployeeData(backofficeEmployeeData));
           
-          // Only set clientId if it exists
           if (backofficeEmployeeData.clientId) {
-            // Fixed: Use action creator properly
             dispatch(setClientId(backofficeEmployeeData.clientId));
           }
         }
@@ -384,7 +379,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     // Clear Redux state correctly using action creator
     if (dispatch) {
-      // Fixed: Use action creator properly
       dispatch(resetEmployee());
     }
     

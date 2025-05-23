@@ -24,7 +24,7 @@ const Header = () => {
   // Get employee data and admin status from Redux store
   const employeeData = getEmployeeData(state);
   const isAdmin = isEmployeeAdmin(state);
-  const isSuperAdmin = user?.isSuperAdmin;
+  const isSuperAdmin = user?.isSuperAdmin || employeeData?.isSuperAdmin;
 
   // Log user and Redux state for debugging
   console.log("User from Auth Context:", user);
@@ -51,9 +51,8 @@ const Header = () => {
   // Set dashboard path to /dashboard for all users
   const dashboardPath = "/dashboard";
   
-  // Show admin settings menu based on Redux state or employeeData.isSuperAdmin
-  // Changed to check isSuperAdmin in employeeData as well
-  const showAdminSettings = isSuperAdmin || isAdmin || employeeData?.isSuperAdmin;
+  // Show admin settings menu based on Redux state or user.isSuperAdmin
+  const showAdminSettings = isSuperAdmin || isAdmin;
 
   // Determine if the user is a SaaS Owner (backoffice user)
   const isSaasOwner = user?.role === 'saas_owner';

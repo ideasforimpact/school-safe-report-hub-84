@@ -4,7 +4,6 @@ import { Routes, Route } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
 import { AuthProvider } from '@/contexts/auth';
 import { ClientProvider } from '@/contexts/ClientContext';
-// Remove EmployeeProvider import since it's now in App-wrapper.tsx
 import { StudentProvider } from './contexts/StudentContext';
 import { IncidentProvider } from './contexts/incident';
 import { EmployeeVerificationProvider } from './contexts/employee-verification';
@@ -44,6 +43,7 @@ import EmployeeDetailPage from '@/pages/employee-verification/EmployeeDetailPage
 import UploadDocumentPage from '@/pages/employee-verification/UploadDocumentPage';
 import VerificationDashboardPage from '@/pages/employee-verification/VerificationDashboardPage';
 import BackofficeLogin from '@/pages/BackofficeLogin';
+import SettingsPage from '@/pages/SettingsPage'; // New import for Settings Page
 
 // Layout for Backoffice
 import BackofficeLayout from '@/components/layout/BackofficeLayout';
@@ -88,6 +88,9 @@ function App() {
                     <Route path="/facility-management" element={<FacilityManagement />} />
                     <Route path="/incident-configuration" element={<IncidentConfiguration />} />
                     
+                    {/* New Settings route */}
+                    <Route path="/settings" element={<SettingsPage />} />
+                    
                     {/* Profile route */}
                     <Route path="/profile" element={<ProfilePage />} />
 
@@ -125,6 +128,7 @@ function App() {
                     {/* Backoffice routes - duplicated routes with /backoffice prefix */}
                     <Route path="/backoffice/dashboard" element={<BackofficeWrapper component={Dashboard} />} />
                     <Route path="/backoffice/clients" element={<BackofficeWrapper component={ClientManagement} />} />
+                    <Route path="/backoffice/settings" element={<BackofficeWrapper component={SettingsPage} />} />
                     
                     {/* Backoffice Profile route */}
                     <Route path="/backoffice/profile" element={<BackofficeWrapper component={ProfilePage} />} />

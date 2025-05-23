@@ -19,6 +19,14 @@ const AdminSettingsMenu = () => {
         <div className="px-2 py-2 text-sm font-medium text-gray-500">Settings</div>
         <DropdownMenuSeparator />
         
+        {/* Settings Page */}
+        <DropdownMenuItem onClick={() => navigate('/settings')} className="cursor-pointer">
+          <Settings className="h-4 w-4 mr-2" />
+          <span>All Settings</span>
+        </DropdownMenuItem>
+        
+        <DropdownMenuSeparator />
+        
         {/* Incident Configuration */}
         <DropdownMenuItem onClick={() => navigate('/incident-configuration')} className="cursor-pointer">
           <AlertTriangle className="h-4 w-4 mr-2" />
