@@ -1,14 +1,23 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Person } from '@/types/incident';
 import { Student } from '@/types/student';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/auth/useAuth';
+import { toast } from 'sonner';
 
 interface UserBasicInfo {
   id: string;
   firstName: string;
   lastName: string;
   name: string;
-  // Only include properties that are actually used in the component
+}
+
+interface Employee {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
 }
 
 interface PeopleInvolvedSectionProps {
@@ -17,7 +26,7 @@ interface PeopleInvolvedSectionProps {
   onAddPerson: () => void;
   onRemovePerson: (index: number) => void;
   students: Student[];
-  employees: UserBasicInfo[]; // Updated to use the generic user type
+  employees: UserBasicInfo[];
 }
 
 const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
@@ -28,6 +37,95 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   students,
   employees,
 }) => {
+  const { employeeData } = useAuth();
+  const [staffMembers, setStaffMembers] = useState<Employee[]>([]);
+  const [isLoadingStaff, setIsLoadingStaff] = useState(false);
+
+  // Fetch staff members when component mounts
+  useEffect(() => {
+    const fetchStaffMembers = async () => {
+      if (!employeeData?.clientId) return;
+
+      try {
+        setIsLoadingStaff(true);
+        const { data: staffData, error } = await supabase
+          .from('employees')
+          .select('id, first_name, last_name, email')
+          .eq('client_id', employeeData.clientId)
+          .eq('status', true);
+
+        if (error) {
+          console.error('Error fetching staff members:', error);
+          toast.error('Failed to load staff members');
+          return;
+        }
+
+        const mappedStaff = staffData.map(emp => ({
+          id: emp.id,
+          firstName: emp.first_name,
+          lastName: emp.last_name,
+          email: emp.email
+        }));
+
+        setStaffMembers(mappedStaff);
+      } catch (error) {
+        console.error('Error fetching staff members:', error);
+        toast.error('Failed to load staff members');
+      } finally {
+        setIsLoadingStaff(false);
+      }
+    };
+
+    fetchStaffMembers();
+  }, [employeeData?.clientId]);
+
+  const renderNameField = (person: Person, index: number) => {
+    if (person.role === 'staff') {
+      return (
+        <select
+          value={person.name}
+          onChange={(e) => onPersonChange(index, 'name', e.target.value)}
+          className="w-full p-2 border rounded-md text-sm"
+          disabled={isLoadingStaff}
+        >
+          <option value="">
+            {isLoadingStaff ? 'Loading staff...' : 'Select staff member'}
+          </option>
+          {staffMembers.map((staff) => (
+            <option key={staff.id} value={staff.id}>
+              {staff.firstName} {staff.lastName} ({staff.email})
+            </option>
+          ))}
+        </select>
+      );
+    } else if (person.role === 'student') {
+      return (
+        <select
+          value={person.name}
+          onChange={(e) => onPersonChange(index, 'name', e.target.value)}
+          className="w-full p-2 border rounded-md text-sm"
+        >
+          <option value="">Select student</option>
+          {students.map((student) => (
+            <option key={student.id} value={student.id}>
+              {student.name} ({student.studentId})
+            </option>
+          ))}
+        </select>
+      );
+    } else {
+      return (
+        <input
+          type="text"
+          value={person.name}
+          onChange={(e) => onPersonChange(index, 'name', e.target.value)}
+          className="w-full p-2 border rounded-md text-sm"
+          placeholder="Enter name"
+        />
+      );
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -49,19 +147,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
         <div className="space-y-4">
           {peopleInvolved.map((person, index) => (
             <div key={index} className="flex flex-col md:flex-row gap-3 p-3 border rounded-md bg-gray-50">
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Name
-                </label>
-                <input
-                  type="text"
-                  value={person.name}
-                  onChange={(e) => onPersonChange(index, 'name', e.target.value)}
-                  className="w-full p-2 border rounded-md text-sm"
-                  placeholder="Full name"
-                />
-              </div>
-              
+              {/* Role Field - Now First */}
               <div className="flex-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Role
@@ -80,21 +166,26 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                 </select>
               </div>
               
+              {/* Name Field - Now Second */}
               <div className="flex-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Type
+                  Name
                 </label>
-                <select
+                {renderNameField(person, index)}
+              </div>
+              
+              {/* Notes Field - Changed from Type dropdown to text input */}
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Notes
+                </label>
+                <input
+                  type="text"
                   value={person.notes || ''}
                   onChange={(e) => onPersonChange(index, 'notes', e.target.value)}
                   className="w-full p-2 border rounded-md text-sm"
-                >
-                  <option value="">Select type</option>
-                  <option value="witness">Witness</option>
-                  <option value="involved">Involved</option>
-                  <option value="injured">Injured</option>
-                  <option value="reporter">Reporter</option>
-                </select>
+                  placeholder="Additional notes"
+                />
               </div>
               
               <div className="flex items-end">
