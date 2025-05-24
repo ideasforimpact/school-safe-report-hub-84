@@ -1,5 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
+import { Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { Person } from '@/types/incident';
 import { Student } from '@/types/student';
 import { supabase } from '@/integrations/supabase/client';
@@ -40,6 +42,8 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   const { employeeData } = useAuth();
   const [staffMembers, setStaffMembers] = useState<Employee[]>([]);
   const [isLoadingStaff, setIsLoadingStaff] = useState(false);
+  const [searchQueries, setSearchQueries] = useState<{ [key: number]: string }>({});
+  const [isSearching, setIsSearching] = useState<{ [key: number]: boolean }>({});
 
   // Fetch staff members when component mounts
   useEffect(() => {
@@ -79,41 +83,126 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
     fetchStaffMembers();
   }, [employeeData?.clientId]);
 
-  const renderNameField = (person: Person, index: number) => {
+  const handleSearchChange = (index: number, value: string) => {
+    setSearchQueries(prev => ({ ...prev, [index]: value }));
+    setIsSearching(prev => ({ ...prev, [index]: true }));
+  };
+
+  const handleSelectPerson = (index: number, personId: string, personName: string) => {
+    onPersonChange(index, 'name', personId);
+    setIsSearching(prev => ({ ...prev, [index]: false }));
+    setSearchQueries(prev => ({ ...prev, [index]: '' }));
+  };
+
+  const getDisplayName = (person: Person, index: number) => {
     if (person.role === 'staff') {
-      return (
-        <select
-          value={person.name}
-          onChange={(e) => onPersonChange(index, 'name', e.target.value)}
-          className="w-full p-2 border rounded-md text-sm"
-          disabled={isLoadingStaff}
-        >
-          <option value="">
-            {isLoadingStaff ? 'Loading staff...' : 'Select staff member'}
-          </option>
-          {staffMembers.map((staff) => (
-            <option key={staff.id} value={staff.id}>
-              {staff.firstName} {staff.lastName} ({staff.email})
-            </option>
-          ))}
-        </select>
-      );
+      const selectedStaff = staffMembers.find(staff => staff.id === person.name);
+      return selectedStaff ? `${selectedStaff.firstName} ${selectedStaff.lastName} (${selectedStaff.email})` : '';
     } else if (person.role === 'student') {
+      const selectedStudent = students.find(student => student.id === person.name);
+      return selectedStudent ? `${selectedStudent.name} (${selectedStudent.studentId})` : '';
+    }
+    return person.name;
+  };
+
+  const getFilteredItems = (person: Person, index: number) => {
+    const query = searchQueries[index]?.toLowerCase() || '';
+    
+    if (person.role === 'staff') {
+      return staffMembers.filter(staff => {
+        const fullName = `${staff.firstName} ${staff.lastName}`;
+        return fullName.toLowerCase().includes(query) || 
+               staff.email.toLowerCase().includes(query);
+      });
+    } else if (person.role === 'student') {
+      return students.filter(student => {
+        return student.name.toLowerCase().includes(query) || 
+               student.studentId.toLowerCase().includes(query);
+      });
+    }
+    return [];
+  };
+
+  const renderNameField = (person: Person, index: number) => {
+    if (person.role === 'staff' || person.role === 'student') {
+      const isCurrentlySearching = isSearching[index];
+      const filteredItems = getFilteredItems(person, index);
+      const displayValue = isCurrentlySearching ? (searchQueries[index] || '') : getDisplayName(person, index);
+
       return (
-        <select
-          value={person.name}
-          onChange={(e) => onPersonChange(index, 'name', e.target.value)}
-          className="w-full p-2 border rounded-md text-sm"
-        >
-          <option value="">Select student</option>
-          {students.map((student) => (
-            <option key={student.id} value={student.id}>
-              {student.name} ({student.studentId})
-            </option>
-          ))}
-        </select>
+        <div className="relative">
+          <div className="relative">
+            <Input
+              value={displayValue}
+              onChange={(e) => handleSearchChange(index, e.target.value)}
+              onFocus={() => setIsSearching(prev => ({ ...prev, [index]: true }))}
+              onBlur={() => {
+                setTimeout(() => {
+                  if (!searchQueries[index]) {
+                    setIsSearching(prev => ({ ...prev, [index]: false }));
+                  }
+                }, 200);
+              }}
+              placeholder={
+                isLoadingStaff 
+                  ? "Loading..." 
+                  : `Search by name${person.role === 'staff' ? ' or email' : ' or ID'}...`
+              }
+              className="w-full pr-8"
+              disabled={isLoadingStaff}
+            />
+            <Search className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          </div>
+          
+          {isCurrentlySearching && filteredItems.length > 0 && (
+            <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
+              <ul className="py-1 text-sm">
+                {filteredItems.map((item) => (
+                  <li
+                    key={item.id}
+                    className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                    onClick={() => {
+                      if (person.role === 'staff') {
+                        const staff = item as Employee;
+                        handleSelectPerson(index, staff.id, `${staff.firstName} ${staff.lastName}`);
+                      } else {
+                        const student = item as Student;
+                        handleSelectPerson(index, student.id, student.name);
+                      }
+                    }}
+                    onMouseDown={(e) => e.preventDefault()}
+                  >
+                    <div>
+                      <span className="font-medium">
+                        {person.role === 'staff' 
+                          ? `${(item as Employee).firstName} ${(item as Employee).lastName}`
+                          : (item as Student).name
+                        }
+                      </span>
+                      <span className="text-gray-500 ml-1">
+                        ({person.role === 'staff' 
+                          ? (item as Employee).email
+                          : (item as Student).studentId
+                        })
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {isCurrentlySearching && searchQueries[index] && filteredItems.length === 0 && (
+            <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg">
+              <p className="p-3 text-sm text-gray-500">
+                No {person.role === 'staff' ? 'staff members' : 'students'} found
+              </p>
+            </div>
+          )}
+        </div>
       );
     } else {
+      // For other roles, show text input
       return (
         <input
           type="text"
@@ -147,14 +236,21 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
         <div className="space-y-4">
           {peopleInvolved.map((person, index) => (
             <div key={index} className="flex flex-col md:flex-row gap-3 p-3 border rounded-md bg-gray-50">
-              {/* Role Field - Now First */}
+              {/* Role Field - First */}
               <div className="flex-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Role
                 </label>
                 <select
                   value={person.role}
-                  onChange={(e) => onPersonChange(index, 'role', e.target.value)}
+                  onChange={(e) => {
+                    onPersonChange(index, 'role', e.target.value);
+                    // Clear name when role changes
+                    onPersonChange(index, 'name', '');
+                    // Clear search state
+                    setSearchQueries(prev => ({ ...prev, [index]: '' }));
+                    setIsSearching(prev => ({ ...prev, [index]: false }));
+                  }}
                   className="w-full p-2 border rounded-md text-sm"
                 >
                   <option value="">Select role</option>
@@ -166,7 +262,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                 </select>
               </div>
               
-              {/* Name Field - Now Second */}
+              {/* Name Field - Second */}
               <div className="flex-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Name
@@ -174,7 +270,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                 {renderNameField(person, index)}
               </div>
               
-              {/* Notes Field - Changed from Type dropdown to text input */}
+              {/* Notes Field - Third */}
               <div className="flex-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Notes
