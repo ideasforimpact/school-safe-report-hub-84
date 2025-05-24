@@ -9,6 +9,7 @@ import { getFacilitiesByCampus } from '@/services/facility/facilityService';
 import { ConfigItem } from '@/contexts/types';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/auth/useAuth';
 
 interface FormData {
   type: string;
@@ -28,6 +29,7 @@ interface FormData {
 
 export function useIncidentForm() {
   const { users, generateTicketId } = useIncidents();
+  const { employeeData } = useAuth();
   
   const [nextTicketId, setNextTicketId] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -58,15 +60,23 @@ export function useIncidentForm() {
     owner: ''
   });
 
-  // Fetch all reference data on component mount
+  // Fetch all reference data on component mount based on client_id
   useEffect(() => {
     const fetchAllReferenceData = async () => {
+      if (!employeeData?.clientId) {
+        console.log('No client ID available, skipping data fetch');
+        return;
+      }
+
       try {
-        // Fetch report types
+        console.log('Fetching reference data for client:', employeeData.clientId);
+
+        // Fetch report types based on client_id
         const { data: typesData, error: typesError } = await supabase
           .from('incident_report_types')
           .select('id, name')
-          .eq('is_active', true);
+          .eq('is_active', true)
+          .eq('client_id', employeeData.clientId);
         
         if (typesError) {
           console.error('Error fetching report types:', typesError);
@@ -86,11 +96,12 @@ export function useIncidentForm() {
           }
         }
         
-        // Fetch categories
+        // Fetch categories based on client_id
         const { data: categoriesData, error: categoriesError } = await supabase
           .from('incident_categories')
           .select('id, name')
-          .eq('is_active', true);
+          .eq('is_active', true)
+          .eq('client_id', employeeData.clientId);
         
         if (categoriesError) {
           console.error('Error fetching categories:', categoriesError);
@@ -100,11 +111,12 @@ export function useIncidentForm() {
           setCategories(categoriesData);
         }
         
-        // Fetch all subcategories
+        // Fetch all subcategories based on client_id
         const { data: subcategoriesData, error: subcategoriesError } = await supabase
           .from('incident_subcategories')
           .select('id, name, category_id')
-          .eq('is_active', true);
+          .eq('is_active', true)
+          .eq('client_id', employeeData.clientId);
         
         if (subcategoriesError) {
           console.error('Error fetching subcategories:', subcategoriesError);
@@ -114,11 +126,12 @@ export function useIncidentForm() {
           setSubcategories(subcategoriesData);
         }
         
-        // Fetch priorities
+        // Fetch priorities based on client_id
         const { data: prioritiesData, error: prioritiesError } = await supabase
           .from('incident_priorities')
           .select('id, name')
-          .eq('is_active', true);
+          .eq('is_active', true)
+          .eq('client_id', employeeData.clientId);
         
         if (prioritiesError) {
           console.error('Error fetching priorities:', prioritiesError);
@@ -144,15 +157,31 @@ export function useIncidentForm() {
     };
 
     fetchAllReferenceData();
-  }, []);
+  }, [employeeData?.clientId]);
 
-  // Fetch locations (campuses) on component mount
+  // Fetch locations (campuses) based on client_id
   useEffect(() => {
     const fetchLocations = async () => {
+      if (!employeeData?.clientId) {
+        console.log('No client ID available for fetching campuses');
+        return;
+      }
+
       try {
-        const campuses = await getAllCampuses();
-        console.log('Fetched campuses:', campuses);
-        setLocations(campuses);
+        console.log('Fetching campuses for client:', employeeData.clientId);
+        const { data: campusData, error } = await supabase
+          .from('campuses')
+          .select('id, name')
+          .eq('client_id', employeeData.clientId);
+
+        if (error) {
+          console.error('Error fetching campuses:', error);
+          toast.error('Failed to load campuses');
+          return;
+        }
+
+        console.log('Fetched campuses:', campusData);
+        setLocations(campusData || []);
       } catch (error) {
         console.error('Error fetching campuses:', error);
         toast.error('Failed to load campuses');
@@ -160,20 +189,32 @@ export function useIncidentForm() {
     };
 
     fetchLocations();
-  }, []);
+  }, [employeeData?.clientId]);
 
   // Fetch facilities when location changes
   useEffect(() => {
-    if (!formData.locationId) {
+    if (!formData.locationId || !employeeData?.clientId) {
       setFacilities([]);
       return;
     }
 
     const fetchFacilities = async () => {
       try {
-        const facilitiesData = await getFacilitiesByCampus(formData.locationId);
-        console.log('Fetched facilities for campus:', formData.locationId, facilitiesData);
-        setFacilities(facilitiesData.map(f => ({ id: f.id, name: f.name })));
+        console.log('Fetching facilities for campus:', formData.locationId, 'and client:', employeeData.clientId);
+        const { data: facilitiesData, error } = await supabase
+          .from('facilities')
+          .select('id, name')
+          .eq('campus_id', formData.locationId)
+          .eq('client_id', employeeData.clientId);
+
+        if (error) {
+          console.error('Error fetching facilities:', error);
+          toast.error('Failed to load facilities');
+          return;
+        }
+
+        console.log('Fetched facilities:', facilitiesData);
+        setFacilities(facilitiesData || []);
       } catch (error) {
         console.error('Error fetching facilities:', error);
         toast.error('Failed to load facilities');
@@ -181,7 +222,7 @@ export function useIncidentForm() {
     };
 
     fetchFacilities();
-  }, [formData.locationId]);
+  }, [formData.locationId, employeeData?.clientId]);
 
   // Update subcategory options when category changes
   useEffect(() => {
