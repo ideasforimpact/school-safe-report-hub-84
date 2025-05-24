@@ -1,17 +1,10 @@
-
 import React from 'react';
 import { IncidentRelatedConfig } from '@/pages/configuration/IncidentRelatedConfig';
 import { useIncidentCategories } from '@/hooks/useIncidentCategories';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-
-interface ContributingFactor {
-  id: string;
-  name: string;
-  description: string | null;
-  weight: string | null;
-}
+import { ContributingFactorItem } from '@/services/incident/contributingFactorService';
 
 interface ReportType {
   id: string;
@@ -31,7 +24,7 @@ interface PriorityItem {
 
 const IncidentConfigurationContent = () => {
   const [activeTab, setActiveTab] = useState('categories');
-  const [contributingFactors, setContributingFactors] = useState<ContributingFactor[]>([]);
+  const [contributingFactors, setContributingFactors] = useState<ContributingFactorItem[]>([]);
   const [reportTypes, setReportTypes] = useState<ReportType[]>([]);
   const [priorities, setPriorities] = useState<PriorityItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,7 +48,7 @@ const IncidentConfigurationContent = () => {
       try {
         const { data, error } = await supabase
           .from('contributing_factors')
-          .select('id, name, description, weight')
+          .select('id, name, description, weight, client_id')
           .order('name');
         
         if (error) {
