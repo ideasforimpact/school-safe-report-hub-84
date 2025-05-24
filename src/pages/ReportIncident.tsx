@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIncidents } from '@/contexts/incident';
@@ -32,10 +33,6 @@ const ReportIncident = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoadingEmployees, setIsLoadingEmployees] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Add loading state for reference data
-  const [isLoadingRefData, setIsLoadingRefData] = useState(false);
-  const [dataInitialized, setDataInitialized] = useState(false);
   const [newStatusId, setNewStatusId] = useState<string | null>(null);
   
   const {
@@ -83,13 +80,10 @@ const ReportIncident = () => {
     fetchEmployees();
   }, []);
   
-  // Initialize reference data if needed
+  // Check for 'New' status ID
   useEffect(() => {
-    const initializeReferenceData = async () => {
+    const getNewStatusId = async () => {
       try {
-        setIsLoadingRefData(true);
-        
-        // First check if we have the required data in incident_status
         const { data: statusData, error: statusError } = await supabase
           .from('incident_status')
           .select('id, name')
@@ -101,66 +95,13 @@ const ReportIncident = () => {
         } else if (statusData) {
           console.log("Found New status with ID:", statusData.id);
           setNewStatusId(statusData.id);
-          setDataInitialized(true);
-          return;
-        }
-
-        // Check for Other category specifically
-        const { data: otherCategory, error: categoryError } = await supabase
-          .from('incident_categories')
-          .select('id, name')
-          .eq('name', 'Other')
-          .limit(1);
-          
-        if (categoryError) {
-          console.error("Error checking for 'Other' category:", categoryError);
-        }
-        
-        // If we don't have data or missing New status, call our initialization function
-        if (!statusData || !otherCategory || otherCategory.length === 0) {
-          console.log("Required reference data not found, initializing...");
-          
-          try {
-            const response = await fetch('https://ybvxkiubnnixntghojyy.supabase.co/functions/v1/init-incident-data', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              }
-            });
-            
-            if (!response.ok) {
-              const errorText = await response.text();
-              console.error("Failed to initialize reference data:", errorText);
-              toast.error("Could not initialize required data");
-            } else {
-              const result = await response.json();
-              console.log("Reference data initialization result:", result);
-              
-              if (result.newStatusId) {
-                setNewStatusId(result.newStatusId);
-                console.log("Set new status ID to:", result.newStatusId);
-              }
-              
-              toast.success("Incident reference data initialized successfully");
-              setDataInitialized(true);
-            }
-          } catch (initError) {
-            console.error("Error calling initialization function:", initError);
-            toast.error("Could not connect to initialization service");
-          }
-        } else {
-          console.log("Incident reference data exists:", statusData);
-          setDataInitialized(true);
         }
       } catch (error) {
-        console.error("Error initializing reference data:", error);
-        toast.error("Could not verify reference data");
-      } finally {
-        setIsLoadingRefData(false);
+        console.error("Error fetching status data:", error);
       }
     };
     
-    initializeReferenceData();
+    getNewStatusId();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -348,21 +289,6 @@ const ReportIncident = () => {
           </p>
         </div>
 
-        {isLoadingRefData && (
-          <div className="rounded-md bg-blue-50 p-4 mt-4">
-            <div className="flex">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.75.75 0 00.736-.599L10.882 7.5H9.75A.75.75 0 009 8.25v.75z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3 flex-1 md:flex md:justify-between">
-                <p className="text-sm text-blue-700">Initializing reference data, please wait...</p>
-              </div>
-            </div>
-          </div>
-        )}
-
         <form onSubmit={handleSubmit} className="w-full">
           <Card className="border-none shadow-card pt-6">
             <CardContent className="space-y-6 px-6">
@@ -396,11 +322,11 @@ const ReportIncident = () => {
               </Button>
               <Button 
                 type="submit" 
-                disabled={isSubmitting || contextIsSubmitting || isLoadingRefData || !dataInitialized}
+                disabled={isSubmitting || contextIsSubmitting}
               >
                 {isSubmitting || contextIsSubmitting ? 
                   "Submitting..." : 
-                  (isLoadingRefData ? "Initializing..." : "Submit Report")
+                  "Submit Report"
                 }
               </Button>
             </CardFooter>
