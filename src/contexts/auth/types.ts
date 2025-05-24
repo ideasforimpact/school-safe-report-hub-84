@@ -1,7 +1,9 @@
 
+import { User as SupabaseUser } from '@supabase/supabase-js';
+
 // Update the AuthContextType to include the employeeData property
 export interface AuthContextType {
-  user: User | null;
+  user: SupabaseUser | null;
   users: User[];
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
@@ -16,6 +18,11 @@ export interface AuthContextType {
   authError: string | null;
   handleUserAuthentication: (supabaseUser: any) => Promise<void>;
   employeeData: EmployeeData | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  signIn: (email: string) => Promise<void>;
+  signOut: () => Promise<void>;
+  updateEmployeeData: (newData: Partial<EmployeeData>) => void;
 }
 
 export type UserRole = 'user' | 'admin' | 'reporter' | 'viewer' | 'saas_owner';
@@ -76,9 +83,20 @@ export interface EmployeeData {
   firstName: string;
   lastName: string;
   email: string;
+  phone?: string;
+  employeeId?: string;
+  position?: string;
+  employeeTypeId?: string;
+  employeeType?: any;
+  departmentId?: string;
+  department?: any;
+  userRoleId?: string;
+  userRole?: any;
+  modulePermissions?: any[];
   isSuperAdmin?: boolean;
   department?: string;
   employeeType?: string;
+  status?: boolean;
 }
 
 export interface AuthProviderProps {
