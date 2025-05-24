@@ -1,213 +1,561 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+import React, { createContext, useEffect, useState, useRef } from 'react';
+import { User, AuthContextType, UserWithPassword, EmployeeData } from './types';
+import { 
+  getUserFromStorage, 
+  logoutUser, 
+  loginUser, 
+  setUsers, 
+  getUsersFromStorage,
+  saveUserToStorage, 
+  saveUsersToStorage,
+  getCurrentUserData,
+  changeUserPassword,
+  getEmployeeDataFromStorage,
+  saveEmployeeDataToStorage
+} from '@/services/auth/authService';
 import { toast } from 'sonner';
-import { AuthContextType, EmployeeData } from './types';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuthHandlers } from './hooks/useAuthHandlers';
+import { useEmployeeStore } from '@/store/EmployeeContext';
+import { setEmployeeData, setClientId, setConfiguredModules, resetEmployee, setLoading } from '@/store/employeeActions';
 
-interface UserRole {
-  id: string;
-  name: string;
+// Create the context
+export const AuthContext = createContext<AuthContextType>({
+  user: null,
+  users: [],
+  login: async () => false,
+  logout: () => {},
+  isAdmin: false,
+  isSaasOwner: false,
+  addUser: () => {},
+  updateUser: () => {},
+  deleteUser: () => {},
+  deactivateUser: () => {},
+  reactivateUser: () => {},
+  changePassword: async () => false,
+  authError: null,
+  handleUserAuthentication: async () => {},
+  employeeData: null,
+});
+
+interface AuthProviderProps {
+  children: React.ReactNode;
 }
 
-interface ModulePermissions {
-  moduleName: string;
-  read: boolean;
-  write: boolean;
-  update: boolean;
-  delete: boolean;
-}
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  // State for the current user, all users, and auth error
+  const [currentUser, setCurrentUser] = useState<User | null>(getUserFromStorage());
+  const [users, setUsersState] = useState<UserWithPassword[]>(getUsersFromStorage());
+  const [displayUsers, setDisplayUsers] = useState<User[]>(
+    users.map(({ password, ...user }) => user)
+  );
+  const [employeeData, setEmployeeData] = useState<EmployeeData | null>(getEmployeeDataFromStorage());
+  const [isInitializing, setIsInitializing] = useState<boolean>(true);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [isBackofficeUser, setIsBackofficeUser] = useState<boolean>(false);
+  const authInitCompleteRef = useRef<boolean>(false);
+  const authListenerSetupRef = useRef<boolean>(false);
+  
+  // Access EmployeeStore - available since we are now properly wrapped with EmployeeProvider
+  const { dispatch } = useEmployeeStore();
 
-interface EmployeeType {
-  id: string;
-  name: string;
-}
+  // Import useAuthHandlers to get handleUserAuthentication function
+  const { handleUserAuthentication } = useAuthHandlers({
+    user: currentUser,
+    users,
+    setUser: setCurrentUser,
+    setUsers: setUsersState,
+    setAuthError,
+    authInitCompleteRef,
+    setEmployeeData,
+    dispatch // Pass Redux dispatch to useAuthHandlers
+  });
 
-interface DepartmentType {
-  id: string;
-  name: string;
-}
-
-// Define the structure of employee data
-// interface EmployeeData {
-//   id: string;
-//   firstName: string;
-//   lastName: string;
-//   email: string;
-//   phone: string;
-//   employeeId: string;
-//   position: string;
-//   employeeTypeId: string;
-//   employeeType: EmployeeType;
-//   departmentId: string;
-//   department: DepartmentType;
-//   userRoleId: string;
-//   userRole: UserRole;
-//   modulePermissions: ModulePermissions[];
-//   clientId: string;
-//   isSuperAdmin: boolean;
-//   status: boolean;
-// }
-
-// Define the context type
-// interface AuthContextType {
-//   user: User | null;
-//   employeeData: EmployeeData | null;
-//   isAuthenticated: boolean;
-//   isLoading: boolean;
-//   signIn: (email: string) => Promise<void>;
-//   signOut: () => Promise<void>;
-//   updateEmployeeData: (newData: Partial<EmployeeData>) => void;
-// }
-
-// Create the context with a default value of null
-export const AuthContext = createContext<AuthContextType | null>(null);
-
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [employeeData, setEmployeeData] = useState<EmployeeData | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-
+  // Update display users whenever users changes
   useEffect(() => {
-    const session = supabase.auth.getSession();
+    setDisplayUsers(users.map(({ password, ...user }) => user));
+  }, [users]);
 
-    supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.session?.user) {
-        setUser(session.session.user);
-        setIsAuthenticated(true);
-        await fetchEmployeeData(session.session.user.id);
-      } else {
-        setUser(null);
-        setEmployeeData(null);
-        setIsAuthenticated(false);
+  // Compute roles
+  const isAdmin = Boolean(currentUser?.role === 'admin' || currentUser?.modulePermissions?.superAdmin);
+  const isSaasOwner = Boolean(currentUser?.role === 'saas_owner' || isBackofficeUser);
+
+  // Setup Supabase auth listener for Google authentication
+  useEffect(() => {
+    // Only setup listener once
+    if (authListenerSetupRef.current) return;
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Auth state change event:", event);
+      
+      if (event === 'SIGNED_IN' && session?.user) {
+        console.log("User signed in:", session.user.email);
+        
+        try {
+          // Use setTimeout to avoid potential deadlock issues with Supabase auth
+          setTimeout(async () => {
+            await handleUserAuthentication(session.user);
+          }, 0);
+        } catch (error) {
+          console.error("Error in auth state change handler:", error);
+          toast.error("Authentication failed. Please try again.");
+        }
+      } else if (event === 'SIGNED_OUT') {
+        console.log("User signed out");
+        setCurrentUser(null);
+        setEmployeeData(null); // Clear employee data on logout
+        saveEmployeeDataToStorage(null); // Clear from storage
+        setAuthError(null);
+        
+        // Clear Redux state on logout
+        if (dispatch) {
+          dispatch(resetEmployee());
+        }
+        
+        // Add a toast message for logout
+        toast.info("You have been logged out");
+        
+        // Clear any local auth data
+        logoutUser();
+      } else if (event === 'TOKEN_REFRESHED') {
+        console.log("Auth token refreshed");
+      } else if (event === 'USER_UPDATED') {
+        console.log("User data updated");
       }
-      setIsLoading(false);
     });
+    
+    authListenerSetupRef.current = true;
+    
+    // Return cleanup function
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [handleUserAuthentication, dispatch]);
 
-    if (session?.data?.session?.user) {
-      setUser(session.data.session.user);
-      setIsAuthenticated(true);
-      fetchEmployeeData(session.data.session.user.id);
-    } else {
-      setIsLoading(false);
-    }
+  // Fetch users from Supabase on mount
+  useEffect(() => {
+    const checkSupabaseAuth = async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        
+        if (data.session) {
+          // Check if we already have a user loaded from storage
+          if (!currentUser) {
+            // Use setTimeout to avoid potential deadlock issues
+            setTimeout(async () => {
+              console.log("Found existing session, authenticating user...");
+              await handleUserAuthentication(data.session?.user);
+            }, 0);
+          }
+        } else {
+          console.log("No active session found");
+          // If we have a user in storage but no active session, clear it
+          if (currentUser) {
+            console.log("Clearing stale user data from storage");
+            setCurrentUser(null);
+            setEmployeeData(null);
+            saveEmployeeDataToStorage(null);
+            
+            // Clear Redux state
+            if (dispatch) {
+              dispatch(resetEmployee());
+            }
+            
+            logoutUser();
+            toast.info("Your session has expired. Please log in again.");
+          }
+        }
+      } catch (error) {
+        console.error("Error checking Supabase auth:", error);
+        toast.error("Error checking authentication status");
+      } finally {
+        setIsInitializing(false);
+      }
+    };
+
+    checkSupabaseAuth();
   }, []);
 
-  const fetchEmployeeData = async (userId: string) => {
+  // Handle login
+  const handleLogin = async (email: string, password: string): Promise<boolean> => {
+    setAuthError(null);
+    
     try {
-      const { data: profile, error } = await supabase
-        .from('employees')
-        .select(`
-          id, first_name, last_name, email, phone, employee_id, position, status,
-          employee_type_id, employee_types (id, name),
-          department_id, departments (id, name),
-          user_role_id, user_roles (id, name),
-          client_id, is_super_admin
-        `)
-        .eq('user_id', userId)
-        .single();
+      // First try to login as a regular user
+      const user = loginUser(email, password, users);
+
+      if (user) {
+        setCurrentUser(user);
+        saveUserToStorage(user);
+        
+        // Fetch employee data after successful login
+        try {
+          if (dispatch) {
+            dispatch(setLoading(true));
+          }
+          
+          const { data: employeeData, error } = await supabase
+            .from('employees')
+            .select('id, client_id, email, first_name, last_name, is_super_admin, department, employee_type')
+            .eq('email', email.toLowerCase())
+            .single();
+          
+          if (employeeData && !error) {
+            const employee: EmployeeData = {
+              id: employeeData.id,
+              clientId: employeeData.client_id,
+              email: employeeData.email,
+              firstName: employeeData.first_name,
+              lastName: employeeData.last_name,
+              isSuperAdmin: employeeData.is_super_admin,
+              department: employeeData.department, 
+              employeeType: employeeData.employee_type
+            };
+            
+            // Update local state
+            setEmployeeData(employee);
+            saveEmployeeDataToStorage(employee);
+            
+            // Update Redux state using action creators properly
+            if (dispatch) {
+              dispatch(setEmployeeData(employee));
+              
+              if (employee.clientId) {
+                dispatch(setClientId(employee.clientId));
+              }
+            }
+            
+            console.log("Employee data stored:", employee);
+          }
+          
+          if (dispatch) {
+            dispatch(setLoading(false));
+          }
+        } catch (err) {
+          console.error("Error fetching employee data:", err);
+          if (dispatch) {
+            dispatch(setLoading(false));
+          }
+        }
+        
+        toast.success(`Welcome back, ${user.firstName}!`);
+        return true;
+      }
+
+      // If regular login fails, try backoffice login
+      const { data, error } = await supabase.rpc('verify_password', { 
+        email, 
+        password_attempt: password 
+      });
 
       if (error) {
-        console.error('Error fetching employee data:', error);
-        toast.error('Failed to load employee data');
-        return;
+        console.error("Login error:", error);
+        setAuthError("Invalid credentials");
+        return false;
       }
 
-      if (profile) {
-        // Fetch module permissions
-        const { data: permissions, error: permissionsError } = await supabase
-          .from('module_permissions')
-          .select('module_name, read, write, update, delete')
-          .eq('user_role_id', profile.user_role_id);
-
-        if (permissionsError) {
-          console.error('Error fetching module permissions:', permissionsError);
-          toast.error('Failed to load module permissions');
-          return;
+      if (data === true) {
+        // Fetch the backoffice user
+        const { data: backofficeUser, error: backofficeError } = await supabase
+          .from('backoffice_users')
+          .select('*')
+          .eq('email', email)
+          .single();
+          
+        if (backofficeError || !backofficeUser) {
+          console.error("Error fetching backoffice user:", backofficeError);
+          setAuthError("Error retrieving user data");
+          return false;
         }
-
-        const employeeData: EmployeeData = {
-          id: profile.id,
-          firstName: profile.first_name,
-          lastName: profile.last_name,
-          email: profile.email,
-          phone: profile.phone,
-          employeeId: profile.employee_id,
-          position: profile.position,
-          employeeTypeId: profile.employee_type_id,
-          employeeType: profile.employee_types as EmployeeType,
-          departmentId: profile.department_id,
-          department: profile.departments as DepartmentType,
-          userRoleId: profile.user_role_id,
-          userRole: profile.user_roles as UserRole,
-          modulePermissions: permissions || [],
-          clientId: profile.client_id,
-          isSuperAdmin: profile.is_super_admin,
-          status: profile.status
+        
+        // Update last_signed_in
+        await supabase
+          .from('backoffice_users')
+          .update({ last_signed_in: new Date().toISOString() })
+          .eq('id', backofficeUser.id);
+        
+        // Create a user object for the backoffice user
+        const saasUser: User = {
+          id: backofficeUser.id,
+          firstName: 'Backoffice',
+          lastName: 'Admin',
+          email: backofficeUser.email,
+          role: 'saas_owner',
+          isActive: true,
+          modulePermissions: {
+            superAdmin: true,
+            incidentReporting: true,
+            incidentAdmin: true,
+            assessmentUser: true,
+            assessmentsAdmin: true,
+            employeeVerificationAdmin: true,
+            grievancesAdmin: true,
+            transportSafetyAdmin: true,
+            eduSafeResourceAccess: true
+          },
+          createdAt: backofficeUser.created_at
         };
-
-        setEmployeeData(employeeData);
+        
+        // Update local state
+        setCurrentUser(saasUser);
+        setIsBackofficeUser(true);
+        saveUserToStorage(saasUser);
+        
+        // Create employee data for backoffice user
+        const backofficeEmployeeData: EmployeeData = {
+          id: backofficeUser.id,
+          clientId: null,
+          email: backofficeUser.email,
+          firstName: 'Backoffice',
+          lastName: 'Admin',
+          isSuperAdmin: true,
+          department: 'Management', // Add default department
+          employeeType: 'admin' // Add default employee type
+        };
+        
+        // Update local state
+        setEmployeeData(backofficeEmployeeData);
+        saveEmployeeDataToStorage(backofficeEmployeeData);
+        
+        // Update Redux state
+        if (dispatch) {
+          dispatch(setEmployeeData(backofficeEmployeeData));
+          
+          if (backofficeEmployeeData.clientId) {
+            dispatch(setClientId(backofficeEmployeeData.clientId));
+          }
+        }
+        
+        // Set modules for backoffice user (all modules enabled)
+        const backofficeModules = [
+          {
+            id: 'dashboard-admin',
+            name: 'Dashboard',
+            key: 'dashboard',
+            icon: 'LayoutDashboard',
+            level: 'admin',
+            enabled: true,
+            accessLevel: {}
+          },
+          {
+            id: 'admin-settings',
+            name: 'Settings',
+            key: 'adminSettings',
+            icon: 'Settings',
+            level: 'admin',
+            enabled: true,
+            accessLevel: {}
+          }
+        ];
+        
+        // Update Redux state with modules using action creators properly
+        if (dispatch) {
+          dispatch(setConfiguredModules(backofficeModules));
+        }
+        
+        toast.success(`Welcome back, Backoffice Admin!`);
+        return true;
       }
-    } catch (error: any) {
-      console.error('Unexpected error fetching employee data:', error);
-      toast.error('Unexpected error loading employee data: ' + error.message);
+
+      setAuthError("Invalid credentials");
+      return false;
+    } catch (error) {
+      console.error("Login error:", error);
+      setAuthError("Login failed");
+      toast.error("Login failed");
+      return false;
     }
   };
 
-  const signIn = async (email: string) => {
-    try {
-      const { error } = await supabase.auth.signInWithOtp({ email });
-      if (error) throw error;
-      toast.success('Check your email for the sign-in link!');
-    } catch (error: any) {
-      console.error('Sign in error:', error);
-      toast.error('Error signing in: ' + error.message);
+  // Handle logout - Updated to redirect directly to login page
+  const handleLogout = (): void => {
+    // First clear all local state and Redux store before any Supabase operations
+    setCurrentUser(null);
+    setEmployeeData(null);
+    saveEmployeeDataToStorage(null);
+    setIsBackofficeUser(false);
+    
+    // Clear Redux state
+    if (dispatch) {
+      dispatch(resetEmployee());
     }
+    
+    // Clear local storage
+    logoutUser();
+    toast.info("You have been logged out");
+    
+    // Redirect to login page immediately
+    window.location.href = '/login';
+    
+    // Then proceed with Supabase logout (won't affect the redirection)
+    supabase.auth.signOut().catch((error) => {
+      console.error("Error signing out from Supabase:", error);
+    });
   };
 
-  const signOut = async () => {
-    try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+  // Add new user
+  const handleAddUser = (userData: any): void => {
+    const newUser: UserWithPassword = { 
+      ...userData,
+      id: Date.now().toString(), 
+      isActive: true,
+      password: userData.password || '' 
+    };
+    
+    setUsersState(prevUsers => {
+      const updatedUsers = [...prevUsers, newUser];
+      setUsers(updatedUsers);
+      saveUsersToStorage(updatedUsers);
+      return updatedUsers;
+    });
+    
+    toast.success("User added successfully");
+  };
+
+  // Update user
+  const handleUpdateUser = (id: string, updates: Partial<User & { password?: string }>): void => {
+    setUsersState(prevUsers => {
+      const updatedUsers = prevUsers.map(user => {
+        if (user.id === id) {
+          return { ...user, ...updates };
+        }
+        return user;
+      });
+      setUsers(updatedUsers);
+      saveUsersToStorage(updatedUsers);
+      return updatedUsers;
+    });
+    toast.success("User updated successfully");
+  };
+
+  // Delete user
+  const handleDeleteUser = (id: string): void => {
+    setUsersState(prevUsers => {
+      const updatedUsers = prevUsers.filter(user => user.id !== id);
+      setUsers(updatedUsers);
+      saveUsersToStorage(updatedUsers);
+      return updatedUsers;
+    });
+    toast.success("User deleted successfully");
+  };
+
+  // Deactivate user
+  const handleDeactivateUser = (id: string): void => {
+    setUsersState(prevUsers => {
+      const updatedUsers = prevUsers.map(user => {
+        if (user.id === id) {
+          return { ...user, isActive: false };
+        }
+        return user;
+      });
+      setUsers(updatedUsers);
+      saveUsersToStorage(updatedUsers);
+      return updatedUsers;
+    });
+    toast.success("User deactivated successfully");
+  };
+
+  // Reactivate user
+  const handleReactivateUser = (id: string): void => {
+    setUsersState(prevUsers => {
+      const updatedUsers = prevUsers.map(user => {
+        if (user.id === id) {
+          return { ...user, isActive: true };
+        }
+        return user;
+      });
+      setUsers(updatedUsers);
+      saveUsersToStorage(updatedUsers);
+      return updatedUsers;
+    });
+    toast.success("User reactivated successfully");
+  };
+
+  // Change password
+  const handleChangePassword = async (currentPassword: string, newPassword: string): Promise<boolean> => {
+    if (!currentUser) {
+      toast.error("Not authenticated");
+      return false;
+    }
+    
+    // If it's a backoffice user, use Supabase function to change password
+    if (isBackofficeUser) {
+      // First verify current password
+      const { data: isValid, error: verifyError } = await supabase.rpc('verify_password', {
+        email: currentUser.email,
+        password_attempt: currentPassword
+      });
       
-      // Clear all state
-      setUser(null);
-      setEmployeeData(null);
-      setIsAuthenticated(false);
-      setIsLoading(false);
+      if (verifyError || !isValid) {
+        toast.error("Current password is incorrect");
+        return false;
+      }
       
-      toast.success('Signed out successfully');
-    } catch (error: any) {
-      console.error('Sign out error:', error);
-      toast.error('Error signing out: ' + error.message);
+      // Hash the new password
+      const { data: hashedPassword, error: hashError } = await supabase.rpc('hash_password', {
+        password: newPassword
+      });
+      
+      if (hashError) {
+        toast.error("Error updating password");
+        return false;
+      }
+      
+      // Update the password
+      const { error: updateError } = await supabase
+        .from('backoffice_users')
+        .update({ password: hashedPassword })
+        .eq('id', currentUser.id);
+      
+      if (updateError) {
+        toast.error("Error updating password");
+        return false;
+      }
+      
+      toast.success("Password updated successfully");
+      return true;
     }
+    
+    // Regular user password change
+    const storedUsers = getUsersFromStorage();
+    const updatedUsers = changeUserPassword(storedUsers, currentUser.id, currentPassword, newPassword);
+
+    if (!updatedUsers) {
+      return false;
+    }
+
+    setUsersState(updatedUsers);
+    saveUsersToStorage(updatedUsers);
+    return true;
   };
 
-  const updateEmployeeData = (newData: Partial<EmployeeData>) => {
-    setEmployeeData(prev => prev ? { ...prev, ...newData } : null);
-  };
-
+  // The value to be provided to the context consumers
   const value: AuthContextType = {
-    user,
+    user: currentUser,
+    users: displayUsers,
+    login: handleLogin,
+    logout: handleLogout,
+    isAdmin,
+    isSaasOwner,
+    addUser: handleAddUser,
+    updateUser: handleUpdateUser,
+    deleteUser: handleDeleteUser, 
+    deactivateUser: handleDeactivateUser,
+    reactivateUser: handleReactivateUser,
+    changePassword: handleChangePassword,
+    authError,
+    handleUserAuthentication,
     employeeData,
-    isAuthenticated,
-    isLoading,
-    signIn,
-    signOut,
-    updateEmployeeData
   };
+
+  // If still initializing, show nothing
+  if (isInitializing) {
+    return null;
+  }
 
   return (
     <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
-};
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
 };
