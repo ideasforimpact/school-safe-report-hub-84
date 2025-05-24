@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -28,6 +27,38 @@ interface DepartmentType {
   name: string;
 }
 
+// Define the structure of employee data
+// interface EmployeeData {
+//   id: string;
+//   firstName: string;
+//   lastName: string;
+//   email: string;
+//   phone: string;
+//   employeeId: string;
+//   position: string;
+//   employeeTypeId: string;
+//   employeeType: EmployeeType;
+//   departmentId: string;
+//   department: DepartmentType;
+//   userRoleId: string;
+//   userRole: UserRole;
+//   modulePermissions: ModulePermissions[];
+//   clientId: string;
+//   isSuperAdmin: boolean;
+//   status: boolean;
+// }
+
+// Define the context type
+// interface AuthContextType {
+//   user: User | null;
+//   employeeData: EmployeeData | null;
+//   isAuthenticated: boolean;
+//   isLoading: boolean;
+//   signIn: (email: string) => Promise<void>;
+//   signOut: () => Promise<void>;
+//   updateEmployeeData: (newData: Partial<EmployeeData>) => void;
+// }
+
 // Create the context with a default value of null
 export const AuthContext = createContext<AuthContextType | null>(null);
 
@@ -36,8 +67,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [employeeData, setEmployeeData] = useState<EmployeeData | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [users, setUsers] = useState<any[]>([]);
-  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
     const session = supabase.auth.getSession();
@@ -70,7 +99,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .from('employees')
         .select(`
           id, first_name, last_name, email, phone, employee_id, position, status,
-          employee_type, department, client_id, is_super_admin
+          employee_type_id, employee_types (id, name),
+          department_id, departments (id, name),
+          user_role_id, user_roles (id, name),
+          client_id, is_super_admin
         `)
         .eq('user_id', userId)
         .single();
@@ -82,6 +114,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (profile) {
+        // Fetch module permissions
+        const { data: permissions, error: permissionsError } = await supabase
+          .from('module_permissions')
+          .select('module_name, read, write, update, delete')
+          .eq('user_role_id', profile.user_role_id);
+
+        if (permissionsError) {
+          console.error('Error fetching module permissions:', permissionsError);
+          toast.error('Failed to load module permissions');
+          return;
+        }
+
         const employeeData: EmployeeData = {
           id: profile.id,
           firstName: profile.first_name,
@@ -90,8 +134,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           phone: profile.phone,
           employeeId: profile.employee_id,
           position: profile.position,
-          employeeType: profile.employee_type,
-          department: profile.department,
+          employeeTypeId: profile.employee_type_id,
+          employeeType: profile.employee_types as EmployeeType,
+          departmentId: profile.department_id,
+          department: profile.departments as DepartmentType,
+          userRoleId: profile.user_role_id,
+          userRole: profile.user_roles as UserRole,
+          modulePermissions: permissions || [],
           clientId: profile.client_id,
           isSuperAdmin: profile.is_super_admin,
           status: profile.status
@@ -138,58 +187,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setEmployeeData(prev => prev ? { ...prev, ...newData } : null);
   };
 
-  // Stub implementations for missing functions
-  const login = async (email: string, password: string) => {
-    return false;
-  };
-
-  const logout = () => {
-    signOut();
-  };
-
-  const addUser = (userData: any) => {
-    // Implementation needed
-  };
-
-  const updateUser = (id: string, updates: any) => {
-    // Implementation needed
-  };
-
-  const deleteUser = (id: string) => {
-    // Implementation needed
-  };
-
-  const deactivateUser = (id: string) => {
-    // Implementation needed
-  };
-
-  const reactivateUser = (id: string) => {
-    // Implementation needed
-  };
-
-  const changePassword = async (currentPassword: string, newPassword: string) => {
-    return false;
-  };
-
-  const handleUserAuthentication = async (supabaseUser: any) => {
-    // Implementation needed
-  };
-
   const value: AuthContextType = {
     user,
-    users,
-    login,
-    logout,
-    isAdmin: false,
-    isSaasOwner: false,
-    addUser,
-    updateUser,
-    deleteUser,
-    deactivateUser,
-    reactivateUser,
-    changePassword,
-    authError,
-    handleUserAuthentication,
     employeeData,
     isAuthenticated,
     isLoading,

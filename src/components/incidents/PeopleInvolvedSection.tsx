@@ -5,8 +5,6 @@ import { Student } from '@/types/student';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth/useAuth';
 import { toast } from 'sonner';
-import { Search } from 'lucide-react';
-import { Input } from '@/components/ui/input';
 
 interface UserBasicInfo {
   id: string;
@@ -42,8 +40,6 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   const { employeeData } = useAuth();
   const [staffMembers, setStaffMembers] = useState<Employee[]>([]);
   const [isLoadingStaff, setIsLoadingStaff] = useState(false);
-  const [searchQueries, setSearchQueries] = useState<Record<number, string>>({});
-  const [isSearching, setIsSearching] = useState<Record<number, boolean>>({});
 
   // Fetch staff members when component mounts
   useEffect(() => {
@@ -83,136 +79,39 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
     fetchStaffMembers();
   }, [employeeData?.clientId]);
 
-  const handleSearch = (index: number, query: string) => {
-    setSearchQueries(prev => ({ ...prev, [index]: query }));
-    setIsSearching(prev => ({ ...prev, [index]: true }));
-  };
-
-  const handleSelectPerson = (index: number, personId: string, displayName: string) => {
-    onPersonChange(index, 'name', personId);
-    setIsSearching(prev => ({ ...prev, [index]: false }));
-    setSearchQueries(prev => ({ ...prev, [index]: '' }));
-  };
-
-  const getFilteredOptions = (person: Person, index: number) => {
-    const query = searchQueries[index] || '';
-    
-    if (person.role === 'staff') {
-      return query
-        ? staffMembers.filter(staff => {
-            const fullName = `${staff.firstName} ${staff.lastName}`;
-            const searchTerm = query.toLowerCase();
-            return fullName.toLowerCase().includes(searchTerm) || 
-                   staff.email.toLowerCase().includes(searchTerm);
-          })
-        : staffMembers;
-    } else if (person.role === 'student') {
-      return query
-        ? students.filter(student => {
-            const searchTerm = query.toLowerCase();
-            return student.name.toLowerCase().includes(searchTerm) || 
-                   student.studentId.toLowerCase().includes(searchTerm);
-          })
-        : students;
-    }
-    
-    return [];
-  };
-
-  const getSelectedPersonDisplay = (person: Person) => {
-    if (person.role === 'staff') {
-      const selectedStaff = staffMembers.find(staff => staff.id === person.name);
-      return selectedStaff 
-        ? `${selectedStaff.firstName} ${selectedStaff.lastName} (${selectedStaff.email})` 
-        : '';
-    } else if (person.role === 'student') {
-      const selectedStudent = students.find(student => student.id === person.name);
-      return selectedStudent 
-        ? `${selectedStudent.name} (${selectedStudent.studentId})` 
-        : '';
-    }
-    return person.name;
-  };
-
   const renderNameField = (person: Person, index: number) => {
-    if (person.role === 'staff' || person.role === 'student') {
-      const isCurrentlySearching = isSearching[index];
-      const filteredOptions = getFilteredOptions(person, index);
-      const selectedDisplay = getSelectedPersonDisplay(person);
-
+    if (person.role === 'staff') {
       return (
-        <div className="relative">
-          <div className="relative">
-            <Input
-              value={searchQueries[index] || (isCurrentlySearching ? '' : selectedDisplay)}
-              onChange={(e) => handleSearch(index, e.target.value)}
-              onFocus={() => setIsSearching(prev => ({ ...prev, [index]: true }))}
-              onBlur={() => {
-                setTimeout(() => {
-                  if (!searchQueries[index]) {
-                    setIsSearching(prev => ({ ...prev, [index]: false }));
-                  }
-                }, 200);
-              }}
-              placeholder={
-                isLoadingStaff 
-                  ? "Loading..." 
-                  : person.role === 'staff' 
-                    ? "Search by name or email..." 
-                    : "Search by name or student ID..."
-              }
-              className="w-full pr-8"
-              disabled={isLoadingStaff}
-            />
-            <Search className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-          </div>
-          
-          {isCurrentlySearching && filteredOptions.length > 0 && (
-            <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
-              <ul className="py-1 text-sm">
-                {filteredOptions.map((option) => (
-                  <li
-                    key={option.id}
-                    className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
-                    onClick={() => {
-                      if (person.role === 'staff') {
-                        const staff = option as Employee;
-                        handleSelectPerson(index, staff.id, `${staff.firstName} ${staff.lastName}`);
-                      } else {
-                        const student = option as Student;
-                        handleSelectPerson(index, student.id, student.name);
-                      }
-                    }}
-                    onMouseDown={(e) => e.preventDefault()}
-                  >
-                    <div>
-                      <span className="font-medium">
-                        {person.role === 'staff' 
-                          ? `${(option as Employee).firstName} ${(option as Employee).lastName}`
-                          : (option as Student).name
-                        }
-                      </span>
-                      <span className="text-gray-500 ml-1">
-                        ({person.role === 'staff' 
-                          ? (option as Employee).email
-                          : (option as Student).studentId
-                        })
-                      </span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {isCurrentlySearching && searchQueries[index] && filteredOptions.length === 0 && (
-            <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg">
-              <p className="p-3 text-sm text-gray-500">
-                No {person.role === 'staff' ? 'staff members' : 'students'} found
-              </p>
-            </div>
-          )}
-        </div>
+        <select
+          value={person.name}
+          onChange={(e) => onPersonChange(index, 'name', e.target.value)}
+          className="w-full p-2 border rounded-md text-sm"
+          disabled={isLoadingStaff}
+        >
+          <option value="">
+            {isLoadingStaff ? 'Loading staff...' : 'Select staff member'}
+          </option>
+          {staffMembers.map((staff) => (
+            <option key={staff.id} value={staff.id}>
+              {staff.firstName} {staff.lastName} ({staff.email})
+            </option>
+          ))}
+        </select>
+      );
+    } else if (person.role === 'student') {
+      return (
+        <select
+          value={person.name}
+          onChange={(e) => onPersonChange(index, 'name', e.target.value)}
+          className="w-full p-2 border rounded-md text-sm"
+        >
+          <option value="">Select student</option>
+          {students.map((student) => (
+            <option key={student.id} value={student.id}>
+              {student.name} ({student.studentId})
+            </option>
+          ))}
+        </select>
       );
     } else {
       return (
