@@ -95,10 +95,10 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   };
 
   const getDisplayName = (person: Person, index: number) => {
-    if (person.role === 'Staff') {
+    if (person.role === 'staff') {
       const selectedStaff = staffMembers.find(staff => staff.id === person.name);
       return selectedStaff ? `${selectedStaff.firstName} ${selectedStaff.lastName} (${selectedStaff.email})` : '';
-    } else if (person.role === 'Student') {
+    } else if (person.role === 'student') {
       const selectedStudent = students.find(student => student.id === person.name);
       return selectedStudent ? `${selectedStudent.name} (${selectedStudent.studentId})` : '';
     }
@@ -108,13 +108,13 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   const getFilteredItems = (person: Person, index: number) => {
     const query = searchQueries[index]?.toLowerCase() || '';
     
-    if (person.role === 'Staff') {
+    if (person.role === 'staff') {
       return staffMembers.filter(staff => {
         const fullName = `${staff.firstName} ${staff.lastName}`;
         return fullName.toLowerCase().includes(query) || 
                staff.email.toLowerCase().includes(query);
       });
-    } else if (person.role === 'Student') {
+    } else if (person.role === 'student') {
       return students.filter(student => {
         return student.name.toLowerCase().includes(query) || 
                student.studentId.toLowerCase().includes(query);
@@ -124,7 +124,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   };
 
   const renderNameField = (person: Person, index: number) => {
-    if (person.role === 'Staff' || person.role === 'Student') {
+    if (person.role === 'staff' || person.role === 'student') {
       const isCurrentlySearching = isSearching[index];
       const filteredItems = getFilteredItems(person, index);
       const displayValue = isCurrentlySearching ? (searchQueries[index] || '') : getDisplayName(person, index);
@@ -146,7 +146,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
               placeholder={
                 isLoadingStaff 
                   ? "Loading..." 
-                  : `Search by name${person.role === 'Staff' ? ' or email' : ' or ID'}...`
+                  : `Search by name${person.role === 'staff' ? ' or email' : ' or ID'}...`
               }
               className="w-full pr-8"
               disabled={isLoadingStaff}
@@ -162,7 +162,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                     key={item.id}
                     className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
                     onClick={() => {
-                      if (person.role === 'Staff') {
+                      if (person.role === 'staff') {
                         const staff = item as Employee;
                         handleSelectPerson(index, staff.id, `${staff.firstName} ${staff.lastName}`);
                       } else {
@@ -174,13 +174,13 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                   >
                     <div>
                       <span className="font-medium">
-                        {person.role === 'Staff' 
+                        {person.role === 'staff' 
                           ? `${(item as Employee).firstName} ${(item as Employee).lastName}`
                           : (item as Student).name
                         }
                       </span>
                       <span className="text-gray-500 ml-1">
-                        ({person.role === 'Staff' 
+                        ({person.role === 'staff' 
                           ? (item as Employee).email
                           : (item as Student).studentId
                         })
@@ -195,7 +195,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
           {isCurrentlySearching && searchQueries[index] && filteredItems.length === 0 && (
             <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg">
               <p className="p-3 text-sm text-gray-500">
-                No {person.role === 'Staff' ? 'staff members' : 'students'} found
+                No {person.role === 'staff' ? 'staff members' : 'students'} found
               </p>
             </div>
           )}
@@ -254,8 +254,8 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                   className="w-full p-2 border rounded-md text-sm"
                 >
                   <option value="">Select role</option>
-                  <option value="Student">Student</option>
-                  <option value="Staff">Staff</option>
+                  <option value="student">Student</option>
+                  <option value="staff">Staff</option>
                   <option value="visitor">Visitor</option>
                   <option value="contractor">Contractor</option>
                   <option value="other">Other</option>
