@@ -71,11 +71,11 @@ export function useIncidentFormValidation() {
     if (peopleInvolved && peopleInvolved.length > 0) {
       peopleInvolved.forEach((person, index) => {
         // Only validate if at least one field is filled (partial entry)
-        const hasAnyValue = person.name.trim() || person.role || person.notes?.trim();
+        const hasAnyValue = person.name.trim() || person.role !== '' || person.notes?.trim();
         
         if (hasAnyValue) {
           // If any field has a value, then all required fields must be filled
-          if (!person.role || person.role === '') {
+          if (!person.role) {
             newErrors[`peopleInvolved.${index}.role`] = 'Role is required';
           }
           

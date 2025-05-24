@@ -1,7 +1,6 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useIncidents } from '@/contexts/incident';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -17,6 +16,7 @@ import { getAllEmployeesFromApi } from '@/services/employee/employeeRetrievalSer
 import { Student } from '@/types/student';
 import { useStudents } from '@/contexts/StudentContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useEmployeeStore } from '@/store/EmployeeContext';
 
 // Define a user type that has only the properties needed by the components
 interface UserBasicInfo {
@@ -27,14 +27,13 @@ interface UserBasicInfo {
 }
 
 const ReportIncident = () => {
-  const { addIncident, categories, isSubmitting: contextIsSubmitting } = useIncidents();
   const { user } = useAuth();
   const navigate = useNavigate();
   const { students } = useStudents();
+  const { state: employeeState } = useEmployeeStore();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoadingEmployees, setIsLoadingEmployees] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [newStatusId, setNewStatusId] = useState<string | null>(null);
   
   // Add validation hook
   const { errors, validateForm } = useIncidentFormValidation();
@@ -83,35 +82,11 @@ const ReportIncident = () => {
 
     fetchEmployees();
   }, []);
-  
-  // Check for 'New' status ID
-  useEffect(() => {
-    const getNewStatusId = async () => {
-      try {
-        const { data: statusData, error: statusError } = await supabase
-          .from('incident_status')
-          .select('id, name')
-          .eq('name', 'New')
-          .single();
-          
-        if (statusError) {
-          console.error("Error checking incident status data:", statusError);
-        } else if (statusData) {
-          console.log("Found New status with ID:", statusData.id);
-          setNewStatusId(statusData.id);
-        }
-      } catch (error) {
-        console.error("Error fetching status data:", error);
-      }
-    };
-    
-    getNewStatusId();
-  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (isSubmitting || contextIsSubmitting) return; // Prevent duplicate submissions
+    if (isSubmitting) return; // Prevent duplicate submissions
     
     // Validate form including people involved
     const isValid = validateForm(formData, peopleInvolved);
@@ -143,17 +118,18 @@ const ReportIncident = () => {
         return;
       }
       
+      // Get employee ID from Redux store
+      const createdBy = employeeState.employeeData?.id;
+      if (!createdBy) {
+        toast.error("Unable to identify the reporting employee. Please refresh and try again.");
+        setIsSubmitting(false);
+        return;
+      }
+      
       // Combine date and time if both are provided
       const dateTime = formData.date && formData.time 
         ? new Date(`${formData.date}T${formData.time}`) 
         : new Date();
-      
-      // Get the actual location and facility names if available
-      const locationName = formData.locationId ? getSelectedLocation() : '';
-      const facilityName = formData.facilityId ? getSelectedFacility() : '';
-      
-      console.log("Selected facility:", facilityName);
-      console.log("Selected facility ID:", formData.facilityId);
       
       // Filter out empty people - now validate that if people are added, they are complete
       const validPeople = peopleInvolved.filter(p => {
@@ -168,94 +144,37 @@ const ReportIncident = () => {
         data: file.base64
       }));
       
-      // Get selected owner if any
-      const selectedOwner = formData.owner 
-        ? employees.find(e => e.id === formData.owner) 
-        : undefined;
-        
-      const owner = selectedOwner 
-        ? { id: selectedOwner.id, name: `${selectedOwner.firstName} ${selectedOwner.lastName}` } 
-        : undefined;
+      // Prepare incident data for the edge function
+      const incidentData = {
+        typeId: formData.typeId,
+        categoryId: formData.categoryId,
+        subcategoryId: formData.subcategoryId || null,
+        description: formData.description,
+        date: dateTime.toISOString(),
+        locationId: formData.locationId,
+        facilityId: formData.facilityId,
+        priorityId: formData.priorityId,
+        peopleInvolved: validPeople,
+        documents: documents,
+        createdBy: createdBy,
+        assignedTo: formData.owner || null,
+        clientId: employeeState.employeeData?.clientId || null
+      };
       
-      // Find the selected category to get its name for IncidentCategory mapping
-      const selectedCategory = formCategories.find(cat => cat.id === formData.categoryId);
-      let categoryName: IncidentCategory = 'Other';
+      console.log("Submitting incident with data:", incidentData);
       
-      if (selectedCategory) {
-        // Try to map the category name to the IncidentCategory type
-        switch(selectedCategory.name) {
-          case 'Physical Injury':
-            categoryName = 'Physical Injury';
-            break;
-          case 'Bullying':
-            categoryName = 'Bullying';
-            break;
-          case 'Tech Misuse':
-            categoryName = 'Tech Misuse';
-            break;
-          case 'Property Damage':
-            categoryName = 'Property Damage';
-            break;
-          case 'Health Concern':
-            categoryName = 'Health Concern';
-            break;
-          case 'Security Breach':
-            categoryName = 'Security Breach';
-            break;
-          default:
-            categoryName = 'Other';
-        }
+      // Call the edge function to create the incident
+      const { data, error } = await supabase.functions.invoke('create-incident', {
+        body: incidentData
+      });
+      
+      if (error) {
+        console.error('Error creating incident:', error);
+        throw new Error(error.message || 'Failed to create incident');
       }
       
-      // Ensure we have a valid type
-      const incidentType = (formData.type || 'Incident') as IncidentType;
-      
-      // Ensure we have a valid location
-      const locationValue = locationName as IncidentLocation; 
-      
-      console.log("About to submit incident with data:", {
-        type: incidentType,
-        typeId: formData.typeId,
-        category: categoryName,
-        categoryId: formData.categoryId,
-        subcategory: formData.subcategory,
-        subcategoryId: formData.subcategoryId || null, // Ensure null if empty
-        description: formData.description,
-        location: locationValue,
-        locationId: formData.locationId,
-        peopleInvolved: validPeople,
-        facility: facilityName,
-        facilityId: formData.facilityId,
-        priority: formData.priority,
-        priorityId: formData.priorityId,
-        owner: owner,
-        statusId: newStatusId
-      });
-      
-      await addIncident({
-        type: incidentType,
-        typeId: formData.typeId,
-        category: categoryName,
-        categoryId: formData.categoryId,
-        subcategory: formData.subcategory || '',
-        subcategoryId: formData.subcategoryId || null, // Ensure null if empty
-        description: formData.description || '',
-        date: dateTime,
-        location: locationValue,
-        locationId: formData.locationId,
-        peopleInvolved: validPeople,
-        facility: facilityName || '',
-        facilityId: formData.facilityId,
-        priority: formData.priority || 'Medium',
-        priorityId: formData.priorityId,
-        documents: documents,
-        reportedBy: {
-          id: user?.id || '',
-          name: user?.email || ''
-        },
-        owner: owner,
-        statusId: newStatusId  // Pass the New status ID
-      });
+      console.log('Incident created successfully:', data);
+      toast.success("Incident reported successfully!");
       
       // Navigation happens after successful submission
       navigate('/incidents');
@@ -337,12 +256,9 @@ const ReportIncident = () => {
               </Button>
               <Button 
                 type="submit" 
-                disabled={isSubmitting || contextIsSubmitting}
+                disabled={isSubmitting}
               >
-                {isSubmitting || contextIsSubmitting ? 
-                  "Submitting..." : 
-                  "Submit Report"
-                }
+                {isSubmitting ? "Submitting..." : "Submit Report"}
               </Button>
             </CardFooter>
           </Card>
