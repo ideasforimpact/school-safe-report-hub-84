@@ -75,7 +75,7 @@ export function useIncidentFormValidation() {
         
         if (hasAnyValue) {
           // If any field has a value, then all required fields must be filled
-          if (!person.role) {
+          if (!person.role || person.role === '') {
             newErrors[`peopleInvolved.${index}.role`] = 'Role is required';
           }
           

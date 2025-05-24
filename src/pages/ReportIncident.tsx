@@ -125,13 +125,21 @@ const ReportIncident = () => {
         setIsSubmitting(false);
         return;
       }
+
+      // Get client ID from Redux store
+      const clientId = employeeState.employeeData?.clientId;
+      if (!clientId) {
+        toast.error("Unable to identify client. Please refresh and try again.");
+        setIsSubmitting(false);
+        return;
+      }
       
       // Combine date and time if both are provided
       const dateTime = formData.date && formData.time 
         ? new Date(`${formData.date}T${formData.time}`) 
         : new Date();
       
-      // Filter out empty people - now validate that if people are added, they are complete
+      // Filter out empty people and validate that if people are added, they are complete
       const validPeople = peopleInvolved.filter(p => {
         const hasAnyValue = p.name.trim() !== '' || p.role !== '' || p.notes?.trim() !== '';
         return hasAnyValue;
@@ -154,11 +162,11 @@ const ReportIncident = () => {
         locationId: formData.locationId,
         facilityId: formData.facilityId,
         priorityId: formData.priorityId,
-        peopleInvolved: validPeople,
+        peopleInvolved: validPeople, // Send as array of objects
         documents: documents,
         createdBy: createdBy,
         assignedTo: formData.owner || null,
-        clientId: employeeState.employeeData?.clientId || null
+        clientId: clientId // Include client_id
       };
       
       console.log("Submitting incident with data:", incidentData);
