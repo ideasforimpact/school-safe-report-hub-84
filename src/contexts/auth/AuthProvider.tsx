@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -28,6 +27,39 @@ interface DepartmentType {
   name: string;
 }
 
+// Define the structure of employee data
+// interface EmployeeData {
+//   id: string;
+//   firstName: string;
+//   lastName: string;
+//   email: string;
+//   phone: string;
+//   employeeId: string;
+//   position: string;
+//   employeeTypeId: string;
+//   employeeType: EmployeeType;
+//   departmentId: string;
+//   department: DepartmentType;
+//   userRoleId: string;
+//   userRole: UserRole;
+//   modulePermissions: ModulePermissions[];
+//   clientId: string;
+//   isSuperAdmin: boolean;
+//   status: boolean;
+// }
+
+// Define the context type
+// interface AuthContextType {
+//   user: User | null;
+//   employeeData: EmployeeData | null;
+//   isAuthenticated: boolean;
+//   isLoading: boolean;
+//   signIn: (email: string) => Promise<void>;
+//   signOut: () => Promise<void>;
+//   updateEmployeeData: (newData: Partial<EmployeeData>) => void;
+// }
+
+// Create the context with a default value of null
 export const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -37,25 +69,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (session?.user) {
-        setUser(session.user);
-        setIsAuthenticated(true);
-        await fetchEmployeeData(session.user.id);
-      } else {
-        setIsLoading(false);
-      }
-    };
+    const session = supabase.auth.getSession();
 
-    getSession();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        setUser(session.user);
+    supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.session?.user) {
+        setUser(session.session.user);
         setIsAuthenticated(true);
-        await fetchEmployeeData(session.user.id);
+        await fetchEmployeeData(session.session.user.id);
       } else {
         setUser(null);
         setEmployeeData(null);
@@ -64,7 +84,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setIsLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    if (session?.data?.session?.user) {
+      setUser(session.data.session.user);
+      setIsAuthenticated(true);
+      fetchEmployeeData(session.data.session.user.id);
+    } else {
+      setIsLoading(false);
+    }
   }, []);
 
   const fetchEmployeeData = async (userId: string) => {
@@ -72,8 +98,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { data: profile, error } = await supabase
         .from('employees')
         .select(`
-          id, first_name, last_name, email, employee_id, 
-          employee_type, department, status,
+          id, first_name, last_name, email, phone, employee_id, position, status,
+          employee_type_id, employee_types (id, name),
+          department_id, departments (id, name),
+          user_role_id, user_roles (id, name),
           client_id, is_super_admin
         `)
         .eq('user_id', userId)
@@ -86,21 +114,33 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       if (profile) {
+        // Fetch module permissions
+        const { data: permissions, error: permissionsError } = await supabase
+          .from('module_permissions')
+          .select('module_name, read, write, update, delete')
+          .eq('user_role_id', profile.user_role_id);
+
+        if (permissionsError) {
+          console.error('Error fetching module permissions:', permissionsError);
+          toast.error('Failed to load module permissions');
+          return;
+        }
+
         const employeeData: EmployeeData = {
           id: profile.id,
           firstName: profile.first_name,
           lastName: profile.last_name,
           email: profile.email,
-          phone: '',
+          phone: profile.phone,
           employeeId: profile.employee_id,
-          position: '',
-          employeeTypeId: '',
-          employeeType: { id: '', name: profile.employee_type },
-          departmentId: '',
-          department: { id: '', name: profile.department },
-          userRoleId: '',
-          userRole: { id: '', name: '' },
-          modulePermissions: [],
+          position: profile.position,
+          employeeTypeId: profile.employee_type_id,
+          employeeType: profile.employee_types as EmployeeType,
+          departmentId: profile.department_id,
+          department: profile.departments as DepartmentType,
+          userRoleId: profile.user_role_id,
+          userRole: profile.user_roles as UserRole,
+          modulePermissions: permissions || [],
           clientId: profile.client_id,
           isSuperAdmin: profile.is_super_admin,
           status: profile.status
@@ -130,6 +170,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       
+      // Clear all state
       setUser(null);
       setEmployeeData(null);
       setIsAuthenticated(false);
