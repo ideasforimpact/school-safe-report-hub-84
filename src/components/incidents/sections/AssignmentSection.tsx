@@ -1,35 +1,84 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/auth/useAuth';
+import { toast } from 'sonner';
 
-interface UserBasicInfo {
+interface Employee {
   id: string;
   firstName: string;
   lastName: string;
-  name: string;
+  email: string;
 }
 
 interface AssignmentSectionProps {
   owner: string;
-  users: UserBasicInfo[];
   onSelectChange: (name: string, value: string) => void;
   isLoading?: boolean;
 }
 
 const AssignmentSection: React.FC<AssignmentSectionProps> = ({
   owner,
-  users,
   onSelectChange,
   isLoading = false
 }) => {
+  const { employeeData } = useAuth();
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [isLoadingEmployees, setIsLoadingEmployees] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   
+  // Fetch employees based on client_id
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      if (!employeeData?.clientId) {
+        console.log('No client ID available for fetching employees');
+        setIsLoadingEmployees(false);
+        return;
+      }
+
+      try {
+        setIsLoadingEmployees(true);
+        console.log('Fetching employees for client:', employeeData.clientId);
+
+        const { data: employeesData, error } = await supabase
+          .from('employees')
+          .select('id, first_name, last_name, email')
+          .eq('client_id', employeeData.clientId)
+          .eq('status', true); // Only active employees
+
+        if (error) {
+          console.error('Error fetching employees:', error);
+          toast.error('Failed to load employees');
+          return;
+        }
+
+        console.log('Fetched employees:', employeesData);
+        const mappedEmployees = employeesData.map(emp => ({
+          id: emp.id,
+          firstName: emp.first_name,
+          lastName: emp.last_name,
+          email: emp.email
+        }));
+        
+        setEmployees(mappedEmployees);
+      } catch (error) {
+        console.error('Error fetching employees:', error);
+        toast.error('Failed to load employees');
+      } finally {
+        setIsLoadingEmployees(false);
+      }
+    };
+
+    fetchEmployees();
+  }, [employeeData?.clientId]);
+  
   // Find the selected employee
-  const selectedEmployee = users.find(emp => emp.id === owner);
-  const selectedEmployeeName = selectedEmployee 
-    ? `${selectedEmployee.firstName} ${selectedEmployee.lastName}` 
+  const selectedEmployee = employees.find(emp => emp.id === owner);
+  const selectedEmployeeDisplay = selectedEmployee 
+    ? `${selectedEmployee.firstName} ${selectedEmployee.lastName} (${selectedEmployee.email})` 
     : '';
 
   const handleEmployeeSearch = (value: string) => {
@@ -37,7 +86,7 @@ const AssignmentSection: React.FC<AssignmentSectionProps> = ({
     setIsSearching(true);
   };
 
-  const handleSelectEmployee = (employee: UserBasicInfo) => {
+  const handleSelectEmployee = (employee: Employee) => {
     onSelectChange('owner', employee.id);
     setIsSearching(false);
     setSearchQuery('');
@@ -45,9 +94,13 @@ const AssignmentSection: React.FC<AssignmentSectionProps> = ({
 
   // Filter employees based on search query
   const filteredEmployees = searchQuery
-    ? users.filter(employee => 
-        `${employee.firstName} ${employee.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()))
-    : users;
+    ? employees.filter(employee => {
+        const fullName = `${employee.firstName} ${employee.lastName}`;
+        const searchTerm = searchQuery.toLowerCase();
+        return fullName.toLowerCase().includes(searchTerm) || 
+               employee.email.toLowerCase().includes(searchTerm);
+      })
+    : employees;
 
   return (
     <div className="space-y-2 text-left">
@@ -59,7 +112,7 @@ const AssignmentSection: React.FC<AssignmentSectionProps> = ({
       <div className="relative">
         <div className="relative">
           <Input
-            value={searchQuery || (isSearching ? '' : selectedEmployeeName)}
+            value={searchQuery || (isSearching ? '' : selectedEmployeeDisplay)}
             onChange={(e) => handleEmployeeSearch(e.target.value)}
             onFocus={() => setIsSearching(true)}
             onBlur={() => {
@@ -70,9 +123,13 @@ const AssignmentSection: React.FC<AssignmentSectionProps> = ({
                 }
               }, 200);
             }}
-            placeholder={isLoading ? "Loading staff members..." : "Select a staff member"}
+            placeholder={
+              isLoading || isLoadingEmployees 
+                ? "Loading staff members..." 
+                : "Search by name or email..."
+            }
             className="w-full pr-8"
-            disabled={isLoading}
+            disabled={isLoading || isLoadingEmployees}
             required
           />
           <Search className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -88,7 +145,16 @@ const AssignmentSection: React.FC<AssignmentSectionProps> = ({
                   onClick={() => handleSelectEmployee(employee)}
                   onMouseDown={(e) => e.preventDefault()} // Prevents input blur before click
                 >
-                  {employee.firstName} {employee.lastName}
+                  <div>
+                    <span className="font-medium">
+                      {employee.firstName} {employee.lastName}
+                    </span>
+                    {employee.email && (
+                      <span className="text-gray-500 ml-1">
+                        ({employee.email})
+                      </span>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>

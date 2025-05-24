@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIncidents } from '@/contexts/incident';
@@ -299,8 +298,6 @@ const ReportIncident = () => {
                 onDateTimeChange={handleDateTimeChange}
                 supportingFiles={supportingFiles}
                 onFilesChange={handleFilesChange}
-                users={mappedEmployees} // Pass the simplified user objects
-                isLoadingUsers={isLoadingEmployees}
               />
 
               <PeopleInvolvedSection

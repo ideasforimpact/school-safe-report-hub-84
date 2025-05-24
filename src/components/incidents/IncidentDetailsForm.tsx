@@ -14,15 +14,6 @@ interface ConfigItem {
   name: string;
 }
 
-// Define a more generic user type that only requires the properties actually used
-interface UserBasicInfo {
-  id: string;
-  firstName: string;
-  lastName: string;
-  name: string;
-  // Only include properties that are actually used in the components
-}
-
 interface IncidentDetailsFormProps {
   formData: {
     type: string;
@@ -43,8 +34,6 @@ interface IncidentDetailsFormProps {
   onFilesChange: (files: FileItem[]) => void;
   locations?: ConfigItem[];
   facilities?: ConfigItem[];
-  users: UserBasicInfo[]; // Updated to use the generic user type
-  isLoadingUsers?: boolean;
 }
 
 const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
@@ -53,9 +42,7 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
   onSelectChange,
   onDateTimeChange,
   supportingFiles,
-  onFilesChange,
-  users,
-  isLoadingUsers = false
+  onFilesChange
 }) => {
   // Fetch data from database tables
   const { formData: dbFormData, loading } = useIncidentFormData();
@@ -111,9 +98,7 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
       <div className="space-y-6">
         <AssignmentSection 
           owner={formData.owner}
-          users={users}
           onSelectChange={onSelectChange}
-          isLoading={isLoadingUsers}
         />
       </div>
 
