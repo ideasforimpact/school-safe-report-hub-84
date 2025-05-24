@@ -6,14 +6,12 @@ import { IncidentRelatedConfig } from './configuration/IncidentRelatedConfig';
 import { toast } from 'sonner';
 import { useIncidentCategories } from '@/hooks/useIncidentCategories';
 import { useAuth } from '@/contexts/auth/useAuth';
-import { contributingFactorService } from '@/services/incident/contributingFactorService';
 import { reportTypeService } from '@/services/incident/reportTypeService';
 import { priorityService } from '@/services/incident/priorityService';
 
 const IncidentConfiguration = () => {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('categories');
-  const [contributingFactors, setContributingFactors] = useState<any[]>([]);
   const [reportTypes, setReportTypes] = useState<any[]>([]);
   const [priorities, setPriorities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,24 +37,6 @@ const IncidentConfiguration = () => {
       setActiveTab(tab);
     }
   }, [searchParams]);
-
-  // Fetch contributing factors using the service
-  useEffect(() => {
-    async function fetchContributingFactors() {
-      if (!employeeData?.clientId) {
-        return;
-      }
-
-      try {
-        const factors = await contributingFactorService.getContributingFactors(employeeData.clientId);
-        setContributingFactors(factors);
-      } catch (error) {
-        console.error('Exception fetching contributing factors:', error);
-      }
-    }
-
-    fetchContributingFactors();
-  }, [employeeData?.clientId]);
 
   // Fetch report types using the new service
   useEffect(() => {
@@ -95,56 +75,6 @@ const IncidentConfiguration = () => {
 
     fetchPriorities();
   }, [employeeData?.clientId]);
-
-  // Handle contributing factors operations using the service
-  const handleAddContributingFactor = async (name: string, description: string, weight: string) => {
-    if (!employeeData?.clientId) {
-      toast.error('Client information not available');
-      return;
-    }
-
-    try {
-      const newFactor = await contributingFactorService.addContributingFactor(name, description, weight, employeeData.clientId);
-      setContributingFactors([...contributingFactors, newFactor]);
-      toast.success('Contributing factor added successfully');
-    } catch (error) {
-      console.error('Exception adding contributing factor:', error);
-    }
-  };
-
-  const handleUpdateContributingFactor = async (id: string, name: string, description: string, weight: string) => {
-    if (!employeeData?.clientId) {
-      toast.error('Client information not available');
-      return;
-    }
-
-    try {
-      const updatedFactor = await contributingFactorService.updateContributingFactor(id, name, description, weight, employeeData.clientId);
-      setContributingFactors(
-        contributingFactors.map(factor =>
-          factor.id === id ? updatedFactor : factor
-        )
-      );
-      toast.success('Contributing factor updated successfully');
-    } catch (error) {
-      console.error('Exception updating contributing factor:', error);
-    }
-  };
-
-  const handleDeleteContributingFactor = async (id: string) => {
-    if (!employeeData?.clientId) {
-      toast.error('Client information not available');
-      return;
-    }
-
-    try {
-      await contributingFactorService.deleteContributingFactor(id, employeeData.clientId);
-      setContributingFactors(contributingFactors.filter(factor => factor.id !== id));
-      toast.success('Contributing factor deleted successfully');
-    } catch (error) {
-      console.error('Exception deleting contributing factor:', error);
-    }
-  };
 
   // Handle report types operations using the new service
   const handleAddReportType = async (name: string, description: string) => {
@@ -284,6 +214,11 @@ const IncidentConfiguration = () => {
     }
   };
 
+  // Dummy handlers for contributing factors (these will be handled by the ContributingFactorTab component)
+  const handleAddContributingFactor = () => {};
+  const handleUpdateContributingFactor = () => {};
+  const handleDeleteContributingFactor = () => {};
+
   // Show loading or no client access message
   if (!employeeData?.clientId) {
     return (
@@ -330,7 +265,7 @@ const IncidentConfiguration = () => {
           addSubcategory={addSubcategory}
           updateSubcategory={updateSubcategory}
           deleteSubcategory={deleteSubcategory}
-          contributingFactors={contributingFactors}
+          contributingFactors={[]}
           addContributingFactor={handleAddContributingFactor}
           updateContributingFactor={handleUpdateContributingFactor}
           deleteContributingFactor={handleDeleteContributingFactor}

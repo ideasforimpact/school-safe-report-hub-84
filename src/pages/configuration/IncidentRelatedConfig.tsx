@@ -8,6 +8,7 @@ import { ContributingFactorTab } from '@/components/configuration/ContributingFa
 import { ReportTypeTab } from '@/components/configuration/ReportTypeTab';
 import { PriorityTab } from '@/components/configuration/PriorityTab';
 import { ConfigItem, SubcategoryItem } from '@/contexts/types';
+import { ContributingFactorItem } from '@/services/incident/contributingFactorService';
 
 interface ReportType {
   id: string;
@@ -25,14 +26,6 @@ interface PriorityItem {
   is_active: boolean;
 }
 
-interface ContributingFactor {
-  id: string;
-  name: string;
-  description?: string | null;
-  weight?: string | null;
-  client_id?: string | null;
-}
-
 interface IncidentRelatedConfigProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
@@ -44,7 +37,7 @@ interface IncidentRelatedConfigProps {
   addSubcategory: (categoryId: string, name: string) => void;
   updateSubcategory: (categoryId: string, id: string, name: string) => void;
   deleteSubcategory: (categoryId: string, id: string) => void;
-  contributingFactors: ContributingFactor[];
+  contributingFactors: ContributingFactorItem[];
   addContributingFactor: (name: string, description: string, weight: string) => void;
   updateContributingFactor: (id: string, name: string, description: string, weight: string) => void;
   deleteContributingFactor: (id: string) => void;
