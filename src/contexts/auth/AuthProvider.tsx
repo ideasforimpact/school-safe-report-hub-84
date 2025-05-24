@@ -1,9 +1,9 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User } from '@supabase/supabase-js';
+import { User as SupabaseUser } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { AuthContextType, EmployeeData } from './types';
+import { AuthContextType, EmployeeData, User } from './types';
 
 interface UserRole {
   id: string;
@@ -32,7 +32,7 @@ interface DepartmentType {
 export const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null);
   const [employeeData, setEmployeeData] = useState<EmployeeData | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -42,7 +42,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session?.user) {
-        setUser(session.user);
+        setSupabaseUser(session.user);
         setIsAuthenticated(true);
         await fetchEmployeeData(session.user.id);
       } else {
@@ -54,11 +54,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
-        setUser(session.user);
+        setSupabaseUser(session.user);
         setIsAuthenticated(true);
         await fetchEmployeeData(session.user.id);
       } else {
-        setUser(null);
+        setSupabaseUser(null);
         setEmployeeData(null);
         setIsAuthenticated(false);
       }
@@ -122,7 +122,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
       
       // Clear all state
-      setUser(null);
+      setSupabaseUser(null);
       setEmployeeData(null);
       setIsAuthenticated(false);
       setIsLoading(false);
@@ -137,6 +137,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateEmployeeData = (newData: Partial<EmployeeData>) => {
     setEmployeeData(prev => prev ? { ...prev, ...newData } : null);
   };
+
+  // Create a custom User object that matches our User type
+  const user: User | null = supabaseUser ? {
+    id: supabaseUser.id,
+    firstName: employeeData?.firstName || '',
+    lastName: employeeData?.lastName || '',
+    email: supabaseUser.email || '',
+    role: 'user',
+    isActive: true,
+    createdAt: supabaseUser.created_at,
+    updatedAt: supabaseUser.updated_at || supabaseUser.created_at,
+    provider: 'email',
+    clientId: employeeData?.clientId || null,
+    employeeId: '',
+    employeeType: 'permanent',
+    department: 'Other',
+    joiningDate: '',
+    isSuperAdmin: employeeData?.isSuperAdmin || false
+  } : null;
 
   // Placeholder functions to match AuthContextType interface
   const users: any[] = [];
