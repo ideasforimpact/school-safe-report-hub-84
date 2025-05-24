@@ -39,7 +39,10 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
 }) => {
   const { employeeData } = useAuth();
   const [staffMembers, setStaffMembers] = useState<Employee[]>([]);
+  const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
   const [isLoadingStaff, setIsLoadingStaff] = useState(false);
+  const [isLoadingStudents, setIsLoadingStudents] = useState(false);
+  const [searchQueries, setSearchQueries] = useState<Record<number, string>>({});
 
   // Fetch staff members when component mounts
   useEffect(() => {
@@ -79,39 +82,148 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
     fetchStaffMembers();
   }, [employeeData?.clientId]);
 
-  const renderNameField = (person: Person, index: number) => {
-    if (person.role === 'staff') {
-      return (
-        <select
-          value={person.name}
-          onChange={(e) => onPersonChange(index, 'name', e.target.value)}
-          className="w-full p-2 border rounded-md text-sm"
-          disabled={isLoadingStaff}
-        >
-          <option value="">
-            {isLoadingStaff ? 'Loading staff...' : 'Select staff member'}
-          </option>
-          {staffMembers.map((staff) => (
-            <option key={staff.id} value={staff.id}>
-              {staff.firstName} {staff.lastName} ({staff.email})
-            </option>
-          ))}
-        </select>
+  // Fetch students filtered by client_id
+  useEffect(() => {
+    const fetchStudents = async () => {
+      if (!employeeData?.clientId) return;
+
+      try {
+        setIsLoadingStudents(true);
+        const { data: studentData, error } = await supabase
+          .from('students')
+          .select('id, student_id, name, grade, section, campus')
+          .eq('client_id', employeeData.clientId);
+
+        if (error) {
+          console.error('Error fetching students:', error);
+          toast.error('Failed to load students');
+          return;
+        }
+
+        const mappedStudents = studentData.map(student => ({
+          id: student.id,
+          studentId: student.student_id,
+          name: student.name,
+          grade: student.grade,
+          section: student.section,
+          campus: student.campus,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }));
+
+        setFilteredStudents(mappedStudents);
+      } catch (error) {
+        console.error('Error fetching students:', error);
+        toast.error('Failed to load students');
+      } finally {
+        setIsLoadingStudents(false);
+      }
+    };
+
+    fetchStudents();
+  }, [employeeData?.clientId]);
+
+  // Filter options based on search query
+  const getFilteredOptions = (person: Person, index: number) => {
+    const query = searchQueries[index]?.toLowerCase() || '';
+    
+    if (person.role === 'Staff') {
+      return staffMembers.filter(staff => 
+        staff.firstName.toLowerCase().includes(query) ||
+        staff.lastName.toLowerCase().includes(query) ||
+        staff.email.toLowerCase().includes(query)
       );
-    } else if (person.role === 'student') {
+    } else if (person.role === 'Student') {
+      return filteredStudents.filter(student =>
+        student.name.toLowerCase().includes(query) ||
+        student.studentId.toLowerCase().includes(query)
+      );
+    }
+    return [];
+  };
+
+  const handleSearchChange = (index: number, query: string) => {
+    setSearchQueries(prev => ({ ...prev, [index]: query }));
+  };
+
+  const handleOptionSelect = (index: number, optionId: string, person: Person) => {
+    onPersonChange(index, 'name', optionId);
+    setSearchQueries(prev => ({ ...prev, [index]: '' }));
+  };
+
+  const getDisplayName = (person: Person) => {
+    if (person.role === 'Staff') {
+      const staff = staffMembers.find(s => s.id === person.name);
+      return staff ? `${staff.firstName} ${staff.lastName}` : '';
+    } else if (person.role === 'Student') {
+      const student = filteredStudents.find(s => s.id === person.name);
+      return student ? student.name : '';
+    }
+    return person.name;
+  };
+
+  const renderNameField = (person: Person, index: number) => {
+    if (person.role === 'Staff') {
+      const filteredOptions = getFilteredOptions(person, index);
+      const isSearching = searchQueries[index] && searchQueries[index].length > 0;
+      
       return (
-        <select
-          value={person.name}
-          onChange={(e) => onPersonChange(index, 'name', e.target.value)}
-          className="w-full p-2 border rounded-md text-sm"
-        >
-          <option value="">Select student</option>
-          {students.map((student) => (
-            <option key={student.id} value={student.id}>
-              {student.name} ({student.studentId})
-            </option>
-          ))}
-        </select>
+        <div className="relative">
+          <input
+            type="text"
+            value={searchQueries[index] || getDisplayName(person)}
+            onChange={(e) => handleSearchChange(index, e.target.value)}
+            className="w-full p-2 border rounded-md text-sm"
+            placeholder={isLoadingStaff ? 'Loading staff...' : 'Search staff by name or email'}
+            disabled={isLoadingStaff}
+          />
+          
+          {isSearching && filteredOptions.length > 0 && (
+            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+              {filteredOptions.map((staff) => (
+                <div
+                  key={staff.id}
+                  className="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
+                  onClick={() => handleOptionSelect(index, staff.id, person)}
+                >
+                  <div className="font-medium text-sm">{staff.firstName} {staff.lastName}</div>
+                  <div className="text-xs text-gray-500">{staff.email}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    } else if (person.role === 'Student') {
+      const filteredOptions = getFilteredOptions(person, index);
+      const isSearching = searchQueries[index] && searchQueries[index].length > 0;
+      
+      return (
+        <div className="relative">
+          <input
+            type="text"
+            value={searchQueries[index] || getDisplayName(person)}
+            onChange={(e) => handleSearchChange(index, e.target.value)}
+            className="w-full p-2 border rounded-md text-sm"
+            placeholder={isLoadingStudents ? 'Loading students...' : 'Search student by name or ID'}
+            disabled={isLoadingStudents}
+          />
+          
+          {isSearching && filteredOptions.length > 0 && (
+            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+              {filteredOptions.map((student) => (
+                <div
+                  key={student.id}
+                  className="px-3 py-2 hover:bg-gray-100 cursor-pointer border-b border-gray-100 last:border-b-0"
+                  onClick={() => handleOptionSelect(index, student.id, person)}
+                >
+                  <div className="font-medium text-sm">{student.name}</div>
+                  <div className="text-xs text-gray-500">ID: {student.studentId}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       );
     } else {
       return (
@@ -154,12 +266,16 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                 </label>
                 <select
                   value={person.role}
-                  onChange={(e) => onPersonChange(index, 'role', e.target.value)}
+                  onChange={(e) => {
+                    onPersonChange(index, 'role', e.target.value);
+                    onPersonChange(index, 'name', ''); // Clear name when role changes
+                    setSearchQueries(prev => ({ ...prev, [index]: '' })); // Clear search
+                  }}
                   className="w-full p-2 border rounded-md text-sm"
                 >
                   <option value="">Select role</option>
-                  <option value="student">Student</option>
-                  <option value="staff">Staff</option>
+                  <option value="Student">Student</option>
+                  <option value="Staff">Staff</option>
                   <option value="visitor">Visitor</option>
                   <option value="contractor">Contractor</option>
                   <option value="other">Other</option>
