@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Person } from '@/types/incident';
 import { Student } from '@/types/student';
@@ -6,6 +7,7 @@ import { useAuth } from '@/contexts/auth/useAuth';
 import { toast } from 'sonner';
 import { Search } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { FormErrors } from '@/hooks/incident-form/useIncidentFormValidation';
 
 interface UserBasicInfo {
   id: string;
@@ -28,6 +30,7 @@ interface PeopleInvolvedSectionProps {
   onRemovePerson: (index: number) => void;
   students: Student[];
   employees: UserBasicInfo[];
+  errors?: FormErrors; // Add optional errors prop
 }
 
 const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
@@ -37,6 +40,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   onRemovePerson,
   students,
   employees,
+  errors = {} // Default to empty object
 }) => {
   const { employeeData } = useAuth();
   const [staffMembers, setStaffMembers] = useState<Employee[]>([]);
@@ -181,6 +185,8 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   };
 
   const renderNameField = (person: Person, index: number) => {
+    const hasError = errors[`peopleInvolved.${index}.name`];
+    
     if (person.role === 'Staff' || person.role === 'Student') {
       const isCurrentlySearching = isSearching[index];
       const filteredOptions = getFilteredOptions(index, person.role);
@@ -206,14 +212,18 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                   ? `Loading ${person.role.toLowerCase()}s...` 
                   : `Search by ${person.role.toLowerCase()} name...`
               }
-              className="w-full pr-8"
+              className={`w-full pr-8 ${hasError ? 'border-red-500' : ''}`}
               disabled={isLoading}
             />
             <Search className="absolute right-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           </div>
           
+          {hasError && (
+            <p className="text-red-500 text-xs mt-1">{hasError}</p>
+          )}
+          
           {isCurrentlySearching && filteredOptions.length > 0 && (
-            <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
+            <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg max-h-60 overflow-auto">
               <ul className="py-1 text-sm">
                 {filteredOptions.map((option) => (
                   <li
@@ -250,7 +260,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
           )}
 
           {isCurrentlySearching && searchQueries[index] && filteredOptions.length === 0 && (
-            <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg">
+            <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg">
               <p className="p-3 text-sm text-gray-500">No {person.role.toLowerCase()}s found</p>
             </div>
           )}
@@ -258,13 +268,18 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
       );
     } else {
       return (
-        <input
-          type="text"
-          value={person.name}
-          onChange={(e) => onPersonChange(index, 'name', e.target.value)}
-          className="w-full p-2 border rounded-md text-sm"
-          placeholder="Full name"
-        />
+        <div>
+          <input
+            type="text"
+            value={person.name}
+            onChange={(e) => onPersonChange(index, 'name', e.target.value)}
+            className={`w-full p-2 border rounded-md text-sm ${hasError ? 'border-red-500' : ''}`}
+            placeholder="Full name"
+          />
+          {hasError && (
+            <p className="text-red-500 text-xs mt-1">{hasError}</p>
+          )}
+        </div>
       );
     }
   };
@@ -288,58 +303,65 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
         </div>
       ) : (
         <div className="space-y-4">
-          {peopleInvolved.map((person, index) => (
-            <div key={index} className="flex flex-col md:flex-row gap-3 p-3 border rounded-md bg-gray-50">
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Role
-                </label>
-                <select
-                  value={person.role}
-                  onChange={(e) => onPersonChange(index, 'role', e.target.value)}
-                  className="w-full p-2 border rounded-md text-sm bg-white"
-                >
-                  <option value="">Select role</option>
-                  <option value="Student">Student</option>
-                  <option value="Staff">Staff</option>
-                  <option value="Other">Other</option>
-                </select>
+          {peopleInvolved.map((person, index) => {
+            const roleError = errors[`peopleInvolved.${index}.role`];
+            
+            return (
+              <div key={index} className="flex flex-col md:flex-row gap-3 p-3 border rounded-md bg-gray-50">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Role <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={person.role}
+                    onChange={(e) => onPersonChange(index, 'role', e.target.value)}
+                    className={`w-full p-2 border rounded-md text-sm bg-white ${roleError ? 'border-red-500' : ''}`}
+                  >
+                    <option value="">Select role</option>
+                    <option value="Student">Student</option>
+                    <option value="Staff">Staff</option>
+                    <option value="Other">Other</option>
+                  </select>
+                  {roleError && (
+                    <p className="text-red-500 text-xs mt-1">{roleError}</p>
+                  )}
+                </div>
+                
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Name <span className="text-red-500">*</span>
+                  </label>
+                  {renderNameField(person, index)}
+                </div>
+                
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Notes
+                  </label>
+                  <input
+                    type="text"
+                    value={person.notes || ''}
+                    onChange={(e) => onPersonChange(index, 'notes', e.target.value)}
+                    className="w-full p-2 border rounded-md text-sm"
+                    placeholder="Additional notes"
+                  />
+                </div>
+                
+                <div className="flex items-end">
+                  <button
+                    type="button"
+                    onClick={() => onRemovePerson(index)}
+                    className="p-2 text-red-600 hover:text-red-800"
+                    aria-label="Remove person"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
               </div>
-              
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Name
-                </label>
-                {renderNameField(person, index)}
-              </div>
-              
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Notes
-                </label>
-                <input
-                  type="text"
-                  value={person.notes || ''}
-                  onChange={(e) => onPersonChange(index, 'notes', e.target.value)}
-                  className="w-full p-2 border rounded-md text-sm"
-                  placeholder="Additional notes"
-                />
-              </div>
-              
-              <div className="flex items-end">
-                <button
-                  type="button"
-                  onClick={() => onRemovePerson(index)}
-                  className="p-2 text-red-600 hover:text-red-800"
-                  aria-label="Remove person"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

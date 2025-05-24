@@ -1,5 +1,6 @@
 
 import { useState } from 'react';
+import { Person } from '@/types/incident';
 
 // Define the structure with an index signature for string keys
 export interface FormErrors {
@@ -9,7 +10,7 @@ export interface FormErrors {
 export function useIncidentFormValidation() {
   const [errors, setErrors] = useState<FormErrors>({});
 
-  const validateForm = (formData: any) => {
+  const validateForm = (formData: any, peopleInvolved: Person[] = []) => {
     const newErrors: FormErrors = {};
 
     // Validate type
@@ -66,6 +67,25 @@ export function useIncidentFormValidation() {
       newErrors.owner = 'Assignment is required';
     }
     
+    // Validate People Involved - only if someone has been added
+    if (peopleInvolved && peopleInvolved.length > 0) {
+      peopleInvolved.forEach((person, index) => {
+        // Only validate if at least one field is filled (partial entry)
+        const hasAnyValue = person.name.trim() || person.role || person.notes?.trim();
+        
+        if (hasAnyValue) {
+          // If any field has a value, then all required fields must be filled
+          if (!person.role || person.role === '') {
+            newErrors[`peopleInvolved.${index}.role`] = 'Role is required';
+          }
+          
+          if (!person.name || person.name.trim() === '') {
+            newErrors[`peopleInvolved.${index}.name`] = 'Name is required';
+          }
+        }
+      });
+    }
+    
     setErrors(newErrors);
     
     return Object.keys(newErrors).length === 0;
@@ -73,6 +93,7 @@ export function useIncidentFormValidation() {
 
   return {
     errors,
-    validateForm
+    validateForm,
+    setErrors
   };
 }

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useIncidents } from '@/contexts/incident';
@@ -7,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { useIncidentForm } from '@/hooks/useIncidentForm';
+import { useIncidentFormValidation } from '@/hooks/incident-form/useIncidentFormValidation';
 import IncidentDetailsForm from '@/components/incidents/IncidentDetailsForm';
 import PeopleInvolvedSection from '@/components/incidents/PeopleInvolvedSection';
 import { IncidentType, IncidentCategory, IncidentLocation } from '@/types/incident';
@@ -33,6 +35,9 @@ const ReportIncident = () => {
   const [isLoadingEmployees, setIsLoadingEmployees] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newStatusId, setNewStatusId] = useState<string | null>(null);
+  
+  // Add validation hook
+  const { errors, validateForm } = useIncidentFormValidation();
   
   const {
     nextTicketId,
@@ -107,6 +112,15 @@ const ReportIncident = () => {
     e.preventDefault();
     
     if (isSubmitting || contextIsSubmitting) return; // Prevent duplicate submissions
+    
+    // Validate form including people involved
+    const isValid = validateForm(formData, peopleInvolved);
+    
+    if (!isValid) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+    
     setIsSubmitting(true);
     
     try {
@@ -141,8 +155,11 @@ const ReportIncident = () => {
       console.log("Selected facility:", facilityName);
       console.log("Selected facility ID:", formData.facilityId);
       
-      // Filter out empty people - now it's optional so we don't need to validate it
-      const validPeople = peopleInvolved.filter(p => p.name.trim() !== '');
+      // Filter out empty people - now validate that if people are added, they are complete
+      const validPeople = peopleInvolved.filter(p => {
+        const hasAnyValue = p.name.trim() !== '' || p.role !== '' || p.notes?.trim() !== '';
+        return hasAnyValue;
+      });
       
       // Process supporting documents
       const documents = supportingFiles.map(file => ({
@@ -307,6 +324,7 @@ const ReportIncident = () => {
                 onRemovePerson={removePerson}
                 students={students}
                 employees={mappedEmployees} // Pass the simplified user objects
+                errors={errors} // Pass validation errors
               />
             </CardContent>
             <CardFooter className="flex justify-between">
