@@ -93,7 +93,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
       setFactors(updatedFactors);
       
       // Call the prop function to notify parent 
-      propAddFactor(currentName.trim(), currentDescription.trim(), currentWeight);
+      // propAddFactor(currentName.trim(), currentDescription.trim(), currentWeight);
       
       // Reset form and close dialog
       setCurrentName('');
@@ -137,7 +137,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
       setFactors(updatedFactors);
       
       // Call the prop function to notify parent
-      propUpdateFactor(currentId, currentName.trim(), currentDescription.trim(), currentWeight);
+      // propUpdateFactor(currentId, currentName.trim(), currentDescription.trim(), currentWeight);
       
       setIsEditDialogOpen(false);
       toast.success('Contributing factor updated successfully');
@@ -174,7 +174,7 @@ export const ContributingFactorTab: React.FC<ContributingFactorTabProps> = ({
         setFactors(updatedFactors);
         
         // Call the prop function to notify parent
-        propDeleteFactor(id);
+        // propDeleteFactor(id);
         
         toast.success('Contributing factor deleted successfully');
       } catch (error) {
