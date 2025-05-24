@@ -1,21 +1,15 @@
 
+import { User } from '@supabase/supabase-js';
+
 // Update the AuthContextType to include the employeeData property
 export interface AuthContextType {
   user: User | null;
-  users: User[];
-  login: (email: string, password: string) => Promise<boolean>;
-  logout: () => void;
-  isAdmin: boolean;
-  isSaasOwner: boolean;
-  addUser: (userData: any) => void;
-  updateUser: (id: string, updates: Partial<User>) => void;
-  deleteUser: (id: string) => void;
-  deactivateUser: (id: string) => void;
-  reactivateUser: (id: string) => void;
-  changePassword: (currentPassword: string, newPassword: string) => Promise<boolean>;
-  authError: string | null;
-  handleUserAuthentication: (supabaseUser: any) => Promise<void>;
   employeeData: EmployeeData | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  signIn: (email: string) => Promise<void>;
+  signOut: () => Promise<void>;
+  updateEmployeeData: (newData: Partial<EmployeeData>) => void;
 }
 
 export type UserRole = 'user' | 'admin' | 'reporter' | 'viewer' | 'saas_owner';
@@ -72,13 +66,22 @@ export interface UserWithPassword extends User {
 
 export interface EmployeeData {
   id: string;
-  clientId: string | null;
   firstName: string;
   lastName: string;
   email: string;
+  phone: string;
+  employeeId: string;
+  position: string;
+  employeeTypeId: string;
+  employeeType: string;
+  departmentId: string;
+  department: string;
+  userRoleId: string;
+  userRole: { id: string; name: string };
+  modulePermissions: ModulePermissions[];
+  clientId: string | null;
   isSuperAdmin?: boolean;
-  department?: string;
-  employeeType?: string;
+  status: boolean;
 }
 
 export interface AuthProviderProps {
