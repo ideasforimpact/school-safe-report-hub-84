@@ -5,6 +5,13 @@ import { Student } from '@/types/student';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth/useAuth';
 import { toast } from 'sonner';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface UserBasicInfo {
   id: string;
@@ -123,41 +130,43 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   }, [employeeData?.clientId]);
 
   const renderNameField = (person: Person, index: number) => {
-    if (person.role === 'staff') {
+    if (person.role === 'Staff') {
       return (
-        <select
+        <Select
           value={person.name}
-          onChange={(e) => onPersonChange(index, 'name', e.target.value)}
-          className="w-full p-2 border rounded-md text-sm bg-white"
+          onValueChange={(value) => onPersonChange(index, 'name', value)}
           disabled={isLoadingStaff}
         >
-          <option value="">
-            {isLoadingStaff ? 'Loading staff...' : 'Select staff member'}
-          </option>
-          {staffMembers.map(staff => (
-            <option key={staff.id} value={`${staff.firstName} ${staff.lastName}`}>
-              {staff.firstName} {staff.lastName} - {staff.email}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder={isLoadingStaff ? 'Loading staff...' : 'Select staff member'} />
+          </SelectTrigger>
+          <SelectContent className="bg-white z-50">
+            {staffMembers.map(staff => (
+              <SelectItem key={staff.id} value={`${staff.firstName} ${staff.lastName}`}>
+                {staff.firstName} {staff.lastName} - {staff.email}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       );
-    } else if (person.role === 'student') {
+    } else if (person.role === 'Student') {
       return (
-        <select
+        <Select
           value={person.name}
-          onChange={(e) => onPersonChange(index, 'name', e.target.value)}
-          className="w-full p-2 border rounded-md text-sm bg-white"
+          onValueChange={(value) => onPersonChange(index, 'name', value)}
           disabled={isLoadingStudents}
         >
-          <option value="">
-            {isLoadingStudents ? 'Loading students...' : 'Select student'}
-          </option>
-          {filteredStudents.map(student => (
-            <option key={student.id} value={student.name}>
-              {student.name} - {student.grade} {student.section}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder={isLoadingStudents ? 'Loading students...' : 'Select student'} />
+          </SelectTrigger>
+          <SelectContent className="bg-white z-50">
+            {filteredStudents.map(student => (
+              <SelectItem key={student.id} value={student.name}>
+                {student.name} - {student.grade} {student.section}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       );
     } else {
       return (
@@ -203,11 +212,9 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                   className="w-full p-2 border rounded-md text-sm bg-white"
                 >
                   <option value="">Select role</option>
-                  <option value="student">Student</option>
-                  <option value="staff">Staff</option>
-                  <option value="visitor">Visitor</option>
-                  <option value="contractor">Contractor</option>
-                  <option value="other">Other</option>
+                  <option value="Student">Student</option>
+                  <option value="Staff">Staff</option>
+                  <option value="Other">Other</option>
                 </select>
               </div>
               
