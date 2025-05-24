@@ -16,12 +16,6 @@ export interface AuthContextType {
   authError: string | null;
   handleUserAuthentication: (supabaseUser: any) => Promise<void>;
   employeeData: EmployeeData | null;
-  // Additional auth methods for the simplified auth context
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  signIn: (email: string) => Promise<void>;
-  signOut: () => Promise<void>;
-  updateEmployeeData: (newData: Partial<EmployeeData>) => void;
 }
 
 export type UserRole = 'user' | 'admin' | 'reporter' | 'viewer' | 'saas_owner';
