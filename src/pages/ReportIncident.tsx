@@ -17,6 +17,7 @@ import { useStudents } from '@/contexts/StudentContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { useIncidentDetail } from '@/hooks/incident/useIncidentDetail';
+import { useIncidents } from '@/contexts/incident';
 
 // Define a user type that has only the properties needed by the components
 interface UserBasicInfo {
@@ -32,6 +33,7 @@ const ReportIncident = () => {
   const navigate = useNavigate();
   const { students } = useStudents();
   const { state: employeeState } = useEmployeeStore();
+  const { refetchIncidents } = useIncidents();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoadingEmployees, setIsLoadingEmployees] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -247,7 +249,12 @@ const ReportIncident = () => {
         }
 
         toast.success("Incident updated successfully");
-        navigate('/incidents'); // Navigate to incidents list instead of detail page
+        
+        // Refetch incidents to get the latest data
+        await refetchIncidents();
+        
+        // Navigate to incidents list
+        navigate('/incidents');
         
       } else {
         // Handle create mode (existing logic)
@@ -328,6 +335,11 @@ const ReportIncident = () => {
         }
         
         toast.success(`Incident reported successfully! Ticket ID: ${data.ticketId}`);
+        
+        // Refetch incidents to get the latest data including the new incident
+        await refetchIncidents();
+        
+        // Navigate to incidents list
         navigate('/incidents');
       }
     } catch (error) {
@@ -366,6 +378,12 @@ const ReportIncident = () => {
     name: `${employee.firstName} ${employee.lastName}`
   }));
 
+  // Helper function to get priority name from ID
+  const getPriorityName = (priorityId: string): 'Low' | 'Medium' | 'High' | 'Critical' => {
+    const priority = priorities.find(p => p.id === priorityId);
+    return (priority?.name as 'Low' | 'Medium' | 'High' | 'Critical') || 'Medium';
+  };
+
   // Create a safe formData object for the component that ensures all fields are properly mapped
   const safeFormData = {
     typeId: formData.typeId,
@@ -381,7 +399,7 @@ const ReportIncident = () => {
     // Legacy fields for backward compatibility - these should be derived from ID fields
     type: formData.typeId,
     subcategory: formData.subcategoryId,
-    priority: formData.priorityId || 'Medium' as 'Low' | 'Medium' | 'High' | 'Critical'
+    priority: getPriorityName(formData.priorityId)
   };
 
   // Show loading state until form is completely ready
