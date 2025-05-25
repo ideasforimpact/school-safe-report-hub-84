@@ -13,8 +13,8 @@ export function useIncidentFormValidation() {
   const validateForm = (formData: any, peopleInvolved: Person[] = []) => {
     const newErrors: FormErrors = {};
 
-    // Validate type
-    if (!formData.type) {
+    // Validate type - check for typeId instead of type
+    if (!formData.typeId && !formData.type) {
       newErrors.type = 'Report type is required';
     }
     
@@ -37,28 +37,28 @@ export function useIncidentFormValidation() {
       newErrors.time = 'Time is required';
     }
     
-    // Validate category
+    // Validate category - check for categoryId
     if (!formData.categoryId) {
       newErrors.categoryId = 'Category is required';
     }
     
-    // Validate subcategory
-    if (formData.categoryId && !formData.subcategory) {
+    // Validate subcategory - check for subcategoryId
+    if (formData.categoryId && !formData.subcategoryId && !formData.subcategory) {
       newErrors.subcategory = 'Subcategory is required';
     }
     
-    // Validate location
+    // Validate location - check for locationId
     if (!formData.locationId) {
       newErrors.locationId = 'Location is required';
     }
     
-    // Validate facility
+    // Validate facility - check for facilityId
     if (!formData.facilityId) {
       newErrors.facilityId = 'Facility is required';
     }
     
-    // Validate priority
-    if (!formData.priority) {
+    // Validate priority - check for priorityId
+    if (!formData.priorityId && !formData.priority) {
       newErrors.priority = 'Priority is required';
     }
     
