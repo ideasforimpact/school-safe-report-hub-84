@@ -27,7 +27,7 @@ interface UserBasicInfo {
 }
 
 const ReportIncident = () => {
-  const { user } = useAuth();
+  const { user, employeeData: authEmployeeData } = useAuth();
   const navigate = useNavigate();
   const { students } = useStudents();
   const { state: employeeState } = useEmployeeStore();
@@ -69,7 +69,6 @@ const ReportIncident = () => {
         console.log("Fetching employees from API service...");
         const fetchedEmployees = await getAllEmployeesFromApi();
         console.log(`Fetched ${fetchedEmployees.length} employees successfully:`, fetchedEmployees);
-        // Store the employees with verification type
         setEmployees(fetchedEmployees);
       } catch (error) {
         console.error("Failed to fetch employees:", error);
@@ -86,13 +85,12 @@ const ReportIncident = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (isSubmitting) return; // Prevent duplicate submissions
+    if (isSubmitting) return;
     
     // Validate form including people involved
     const isValid = validateForm(formData, peopleInvolved);
     
     if (!isValid) {
-      // Show the first error found
       const firstError = Object.values(errors)[0];
       toast.error(firstError || "Please fill in all required fields");
       return;
@@ -101,35 +99,34 @@ const ReportIncident = () => {
     setIsSubmitting(true);
     
     try {
-      // Validate required fields
-      if (!formData.categoryId) {
-        toast.error("Category cannot be empty");
-        setIsSubmitting(false);
-        return;
+      // Get employee data - prioritize Redux store, then auth context, then fetch from DB
+      let employeeId = employeeState.employeeData?.id || authEmployeeData?.id;
+      let clientId = employeeState.employeeData?.clientId || authEmployeeData?.clientId;
+      
+      // If we don't have employee data, try to fetch it from database
+      if (!employeeId && user?.email) {
+        console.log("Fetching employee data from database for email:", user.email);
+        const { data: empData, error: empError } = await supabase
+          .from('employees')
+          .select('id, client_id')
+          .eq('email', user.email.toLowerCase())
+          .single();
+          
+        if (empData && !empError) {
+          employeeId = empData.id;
+          clientId = empData.client_id;
+          console.log("Found employee data:", { employeeId, clientId });
+        } else {
+          console.error("Failed to fetch employee data:", empError);
+        }
       }
       
-      if (!formData.locationId) {
-        toast.error("Location cannot be empty");
-        setIsSubmitting(false);
-        return;
-      }
-      
-      if (!formData.description || formData.description.trim() === '') {
-        toast.error("Description cannot be empty");
-        setIsSubmitting(false);
-        return;
-      }
-      
-      // Get employee ID from Redux store
-      const createdBy = employeeState.employeeData?.id;
-      if (!createdBy) {
+      if (!employeeId) {
         toast.error("Unable to identify the reporting employee. Please refresh and try again.");
         setIsSubmitting(false);
         return;
       }
 
-      // Get client ID from Redux store
-      const clientId = employeeState.employeeData?.clientId;
       if (!clientId) {
         toast.error("Unable to identify client. Please refresh and try again.");
         setIsSubmitting(false);
@@ -144,9 +141,9 @@ const ReportIncident = () => {
       // Filter out empty people and validate that if people are added, they are complete
       const validPeople = peopleInvolved.filter(p => {
         const hasName = p.name && p.name.trim() !== '';
-        const hasNonDefaultRole = p.role && p.role !== 'Student';
+        const hasRole = p.role && p.role.trim() !== '';
         const hasNotes = p.notes && p.notes.trim() !== '';
-        const hasAnyValue = hasName || hasNonDefaultRole || hasNotes;
+        const hasAnyValue = hasName || hasRole || hasNotes;
         return hasAnyValue;
       });
       
@@ -167,32 +164,37 @@ const ReportIncident = () => {
         locationId: formData.locationId,
         facilityId: formData.facilityId,
         priorityId: formData.priorityId,
-        peopleInvolved: validPeople, // Send as array of objects
+        peopleInvolved: validPeople,
         documents: documents,
-        createdBy: createdBy,
+        createdBy: employeeId,
         assignedTo: formData.owner || null,
-        clientId: clientId // Include client_id
+        clientId: clientId
       };
       
-      console.log("Submitting incident with data:", incidentData);
+      console.log("Calling create-incident edge function with data:", incidentData);
       
-      // Call the edge function to create the incident
+      // Call the create-incident edge function directly
       const { data, error } = await supabase.functions.invoke('create-incident', {
         body: incidentData
       });
       
       if (error) {
-        console.error('Error creating incident:', error);
+        console.error('Error from create-incident function:', error);
         throw new Error(error.message || 'Failed to create incident');
       }
       
-      console.log('Incident created successfully:', data);
-      toast.success("Incident reported successfully!");
+      if (!data || !data.success) {
+        console.error('Create incident function returned error:', data);
+        throw new Error(data?.error || 'Failed to create incident');
+      }
       
-      // Navigation happens after successful submission
+      console.log('Incident created successfully:', data);
+      toast.success(`Incident reported successfully! Ticket ID: ${data.ticketId}`);
+      
+      // Navigate to incidents page
       navigate('/incidents');
     } catch (error) {
-      console.error('Error submitting form:', error);
+      console.error('Error submitting incident report:', error);
       toast.error("An error occurred while submitting the report: " + (error.message || "Please try again"));
     } finally {
       setIsSubmitting(false);
@@ -255,8 +257,8 @@ const ReportIncident = () => {
                 onAddPerson={addPerson}
                 onRemovePerson={removePerson}
                 students={students}
-                employees={mappedEmployees} // Pass the simplified user objects
-                errors={errors} // Pass validation errors
+                employees={mappedEmployees}
+                errors={errors}
               />
             </CardContent>
             <CardFooter className="flex justify-between">
