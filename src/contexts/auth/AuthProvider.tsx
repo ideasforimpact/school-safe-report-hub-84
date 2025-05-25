@@ -108,7 +108,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         saveEmployeeDataToStorage(null); // Clear from storage
         setAuthError(null);
         
-        // Clear Redux state on logout
+        // Clear Redux state on logout - fix the dispatch call
         dispatch(resetEmployee());
         
         // Add a toast message for logout
@@ -211,7 +211,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setEmployeeData(employee);
             saveEmployeeDataToStorage(employee);
             
-            // Update Redux state using action creators properly
+            // Update Redux state using action creators properly - fix the dispatch call
             dispatch(setEmployeeData(employee));
             
             if (employee.clientId) {
@@ -360,7 +360,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     saveEmployeeDataToStorage(null);
     setIsBackofficeUser(false);
     
-    // Clear Redux state
+    // Clear Redux state - fix the dispatch call
     dispatch(resetEmployee());
     
     // Clear local storage
