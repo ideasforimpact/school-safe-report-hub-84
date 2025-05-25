@@ -99,16 +99,6 @@ export const fetchIncidentWithRelations = async (incidentId: string): Promise<In
         incident_status:status_id (
           id,
           name
-        ),
-        assigned_employee:assigned_to (
-          id,
-          first_name,
-          last_name
-        ),
-        created_employee:created_by (
-          id,
-          first_name,
-          last_name
         )
       `)
       .eq('id', incidentId)
@@ -126,6 +116,32 @@ export const fetchIncidentWithRelations = async (incidentId: string): Promise<In
 
     console.log('=== RAW INCIDENT DATA ===');
     console.log('Incident data:', incident);
+
+    // Fetch assigned employee separately if exists
+    let assignedEmployee = null;
+    if (incident.assigned_to) {
+      const { data: assignedEmp, error: assignedError } = await supabase
+        .from('employees')
+        .select('id, first_name, last_name')
+        .eq('id', incident.assigned_to)
+        .single();
+      
+      if (!assignedError && assignedEmp) {
+        assignedEmployee = assignedEmp;
+      }
+    }
+
+    // Fetch created by employee
+    const { data: createdEmployee, error: createdError } = await supabase
+      .from('employees')
+      .select('id, first_name, last_name')
+      .eq('id', incident.created_by)
+      .single();
+
+    if (createdError) {
+      console.error('Error fetching created by employee:', createdError);
+      throw createdError;
+    }
 
     // Transform the data to match our interface
     const transformedIncident: IncidentDetail = {
@@ -161,18 +177,18 @@ export const fetchIncidentWithRelations = async (incidentId: string): Promise<In
         id: incident.status_id || '',
         name: incident.incident_status?.name || ''
       },
-      assigned_to: incident.assigned_employee ? {
-        id: incident.assigned_employee.id,
-        first_name: incident.assigned_employee.first_name,
-        last_name: incident.assigned_employee.last_name
+      assigned_to: assignedEmployee ? {
+        id: assignedEmployee.id,
+        first_name: assignedEmployee.first_name,
+        last_name: assignedEmployee.last_name
       } : undefined,
       created_by: {
-        id: incident.created_employee.id,
-        first_name: incident.created_employee.first_name,
-        last_name: incident.created_employee.last_name
+        id: createdEmployee.id,
+        first_name: createdEmployee.first_name,
+        last_name: createdEmployee.last_name
       },
-      people_involved: incident.people_involved || [],
-      documents: incident.documents || []
+      people_involved: Array.isArray(incident.people_involved) ? incident.people_involved : [],
+      documents: Array.isArray(incident.documents) ? incident.documents : []
     };
 
     console.log('=== TRANSFORMED INCIDENT DATA ===');
