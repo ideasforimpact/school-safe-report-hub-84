@@ -13,6 +13,9 @@ import {
 import RootCauseAnalysis from './closure/RootCauseAnalysis';
 import ActionsTakenForm from './closure/ActionsTakenForm';
 import ContributingFactorsSection from './closure/ContributingFactorsSection';
+import { supabase } from '@/integrations/supabase/client';
+import { useEmployeeStore } from '@/store/EmployeeContext';
+import { toast } from 'sonner';
 
 interface IncidentClosureFormProps {
   incident: Incident;
@@ -35,6 +38,8 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
   const [contributingFactors, setContributingFactors] = useState<ContributingFactor[]>(
     incident.contributingFactors || []
   );
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { state } = useEmployeeStore();
   
   // Modified action state - now we'll just have a single action entry
   const [currentAction, setCurrentAction] = useState<Action>({
@@ -45,23 +50,81 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
     date: new Date(),
   });
 
-  const handleSubmit = () => {
-    if (!rootCause.trim()) return;
+  const handleSubmit = async () => {
+    if (!rootCause.trim()) {
+      toast.error('Root cause analysis is required');
+      return;
+    }
     
-    // Create a single action from the text area content
-    const actions: Action[] = currentAction.description.trim() 
-      ? [{ 
-          description: currentAction.description.trim(), 
-          responsiblePerson: '', 
-          date: new Date() 
-        }] 
-      : [];
+    if (!currentAction.description.trim()) {
+      toast.error('Action taken is required');
+      return;
+    }
     
-    onSubmit({
-      rootCause,
-      contributingFactors,
-      actions
-    });
+    if (contributingFactors.length === 0) {
+      toast.error('At least one contributing factor is required');
+      return;
+    }
+
+    if (!state.employeeData?.clientId) {
+      toast.error('Client information not found');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      console.log('Closing incident with data:', {
+        client_id: state.employeeData.clientId,
+        incident_id: incident.id,
+        root_cause_analysis: rootCause.trim(),
+        action_taken: currentAction.description.trim(),
+        contributing_factor: contributingFactors
+      });
+
+      const { data, error } = await supabase.functions.invoke('close-incident', {
+        body: {
+          client_id: state.employeeData.clientId,
+          incident_id: incident.id,
+          root_cause_analysis: rootCause.trim(),
+          action_taken: currentAction.description.trim(),
+          contributing_factor: contributingFactors
+        }
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to close incident');
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      toast.success('Incident closed successfully');
+      
+      // Call the original onSubmit for any additional processing
+      const actions: Action[] = currentAction.description.trim() 
+        ? [{ 
+            description: currentAction.description.trim(), 
+            responsiblePerson: '', 
+            date: new Date() 
+          }] 
+        : [];
+      
+      onSubmit({
+        rootCause,
+        contributingFactors,
+        actions
+      });
+
+      onClose();
+
+    } catch (error: any) {
+      console.error('Error closing incident:', error);
+      toast.error(error.message || 'Failed to close incident');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -70,7 +133,7 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
         <DialogHeader>
           <DialogTitle>Close Incident - Final Analysis</DialogTitle>
           <DialogDescription>
-            Complete a thorough analysis before closing the incident
+            Complete a thorough analysis before closing the incident. All fields are required.
           </DialogDescription>
         </DialogHeader>
 
@@ -98,11 +161,14 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
         </div>
 
         <DialogFooter className="gap-2 sm:gap-0">
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={!rootCause.trim()}>
-            Close Incident
+          <Button 
+            onClick={handleSubmit} 
+            disabled={!rootCause.trim() || !currentAction.description.trim() || contributingFactors.length === 0 || isSubmitting}
+          >
+            {isSubmitting ? 'Closing...' : 'Close Incident'}
           </Button>
         </DialogFooter>
       </DialogContent>
