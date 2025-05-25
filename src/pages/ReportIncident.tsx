@@ -88,7 +88,7 @@ const ReportIncident = () => {
           time: incidentDate.toTimeString().split(' ')[0].slice(0, 5),
           locationId: locations.find(l => l.name === incident.location)?.id || '',
           facilityId: facilities.find(f => f.name === incident.facility)?.id || '',
-          priority: incident.priority || 'Medium',
+          priority: (incident.priority || 'Medium') as 'Low' | 'Medium' | 'High' | 'Critical',
           priorityId: priorities.find(p => p.name === incident.priority)?.id || '',
           owner: incident.owner?.id || '',
           status: incident.status || 'Open'

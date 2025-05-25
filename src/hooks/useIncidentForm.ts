@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
@@ -15,6 +14,11 @@ import {
 interface ConfigItem {
   id: string;
   name: string;
+}
+
+// Extended interface for subcategories that includes category_id
+interface SubcategoryItem extends ConfigItem {
+  category_id: string;
 }
 
 interface FormData {
@@ -58,7 +62,7 @@ export const useIncidentForm = () => {
   const [facilities, setFacilities] = useState<ConfigItem[]>([]);
   const [reportTypes, setReportTypes] = useState<ConfigItem[]>([]);
   const [categories, setCategories] = useState<ConfigItem[]>([]);
-  const [subcategories, setSubcategories] = useState<ConfigItem[]>([]);
+  const [subcategories, setSubcategories] = useState<SubcategoryItem[]>([]);
   const [priorities, setPriorities] = useState<ConfigItem[]>([]);
   const [users, setUsers] = useState<ConfigItem[]>([]);
 
