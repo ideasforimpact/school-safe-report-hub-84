@@ -200,252 +200,263 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="w-full">
-      <Card className="border-none shadow-card pt-6">
-        <CardContent className="space-y-6 px-6">
-          {/* First Row - Report Type, Category, Where it Happened */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="space-y-2">
-              <Label htmlFor="type" className="text-sm font-medium">
-                Report Type <span className="text-red-500">*</span>
-              </Label>
-              <Select value={formData.type} onValueChange={(value) => handleSelectChange('type', value)}>
-                <SelectTrigger className="h-12">
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent className="bg-white z-50">
-                  {reportTypes.map((type) => (
-                    <SelectItem key={type.id} value={type.name}>
-                      {type.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="category" className="text-sm font-medium">
-                Category <span className="text-red-500">*</span>
-              </Label>
-              <Select value={formData.categoryId} onValueChange={(value) => handleSelectChange('categoryId', value)}>
-                <SelectTrigger className="h-12">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent className="bg-white z-50">
-                  {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="location" className="text-sm font-medium">
-                Where it Happened <span className="text-red-500">*</span>
-              </Label>
-              <Select value={formData.locationId} onValueChange={(value) => handleSelectChange('locationId', value)}>
-                <SelectTrigger className="h-12">
-                  <SelectValue placeholder="Select location" />
-                </SelectTrigger>
-                <SelectContent className="bg-white z-50">
-                  {locations.map((location) => (
-                    <SelectItem key={location.id} value={location.id}>
-                      {location.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Second Row - Priority, Subcategory, Facility */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="space-y-2">
-              <Label htmlFor="priority" className="text-sm font-medium">
-                Priority <span className="text-red-500">*</span>
-              </Label>
-              <Select value={formData.priorityId} onValueChange={(value) => handleSelectChange('priorityId', value)}>
-                <SelectTrigger className="h-12">
-                  <SelectValue placeholder="Select priority" />
-                </SelectTrigger>
-                <SelectContent className="bg-white z-50">
-                  {priorities.map((priority) => (
-                    <SelectItem key={priority.id} value={priority.id}>
-                      {priority.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="subcategory" className="text-sm font-medium">
-                Subcategory <span className="text-red-500">*</span>
-              </Label>
-              <Select value={formData.subcategoryId} onValueChange={(value) => handleSelectChange('subcategoryId', value)}>
-                <SelectTrigger className="h-12">
-                  <SelectValue placeholder="Select subcategory" />
-                </SelectTrigger>
-                <SelectContent className="bg-white z-50">
-                  {getFilteredSubcategories().map((subcategory) => (
-                    <SelectItem key={subcategory.id} value={subcategory.id}>
-                      {subcategory.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="facility" className="text-sm font-medium">
-                Facility <span className="text-red-500">*</span>
-              </Label>
-              <Select value={formData.facilityId} onValueChange={(value) => handleSelectChange('facilityId', value)}>
-                <SelectTrigger className="h-12">
-                  <SelectValue placeholder="Select facility" />
-                </SelectTrigger>
-                <SelectContent className="bg-white z-50">
-                  {getFilteredFacilities().map((facility) => (
-                    <SelectItem key={facility.id} value={facility.id}>
-                      {facility.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Third Row - Date and Time, Assigned to */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Label htmlFor="datetime" className="text-sm font-medium">
-                Date and Time of Occurrence <span className="text-red-500">*</span>
-              </Label>
-              <div className="relative">
-                <Input
-                  id="datetime"
-                  type="datetime-local"
-                  value={`${formData.date}T${formData.time}`}
-                  onChange={(e) => {
-                    const [date, time] = e.target.value.split('T');
-                    setFormData(prev => ({ ...prev, date, time }));
-                  }}
-                  className="h-12 pl-10"
-                  required
-                />
-                <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="owner" className="text-sm font-medium">
-                Assigned to <span className="text-red-500">*</span>
-              </Label>
-              <div className="relative">
-                <Select value={formData.owner} onValueChange={(value) => handleSelectChange('owner', value)}>
-                  <SelectTrigger className="h-12 pl-10">
-                    <SelectValue placeholder="Search by name or email..." />
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <form onSubmit={handleSubmit} className="w-full">
+        <Card className="border-none shadow-none bg-gray-50">
+          <CardContent className="space-y-6 px-8 py-8">
+            {/* First Row - Report Type, Category, Where it Happened */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="type" className="text-sm font-medium text-gray-700">
+                  Report Type <span className="text-red-500">*</span>
+                </Label>
+                <Select value={formData.typeId} onValueChange={(value) => {
+                  handleSelectChange('typeId', value);
+                  const selectedType = reportTypes.find(t => t.id === value);
+                  if (selectedType) {
+                    setFormData(prev => ({ ...prev, type: selectedType.name }));
+                  }
+                }}>
+                  <SelectTrigger className="h-11 bg-white border-gray-300">
+                    <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                   <SelectContent className="bg-white z-50">
-                    {incidentUsers.map((user) => (
-                      <SelectItem key={user.id} value={user.id}>
-                        {user.name}
+                    {reportTypes.map((type) => (
+                      <SelectItem key={type.id} value={type.id}>
+                        {type.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="category" className="text-sm font-medium text-gray-700">
+                  Category <span className="text-red-500">*</span>
+                </Label>
+                <Select value={formData.categoryId} onValueChange={(value) => handleSelectChange('categoryId', value)}>
+                  <SelectTrigger className="h-11 bg-white border-gray-300">
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white z-50">
+                    {categories.map((category) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="location" className="text-sm font-medium text-gray-700">
+                  Where it Happened <span className="text-red-500">*</span>
+                </Label>
+                <Select value={formData.locationId} onValueChange={(value) => handleSelectChange('locationId', value)}>
+                  <SelectTrigger className="h-11 bg-white border-gray-300">
+                    <SelectValue placeholder="Select location" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white z-50">
+                    {locations.map((location) => (
+                      <SelectItem key={location.id} value={location.id}>
+                        {location.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-          </div>
 
-          {/* Description */}
-          <div className="space-y-2">
-            <Label htmlFor="description" className="text-sm font-medium">
-              Description <span className="text-red-500">*</span>
-            </Label>
-            <Textarea
-              id="description"
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              placeholder="Describe what happened in detail"
-              rows={4}
-              className="resize-none"
-              required
-            />
-            <div className="text-right text-sm text-gray-500">
-              {formData.description.length}/250 characters
+            {/* Second Row - Subcategory, Facility */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="subcategory" className="text-sm font-medium text-gray-700">
+                  Subcategory <span className="text-red-500">*</span>
+                </Label>
+                <Select value={formData.subcategoryId} onValueChange={(value) => handleSelectChange('subcategoryId', value)}>
+                  <SelectTrigger className="h-11 bg-white border-gray-300">
+                    <SelectValue placeholder="Select subcategory" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white z-50">
+                    {getFilteredSubcategories().map((subcategory) => (
+                      <SelectItem key={subcategory.id} value={subcategory.id}>
+                        {subcategory.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="facility" className="text-sm font-medium text-gray-700">
+                  Facility <span className="text-red-500">*</span>
+                </Label>
+                <Select value={formData.facilityId} onValueChange={(value) => handleSelectChange('facilityId', value)}>
+                  <SelectTrigger className="h-11 bg-white border-gray-300">
+                    <SelectValue placeholder="Select facility" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white z-50">
+                    {getFilteredFacilities().map((facility) => (
+                      <SelectItem key={facility.id} value={facility.id}>
+                        {facility.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-          </div>
 
-          {/* Supporting Documents */}
-          <div className="space-y-4">
-            <Label className="text-sm font-medium">Supporting Documents</Label>
-            <div className="border-2 border-dashed border-gray-200 rounded-lg p-8">
-              <div className="text-center">
-                <FileText className="mx-auto h-8 w-8 text-gray-400 mb-2" />
-                <button
+            {/* Third Row - Priority */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="priority" className="text-sm font-medium text-gray-700">
+                  Priority <span className="text-red-500">*</span>
+                </Label>
+                <Select value={formData.priorityId} onValueChange={(value) => handleSelectChange('priorityId', value)}>
+                  <SelectTrigger className="h-11 bg-white border-gray-300">
+                    <SelectValue placeholder="Select priority" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white z-50">
+                    {priorities.map((priority) => (
+                      <SelectItem key={priority.id} value={priority.id}>
+                        {priority.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Fourth Row - Date and Time, Assigned to */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="datetime" className="text-sm font-medium text-gray-700">
+                  Date and Time of Occurrence <span className="text-red-500">*</span>
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="datetime"
+                    type="datetime-local"
+                    value={`${formData.date}T${formData.time}`}
+                    onChange={(e) => {
+                      const [date, time] = e.target.value.split('T');
+                      setFormData(prev => ({ ...prev, date, time }));
+                    }}
+                    className="h-11 pl-10 bg-white border-gray-300"
+                    required
+                  />
+                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="owner" className="text-sm font-medium text-gray-700">
+                  Assigned to <span className="text-red-500">*</span>
+                </Label>
+                <div className="relative">
+                  <Select value={formData.owner} onValueChange={(value) => handleSelectChange('owner', value)}>
+                    <SelectTrigger className="h-11 pl-10 bg-white border-gray-300">
+                      <SelectValue placeholder="Search by name or email..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white z-50">
+                      {incidentUsers.map((user) => (
+                        <SelectItem key={user.id} value={user.id}>
+                          {user.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                </div>
+              </div>
+            </div>
+
+            {/* Description */}
+            <div className="space-y-2">
+              <Label htmlFor="description" className="text-sm font-medium text-gray-700">
+                Description <span className="text-red-500">*</span>
+              </Label>
+              <Textarea
+                id="description"
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                placeholder="Describe what happened in detail"
+                rows={4}
+                className="resize-none bg-white border-gray-300"
+                required
+              />
+              <div className="text-right text-sm text-gray-500">
+                {formData.description.length}/250 characters
+              </div>
+            </div>
+
+            {/* Supporting Documents */}
+            <div className="space-y-4">
+              <Label className="text-sm font-medium text-gray-700">Supporting Documents</Label>
+              <div className="border-2 border-dashed border-gray-200 rounded-lg p-8 bg-white">
+                <div className="text-center">
+                  <FileText className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                  <button
+                    type="button"
+                    className="text-blue-600 hover:text-blue-700 font-medium"
+                  >
+                    Add a file
+                  </button>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Images, videos, documents up to 25MB
+                  </p>
+                </div>
+              </div>
+              <p className="text-sm text-gray-500">
+                Upload up to 5 files (images, videos, documents) to support this incident report
+              </p>
+              <div className="text-right text-sm text-gray-500">
+                0 of 5 files added
+              </div>
+            </div>
+
+            {/* People Involved */}
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <Label className="text-lg font-medium text-gray-700">People Involved</Label>
+                <Button
                   type="button"
-                  className="text-blue-600 hover:text-blue-700 font-medium"
+                  variant="ghost"
+                  className="text-blue-600 hover:text-blue-700 p-0 h-auto font-medium"
+                  onClick={() => setPeopleInvolved([...peopleInvolved, { name: '', role: 'Student', notes: '' }])}
                 >
-                  Add a file
-                </button>
-                <p className="text-sm text-gray-500 mt-1">
-                  Images, videos, documents up to 25MB
-                </p>
+                  + Add Person
+                </Button>
               </div>
-            </div>
-            <p className="text-sm text-gray-500">
-              Upload up to 5 files (images, videos, documents) to support this incident report
-            </p>
-            <div className="text-right text-sm text-gray-500">
-              0 of 5 files added
-            </div>
-          </div>
 
-          {/* People Involved */}
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <Label className="text-lg font-medium">People Involved</Label>
-              <Button
-                type="button"
-                variant="ghost"
-                className="text-blue-600 hover:text-blue-700 p-0 h-auto font-medium"
-                onClick={() => setPeopleInvolved([...peopleInvolved, { name: '', role: 'Student', notes: '' }])}
-              >
-                + Add Person
-              </Button>
+              <PeopleInvolvedSection
+                peopleInvolved={peopleInvolved}
+                setPeopleInvolved={setPeopleInvolved}
+              />
             </div>
+          </CardContent>
 
-            <PeopleInvolvedSection
-              peopleInvolved={peopleInvolved}
-              setPeopleInvolved={setPeopleInvolved}
-            />
-          </div>
-        </CardContent>
-
-        <CardFooter className="flex justify-between border-t bg-gray-50 px-6 py-4">
-          <Button 
-            type="button" 
-            variant="outline"
-            onClick={onCancel}
-            className="px-6"
-          >
-            Cancel
-          </Button>
-          <Button 
-            type="submit" 
-            disabled={isSubmitting}
-            className="px-6"
-          >
-            {isSubmitting ? "Saving..." : "Save Changes"}
-          </Button>
-        </CardFooter>
-      </Card>
-    </form>
+          <CardFooter className="flex justify-between border-t bg-white px-8 py-4">
+            <Button 
+              type="button" 
+              variant="outline"
+              onClick={onCancel}
+              className="px-6 border-gray-300"
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="submit" 
+              disabled={isSubmitting}
+              className="px-6 bg-blue-600 hover:bg-blue-700"
+            >
+              {isSubmitting ? "Saving..." : "Save Changes"}
+            </Button>
+          </CardFooter>
+        </Card>
+      </form>
+    </div>
   );
 };
 

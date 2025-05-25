@@ -74,15 +74,18 @@ const EditIncidentPage = () => {
 
   return (
     <Layout>
-      <div className="space-y-4 md:space-y-6 w-full overflow-x-hidden">
+      <div className="space-y-4 md:space-y-6 w-full overflow-x-hidden bg-gray-50 min-h-screen">
         {/* Header section matching the design */}
-        <div className="text-left">
-          <p className="text-gray-600 text-sm mb-2">
-            Document safety incidents, near misses, or unsafe conditions
-          </p>
+        <div className="bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-6">
+          <div className="max-w-7xl mx-auto">
+            <h1 className="text-2xl font-semibold text-gray-900">Edit Incident</h1>
+            <p className="text-gray-600 text-sm mt-1">
+              Document safety incidents, near misses, or unsafe conditions
+            </p>
+          </div>
         </div>
 
-        <div className="w-full">
+        <div className="w-full py-6">
           <EditIncidentForm 
             incident={incident}
             onSuccess={() => navigate(`/incident/${id}`)}
