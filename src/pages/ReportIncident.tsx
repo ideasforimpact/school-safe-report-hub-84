@@ -92,7 +92,9 @@ const ReportIncident = () => {
     const isValid = validateForm(formData, peopleInvolved);
     
     if (!isValid) {
-      toast.error("Please fill in all required fields");
+      // Show the first error found
+      const firstError = Object.values(errors)[0];
+      toast.error(firstError || "Please fill in all required fields");
       return;
     }
     
@@ -101,19 +103,19 @@ const ReportIncident = () => {
     try {
       // Validate required fields
       if (!formData.categoryId) {
-        toast.error("Please select a category");
+        toast.error("Category cannot be empty");
         setIsSubmitting(false);
         return;
       }
       
       if (!formData.locationId) {
-        toast.error("Please select a location");
+        toast.error("Location cannot be empty");
         setIsSubmitting(false);
         return;
       }
       
       if (!formData.description || formData.description.trim() === '') {
-        toast.error("Please provide a description of the incident");
+        toast.error("Description cannot be empty");
         setIsSubmitting(false);
         return;
       }
@@ -141,7 +143,10 @@ const ReportIncident = () => {
       
       // Filter out empty people and validate that if people are added, they are complete
       const validPeople = peopleInvolved.filter(p => {
-        const hasAnyValue = p.name.trim() !== '' || p.role !== 'Student' || p.notes?.trim() !== '';
+        const hasName = p.name && p.name.trim() !== '';
+        const hasNonDefaultRole = p.role && p.role !== 'Student';
+        const hasNotes = p.notes && p.notes.trim() !== '';
+        const hasAnyValue = hasName || hasNonDefaultRole || hasNotes;
         return hasAnyValue;
       });
       
