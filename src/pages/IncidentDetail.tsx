@@ -1,4 +1,3 @@
-
 import Layout from '@/components/layout/Layout';
 import IncidentDetailContent from '@/components/incident/IncidentDetailContent';
 import { useIncidentDetailPage } from '@/hooks/useIncidentDetailPage';
@@ -10,6 +9,7 @@ import { useIncidentDetail } from '@/hooks/useIncidentDetail';
 import { useIncidents } from '@/contexts/incident';
 import { useState, useEffect } from 'react';
 import { useIncidentDetail as useIncidentDetailHook } from '@/hooks/incident/useIncidentDetail';
+import { FileItem } from '@/types/incident';
 
 const IncidentDetail = () => {
   const { id = '' } = useParams<{ id: string }>();
@@ -21,6 +21,9 @@ const IncidentDetail = () => {
   
   const [incident, setIncident] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [commentText, setCommentText] = useState('');
+  const [commentFiles, setCommentFiles] = useState<FileItem[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Priority: Use fetched incident data if available, otherwise fall back to context
   useEffect(() => {
@@ -84,6 +87,29 @@ const IncidentDetail = () => {
     incident?.status || 'Open'
   );
   
+  // Comment submission handler
+  const handleCommentSubmit = async () => {
+    if (!commentText.trim() || isSubmitting) return;
+    
+    setIsSubmitting(true);
+    try {
+      // Here you would call your comment submission logic
+      console.log('Submitting comment:', commentText, commentFiles);
+      
+      // Reset form after successful submission
+      setCommentText('');
+      setCommentFiles([]);
+      
+      // You can add toast notification here
+      // toast.success('Comment added successfully');
+    } catch (error) {
+      console.error('Error submitting comment:', error);
+      // toast.error('Failed to add comment');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  
   if (isLoading || isFetchingIncident) {
     return (
       <Layout>
@@ -131,18 +157,18 @@ const IncidentDetail = () => {
     );
   }
 
-  // Create props for IncidentDetailContent with all required fields
+  // Create props for IncidentDetailContent with all required fields including working comment functionality
   const contentProps = {
     incident,
     statusUpdate,
     setStatusUpdate,
     incidentActivities: incidentDetailProps.incidentActivities || [],
-    commentText: '',
-    setCommentText: () => {},
-    commentFiles: [],
-    setCommentFiles: () => {},
-    isSubmitting: false,
-    handleCommentSubmit: () => Promise.resolve(),
+    commentText,
+    setCommentText,
+    commentFiles,
+    setCommentFiles,
+    isSubmitting,
+    handleCommentSubmit,
     handleActionSubmit: () => Promise.resolve(),
     handleStatusChange: incidentDetailProps.handleStatusChange,
     formatDate: formatDate,

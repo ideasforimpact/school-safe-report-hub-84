@@ -191,10 +191,16 @@ export function useIncidentData() {
     }
   }, [state.employeeData?.clientId, state.isLoading]);
 
+  // Enhanced refetch function that ensures fresh data
+  const refetchIncidents = async () => {
+    console.log('Refetching incidents...');
+    await fetchIncidents();
+  };
+
   return {
     incidents,
     loading,
     error,
-    refetchIncidents: fetchIncidents
+    refetchIncidents
   };
 }

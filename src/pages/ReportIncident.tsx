@@ -336,11 +336,14 @@ const ReportIncident = () => {
         
         toast.success(`Incident reported successfully! Ticket ID: ${data.ticketId}`);
         
-        // Refetch incidents to get the latest data including the new incident
+        // Force refetch incidents to get the latest data including the new incident
         await refetchIncidents();
         
-        // Navigate to incidents list
-        navigate('/incidents');
+        // Add a small delay to ensure the refetch completes
+        setTimeout(() => {
+          // Navigate to incidents list
+          navigate('/incidents');
+        }, 100);
       }
     } catch (error) {
       console.error('Error submitting incident report:', error);
