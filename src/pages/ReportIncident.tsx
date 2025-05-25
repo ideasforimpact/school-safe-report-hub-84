@@ -141,7 +141,7 @@ const ReportIncident = () => {
       
       // Filter out empty people and validate that if people are added, they are complete
       const validPeople = peopleInvolved.filter(p => {
-        const hasAnyValue = p.name.trim() !== '' || p.role !== '' || p.notes?.trim() !== '';
+        const hasAnyValue = p.name.trim() !== '' || p.role !== 'Student' || p.notes?.trim() !== '';
         return hasAnyValue;
       });
       
