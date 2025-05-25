@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Comment as IncidentComment } from '@/types/incident';
 import {
@@ -11,7 +10,7 @@ import {
 import { Dialog } from '@/components/ui/dialog';
 import CommentForm from './CommentForm';
 import CommentItem from './CommentItem';
-import { useIncidents } from '@/contexts/IncidentContext';
+import { useIncidents } from '@/contexts/incident'; // Fixed import path
 
 interface CommentsListProps {
   comments: IncidentComment[];

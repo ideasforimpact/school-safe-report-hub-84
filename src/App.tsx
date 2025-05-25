@@ -1,11 +1,10 @@
-
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
 import { AuthProvider } from '@/contexts/auth';
 import { ClientProvider } from '@/contexts/ClientContext';
 import { StudentProvider } from './contexts/StudentContext';
-import { IncidentProvider } from './contexts/incident';
+import { IncidentProvider } from './contexts/incident'; // Fixed import path - using the proper context
 import { EmployeeVerificationProvider } from './contexts/employee-verification';
 import { FacilityProvider } from './contexts/FacilityContext';
 import { AssessmentProvider } from '@/contexts/assessment/AssessmentContext';

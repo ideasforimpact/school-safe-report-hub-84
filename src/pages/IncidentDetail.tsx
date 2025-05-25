@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { AlertTriangle, ArrowLeft } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useIncidentDetail } from '@/hooks/useIncidentDetail';
-import { useIncidents } from '@/contexts/incident/IncidentContext';
+import { useIncidents } from '@/contexts/incident'; // Fixed import path
 import { useState, useEffect } from 'react';
 
 const IncidentDetail = () => {
