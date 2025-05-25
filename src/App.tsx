@@ -43,7 +43,7 @@ import EmployeeDetailPage from '@/pages/employee-verification/EmployeeDetailPage
 import UploadDocumentPage from '@/pages/employee-verification/UploadDocumentPage';
 import VerificationDashboardPage from '@/pages/employee-verification/VerificationDashboardPage';
 import BackofficeLogin from '@/pages/BackofficeLogin';
-import SettingsPage from '@/pages/SettingsPage'; // New import for Settings Page
+import SettingsPage from '@/pages/SettingsPage';
 
 // Layout for Backoffice
 import BackofficeLayout from '@/components/layout/BackofficeLayout';
@@ -94,11 +94,13 @@ function App() {
                     {/* Profile route */}
                     <Route path="/profile" element={<ProfilePage />} />
 
-                    {/* Incident routes */}
+                    {/* Incident routes - Make sure both patterns work */}
                     <Route path="/incidents" element={<IncidentsList />} />
                     <Route path="/incidents/:id" element={<IncidentDetail />} />
+                    <Route path="/incident/:id" element={<IncidentDetail />} />
                     <Route path="/report-incident" element={<ReportIncident />} />
                     <Route path="/edit-incident/:id" element={<EditIncident />} />
+                    <Route path="/incidents/:id/edit" element={<EditIncident />} />
                     <Route path="/insights" element={<Insights />} />
 
                     {/* Assessment routes */}
