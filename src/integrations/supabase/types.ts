@@ -684,6 +684,7 @@ export type Database = {
           assigned_to: string | null
           category_id: string | null
           client_id: string | null
+          comments: Json | null
           contributing_factor: Json | null
           created_at: string
           created_by: string
@@ -707,6 +708,7 @@ export type Database = {
           assigned_to?: string | null
           category_id?: string | null
           client_id?: string | null
+          comments?: Json | null
           contributing_factor?: Json | null
           created_at?: string
           created_by: string
@@ -730,6 +732,7 @@ export type Database = {
           assigned_to?: string | null
           category_id?: string | null
           client_id?: string | null
+          comments?: Json | null
           contributing_factor?: Json | null
           created_at?: string
           created_by?: string

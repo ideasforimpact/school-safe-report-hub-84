@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Incident, IncidentType, IncidentCategory, IncidentLocation, IncidentStatus, Person, Document, ContributingFactor } from '@/types/incident';
+import { Incident, IncidentType, IncidentCategory, IncidentLocation, IncidentStatus, Person, Document, ContributingFactor, Comment } from '@/types/incident';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { toast } from 'sonner';
@@ -101,6 +101,39 @@ export function useIncidentData() {
             })
           : [];
 
+        // Convert comments from Json[] to Comment[]
+        const comments: Comment[] = Array.isArray(incident.comments)
+          ? incident.comments.map((comment: any) => {
+              if (typeof comment === 'object' && comment !== null) {
+                return {
+                  id: comment.id || '',
+                  description: comment.description || '',
+                  dueDate: comment.dueDate ? new Date(comment.dueDate) : new Date(),
+                  assignedTo: comment.assignedTo || { id: '', name: '' },
+                  status: comment.status || 'Pending' as 'Pending' | 'In Progress' | 'Completed',
+                  createdBy: comment.createdBy || { id: '', name: '' },
+                  image: comment.image,
+                  video: comment.video,
+                  document: comment.document,
+                  files: comment.files || [],
+                  createdAt: comment.createdAt ? new Date(comment.createdAt) : new Date(),
+                  updatedAt: comment.updatedAt ? new Date(comment.updatedAt) : new Date()
+                };
+              }
+              return {
+                id: '',
+                description: String(comment),
+                dueDate: new Date(),
+                assignedTo: { id: '', name: '' },
+                status: 'Pending' as 'Pending' | 'In Progress' | 'Completed',
+                createdBy: { id: '', name: '' },
+                files: [],
+                createdAt: new Date(),
+                updatedAt: new Date()
+              };
+            })
+          : [];
+
         return {
           id: incident.id,
           ticketId: incident.ticket_id,
@@ -124,6 +157,7 @@ export function useIncidentData() {
           } : undefined,
           facility: incident.facilities?.name,
           documents,
+          comments, // Use the new comments from database
           createdAt: new Date(incident.created_at),
           updatedAt: new Date(incident.updated_at),
           priority: incident.incident_priorities?.name as 'Low' | 'Medium' | 'High' | 'Critical' | undefined,

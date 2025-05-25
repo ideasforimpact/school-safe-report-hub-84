@@ -107,7 +107,7 @@ export interface Incident {
   document?: string;
   documents?: Document[];
   actions?: Action[];
-  comments?: Comment[];
+  comments?: Comment[]; // Updated to use the new comments column from database
   actionItems?: ActionItem[]; // Keep for backward compatibility
   createdAt: Date;
   updatedAt: Date;
