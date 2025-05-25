@@ -37,6 +37,7 @@ const ReportIncident = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [isFormPopulated, setIsFormPopulated] = useState(false);
+  const [isFormReady, setIsFormReady] = useState(false);
   
   // Use the incident detail hook
   const { incident: existingIncident, isLoading: isLoadingIncident, error: incidentError, getFormData } = useIncidentDetail(incidentId);
@@ -73,25 +74,38 @@ const ReportIncident = () => {
   useEffect(() => {
     setIsEditMode(!!incidentId);
     setIsFormPopulated(false);
+    setIsFormReady(false);
   }, [incidentId]);
 
   // Populate form data when incident is loaded - memoized to prevent infinite loops
   const populateFormData = useCallback(() => {
-    if (existingIncident && !isLoadingIncident && !isFormPopulated) {
+    if (existingIncident && !isLoadingIncident && !isFormPopulated && isEditMode) {
+      console.log('Populating form data with incident:', existingIncident);
       const mappedFormData = getFormData();
       if (mappedFormData) {
         setFormData(mappedFormData);
         setPeopleInvolved(existingIncident.people_involved || []);
         setIsFormPopulated(true);
+        console.log('Form data populated successfully');
       }
     }
-  }, [existingIncident, isLoadingIncident, isFormPopulated, getFormData, setFormData, setPeopleInvolved]);
+  }, [existingIncident, isLoadingIncident, isFormPopulated, isEditMode, getFormData, setFormData, setPeopleInvolved]);
 
   useEffect(() => {
-    if (isEditMode) {
-      populateFormData();
-    }
-  }, [isEditMode, populateFormData]);
+    populateFormData();
+  }, [populateFormData]);
+
+  // Check if form is ready (all data loaded and populated)
+  useEffect(() => {
+    const isDataReady = !isLoadingEmployees && (!isEditMode || (!isLoadingIncident && isFormPopulated));
+    setIsFormReady(isDataReady);
+    console.log('Form ready status:', isDataReady, {
+      isLoadingEmployees,
+      isEditMode,
+      isLoadingIncident,
+      isFormPopulated
+    });
+  }, [isLoadingEmployees, isEditMode, isLoadingIncident, isFormPopulated]);
 
   // Handle incident loading error
   useEffect(() => {
@@ -106,8 +120,10 @@ const ReportIncident = () => {
     const fetchEmployees = async () => {
       try {
         setIsLoadingEmployees(true);
+        console.log('Fetching employees...');
         const fetchedEmployees = await getAllEmployeesFromApi();
         setEmployees(fetchedEmployees);
+        console.log('Employees fetched successfully:', fetchedEmployees.length);
       } catch (error) {
         console.error("Failed to fetch employees:", error);
         toast.error("Could not load staff members");
@@ -321,8 +337,12 @@ const ReportIncident = () => {
     priority: formData.priority || 'Medium' as 'Low' | 'Medium' | 'High' | 'Critical'
   };
 
-  // Show loading state while fetching incident in edit mode OR while loading employees
-  if ((isEditMode && isLoadingIncident) || isLoadingEmployees) {
+  // Show loading state until form is completely ready
+  if (!isFormReady) {
+    const loadingMessage = isEditMode 
+      ? (isLoadingIncident ? 'Loading incident details...' : 'Populating form data...') 
+      : 'Loading form data...';
+
     return (
       <Layout>
         <div className="space-y-4 md:space-y-6 w-full overflow-x-hidden bg-gray-50 min-h-screen">
@@ -332,7 +352,7 @@ const ReportIncident = () => {
                 {isEditMode ? 'Edit Incident' : 'Report New Incident'}
               </h1>
               <p className="text-gray-600 text-sm mt-1">
-                {isLoadingIncident ? 'Loading incident details...' : 'Loading form data...'}
+                {loadingMessage}
               </p>
             </div>
           </div>
@@ -341,7 +361,7 @@ const ReportIncident = () => {
               <div className="text-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
                 <p className="mt-4 text-gray-600">
-                  {isLoadingIncident ? 'Loading incident details...' : 'Loading form data...'}
+                  {loadingMessage}
                 </p>
               </div>
             </div>
