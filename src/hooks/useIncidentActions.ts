@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { Incident, Activity, User, UserRef, Document } from '@/types/incident';
+import { Incident, Activity, User, UserRef, Document, IncidentType, IncidentCategory, IncidentLocation } from '@/types/incident';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { v4 as uuidv4 } from 'uuid';
@@ -19,7 +19,7 @@ interface IncidentData extends Omit<Incident, 'id' | 'status' | 'createdAt' | 'u
 
 export function useIncidentActions(
   incidents: Incident[], 
-  setIncidents: React.Dispatch<React.SetStateAction<Incident[]>>,
+  refetchIncidents: () => void,
   activities: Activity[],
   setActivities: React.Dispatch<React.SetStateAction<Activity[]>>,
   users: User[]
@@ -154,13 +154,13 @@ export function useIncidentActions(
         priority: incidentData.priority
       };
       
-      // Update local state
-      setIncidents(prev => [newIncident, ...prev]);
+      // Trigger refetch instead of updating local state
+      refetchIncidents();
       
       toast.success(`${incidentData.type} reported successfully!`);
       
       return newIncident;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to create incident:', error);
       toast.error(`Failed to create incident: ${error.message}`);
       throw error;
@@ -186,10 +186,8 @@ export function useIncidentActions(
         return;
       }
 
-      // Update the local state first for immediate feedback
-      setIncidents(prevIncidents => prevIncidents.map(inc => 
-        inc.id === id ? { ...inc, ...updates, updatedAt: new Date() } : inc
-      ));
+      // Trigger refetch for immediate feedback
+      refetchIncidents();
 
       // Create activity record for the update
       const currentUser: UserRef = {
@@ -210,7 +208,7 @@ export function useIncidentActions(
       });
 
       toast.success('Incident updated successfully');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating incident:', error);
       toast.error(`Failed to update incident: ${error.message}`);
       throw error;

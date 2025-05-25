@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Incident } from '@/types/incident';
+import { Incident, IncidentType, IncidentCategory, IncidentLocation, IncidentStatus } from '@/types/incident';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { toast } from 'sonner';
@@ -49,14 +49,14 @@ export function useIncidentData() {
       const transformedIncidents: Incident[] = (data || []).map(incident => ({
         id: incident.id,
         ticketId: incident.ticket_id,
-        type: incident.incident_report_types?.name || 'Incident',
-        category: incident.incident_categories?.name || 'Other',
+        type: (incident.incident_report_types?.name || 'Incident') as IncidentType,
+        category: (incident.incident_categories?.name || 'Other') as IncidentCategory,
         subcategory: incident.incident_subcategories?.name || '',
         description: incident.description || '',
         date: new Date(incident.date),
-        location: 'On Campus', // You might want to add a locations table lookup
-        peopleInvolved: incident.people_involved || [],
-        status: incident.incident_status?.name || 'New',
+        location: 'On Campus' as IncidentLocation,
+        peopleInvolved: Array.isArray(incident.people_involved) ? incident.people_involved : [],
+        status: (incident.incident_status?.name || 'New') as IncidentStatus,
         reportedBy: {
           id: incident.created_by_employee?.id || incident.created_by,
           name: incident.created_by_employee 
@@ -68,16 +68,16 @@ export function useIncidentData() {
           name: `${incident.assigned_to_employee.first_name} ${incident.assigned_to_employee.last_name}`
         } : undefined,
         facility: incident.facilities?.name,
-        documents: incident.documents || [],
+        documents: Array.isArray(incident.documents) ? incident.documents : [],
         createdAt: new Date(incident.created_at),
         updatedAt: new Date(incident.updated_at),
-        priority: incident.incident_priorities?.name
+        priority: incident.incident_priorities?.name as 'Low' | 'Medium' | 'High' | 'Critical' | undefined
       }));
 
       setIncidents(transformedIncidents);
       console.log('Successfully fetched incidents:', transformedIncidents.length);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error in fetchIncidents:', error);
       setError(error.message);
       toast.error(error.message);
@@ -90,12 +90,12 @@ export function useIncidentData() {
   useEffect(() => {
     if (state.employeeData?.clientId) {
       fetchIncidents();
-    } else if (!state.loading) {
+    } else if (!state.isLoading) {
       // Only show error if not still loading employee data
       setError("Access denied: No client association found");
       setLoading(false);
     }
-  }, [state.employeeData?.clientId, state.loading]);
+  }, [state.employeeData?.clientId, state.isLoading]);
 
   return {
     incidents,

@@ -1,4 +1,5 @@
-import React, { createContext, useState, useContext, ReactNode } from 'react';
+
+import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { IncidentContextType } from './types';
 import { useConfigManagement } from '@/hooks/useConfigManagement'; 
 import { 
@@ -94,7 +95,7 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
     getIncident,
     addActivity,
     isSubmitting
-  } = useIncidentActions(incidents, () => {
+  } = useIncidentActions(incidents, (updatedIncidents) => {
     // Instead of directly setting incidents, refetch from database
     refetchIncidents();
   }, activities, setActivities, users);
@@ -105,12 +106,12 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
     getIncidentActivities
   } = useActivities(incidents, activities);
 
-  // Use the comments hook
+  // Use the comments hook - create a dummy setIncidents function since we don't need it
   const {
     addComment,
     updateComment,
     deleteComment
-  } = useComments(incidents, setIncidents, activities, setActivities, users);
+  } = useComments(incidents, () => {}, activities, setActivities, users);
 
   // Use the action items hook
   const {
