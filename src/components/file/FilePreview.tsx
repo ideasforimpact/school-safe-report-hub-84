@@ -18,8 +18,8 @@ interface FilePreviewProps {
 const FilePreview: React.FC<FilePreviewProps> = ({ file }) => {
   const [previewOpen, setPreviewOpen] = useState(false);
 
-  // Only allow preview for images
-  const canPreview = file.type.startsWith('image/');
+  // Only allow preview for images with proper null check
+  const canPreview = (file.type || '').startsWith('image/');
 
   const handlePreviewClick = () => {
     if (canPreview) {

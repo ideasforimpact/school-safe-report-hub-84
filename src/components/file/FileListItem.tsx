@@ -15,22 +15,25 @@ interface FileListItemProps {
 
 const FileListItem: React.FC<FileListItemProps> = ({ file, onPreview, onRemove }) => {
   const getFileIcon = () => {
-    if (file.type.startsWith('image/')) {
+    const fileType = file.type || '';
+    if (fileType.startsWith('image/')) {
       return <ImageIcon className="h-4 w-4 mr-2 flex-shrink-0" />;
-    } else if (file.type.startsWith('video/')) {
+    } else if (fileType.startsWith('video/')) {
       return <Video className="h-4 w-4 mr-2 flex-shrink-0" />;
-    } else if (file.type.startsWith('application/pdf') || 
-               file.type.includes('document')) {
+    } else if (fileType.startsWith('application/pdf') || 
+               fileType.includes('document')) {
       return <FileText className="h-4 w-4 mr-2 flex-shrink-0" />;
     } else {
       return <File className="h-4 w-4 mr-2 flex-shrink-0" />;
     }
   };
 
+  const isImage = (file.type || '').startsWith('image/');
+
   return (
     <div className="flex items-center justify-between bg-gray-50 p-2 rounded-md border border-gray-200">
       <div className="flex items-center overflow-hidden flex-grow">
-        {file.type.startsWith('image/') ? (
+        {isImage ? (
           <div className="flex items-center cursor-pointer" onClick={() => onPreview(file)}>
             <FilePreview file={file} />
             <div className="overflow-hidden">
@@ -51,7 +54,7 @@ const FileListItem: React.FC<FileListItemProps> = ({ file, onPreview, onRemove }
         )}
       </div>
       <div className="flex items-center">
-        {file.type.startsWith('image/') && (
+        {isImage && (
           <Button 
             type="button" 
             variant="ghost" 

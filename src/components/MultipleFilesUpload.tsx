@@ -64,7 +64,7 @@ const MultipleFilesUpload = ({
       const newFile = {
         id: `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         name: file.name,
-        type: file.type,
+        type: file.type || '', // Provide fallback for undefined type
         size: file.size,
         base64: reader.result as string
       };
@@ -175,7 +175,7 @@ const MultipleFilesUpload = ({
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-center items-center py-4">
-            {previewFile?.type.startsWith('image/') && (
+            {previewFile && (previewFile.type || '').startsWith('image/') && (
               <img 
                 src={previewFile.base64} 
                 alt={previewFile.name} 
