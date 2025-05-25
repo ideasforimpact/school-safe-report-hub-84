@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { User, UserRole, EmployeeData } from '../types';
 import { getUserFromStorage, saveUserToStorage, saveEmployeeDataToStorage } from '@/services/auth/authService';
@@ -44,6 +43,9 @@ export const useAuthHandlers = ({
   dispatch
 }: UseAuthHandlersProps) => {
   const [isProcessingAuth, setIsProcessingAuth] = useState(false);
+  
+  // Debug log to check if dispatch is available in useAuthHandlers
+  console.log("useAuthHandlers - dispatch available:", !!dispatch);
   
   // New function to fetch configured modules for an employee
   const fetchConfiguredModules = useCallback(async (employeeId: string, clientId: string | null, isSuperAdmin: boolean) => {
@@ -234,6 +236,7 @@ export const useAuthHandlers = ({
         
         // Clear Redux state if dispatch is available
         if (dispatch) {
+          console.log("useAuthHandlers - Dispatching resetEmployee for null user");
           dispatch(resetEmployee());
         }
       }
@@ -243,7 +246,7 @@ export const useAuthHandlers = ({
     try {
       setIsProcessingAuth(true);
 
-      console.log("Processing authentication for user:", supabaseUser.email);
+      console.log("useAuthHandlers - Processing authentication for user:", supabaseUser.email);
       
       // Extract auth provider from user metadata or email
       let provider = (supabaseUser.app_metadata?.provider || 'email') as string;
@@ -328,9 +331,9 @@ export const useAuthHandlers = ({
             return;
           }
           
-          console.log("Found employee record by user_id:", employeeData);
+          console.log("useAuthHandlers - Found employee record by user_id:", employeeData);
         } else if (error) {
-          console.log("Error finding employee by user_id:", error);
+          console.log("useAuthHandlers - Error finding employee by user_id:", error);
         }
       }
       
@@ -397,15 +400,15 @@ export const useAuthHandlers = ({
               .eq('id', data.id);
           }
           
-          console.log("Found employee record by email:", employeeData);
+          console.log("useAuthHandlers - Found employee record by email:", employeeData);
         } else if (error) {
-          console.log("Error finding employee by email:", error);
+          console.log("useAuthHandlers - Error finding employee by email:", error);
         }
       }
 
       // If no employee record was found, alert the user and sign out
       if (!employeeData) {
-        console.log("No employee record found for authenticated user");
+        console.log("useAuthHandlers - No employee record found for authenticated user");
         setAuthError("No employee record found for your account. Please contact an administrator.");
         toast.error("No employee record found for your account. Please contact an administrator.");
         
@@ -487,22 +490,25 @@ export const useAuthHandlers = ({
       
       // Save employee data to localStorage, context, and Redux
       if (employeeData) {
-        console.log("Employee data being saved during auth:", employeeData);
+        console.log("useAuthHandlers - Employee data being saved during auth:", employeeData);
         
         // Store employee data in Redux - CRITICAL FIX
         if (dispatch) {
-          console.log("Dispatching setEmployeeData to Redux during auth:", employeeData);
+          console.log("useAuthHandlers - Dispatching setEmployeeData to Redux during auth:", employeeData);
           dispatch(setEmployeeData(employeeData));
           
           // Also set clientId in Redux
           if (employeeData.clientId) {
+            console.log("useAuthHandlers - Dispatching setClientId to Redux during auth:", employeeData.clientId);
             dispatch(setClientId(employeeData.clientId));
           }
+        } else {
+          console.error("useAuthHandlers - dispatch is not available, cannot set employee data in Redux");
         }
         
         // FETCH MODULES HERE if employee is a super admin or has a client ID
         if (dispatch && employeeData.id && employeeData.clientId) {
-          console.log("Fetching modules during authentication process");
+          console.log("useAuthHandlers - Fetching modules during authentication process");
           dispatch(setLoading(true));
           
           // Get configured modules based on super admin status
@@ -513,13 +519,13 @@ export const useAuthHandlers = ({
           );
           
           // Store modules in Redux
-          console.log("Storing modules in Redux during auth:", modules.length);
+          console.log("useAuthHandlers - Storing modules in Redux during auth:", modules.length);
           dispatch(setConfiguredModules(modules));
           dispatch(setLoading(false));
         }
         
         // Also update context and localStorage for backward compatibility
-        dispatch(setEmployeeData(employeeData))
+        setEmployeeData(employeeData);
         saveEmployeeDataToStorage(employeeData);
       }
 
@@ -531,7 +537,7 @@ export const useAuthHandlers = ({
       // Mark auth initialization as complete
       authInitCompleteRef.current = true;
     } catch (error) {
-      console.error('Authentication processing error:', error);
+      console.error('useAuthHandlers - Authentication processing error:', error);
       setAuthError('Failed to process authentication');
       toast.error('Authentication failed. Please try again.');
       

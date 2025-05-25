@@ -60,6 +60,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Access EmployeeStore - available since we are now properly wrapped with EmployeeProvider
   const { dispatch } = useEmployeeStore();
 
+  // Debug log to check if dispatch is available
+  console.log("AuthProvider - dispatch available:", !!dispatch);
+
   // Import useAuthHandlers to get handleUserAuthentication function
   const { handleUserAuthentication } = useAuthHandlers({
     user: currentUser,
@@ -89,20 +92,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session?.user) {
         try {
+          console.log("Auth state change - SIGNED_IN detected, calling handleUserAuthentication");
           // Use setTimeout to avoid potential deadlock issues with Supabase auth
           setTimeout(async () => {
             await handleUserAuthentication(session.user);
           }, 0);
         } catch (error) {
+          console.error("Error in handleUserAuthentication:", error);
           toast.error("Authentication failed. Please try again.");
         }
       } else if (event === 'SIGNED_OUT') {
+        console.log("Auth state change - SIGNED_OUT detected, clearing state");
         setCurrentUser(null);
         setEmployeeDataState(null); // Clear employee data on logout
         saveEmployeeDataToStorage(null); // Clear from storage
         setAuthError(null);
         
         // Clear Redux state on logout - FIXED: Properly dispatch action
+        console.log("Dispatching resetEmployee on logout");
         dispatch(resetEmployee());
         
         // Add a toast message for logout
@@ -168,11 +175,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const user = loginUser(email, password, users);
 
       if (user) {
+        console.log("Regular user login successful, setting current user");
         setCurrentUser(user);
         saveUserToStorage(user);
         
         // Fetch employee data after successful login
         try {
+          console.log("Dispatching setLoading(true) after regular login");
           dispatch(setLoading(true));
           
           const { data: employeeData, error } = await supabase
@@ -193,20 +202,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               employeeType: employeeData.employee_type
             };
             
+            console.log("Employee data fetched for regular user:", employee);
+            
             // Update local state
             setEmployeeDataState(employee);
             saveEmployeeDataToStorage(employee);
             
             // Update Redux state using action creators properly - FIXED: Dispatch the action object
+            console.log("Dispatching setEmployeeData for regular user:", employee);
             dispatch(setEmployeeData(employee));
             
             if (employee.clientId) {
+              console.log("Dispatching setClientId for regular user:", employee.clientId);
               dispatch(setClientId(employee.clientId));
             }
           }
           
+          console.log("Dispatching setLoading(false) after regular login");
           dispatch(setLoading(false));
         } catch (err) {
+          console.error("Error fetching employee data for regular user:", err);
           dispatch(setLoading(false));
         }
         
@@ -326,6 +341,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setAuthError("Invalid credentials");
       return false;
     } catch (error) {
+      console.error("Login error:", error);
       setAuthError("Login failed");
       toast.error("Login failed");
       return false;
