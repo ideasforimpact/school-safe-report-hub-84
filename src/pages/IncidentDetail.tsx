@@ -1,3 +1,4 @@
+
 import Layout from '@/components/layout/Layout';
 import IncidentDetailContent from '@/components/incident/IncidentDetailContent';
 import { useIncidentDetailPage } from '@/hooks/useIncidentDetailPage';
@@ -21,9 +22,6 @@ const IncidentDetail = () => {
   
   const [incident, setIncident] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [commentText, setCommentText] = useState('');
-  const [commentFiles, setCommentFiles] = useState<FileItem[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Priority: Use fetched incident data if available, otherwise fall back to context
   useEffect(() => {
@@ -62,7 +60,7 @@ const IncidentDetail = () => {
         createdAt: new Date(fetchedIncident.date),
         updatedAt: new Date(fetchedIncident.date),
         priority: fetchedIncident.priority.name,
-        comments: fetchedIncident.comments || [] // Make sure comments are included
+        comments: fetchedIncident.comments || []
       };
       console.log("IncidentDetail - Using fetched incident data:", convertedIncident);
       setIncident(convertedIncident);
@@ -88,24 +86,9 @@ const IncidentDetail = () => {
     incident?.status || 'Open'
   );
   
-  // Comment submission handler with edge function integration
-  const handleCommentSubmit = async () => {
-    if (!commentText.trim() || isSubmitting) return;
-    
-    setIsSubmitting(true);
-    try {
-      // The CommentForm will handle the submission via the edge function
-      // Reset form after successful submission
-      setCommentText('');
-      setCommentFiles([]);
-      
-      // Refresh the incident data after comment is added
-      window.location.reload(); // Simple refresh for now
-    } catch (error) {
-      console.error('Error submitting comment:', error);
-    } finally {
-      setIsSubmitting(false);
-    }
+  // Refresh function to reload incident data
+  const handleRefreshIncident = () => {
+    window.location.reload();
   };
   
   if (isLoading || isFetchingIncident) {
@@ -161,12 +144,12 @@ const IncidentDetail = () => {
     statusUpdate,
     setStatusUpdate,
     incidentActivities: incidentDetailProps.incidentActivities || [],
-    commentText,
-    setCommentText,
-    commentFiles,
-    setCommentFiles,
-    isSubmitting,
-    handleCommentSubmit,
+    commentText: '',
+    setCommentText: () => {},
+    commentFiles: [],
+    setCommentFiles: () => {},
+    isSubmitting: false,
+    handleCommentSubmit: handleRefreshIncident,
     handleActionSubmit: () => Promise.resolve(),
     handleStatusChange: incidentDetailProps.handleStatusChange,
     formatDate: formatDate,

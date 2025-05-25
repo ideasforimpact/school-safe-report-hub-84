@@ -5,6 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import MultipleFilesUpload from '@/components/MultipleFilesUpload';
 import { useAddIncidentComment } from '@/hooks/useAddIncidentComment';
+import { toast } from 'sonner';
 import {
   DialogContent,
   DialogHeader,
@@ -41,8 +42,18 @@ const CommentForm: React.FC<CommentFormProps> = ({
     e.preventDefault();
     
     if (!commentText.trim()) {
+      toast.error('Please enter a comment');
       return;
     }
+
+    if (!incidentId) {
+      toast.error('Incident ID is required');
+      return;
+    }
+
+    console.log('Submitting comment for incident:', incidentId);
+    console.log('Comment text:', commentText);
+    console.log('Files:', files);
 
     // Prepare documents array with file names
     const documents = files.map(file => file.name);

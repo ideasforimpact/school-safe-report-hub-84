@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -47,6 +46,7 @@ export interface IncidentDetail {
   };
   people_involved: any[];
   documents: any[];
+  comments: any[];
 }
 
 export const fetchIncidentWithRelations = async (incidentId: string): Promise<IncidentDetail | null> => {
@@ -60,6 +60,7 @@ export const fetchIncidentWithRelations = async (incidentId: string): Promise<In
         date,
         people_involved,
         documents,
+        comments,
         type_id,
         category_id,
         subcategory_id,
@@ -181,7 +182,8 @@ export const fetchIncidentWithRelations = async (incidentId: string): Promise<In
         last_name: createdEmployee.last_name
       },
       people_involved: Array.isArray(incident.people_involved) ? incident.people_involved : [],
-      documents: Array.isArray(incident.documents) ? incident.documents : []
+      documents: Array.isArray(incident.documents) ? incident.documents : [],
+      comments: Array.isArray(incident.comments) ? incident.comments : []
     };
 
     return transformedIncident;
