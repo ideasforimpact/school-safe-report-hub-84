@@ -25,7 +25,7 @@ interface CommentItemProps {
 const CommentItem: React.FC<CommentItemProps> = ({
   comment,
   formatDate,
-  formatDateTime, // This was missing before
+  formatDateTime,
   getCommentStatusColor,
   canEdit,
   onEdit,

@@ -17,12 +17,13 @@ const FilePreview: React.FC<FilePreviewProps> = ({ file }) => {
   const [previewOpen, setPreviewOpen] = useState(false);
   
   const getFileIcon = (fileType: string) => {
-    if (fileType.startsWith('image/')) {
+    const safeFileType = fileType || '';
+    if (safeFileType.startsWith('image/')) {
       return <ImageIcon className="h-4 w-4 mr-2 flex-shrink-0" />;
-    } else if (fileType.startsWith('video/')) {
+    } else if (safeFileType.startsWith('video/')) {
       return <Video className="h-4 w-4 mr-2 flex-shrink-0" />;
-    } else if (fileType.startsWith('application/pdf') || 
-               fileType.includes('document')) {
+    } else if (safeFileType.startsWith('application/pdf') || 
+               safeFileType.includes('document')) {
       return <FileText className="h-4 w-4 mr-2 flex-shrink-0" />;
     } else {
       return <File className="h-4 w-4 mr-2 flex-shrink-0" />;
@@ -30,12 +31,16 @@ const FilePreview: React.FC<FilePreviewProps> = ({ file }) => {
   };
 
   const openPreview = () => {
-    if (file.type.startsWith('image/')) {
+    const safeFileType = file.type || '';
+    if (safeFileType.startsWith('image/')) {
       setPreviewOpen(true);
     }
   };
 
-  if (file.type.startsWith('image/')) {
+  const safeFileType = file.type || '';
+  const isImage = safeFileType.startsWith('image/');
+
+  if (isImage) {
     return (
       <>
         <div 
@@ -75,7 +80,7 @@ const FilePreview: React.FC<FilePreviewProps> = ({ file }) => {
     return (
       <div className="border p-2 rounded bg-gray-50 w-full">
         <div className="flex items-center">
-          {getFileIcon(file.type)}
+          {getFileIcon(safeFileType)}
           <p className="text-xs truncate">{file.name}</p>
         </div>
       </div>
