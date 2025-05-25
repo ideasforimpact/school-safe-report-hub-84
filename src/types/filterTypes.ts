@@ -36,6 +36,9 @@ export interface FilterHookReturn {
   availableLocations: string[];
   availableFacilities: string[];
   availableOwners: { id: string; name: string; }[];
+  priorityOptions?: string[];
+  statusOptions?: string[];
+  locationOptions?: string[];
   handleFilterChange: (field: string, value: any) => void;
   toggleAdvancedFilters: () => void;
   clearFilters: () => void;

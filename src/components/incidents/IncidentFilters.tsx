@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Search, Calendar, ChevronDown, ChevronUp, Filter } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -25,6 +26,9 @@ interface IncidentFiltersProps {
   availableLocations?: string[];
   availableFacilities?: string[];
   availableOwners?: {id: string, name: string}[];
+  priorityOptions?: string[];
+  locationOptions?: string[];
+  statusOptions?: string[];
 }
 
 const IncidentFilters = ({
@@ -36,7 +40,10 @@ const IncidentFilters = ({
   availableSubcategories,
   availableLocations = [],
   availableFacilities = [],
-  availableOwners = []
+  availableOwners = [],
+  priorityOptions = [],
+  locationOptions = [],
+  statusOptions = []
 }: IncidentFiltersProps) => {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -92,14 +99,14 @@ const IncidentFilters = ({
               <Select 
                 value={filters.location} 
                 onValueChange={(value) => onFilterChange('location', value)}
-                disabled={availableLocations.length === 0}
+                disabled={locationOptions.length === 0}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Location" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white z-50">
                   <SelectItem value="">All Locations</SelectItem>
-                  {availableLocations.map(location => (
+                  {locationOptions.map(location => (
                     <SelectItem key={location} value={location}>{location}</SelectItem>
                   ))}
                 </SelectContent>
@@ -108,15 +115,16 @@ const IncidentFilters = ({
               <Select 
                 value={filters.status} 
                 onValueChange={(value) => onFilterChange('status', value)}
+                disabled={statusOptions.length === 0}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white z-50">
                   <SelectItem value="">All Statuses</SelectItem>
-                  <SelectItem value="Open">Open</SelectItem>
-                  <SelectItem value="In Progress">In Progress</SelectItem>
-                  <SelectItem value="Closed">Closed</SelectItem>
+                  {statusOptions.map(status => (
+                    <SelectItem key={status} value={status}>{status}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -130,7 +138,7 @@ const IncidentFilters = ({
                 <SelectTrigger>
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white z-50">
                   <SelectItem value="">All Categories</SelectItem>
                   {availableCategories.map(category => (
                     <SelectItem key={category} value={category}>{category}</SelectItem>
@@ -146,7 +154,7 @@ const IncidentFilters = ({
                 <SelectTrigger>
                   <SelectValue placeholder="Subcategory" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white z-50">
                   <SelectItem value="">All Subcategories</SelectItem>
                   {availableSubcategories.map(subcategory => (
                     <SelectItem key={subcategory} value={subcategory}>{subcategory}</SelectItem>
@@ -157,16 +165,16 @@ const IncidentFilters = ({
               <Select 
                 value={filters.priority} 
                 onValueChange={(value) => onFilterChange('priority', value)}
+                disabled={priorityOptions.length === 0}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Priority" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white z-50">
                   <SelectItem value="">All Priorities</SelectItem>
-                  <SelectItem value="Critical">Critical</SelectItem>
-                  <SelectItem value="High">High</SelectItem>
-                  <SelectItem value="Medium">Medium</SelectItem>
-                  <SelectItem value="Low">Low</SelectItem>
+                  {priorityOptions.map(priority => (
+                    <SelectItem key={priority} value={priority}>{priority}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -222,7 +230,7 @@ const IncidentFilters = ({
                         <SelectTrigger>
                           <SelectValue placeholder="Type" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="bg-white z-50">
                           <SelectItem value="">All Types</SelectItem>
                           <SelectItem value="Incident">Incident</SelectItem>
                           <SelectItem value="Near Miss">Near Miss</SelectItem>
@@ -238,7 +246,7 @@ const IncidentFilters = ({
                         <SelectTrigger>
                           <SelectValue placeholder="Facility" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="bg-white z-50">
                           <SelectItem value="">All Facilities</SelectItem>
                           {availableFacilities.map(facility => (
                             <SelectItem key={facility} value={facility}>{facility}</SelectItem>
@@ -256,7 +264,7 @@ const IncidentFilters = ({
                         <SelectTrigger>
                           <SelectValue placeholder="Owner" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="bg-white z-50">
                           <SelectItem value="">All Owners</SelectItem>
                           {availableOwners.map(owner => (
                             <SelectItem key={owner.id} value={owner.id}>{owner.name}</SelectItem>
@@ -271,7 +279,7 @@ const IncidentFilters = ({
                         <SelectTrigger>
                           <SelectValue placeholder="Person Involved Role" />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="bg-white z-50">
                           <SelectItem value="">Any Role</SelectItem>
                           <SelectItem value="Student">Student</SelectItem>
                           <SelectItem value="Staff">Staff</SelectItem>

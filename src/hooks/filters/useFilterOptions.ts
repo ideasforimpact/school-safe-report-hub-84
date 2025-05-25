@@ -5,6 +5,7 @@ import { useLocation } from 'react-router-dom';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { categoryService } from '@/services/incident/categoryService';
 import { priorityService } from '@/services/incident/priorityService';
+import { supabase } from '@/integrations/supabase/client';
 
 // Hook to get filter options for incidents
 export const useFilterOptions = () => {
@@ -17,13 +18,13 @@ export const useFilterOptions = () => {
   const [categoryOptions, setCategoryOptions] = useState<string[]>([]);
   const [subcategoryOptions, setSubcategoryOptions] = useState<string[]>([]);
   const [priorityOptions, setPriorityOptions] = useState<string[]>([]);
+  const [statusOptions, setStatusOptions] = useState<string[]>([]);
   const [locationOptions, setLocationOptions] = useState<string[]>([]);
   const [facilityOptions, setFacilityOptions] = useState<string[]>([]);
-  const [statusOptions, setStatusOptions] = useState<string[]>(['Open', 'In Progress', 'Closed']);
   const [assigneeOptions, setAssigneeOptions] = useState<{id: string, name: string}[]>([]);
   const [reporterOptions, setReporterOptions] = useState<{id: string, name: string}[]>([]);
 
-  // Fetch categories, subcategories, and priorities from database
+  // Fetch categories, subcategories, priorities, and status from database
   useEffect(() => {
     const fetchFilterData = async () => {
       if (!state.employeeData?.clientId) {
@@ -44,10 +45,37 @@ export const useFilterOptions = () => {
         const priorities = await priorityService.getPriorities(state.employeeData.clientId, true);
         setPriorityOptions(priorities.map(priority => priority.name));
 
+        // Fetch status options from database
+        const { data: statusData, error: statusError } = await supabase
+          .from('incident_status')
+          .select('name')
+          .order('name');
+
+        if (statusError) {
+          console.error('Error fetching status options:', statusError);
+        } else {
+          setStatusOptions(statusData?.map(status => status.name) || []);
+        }
+
+        // Fetch locations from campuses table
+        const { data: campusData, error: campusError } = await supabase
+          .from('campuses')
+          .select('name')
+          .eq('client_id', state.employeeData.clientId)
+          .order('name');
+
+        if (campusError) {
+          console.error('Error fetching campus locations:', campusError);
+        } else {
+          setLocationOptions(campusData?.map(campus => campus.name) || []);
+        }
+
         console.log('Filter data loaded:', {
           categories: categories.length,
           subcategories: subcategories.length,
-          priorities: priorities.length
+          priorities: priorities.length,
+          status: statusData?.length || 0,
+          locations: campusData?.length || 0
         });
       } catch (error) {
         console.error('Error fetching filter data:', error);
@@ -60,10 +88,6 @@ export const useFilterOptions = () => {
   // Extract unique values from incidents for other filters
   useEffect(() => {
     if (incidents && incidents.length > 0) {
-      // Extract locations
-      const uniqueLocations = [...new Set(incidents.map(inc => inc.location))];
-      setLocationOptions(uniqueLocations);
-
       // Extract facilities
       const uniqueFacilities = [...new Set(incidents.map(inc => inc.facility).filter(Boolean) as string[])];
       setFacilityOptions(uniqueFacilities);
@@ -87,9 +111,9 @@ export const useFilterOptions = () => {
     categoryOptions,
     subcategoryOptions,
     priorityOptions,
+    statusOptions,
     locationOptions,
     facilityOptions,
-    statusOptions,
     assigneeOptions,
     reporterOptions,
     isInsightsPage,
