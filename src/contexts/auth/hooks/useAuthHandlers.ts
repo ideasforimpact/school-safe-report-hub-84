@@ -1,9 +1,11 @@
+
 import { useState, useCallback } from 'react';
 import { User, UserRole, EmployeeData } from '../types';
 import { getUserFromStorage, saveUserToStorage, saveEmployeeDataToStorage } from '@/services/auth/authService';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { setEmployeeData, setConfiguredModules, setLoading, setError, resetEmployee, setClientId } from '@/store/employeeActions';
+import { setConfiguredModules, setLoading, setError, resetEmployee, setClientId } from '@/store/employeeActions';
+import { EmployeeActionTypes } from '@/store/types';
 import { Module } from '@/store/types';
 import { extractDomain, isEmailDomainAllowed } from '@/utils/authProviders';
 
@@ -492,10 +494,13 @@ export const useAuthHandlers = ({
       if (employeeData) {
         console.log("useAuthHandlers - Employee data being saved during auth:", employeeData);
         
-        // Store employee data in Redux - CRITICAL FIX
+        // Store employee data in Redux - MANUAL DISPATCH FORMAT
         if (dispatch) {
-          console.log("useAuthHandlers - Dispatching setEmployeeData to Redux during auth:", employeeData);
-          dispatch(setEmployeeData(employeeData));
+          console.log("useAuthHandlers - Manually dispatching SET_EMPLOYEE_DATA to Redux during auth:", employeeData);
+          dispatch({
+            type: EmployeeActionTypes.SET_EMPLOYEE_DATA,
+            payload: employeeData
+          });
           
           // Also set clientId in Redux
           if (employeeData.clientId) {
