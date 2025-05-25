@@ -11,18 +11,19 @@ import {
   initialClasses, 
   initialSections 
 } from './initialData';
-import { generateSampleIncidents } from '@/utils/sampleIncidentData';
 import { useIncidentActions } from '@/hooks/useIncidentActions';
 import { useActivities } from '@/hooks/useActivities';
 import { useComments } from '@/hooks/useComments';
 import { useActionItems } from '@/hooks/useActionItems';
 import { generateTicketId } from '@/utils/incidentUtils';
 import { Activity, Incident } from '@/types/incident';
+import { useIncidentData } from '@/hooks/useIncidentData';
 
 const IncidentContext = createContext<IncidentContextType | undefined>(undefined);
 
 export const IncidentProvider = ({ children }: { children: ReactNode }) => {
-  const [incidents, setIncidents] = useState(generateSampleIncidents());
+  // Use the new data fetching hook that includes client_id restrictions
+  const { incidents, loading, error, refetchIncidents } = useIncidentData();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [users] = useState<IncidentContextType['users']>([
     { 
@@ -93,7 +94,10 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
     getIncident,
     addActivity,
     isSubmitting
-  } = useIncidentActions(incidents, setIncidents, activities, setActivities, users);
+  } = useIncidentActions(incidents, () => {
+    // Instead of directly setting incidents, refetch from database
+    refetchIncidents();
+  }, activities, setActivities, users);
 
   // Use the activities hook
   const {

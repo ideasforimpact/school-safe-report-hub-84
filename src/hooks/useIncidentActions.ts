@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { v4 as uuidv4 } from 'uuid';
 import { Json } from '@/integrations/supabase/types';
+import { useEmployeeStore } from '@/store/EmployeeContext';
 
 interface IncidentData extends Omit<Incident, 'id' | 'status' | 'createdAt' | 'updatedAt' | 'ticketId'> {
   typeId?: string;
@@ -24,16 +25,29 @@ export function useIncidentActions(
   users: User[]
 ) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { state } = useEmployeeStore();
 
   // Generate a ticket ID in the format INC-12345
   const generateTicketId = () => {
     return `INC-${Math.floor(10000 + Math.random() * 90000)}`;
   };
 
+  // Check if user has client_id access
+  const validateClientAccess = () => {
+    if (!state.employeeData?.clientId) {
+      toast.error("Access denied: No client association found");
+      throw new Error("Access denied: No client association found");
+    }
+    return state.employeeData.clientId;
+  };
+
   // Add a new incident
   const addIncident = async (incidentData: IncidentData) => {
     setIsSubmitting(true);
     try {
+      // Validate client access
+      const clientId = validateClientAccess();
+      
       console.log('Adding incident with data:', incidentData);
       
       // Use provided status_id or fetch the "New" status ID as default
@@ -47,14 +61,9 @@ export function useIncidentActions(
           .eq('name', 'New')
           .single();
           
-        if (statusError) {
+        if (statusError || !statusData) {
           console.error('Error fetching New status:', statusError);
           throw new Error('Could not fetch incident status');
-        }
-        
-        if (!statusData) {
-          console.error('New status not found');
-          throw new Error('Required incident status not found');
         }
         
         statusId = statusData.id;
@@ -64,21 +73,19 @@ export function useIncidentActions(
       // Generate a new ticket ID
       const ticketId = generateTicketId();
 
-      // Create incident record in the database
-      // Match exactly the column names in the incidents table and ensure they are valid
+      // Create incident record in the database with client_id restriction
       const dbRecord: any = {
         category_id: incidentData.categoryId,
         description: incidentData.description,
-        // Convert Date object to ISO string format for PostgreSQL timestamp compatibility
         date: incidentData.date instanceof Date ? incidentData.date.toISOString() : incidentData.date,
         location_id: incidentData.locationId,
         people_involved: incidentData.peopleInvolved,
         status_id: statusId,
-        reported_by_id: incidentData.reportedBy.id,
+        created_by: incidentData.reportedBy.id,
         ticket_id: ticketId,
-        // Convert Document[] to Json compatible format
         documents: incidentData.documents ? JSON.parse(JSON.stringify(incidentData.documents)) : [],
-        owner_id: incidentData.owner?.id || null,
+        assigned_to: incidentData.owner?.id || null,
+        client_id: clientId, // Ensure client_id is always set
       };
       
       // Add optional fields only if they have values
@@ -137,7 +144,7 @@ export function useIncidentActions(
         date: incidentData.date,
         location: incidentData.location,
         peopleInvolved: incidentData.peopleInvolved,
-        status: 'New', // Set status to New
+        status: 'New',
         reportedBy: incidentData.reportedBy,
         owner: incidentData.owner,
         facility: incidentData.facility,
@@ -170,6 +177,9 @@ export function useIncidentActions(
   // Update an existing incident
   const updateIncident = async (id: string, updates: Partial<Incident>) => {
     try {
+      // Validate client access
+      validateClientAccess();
+      
       const incident = incidents.find(inc => inc.id === id);
       if (!incident) {
         toast.error('Incident not found');
@@ -183,7 +193,7 @@ export function useIncidentActions(
 
       // Create activity record for the update
       const currentUser: UserRef = {
-        id: users[0]?.id || 'system', // Default to the first user or 'system'
+        id: users[0]?.id || 'system',
         name: users[0]?.name || 'System'
       };
 
@@ -209,7 +219,14 @@ export function useIncidentActions(
 
   // Get a specific incident by ID
   const getIncident = (id: string) => {
-    return incidents.find(incident => incident.id === id);
+    try {
+      // Validate client access
+      validateClientAccess();
+      return incidents.find(incident => incident.id === id);
+    } catch (error) {
+      console.error('Error getting incident:', error);
+      return undefined;
+    }
   };
 
   return {

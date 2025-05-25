@@ -1,4 +1,3 @@
-
 import React, { createContext, useEffect, useState, useRef } from 'react';
 import { User, AuthContextType, UserWithPassword, EmployeeData } from './types';
 import { 
@@ -298,8 +297,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           firstName: 'Backoffice',
           lastName: 'Admin',
           isSuperAdmin: true,
-          department: 'Management', // Add default department
-          employeeType: 'admin' // Add default employee type
+          department: 'Management',
+          employeeType: 'admin'
         };
         
         // Update local state
