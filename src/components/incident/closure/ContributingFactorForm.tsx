@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ContributingFactor } from '@/types/incident';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,15 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-
-const FACTOR_CATEGORIES = [
-  'Human Factors',
-  'Environmental Factors',
-  'Procedural Factors',
-  'Equipment Factors',
-  'Organizational Factors',
-  'Other'
-];
+import { supabase } from '@/integrations/supabase/client';
+import { useEmployeeStore } from '@/store/EmployeeContext';
 
 interface ContributingFactorFormProps {
   currentFactor: {
@@ -35,11 +28,68 @@ interface ContributingFactorFormProps {
   addFactor: () => void;
 }
 
+interface ContributingFactorOption {
+  id: string;
+  name: string;
+  weight: string;
+}
+
 const ContributingFactorForm: React.FC<ContributingFactorFormProps> = ({
   currentFactor,
   setCurrentFactor,
   addFactor
 }) => {
+  const [factorOptions, setFactorOptions] = useState<ContributingFactorOption[]>([]);
+  const [weightOptions, setWeightOptions] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const { state } = useEmployeeStore();
+
+  useEffect(() => {
+    const fetchContributingFactors = async () => {
+      try {
+        if (!state.employeeData?.clientId) {
+          console.log('No client ID available');
+          setIsLoading(false);
+          return;
+        }
+
+        const { data: factors, error } = await supabase
+          .from('contributing_factors')
+          .select('id, name, weight')
+          .eq('client_id', state.employeeData.clientId)
+          .order('name');
+
+        if (error) {
+          console.error('Error fetching contributing factors:', error);
+          return;
+        }
+
+        console.log('Fetched contributing factors:', factors);
+        setFactorOptions(factors || []);
+
+        // Extract unique weight values
+        const uniqueWeights = [...new Set(factors?.map(f => f.weight).filter(Boolean) || [])];
+        setWeightOptions(uniqueWeights);
+
+      } catch (error) {
+        console.error('Error in fetchContributingFactors:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchContributingFactors();
+  }, [state.employeeData?.clientId]);
+
+  if (isLoading) {
+    return (
+      <div className="bg-gray-50 rounded-md p-4 border">
+        <h4 className="text-sm font-medium mb-3">Add New Factor</h4>
+        <div className="text-sm text-gray-500">Loading factor options...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-gray-50 rounded-md p-4 border">
       <h4 className="text-sm font-medium mb-3">Add New Factor</h4>
@@ -52,9 +102,9 @@ const ContributingFactorForm: React.FC<ContributingFactorFormProps> = ({
             <SelectValue placeholder="Select category" />
           </SelectTrigger>
           <SelectContent>
-            {FACTOR_CATEGORIES.map((category) => (
-              <SelectItem key={category} value={category}>
-                {category}
+            {factorOptions.map((factor) => (
+              <SelectItem key={factor.id} value={factor.name}>
+                {factor.name}
               </SelectItem>
             ))}
           </SelectContent>
@@ -71,9 +121,19 @@ const ContributingFactorForm: React.FC<ContributingFactorFormProps> = ({
             <SelectValue placeholder="Weight" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="Low">Low Impact</SelectItem>
-            <SelectItem value="Medium">Medium Impact</SelectItem>
-            <SelectItem value="High">High Impact</SelectItem>
+            {weightOptions.length > 0 ? (
+              weightOptions.map((weight) => (
+                <SelectItem key={weight} value={weight}>
+                  {weight}
+                </SelectItem>
+              ))
+            ) : (
+              <>
+                <SelectItem value="Low">Low</SelectItem>
+                <SelectItem value="Medium">Medium</SelectItem>
+                <SelectItem value="High">High</SelectItem>
+              </>
+            )}
           </SelectContent>
         </Select>
       </div>

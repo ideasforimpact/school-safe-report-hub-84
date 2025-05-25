@@ -680,9 +680,11 @@ export type Database = {
       }
       incidents: {
         Row: {
+          action_taken: string | null
           assigned_to: string | null
           category_id: string | null
           client_id: string | null
+          contributing_factor: Json | null
           created_at: string
           created_by: string
           date: string
@@ -693,6 +695,7 @@ export type Database = {
           location_id: string | null
           people_involved: Json
           priority_id: string | null
+          root_cause_analysis: string | null
           status_id: string
           subcategory_id: string | null
           ticket_id: string
@@ -700,9 +703,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          action_taken?: string | null
           assigned_to?: string | null
           category_id?: string | null
           client_id?: string | null
+          contributing_factor?: Json | null
           created_at?: string
           created_by: string
           date: string
@@ -713,6 +718,7 @@ export type Database = {
           location_id?: string | null
           people_involved?: Json
           priority_id?: string | null
+          root_cause_analysis?: string | null
           status_id: string
           subcategory_id?: string | null
           ticket_id: string
@@ -720,9 +726,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          action_taken?: string | null
           assigned_to?: string | null
           category_id?: string | null
           client_id?: string | null
+          contributing_factor?: Json | null
           created_at?: string
           created_by?: string
           date?: string
@@ -733,6 +741,7 @@ export type Database = {
           location_id?: string | null
           people_involved?: Json
           priority_id?: string | null
+          root_cause_analysis?: string | null
           status_id?: string
           subcategory_id?: string | null
           ticket_id?: string
