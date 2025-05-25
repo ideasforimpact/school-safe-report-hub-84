@@ -17,14 +17,17 @@ interface ConfigItem {
 interface IncidentDetailsFormProps {
   formData: {
     type: string;
+    typeId: string;
     categoryId: string;
     subcategory: string;
+    subcategoryId: string;
     description: string;
     date: string;
     time: string;
     locationId: string;
     facilityId: string;
     priority: 'Low' | 'Medium' | 'High' | 'Critical';
+    priorityId: string;
     owner: string;
   };
   onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
@@ -47,13 +50,18 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
   // Fetch data from database tables
   const { formData: dbFormData, loading } = useIncidentFormData();
 
+  console.log('=== INCIDENT DETAILS FORM DEBUG ===');
+  console.log('Form data received:', formData);
+  console.log('DB form data:', dbFormData);
+  console.log('Loading:', loading);
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       {/* Incident Type and Priority Section */}
       <div className="space-y-6">
         <IncidentTypeSection
-          type={formData.type}
-          priority={formData.priority}
+          type={formData.typeId} // Use typeId for the select value
+          priority={formData.priorityId} // Use priorityId for the select value
           onSelectChange={onSelectChange}
           reportTypes={dbFormData.reportTypes}
           priorities={dbFormData.priorities}
@@ -65,7 +73,7 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
       <div className="space-y-6">
         <CategorySection
           categoryId={formData.categoryId}
-          subcategory={formData.subcategory}
+          subcategory={formData.subcategoryId} // Use subcategoryId for the select value
           onSelectChange={onSelectChange}
           categories={dbFormData.categories}
           subcategories={dbFormData.subcategories}

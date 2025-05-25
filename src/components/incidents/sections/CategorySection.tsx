@@ -1,119 +1,112 @@
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
+  Select,
+  SelectContent,
+  SelectItem,
   SelectTrigger,
-  SelectValue 
+  SelectValue,
 } from '@/components/ui/select';
-import { Loader2 } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+
+interface Category {
+  id: string;
+  name: string;
+  description: string | null;
+}
+
+interface Subcategory {
+  id: string;
+  name: string;
+  category_id: string | null;
+}
 
 interface CategorySectionProps {
   categoryId: string;
   subcategory: string;
   onSelectChange: (name: string, value: string) => void;
-  categories?: { id: string; name: string; }[];
-  subcategories?: { id: string; name: string; category_id: string | null }[];
-  loading?: boolean;
+  categories: Category[];
+  subcategories: Subcategory[];
+  loading: boolean;
 }
 
 const CategorySection: React.FC<CategorySectionProps> = ({
   categoryId,
   subcategory,
   onSelectChange,
-  categories = [],
-  subcategories = [],
-  loading = false
+  categories,
+  subcategories,
+  loading
 }) => {
-  const [availableSubcategories, setAvailableSubcategories] = useState<{id: string, name: string}[]>([]);
+  console.log('=== CATEGORY SECTION DEBUG ===');
+  console.log('Category ID value:', categoryId);
+  console.log('Subcategory value:', subcategory);
+  console.log('Categories:', categories);
+  console.log('Subcategories:', subcategories);
 
-  // Filter subcategories when category changes
-  useEffect(() => {
-    if (categoryId) {
-      const filtered = subcategories.filter(sub => sub.category_id === categoryId);
-      setAvailableSubcategories(filtered);
-      
-      // Reset subcategory if current selection isn't available in the new list
-      const currentSubcategoryExists = filtered.some(sub => sub.name === subcategory);
-      if (subcategory && !currentSubcategoryExists) {
-        onSelectChange('subcategory', '');
-      }
-    } else {
-      setAvailableSubcategories([]);
-    }
-  }, [categoryId, subcategories, subcategory, onSelectChange]);
+  // Filter subcategories based on selected category
+  const filteredSubcategories = subcategories.filter(sub => sub.category_id === categoryId);
+  console.log('Filtered subcategories:', filteredSubcategories);
 
   return (
-    <div className="space-y-4 text-left">
-      <div>
-        <label htmlFor="categoryId" className="text-sm font-medium block">
+    <>
+      <div className="space-y-2">
+        <Label htmlFor="category" className="text-sm font-medium text-gray-700">
           Category <span className="text-red-500">*</span>
-        </label>
+        </Label>
         <Select 
-          value={categoryId} 
-          onValueChange={(value) => onSelectChange('categoryId', value)}
-          required
+          value={categoryId}
+          onValueChange={(value) => {
+            console.log('Category selected:', value);
+            onSelectChange('categoryId', value);
+            // Reset subcategory when category changes
+            onSelectChange('subcategoryId', '');
+          }}
           disabled={loading}
         >
-          <SelectTrigger className="w-full">
-            {loading ? (
-              <div className="flex items-center">
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                <span>Loading...</span>
-              </div>
-            ) : (
-              <SelectValue placeholder="Select category" />
-            )}
+          <SelectTrigger className="h-11 bg-white border-gray-300">
+            <SelectValue placeholder={loading ? "Loading..." : "Select category"} />
           </SelectTrigger>
-          <SelectContent>
-            {categories.length === 0 ? (
-              <SelectItem disabled value="">No categories available</SelectItem>
-            ) : (
-              categories.map(category => (
-                <SelectItem key={category.id} value={category.id}>
-                  {category.name}
-                </SelectItem>
-              ))
-            )}
+          <SelectContent className="bg-white z-50">
+            {categories.map((category) => (
+              <SelectItem key={category.id} value={category.id}>
+                {category.name}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
 
-      <div>
-        <label htmlFor="subcategory" className="text-sm font-medium block">
+      <div className="space-y-2">
+        <Label htmlFor="subcategory" className="text-sm font-medium text-gray-700">
           Subcategory <span className="text-red-500">*</span>
-        </label>
+        </Label>
         <Select 
-          value={subcategory} 
-          onValueChange={(value) => onSelectChange('subcategory', value)}
-          disabled={!categoryId || availableSubcategories.length === 0 || loading}
-          required
+          value={subcategory}
+          onValueChange={(value) => {
+            console.log('Subcategory selected:', value);
+            onSelectChange('subcategoryId', value);
+          }}
+          disabled={loading || !categoryId || filteredSubcategories.length === 0}
         >
-          <SelectTrigger className="w-full">
-            {loading ? (
-              <div className="flex items-center">
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                <span>Loading...</span>
-              </div>
-            ) : (
-              <SelectValue placeholder="Select subcategory" />
-            )}
+          <SelectTrigger className="h-11 bg-white border-gray-300">
+            <SelectValue placeholder={
+              loading ? "Loading..." : 
+              !categoryId ? "Select category first" : 
+              filteredSubcategories.length === 0 ? "No subcategories available" : 
+              "Select subcategory"
+            } />
           </SelectTrigger>
-          <SelectContent>
-            {availableSubcategories.length === 0 ? (
-              <SelectItem disabled value="">No subcategories available</SelectItem>
-            ) : (
-              availableSubcategories.map(sub => (
-                <SelectItem key={sub.id} value={sub.name}>
-                  {sub.name}
-                </SelectItem>
-              ))
-            )}
+          <SelectContent className="bg-white z-50">
+            {filteredSubcategories.map((subcategoryItem) => (
+              <SelectItem key={subcategoryItem.id} value={subcategoryItem.id}>
+                {subcategoryItem.name}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
-    </div>
+    </>
   );
 };
 

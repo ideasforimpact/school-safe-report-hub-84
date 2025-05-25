@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth/AuthContext';
@@ -73,13 +72,23 @@ const ReportIncident = () => {
   useEffect(() => {
     if (incidentId) {
       setIsEditMode(true);
-      console.log('Edit mode detected, incident ID:', incidentId);
+      console.log('=== EDIT MODE INITIALIZATION ===');
+      console.log('Incident ID:', incidentId);
+      console.log('Available reference data:', {
+        reportTypes: reportTypes.length,
+        categories: formCategories.length,
+        subcategories: subcategories.length,
+        locations: locations.length,
+        facilities: facilities.length,
+        priorities: priorities.length
+      });
       
       // Only try to get incident if we have reference data loaded
       if (reportTypes.length > 0 && formCategories.length > 0 && locations.length > 0 && !isDataLoaded) {
         try {
           const incident = getIncident(incidentId);
-          console.log('Fetched incident data:', incident);
+          console.log('=== INCIDENT DATA RETRIEVED ===');
+          console.log('Full incident object:', incident);
           
           if (incident) {
             setExistingIncident(incident);
@@ -89,6 +98,14 @@ const ReportIncident = () => {
             const dateString = incidentDate.toISOString().split('T')[0];
             const timeString = incidentDate.toTimeString().split(' ')[0].slice(0, 5);
             
+            console.log('=== MAPPING INCIDENT DATA TO FORM ===');
+            console.log('Incident type:', incident.type);
+            console.log('Incident category:', incident.category);
+            console.log('Incident subcategory:', incident.subcategory);
+            console.log('Incident location:', incident.location);
+            console.log('Incident facility:', incident.facility);
+            console.log('Incident priority:', incident.priority);
+            
             // Find matching IDs from the reference data
             const typeMatch = reportTypes.find(t => t.name === incident.type);
             const categoryMatch = formCategories.find(c => c.name === incident.category);
@@ -97,16 +114,15 @@ const ReportIncident = () => {
             const facilityMatch = facilities.find(f => f.name === incident.facility);
             const priorityMatch = priorities.find(p => p.name === incident.priority);
             
-            console.log('Found matches:', {
-              typeMatch,
-              categoryMatch,
-              subcategoryMatch,
-              locationMatch,
-              facilityMatch,
-              priorityMatch
-            });
+            console.log('=== REFERENCE DATA MATCHES ===');
+            console.log('Type match:', typeMatch);
+            console.log('Category match:', categoryMatch);
+            console.log('Subcategory match:', subcategoryMatch);
+            console.log('Location match:', locationMatch);
+            console.log('Facility match:', facilityMatch);
+            console.log('Priority match:', priorityMatch);
             
-            setFormData({
+            const updatedFormData = {
               type: incident.type || '',
               typeId: typeMatch?.id || '',
               categoryId: categoryMatch?.id || '',
@@ -121,8 +137,12 @@ const ReportIncident = () => {
               priorityId: priorityMatch?.id || '',
               owner: incident.owner?.id || '',
               status: incident.status || 'Open'
-            });
+            };
             
+            console.log('=== FINAL FORM DATA ===');
+            console.log('Updated form data:', updatedFormData);
+            
+            setFormData(updatedFormData);
             setPeopleInvolved(incident.peopleInvolved || []);
             setIsDataLoaded(true);
             console.log('Form data populated successfully');
@@ -138,6 +158,20 @@ const ReportIncident = () => {
       }
     }
   }, [incidentId, getIncident, reportTypes, formCategories, subcategories, locations, facilities, priorities, setFormData, setPeopleInvolved, navigate, isDataLoaded]);
+
+  // Log form data changes to debug
+  useEffect(() => {
+    if (isEditMode) {
+      console.log('=== FORM DATA CHANGE DEBUG ===');
+      console.log('Current form data:', formData);
+      console.log('Type ID:', formData.typeId, 'Type:', formData.type);
+      console.log('Category ID:', formData.categoryId);
+      console.log('Subcategory ID:', formData.subcategoryId, 'Subcategory:', formData.subcategory);
+      console.log('Location ID:', formData.locationId);
+      console.log('Facility ID:', formData.facilityId);
+      console.log('Priority ID:', formData.priorityId, 'Priority:', formData.priority);
+    }
+  }, [formData, isEditMode]);
 
   // Fetch employees from the database
   useEffect(() => {
@@ -344,6 +378,8 @@ const ReportIncident = () => {
   };
   
   const handleSelectChange = (name: string, value: string) => {
+    console.log('=== SELECT CHANGE DEBUG ===');
+    console.log('Field:', name, 'Value:', value);
     formHandleSelectChange(name, value);
   };
   
@@ -369,6 +405,11 @@ const ReportIncident = () => {
     ...formData,
     priority: formData.priority || 'Medium' as 'Low' | 'Medium' | 'High' | 'Critical'
   };
+
+  console.log('=== RENDER DEBUG ===');
+  console.log('Is edit mode:', isEditMode);
+  console.log('Is data loaded:', isDataLoaded);
+  console.log('Safe form data for rendering:', safeFormData);
 
   return (
     <Layout>

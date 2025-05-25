@@ -1,119 +1,111 @@
 
-import React, { useEffect, useState } from 'react';
-import {
+import React from 'react';
+import { 
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2 } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+
+interface Location {
+  id: string;
+  name: string;
+}
+
+interface Facility {
+  id: string;
+  name: string;
+  campus_id: string;
+}
 
 interface LocationSectionProps {
   locationId: string;
   facilityId: string;
   onSelectChange: (name: string, value: string) => void;
-  locations?: { id: string; name: string; }[];
-  facilities?: { id: string; name: string; campus_id: string }[];
-  loading?: boolean;
+  locations: Location[];
+  facilities: Facility[];
+  loading: boolean;
 }
 
 const LocationSection: React.FC<LocationSectionProps> = ({
   locationId,
   facilityId,
   onSelectChange,
-  locations = [],
-  facilities = [],
-  loading = false
+  locations,
+  facilities,
+  loading
 }) => {
-  const [availableFacilities, setAvailableFacilities] = useState<{id: string, name: string}[]>([]);
+  console.log('=== LOCATION SECTION DEBUG ===');
+  console.log('Location ID value:', locationId);
+  console.log('Facility ID value:', facilityId);
+  console.log('Locations:', locations);
+  console.log('Facilities:', facilities);
 
-  // Filter facilities when location changes
-  useEffect(() => {
-    if (locationId) {
-      const filtered = facilities.filter(facility => facility.campus_id === locationId);
-      setAvailableFacilities(filtered);
-      
-      // Reset facility if current selection isn't available in the new list
-      const currentFacilityExists = filtered.some(facility => facility.id === facilityId);
-      if (facilityId && !currentFacilityExists) {
-        onSelectChange('facilityId', '');
-      }
-    } else {
-      setAvailableFacilities([]);
-    }
-  }, [locationId, facilities, facilityId, onSelectChange]);
+  // Filter facilities based on selected location
+  const filteredFacilities = facilities.filter(facility => facility.campus_id === locationId);
+  console.log('Filtered facilities:', filteredFacilities);
 
   return (
-    <div className="space-y-4 text-left">
-      <div>
-        <label htmlFor="locationId" className="text-sm font-medium block">
+    <>
+      <div className="space-y-2">
+        <Label htmlFor="location" className="text-sm font-medium text-gray-700">
           Where it Happened <span className="text-red-500">*</span>
-        </label>
+        </Label>
         <Select 
-          value={locationId} 
-          onValueChange={(value) => onSelectChange('locationId', value)}
-          required
+          value={locationId}
+          onValueChange={(value) => {
+            console.log('Location selected:', value);
+            onSelectChange('locationId', value);
+            // Reset facility when location changes
+            onSelectChange('facilityId', '');
+          }}
           disabled={loading}
         >
-          <SelectTrigger className="w-full">
-            {loading ? (
-              <div className="flex items-center">
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                <span>Loading...</span>
-              </div>
-            ) : (
-              <SelectValue placeholder="Select location" />
-            )}
+          <SelectTrigger className="h-11 bg-white border-gray-300">
+            <SelectValue placeholder={loading ? "Loading..." : "Select location"} />
           </SelectTrigger>
-          <SelectContent>
-            {locations.length === 0 ? (
-              <SelectItem disabled value="">No locations available</SelectItem>
-            ) : (
-              locations.map(location => (
-                <SelectItem key={location.id} value={location.id}>
-                  {location.name}
-                </SelectItem>
-              ))
-            )}
+          <SelectContent className="bg-white z-50">
+            {locations.map((location) => (
+              <SelectItem key={location.id} value={location.id}>
+                {location.name}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
 
-      <div>
-        <label htmlFor="facilityId" className="text-sm font-medium block">
+      <div className="space-y-2">
+        <Label htmlFor="facility" className="text-sm font-medium text-gray-700">
           Facility <span className="text-red-500">*</span>
-        </label>
+        </Label>
         <Select 
-          value={facilityId} 
-          onValueChange={(value) => onSelectChange('facilityId', value)}
-          required
-          disabled={!locationId || availableFacilities.length === 0 || loading}
+          value={facilityId}
+          onValueChange={(value) => {
+            console.log('Facility selected:', value);
+            onSelectChange('facilityId', value);
+          }}
+          disabled={loading || !locationId || filteredFacilities.length === 0}
         >
-          <SelectTrigger className="w-full">
-            {loading ? (
-              <div className="flex items-center">
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                <span>Loading...</span>
-              </div>
-            ) : (
-              <SelectValue placeholder="Select facility" />
-            )}
+          <SelectTrigger className="h-11 bg-white border-gray-300">
+            <SelectValue placeholder={
+              loading ? "Loading..." : 
+              !locationId ? "Select location first" : 
+              filteredFacilities.length === 0 ? "No facilities available" : 
+              "Select facility"
+            } />
           </SelectTrigger>
-          <SelectContent>
-            {availableFacilities.length === 0 ? (
-              <SelectItem disabled value="">No facilities available</SelectItem>
-            ) : (
-              availableFacilities.map(facility => (
-                <SelectItem key={facility.id} value={facility.id}>
-                  {facility.name}
-                </SelectItem>
-              ))
-            )}
+          <SelectContent className="bg-white z-50">
+            {filteredFacilities.map((facility) => (
+              <SelectItem key={facility.id} value={facility.id}>
+                {facility.name}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
-    </div>
+    </>
   );
 };
 
