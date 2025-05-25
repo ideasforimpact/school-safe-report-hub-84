@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import Layout from '@/components/layout/Layout';
@@ -68,17 +68,6 @@ const ReportIncident = () => {
     setPeopleInvolved
   } = useIncidentForm();
 
-  // Memoize the form population logic
-  const populateFormData = useCallback(() => {
-    if (isEditMode && existingIncident && !isLoadingIncident) {
-      const mappedFormData = getFormData();
-      if (mappedFormData) {
-        setFormData(mappedFormData);
-        setPeopleInvolved(existingIncident.people_involved || []);
-      }
-    }
-  }, [isEditMode, existingIncident, isLoadingIncident]);
-
   // Check if we're in edit mode and load existing incident
   useEffect(() => {
     if (incidentId) {
@@ -86,10 +75,16 @@ const ReportIncident = () => {
     }
   }, [incidentId]);
 
-  // Handle incident loading and form population - fixed to prevent infinite loop
+  // Handle incident loading and form population
   useEffect(() => {
-    populateFormData();
-  }, [populateFormData]);
+    if (isEditMode && existingIncident && !isLoadingIncident) {
+      const mappedFormData = getFormData();
+      if (mappedFormData) {
+        setFormData(mappedFormData);
+        setPeopleInvolved(existingIncident.people_involved || []);
+      }
+    }
+  }, [isEditMode, existingIncident, isLoadingIncident, getFormData, setFormData, setPeopleInvolved]);
 
   // Handle incident loading error
   useEffect(() => {
@@ -99,6 +94,20 @@ const ReportIncident = () => {
       navigate('/incidents');
     }
   }, [incidentError, isEditMode, navigate]);
+
+  // Log form data changes to debug
+  useEffect(() => {
+    if (isEditMode) {
+      console.log('=== FORM DATA CHANGE DEBUG ===');
+      console.log('Current form data:', formData);
+      console.log('Type ID:', formData.typeId, 'Type:', formData.type);
+      console.log('Category ID:', formData.categoryId);
+      console.log('Subcategory ID:', formData.subcategoryId, 'Subcategory:', formData.subcategory);
+      console.log('Location ID:', formData.locationId);
+      console.log('Facility ID:', formData.facilityId);
+      console.log('Priority ID:', formData.priorityId, 'Priority:', formData.priority);
+    }
+  }, [formData, isEditMode]);
 
   // Fetch employees from the database
   useEffect(() => {
@@ -332,6 +341,12 @@ const ReportIncident = () => {
     ...formData,
     priority: formData.priority || 'Medium' as 'Low' | 'Medium' | 'High' | 'Critical'
   };
+
+  console.log('=== RENDER DEBUG ===');
+  console.log('Is edit mode:', isEditMode);
+  console.log('Is loading incident:', isLoadingIncident);
+  console.log('Existing incident:', existingIncident);
+  console.log('Safe form data for rendering:', safeFormData);
 
   // Show loading state while fetching incident in edit mode
   if (isEditMode && isLoadingIncident) {
