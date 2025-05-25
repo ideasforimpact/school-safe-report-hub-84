@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
@@ -29,7 +28,7 @@ import DocumentsPage from '@/pages/transport-safety/DocumentsPage';
 import IncidentsList from '@/pages/IncidentsList';
 import IncidentDetail from '@/pages/IncidentDetail';
 import ReportIncident from '@/pages/ReportIncident';
-import EditIncident from '@/pages/EditIncident';
+import EditIncidentPage from '@/pages/EditIncident';
 import Insights from '@/pages/Insights';
 import FacilityManagement from '@/pages/FacilityManagement';
 import AssessmentsPage from '@/pages/AssessmentsPage';
@@ -99,8 +98,8 @@ function App() {
                     <Route path="/incidents/:id" element={<IncidentDetail />} />
                     <Route path="/incident/:id" element={<IncidentDetail />} />
                     <Route path="/report-incident" element={<ReportIncident />} />
-                    {/* <Route path="/edit-incident/:id" element={<EditIncident />} /> */}
-                    <Route path="/incident/:id/edit" element={<EditIncident />} />
+                    <Route path="/incident/:id/edit" element={<EditIncidentPage />} />
+                    <Route path="/edit-incident/:id" element={<EditIncidentPage />} />
                     <Route path="/insights" element={<Insights />} />
 
                     {/* Assessment routes */}
