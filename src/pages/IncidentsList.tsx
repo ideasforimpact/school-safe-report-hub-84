@@ -10,7 +10,6 @@ import IncidentsTable from '@/components/incidents/IncidentsTable';
 const IncidentsList = () => {
   const { incidents } = useIncidents();
 
-  console.log(incidents,"incidents");
   const {
     filters,
     filteredIncidents,

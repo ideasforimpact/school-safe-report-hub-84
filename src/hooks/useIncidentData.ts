@@ -21,8 +21,6 @@ export function useIncidentData() {
         throw new Error("Access denied: No client association found");
       }
 
-      console.log('Fetching incidents for client:', state.employeeData.clientId);
-
       // Call the edge function to fetch incidents
       const { data, error: functionError } = await supabase.functions.invoke('fetch-incidents', {
         body: {
@@ -32,12 +30,10 @@ export function useIncidentData() {
       });
 
       if (functionError) {
-        console.error('Edge function error:', functionError);
         throw new Error(`Failed to fetch incidents: ${functionError.message}`);
       }
 
       if (!data || !data.incidents) {
-        console.error('No incidents data received from edge function');
         throw new Error('No incidents data received');
       }
 
@@ -111,10 +107,8 @@ export function useIncidentData() {
       });
 
       setIncidents(transformedIncidents);
-      console.log('Successfully processed incidents:', transformedIncidents.length);
 
     } catch (error: any) {
-      console.error('Error in fetchIncidents:', error);
       setError(error.message);
       toast.error(error.message);
       setIncidents([]); // Clear incidents on error
@@ -124,12 +118,7 @@ export function useIncidentData() {
   };
 
   useEffect(() => {
-    console.log('useIncidentData: useEffect triggered');
-    console.log('Employee data:', state.employeeData);
-    console.log('Loading state:', state.isLoading);
-    
     if (state.employeeData?.clientId) {
-      console.log('Calling fetchIncidents for client:', state.employeeData.clientId);
       fetchIncidents();
     } else if (!state.isLoading) {
       // Only show error if not still loading employee data

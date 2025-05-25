@@ -25,7 +25,6 @@ const IncidentContext = createContext<IncidentContextType | undefined>(undefined
 export const IncidentProvider = ({ children }: { children: ReactNode }) => {
   // Use the new data fetching hook that includes client_id restrictions
   const { incidents, loading, error, refetchIncidents } = useIncidentData();
-  console.log(incidents,"Fetch incidents")
   const [activities, setActivities] = useState<Activity[]>([]);
   const [users] = useState<IncidentContextType['users']>([
     { 

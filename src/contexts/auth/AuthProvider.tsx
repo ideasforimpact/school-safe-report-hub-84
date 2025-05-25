@@ -1,3 +1,4 @@
+
 import React, { createContext, useEffect, useState, useRef } from 'react';
 import { User, AuthContextType, UserWithPassword, EmployeeData } from './types';
 import { 
@@ -86,22 +87,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (authListenerSetupRef.current) return;
     
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Auth state change event:", event);
-      
       if (event === 'SIGNED_IN' && session?.user) {
-        console.log("User signed in:", session.user.email);
-        
         try {
           // Use setTimeout to avoid potential deadlock issues with Supabase auth
           setTimeout(async () => {
             await handleUserAuthentication(session.user);
           }, 0);
         } catch (error) {
-          console.error("Error in auth state change handler:", error);
           toast.error("Authentication failed. Please try again.");
         }
       } else if (event === 'SIGNED_OUT') {
-        console.log("User signed out");
         setCurrentUser(null);
         setEmployeeData(null); // Clear employee data on logout
         saveEmployeeDataToStorage(null); // Clear from storage
@@ -115,10 +110,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Clear any local auth data
         logoutUser();
-      } else if (event === 'TOKEN_REFRESHED') {
-        console.log("Auth token refreshed");
-      } else if (event === 'USER_UPDATED') {
-        console.log("User data updated");
       }
     });
     
@@ -141,15 +132,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           if (!currentUser) {
             // Use setTimeout to avoid potential deadlock issues
             setTimeout(async () => {
-              console.log("Found existing session, authenticating user...");
               await handleUserAuthentication(data.session?.user);
             }, 0);
           }
         } else {
-          console.log("No active session found");
           // If we have a user in storage but no active session, clear it
           if (currentUser) {
-            console.log("Clearing stale user data from storage");
             setCurrentUser(null);
             setEmployeeData(null);
             saveEmployeeDataToStorage(null);
@@ -162,7 +150,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
         }
       } catch (error) {
-        console.error("Error checking Supabase auth:", error);
         toast.error("Error checking authentication status");
       } finally {
         setIsInitializing(false);
@@ -211,20 +198,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             saveEmployeeDataToStorage(employee);
             
             // Update Redux state using action creators properly - FIXED: Dispatch the action object
-            console.log("Dispatching setEmployeeData action with:", employee);
             dispatch(setEmployeeData(employee));
             
             if (employee.clientId) {
-              console.log("Dispatching setClientId action with:", employee.clientId);
               dispatch(setClientId(employee.clientId));
             }
-            
-            console.log("Employee data stored:", employee);
           }
           
           dispatch(setLoading(false));
         } catch (err) {
-          console.error("Error fetching employee data:", err);
           dispatch(setLoading(false));
         }
         
@@ -239,7 +221,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       });
 
       if (error) {
-        console.error("Login error:", error);
         setAuthError("Invalid credentials");
         return false;
       }
@@ -253,7 +234,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           .single();
           
         if (backofficeError || !backofficeUser) {
-          console.error("Error fetching backoffice user:", backofficeError);
           setAuthError("Error retrieving user data");
           return false;
         }
@@ -308,7 +288,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         saveEmployeeDataToStorage(backofficeEmployeeData);
         
         // Update Redux state - FIXED: Dispatch the action objects properly
-        console.log("Dispatching setEmployeeData action for backoffice user with:", backofficeEmployeeData);
         dispatch(setEmployeeData(backofficeEmployeeData));
         
         if (backofficeEmployeeData.clientId) {
@@ -347,7 +326,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setAuthError("Invalid credentials");
       return false;
     } catch (error) {
-      console.error("Login error:", error);
       setAuthError("Login failed");
       toast.error("Login failed");
       return false;

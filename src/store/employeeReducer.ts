@@ -18,7 +18,6 @@ export const employeeReducer = (
 
   switch (action.type) {
     case EmployeeActionTypes.SET_EMPLOYEE_DATA:
-      console.log(action,"employee payload")
       // When setting employee data, also set clientId if available
       return {
         ...state,

@@ -21,10 +21,6 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
 }) => {
   const { state } = useEmployeeStore();
   
-  // Debug log for configured modules and selected modules
-  console.log("ModuleAccess - Available configured modules:", state.configuredModules);
-  console.log("ModuleAccess - Selected modules:", selectedModules);
-  
   // Create a mapping from modules in Redux
   const availableModules = state.configuredModules && state.configuredModules.length > 0
     ? state.configuredModules.map(module => ({
@@ -47,8 +43,6 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
 
   // Handler for checkbox change
   const handleModuleChange = (moduleKey: string, moduleName: string, moduleId: string, checked: boolean) => {
-    console.log("Module change:", { moduleKey, moduleName, moduleId, checked });
-    
     let updatedModules: ModuleAccessItem[];
     
     if (checked) {
@@ -70,8 +64,6 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
       updatedModules = selectedModules.filter(m => m.module_id !== moduleId);
     }
     
-    console.log("Updated modules:", updatedModules);
-    
     // Notify parent component of change
     onModuleChange(updatedModules);
   };
@@ -80,8 +72,6 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
   const handleAdminToggle = (moduleId: string) => {
     const moduleToUpdate = selectedModules.find(m => m.module_id === moduleId);
     if (!moduleToUpdate) return;
-    
-    console.log(`Admin toggle - Module ID: ${moduleId}, Current admin: ${moduleToUpdate.access_level?.is_admin}`);
     
     // Toggle the admin access state for this module
     const updatedModules = selectedModules.map(m => {
@@ -96,8 +86,6 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
       }
       return m;
     });
-    
-    console.log("After admin toggle, modules:", updatedModules);
     
     // Notify parent component of change
     onModuleChange(updatedModules);
@@ -117,8 +105,6 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
           {availableModules.map((module) => {
             const isSelected = isModuleSelected(module.module_id);
             const isAdmin = isModuleAdmin(module.module_id);
-            
-            console.log(`Module ${module.name} selected: ${isSelected}, admin: ${isAdmin}`);
             
             return (
               <TableRow key={module.key || module.module_id}>
