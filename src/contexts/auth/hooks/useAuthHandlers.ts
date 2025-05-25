@@ -519,7 +519,7 @@ export const useAuthHandlers = ({
         }
         
         // Also update context and localStorage for backward compatibility
-        setEmployeeData(employeeData);
+        dispatch(setEmployeeData(employeeData))
         saveEmployeeDataToStorage(employeeData);
       }
 
