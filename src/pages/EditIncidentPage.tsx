@@ -16,6 +16,8 @@ const EditIncidentPage = () => {
   const { getIncident } = useIncidents();
   const { user } = useAuth();
 
+  console.log('EditIncidentPage - ID:', id);
+
   if (!id) {
     return (
       <Layout>
@@ -43,6 +45,7 @@ const EditIncidentPage = () => {
   }
 
   const incident = getIncident(id);
+  console.log('EditIncidentPage - Incident:', incident);
 
   if (!incident) {
     return (

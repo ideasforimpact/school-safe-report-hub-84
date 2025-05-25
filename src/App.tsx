@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
@@ -28,7 +29,7 @@ import DocumentsPage from '@/pages/transport-safety/DocumentsPage';
 import IncidentsList from '@/pages/IncidentsList';
 import IncidentDetail from '@/pages/IncidentDetail';
 import ReportIncident from '@/pages/ReportIncident';
-import EditIncidentPage from '@/pages/EditIncident';
+import EditIncidentPage from '@/pages/EditIncidentPage';
 import Insights from '@/pages/Insights';
 import FacilityManagement from '@/pages/FacilityManagement';
 import AssessmentsPage from '@/pages/AssessmentsPage';

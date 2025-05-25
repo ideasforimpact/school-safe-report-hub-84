@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { useIncidents } from '@/contexts/incident'; // Fixed import path
+import { useIncidents } from '@/contexts/incident';
 import Layout from '@/components/layout/Layout';
 import { useIncidentFilters } from '@/hooks/useIncidentFilters';
 import IncidentsHeader from '@/components/incidents/IncidentsHeader';
@@ -8,7 +8,10 @@ import IncidentFilters from '@/components/incidents/IncidentFilters';
 import IncidentsTable from '@/components/incidents/IncidentsTable';
 
 const IncidentsList = () => {
+  console.log('IncidentsList component rendering');
+  
   const { incidents } = useIncidents();
+  console.log('Incidents from context:', incidents);
 
   const {
     filters,
@@ -22,6 +25,8 @@ const IncidentsList = () => {
     toggleAdvancedFilters,
     clearFilters
   } = useIncidentFilters(incidents);
+
+  console.log('Filtered incidents:', filteredIncidents);
 
   // Count active filters
   const activeFilterCount = Object.entries(filters).filter(([key, value]) => {
