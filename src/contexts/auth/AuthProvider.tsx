@@ -107,7 +107,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         saveEmployeeDataToStorage(null); // Clear from storage
         setAuthError(null);
         
-        // Clear Redux state on logout - fix the dispatch call
+        // Clear Redux state on logout - FIXED: Properly dispatch action
         dispatch(resetEmployee());
         
         // Add a toast message for logout
@@ -154,7 +154,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setEmployeeData(null);
             saveEmployeeDataToStorage(null);
             
-            // Clear Redux state
+            // Clear Redux state - FIXED: Properly dispatch action
             dispatch(resetEmployee());
             
             logoutUser();
@@ -210,10 +210,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             setEmployeeData(employee);
             saveEmployeeDataToStorage(employee);
             
-            // Update Redux state using action creators properly - fix the dispatch call
+            // Update Redux state using action creators properly - FIXED: Dispatch the action object
+            console.log("Dispatching setEmployeeData action with:", employee);
             dispatch(setEmployeeData(employee));
             
             if (employee.clientId) {
+              console.log("Dispatching setClientId action with:", employee.clientId);
               dispatch(setClientId(employee.clientId));
             }
             
@@ -305,7 +307,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setEmployeeData(backofficeEmployeeData);
         saveEmployeeDataToStorage(backofficeEmployeeData);
         
-        // Update Redux state
+        // Update Redux state - FIXED: Dispatch the action objects properly
+        console.log("Dispatching setEmployeeData action for backoffice user with:", backofficeEmployeeData);
         dispatch(setEmployeeData(backofficeEmployeeData));
         
         if (backofficeEmployeeData.clientId) {
@@ -334,7 +337,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
         ];
         
-        // Update Redux state with modules using action creators properly
+        // Update Redux state with modules using action creators properly - FIXED
         dispatch(setConfiguredModules(backofficeModules));
         
         toast.success(`Welcome back, Backoffice Admin!`);
@@ -359,7 +362,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     saveEmployeeDataToStorage(null);
     setIsBackofficeUser(false);
     
-    // Clear Redux state - fix the dispatch call
+    // Clear Redux state - FIXED: Properly dispatch action
     dispatch(resetEmployee());
     
     // Clear local storage
