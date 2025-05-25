@@ -6,13 +6,12 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
-import { Calendar, Search, FileText } from 'lucide-react';
+import { Calendar, Search, FileText, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { Incident, Person, IncidentType } from '@/types/incident';
 import { useIncidentForm } from '@/hooks/useIncidentForm';
-import PeopleInvolvedSection from '@/components/incident-form/PeopleInvolvedSection';
 
 interface EditIncidentFormProps {
   incident: Incident;
@@ -141,6 +140,21 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
   const getFilteredFacilities = () => {
     if (!formData.locationId) return [];
     return facilities.filter(facility => facility.campus_id === formData.locationId);
+  };
+
+  const handlePersonChange = (index: number, field: keyof Person, value: string) => {
+    const updatedPeople = [...peopleInvolved];
+    updatedPeople[index] = { ...updatedPeople[index], [field]: value };
+    setPeopleInvolved(updatedPeople);
+  };
+
+  const addPerson = () => {
+    setPeopleInvolved([...peopleInvolved, { name: '', role: 'Student', notes: '' }]);
+  };
+
+  const removePerson = (index: number) => {
+    const updatedPeople = peopleInvolved.filter((_, i) => i !== index);
+    setPeopleInvolved(updatedPeople);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -405,49 +419,105 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
               </div>
             </div>
 
-            {/* Supporting Documents */}
+            {/* Supporting Documents - Matching design */}
             <div className="space-y-4">
               <Label className="text-sm font-medium text-gray-700">Supporting Documents</Label>
-              <div className="border-2 border-dashed border-gray-200 rounded-lg p-8 bg-white">
-                <div className="text-center">
-                  <FileText className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+              <div className="border-2 border-dashed border-gray-200 rounded-lg bg-white">
+                <div className="text-center py-12">
+                  <FileText className="mx-auto h-8 w-8 text-gray-400 mb-4" />
                   <button
                     type="button"
                     className="text-blue-600 hover:text-blue-700 font-medium"
                   >
                     Add a file
                   </button>
-                  <p className="text-sm text-gray-500 mt-1">
+                  <p className="text-sm text-gray-500 mt-2">
                     Images, videos, documents up to 25MB
                   </p>
                 </div>
               </div>
-              <p className="text-sm text-gray-500">
-                Upload up to 5 files (images, videos, documents) to support this incident report
-              </p>
-              <div className="text-right text-sm text-gray-500">
-                0 of 5 files added
+              <div className="flex justify-between text-sm text-gray-500">
+                <p>Upload up to 5 files (images, videos, documents) to support this incident report</p>
+                <p>0 of 5 files added</p>
               </div>
             </div>
 
-            {/* People Involved */}
+            {/* People Involved - Matching design */}
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <Label className="text-lg font-medium text-gray-700">People Involved</Label>
+                <Label className="text-sm font-medium text-gray-700">People Involved</Label>
                 <Button
                   type="button"
                   variant="ghost"
                   className="text-blue-600 hover:text-blue-700 p-0 h-auto font-medium"
-                  onClick={() => setPeopleInvolved([...peopleInvolved, { name: '', role: 'Student', notes: '' }])}
+                  onClick={addPerson}
                 >
                   + Add Person
                 </Button>
               </div>
 
-              <PeopleInvolvedSection
-                peopleInvolved={peopleInvolved}
-                setPeopleInvolved={setPeopleInvolved}
-              />
+              {peopleInvolved.map((person, index) => (
+                <div key={index} className="bg-white border border-gray-200 rounded-lg p-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-gray-700">
+                        Role <span className="text-red-500">*</span>
+                      </Label>
+                      <Select 
+                        value={person.role} 
+                        onValueChange={(value) => handlePersonChange(index, 'role', value as 'Student' | 'Staff' | 'Other')}
+                      >
+                        <SelectTrigger className="h-11 bg-white border-gray-300">
+                          <SelectValue placeholder="Select role" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white z-50">
+                          <SelectItem value="Student">Student</SelectItem>
+                          <SelectItem value="Staff">Staff</SelectItem>
+                          <SelectItem value="Other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-gray-700">
+                        Name <span className="text-red-500">*</span>
+                      </Label>
+                      <div className="relative">
+                        <Input
+                          value={person.name}
+                          onChange={(e) => handlePersonChange(index, 'name', e.target.value)}
+                          placeholder={`Search by ${person.role.toLowerCase()} name...`}
+                          className="h-11 pl-10 bg-white border-gray-300"
+                        />
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-gray-700">Notes</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          value={person.notes || ''}
+                          onChange={(e) => handlePersonChange(index, 'notes', e.target.value)}
+                          placeholder="Additional notes"
+                          className="h-11 bg-white border-gray-300"
+                        />
+                        {peopleInvolved.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => removePerson(index)}
+                            className="shrink-0 h-11 w-11 p-0 border-gray-300"
+                          >
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </CardContent>
 
