@@ -50,7 +50,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [displayUsers, setDisplayUsers] = useState<User[]>(
     users.map(({ password, ...user }) => user)
   );
-  const [employeeData, setEmployeeData] = useState<EmployeeData | null>(getEmployeeDataFromStorage());
+  const [employeeData, setEmployeeDataState] = useState<EmployeeData | null>(getEmployeeDataFromStorage());
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
   const [authError, setAuthError] = useState<string | null>(null);
   const [isBackofficeUser, setIsBackofficeUser] = useState<boolean>(false);
@@ -68,7 +68,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUsers: setUsersState,
     setAuthError,
     authInitCompleteRef,
-    setEmployeeData,
+    setEmployeeData: setEmployeeDataState,
     dispatch // Pass Redux dispatch to useAuthHandlers
   });
 
@@ -98,7 +98,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       } else if (event === 'SIGNED_OUT') {
         setCurrentUser(null);
-        setEmployeeData(null); // Clear employee data on logout
+        setEmployeeDataState(null); // Clear employee data on logout
         saveEmployeeDataToStorage(null); // Clear from storage
         setAuthError(null);
         
@@ -139,7 +139,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // If we have a user in storage but no active session, clear it
           if (currentUser) {
             setCurrentUser(null);
-            setEmployeeData(null);
+            setEmployeeDataState(null);
             saveEmployeeDataToStorage(null);
             
             // Clear Redux state - FIXED: Properly dispatch action
@@ -194,7 +194,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             };
             
             // Update local state
-            setEmployeeData(employee);
+            setEmployeeDataState(employee);
             saveEmployeeDataToStorage(employee);
             
             // Update Redux state using action creators properly - FIXED: Dispatch the action object
@@ -284,7 +284,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         };
         
         // Update local state
-        setEmployeeData(backofficeEmployeeData);
+        setEmployeeDataState(backofficeEmployeeData);
         saveEmployeeDataToStorage(backofficeEmployeeData);
         
         // Update Redux state - FIXED: Dispatch the action objects properly
@@ -336,7 +336,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const handleLogout = (): void => {
     // First clear all local state and Redux store before any Supabase operations
     setCurrentUser(null);
-    setEmployeeData(null);
+    setEmployeeDataState(null);
     saveEmployeeDataToStorage(null);
     setIsBackofficeUser(false);
     
@@ -508,7 +508,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     changePassword: handleChangePassword,
     authError,
     handleUserAuthentication,
-    employeeData,
+    employeeData: employeeData,
   };
 
   // If still initializing, show nothing

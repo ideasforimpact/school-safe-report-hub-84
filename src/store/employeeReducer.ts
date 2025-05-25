@@ -16,10 +16,12 @@ export const employeeReducer = (
   // Guard against undefined actions
   if (!action) return state;
 
+  console.log("REDUCER CALLED:", action.type, action.payload);
+
   switch (action.type) {
     case EmployeeActionTypes.SET_EMPLOYEE_DATA:
       // When setting employee data, also set clientId if available
-      console.log(action,"Employee Reducer");
+      console.log("Setting employee data in reducer:", action.payload);
       return {
         ...state,
         employeeData: action.payload,
