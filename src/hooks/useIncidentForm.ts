@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
@@ -7,9 +8,14 @@ import {
   IncidentType,
   IncidentCategory,
   IncidentLocation,
-  Person,
-  ConfigItem
+  Person
 } from '@/types/incident';
+
+// Define ConfigItem interface locally
+interface ConfigItem {
+  id: string;
+  name: string;
+}
 
 interface FormData {
   type: IncidentType | '';
@@ -25,6 +31,7 @@ interface FormData {
   priority: 'Low' | 'Medium' | 'High' | 'Critical' | '';
   priorityId: string;
   owner: string;
+  status?: string;
 }
 
 export const useIncidentForm = () => {
@@ -42,7 +49,8 @@ export const useIncidentForm = () => {
     facilityId: '',
     priority: '',
     priorityId: '',
-    owner: ''
+    owner: '',
+    status: 'Open'
   });
   const [supportingFiles, setSupportingFiles] = useState<FileItem[]>([]);
   const [peopleInvolved, setPeople] = useState<Person[]>([]);
@@ -58,7 +66,7 @@ export const useIncidentForm = () => {
     const fetchData = async () => {
       try {
         const { data: locationsData, error: locationsError } = await supabase
-          .from('locations')
+          .from('campuses')
           .select('*');
         if (locationsError) {
           throw locationsError;
@@ -74,7 +82,7 @@ export const useIncidentForm = () => {
         setFacilities(facilitiesData || []);
 
         const { data: reportTypesData, error: reportTypesError } = await supabase
-          .from('report_types')
+          .from('incident_report_types')
           .select('*');
         if (reportTypesError) {
           throw reportTypesError;
@@ -82,7 +90,7 @@ export const useIncidentForm = () => {
         setReportTypes(reportTypesData || []);
 
         const { data: categoriesData, error: categoriesError } = await supabase
-          .from('categories')
+          .from('incident_categories')
           .select('*');
         if (categoriesError) {
           throw categoriesError;
@@ -90,7 +98,7 @@ export const useIncidentForm = () => {
         setCategories(categoriesData || []);
 
         const { data: subcategoriesData, error: subcategoriesError } = await supabase
-          .from('subcategories')
+          .from('incident_subcategories')
           .select('*');
         if (subcategoriesError) {
           throw subcategoriesError;
@@ -98,7 +106,7 @@ export const useIncidentForm = () => {
         setSubcategories(subcategoriesData || []);
 
         const { data: prioritiesData, error: prioritiesError } = await supabase
-          .from('priorities')
+          .from('incident_priorities')
           .select('*');
         if (prioritiesError) {
           throw prioritiesError;
@@ -106,15 +114,15 @@ export const useIncidentForm = () => {
         setPriorities(prioritiesData || []);
 
         const { data: usersData, error: usersError } = await supabase
-          .from('users')
-          .select('id, firstName, lastName');
+          .from('employees')
+          .select('id, first_name, last_name');
         if (usersError) {
           throw usersError;
         }
         const formattedUsers = usersData
           ? usersData.map((user) => ({
               id: user.id,
-              name: `${user.firstName} ${user.lastName}`
+              name: `${user.first_name} ${user.last_name}`
             }))
           : [];
         setUsers(formattedUsers || []);

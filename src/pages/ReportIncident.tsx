@@ -90,7 +90,8 @@ const ReportIncident = () => {
           facilityId: facilities.find(f => f.name === incident.facility)?.id || '',
           priority: incident.priority || 'Medium',
           priorityId: priorities.find(p => p.name === incident.priority)?.id || '',
-          owner: incident.owner?.id || ''
+          owner: incident.owner?.id || '',
+          status: incident.status || 'Open'
         });
         setPeopleInvolved(incident.peopleInvolved || []);
       }
