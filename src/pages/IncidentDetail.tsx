@@ -61,7 +61,8 @@ const IncidentDetail = () => {
         documents: fetchedIncident.documents || [],
         createdAt: new Date(fetchedIncident.date),
         updatedAt: new Date(fetchedIncident.date),
-        priority: fetchedIncident.priority.name
+        priority: fetchedIncident.priority.name,
+        comments: fetchedIncident.comments || [] // Make sure comments are included
       };
       console.log("IncidentDetail - Using fetched incident data:", convertedIncident);
       setIncident(convertedIncident);
@@ -87,24 +88,21 @@ const IncidentDetail = () => {
     incident?.status || 'Open'
   );
   
-  // Comment submission handler
+  // Comment submission handler with edge function integration
   const handleCommentSubmit = async () => {
     if (!commentText.trim() || isSubmitting) return;
     
     setIsSubmitting(true);
     try {
-      // Here you would call your comment submission logic
-      console.log('Submitting comment:', commentText, commentFiles);
-      
+      // The CommentForm will handle the submission via the edge function
       // Reset form after successful submission
       setCommentText('');
       setCommentFiles([]);
       
-      // You can add toast notification here
-      // toast.success('Comment added successfully');
+      // Refresh the incident data after comment is added
+      window.location.reload(); // Simple refresh for now
     } catch (error) {
       console.error('Error submitting comment:', error);
-      // toast.error('Failed to add comment');
     } finally {
       setIsSubmitting(false);
     }
