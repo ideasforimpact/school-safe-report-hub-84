@@ -99,8 +99,8 @@ function App() {
                     <Route path="/incidents/:id" element={<IncidentDetail />} />
                     <Route path="/incident/:id" element={<IncidentDetail />} />
                     <Route path="/report-incident" element={<ReportIncident />} />
-                    <Route path="/edit-incident/:id" element={<EditIncident />} />
-                    <Route path="/incidents/:id/edit" element={<EditIncident />} />
+                    {/* <Route path="/edit-incident/:id" element={<EditIncident />} /> */}
+                    <Route path="/incident/:id/edit" element={<EditIncident />} />
                     <Route path="/insights" element={<Insights />} />
 
                     {/* Assessment routes */}
