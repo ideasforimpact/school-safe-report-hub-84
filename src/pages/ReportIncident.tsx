@@ -123,7 +123,7 @@ const ReportIncident = () => {
             console.log('Priority match:', priorityMatch);
             
             const updatedFormData = {
-              type: incident.type || '',
+              type: (incident.type || '') as IncidentType | '',
               typeId: typeMatch?.id || '',
               categoryId: categoryMatch?.id || '',
               subcategory: incident.subcategory || '',
