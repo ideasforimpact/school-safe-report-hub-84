@@ -23,7 +23,7 @@ import { useIncidentData } from '@/hooks/useIncidentData';
 const IncidentContext = createContext<IncidentContextType | undefined>(undefined);
 
 export const IncidentProvider = ({ children }: { children: ReactNode }) => {
-  // Use the new data fetching hook that includes client_id restrictions
+  // Use the data fetching hook that includes client_id restrictions
   const { incidents, loading, error, refetchIncidents } = useIncidentData();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [users] = useState<IncidentContextType['users']>([
@@ -88,14 +88,22 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
     initialSections
   );
 
-  // Use the incident actions hook with enhanced database integration
+  // Enhanced incident actions that automatically refetch after operations
   const {
     addIncident,
-    updateIncident,
+    updateIncident: originalUpdateIncident,
     getIncident,
     addActivity,
     isSubmitting
   } = useIncidentActions(incidents, refetchIncidents, activities, setActivities, users);
+
+  // Wrapper for updateIncident that refetches data
+  const updateIncident = async (id: string, updates: Partial<Incident>) => {
+    const result = await originalUpdateIncident(id, updates);
+    // Refetch incidents to get the latest data
+    await refetchIncidents();
+    return result;
+  };
 
   // Use the activities hook
   const {

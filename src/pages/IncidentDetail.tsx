@@ -7,35 +7,74 @@ import { Button } from '@/components/ui/button';
 import { AlertTriangle, ArrowLeft } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useIncidentDetail } from '@/hooks/useIncidentDetail';
-import { useIncidents } from '@/contexts/incident'; // Fixed import path
+import { useIncidents } from '@/contexts/incident';
 import { useState, useEffect } from 'react';
+import { useIncidentDetail as useIncidentDetailHook } from '@/hooks/incident/useIncidentDetail';
 
 const IncidentDetail = () => {
   const { id = '' } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { incidents, getIncident } = useIncidents();
+  
+  // Use the incident detail hook to fetch fresh data
+  const { incident: fetchedIncident, isLoading: isFetchingIncident, error: fetchError } = useIncidentDetailHook(id);
+  
   const [incident, setIncident] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Get the incident directly from the context
+  // Priority: Use fetched incident data if available, otherwise fall back to context
   useEffect(() => {
     console.log("IncidentDetail - Looking for incident with ID:", id);
-    console.log("IncidentDetail - Available incidents:", incidents.length);
+    console.log("IncidentDetail - Fetched incident:", fetchedIncident);
+    console.log("IncidentDetail - Available incidents in context:", incidents.length);
     
-    if (id && incidents.length > 0) {
-      const foundIncident = getIncident(id);
-      console.log("IncidentDetail - Found incident:", foundIncident);
-      setIncident(foundIncident || null);
-      setIsLoading(false);
-    } else if (incidents.length === 0) {
-      // Still loading incidents
+    if (isFetchingIncident) {
       setIsLoading(true);
-    } else {
-      // Incidents loaded but incident not found
+      return;
+    }
+    
+    if (fetchedIncident) {
+      // Convert fetched incident to the format expected by the component
+      const convertedIncident = {
+        id: fetchedIncident.id,
+        ticketId: fetchedIncident.ticket_id,
+        type: fetchedIncident.type.name,
+        category: fetchedIncident.category.name,
+        subcategory: fetchedIncident.subcategory.name,
+        description: fetchedIncident.description,
+        date: new Date(fetchedIncident.date),
+        location: fetchedIncident.location.name,
+        peopleInvolved: fetchedIncident.people_involved || [],
+        status: fetchedIncident.status.name,
+        reportedBy: {
+          id: fetchedIncident.created_by.id,
+          name: `${fetchedIncident.created_by.first_name} ${fetchedIncident.created_by.last_name}`
+        },
+        owner: fetchedIncident.assigned_to ? {
+          id: fetchedIncident.assigned_to.id,
+          name: `${fetchedIncident.assigned_to.first_name} ${fetchedIncident.assigned_to.last_name}`
+        } : undefined,
+        facility: fetchedIncident.facility.name,
+        documents: fetchedIncident.documents || [],
+        createdAt: new Date(fetchedIncident.date),
+        updatedAt: new Date(fetchedIncident.date),
+        priority: fetchedIncident.priority.name
+      };
+      console.log("IncidentDetail - Using fetched incident data:", convertedIncident);
+      setIncident(convertedIncident);
+      setIsLoading(false);
+    } else if (id && incidents.length > 0) {
+      // Fall back to context data if fetch failed
+      const contextIncident = getIncident(id);
+      console.log("IncidentDetail - Using context incident:", contextIncident);
+      setIncident(contextIncident || null);
+      setIsLoading(false);
+    } else if (!isFetchingIncident) {
+      // No incident found and not loading
       setIncident(null);
       setIsLoading(false);
     }
-  }, [id, incidents, getIncident]);
+  }, [id, fetchedIncident, isFetchingIncident, incidents, getIncident]);
 
   const incidentDetailProps = useIncidentDetailPage(id);
   const { useStatusUpdate, formatDate, formatDateTime, getStatusColor, getCommentStatusColor } = useIncidentDetail();
@@ -45,7 +84,7 @@ const IncidentDetail = () => {
     incident?.status || 'Open'
   );
   
-  if (isLoading) {
+  if (isLoading || isFetchingIncident) {
     return (
       <Layout>
         <div className="container max-w-6xl py-6">

@@ -21,6 +21,8 @@ export function useIncidentData() {
         throw new Error("Access denied: No client association found");
       }
 
+      console.log('Fetching incidents for client:', state.employeeData.clientId);
+
       // Call the edge function to fetch incidents
       const { data, error: functionError } = await supabase.functions.invoke('fetch-incidents', {
         body: {
@@ -36,6 +38,8 @@ export function useIncidentData() {
       if (!data || !data.incidents) {
         throw new Error('No incidents data received');
       }
+
+      console.log('Fetched incidents data:', data.incidents);
 
       // Transform the data to match our Incident type
       const transformedIncidents: Incident[] = data.incidents.map((incident: any) => {
@@ -106,9 +110,11 @@ export function useIncidentData() {
         };
       });
 
+      console.log('Transformed incidents:', transformedIncidents);
       setIncidents(transformedIncidents);
 
     } catch (error: any) {
+      console.error('Error fetching incidents:', error);
       setError(error.message);
       toast.error(error.message);
       setIncidents([]); // Clear incidents on error
