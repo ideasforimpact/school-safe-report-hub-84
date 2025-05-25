@@ -6,7 +6,6 @@ import { useIncidents } from '@/contexts/incident';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { AlertTriangle, ArrowLeft } from 'lucide-react';
 import EditIncidentForm from '@/components/edit-incident/EditIncidentForm';
 
@@ -76,41 +75,19 @@ const EditIncidentPage = () => {
   return (
     <Layout>
       <div className="space-y-4 md:space-y-6 w-full overflow-x-hidden">
+        {/* Header section matching the design */}
         <div className="text-left">
-          <h1 className="text-2xl md:text-3xl font-bold">Edit Incident</h1>
-          <p className="text-gray-600 mt-1">
-            Ticket ID: <span className="font-medium">{incident.ticketId}</span>
-          </p>
-          <p className="text-sm text-gray-500 mt-1">
-            {incident.type} - {incident.category}
+          <p className="text-gray-600 text-sm mb-2">
+            Document safety incidents, near misses, or unsafe conditions
           </p>
         </div>
 
         <div className="w-full">
-          <Card className="border-none shadow-card pt-6">
-            <CardContent className="space-y-6 px-6">
-              <EditIncidentForm 
-                incident={incident}
-                onSuccess={() => navigate(`/incident/${id}`)}
-                onCancel={() => navigate('/incidents')}
-              />
-            </CardContent>
-            <CardFooter className="flex justify-between">
-              <Button 
-                type="button" 
-                variant="outline"
-                onClick={() => navigate('/incidents')}
-              >
-                Cancel
-              </Button>
-              <Button 
-                type="submit" 
-                form="edit-incident-form"
-              >
-                Save Changes
-              </Button>
-            </CardFooter>
-          </Card>
+          <EditIncidentForm 
+            incident={incident}
+            onSuccess={() => navigate(`/incident/${id}`)}
+            onCancel={() => navigate('/incidents')}
+          />
         </div>
       </div>
     </Layout>
