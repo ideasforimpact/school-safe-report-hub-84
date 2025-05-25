@@ -54,15 +54,15 @@ serve(async (req) => {
     // Generate a ticket ID
     const ticketId = `INC-${Math.floor(10000 + Math.random() * 90000)}`;
 
-    // Get the "New" status ID
+    // Get the "Open" status ID
     const { data: statusData, error: statusError } = await supabaseClient
       .from('incident_status')
       .select('id')
-      .eq('name', 'New')
+      .eq('name', 'Open')
       .single();
 
     if (statusError || !statusData) {
-      console.error('Error fetching New status:', statusError);
+      console.error('Error fetching Open status:', statusError);
       throw new Error('Could not fetch incident status');
     }
 
