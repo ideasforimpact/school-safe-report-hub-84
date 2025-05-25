@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -26,6 +25,13 @@ interface FacilityWithCampus {
   campus_id: string;
 }
 
+// Subcategory type with category_id
+interface SubcategoryItem {
+  id: string;
+  name: string;
+  category_id: string;
+}
+
 const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
   incident,
   onSuccess,
@@ -40,13 +46,16 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
     facilities: basicFacilities,
     reportTypes,
     categories,
-    subcategories,
+    subcategories: rawSubcategories,
     priorities,
     users: incidentUsers
   } = useIncidentForm();
 
   // Cast facilities to the extended type for campus_id access
   const facilities = basicFacilities as FacilityWithCampus[];
+  
+  // Cast subcategories to include category_id
+  const subcategories = rawSubcategories as SubcategoryItem[];
   
   // Form state initialized with incident data
   const [formData, setFormData] = useState({
