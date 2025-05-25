@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { 
   Select,
@@ -38,15 +37,8 @@ const CategorySection: React.FC<CategorySectionProps> = ({
   subcategories,
   loading
 }) => {
-  console.log('=== CATEGORY SECTION DEBUG ===');
-  console.log('Category ID value:', categoryId);
-  console.log('Subcategory value:', subcategory);
-  console.log('Categories:', categories);
-  console.log('Subcategories:', subcategories);
-
   // Filter subcategories based on selected category
   const filteredSubcategories = subcategories.filter(sub => sub.category_id === categoryId);
-  console.log('Filtered subcategories:', filteredSubcategories);
 
   return (
     <>
@@ -57,7 +49,6 @@ const CategorySection: React.FC<CategorySectionProps> = ({
         <Select 
           value={categoryId}
           onValueChange={(value) => {
-            console.log('Category selected:', value);
             onSelectChange('categoryId', value);
             // Reset subcategory when category changes
             onSelectChange('subcategoryId', '');
@@ -84,7 +75,6 @@ const CategorySection: React.FC<CategorySectionProps> = ({
         <Select 
           value={subcategory}
           onValueChange={(value) => {
-            console.log('Subcategory selected:', value);
             onSelectChange('subcategoryId', value);
           }}
           disabled={loading || !categoryId || filteredSubcategories.length === 0}

@@ -72,21 +72,14 @@ const ReportIncident = () => {
   useEffect(() => {
     if (incidentId) {
       setIsEditMode(true);
-      console.log('=== EDIT MODE INITIALIZATION ===');
-      console.log('Incident ID:', incidentId);
     }
   }, [incidentId]);
 
   // Handle incident loading and form population
   useEffect(() => {
     if (isEditMode && existingIncident && !isLoadingIncident) {
-      console.log('=== POPULATING FORM WITH INCIDENT DATA ===');
-      console.log('Existing incident:', existingIncident);
-      
       const mappedFormData = getFormData();
       if (mappedFormData) {
-        console.log('=== SETTING FORM DATA ===');
-        console.log('Mapped form data:', mappedFormData);
         setFormData(mappedFormData);
         setPeopleInvolved(existingIncident.people_involved || []);
       }

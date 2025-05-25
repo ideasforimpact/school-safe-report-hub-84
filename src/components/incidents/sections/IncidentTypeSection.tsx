@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { 
   Select,
@@ -38,12 +37,6 @@ const IncidentTypeSection: React.FC<IncidentTypeSectionProps> = ({
   priorities,
   loading
 }) => {
-  console.log('=== INCIDENT TYPE SECTION DEBUG ===');
-  console.log('Type value:', type);
-  console.log('Priority value:', priority);
-  console.log('Report types:', reportTypes);
-  console.log('Priorities:', priorities);
-
   return (
     <>
       <div className="space-y-2">
@@ -53,7 +46,6 @@ const IncidentTypeSection: React.FC<IncidentTypeSectionProps> = ({
         <Select 
           value={type}
           onValueChange={(value) => {
-            console.log('Report type selected:', value);
             onSelectChange('typeId', value);
           }}
           disabled={loading}
@@ -78,7 +70,6 @@ const IncidentTypeSection: React.FC<IncidentTypeSectionProps> = ({
         <Select 
           value={priority}
           onValueChange={(value) => {
-            console.log('Priority selected:', value);
             onSelectChange('priorityId', value);
           }}
           disabled={loading}

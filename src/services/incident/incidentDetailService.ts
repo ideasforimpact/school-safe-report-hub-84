@@ -51,9 +51,6 @@ export interface IncidentDetail {
 
 export const fetchIncidentWithRelations = async (incidentId: string): Promise<IncidentDetail | null> => {
   try {
-    console.log('=== FETCHING INCIDENT WITH RELATIONS ===');
-    console.log('Incident ID:', incidentId);
-    
     const { data: incident, error } = await supabase
       .from('incidents')
       .select(`
@@ -110,12 +107,8 @@ export const fetchIncidentWithRelations = async (incidentId: string): Promise<In
     }
 
     if (!incident) {
-      console.log('No incident found with ID:', incidentId);
       return null;
     }
-
-    console.log('=== RAW INCIDENT DATA ===');
-    console.log('Incident data:', incident);
 
     // Fetch assigned employee separately if exists
     let assignedEmployee = null;
@@ -191,9 +184,6 @@ export const fetchIncidentWithRelations = async (incidentId: string): Promise<In
       documents: Array.isArray(incident.documents) ? incident.documents : []
     };
 
-    console.log('=== TRANSFORMED INCIDENT DATA ===');
-    console.log('Transformed incident:', transformedIncident);
-
     return transformedIncident;
 
   } catch (error) {
@@ -204,9 +194,6 @@ export const fetchIncidentWithRelations = async (incidentId: string): Promise<In
 };
 
 export const mapIncidentToFormData = (incident: IncidentDetail) => {
-  console.log('=== MAPPING INCIDENT TO FORM DATA ===');
-  console.log('Input incident:', incident);
-  
   // Extract date and time from the incident date
   const incidentDate = new Date(incident.date);
   const dateString = incidentDate.toISOString().split('T')[0];
@@ -228,9 +215,6 @@ export const mapIncidentToFormData = (incident: IncidentDetail) => {
     owner: incident.assigned_to?.id || '',
     status: incident.status.name as any
   };
-
-  console.log('=== MAPPED FORM DATA ===');
-  console.log('Form data:', formData);
 
   return formData;
 };

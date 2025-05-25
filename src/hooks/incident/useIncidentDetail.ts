@@ -10,7 +10,6 @@ export const useIncidentDetail = (incidentId?: string) => {
   useEffect(() => {
     const loadIncident = async () => {
       if (!incidentId) {
-        console.log('No incident ID provided');
         return;
       }
 
@@ -18,14 +17,10 @@ export const useIncidentDetail = (incidentId?: string) => {
       setError(null);
 
       try {
-        console.log('=== LOADING INCIDENT DETAIL ===');
-        console.log('Incident ID:', incidentId);
-        
         const incidentData = await fetchIncidentWithRelations(incidentId);
         
         if (incidentData) {
           setIncident(incidentData);
-          console.log('Incident loaded successfully:', incidentData);
         } else {
           setError('Incident not found');
         }

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { 
   Select,
@@ -37,15 +36,8 @@ const LocationSection: React.FC<LocationSectionProps> = ({
   facilities,
   loading
 }) => {
-  console.log('=== LOCATION SECTION DEBUG ===');
-  console.log('Location ID value:', locationId);
-  console.log('Facility ID value:', facilityId);
-  console.log('Locations:', locations);
-  console.log('Facilities:', facilities);
-
   // Filter facilities based on selected location
   const filteredFacilities = facilities.filter(facility => facility.campus_id === locationId);
-  console.log('Filtered facilities:', filteredFacilities);
 
   return (
     <>
@@ -56,7 +48,6 @@ const LocationSection: React.FC<LocationSectionProps> = ({
         <Select 
           value={locationId}
           onValueChange={(value) => {
-            console.log('Location selected:', value);
             onSelectChange('locationId', value);
             // Reset facility when location changes
             onSelectChange('facilityId', '');
@@ -83,7 +74,6 @@ const LocationSection: React.FC<LocationSectionProps> = ({
         <Select 
           value={facilityId}
           onValueChange={(value) => {
-            console.log('Facility selected:', value);
             onSelectChange('facilityId', value);
           }}
           disabled={loading || !locationId || filteredFacilities.length === 0}
