@@ -16,17 +16,14 @@ interface ConfigItem {
 }
 
 interface FormData {
-  type: IncidentType | '';
   typeId: string;
   categoryId: string;
-  subcategory: string;
   subcategoryId: string;
   description: string;
   date: string;
   time: string;
   locationId: string;
   facilityId: string;
-  priority: 'Low' | 'Medium' | 'High' | 'Critical' | '';
   priorityId: string;
   owner: string;
   status: string;
@@ -35,17 +32,14 @@ interface FormData {
 export const useIncidentForm = () => {
   const [nextTicketId, setNextTicketId] = useState<string>('');
   const [formData, setForm] = useState<FormData>({
-    type: '',
     typeId: '',
     categoryId: '',
-    subcategory: '',
     subcategoryId: '',
     description: '',
     date: '',
     time: '',
     locationId: '',
     facilityId: '',
-    priority: '',
     priorityId: '',
     owner: '',
     status: 'Open'

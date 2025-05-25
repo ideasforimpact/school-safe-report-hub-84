@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth/AuthContext';
@@ -367,10 +366,22 @@ const ReportIncident = () => {
     name: `${employee.firstName} ${employee.lastName}`
   }));
 
-  // Create a safe formData object for the component that ensures priority is never empty
+  // Create a safe formData object for the component that ensures all fields are properly mapped
   const safeFormData = {
-    ...formData,
-    priority: formData.priority || 'Medium' as 'Low' | 'Medium' | 'High' | 'Critical'
+    typeId: formData.typeId,
+    categoryId: formData.categoryId,
+    subcategoryId: formData.subcategoryId,
+    description: formData.description,
+    date: formData.date,
+    time: formData.time,
+    locationId: formData.locationId,
+    facilityId: formData.facilityId,
+    priorityId: formData.priorityId,
+    owner: formData.owner,
+    // Legacy fields for backward compatibility - these should be derived from ID fields
+    type: formData.typeId,
+    subcategory: formData.subcategoryId,
+    priority: formData.priorityId || 'Medium' as 'Low' | 'Medium' | 'High' | 'Critical'
   };
 
   // Show loading state until form is completely ready
