@@ -9,14 +9,14 @@ import { useIncidentForm } from '@/hooks/useIncidentForm';
 import { useIncidentFormValidation } from '@/hooks/incident-form/useIncidentFormValidation';
 import IncidentDetailsForm from '@/components/incidents/IncidentDetailsForm';
 import PeopleInvolvedSection from '@/components/incidents/PeopleInvolvedSection';
-import { IncidentType, IncidentCategory, IncidentLocation } from '@/types/incident';
+import { IncidentType } from '@/types/incident';
 import { Employee } from '@/types/employeeVerification';
 import { getAllEmployeesFromApi } from '@/services/employee/employeeRetrievalService';
 import { Student } from '@/types/student';
 import { useStudents } from '@/contexts/StudentContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmployeeStore } from '@/store/EmployeeContext';
-import { useIncidents } from '@/contexts/incident';
+import { useIncidentDetail } from '@/hooks/incident/useIncidentDetail';
 
 // Define a user type that has only the properties needed by the components
 interface UserBasicInfo {
@@ -32,13 +32,13 @@ const ReportIncident = () => {
   const navigate = useNavigate();
   const { students } = useStudents();
   const { state: employeeState } = useEmployeeStore();
-  const { getIncident } = useIncidents();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoadingEmployees, setIsLoadingEmployees] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [existingIncident, setExistingIncident] = useState(null);
-  const [isDataLoaded, setIsDataLoaded] = useState(false);
+  
+  // Use the new incident detail hook
+  const { incident: existingIncident, isLoading: isLoadingIncident, error: incidentError, getFormData } = useIncidentDetail(incidentId);
   
   // Add validation hook
   const { errors, validateForm } = useIncidentFormValidation();
@@ -74,90 +74,33 @@ const ReportIncident = () => {
       setIsEditMode(true);
       console.log('=== EDIT MODE INITIALIZATION ===');
       console.log('Incident ID:', incidentId);
-      console.log('Available reference data:', {
-        reportTypes: reportTypes.length,
-        categories: formCategories.length,
-        subcategories: subcategories.length,
-        locations: locations.length,
-        facilities: facilities.length,
-        priorities: priorities.length
-      });
+    }
+  }, [incidentId]);
+
+  // Handle incident loading and form population
+  useEffect(() => {
+    if (isEditMode && existingIncident && !isLoadingIncident) {
+      console.log('=== POPULATING FORM WITH INCIDENT DATA ===');
+      console.log('Existing incident:', existingIncident);
       
-      // Only try to get incident if we have reference data loaded
-      if (reportTypes.length > 0 && formCategories.length > 0 && locations.length > 0 && !isDataLoaded) {
-        try {
-          const incident = getIncident(incidentId);
-          console.log('=== INCIDENT DATA RETRIEVED ===');
-          console.log('Full incident object:', incident);
-          
-          if (incident) {
-            setExistingIncident(incident);
-            
-            // Populate form with existing data
-            const incidentDate = new Date(incident.date);
-            const dateString = incidentDate.toISOString().split('T')[0];
-            const timeString = incidentDate.toTimeString().split(' ')[0].slice(0, 5);
-            
-            console.log('=== MAPPING INCIDENT DATA TO FORM ===');
-            console.log('Incident type:', incident.type);
-            console.log('Incident category:', incident.category);
-            console.log('Incident subcategory:', incident.subcategory);
-            console.log('Incident location:', incident.location);
-            console.log('Incident facility:', incident.facility);
-            console.log('Incident priority:', incident.priority);
-            
-            // Find matching IDs from the reference data
-            const typeMatch = reportTypes.find(t => t.name === incident.type);
-            const categoryMatch = formCategories.find(c => c.name === incident.category);
-            const subcategoryMatch = subcategories.find(s => s.name === incident.subcategory);
-            const locationMatch = locations.find(l => l.name === incident.location);
-            const facilityMatch = facilities.find(f => f.name === incident.facility);
-            const priorityMatch = priorities.find(p => p.name === incident.priority);
-            
-            console.log('=== REFERENCE DATA MATCHES ===');
-            console.log('Type match:', typeMatch);
-            console.log('Category match:', categoryMatch);
-            console.log('Subcategory match:', subcategoryMatch);
-            console.log('Location match:', locationMatch);
-            console.log('Facility match:', facilityMatch);
-            console.log('Priority match:', priorityMatch);
-            
-            const updatedFormData = {
-              type: (incident.type || '') as IncidentType | '',
-              typeId: typeMatch?.id || '',
-              categoryId: categoryMatch?.id || '',
-              subcategory: incident.subcategory || '',
-              subcategoryId: subcategoryMatch?.id || '',
-              description: incident.description || '',
-              date: dateString,
-              time: timeString,
-              locationId: locationMatch?.id || '',
-              facilityId: facilityMatch?.id || '',
-              priority: (incident.priority as 'Low' | 'Medium' | 'High' | 'Critical') || 'Medium',
-              priorityId: priorityMatch?.id || '',
-              owner: incident.owner?.id || '',
-              status: incident.status || 'Open'
-            };
-            
-            console.log('=== FINAL FORM DATA ===');
-            console.log('Updated form data:', updatedFormData);
-            
-            setFormData(updatedFormData);
-            setPeopleInvolved(incident.peopleInvolved || []);
-            setIsDataLoaded(true);
-            console.log('Form data populated successfully');
-          } else {
-            console.log('No incident found with ID:', incidentId);
-            toast.error('Incident not found');
-            navigate('/incidents');
-          }
-        } catch (error) {
-          console.error('Error loading incident:', error);
-          toast.error('Failed to load incident data');
-        }
+      const mappedFormData = getFormData();
+      if (mappedFormData) {
+        console.log('=== SETTING FORM DATA ===');
+        console.log('Mapped form data:', mappedFormData);
+        setFormData(mappedFormData);
+        setPeopleInvolved(existingIncident.people_involved || []);
       }
     }
-  }, [incidentId, getIncident, reportTypes, formCategories, subcategories, locations, facilities, priorities, setFormData, setPeopleInvolved, navigate, isDataLoaded]);
+  }, [isEditMode, existingIncident, isLoadingIncident, getFormData, setFormData, setPeopleInvolved]);
+
+  // Handle incident loading error
+  useEffect(() => {
+    if (incidentError && isEditMode) {
+      console.error('Incident loading error:', incidentError);
+      toast.error(incidentError);
+      navigate('/incidents');
+    }
+  }, [incidentError, isEditMode, navigate]);
 
   // Log form data changes to debug
   useEffect(() => {
@@ -408,8 +351,25 @@ const ReportIncident = () => {
 
   console.log('=== RENDER DEBUG ===');
   console.log('Is edit mode:', isEditMode);
-  console.log('Is data loaded:', isDataLoaded);
+  console.log('Is loading incident:', isLoadingIncident);
+  console.log('Existing incident:', existingIncident);
   console.log('Safe form data for rendering:', safeFormData);
+
+  // Show loading state while fetching incident in edit mode
+  if (isEditMode && isLoadingIncident) {
+    return (
+      <Layout>
+        <div className="space-y-4 md:space-y-6 w-full overflow-x-hidden bg-gray-50 min-h-screen">
+          <div className="bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-6">
+            <div className="max-w-7xl mx-auto">
+              <h1 className="text-2xl font-semibold text-gray-900">Edit Incident</h1>
+              <p className="text-gray-600 text-sm mt-1">Loading incident details...</p>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>

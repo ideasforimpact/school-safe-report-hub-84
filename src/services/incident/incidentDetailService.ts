@@ -1,0 +1,220 @@
+
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+
+export interface IncidentDetail {
+  id: string;
+  ticket_id: string;
+  type: {
+    id: string;
+    name: string;
+  };
+  category: {
+    id: string;
+    name: string;
+  };
+  subcategory: {
+    id: string;
+    name: string;
+  };
+  description: string;
+  date: string;
+  location: {
+    id: string;
+    name: string;
+  };
+  facility: {
+    id: string;
+    name: string;
+  };
+  priority: {
+    id: string;
+    name: string;
+  };
+  status: {
+    id: string;
+    name: string;
+  };
+  assigned_to?: {
+    id: string;
+    first_name: string;
+    last_name: string;
+  };
+  created_by: {
+    id: string;
+    first_name: string;
+    last_name: string;
+  };
+  people_involved: any[];
+  documents: any[];
+}
+
+export const fetchIncidentWithRelations = async (incidentId: string): Promise<IncidentDetail | null> => {
+  try {
+    console.log('=== FETCHING INCIDENT WITH RELATIONS ===');
+    console.log('Incident ID:', incidentId);
+    
+    const { data: incident, error } = await supabase
+      .from('incidents')
+      .select(`
+        id,
+        ticket_id,
+        description,
+        date,
+        people_involved,
+        documents,
+        type_id,
+        category_id,
+        subcategory_id,
+        location_id,
+        facility_id,
+        priority_id,
+        status_id,
+        assigned_to,
+        created_by,
+        incident_report_types:type_id (
+          id,
+          name
+        ),
+        incident_categories:category_id (
+          id,
+          name
+        ),
+        incident_subcategories:subcategory_id (
+          id,
+          name
+        ),
+        campuses:location_id (
+          id,
+          name
+        ),
+        facilities:facility_id (
+          id,
+          name
+        ),
+        incident_priorities:priority_id (
+          id,
+          name
+        ),
+        incident_status:status_id (
+          id,
+          name
+        ),
+        assigned_employee:assigned_to (
+          id,
+          first_name,
+          last_name
+        ),
+        created_employee:created_by (
+          id,
+          first_name,
+          last_name
+        )
+      `)
+      .eq('id', incidentId)
+      .single();
+
+    if (error) {
+      console.error('Error fetching incident:', error);
+      throw error;
+    }
+
+    if (!incident) {
+      console.log('No incident found with ID:', incidentId);
+      return null;
+    }
+
+    console.log('=== RAW INCIDENT DATA ===');
+    console.log('Incident data:', incident);
+
+    // Transform the data to match our interface
+    const transformedIncident: IncidentDetail = {
+      id: incident.id,
+      ticket_id: incident.ticket_id,
+      type: {
+        id: incident.type_id || '',
+        name: incident.incident_report_types?.name || ''
+      },
+      category: {
+        id: incident.category_id || '',
+        name: incident.incident_categories?.name || ''
+      },
+      subcategory: {
+        id: incident.subcategory_id || '',
+        name: incident.incident_subcategories?.name || ''
+      },
+      description: incident.description || '',
+      date: incident.date,
+      location: {
+        id: incident.location_id || '',
+        name: incident.campuses?.name || ''
+      },
+      facility: {
+        id: incident.facility_id || '',
+        name: incident.facilities?.name || ''
+      },
+      priority: {
+        id: incident.priority_id || '',
+        name: incident.incident_priorities?.name || ''
+      },
+      status: {
+        id: incident.status_id || '',
+        name: incident.incident_status?.name || ''
+      },
+      assigned_to: incident.assigned_employee ? {
+        id: incident.assigned_employee.id,
+        first_name: incident.assigned_employee.first_name,
+        last_name: incident.assigned_employee.last_name
+      } : undefined,
+      created_by: {
+        id: incident.created_employee.id,
+        first_name: incident.created_employee.first_name,
+        last_name: incident.created_employee.last_name
+      },
+      people_involved: incident.people_involved || [],
+      documents: incident.documents || []
+    };
+
+    console.log('=== TRANSFORMED INCIDENT DATA ===');
+    console.log('Transformed incident:', transformedIncident);
+
+    return transformedIncident;
+
+  } catch (error) {
+    console.error('Error in fetchIncidentWithRelations:', error);
+    toast.error('Failed to fetch incident details');
+    return null;
+  }
+};
+
+export const mapIncidentToFormData = (incident: IncidentDetail) => {
+  console.log('=== MAPPING INCIDENT TO FORM DATA ===');
+  console.log('Input incident:', incident);
+  
+  // Extract date and time from the incident date
+  const incidentDate = new Date(incident.date);
+  const dateString = incidentDate.toISOString().split('T')[0];
+  const timeString = incidentDate.toTimeString().split(' ')[0].slice(0, 5);
+  
+  const formData = {
+    type: incident.type.name as any,
+    typeId: incident.type.id,
+    categoryId: incident.category.id,
+    subcategory: incident.subcategory.name,
+    subcategoryId: incident.subcategory.id,
+    description: incident.description,
+    date: dateString,
+    time: timeString,
+    locationId: incident.location.id,
+    facilityId: incident.facility.id,
+    priority: incident.priority.name as 'Low' | 'Medium' | 'High' | 'Critical',
+    priorityId: incident.priority.id,
+    owner: incident.assigned_to?.id || '',
+    status: incident.status.name as any
+  };
+
+  console.log('=== MAPPED FORM DATA ===');
+  console.log('Form data:', formData);
+
+  return formData;
+};
