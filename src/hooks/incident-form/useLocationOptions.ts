@@ -34,7 +34,6 @@ export function useLocationOptions(locationId: string) {
         
         setLocationOptions(options);
       } catch (error) {
-        console.error("Error fetching campuses:", error);
         setLocationOptions([]);
       } finally {
         setLoading(false);

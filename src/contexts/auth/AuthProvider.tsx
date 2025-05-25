@@ -352,7 +352,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     // Then proceed with Supabase logout (won't affect the redirection)
     supabase.auth.signOut().catch((error) => {
-      console.error("Error signing out from Supabase:", error);
+      // Handle error silently
     });
   };
 
