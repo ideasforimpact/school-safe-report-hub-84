@@ -6,9 +6,9 @@ import { useIncidents } from '@/contexts/incident';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { AlertTriangle, ArrowLeft } from 'lucide-react';
 import EditIncidentForm from '@/components/edit-incident/EditIncidentForm';
-import EditIncidentHeader from '@/components/edit-incident/EditIncidentHeader';
 
 const EditIncidentPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -21,7 +21,7 @@ const EditIncidentPage = () => {
   if (!id) {
     return (
       <Layout>
-        <div className="container max-w-6xl py-6">
+        <div className="space-y-4 md:space-y-6 w-full overflow-x-hidden">
           <Alert variant="destructive" className="mb-4">
             <AlertTriangle className="h-5 w-5" />
             <AlertTitle className="ml-2">Invalid URL</AlertTitle>
@@ -50,7 +50,7 @@ const EditIncidentPage = () => {
   if (!incident) {
     return (
       <Layout>
-        <div className="container max-w-6xl py-6">
+        <div className="space-y-4 md:space-y-6 w-full overflow-x-hidden">
           <Alert variant="destructive" className="mb-4">
             <AlertTriangle className="h-5 w-5" />
             <AlertTitle className="ml-2">Incident not found</AlertTitle>
@@ -75,17 +75,43 @@ const EditIncidentPage = () => {
 
   return (
     <Layout>
-      <div className="container max-w-6xl py-6 space-y-6">
-        <EditIncidentHeader 
-          incident={incident}
-          onBackClick={() => navigate('/incidents')}
-        />
-        
-        <EditIncidentForm 
-          incident={incident}
-          onSuccess={() => navigate(`/incident/${id}`)}
-          onCancel={() => navigate('/incidents')}
-        />
+      <div className="space-y-4 md:space-y-6 w-full overflow-x-hidden">
+        <div className="text-left">
+          <h1 className="text-2xl md:text-3xl font-bold">Edit Incident</h1>
+          <p className="text-gray-600 mt-1">
+            Ticket ID: <span className="font-medium">{incident.ticketId}</span>
+          </p>
+          <p className="text-sm text-gray-500 mt-1">
+            {incident.type} - {incident.category}
+          </p>
+        </div>
+
+        <div className="w-full">
+          <Card className="border-none shadow-card pt-6">
+            <CardContent className="space-y-6 px-6">
+              <EditIncidentForm 
+                incident={incident}
+                onSuccess={() => navigate(`/incident/${id}`)}
+                onCancel={() => navigate('/incidents')}
+              />
+            </CardContent>
+            <CardFooter className="flex justify-between">
+              <Button 
+                type="button" 
+                variant="outline"
+                onClick={() => navigate('/incidents')}
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                form="edit-incident-form"
+              >
+                Save Changes
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
       </div>
     </Layout>
   );
