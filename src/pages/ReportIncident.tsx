@@ -177,9 +177,12 @@ const ReportIncident = () => {
     e.preventDefault();
     
     if (isSubmitting) return;
-    
+
     // Validate form including people involved
     const isValid = validateForm(formData, peopleInvolved);
+
+    console.log(formData,"formData", errors)
+
     
     if (!isValid) {
       const firstError = Object.values(errors)[0];
