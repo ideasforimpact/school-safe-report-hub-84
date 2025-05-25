@@ -15,12 +15,12 @@ export function useIncidentFormValidation() {
 
     // Validate type
     if (!formData.type) {
-      newErrors.type = 'Report type cannot be empty';
+      newErrors.type = 'Report type is required';
     }
     
     // Validate description
     if (!formData.description?.trim()) {
-      newErrors.description = 'Description cannot be empty';
+      newErrors.description = 'Description is required';
     } else if (formData.description.trim().length < 10) {
       newErrors.description = 'Description must be at least 10 characters';
     } else if (formData.description.trim().length > 250) {
@@ -29,45 +29,45 @@ export function useIncidentFormValidation() {
     
     // Validate date
     if (!formData.date) {
-      newErrors.date = 'Date cannot be empty';
+      newErrors.date = 'Date is required';
     }
     
     // Validate time
     if (!formData.time) {
-      newErrors.time = 'Time cannot be empty';
+      newErrors.time = 'Time is required';
     }
     
     // Validate category
     if (!formData.categoryId) {
-      newErrors.categoryId = 'Category cannot be empty';
+      newErrors.categoryId = 'Category is required';
     }
     
     // Validate subcategory
     if (formData.categoryId && !formData.subcategory) {
-      newErrors.subcategory = 'Subcategory cannot be empty';
+      newErrors.subcategory = 'Subcategory is required';
     }
     
     // Validate location
     if (!formData.locationId) {
-      newErrors.locationId = 'Location cannot be empty';
+      newErrors.locationId = 'Location is required';
     }
     
     // Validate facility
     if (!formData.facilityId) {
-      newErrors.facilityId = 'Facility cannot be empty';
+      newErrors.facilityId = 'Facility is required';
     }
     
     // Validate priority
     if (!formData.priority) {
-      newErrors.priority = 'Priority cannot be empty';
+      newErrors.priority = 'Priority is required';
     }
     
     // Validate owner
     if (!formData.owner) {
-      newErrors.owner = 'Assignment cannot be empty';
+      newErrors.owner = 'Assignment is required';
     }
     
-    // Validate People Involved - only if someone has been added
+    // Enhanced validation for People Involved
     if (peopleInvolved && peopleInvolved.length > 0) {
       peopleInvolved.forEach((person, index) => {
         // Check if this person entry has any meaningful data
@@ -80,11 +80,22 @@ export function useIncidentFormValidation() {
         
         if (hasAnyValue) {
           if (!person.role) {
-            newErrors[`peopleInvolved.${index}.role`] = 'Role cannot be empty';
+            newErrors[`peopleInvolved.${index}.role`] = `Person ${index + 1}: Role is required`;
           }
           
           if (!person.name || person.name.trim() === '') {
-            newErrors[`peopleInvolved.${index}.name`] = 'Name cannot be empty';
+            newErrors[`peopleInvolved.${index}.name`] = `Person ${index + 1}: Name is required`;
+          }
+        }
+        
+        // If there are multiple people involved, make all fields mandatory for each person
+        if (peopleInvolved.length > 1) {
+          if (!person.role) {
+            newErrors[`peopleInvolved.${index}.role`] = `Person ${index + 1}: Role is required when multiple people are involved`;
+          }
+          
+          if (!person.name || person.name.trim() === '') {
+            newErrors[`peopleInvolved.${index}.name`] = `Person ${index + 1}: Name is required when multiple people are involved`;
           }
         }
       });

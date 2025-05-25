@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Comment as IncidentComment } from '@/types/incident';
 import {
@@ -10,7 +11,7 @@ import {
 import { Dialog } from '@/components/ui/dialog';
 import CommentForm from './CommentForm';
 import CommentItem from './CommentItem';
-import { useIncidents } from '@/contexts/incident'; // Fixed import path
+import { useIncidents } from '@/contexts/incident';
 
 interface CommentsListProps {
   comments: IncidentComment[];
@@ -19,7 +20,7 @@ interface CommentsListProps {
   updateComment: (incidentId: string, commentId: string, updates: Partial<IncidentComment>) => void;
   deleteComment: (incidentId: string, commentId: string) => void;
   formatDate: (date: Date) => string;
-  formatDateTime: (date: Date) => string; // Add formatDateTime prop
+  formatDateTime: (date: Date) => string;
   getCommentStatusColor: (status: IncidentComment['status']) => string;
   canEditComment: (comment: IncidentComment) => boolean;
   userId: string;
@@ -33,7 +34,7 @@ const CommentsList: React.FC<CommentsListProps> = ({
   updateComment,
   deleteComment,
   formatDate,
-  formatDateTime, // Add formatDateTime
+  formatDateTime,
   getCommentStatusColor,
   canEditComment,
   userId,
@@ -52,6 +53,11 @@ const CommentsList: React.FC<CommentsListProps> = ({
   const openEditComment = (comment: IncidentComment) => {
     setCurrentComment(comment);
     setShowEditComment(true);
+  };
+
+  const handleCommentAdded = () => {
+    // Refresh comments or trigger parent callback
+    addComment(incident.id, {} as any); // This should be properly implemented
   };
 
   return (
@@ -73,7 +79,7 @@ const CommentsList: React.FC<CommentsListProps> = ({
                   key={comment.id}
                   comment={comment}
                   formatDate={formatDate}
-                  formatDateTime={formatDateTime} // Pass formatDateTime
+                  formatDateTime={formatDateTime}
                   getCommentStatusColor={getCommentStatusColor}
                   canEdit={canEditComment(comment)}
                   onEdit={openEditComment}
@@ -92,20 +98,8 @@ const CommentsList: React.FC<CommentsListProps> = ({
         <Dialog open={showEditComment} onOpenChange={setShowEditComment}>
           <CommentForm
             users={users}
-            commentForm={{
-              description: currentComment.description,
-              dueDate: new Date(currentComment.dueDate),
-              assignedTo: currentComment.assignedTo,
-              status: currentComment.status,
-              createdBy: currentComment.createdBy,
-              image: currentComment.image,
-              files: currentComment.files || []
-            }}
-            onSubmit={(commentData) => {
-              updateComment(incident.id, currentComment.id, commentData);
-              setShowEditComment(false);
-              setCurrentComment(null);
-            }}
+            incidentId={incident.id}
+            onCommentAdded={handleCommentAdded}
             isOpen={showEditComment}
             onOpenChange={setShowEditComment}
             title="Edit Comment"

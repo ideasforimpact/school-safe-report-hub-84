@@ -25,6 +25,13 @@ const AddCommentButton: React.FC<AddCommentButtonProps> = ({
   incidentId,
   onAddComment
 }) => {
+  const handleCommentAdded = () => {
+    // Refresh the incident data or trigger a callback
+    if (onAddComment) {
+      // This will be handled by the CommentForm itself now
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
@@ -34,19 +41,8 @@ const AddCommentButton: React.FC<AddCommentButtonProps> = ({
       </DialogTrigger>
       <CommentForm
         users={users}
-        commentForm={{
-          description: '',
-          dueDate: new Date(),
-          assignedTo: { id: '', name: '' },
-          status: 'Pending',
-          createdBy: { id: userId, name: userName },
-          image: undefined,
-          files: []
-        }}
-        onSubmit={(commentData) => {
-          onAddComment(incidentId, commentData);
-          setIsOpen(false);
-        }}
+        incidentId={incidentId}
+        onCommentAdded={handleCommentAdded}
         isOpen={isOpen}
         onOpenChange={setIsOpen}
         title="Add Comment"
