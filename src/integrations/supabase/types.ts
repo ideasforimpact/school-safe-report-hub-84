@@ -608,7 +608,6 @@ export type Database = {
       }
       incident_status: {
         Row: {
-          client_id: string | null
           created_at: string
           description: string | null
           id: string
@@ -616,7 +615,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          client_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
@@ -624,22 +622,13 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          client_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
           name?: string
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "incident_status_client_id_fkey"
-            columns: ["client_id"]
-            isOneToOne: false
-            referencedRelation: "clients"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       incident_subcategories: {
         Row: {

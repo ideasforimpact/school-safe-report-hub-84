@@ -108,9 +108,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setAuthError(null);
         
         // Clear Redux state on logout
-        if (dispatch) {
-          dispatch(resetEmployee());
-        }
+        dispatch(resetEmployee());
         
         // Add a toast message for logout
         toast.info("You have been logged out");
@@ -157,9 +155,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             saveEmployeeDataToStorage(null);
             
             // Clear Redux state
-            if (dispatch) {
-              dispatch(resetEmployee());
-            }
+            dispatch(resetEmployee());
             
             logoutUser();
             toast.info("Your session has expired. Please log in again.");
@@ -190,9 +186,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Fetch employee data after successful login
         try {
-          if (dispatch) {
-            dispatch(setLoading(true));
-          }
+          dispatch(setLoading(true));
           
           const { data: employeeData, error } = await supabase
             .from('employees')
@@ -217,25 +211,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             saveEmployeeDataToStorage(employee);
             
             // Update Redux state using action creators properly
-            if (dispatch) {
-              dispatch(setEmployeeData(employee));
-              
-              if (employee.clientId) {
-                dispatch(setClientId(employee.clientId));
-              }
+            dispatch(setEmployeeData(employee));
+            
+            if (employee.clientId) {
+              dispatch(setClientId(employee.clientId));
             }
             
             console.log("Employee data stored:", employee);
           }
           
-          if (dispatch) {
-            dispatch(setLoading(false));
-          }
+          dispatch(setLoading(false));
         } catch (err) {
           console.error("Error fetching employee data:", err);
-          if (dispatch) {
-            dispatch(setLoading(false));
-          }
+          dispatch(setLoading(false));
         }
         
         toast.success(`Welcome back, ${user.firstName}!`);
@@ -318,12 +306,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         saveEmployeeDataToStorage(backofficeEmployeeData);
         
         // Update Redux state
-        if (dispatch) {
-          dispatch(setEmployeeData(backofficeEmployeeData));
-          
-          if (backofficeEmployeeData.clientId) {
-            dispatch(setClientId(backofficeEmployeeData.clientId));
-          }
+        dispatch(setEmployeeData(backofficeEmployeeData));
+        
+        if (backofficeEmployeeData.clientId) {
+          dispatch(setClientId(backofficeEmployeeData.clientId));
         }
         
         // Set modules for backoffice user (all modules enabled)
@@ -349,9 +335,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         ];
         
         // Update Redux state with modules using action creators properly
-        if (dispatch) {
-          dispatch(setConfiguredModules(backofficeModules));
-        }
+        dispatch(setConfiguredModules(backofficeModules));
         
         toast.success(`Welcome back, Backoffice Admin!`);
         return true;
@@ -376,9 +360,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setIsBackofficeUser(false);
     
     // Clear Redux state
-    if (dispatch) {
-      dispatch(resetEmployee());
-    }
+    dispatch(resetEmployee());
     
     // Clear local storage
     logoutUser();
