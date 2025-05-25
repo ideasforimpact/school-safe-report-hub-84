@@ -124,7 +124,12 @@ export function useIncidentData() {
   };
 
   useEffect(() => {
+    console.log('useIncidentData: useEffect triggered');
+    console.log('Employee data:', state.employeeData);
+    console.log('Loading state:', state.isLoading);
+    
     if (state.employeeData?.clientId) {
+      console.log('Calling fetchIncidents for client:', state.employeeData.clientId);
       fetchIncidents();
     } else if (!state.isLoading) {
       // Only show error if not still loading employee data
