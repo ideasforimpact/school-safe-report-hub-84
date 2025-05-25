@@ -50,11 +50,6 @@ const IncidentDetailsForm: React.FC<IncidentDetailsFormProps> = ({
   // Fetch data from database tables
   const { formData: dbFormData, loading } = useIncidentFormData();
 
-  console.log('=== INCIDENT DETAILS FORM DEBUG ===');
-  console.log('Form data received:', formData);
-  console.log('DB form data:', dbFormData);
-  console.log('Loading:', loading);
-
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       {/* Incident Type and Priority Section */}

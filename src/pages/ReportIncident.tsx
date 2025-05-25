@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import Layout from '@/components/layout/Layout';
@@ -37,7 +37,7 @@ const ReportIncident = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   
-  // Use the new incident detail hook
+  // Use the incident detail hook
   const { incident: existingIncident, isLoading: isLoadingIncident, error: incidentError, getFormData } = useIncidentDetail(incidentId);
   
   // Add validation hook
@@ -68,55 +68,42 @@ const ReportIncident = () => {
     setPeopleInvolved
   } = useIncidentForm();
 
-  // Check if we're in edit mode and load existing incident
+  // Set edit mode based on incidentId
   useEffect(() => {
-    if (incidentId) {
-      setIsEditMode(true);
-    }
+    setIsEditMode(!!incidentId);
   }, [incidentId]);
 
-  // Handle incident loading and form population
-  useEffect(() => {
-    if (isEditMode && existingIncident && !isLoadingIncident) {
+  // Populate form data when incident is loaded
+  const populateFormData = useCallback(() => {
+    if (existingIncident && !isLoadingIncident) {
       const mappedFormData = getFormData();
       if (mappedFormData) {
         setFormData(mappedFormData);
         setPeopleInvolved(existingIncident.people_involved || []);
       }
     }
-  }, [isEditMode, existingIncident, isLoadingIncident, getFormData, setFormData, setPeopleInvolved]);
+  }, [existingIncident, isLoadingIncident, getFormData, setFormData, setPeopleInvolved]);
+
+  useEffect(() => {
+    if (isEditMode) {
+      populateFormData();
+    }
+  }, [isEditMode, populateFormData]);
 
   // Handle incident loading error
   useEffect(() => {
     if (incidentError && isEditMode) {
-      console.error('Incident loading error:', incidentError);
       toast.error(incidentError);
       navigate('/incidents');
     }
   }, [incidentError, isEditMode, navigate]);
-
-  // Log form data changes to debug
-  useEffect(() => {
-    if (isEditMode) {
-      console.log('=== FORM DATA CHANGE DEBUG ===');
-      console.log('Current form data:', formData);
-      console.log('Type ID:', formData.typeId, 'Type:', formData.type);
-      console.log('Category ID:', formData.categoryId);
-      console.log('Subcategory ID:', formData.subcategoryId, 'Subcategory:', formData.subcategory);
-      console.log('Location ID:', formData.locationId);
-      console.log('Facility ID:', formData.facilityId);
-      console.log('Priority ID:', formData.priorityId, 'Priority:', formData.priority);
-    }
-  }, [formData, isEditMode]);
 
   // Fetch employees from the database
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
         setIsLoadingEmployees(true);
-        console.log("Fetching employees from API service...");
         const fetchedEmployees = await getAllEmployeesFromApi();
-        console.log(`Fetched ${fetchedEmployees.length} employees successfully:`, fetchedEmployees);
         setEmployees(fetchedEmployees);
       } catch (error) {
         console.error("Failed to fetch employees:", error);
@@ -182,8 +169,6 @@ const ReportIncident = () => {
           documents: documents
         };
 
-        console.log('Submitting incident update:', { incidentId, updates });
-
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
           toast.error("You must be logged in to edit incidents");
@@ -205,7 +190,6 @@ const ReportIncident = () => {
           throw new Error(error.message || 'Failed to update incident');
         }
 
-        console.log('Incident updated successfully:', data);
         toast.success("Incident updated successfully");
         navigate(`/incident/${incidentId}`);
         
@@ -215,7 +199,6 @@ const ReportIncident = () => {
         let clientId = employeeState.employeeData?.clientId || authEmployeeData?.clientId;
         
         if (!employeeId && user?.email) {
-          console.log("Fetching employee data from database for email:", user.email);
           const { data: empData, error: empError } = await supabase
             .from('employees')
             .select('id, client_id')
@@ -225,7 +208,6 @@ const ReportIncident = () => {
           if (empData && !empError) {
             employeeId = empData.id;
             clientId = empData.client_id;
-            console.log("Found employee data:", { employeeId, clientId });
           } else {
             console.error("Failed to fetch employee data:", empError);
           }
@@ -277,8 +259,6 @@ const ReportIncident = () => {
           clientId: clientId
         };
         
-        console.log("Calling create-incident edge function with data:", incidentData);
-        
         const { data, error } = await supabase.functions.invoke('create-incident', {
           body: incidentData
         });
@@ -293,9 +273,7 @@ const ReportIncident = () => {
           throw new Error(data?.error || 'Failed to create incident');
         }
         
-        console.log('Incident created successfully:', data);
         toast.success(`Incident reported successfully! Ticket ID: ${data.ticketId}`);
-        
         navigate('/incidents');
       }
     } catch (error) {
@@ -314,8 +292,6 @@ const ReportIncident = () => {
   };
   
   const handleSelectChange = (name: string, value: string) => {
-    console.log('=== SELECT CHANGE DEBUG ===');
-    console.log('Field:', name, 'Value:', value);
     formHandleSelectChange(name, value);
   };
   
@@ -341,12 +317,6 @@ const ReportIncident = () => {
     ...formData,
     priority: formData.priority || 'Medium' as 'Low' | 'Medium' | 'High' | 'Critical'
   };
-
-  console.log('=== RENDER DEBUG ===');
-  console.log('Is edit mode:', isEditMode);
-  console.log('Is loading incident:', isLoadingIncident);
-  console.log('Existing incident:', existingIncident);
-  console.log('Safe form data for rendering:', safeFormData);
 
   // Show loading state while fetching incident in edit mode
   if (isEditMode && isLoadingIncident) {
