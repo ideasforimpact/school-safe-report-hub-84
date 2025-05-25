@@ -17,7 +17,7 @@ import { useStudents } from '@/contexts/StudentContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { useIncidentDetail } from '@/hooks/incident/useIncidentDetail';
-import { useIncidents } from '@/contexts/incident';
+import { useIncidentData } from '@/hooks/useIncidentData';
 
 // Define a user type that has only the properties needed by the components
 interface UserBasicInfo {
@@ -33,7 +33,7 @@ const ReportIncident = () => {
   const navigate = useNavigate();
   const { students } = useStudents();
   const { state: employeeState } = useEmployeeStore();
-  const { refetchIncidents } = useIncidents();
+  const { refetchIncidents } = useIncidentData();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoadingEmployees, setIsLoadingEmployees] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
