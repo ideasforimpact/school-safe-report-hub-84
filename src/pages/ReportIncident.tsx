@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import Layout from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
@@ -17,6 +17,7 @@ import { Student } from '@/types/student';
 import { useStudents } from '@/contexts/StudentContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmployeeStore } from '@/store/EmployeeContext';
+import { useIncidents } from '@/contexts/incident';
 
 // Define a user type that has only the properties needed by the components
 interface UserBasicInfo {
@@ -28,12 +29,16 @@ interface UserBasicInfo {
 
 const ReportIncident = () => {
   const { user, employeeData: authEmployeeData } = useAuth();
+  const { id: incidentId } = useParams<{ id?: string }>();
   const navigate = useNavigate();
   const { students } = useStudents();
   const { state: employeeState } = useEmployeeStore();
+  const { getIncident } = useIncidents();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoadingEmployees, setIsLoadingEmployees] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [existingIncident, setExistingIncident] = useState(null);
   
   // Add validation hook
   const { errors, validateForm } = useIncidentFormValidation();
@@ -58,8 +63,39 @@ const ReportIncident = () => {
     categories: formCategories,
     subcategories,
     priorities,
-    users: incidentUsers
+    users: incidentUsers,
+    setFormData,
+    setPeopleInvolved
   } = useIncidentForm();
+
+  // Check if we're in edit mode and load existing incident
+  useEffect(() => {
+    if (incidentId) {
+      setIsEditMode(true);
+      const incident = getIncident(incidentId);
+      if (incident) {
+        setExistingIncident(incident);
+        // Populate form with existing data
+        const incidentDate = new Date(incident.date);
+        setFormData({
+          type: incident.type,
+          typeId: reportTypes.find(t => t.name === incident.type)?.id || '',
+          categoryId: formCategories.find(c => c.name === incident.category)?.id || '',
+          subcategory: incident.subcategory || '',
+          subcategoryId: subcategories.find(s => s.name === incident.subcategory)?.id || '',
+          description: incident.description,
+          date: incidentDate.toISOString().split('T')[0],
+          time: incidentDate.toTimeString().split(' ')[0].slice(0, 5),
+          locationId: locations.find(l => l.name === incident.location)?.id || '',
+          facilityId: facilities.find(f => f.name === incident.facility)?.id || '',
+          priority: incident.priority || 'Medium',
+          priorityId: priorities.find(p => p.name === incident.priority)?.id || '',
+          owner: incident.owner?.id || ''
+        });
+        setPeopleInvolved(incident.peopleInvolved || []);
+      }
+    }
+  }, [incidentId, getIncident, reportTypes, formCategories, subcategories, locations, facilities, priorities, setFormData, setPeopleInvolved]);
 
   // Fetch employees from the database
   useEffect(() => {
@@ -99,100 +135,157 @@ const ReportIncident = () => {
     setIsSubmitting(true);
     
     try {
-      // Get employee data - prioritize Redux store, then auth context, then fetch from DB
-      let employeeId = employeeState.employeeData?.id || authEmployeeData?.id;
-      let clientId = employeeState.employeeData?.clientId || authEmployeeData?.clientId;
-      
-      // If we don't have employee data, try to fetch it from database
-      if (!employeeId && user?.email) {
-        console.log("Fetching employee data from database for email:", user.email);
-        const { data: empData, error: empError } = await supabase
-          .from('employees')
-          .select('id, client_id')
-          .eq('email', user.email.toLowerCase())
-          .single();
-          
-        if (empData && !empError) {
-          employeeId = empData.id;
-          clientId = empData.client_id;
-          console.log("Found employee data:", { employeeId, clientId });
-        } else {
-          console.error("Failed to fetch employee data:", empError);
-        }
-      }
-      
-      if (!employeeId) {
-        toast.error("Unable to identify the reporting employee. Please refresh and try again.");
-        setIsSubmitting(false);
-        return;
-      }
+      if (isEditMode && incidentId) {
+        // Handle edit mode
+        const dateTime = formData.date && formData.time 
+          ? new Date(`${formData.date}T${formData.time}`) 
+          : new Date();
+        
+        const validPeople = peopleInvolved.filter(p => {
+          const hasName = p.name && p.name.trim() !== '';
+          const hasRole = p.role && p.role.trim() !== '';
+          const hasNotes = p.notes && p.notes.trim() !== '';
+          const hasAnyValue = hasName || hasRole || hasNotes;
+          return hasAnyValue;
+        });
+        
+        const documents = supportingFiles.map(file => ({
+          name: file.name,
+          type: file.type,
+          data: file.base64
+        }));
+        
+        const updates = {
+          type_id: formData.typeId,
+          category_id: formData.categoryId,
+          subcategory_id: formData.subcategoryId,
+          description: formData.description,
+          date: dateTime.toISOString(),
+          location_id: formData.locationId,
+          facility_id: formData.facilityId,
+          priority_id: formData.priorityId,
+          status_id: formData.status,
+          assigned_to: formData.owner || null,
+          people_involved: validPeople,
+          documents: documents
+        };
 
-      if (!clientId) {
-        toast.error("Unable to identify client. Please refresh and try again.");
-        setIsSubmitting(false);
-        return;
+        console.log('Submitting incident update:', { incidentId, updates });
+
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          toast.error("You must be logged in to edit incidents");
+          return;
+        }
+
+        const { data, error } = await supabase.functions.invoke('update-incident', {
+          body: {
+            incidentId: incidentId,
+            updates
+          },
+          headers: {
+            Authorization: `Bearer ${session.access_token}`
+          }
+        });
+
+        if (error) {
+          console.error('Edge function error:', error);
+          throw new Error(error.message || 'Failed to update incident');
+        }
+
+        console.log('Incident updated successfully:', data);
+        toast.success("Incident updated successfully");
+        navigate(`/incident/${incidentId}`);
+        
+      } else {
+        // Handle create mode (existing logic)
+        let employeeId = employeeState.employeeData?.id || authEmployeeData?.id;
+        let clientId = employeeState.employeeData?.clientId || authEmployeeData?.clientId;
+        
+        if (!employeeId && user?.email) {
+          console.log("Fetching employee data from database for email:", user.email);
+          const { data: empData, error: empError } = await supabase
+            .from('employees')
+            .select('id, client_id')
+            .eq('email', user.email.toLowerCase())
+            .single();
+            
+          if (empData && !empError) {
+            employeeId = empData.id;
+            clientId = empData.client_id;
+            console.log("Found employee data:", { employeeId, clientId });
+          } else {
+            console.error("Failed to fetch employee data:", empError);
+          }
+        }
+        
+        if (!employeeId) {
+          toast.error("Unable to identify the reporting employee. Please refresh and try again.");
+          setIsSubmitting(false);
+          return;
+        }
+
+        if (!clientId) {
+          toast.error("Unable to identify client. Please refresh and try again.");
+          setIsSubmitting(false);
+          return;
+        }
+        
+        const dateTime = formData.date && formData.time 
+          ? new Date(`${formData.date}T${formData.time}`) 
+          : new Date();
+        
+        const validPeople = peopleInvolved.filter(p => {
+          const hasName = p.name && p.name.trim() !== '';
+          const hasRole = p.role && p.role.trim() !== '';
+          const hasNotes = p.notes && p.notes.trim() !== '';
+          const hasAnyValue = hasName || hasRole || hasNotes;
+          return hasAnyValue;
+        });
+        
+        const documents = supportingFiles.map(file => ({
+          name: file.name,
+          type: file.type,
+          data: file.base64
+        }));
+        
+        const incidentData = {
+          typeId: formData.typeId,
+          categoryId: formData.categoryId,
+          subcategoryId: formData.subcategoryId || null,
+          description: formData.description,
+          date: dateTime.toISOString(),
+          locationId: formData.locationId,
+          facilityId: formData.facilityId,
+          priorityId: formData.priorityId,
+          peopleInvolved: validPeople,
+          documents: documents,
+          createdBy: employeeId,
+          assignedTo: formData.owner || null,
+          clientId: clientId
+        };
+        
+        console.log("Calling create-incident edge function with data:", incidentData);
+        
+        const { data, error } = await supabase.functions.invoke('create-incident', {
+          body: incidentData
+        });
+        
+        if (error) {
+          console.error('Error from create-incident function:', error);
+          throw new Error(error.message || 'Failed to create incident');
+        }
+        
+        if (!data || !data.success) {
+          console.error('Create incident function returned error:', data);
+          throw new Error(data?.error || 'Failed to create incident');
+        }
+        
+        console.log('Incident created successfully:', data);
+        toast.success(`Incident reported successfully! Ticket ID: ${data.ticketId}`);
+        
+        navigate('/incidents');
       }
-      
-      // Combine date and time if both are provided
-      const dateTime = formData.date && formData.time 
-        ? new Date(`${formData.date}T${formData.time}`) 
-        : new Date();
-      
-      // Filter out empty people and validate that if people are added, they are complete
-      const validPeople = peopleInvolved.filter(p => {
-        const hasName = p.name && p.name.trim() !== '';
-        const hasRole = p.role && p.role.trim() !== '';
-        const hasNotes = p.notes && p.notes.trim() !== '';
-        const hasAnyValue = hasName || hasRole || hasNotes;
-        return hasAnyValue;
-      });
-      
-      // Process supporting documents
-      const documents = supportingFiles.map(file => ({
-        name: file.name,
-        type: file.type,
-        data: file.base64
-      }));
-      
-      // Prepare incident data for the edge function
-      const incidentData = {
-        typeId: formData.typeId,
-        categoryId: formData.categoryId,
-        subcategoryId: formData.subcategoryId || null,
-        description: formData.description,
-        date: dateTime.toISOString(),
-        locationId: formData.locationId,
-        facilityId: formData.facilityId,
-        priorityId: formData.priorityId,
-        peopleInvolved: validPeople,
-        documents: documents,
-        createdBy: employeeId,
-        assignedTo: formData.owner || null,
-        clientId: clientId
-      };
-      
-      console.log("Calling create-incident edge function with data:", incidentData);
-      
-      // Call the create-incident edge function directly
-      const { data, error } = await supabase.functions.invoke('create-incident', {
-        body: incidentData
-      });
-      
-      if (error) {
-        console.error('Error from create-incident function:', error);
-        throw new Error(error.message || 'Failed to create incident');
-      }
-      
-      if (!data || !data.success) {
-        console.error('Create incident function returned error:', data);
-        throw new Error(data?.error || 'Failed to create incident');
-      }
-      
-      console.log('Incident created successfully:', data);
-      toast.success(`Incident reported successfully! Ticket ID: ${data.ticketId}`);
-      
-      // Navigate to incidents page
-      navigate('/incidents');
     } catch (error) {
       console.error('Error submitting incident report:', error);
       toast.error("An error occurred while submitting the report: " + (error.message || "Please try again"));
@@ -231,53 +324,62 @@ const ReportIncident = () => {
 
   return (
     <Layout>
-      <div className="space-y-4 md:space-y-6 w-full overflow-x-hidden">
-        <div className="text-left">
-          <h1 className="text-2xl md:text-3xl font-bold">Report New Incident</h1>
-          <p className="text-gray-600 mt-1">
-            Document safety incidents, near misses, or unsafe conditions
-          </p>
+      <div className="space-y-4 md:space-y-6 w-full overflow-x-hidden bg-gray-50 min-h-screen">
+        {/* Header section matching the design */}
+        <div className="bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-6">
+          <div className="max-w-7xl mx-auto">
+            <h1 className="text-2xl font-semibold text-gray-900">
+              {isEditMode ? 'Edit Incident' : 'Report New Incident'}
+            </h1>
+            <p className="text-gray-600 text-sm mt-1">
+              Document safety incidents, near misses, or unsafe conditions
+            </p>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="w-full">
-          <Card className="border-none shadow-card pt-6">
-            <CardContent className="space-y-6 px-6">
-              <IncidentDetailsForm
-                formData={formData}
-                onChange={handleChange}
-                onSelectChange={handleSelectChange} 
-                onDateTimeChange={handleDateTimeChange}
-                supportingFiles={supportingFiles}
-                onFilesChange={handleFilesChange}
-              />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <form onSubmit={handleSubmit} className="w-full">
+            <Card className="border-none shadow-none bg-gray-50">
+              <CardContent className="space-y-6 px-8 py-8">
+                <IncidentDetailsForm
+                  formData={formData}
+                  onChange={handleChange}
+                  onSelectChange={handleSelectChange} 
+                  onDateTimeChange={handleDateTimeChange}
+                  supportingFiles={supportingFiles}
+                  onFilesChange={handleFilesChange}
+                />
 
-              <PeopleInvolvedSection
-                peopleInvolved={peopleInvolved}
-                onPersonChange={handlePersonChange}
-                onAddPerson={addPerson}
-                onRemovePerson={removePerson}
-                students={students}
-                employees={mappedEmployees}
-                errors={errors}
-              />
-            </CardContent>
-            <CardFooter className="flex justify-between">
-              <Button 
-                type="button" 
-                variant="outline"
-                onClick={() => navigate('/dashboard')}
-              >
-                Cancel
-              </Button>
-              <Button 
-                type="submit" 
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? "Submitting..." : "Submit Report"}
-              </Button>
-            </CardFooter>
-          </Card>
-        </form>
+                <PeopleInvolvedSection
+                  peopleInvolved={peopleInvolved}
+                  onPersonChange={handlePersonChange}
+                  onAddPerson={addPerson}
+                  onRemovePerson={removePerson}
+                  students={students}
+                  employees={mappedEmployees}
+                  errors={errors}
+                />
+              </CardContent>
+              <CardFooter className="flex justify-between border-t bg-white px-8 py-4">
+                <Button 
+                  type="button" 
+                  variant="outline"
+                  onClick={() => navigate(isEditMode ? `/incident/${incidentId}` : '/dashboard')}
+                  className="px-6 border-gray-300"
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={isSubmitting}
+                  className="px-6 bg-blue-600 hover:bg-blue-700"
+                >
+                  {isSubmitting ? (isEditMode ? "Saving..." : "Submitting...") : (isEditMode ? "Save Changes" : "Submit Report")}
+                </Button>
+              </CardFooter>
+            </Card>
+          </form>
+        </div>
       </div>
     </Layout>
   );

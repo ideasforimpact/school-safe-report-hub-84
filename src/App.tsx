@@ -98,8 +98,9 @@ function App() {
                     <Route path="/incidents/:id" element={<IncidentDetail />} />
                     <Route path="/incident/:id" element={<IncidentDetail />} />
                     <Route path="/report-incident" element={<ReportIncident />} />
-                    <Route path="/incident/:id/edit" element={<EditIncidentPage />} />
-                    <Route path="/edit-incident/:id" element={<EditIncidentPage />} />
+                    {/* Use ReportIncident component for editing - it will detect edit mode from URL params */}
+                    <Route path="/incident/:id/edit" element={<ReportIncident />} />
+                    <Route path="/edit-incident/:id" element={<ReportIncident />} />
                     <Route path="/insights" element={<Insights />} />
 
                     {/* Assessment routes */}

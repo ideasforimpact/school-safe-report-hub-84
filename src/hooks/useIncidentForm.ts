@@ -1,356 +1,190 @@
-
 import { useState, useEffect } from 'react';
-import { useIncidents } from '@/contexts/incident'; // Keep import path consistent
-import { FileItem } from '@/types/fileTypes';
-import { Person } from '@/types/incident';
-import { User } from '@/types/incident';
-import { getAllCampuses } from '@/services/campus/campusService';
-import { getFacilitiesByCampus } from '@/services/facility/facilityService';
-import { ConfigItem } from '@/contexts/types';
+import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/auth/useAuth';
+import { FileItem } from '@/types/fileTypes';
+import {
+  IncidentType,
+  IncidentCategory,
+  IncidentLocation,
+  Person,
+  ConfigItem
+} from '@/types/incident';
 
 interface FormData {
-  type: string;
-  typeId: string; // Added UUID field
+  type: IncidentType | '';
+  typeId: string;
   categoryId: string;
-  subcategoryId: string; // Added UUID field for subcategory
   subcategory: string;
+  subcategoryId: string;
   description: string;
   date: string;
   time: string;
   locationId: string;
   facilityId: string;
-  priority: 'Low' | 'Medium' | 'High' | 'Critical';
-  priorityId: string; // Added UUID field
+  priority: 'Low' | 'Medium' | 'High' | 'Critical' | '';
+  priorityId: string;
   owner: string;
 }
 
-export function useIncidentForm() {
-  const { users, generateTicketId } = useIncidents();
-  const { employeeData } = useAuth();
-  
+export const useIncidentForm = () => {
   const [nextTicketId, setNextTicketId] = useState<string>('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [supportingFiles, setSupportingFiles] = useState<FileItem[]>([]);
-  const [locations, setLocations] = useState<ConfigItem[]>([]);
-  const [facilities, setFacilities] = useState<ConfigItem[]>([]);
-  const [reportTypes, setReportTypes] = useState<{id: string, name: string}[]>([]);
-  const [categories, setCategories] = useState<{id: string, name: string}[]>([]);
-  const [subcategories, setSubcategories] = useState<{id: string, name: string, category_id: string}[]>([]);
-  const [priorities, setPriorities] = useState<{id: string, name: string}[]>([]);
-  const [peopleInvolved, setPeopleInvolved] = useState<Person[]>([
-    { name: '', role: 'Student', notes: '' }
-  ]);
-  
-  const [formData, setFormData] = useState<FormData>({
-    type: 'Incident',
-    typeId: '', // Initialize with empty string
+  const [formData, setForm] = useState<FormData>({
+    type: '',
+    typeId: '',
     categoryId: '',
-    subcategoryId: '', // Initialize with empty string
     subcategory: '',
+    subcategoryId: '',
     description: '',
-    date: new Date().toISOString().split('T')[0],
-    time: new Date().toTimeString().split(' ')[0].slice(0, 5),
+    date: '',
+    time: '',
     locationId: '',
     facilityId: '',
-    priority: 'Medium',
-    priorityId: '', // Initialize with empty string
+    priority: '',
+    priorityId: '',
     owner: ''
   });
+  const [supportingFiles, setSupportingFiles] = useState<FileItem[]>([]);
+  const [peopleInvolved, setPeople] = useState<Person[]>([]);
+  const [locations, setLocations] = useState<ConfigItem[]>([]);
+  const [facilities, setFacilities] = useState<ConfigItem[]>([]);
+  const [reportTypes, setReportTypes] = useState<ConfigItem[]>([]);
+  const [categories, setCategories] = useState<ConfigItem[]>([]);
+  const [subcategories, setSubcategories] = useState<ConfigItem[]>([]);
+  const [priorities, setPriorities] = useState<ConfigItem[]>([]);
+  const [users, setUsers] = useState<ConfigItem[]>([]);
 
-  // Fetch all reference data on component mount based on client_id
   useEffect(() => {
-    const fetchAllReferenceData = async () => {
-      if (!employeeData?.clientId) {
-        console.log('No client ID available, skipping data fetch');
-        return;
-      }
-
+    const fetchData = async () => {
       try {
-        console.log('Fetching reference data for client:', employeeData.clientId);
-
-        // Fetch report types based on client_id
-        const { data: typesData, error: typesError } = await supabase
-          .from('incident_report_types')
-          .select('id, name')
-          .eq('is_active', true)
-          .eq('client_id', employeeData.clientId);
-        
-        if (typesError) {
-          console.error('Error fetching report types:', typesError);
-          toast.error('Failed to load report types');
-        } else if (typesData) {
-          console.log('Fetched report types:', typesData);
-          setReportTypes(typesData);
-          
-          // Set default type ID if we have report types
-          if (typesData.length > 0) {
-            const defaultType = typesData.find(t => t.name === 'Incident') || typesData[0];
-            setFormData(prev => ({ 
-              ...prev, 
-              type: defaultType.name,
-              typeId: defaultType.id
-            }));
-          }
+        const { data: locationsData, error: locationsError } = await supabase
+          .from('locations')
+          .select('*');
+        if (locationsError) {
+          throw locationsError;
         }
-        
-        // Fetch categories based on client_id
-        const { data: categoriesData, error: categoriesError } = await supabase
-          .from('incident_categories')
-          .select('id, name')
-          .eq('is_active', true)
-          .eq('client_id', employeeData.clientId);
-        
-        if (categoriesError) {
-          console.error('Error fetching categories:', categoriesError);
-          toast.error('Failed to load categories');
-        } else if (categoriesData) {
-          console.log('Fetched categories:', categoriesData);
-          setCategories(categoriesData);
-        }
-        
-        // Fetch all subcategories based on client_id
-        const { data: subcategoriesData, error: subcategoriesError } = await supabase
-          .from('incident_subcategories')
-          .select('id, name, category_id')
-          .eq('is_active', true)
-          .eq('client_id', employeeData.clientId);
-        
-        if (subcategoriesError) {
-          console.error('Error fetching subcategories:', subcategoriesError);
-          toast.error('Failed to load subcategories');
-        } else if (subcategoriesData) {
-          console.log('Fetched subcategories:', subcategoriesData);
-          setSubcategories(subcategoriesData);
-        }
-        
-        // Fetch priorities based on client_id
-        const { data: prioritiesData, error: prioritiesError } = await supabase
-          .from('incident_priorities')
-          .select('id, name')
-          .eq('is_active', true)
-          .eq('client_id', employeeData.clientId);
-        
-        if (prioritiesError) {
-          console.error('Error fetching priorities:', prioritiesError);
-          toast.error('Failed to load priorities');
-        } else if (prioritiesData) {
-          console.log('Fetched priorities:', prioritiesData);
-          setPriorities(prioritiesData);
-          
-          // Set default priority ID if we have priorities
-          if (prioritiesData.length > 0) {
-            const defaultPriority = prioritiesData.find(p => p.name === 'Medium') || prioritiesData[0];
-            setFormData(prev => ({ 
-              ...prev, 
-              priority: defaultPriority.name as 'Low' | 'Medium' | 'High' | 'Critical',
-              priorityId: defaultPriority.id
-            }));
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching reference data:', error);
-        toast.error('Failed to load reference data');
-      }
-    };
+        setLocations(locationsData || []);
 
-    fetchAllReferenceData();
-  }, [employeeData?.clientId]);
-
-  // Fetch locations (campuses) based on client_id
-  useEffect(() => {
-    const fetchLocations = async () => {
-      if (!employeeData?.clientId) {
-        console.log('No client ID available for fetching campuses');
-        return;
-      }
-
-      try {
-        console.log('Fetching campuses for client:', employeeData.clientId);
-        const { data: campusData, error } = await supabase
-          .from('campuses')
-          .select('id, name')
-          .eq('client_id', employeeData.clientId);
-
-        if (error) {
-          console.error('Error fetching campuses:', error);
-          toast.error('Failed to load campuses');
-          return;
-        }
-
-        console.log('Fetched campuses:', campusData);
-        setLocations(campusData || []);
-      } catch (error) {
-        console.error('Error fetching campuses:', error);
-        toast.error('Failed to load campuses');
-      }
-    };
-
-    fetchLocations();
-  }, [employeeData?.clientId]);
-
-  // Fetch facilities when location changes
-  useEffect(() => {
-    if (!formData.locationId || !employeeData?.clientId) {
-      setFacilities([]);
-      return;
-    }
-
-    const fetchFacilities = async () => {
-      try {
-        console.log('Fetching facilities for campus:', formData.locationId, 'and client:', employeeData.clientId);
-        const { data: facilitiesData, error } = await supabase
+        const { data: facilitiesData, error: facilitiesError } = await supabase
           .from('facilities')
-          .select('id, name')
-          .eq('campus_id', formData.locationId)
-          .eq('client_id', employeeData.clientId);
-
-        if (error) {
-          console.error('Error fetching facilities:', error);
-          toast.error('Failed to load facilities');
-          return;
+          .select('*');
+        if (facilitiesError) {
+          throw facilitiesError;
         }
-
-        console.log('Fetched facilities:', facilitiesData);
         setFacilities(facilitiesData || []);
+
+        const { data: reportTypesData, error: reportTypesError } = await supabase
+          .from('report_types')
+          .select('*');
+        if (reportTypesError) {
+          throw reportTypesError;
+        }
+        setReportTypes(reportTypesData || []);
+
+        const { data: categoriesData, error: categoriesError } = await supabase
+          .from('categories')
+          .select('*');
+        if (categoriesError) {
+          throw categoriesError;
+        }
+        setCategories(categoriesData || []);
+
+        const { data: subcategoriesData, error: subcategoriesError } = await supabase
+          .from('subcategories')
+          .select('*');
+        if (subcategoriesError) {
+          throw subcategoriesError;
+        }
+        setSubcategories(subcategoriesData || []);
+
+        const { data: prioritiesData, error: prioritiesError } = await supabase
+          .from('priorities')
+          .select('*');
+        if (prioritiesError) {
+          throw prioritiesError;
+        }
+        setPriorities(prioritiesData || []);
+
+        const { data: usersData, error: usersError } = await supabase
+          .from('users')
+          .select('id, firstName, lastName');
+        if (usersError) {
+          throw usersError;
+        }
+        const formattedUsers = usersData
+          ? usersData.map((user) => ({
+              id: user.id,
+              name: `${user.firstName} ${user.lastName}`
+            }))
+          : [];
+        setUsers(formattedUsers || []);
       } catch (error) {
-        console.error('Error fetching facilities:', error);
-        toast.error('Failed to load facilities');
+        console.error('Error fetching form configuration data:', error);
+        toast.error('Could not load form configuration data');
       }
     };
 
-    fetchFacilities();
-  }, [formData.locationId, employeeData?.clientId]);
+    fetchData();
+  }, []);
 
-  // Update subcategory options when category changes
   useEffect(() => {
-    if (formData.categoryId && subcategories.length > 0) {
-      // Find subcategories for selected category
-      const categorySubcategories = subcategories.filter(
-        sub => sub.category_id === formData.categoryId
-      );
-      
-      console.log('Filtered subcategories for category:', formData.categoryId, categorySubcategories);
-      
-      // Reset subcategory selection if current selection is not in the filtered list
-      if (formData.subcategoryId) {
-        const stillValid = categorySubcategories.some(sub => sub.id === formData.subcategoryId);
-        if (!stillValid) {
-          setFormData(prev => ({ 
-            ...prev, 
-            subcategory: '',
-            subcategoryId: '' 
-          }));
-        }
-      }
-    }
-  }, [formData.categoryId, subcategories]);
+    const generateId = () => {
+      const newTicketId = `INC-${Math.floor(Math.random() * 10000)}`;
+      setNextTicketId(newTicketId);
+    };
 
-  // Set next ticket ID
-  useEffect(() => {
-    // Use the generateTicketId function from the context
-    const newTicketId = generateTicketId();
-    setNextTicketId(newTicketId);
-  }, [generateTicketId]);
+    generateId();
+  }, []);
 
   const handleChange = (name: string, value: string) => {
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSelectChange = (name: string, value: string) => {
-    // Handle special cases where we need to update related fields
-    if (name === 'categoryId') {
-      // Reset subcategory when category changes
-      setFormData(prev => ({ 
-        ...prev, 
-        [name]: value,
-        subcategory: '',
-        subcategoryId: ''
-      }));
-    } else if (name === 'type') {
-      // Find and set the typeId when type name is selected
-      const selectedType = reportTypes.find(t => t.name === value);
-      if (selectedType) {
-        setFormData(prev => ({ 
-          ...prev, 
-          type: value,
-          typeId: selectedType.id
-        }));
-      } else {
-        setFormData(prev => ({ ...prev, type: value, typeId: '' }));
-      }
-    } else if (name === 'priority') {
-      // Find and set the priorityId when priority name is selected
-      const selectedPriority = priorities.find(p => p.name === value);
-      if (selectedPriority) {
-        setFormData(prev => ({ 
-          ...prev, 
-          priority: value as 'Low' | 'Medium' | 'High' | 'Critical',
-          priorityId: selectedPriority.id
-        }));
-      } else {
-        setFormData(prev => ({ ...prev, priority: value as 'Low' | 'Medium' | 'High' | 'Critical', priorityId: '' }));
-      }
-    } else if (name === 'subcategory') {
-      // Find the subcategory ID when subcategory name is selected
-      const selectedSubcategory = subcategories.find(
-        s => s.name === value && s.category_id === formData.categoryId
-      );
-      if (selectedSubcategory) {
-        setFormData(prev => ({ 
-          ...prev, 
-          subcategory: value,
-          subcategoryId: selectedSubcategory.id
-        }));
-      } else {
-        setFormData(prev => ({ ...prev, subcategory: value, subcategoryId: '' }));
-      }
-    } else {
-      // Default handling for other fields
-      setFormData(prev => ({ ...prev, [name]: value }));
-    }
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleDateTimeChange = (field: string, value: Date | string) => {
-    if (field === 'date' && value instanceof Date) {
-      setFormData(prev => ({ 
-        ...prev, 
-        date: value.toISOString().split('T')[0]
-      }));
-    } else if (field === 'time' && typeof value === 'string') {
-      setFormData(prev => ({ ...prev, time: value }));
-    }
+  const handleDateTimeChange = (name: string, value: Date | string) => {
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handlePersonChange = (index: number, field: keyof Person, value: string) => {
-    const newPeople = [...peopleInvolved];
-    newPeople[index] = { ...newPeople[index], [field]: value };
-    setPeopleInvolved(newPeople);
+  const handlePersonChange = (
+    index: number,
+    field: keyof Person,
+    value: string
+  ) => {
+    const updatedPeople = [...peopleInvolved];
+    updatedPeople[index] = { ...updatedPeople[index], [field]: value };
+    setPeople(updatedPeople);
   };
 
   const addPerson = () => {
-    setPeopleInvolved([...peopleInvolved, { name: '', role: 'Student', notes: '' }]);
+    setPeople([...peopleInvolved, { name: '', role: 'Student', notes: '' }]);
   };
 
   const removePerson = (index: number) => {
-    const newPeople = peopleInvolved.filter((_, i) => i !== index);
-    setPeopleInvolved(newPeople);
+    const updatedPeople = peopleInvolved.filter((_, i) => i !== index);
+    setPeople(updatedPeople);
   };
 
-  const handleFilesChange = (files: FileItem[]) => {
-    setSupportingFiles(files);
+  const handleFilesChange = (newFiles: FileItem[]) => {
+    setSupportingFiles(newFiles);
   };
 
-  const getSelectedLocation = (): string => {
-    const selectedLocation = locations.find(loc => loc.id === formData.locationId);
-    return selectedLocation ? selectedLocation.name : '';
+  const getSelectedLocation = (locationId: string) => {
+    return locations.find((location) => location.id === locationId);
   };
 
-  const getSelectedFacility = (): string => {
-    const selectedFacility = facilities.find(fac => fac.id === formData.facilityId);
-    return selectedFacility ? selectedFacility.name : '';
+  const getSelectedFacility = (facilityId: string) => {
+    return facilities.find((facility) => facility.id === facilityId);
+  };
+
+  const setFormData = (newFormData: Partial<typeof formData>) => {
+    setForm(prev => ({ ...prev, ...newFormData }));
+  };
+
+  const setPeopleInvolved = (newPeople: Person[]) => {
+    setPeople(newPeople);
   };
 
   return {
@@ -358,8 +192,6 @@ export function useIncidentForm() {
     formData,
     supportingFiles,
     peopleInvolved,
-    isSubmitting,
-    setIsSubmitting,
     handleChange,
     handleSelectChange,
     handleDateTimeChange,
@@ -371,10 +203,12 @@ export function useIncidentForm() {
     getSelectedFacility,
     locations,
     facilities,
-    users,
     reportTypes,
     categories,
     subcategories,
-    priorities
+    priorities,
+    users,
+    setFormData,
+    setPeopleInvolved
   };
-}
+};
