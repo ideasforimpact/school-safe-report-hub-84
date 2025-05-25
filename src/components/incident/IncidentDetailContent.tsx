@@ -54,20 +54,11 @@ const IncidentDetailContent = ({
     setIsClosureFormOpen(false);
   };
 
-  // Handler for inline comment submission
-  const handleInlineCommentSubmit = async () => {
-    if (!commentText.trim()) return;
-    
-    setIsSubmitting(true);
-    try {
-      await handleCommentSubmit();
-      // Reset form after successful submission
-      setCommentText('');
-      setCommentFiles([]);
-    } catch (error) {
-      console.error('Error submitting comment:', error);
-    } finally {
-      setIsSubmitting(false);
+  // Handler for when comment is successfully added
+  const handleCommentAdded = () => {
+    // Refresh the incident data
+    if (handleCommentSubmit) {
+      handleCommentSubmit();
     }
   };
 
@@ -117,12 +108,14 @@ const IncidentDetailContent = ({
         
         <TabsContent value="comments" className="space-y-6">
           <InlineCommentForm 
+            incidentId={incident.id}
             commentText={commentText}
             setCommentText={setCommentText}
             commentFiles={commentFiles}
             setCommentFiles={setCommentFiles}
             isSubmitting={isSubmitting}
-            onSubmit={handleInlineCommentSubmit}
+            setIsSubmitting={setIsSubmitting}
+            onCommentAdded={handleCommentAdded}
           />
           
           <CommentsList 

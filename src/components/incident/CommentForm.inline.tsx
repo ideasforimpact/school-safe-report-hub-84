@@ -9,30 +9,67 @@ import { Paperclip, Send } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface InlineCommentFormProps {
+  incidentId: string;
   commentText: string;
   setCommentText: (text: string) => void;
   commentFiles: FileItem[];
   setCommentFiles: (files: FileItem[]) => void;
   isSubmitting: boolean;
-  onSubmit: () => void;
+  setIsSubmitting: (submitting: boolean) => void;
+  onCommentAdded: () => void;
 }
 
 const InlineCommentForm: React.FC<InlineCommentFormProps> = ({
+  incidentId,
   commentText,
   setCommentText,
   commentFiles,
   setCommentFiles,
   isSubmitting,
-  onSubmit
+  setIsSubmitting,
+  onCommentAdded
 }) => {
   const [showFileUpload, setShowFileUpload] = useState(false);
+  const { addComment } = useAddIncidentComment();
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!commentText.trim()) {
       toast.error('Please enter a comment');
       return;
     }
-    onSubmit();
+
+    setIsSubmitting(true);
+    
+    try {
+      console.log('Submitting comment for incident:', incidentId);
+      console.log('Comment text:', commentText);
+      console.log('Files:', commentFiles);
+
+      // Prepare documents array with file names
+      const documents = commentFiles.map(file => file.name);
+
+      // Call the edge function
+      const result = await addComment(incidentId, {
+        comment: commentText,
+        documents: documents
+      });
+
+      if (result.success) {
+        // Reset form after successful submission
+        setCommentText('');
+        setCommentFiles([]);
+        
+        // Notify parent component
+        onCommentAdded();
+        
+        toast.success('Comment added successfully');
+      }
+    } catch (error) {
+      console.error('Error submitting comment:', error);
+      toast.error('Failed to add comment');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
