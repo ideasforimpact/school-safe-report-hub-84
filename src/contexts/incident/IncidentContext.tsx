@@ -95,10 +95,7 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
     getIncident,
     addActivity,
     isSubmitting
-  } = useIncidentActions(incidents, (updatedIncidents) => {
-    // Instead of directly setting incidents, refetch from database
-    refetchIncidents();
-  }, activities, setActivities, users);
+  } = useIncidentActions(incidents, refetchIncidents, activities, setActivities, users);
 
   // Use the activities hook
   const {
