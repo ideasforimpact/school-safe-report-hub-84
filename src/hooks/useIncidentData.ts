@@ -4,7 +4,6 @@ import { Incident, IncidentType, IncidentCategory, IncidentLocation, IncidentSta
 import { supabase } from '@/integrations/supabase/client';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { toast } from 'sonner';
-import { Json } from '@/integrations/supabase/types';
 
 export function useIncidentData() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
@@ -24,39 +23,35 @@ export function useIncidentData() {
 
       console.log('Fetching incidents for client:', state.employeeData.clientId);
 
-      // Fetch incidents with client_id restriction
-      const { data, error: fetchError } = await supabase
-        .from('incidents')
-        .select(`
-          *,
-          incident_categories(name),
-          incident_subcategories(name),
-          incident_status(name),
-          incident_priorities(name),
-          incident_report_types(name),
-          facilities(name),
-          created_by_employee:employees!incidents_created_by_fkey(id, first_name, last_name),
-          assigned_to_employee:employees!incidents_assigned_to_fkey(id, first_name, last_name)
-        `)
-        .eq('client_id', state.employeeData.clientId)
-        .order('created_at', { ascending: false });
+      // Call the edge function to fetch incidents
+      const { data, error: functionError } = await supabase.functions.invoke('fetch-incidents', {
+        body: {
+          client_id: state.employeeData.clientId,
+          employee_id: state.employeeData.id
+        }
+      });
 
-      if (fetchError) {
-        console.error('Error fetching incidents:', fetchError);
-        throw new Error(`Failed to fetch incidents: ${fetchError.message}`);
+      if (functionError) {
+        console.error('Edge function error:', functionError);
+        throw new Error(`Failed to fetch incidents: ${functionError.message}`);
+      }
+
+      if (!data || !data.incidents) {
+        console.error('No incidents data received from edge function');
+        throw new Error('No incidents data received');
       }
 
       // Transform the data to match our Incident type
-      const transformedIncidents: Incident[] = (data || []).map(incident => {
+      const transformedIncidents: Incident[] = data.incidents.map((incident: any) => {
         // Convert people_involved from Json[] to Person[]
         const peopleInvolved: Person[] = Array.isArray(incident.people_involved) 
-          ? incident.people_involved.map(person => {
+          ? incident.people_involved.map((person: any) => {
               if (typeof person === 'object' && person !== null && 'name' in person) {
                 return {
-                  name: (person as any).name || '',
-                  role: (person as any).role || 'Other' as 'Student' | 'Staff' | 'Other',
-                  notes: (person as any).notes || '',
-                  id: (person as any).id || ''
+                  name: person.name || '',
+                  role: person.role || 'Other' as 'Student' | 'Staff' | 'Other',
+                  notes: person.notes || '',
+                  id: person.id || ''
                 };
               }
               return {
@@ -70,12 +65,12 @@ export function useIncidentData() {
 
         // Convert documents from Json[] to Document[]
         const documents: Document[] = Array.isArray(incident.documents)
-          ? incident.documents.map(doc => {
+          ? incident.documents.map((doc: any) => {
               if (typeof doc === 'object' && doc !== null && 'name' in doc) {
                 return {
-                  name: (doc as any).name || '',
-                  type: (doc as any).type || '',
-                  data: (doc as any).data || ''
+                  name: doc.name || '',
+                  type: doc.type || '',
+                  data: doc.data || ''
                 };
               }
               return {
@@ -116,7 +111,7 @@ export function useIncidentData() {
       });
 
       setIncidents(transformedIncidents);
-      console.log('Successfully fetched incidents:', transformedIncidents.length);
+      console.log('Successfully processed incidents:', transformedIncidents.length);
 
     } catch (error: any) {
       console.error('Error in fetchIncidents:', error);
