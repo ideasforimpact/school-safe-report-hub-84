@@ -75,9 +75,18 @@ const EditIncidentPage = () => {
   return (
     <Layout>
       <div className="space-y-4 md:space-y-6 w-full overflow-x-hidden bg-gray-50 min-h-screen">
-        {/* Header section matching the design */}
+        {/* Back button */}
         <div className="bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-6">
           <div className="max-w-7xl mx-auto">
+            <Button 
+              variant="ghost" 
+              className="flex items-center -ml-4 mb-4"
+              onClick={() => navigate(`/incident/${id}`)}
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Incident Details
+            </Button>
+            
             <h1 className="text-2xl font-semibold text-gray-900">Edit Incident</h1>
             <p className="text-gray-600 text-sm mt-1">
               Document safety incidents, near misses, or unsafe conditions

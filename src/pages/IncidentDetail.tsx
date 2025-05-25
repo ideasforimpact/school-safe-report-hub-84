@@ -161,6 +161,18 @@ const IncidentDetail = () => {
 
   return (
     <Layout>
+      {/* Back button */}
+      <div className="container max-w-6xl pt-6 pb-0">
+        <Button 
+          variant="ghost" 
+          className="flex items-center -ml-4 mb-4"
+          onClick={() => navigate('/incidents')}
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Incidents
+        </Button>
+      </div>
+      
       <IncidentDetailContent {...contentProps} />
     </Layout>
   );
