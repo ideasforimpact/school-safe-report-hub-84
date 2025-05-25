@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Incident, Activity, User, UserRef, Document, IncidentType, IncidentCategory, IncidentLocation } from '@/types/incident';
 import { toast } from 'sonner';
@@ -215,11 +214,9 @@ export function useIncidentActions(
     }
   };
 
-  // Get a specific incident by ID
+  // Get a specific incident by ID - remove client validation for read operations
   const getIncident = (id: string) => {
     try {
-      // Validate client access
-      validateClientAccess();
       return incidents.find(incident => incident.id === id);
     } catch (error) {
       console.error('Error getting incident:', error);

@@ -245,7 +245,7 @@ const ReportIncident = () => {
         }
 
         toast.success("Incident updated successfully");
-        navigate(`/incident/${incidentId}`);
+        navigate('/incidents'); // Navigate to incidents list instead of detail page
         
       } else {
         // Handle create mode (existing logic)
