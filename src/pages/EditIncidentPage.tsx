@@ -2,7 +2,7 @@
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
-import { useIncidents } from '@/contexts/incident';
+import { useIncidents } from '@/contexts/IncidentContext';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
