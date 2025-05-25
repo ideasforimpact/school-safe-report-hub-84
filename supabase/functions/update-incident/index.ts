@@ -112,30 +112,22 @@ Deno.serve(async (req) => {
     if (updates.people_involved) updateData.people_involved = updates.people_involved
     if (updates.documents) updateData.documents = updates.documents
 
-    // Handle status_id - convert status name to UUID if needed
+    // Handle status_id - look up the status ID by name
     if (updates.status_id) {
-      // Check if it's already a UUID (contains hyphens and is 36 characters)
-      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(updates.status_id)
-      
-      if (isUUID) {
-        updateData.status_id = updates.status_id
-      } else {
-        // Look up the status ID by name
-        console.log('Looking up status ID for name:', updates.status_id)
-        const { data: statusData, error: statusError } = await supabase
-          .from('incident_status')
-          .select('id')
-          .eq('name', updates.status_id)
-          .single()
-          
-        if (statusError || !statusData) {
-          console.error('Error fetching status:', statusError)
-          throw new Error(`Status '${updates.status_id}' not found`)
-        }
+      console.log('Looking up status ID for name:', updates.status_id)
+      const { data: statusData, error: statusError } = await supabase
+        .from('incident_status')
+        .select('id')
+        .eq('name', updates.status_id)
+        .single()
         
-        console.log('Found status ID:', statusData.id)
-        updateData.status_id = statusData.id
+      if (statusError || !statusData) {
+        console.error('Error fetching status:', statusError)
+        throw new Error(`Status '${updates.status_id}' not found`)
       }
+      
+      console.log('Found status ID:', statusData.id)
+      updateData.status_id = statusData.id
     }
 
     // Always update the updated_at timestamp
