@@ -39,6 +39,7 @@ const ReportIncident = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [existingIncident, setExistingIncident] = useState(null);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
   
   // Add validation hook
   const { errors, validateForm } = useIncidentFormValidation();
@@ -72,30 +73,71 @@ const ReportIncident = () => {
   useEffect(() => {
     if (incidentId) {
       setIsEditMode(true);
-      const incident = getIncident(incidentId);
-      if (incident) {
-        setExistingIncident(incident);
-        // Populate form with existing data
-        const incidentDate = new Date(incident.date);
-        setFormData({
-          type: incident.type,
-          typeId: reportTypes.find(t => t.name === incident.type)?.id || '',
-          categoryId: formCategories.find(c => c.name === incident.category)?.id || '',
-          subcategory: incident.subcategory || '',
-          subcategoryId: subcategories.find(s => s.name === incident.subcategory)?.id || '',
-          description: incident.description,
-          date: incidentDate.toISOString().split('T')[0],
-          time: incidentDate.toTimeString().split(' ')[0].slice(0, 5),
-          locationId: locations.find(l => l.name === incident.location)?.id || '',
-          facilityId: facilities.find(f => f.name === incident.facility)?.id || '',
-          priority: incident.priority || 'Medium',
-          priorityId: priorities.find(p => p.name === incident.priority)?.id || '',
-          owner: incident.owner?.id || ''
-        });
-        setPeopleInvolved(incident.peopleInvolved || []);
+      console.log('Edit mode detected, incident ID:', incidentId);
+      
+      // Only try to get incident if we have reference data loaded
+      if (reportTypes.length > 0 && formCategories.length > 0 && locations.length > 0 && !isDataLoaded) {
+        try {
+          const incident = getIncident(incidentId);
+          console.log('Fetched incident data:', incident);
+          
+          if (incident) {
+            setExistingIncident(incident);
+            
+            // Populate form with existing data
+            const incidentDate = new Date(incident.date);
+            const dateString = incidentDate.toISOString().split('T')[0];
+            const timeString = incidentDate.toTimeString().split(' ')[0].slice(0, 5);
+            
+            // Find matching IDs from the reference data
+            const typeMatch = reportTypes.find(t => t.name === incident.type);
+            const categoryMatch = formCategories.find(c => c.name === incident.category);
+            const subcategoryMatch = subcategories.find(s => s.name === incident.subcategory);
+            const locationMatch = locations.find(l => l.name === incident.location);
+            const facilityMatch = facilities.find(f => f.name === incident.facility);
+            const priorityMatch = priorities.find(p => p.name === incident.priority);
+            
+            console.log('Found matches:', {
+              typeMatch,
+              categoryMatch,
+              subcategoryMatch,
+              locationMatch,
+              facilityMatch,
+              priorityMatch
+            });
+            
+            setFormData({
+              type: incident.type || '',
+              typeId: typeMatch?.id || '',
+              categoryId: categoryMatch?.id || '',
+              subcategory: incident.subcategory || '',
+              subcategoryId: subcategoryMatch?.id || '',
+              description: incident.description || '',
+              date: dateString,
+              time: timeString,
+              locationId: locationMatch?.id || '',
+              facilityId: facilityMatch?.id || '',
+              priority: (incident.priority as 'Low' | 'Medium' | 'High' | 'Critical') || 'Medium',
+              priorityId: priorityMatch?.id || '',
+              owner: incident.owner?.id || '',
+              status: incident.status || 'Open'
+            });
+            
+            setPeopleInvolved(incident.peopleInvolved || []);
+            setIsDataLoaded(true);
+            console.log('Form data populated successfully');
+          } else {
+            console.log('No incident found with ID:', incidentId);
+            toast.error('Incident not found');
+            navigate('/incidents');
+          }
+        } catch (error) {
+          console.error('Error loading incident:', error);
+          toast.error('Failed to load incident data');
+        }
       }
     }
-  }, [incidentId, getIncident, reportTypes, formCategories, subcategories, locations, facilities, priorities, setFormData, setPeopleInvolved]);
+  }, [incidentId, getIncident, reportTypes, formCategories, subcategories, locations, facilities, priorities, setFormData, setPeopleInvolved, navigate, isDataLoaded]);
 
   // Fetch employees from the database
   useEffect(() => {
@@ -322,6 +364,12 @@ const ReportIncident = () => {
     name: `${employee.firstName} ${employee.lastName}`
   }));
 
+  // Create a safe formData object for the component that ensures priority is never empty
+  const safeFormData = {
+    ...formData,
+    priority: formData.priority || 'Medium' as 'Low' | 'Medium' | 'High' | 'Critical'
+  };
+
   return (
     <Layout>
       <div className="space-y-4 md:space-y-6 w-full overflow-x-hidden bg-gray-50 min-h-screen">
@@ -342,7 +390,7 @@ const ReportIncident = () => {
             <Card className="border-none shadow-none bg-gray-50">
               <CardContent className="space-y-6 px-8 py-8">
                 <IncidentDetailsForm
-                  formData={formData}
+                  formData={safeFormData}
                   onChange={handleChange}
                   onSelectChange={handleSelectChange} 
                   onDateTimeChange={handleDateTimeChange}
