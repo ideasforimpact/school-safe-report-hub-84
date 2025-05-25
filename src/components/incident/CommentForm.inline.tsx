@@ -4,26 +4,36 @@ import { FileItem } from '@/types/incident';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import MultipleFilesUpload from '@/components/MultipleFilesUpload';
+import { useAddIncidentComment } from '@/hooks/useAddIncidentComment';
 import { Paperclip, Send } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface InlineCommentFormProps {
-  onSubmit: () => void;
   commentText: string;
   setCommentText: (text: string) => void;
   commentFiles: FileItem[];
   setCommentFiles: (files: FileItem[]) => void;
   isSubmitting: boolean;
+  onSubmit: () => void;
 }
 
 const InlineCommentForm: React.FC<InlineCommentFormProps> = ({
-  onSubmit,
   commentText,
   setCommentText,
   commentFiles,
   setCommentFiles,
-  isSubmitting
+  isSubmitting,
+  onSubmit
 }) => {
   const [showFileUpload, setShowFileUpload] = useState(false);
+
+  const handleSubmit = () => {
+    if (!commentText.trim()) {
+      toast.error('Please enter a comment');
+      return;
+    }
+    onSubmit();
+  };
 
   return (
     <div className="bg-white rounded-md border shadow-sm p-4">
@@ -61,7 +71,7 @@ const InlineCommentForm: React.FC<InlineCommentFormProps> = ({
           </Button>
           
           <Button 
-            onClick={onSubmit}
+            onClick={handleSubmit}
             disabled={!commentText.trim() || isSubmitting}
             className="flex items-center gap-1"
           >

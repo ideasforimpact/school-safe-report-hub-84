@@ -9,20 +9,11 @@ import InlineCommentForm from './CommentForm.inline';
 import AuditTrail from '@/components/AuditTrail';
 import IncidentDetails from './IncidentDetails';
 import ActionsList from './ActionsList';
+import { FileItem } from '@/types/incident';
 
 const IncidentDetailContent = ({ 
   incident, 
   incidentActivities,
-  commentText,
-  setCommentText,
-  commentFiles,
-  setCommentFiles,
-  isSubmitting,
-  handleCommentSubmit,
-  handleActionSubmit,
-  handleStatusChange,
-  statusUpdate,
-  setStatusUpdate,
   formatDate,
   formatDateTime,
   getStatusColor,
@@ -33,10 +24,19 @@ const IncidentDetailContent = ({
   canEditComment,
   user,
   isAdmin,
-  updateIncident
+  updateIncident,
+  handleStatusChange,
+  statusUpdate,
+  setStatusUpdate,
+  handleCommentSubmit
 }) => {
   // State for controlling the incident closure form
   const [isClosureFormOpen, setIsClosureFormOpen] = useState(false);
+  
+  // State for inline comment form
+  const [commentText, setCommentText] = useState('');
+  const [commentFiles, setCommentFiles] = useState<FileItem[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Handler to open the closure form
   const handleOpenClosureForm = () => {
@@ -52,6 +52,23 @@ const IncidentDetailContent = ({
       actions: data.actions
     });
     setIsClosureFormOpen(false);
+  };
+
+  // Handler for inline comment submission
+  const handleInlineCommentSubmit = async () => {
+    if (!commentText.trim()) return;
+    
+    setIsSubmitting(true);
+    try {
+      await handleCommentSubmit();
+      // Reset form after successful submission
+      setCommentText('');
+      setCommentFiles([]);
+    } catch (error) {
+      console.error('Error submitting comment:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -105,7 +122,7 @@ const IncidentDetailContent = ({
             commentFiles={commentFiles}
             setCommentFiles={setCommentFiles}
             isSubmitting={isSubmitting}
-            onSubmit={handleCommentSubmit}
+            onSubmit={handleInlineCommentSubmit}
           />
           
           <CommentsList 
