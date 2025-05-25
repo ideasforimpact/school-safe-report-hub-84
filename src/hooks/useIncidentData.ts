@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Incident, IncidentType, IncidentCategory, IncidentLocation, IncidentStatus, Person, Document } from '@/types/incident';
+import { Incident, IncidentType, IncidentCategory, IncidentLocation, IncidentStatus, Person, Document, ContributingFactor } from '@/types/incident';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { toast } from 'sonner';
@@ -81,6 +81,26 @@ export function useIncidentData() {
             })
           : [];
 
+        // Convert contributing_factor from Json[] to ContributingFactor[]
+        const contributingFactor: ContributingFactor[] = Array.isArray(incident.contributing_factor)
+          ? incident.contributing_factor.map((factor: any) => {
+              if (typeof factor === 'object' && factor !== null) {
+                return {
+                  id: factor.id || '',
+                  category: factor.category || '',
+                  description: factor.description || '',
+                  weight: factor.weight || 'Low' as 'Low' | 'Medium' | 'High'
+                };
+              }
+              return {
+                id: '',
+                category: '',
+                description: String(factor),
+                weight: 'Low' as 'Low' | 'Medium' | 'High'
+              };
+            })
+          : [];
+
         return {
           id: incident.id,
           ticketId: incident.ticket_id,
@@ -106,7 +126,11 @@ export function useIncidentData() {
           documents,
           createdAt: new Date(incident.created_at),
           updatedAt: new Date(incident.updated_at),
-          priority: incident.incident_priorities?.name as 'Low' | 'Medium' | 'High' | 'Critical' | undefined
+          priority: incident.incident_priorities?.name as 'Low' | 'Medium' | 'High' | 'Critical' | undefined,
+          // New fields from database
+          rootCauseAnalysis: incident.root_cause_analysis || undefined,
+          actionTaken: incident.action_taken || undefined,
+          contributingFactor: contributingFactor.length > 0 ? contributingFactor : undefined
         };
       });
 

@@ -22,6 +22,9 @@ interface UpdateIncidentRequest {
     assigned_to?: string
     people_involved?: any[]
     documents?: any[]
+    root_cause_analysis?: string
+    action_taken?: string
+    contributing_factor?: any[]
   }
 }
 
@@ -111,6 +114,11 @@ Deno.serve(async (req) => {
     if (updates.assigned_to) updateData.assigned_to = updates.assigned_to
     if (updates.people_involved) updateData.people_involved = updates.people_involved
     if (updates.documents) updateData.documents = updates.documents
+    
+    // Handle new fields
+    if (updates.root_cause_analysis !== undefined) updateData.root_cause_analysis = updates.root_cause_analysis
+    if (updates.action_taken !== undefined) updateData.action_taken = updates.action_taken
+    if (updates.contributing_factor !== undefined) updateData.contributing_factor = updates.contributing_factor
 
     // Handle status_id - look up the status ID by name
     if (updates.status_id) {

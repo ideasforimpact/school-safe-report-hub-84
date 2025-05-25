@@ -1,3 +1,4 @@
+
 // Types for Incident Management System
 export type IncidentType = 'Incident' | 'Near Miss' | 'Unsafe Condition';
 export type IncidentCategory = 
@@ -115,6 +116,10 @@ export interface Incident {
   wasReopened?: boolean; // Flag to indicate if the ticket was reopened after being closed
   isVoided?: boolean; // Flag to indicate if the incident record is voided
   voidReason?: string; // Reason why the incident was voided
+  // New fields from database
+  rootCauseAnalysis?: string; // Maps to root_cause_analysis column
+  actionTaken?: string; // Maps to action_taken column
+  contributingFactor?: ContributingFactor[]; // Maps to contributing_factor jsonb column
 }
 
 // Create a user type for dropdown selection
