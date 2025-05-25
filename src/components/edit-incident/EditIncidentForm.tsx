@@ -10,7 +10,7 @@ import { Calendar, Search, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth/AuthContext';
-import { Incident, Person } from '@/types/incident';
+import { Incident, Person, IncidentType } from '@/types/incident';
 import { useIncidentForm } from '@/hooks/useIncidentForm';
 import PeopleInvolvedSection from '@/components/incident-form/PeopleInvolvedSection';
 
@@ -18,6 +18,13 @@ interface EditIncidentFormProps {
   incident: Incident;
   onSuccess: () => void;
   onCancel: () => void;
+}
+
+// Extended facility type with campus_id
+interface FacilityWithCampus {
+  id: string;
+  name: string;
+  campus_id: string;
 }
 
 const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
@@ -31,13 +38,16 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
   // Get form configuration data
   const {
     locations,
-    facilities,
+    facilities: basicFacilities,
     reportTypes,
     categories,
     subcategories,
     priorities,
     users: incidentUsers
   } = useIncidentForm();
+
+  // Cast facilities to the extended type for campus_id access
+  const facilities = basicFacilities as FacilityWithCampus[];
   
   // Form state initialized with incident data
   const [formData, setFormData] = useState({
@@ -214,7 +224,11 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
                   handleSelectChange('typeId', value);
                   const selectedType = reportTypes.find(t => t.id === value);
                   if (selectedType) {
-                    setFormData(prev => ({ ...prev, type: selectedType.name }));
+                    setFormData(prev => ({ 
+                      ...prev, 
+                      type: selectedType.name as IncidentType,
+                      typeId: selectedType.id
+                    }));
                   }
                 }}>
                   <SelectTrigger className="h-11 bg-white border-gray-300">
