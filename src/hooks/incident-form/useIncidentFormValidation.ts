@@ -15,7 +15,7 @@ export function useIncidentFormValidation() {
 
     // Validate type - check for typeId instead of type
     if (!formData.typeId && !formData.type) {
-      newErrors.type = 'Report type is required';
+      newErrors.typeId = 'Report type is required';
     }
     
     // Validate description
@@ -44,7 +44,7 @@ export function useIncidentFormValidation() {
     
     // Validate subcategory - check for subcategoryId
     if (formData.categoryId && !formData.subcategoryId && !formData.subcategory) {
-      newErrors.subcategory = 'Subcategory is required';
+      newErrors.subcategoryId = 'Subcategory is required';
     }
     
     // Validate location - check for locationId
@@ -59,7 +59,7 @@ export function useIncidentFormValidation() {
     
     // Validate priority - check for priorityId
     if (!formData.priorityId && !formData.priority) {
-      newErrors.priority = 'Priority is required';
+      newErrors.priorityId = 'Priority is required';
     }
     
     // Validate owner
