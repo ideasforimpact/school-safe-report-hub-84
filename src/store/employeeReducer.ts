@@ -16,7 +16,7 @@ export const employeeReducer = (
   // Guard against undefined actions
   if (!action) return state;
 
-  console.log("REDUCER CALLED:", action.type, action.payload);
+  console.log("REDUCER CALLED:", action.type);
 
   switch (action.type) {
     case EmployeeActionTypes.SET_EMPLOYEE_DATA:
@@ -28,26 +28,31 @@ export const employeeReducer = (
         clientId: action.payload?.clientId || state.clientId // Set clientId from payload if available
       };
     case EmployeeActionTypes.SET_CONFIGURED_MODULES:
+      console.log("Setting configured modules in reducer:", action.payload);
       return {
         ...state,
         configuredModules: action.payload
       };
     case EmployeeActionTypes.SET_LOADING:
+      console.log("Setting loading state in reducer:", action.payload);
       return {
         ...state,
         isLoading: action.payload
       };
     case EmployeeActionTypes.SET_ERROR:
+      console.log("Setting error in reducer:", action.payload);
       return {
         ...state,
         error: action.payload
       };
     case EmployeeActionTypes.SET_CLIENT_ID:
+      console.log("Setting client ID in reducer:", action.payload);
       return {
         ...state,
         clientId: action.payload
       };
     case EmployeeActionTypes.RESET_EMPLOYEE:
+      console.log("Resetting employee state in reducer");
       return initialEmployeeState;
     default:
       return state;
