@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Incident, IncidentType, IncidentCategory, IncidentLocation, IncidentStatus, Person } from '@/types/incident';
+import { Incident, IncidentType, IncidentCategory, IncidentLocation, IncidentStatus, Person, Document } from '@/types/incident';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { toast } from 'sonner';
@@ -68,6 +68,24 @@ export function useIncidentData() {
             })
           : [];
 
+        // Convert documents from Json[] to Document[]
+        const documents: Document[] = Array.isArray(incident.documents)
+          ? incident.documents.map(doc => {
+              if (typeof doc === 'object' && doc !== null && 'name' in doc) {
+                return {
+                  name: (doc as any).name || '',
+                  type: (doc as any).type || '',
+                  data: (doc as any).data || ''
+                };
+              }
+              return {
+                name: String(doc),
+                type: '',
+                data: ''
+              };
+            })
+          : [];
+
         return {
           id: incident.id,
           ticketId: incident.ticket_id,
@@ -90,7 +108,7 @@ export function useIncidentData() {
             name: `${incident.assigned_to_employee.first_name} ${incident.assigned_to_employee.last_name}`
           } : undefined,
           facility: incident.facilities?.name,
-          documents: Array.isArray(incident.documents) ? incident.documents : [],
+          documents,
           createdAt: new Date(incident.created_at),
           updatedAt: new Date(incident.updated_at),
           priority: incident.incident_priorities?.name as 'Low' | 'Medium' | 'High' | 'Critical' | undefined
