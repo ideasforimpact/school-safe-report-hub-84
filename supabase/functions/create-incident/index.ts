@@ -66,7 +66,7 @@ serve(async (req) => {
       throw new Error('Could not fetch incident status');
     }
 
-    // Create the incident record
+    // Create the incident record - using created_by instead of reported_by_id to match the actual column name
     const incidentRecord = {
       ticket_id: ticketId,
       type_id: typeId,
@@ -79,7 +79,7 @@ serve(async (req) => {
       priority_id: priorityId,
       people_involved: peopleInvolved,
       documents: documents,
-      created_by: createdBy,
+      created_by: createdBy, // This should reference employees table
       assigned_to: assignedTo,
       status_id: statusData.id,
       client_id: clientId
