@@ -36,6 +36,7 @@ const ReportIncident = () => {
   const [isLoadingEmployees, setIsLoadingEmployees] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [isFormPopulated, setIsFormPopulated] = useState(false);
   
   // Use the incident detail hook
   const { incident: existingIncident, isLoading: isLoadingIncident, error: incidentError, getFormData } = useIncidentDetail(incidentId);
@@ -71,18 +72,20 @@ const ReportIncident = () => {
   // Set edit mode based on incidentId
   useEffect(() => {
     setIsEditMode(!!incidentId);
+    setIsFormPopulated(false);
   }, [incidentId]);
 
-  // Populate form data when incident is loaded
+  // Populate form data when incident is loaded - memoized to prevent infinite loops
   const populateFormData = useCallback(() => {
-    if (existingIncident && !isLoadingIncident) {
+    if (existingIncident && !isLoadingIncident && !isFormPopulated) {
       const mappedFormData = getFormData();
       if (mappedFormData) {
         setFormData(mappedFormData);
         setPeopleInvolved(existingIncident.people_involved || []);
+        setIsFormPopulated(true);
       }
     }
-  }, [existingIncident, isLoadingIncident, getFormData, setFormData, setPeopleInvolved]);
+  }, [existingIncident, isLoadingIncident, isFormPopulated, getFormData, setFormData, setPeopleInvolved]);
 
   useEffect(() => {
     if (isEditMode) {
@@ -318,15 +321,29 @@ const ReportIncident = () => {
     priority: formData.priority || 'Medium' as 'Low' | 'Medium' | 'High' | 'Critical'
   };
 
-  // Show loading state while fetching incident in edit mode
-  if (isEditMode && isLoadingIncident) {
+  // Show loading state while fetching incident in edit mode OR while loading employees
+  if ((isEditMode && isLoadingIncident) || isLoadingEmployees) {
     return (
       <Layout>
         <div className="space-y-4 md:space-y-6 w-full overflow-x-hidden bg-gray-50 min-h-screen">
           <div className="bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-6">
             <div className="max-w-7xl mx-auto">
-              <h1 className="text-2xl font-semibold text-gray-900">Edit Incident</h1>
-              <p className="text-gray-600 text-sm mt-1">Loading incident details...</p>
+              <h1 className="text-2xl font-semibold text-gray-900">
+                {isEditMode ? 'Edit Incident' : 'Report New Incident'}
+              </h1>
+              <p className="text-gray-600 text-sm mt-1">
+                {isLoadingIncident ? 'Loading incident details...' : 'Loading form data...'}
+              </p>
+            </div>
+          </div>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-center items-center min-h-[400px]">
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                <p className="mt-4 text-gray-600">
+                  {isLoadingIncident ? 'Loading incident details...' : 'Loading form data...'}
+                </p>
+              </div>
             </div>
           </div>
         </div>
