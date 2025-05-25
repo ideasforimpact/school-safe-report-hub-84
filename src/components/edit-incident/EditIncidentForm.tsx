@@ -84,8 +84,18 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
 
   // Initialize form data with proper IDs when reference data loads
   useEffect(() => {
+    console.log('=== EDIT INCIDENT FORM DEBUG ===');
+    console.log('Incident data:', incident);
+    console.log('Report Types:', reportTypes);
+    console.log('Categories:', categories);
+    console.log('Subcategories:', subcategories);
+    console.log('Locations:', locations);
+    console.log('Facilities:', facilities);
+    console.log('Priorities:', priorities);
+    
     if (reportTypes.length > 0) {
       const typeMatch = reportTypes.find(t => t.name === incident.type);
+      console.log('Type match for', incident.type, ':', typeMatch);
       if (typeMatch) {
         setFormData(prev => ({ ...prev, typeId: typeMatch.id }));
       }
@@ -93,6 +103,7 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
 
     if (categories.length > 0) {
       const categoryMatch = categories.find(c => c.name === incident.category);
+      console.log('Category match for', incident.category, ':', categoryMatch);
       if (categoryMatch) {
         setFormData(prev => ({ ...prev, categoryId: categoryMatch.id }));
       }
@@ -100,6 +111,7 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
 
     if (subcategories.length > 0 && incident.subcategory) {
       const subcategoryMatch = subcategories.find(s => s.name === incident.subcategory);
+      console.log('Subcategory match for', incident.subcategory, ':', subcategoryMatch);
       if (subcategoryMatch) {
         setFormData(prev => ({ ...prev, subcategoryId: subcategoryMatch.id }));
       }
@@ -107,6 +119,7 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
 
     if (locations.length > 0) {
       const locationMatch = locations.find(l => l.name === incident.location);
+      console.log('Location match for', incident.location, ':', locationMatch);
       if (locationMatch) {
         setFormData(prev => ({ ...prev, locationId: locationMatch.id }));
       }
@@ -114,6 +127,7 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
 
     if (facilities.length > 0 && incident.facility) {
       const facilityMatch = facilities.find(f => f.name === incident.facility);
+      console.log('Facility match for', incident.facility, ':', facilityMatch);
       if (facilityMatch) {
         setFormData(prev => ({ ...prev, facilityId: facilityMatch.id }));
       }
@@ -121,11 +135,19 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
 
     if (priorities.length > 0) {
       const priorityMatch = priorities.find(p => p.name === incident.priority);
+      console.log('Priority match for', incident.priority, ':', priorityMatch);
       if (priorityMatch) {
         setFormData(prev => ({ ...prev, priorityId: priorityMatch.id }));
       }
     }
+    
+    console.log('Final form data after matching:', formData);
   }, [reportTypes, categories, subcategories, locations, facilities, priorities, incident]);
+
+  // Log form data changes
+  useEffect(() => {
+    console.log('Form data updated:', formData);
+  }, [formData]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -133,6 +155,7 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
   };
 
   const handleSelectChange = (name: string, value: string) => {
+    console.log('Select change:', name, value);
     setFormData(prev => ({ ...prev, [name]: value }));
     
     // Handle related field updates
@@ -143,12 +166,16 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
 
   const getFilteredSubcategories = () => {
     if (!formData.categoryId) return [];
-    return subcategories.filter(sub => sub.category_id === formData.categoryId);
+    const filtered = subcategories.filter(sub => sub.category_id === formData.categoryId);
+    console.log('Filtered subcategories for category', formData.categoryId, ':', filtered);
+    return filtered;
   };
 
   const getFilteredFacilities = () => {
     if (!formData.locationId) return [];
-    return facilities.filter(facility => facility.campus_id === formData.locationId);
+    const filtered = facilities.filter(facility => facility.campus_id === formData.locationId);
+    console.log('Filtered facilities for location', formData.locationId, ':', filtered);
+    return filtered;
   };
 
   const handlePersonChange = (index: number, field: keyof Person, value: string) => {
@@ -244,6 +271,7 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
                   Report Type <span className="text-red-500">*</span>
                 </Label>
                 <Select value={formData.typeId} onValueChange={(value) => {
+                  console.log('Report Type selected:', value);
                   handleSelectChange('typeId', value);
                   const selectedType = reportTypes.find(t => t.id === value);
                   if (selectedType) {
@@ -271,7 +299,10 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
                 <Label htmlFor="category" className="text-sm font-medium text-gray-700">
                   Category <span className="text-red-500">*</span>
                 </Label>
-                <Select value={formData.categoryId} onValueChange={(value) => handleSelectChange('categoryId', value)}>
+                <Select value={formData.categoryId} onValueChange={(value) => {
+                  console.log('Category selected:', value);
+                  handleSelectChange('categoryId', value);
+                }}>
                   <SelectTrigger className="h-11 bg-white border-gray-300">
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
@@ -289,7 +320,10 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
                 <Label htmlFor="location" className="text-sm font-medium text-gray-700">
                   Where it Happened <span className="text-red-500">*</span>
                 </Label>
-                <Select value={formData.locationId} onValueChange={(value) => handleSelectChange('locationId', value)}>
+                <Select value={formData.locationId} onValueChange={(value) => {
+                  console.log('Location selected:', value);
+                  handleSelectChange('locationId', value);
+                }}>
                   <SelectTrigger className="h-11 bg-white border-gray-300">
                     <SelectValue placeholder="Select location" />
                   </SelectTrigger>
@@ -310,7 +344,10 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
                 <Label htmlFor="subcategory" className="text-sm font-medium text-gray-700">
                   Subcategory <span className="text-red-500">*</span>
                 </Label>
-                <Select value={formData.subcategoryId} onValueChange={(value) => handleSelectChange('subcategoryId', value)}>
+                <Select value={formData.subcategoryId} onValueChange={(value) => {
+                  console.log('Subcategory selected:', value);
+                  handleSelectChange('subcategoryId', value);
+                }}>
                   <SelectTrigger className="h-11 bg-white border-gray-300">
                     <SelectValue placeholder="Select subcategory" />
                   </SelectTrigger>
@@ -328,7 +365,10 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
                 <Label htmlFor="facility" className="text-sm font-medium text-gray-700">
                   Facility <span className="text-red-500">*</span>
                 </Label>
-                <Select value={formData.facilityId} onValueChange={(value) => handleSelectChange('facilityId', value)}>
+                <Select value={formData.facilityId} onValueChange={(value) => {
+                  console.log('Facility selected:', value);
+                  handleSelectChange('facilityId', value);
+                }}>
                   <SelectTrigger className="h-11 bg-white border-gray-300">
                     <SelectValue placeholder="Select facility" />
                   </SelectTrigger>
