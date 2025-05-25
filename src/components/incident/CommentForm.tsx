@@ -4,6 +4,7 @@ import { Comment as IncidentComment, FileItem } from '@/types/incident';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import MultipleFilesUpload from '@/components/MultipleFilesUpload';
+import { useAddIncidentComment } from '@/hooks/useAddIncidentComment';
 import {
   DialogContent,
   DialogHeader,
@@ -15,8 +16,8 @@ import {
 
 interface CommentFormProps {
   users: { id: string; name: string }[];
-  commentForm: Omit<IncidentComment, 'id' | 'createdAt' | 'updatedAt'>;
-  onSubmit: (data: Omit<IncidentComment, 'id' | 'createdAt' | 'updatedAt'>) => void;
+  incidentId: string; // Add incident ID prop
+  onCommentAdded?: () => void; // Callback for when comment is successfully added
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
@@ -25,27 +26,50 @@ interface CommentFormProps {
 
 const CommentForm: React.FC<CommentFormProps> = ({
   users,
-  commentForm: initialCommentForm,
-  onSubmit,
+  incidentId,
+  onCommentAdded,
   isOpen,
   onOpenChange,
   title,
   submitLabel
 }) => {
-  const [commentForm, setCommentForm] = useState<Omit<IncidentComment, 'id' | 'createdAt' | 'updatedAt'>>(
-    {
-      ...initialCommentForm,
-      files: initialCommentForm.files || []
-    }
-  );
+  const [commentText, setCommentText] = useState('');
+  const [files, setFiles] = useState<FileItem[]>([]);
+  const { addComment, isLoading } = useAddIncidentComment();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(commentForm);
+    
+    if (!commentText.trim()) {
+      return;
+    }
+
+    // Prepare documents array with file names
+    const documents = files.map(file => file.name);
+
+    // Call the edge function
+    const result = await addComment(incidentId, {
+      comment: commentText,
+      documents: documents
+    });
+
+    if (result.success) {
+      // Reset form
+      setCommentText('');
+      setFiles([]);
+      
+      // Close dialog
+      onOpenChange(false);
+      
+      // Notify parent component
+      if (onCommentAdded) {
+        onCommentAdded();
+      }
+    }
   };
 
-  const handleFilesChange = (files: FileItem[]) => {
-    setCommentForm(prev => ({ ...prev, files }));
+  const handleFilesChange = (newFiles: FileItem[]) => {
+    setFiles(newFiles);
   };
 
   return (
@@ -53,7 +77,7 @@ const CommentForm: React.FC<CommentFormProps> = ({
       <DialogHeader>
         <DialogTitle>{title}</DialogTitle>
         <DialogDescription>
-          {title === "Add Comment" ? "Add a new comment to this incident" : "Edit this comment"}
+          Add a new comment to this incident
         </DialogDescription>
       </DialogHeader>
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -65,8 +89,8 @@ const CommentForm: React.FC<CommentFormProps> = ({
             </label>
             <Textarea
               id="description"
-              value={commentForm.description}
-              onChange={(e) => setCommentForm(prev => ({ ...prev, description: e.target.value }))}
+              value={commentText}
+              onChange={(e) => setCommentText(e.target.value)}
               placeholder="Your comment"
               required
               className="min-h-[120px]"
@@ -81,7 +105,7 @@ const CommentForm: React.FC<CommentFormProps> = ({
             </p>
             <MultipleFilesUpload 
               onFilesChange={handleFilesChange}
-              initialFiles={commentForm.files || []}
+              initialFiles={files}
               maxFiles={5}
             />
           </div>
@@ -89,9 +113,13 @@ const CommentForm: React.FC<CommentFormProps> = ({
         
         <DialogFooter>
           <DialogClose asChild>
-            <Button type="button" variant="outline">Cancel</Button>
+            <Button type="button" variant="outline" disabled={isLoading}>
+              Cancel
+            </Button>
           </DialogClose>
-          <Button type="submit">{submitLabel}</Button>
+          <Button type="submit" disabled={isLoading || !commentText.trim()}>
+            {isLoading ? 'Adding...' : submitLabel}
+          </Button>
         </DialogFooter>
       </form>
     </DialogContent>
