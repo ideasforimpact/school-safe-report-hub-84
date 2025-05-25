@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth/AuthContext';
@@ -136,6 +137,42 @@ const ReportIncident = () => {
     fetchEmployees();
   }, []);
 
+  // Helper function to create a valid date from form data
+  const createDateFromFormData = (dateString: string, timeString: string) => {
+    try {
+      // If no date is provided, use current date
+      if (!dateString) {
+        console.log('No date provided, using current date');
+        return new Date();
+      }
+
+      // If no time is provided, use current time
+      if (!timeString) {
+        console.log('No time provided, using current time');
+        const currentTime = new Date().toTimeString().split(' ')[0].slice(0, 5);
+        timeString = currentTime;
+      }
+
+      // Create date from date and time strings
+      const dateTimeString = `${dateString}T${timeString}:00`;
+      console.log('Creating date from:', dateTimeString);
+      
+      const date = new Date(dateTimeString);
+      
+      // Check if the date is valid
+      if (isNaN(date.getTime())) {
+        console.error('Invalid date created:', dateTimeString);
+        throw new Error('Invalid date');
+      }
+
+      return date;
+    } catch (error) {
+      console.error('Error creating date:', error);
+      // Return current date as fallback
+      return new Date();
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -155,9 +192,7 @@ const ReportIncident = () => {
     try {
       if (isEditMode && incidentId) {
         // Handle edit mode
-        const dateTime = formData.date && formData.time 
-          ? new Date(`${formData.date}T${formData.time}`) 
-          : new Date();
+        const dateTime = createDateFromFormData(formData.date, formData.time);
         
         const validPeople = peopleInvolved.filter(p => {
           const hasName = p.name && p.name.trim() !== '';
@@ -244,9 +279,7 @@ const ReportIncident = () => {
           return;
         }
         
-        const dateTime = formData.date && formData.time 
-          ? new Date(`${formData.date}T${formData.time}`) 
-          : new Date();
+        const dateTime = createDateFromFormData(formData.date, formData.time);
         
         const validPeople = peopleInvolved.filter(p => {
           const hasName = p.name && p.name.trim() !== '';
