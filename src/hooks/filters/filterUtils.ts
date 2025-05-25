@@ -1,7 +1,7 @@
+
 import { Incident } from '@/types/incident';
 import { FilterState } from '@/types/filterTypes';
 
-// Initial filter state
 export const getInitialFilterState = (): FilterState => ({
   search: '',
   type: '',
@@ -16,9 +16,7 @@ export const getInitialFilterState = (): FilterState => ({
   startDate: null,
   endDate: null,
   showAdvancedFilters: false,
-  showClosedIncidents: true,
-  
-  // Adding default values for the missing properties
+  showClosedIncidents: false,
   isVoided: false,
   wasReopened: false,
   hasAttachments: false,
@@ -27,12 +25,17 @@ export const getInitialFilterState = (): FilterState => ({
   dateTo: ''
 });
 
-// Apply filters to incidents array
 export const applyFilters = (incidents: Incident[], filters: FilterState): Incident[] => {
   return incidents.filter(incident => {
-    // Basic text search
-    if (filters.search && !matchesSearch(incident, filters.search)) {
-      return false;
+    // Search filter
+    if (filters.search) {
+      const searchTerm = filters.search.toLowerCase();
+      const searchMatch = 
+        incident.ticketId.toLowerCase().includes(searchTerm) ||
+        incident.description.toLowerCase().includes(searchTerm) ||
+        (incident.category && incident.category.toLowerCase().includes(searchTerm));
+      
+      if (!searchMatch) return false;
     }
 
     // Type filter
@@ -75,71 +78,44 @@ export const applyFilters = (incidents: Incident[], filters: FilterState): Incid
       return false;
     }
 
-    // Reporter filter
-    if (filters.reportedBy && incident.reportedBy.id !== filters.reportedBy) {
-      return false;
+    // Date range filters
+    if (filters.dateFrom) {
+      const fromDate = new Date(filters.dateFrom);
+      if (new Date(incident.date) < fromDate) {
+        return false;
+      }
     }
 
-    // Date range filter - supporting both new and old date properties
-    if (filters.startDate && new Date(incident.date) < filters.startDate) {
-      return false;
-    }
-    if (filters.endDate && new Date(incident.date) > filters.endDate) {
-      return false;
-    }
-    if (filters.dateFrom && new Date(incident.date) < new Date(filters.dateFrom)) {
-      return false;
-    }
-    if (filters.dateTo && new Date(incident.date) > new Date(filters.dateTo)) {
-      return false;
+    if (filters.dateTo) {
+      const toDate = new Date(filters.dateTo);
+      toDate.setHours(23, 59, 59, 999);
+      if (new Date(incident.date) > toDate) {
+        return false;
+      }
     }
 
     // Advanced filters
     if (filters.isVoided && !incident.isVoided) {
       return false;
     }
+
     if (filters.wasReopened && !incident.wasReopened) {
       return false;
     }
-    if (filters.hasAttachments && !(incident.documents?.length || incident.image || incident.video || incident.document)) {
-      return false;
-    }
-    if (filters.involvedRole && !incident.peopleInvolved.some(p => p.role === filters.involvedRole)) {
-      return false;
+
+    if (filters.hasAttachments) {
+      const hasFiles = incident.image || incident.video || incident.document || 
+                      (incident.documents && incident.documents.length > 0);
+      if (!hasFiles) return false;
     }
 
-    // If show closed incidents is false, don't show closed incidents
-    if (!filters.showClosedIncidents && incident.status === 'Closed') {
-      return false;
+    if (filters.involvedRole) {
+      const hasRole = incident.peopleInvolved?.some(person => 
+        person.role === filters.involvedRole
+      );
+      if (!hasRole) return false;
     }
 
     return true;
   });
-};
-
-// Helper function to match search text in multiple fields
-const matchesSearch = (incident: Incident, search: string): boolean => {
-  const searchLower = search.toLowerCase();
-  
-  // Check main fields
-  if (incident.ticketId.toLowerCase().includes(searchLower)) return true;
-  if (incident.type.toLowerCase().includes(searchLower)) return true;
-  if (incident.category.toLowerCase().includes(searchLower)) return true;
-  if (incident.subcategory.toLowerCase().includes(searchLower)) return true;
-  if (incident.description.toLowerCase().includes(searchLower)) return true;
-  if (incident.location.toLowerCase().includes(searchLower)) return true;
-  if (incident.status.toLowerCase().includes(searchLower)) return true;
-  if (incident.reportedBy.name.toLowerCase().includes(searchLower)) return true;
-  if (incident.owner?.name.toLowerCase().includes(searchLower)) return true;
-  if (incident.facility?.toLowerCase().includes(searchLower)) return true;
-
-  // Check people involved
-  if (incident.peopleInvolved.some(person => 
-    person.name.toLowerCase().includes(searchLower) || 
-    person.role.toLowerCase().includes(searchLower)
-  )) {
-    return true;
-  }
-
-  return false;
 };

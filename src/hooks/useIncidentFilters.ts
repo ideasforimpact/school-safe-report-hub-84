@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Incident } from '@/types/incident'; // Updated import
+import { Incident } from '@/types/incident';
 import { FilterState, FilterHookReturn } from '@/types/filterTypes';
 import { useFilterOptions } from './filters/useFilterOptions';
 import { applyFilters, getInitialFilterState } from './filters/filterUtils';
@@ -10,13 +10,14 @@ export function useIncidentFilters(incidents: Incident[]): FilterHookReturn {
   const [filters, setFilters] = useState<FilterState>(getInitialFilterState());
   const [filteredIncidents, setFilteredIncidents] = useState<Incident[]>(incidents);
 
-  // Get available options for filters
+  // Get available options for filters - now includes database-fetched data
   const {
     categoryOptions,
+    subcategoryOptions,
+    priorityOptions,
     locationOptions,
     facilityOptions,
     statusOptions,
-    priorityOptions,
     assigneeOptions,
     reporterOptions,
     isInsightsPage,
@@ -87,7 +88,7 @@ export function useIncidentFilters(incidents: Incident[]): FilterHookReturn {
     filters,
     filteredIncidents,
     availableCategories: categoryOptions,
-    availableSubcategories: [],
+    availableSubcategories: subcategoryOptions,
     availableLocations: locationOptions,
     availableFacilities: facilityOptions,
     availableOwners,
