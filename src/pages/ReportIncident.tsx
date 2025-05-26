@@ -250,14 +250,16 @@ const ReportIncident = () => {
 
         toast.success("Incident updated successfully");
         
-        // Refetch incidents to get the latest data
+        // Wait for refetch to complete before navigating
+        console.log('Refetching incidents after edit...');
         await refetchIncidents();
+        console.log('Incidents refetched successfully');
         
         // Navigate to incidents list
         navigate('/incidents');
         
       } else {
-        // Handle create mode (existing logic)
+        // Handle create mode
         let employeeId = employeeState.employeeData?.id || authEmployeeData?.id;
         let clientId = employeeState.employeeData?.clientId || authEmployeeData?.clientId;
         
@@ -320,6 +322,7 @@ const ReportIncident = () => {
           clientId: clientId
         };
         
+        console.log('Creating new incident...');
         const { data, error } = await supabase.functions.invoke('create-incident', {
           body: incidentData
         });
@@ -334,16 +337,16 @@ const ReportIncident = () => {
           throw new Error(data?.error || 'Failed to create incident');
         }
         
+        console.log('Incident created successfully:', data);
         toast.success(`Incident reported successfully! Ticket ID: ${data.ticketId}`);
         
-        // Force refetch incidents to get the latest data including the new incident
+        // Wait for refetch to complete before navigating
+        console.log('Refetching incidents after creation...');
         await refetchIncidents();
+        console.log('Incidents refetched successfully');
         
-        // Add a small delay to ensure the refetch completes
-        setTimeout(() => {
-          // Navigate to incidents list
-          navigate('/incidents');
-        }, 100);
+        // Navigate to incidents list
+        navigate('/incidents');
       }
     } catch (error) {
       console.error('Error submitting incident report:', error);

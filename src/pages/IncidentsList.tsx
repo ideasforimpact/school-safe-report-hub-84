@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useIncidents } from '@/contexts/incident';
 import Layout from '@/components/layout/Layout';
 import { useIncidentFilters } from '@/hooks/useIncidentFilters';
@@ -13,7 +13,7 @@ const IncidentsList = () => {
   console.log('IncidentsList component rendering');
   
   const { incidents } = useIncidents();
-  const { loading, error } = useIncidentData();
+  const { loading, error, refetchIncidents } = useIncidentData();
   console.log('Incidents from context:', incidents);
   console.log('Loading state:', loading);
 
@@ -31,6 +31,12 @@ const IncidentsList = () => {
   } = useIncidentFilters(incidents);
 
   console.log('Filtered incidents:', filteredIncidents);
+
+  // Refetch incidents when component mounts to ensure fresh data
+  useEffect(() => {
+    console.log('IncidentsList mounted, triggering refetch...');
+    refetchIncidents();
+  }, []);
 
   // Count active filters
   const activeFilterCount = Object.entries(filters).filter(([key, value]) => {
@@ -80,7 +86,7 @@ const IncidentsList = () => {
             <div className="text-center py-8">
               <p className="text-red-600 mb-4">Error loading incidents: {error}</p>
               <button 
-                onClick={() => window.location.reload()} 
+                onClick={() => refetchIncidents()} 
                 className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
               >
                 Retry
