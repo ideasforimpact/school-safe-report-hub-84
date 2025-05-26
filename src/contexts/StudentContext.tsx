@@ -29,19 +29,9 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
   const fetchStudents = async () => {
     setIsLoading(true);
     try {
-      if (!employeeData?.clientId) {
-        console.error('No client ID available');
-        toast.error('Unable to load students: No client ID');
-        return;
-      }
-
       const { data, error } = await supabase.functions.invoke('student-management', {
         method: 'GET',
-        headers: { 
-          path: 'list',
-          'client-id': employeeData.clientId
-        },
-        body: {}
+        headers: { path: 'list' }
       });
 
       if (error) {
@@ -59,17 +49,16 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
 
   const addStudent = async (student: Omit<Student, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
-      if (!employeeData?.clientId) {
-        throw new Error('No client ID available');
-      }
+      // Add client_id to the student data
+      const studentWithClientId = {
+        ...student,
+        client_id: employeeData?.clientId
+      };
 
       const { data, error } = await supabase.functions.invoke('student-management', {
-        body: student,
+        body: studentWithClientId,
         method: 'POST',
-        headers: { 
-          path: 'create',
-          'client-id': employeeData.clientId
-        }
+        headers: { path: 'create' }
       });
 
       if (error) {
@@ -86,18 +75,16 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
 
   const updateStudent = async (id: string, updates: Partial<Student>) => {
     try {
-      if (!employeeData?.clientId) {
-        throw new Error('No client ID available');
-      }
+      // Add client_id to the updates if it's not present
+      const updatesWithClientId = {
+        ...updates,
+        client_id: employeeData?.clientId
+      };
 
       const { data, error } = await supabase.functions.invoke('student-management', {
-        body: updates,
+        body: updatesWithClientId,
         method: 'PUT',
-        headers: { 
-          path: `update`,
-          id,
-          'client-id': employeeData.clientId
-        }
+        headers: { path: `update`, id }
       });
 
       if (error) {
@@ -118,18 +105,14 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
 
   const deleteStudent = async (id: string) => {
     try {
-      if (!employeeData?.clientId) {
-        throw new Error('No client ID available');
-      }
-
+      // Include client_id in the delete request
       const { error } = await supabase.functions.invoke('student-management', {
-        body: {},
-        method: 'DELETE',
-        headers: { 
-          path: `delete`,
+        body: { 
           id,
-          'client-id': employeeData.clientId
-        }
+          client_id: employeeData?.clientId
+        },
+        method: 'DELETE',
+        headers: { path: `delete`, id }
       });
 
       if (error) {

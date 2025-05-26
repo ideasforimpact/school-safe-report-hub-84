@@ -16,13 +16,8 @@ const requiredFields: (keyof RawStudentData)[] = [
 /**
  * Validate Excel/CSV data to ensure all required fields are present and valid
  */
-export const validateExcelData = async (data: RawStudentData[], clientId: string): Promise<string[]> => {
+export const validateExcelData = async (data: RawStudentData[]): Promise<string[]> => {
   const errors: string[] = [];
-  
-  if (!clientId) {
-    errors.push('Client ID is required for validation');
-    return errors;
-  }
   
   if (!data || data.length === 0) {
     errors.push('File contains no data');
@@ -97,10 +92,7 @@ export const validateExcelData = async (data: RawStudentData[], clientId: string
     // Use the bulk validation endpoint to validate all relationships at once
     const { data: validationResult, error: validationError } = await supabase.functions.invoke('student-management', {
       method: 'POST',
-      headers: { 
-        path: 'validate',
-        'client-id': clientId
-      },
+      headers: { path: 'validate' },
       body: { 
         students: data.map(row => ({
           studentId: String(row.studentId),
