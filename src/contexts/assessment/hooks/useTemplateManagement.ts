@@ -45,6 +45,7 @@ export const useTemplateManagement = (userId?: string) => {
     } catch (error) {
       console.error('Error updating template:', error);
       toast.error('Failed to update template');
+      throw error;
     }
   };
 
@@ -55,6 +56,7 @@ export const useTemplateManagement = (userId?: string) => {
     } catch (error) {
       console.error('Error deleting template:', error);
       toast.error('Failed to delete template');
+      throw error;
     }
   };
 

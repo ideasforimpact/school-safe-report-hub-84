@@ -7,7 +7,7 @@ export const useQuestionManagement = (templates: AssessmentTemplate[], setTempla
   const addQuestion = async (templateId: string, question: Omit<AssessmentQuestion, 'id'>) => {
     try {
       const template = templates.find(t => t.id === templateId);
-      if (!template) return;
+      if (!template) throw new Error('Template not found');
 
       const questionWithId = {
         ...question,
@@ -25,15 +25,18 @@ export const useQuestionManagement = (templates: AssessmentTemplate[], setTempla
           : t
       );
       setTemplates(updatedTemplates);
+      
+      return questionWithId.id;
     } catch (error) {
       console.error('Error adding question:', error);
+      throw error;
     }
   };
 
   const updateQuestion = async (templateId: string, questionId: string, updates: Partial<AssessmentQuestion>) => {
     try {
       const template = templates.find(t => t.id === templateId);
-      if (!template) return;
+      if (!template) throw new Error('Template not found');
 
       const updatedQuestions = template.questions.map(q => 
         q.id === questionId ? { ...q, ...updates } : q
@@ -50,13 +53,14 @@ export const useQuestionManagement = (templates: AssessmentTemplate[], setTempla
       setTemplates(updatedTemplates);
     } catch (error) {
       console.error('Error updating question:', error);
+      throw error;
     }
   };
 
   const removeQuestion = async (templateId: string, questionId: string) => {
     try {
       const template = templates.find(t => t.id === templateId);
-      if (!template) return;
+      if (!template) throw new Error('Template not found');
 
       const updatedQuestions = template.questions.filter(q => q.id !== questionId);
       
@@ -71,6 +75,7 @@ export const useQuestionManagement = (templates: AssessmentTemplate[], setTempla
       setTemplates(updatedTemplates);
     } catch (error) {
       console.error('Error removing question:', error);
+      throw error;
     }
   };
 

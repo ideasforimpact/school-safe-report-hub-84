@@ -10,14 +10,14 @@ export interface AssessmentContextType {
   // Templates
   templates: AssessmentTemplate[];
   createTemplate: (template: Omit<AssessmentTemplate, 'id' | 'createdAt' | 'createdBy' | 'isActive'>) => Promise<string>;
-  updateTemplate: (id: string, updates: Partial<Omit<AssessmentTemplate, 'id' | 'createdAt' | 'createdBy'>>) => void;
-  deleteTemplate: (id: string) => void;
+  updateTemplate: (id: string, updates: Partial<Omit<AssessmentTemplate, 'id' | 'createdAt' | 'createdBy'>>) => Promise<void>;
+  deleteTemplate: (id: string) => Promise<void>;
   getTemplateById: (id: string) => AssessmentTemplate | undefined;
   
   // Questions
-  addQuestion: (templateId: string, question: Omit<AssessmentQuestion, 'id'>) => string;
-  updateQuestion: (templateId: string, questionId: string, updates: Partial<Omit<AssessmentQuestion, 'id'>>) => void;
-  removeQuestion: (templateId: string, questionId: string) => void;
+  addQuestion: (templateId: string, question: Omit<AssessmentQuestion, 'id'>) => Promise<string>;
+  updateQuestion: (templateId: string, questionId: string, updates: Partial<Omit<AssessmentQuestion, 'id'>>) => Promise<void>;
+  removeQuestion: (templateId: string, questionId: string) => Promise<void>;
   
   // Assignments
   assignments: AssessmentAssignment[];

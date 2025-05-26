@@ -31,36 +31,36 @@ const DuplicateTemplateDialog: React.FC<DuplicateTemplateDialogProps> = ({
   
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(`${template.title} (Copy)`);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const handleDuplicate = () => {
+  const handleDuplicate = async () => {
     if (!title.trim()) {
       toast.error('Please enter a title');
       return;
     }
     
-    // Create new template
-    const newTemplateId = createTemplate({
-      title,
-      description: template.description,
-      type: template.type,
-      questions: []
-    });
-    
-    // Add all questions from the original template
-    template.questions.forEach(question => {
-      addQuestion(newTemplateId, {
-        text: question.text,
-        allowComments: question.allowComments,
-        allowAttachments: question.allowAttachments,
-        required: question.required
+    try {
+      setIsSubmitting(true);
+      
+      // Create new template
+      const newTemplateId = await createTemplate({
+        title,
+        description: template.description,
+        type: template.type,
+        questions: template.questions
       });
-    });
-    
-    toast.success('Template duplicated successfully');
-    setOpen(false);
-    
-    if (onDuplicate) {
-      onDuplicate(newTemplateId);
+      
+      toast.success('Template duplicated successfully');
+      setOpen(false);
+      
+      if (onDuplicate) {
+        onDuplicate(newTemplateId);
+      }
+    } catch (error) {
+      console.error('Error duplicating template:', error);
+      toast.error('Failed to duplicate template');
+    } finally {
+      setIsSubmitting(false);
     }
   };
   
@@ -86,15 +86,25 @@ const DuplicateTemplateDialog: React.FC<DuplicateTemplateDialogProps> = ({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="col-span-3"
+              disabled={isSubmitting}
             />
           </div>
         </div>
         <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+          <Button 
+            type="button" 
+            variant="outline" 
+            onClick={() => setOpen(false)}
+            disabled={isSubmitting}
+          >
             Cancel
           </Button>
-          <Button type="button" onClick={handleDuplicate}>
-            Duplicate
+          <Button 
+            type="button" 
+            onClick={handleDuplicate}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? 'Duplicating...' : 'Duplicate'}
           </Button>
         </DialogFooter>
       </DialogContent>

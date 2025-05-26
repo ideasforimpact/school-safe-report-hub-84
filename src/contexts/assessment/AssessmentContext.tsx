@@ -63,9 +63,9 @@ export const AssessmentProvider: React.FC<{children: React.ReactNode}> = ({ chil
   } = useResponseManagement(templates, updateAssignment);
 
   // Clean up related data when templates or assignments are deleted
-  const handleDeleteTemplate = (id: string) => {
+  const handleDeleteTemplate = async (id: string) => {
     // Delete template
-    deleteTemplate(id);
+    await deleteTemplate(id);
     
     // Also delete related assignments and responses
     const relatedAssignments = assignments.filter(assignment => assignment.templateId === id);
