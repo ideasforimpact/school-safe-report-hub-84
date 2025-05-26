@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -22,11 +23,12 @@ interface Assessment {
   created_at: string;
   creator_name?: string;
   assignee_name?: string;
+  client_id: string;
 }
 
 const AssessmentsTable: React.FC = () => {
   const navigate = useNavigate();
-  const { user, employee } = useAuth();
+  const { user, employeeData } = useAuth();
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [filteredAssessments, setFilteredAssessments] = useState<Assessment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,28 +36,27 @@ const AssessmentsTable: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
+  // Get client_id from either employeeData or user context
+  const clientId = employeeData?.clientId || user?.clientId;
+
   const fetchAssessments = async () => {
     try {
       setLoading(true);
       setError(null);
       
       console.log('Fetching assessments with user:', user);
-      console.log('Employee data:', employee);
-      
-      // Get client_id from employee context or user context
-      const clientId = employee?.client_id || user?.clientId;
+      console.log('Employee data:', employeeData);
+      console.log('Using client_id:', clientId);
       
       if (!clientId) {
-        console.log('No client ID available');
+        console.log('No client ID available - cannot fetch assessments');
         setAssessments([]);
         setFilteredAssessments([]);
         setLoading(false);
         return;
       }
       
-      console.log('Using client_id:', clientId);
-      
-      // Fetch assessments with employee names
+      // Fetch assessments with employee names for the specific client
       const { data: assessmentsData, error } = await supabase
         .from('assessments')
         .select(`
@@ -67,6 +68,7 @@ const AssessmentsTable: React.FC = () => {
           assigned_to,
           template_id,
           created_at,
+          client_id,
           creator:employees!assessments_created_by_fkey(first_name, last_name),
           assignee:employees!assessments_assigned_to_fkey(first_name, last_name)
         `)
@@ -98,8 +100,12 @@ const AssessmentsTable: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchAssessments();
-  }, [user, employee]);
+    if (clientId) {
+      fetchAssessments();
+    } else {
+      setLoading(false);
+    }
+  }, [user, employeeData, clientId]);
 
   useEffect(() => {
     let filtered = assessments;
@@ -153,11 +159,17 @@ const AssessmentsTable: React.FC = () => {
   };
 
   const handleDelete = async (assessmentId: string) => {
+    if (!clientId) {
+      toast.error('Client ID is required for this operation');
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('assessments')
         .delete()
-        .eq('id', assessmentId);
+        .eq('id', assessmentId)
+        .eq('client_id', clientId); // Ensure we only delete assessments for the current client
 
       if (error) throw error;
 
@@ -169,16 +181,14 @@ const AssessmentsTable: React.FC = () => {
     }
   };
 
-  const clientId = employee?.client_id || user?.clientId;
-
   if (!clientId) {
     return (
       <Card>
         <CardContent className="flex items-center justify-center p-8">
           <div className="text-center">
             <AlertCircle className="h-12 w-12 text-amber-500 mx-auto mb-4" />
-            <h3 className="text-lg font-medium mb-2">Authentication Required</h3>
-            <p className="text-gray-500">Please log in to view assessments.</p>
+            <h3 className="text-lg font-medium mb-2">Client Context Required</h3>
+            <p className="text-gray-500">Please ensure you are logged in with a valid client context to view assessments.</p>
           </div>
         </CardContent>
       </Card>

@@ -9,9 +9,10 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Save, Loader } from 'lucide-react';
+import { ArrowLeft, Save, Loader, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/auth';
 
 interface CreateAssessmentFormProps {
   onCancel?: () => void;
@@ -21,6 +22,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
   onCancel
 }) => {
   const navigate = useNavigate();
+  const { user, employeeData } = useAuth();
   const {
     templates
   } = useAssessment();
@@ -37,6 +39,9 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Get client_id from either employeeData or user context
+  const clientId = employeeData?.clientId || user?.clientId;
+
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
@@ -46,6 +51,12 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!clientId) {
+      toast.error('Client ID is required to create assessments');
+      return;
+    }
+    
     if (!formData.name.trim()) {
       toast.error('Assessment name is required');
       return;
@@ -65,7 +76,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
 
     setIsSubmitting(true);
     try {
-      // Insert assessment into database
+      // Insert assessment into database with client_id
       const {
         data,
         error
@@ -75,12 +86,14 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
         template_id: formData.templateId,
         assigned_to: formData.assignedTo,
         target_completion_date: formData.targetCompletionDate,
-        status: 'New'
+        status: 'New',
+        client_id: clientId,
+        created_by: employeeData?.id || user?.id
       }).select().single();
 
       if (error) throw error;
 
-      console.log('Assessment created:', data);
+      console.log('Assessment created with client_id:', data);
       toast.success('Assessment created successfully');
       if (onCancel) {
         onCancel();
@@ -103,16 +116,45 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
     }
   };
 
+  if (!clientId) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <Button variant="outline" size="sm" onClick={handleCancel}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+            <h2 className="text-2xl font-semibold">Create Assessment</h2>
+          </div>
+        </div>
+
+        <Card>
+          <CardContent className="flex items-center justify-center p-8">
+            <div className="text-center">
+              <AlertCircle className="h-12 w-12 text-amber-500 mx-auto mb-4" />
+              <h3 className="text-lg font-medium mb-2">Client Context Required</h3>
+              <p className="text-gray-500">Please ensure you are logged in with a valid client context to create assessments.</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (employeesLoading) {
-    return <div className="space-y-6">
+    return (
+      <div className="space-y-6">
         <div className="flex items-center justify-center p-8">
           <Loader className="h-8 w-8 animate-spin" />
           <span className="ml-2">Loading...</span>
         </div>
-      </div>;
+      </div>
+    );
   }
 
-  return <div className="space-y-6">
+  return (
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <Button variant="outline" size="sm" onClick={handleCancel}>
@@ -133,13 +175,26 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
               {/* Assessment Name */}
               <div className="space-y-2">
                 <Label htmlFor="name">Assessment Name *</Label>
-                <Input id="name" type="text" value={formData.name} onChange={e => handleInputChange('name', e.target.value)} placeholder="Enter assessment name" required />
+                <Input 
+                  id="name" 
+                  type="text" 
+                  value={formData.name} 
+                  onChange={e => handleInputChange('name', e.target.value)} 
+                  placeholder="Enter assessment name" 
+                  required 
+                />
               </div>
 
               {/* Description */}
               <div className="space-y-2">
                 <Label htmlFor="description">Description</Label>
-                <Textarea id="description" value={formData.description} onChange={e => handleInputChange('description', e.target.value)} placeholder="Enter assessment description" rows={3} />
+                <Textarea 
+                  id="description" 
+                  value={formData.description} 
+                  onChange={e => handleInputChange('description', e.target.value)} 
+                  placeholder="Enter assessment description" 
+                  rows={3} 
+                />
               </div>
 
               {/* Template Selection */}
@@ -150,14 +205,18 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
                     <SelectValue placeholder="Choose a template" />
                   </SelectTrigger>
                   <SelectContent>
-                    {templates.map(template => <SelectItem key={template.id} value={template.id}>
+                    {templates.map(template => (
+                      <SelectItem key={template.id} value={template.id}>
                         {template.title} ({template.type})
-                      </SelectItem>)}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
-                {templates.length === 0 && <p className="text-sm text-gray-500">
+                {templates.length === 0 && (
+                  <p className="text-sm text-gray-500">
                     No templates available. Please create a template first.
-                  </p>}
+                  </p>
+                )}
               </div>
 
               {/* Assigned To */}
@@ -168,20 +227,31 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
                     <SelectValue placeholder="Select staff member" />
                   </SelectTrigger>
                   <SelectContent>
-                    {employees.map(employee => <SelectItem key={employee.id} value={employee.id}>
+                    {employees.map(employee => (
+                      <SelectItem key={employee.id} value={employee.id}>
                         {employee.first_name} {employee.last_name} - {employee.department}
-                      </SelectItem>)}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
-                {employees.length === 0 && <p className="text-sm text-gray-500">
+                {employees.length === 0 && (
+                  <p className="text-sm text-gray-500">
                     No staff members available.
-                  </p>}
+                  </p>
+                )}
               </div>
 
               {/* Target Completion Date */}
               <div className="space-y-2">
                 <Label htmlFor="targetDate">Target Completion Date *</Label>
-                <Input id="targetDate" type="date" value={formData.targetCompletionDate} onChange={e => handleInputChange('targetCompletionDate', e.target.value)} min={new Date().toISOString().split('T')[0]} required />
+                <Input 
+                  id="targetDate" 
+                  type="date" 
+                  value={formData.targetCompletionDate} 
+                  onChange={e => handleInputChange('targetCompletionDate', e.target.value)} 
+                  min={new Date().toISOString().split('T')[0]} 
+                  required 
+                />
               </div>
             </div>
 
@@ -198,7 +268,8 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
           </form>
         </CardContent>
       </Card>
-    </div>;
+    </div>
+  );
 };
 
 export default CreateAssessmentForm;
