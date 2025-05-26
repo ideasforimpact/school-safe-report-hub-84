@@ -169,7 +169,13 @@ export function useIncidentData() {
       });
 
       console.log('Transformed incidents:', transformedIncidents);
-      setIncidents(transformedIncidents);
+      
+      // Sort incidents by creation date (newest first) to ensure new incidents appear at the top
+      const sortedIncidents = transformedIncidents.sort((a, b) => 
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      
+      setIncidents(sortedIncidents);
 
     } catch (error: any) {
       console.error('Error fetching incidents:', error);
@@ -194,6 +200,8 @@ export function useIncidentData() {
   // Enhanced refetch function that ensures fresh data
   const refetchIncidents = async () => {
     console.log('Refetching incidents...');
+    // Add a small delay to ensure database consistency
+    await new Promise(resolve => setTimeout(resolve, 100));
     await fetchIncidents();
   };
 

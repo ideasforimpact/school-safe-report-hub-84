@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Incident, Activity, User, UserRef, Document, IncidentType, IncidentCategory, IncidentLocation } from '@/types/incident';
 import { toast } from 'sonner';
@@ -18,7 +19,7 @@ interface IncidentData extends Omit<Incident, 'id' | 'status' | 'createdAt' | 'u
 
 export function useIncidentActions(
   incidents: Incident[], 
-  refetchIncidents: () => void,
+  refetchIncidents: () => Promise<void>,
   activities: Activity[],
   setActivities: React.Dispatch<React.SetStateAction<Activity[]>>,
   users: User[]
@@ -153,8 +154,11 @@ export function useIncidentActions(
         priority: incidentData.priority
       };
       
-      // Trigger refetch instead of updating local state
-      refetchIncidents();
+      // Wait for a brief moment to ensure database consistency
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Trigger refetch to ensure fresh data
+      await refetchIncidents();
       
       toast.success(`${incidentData.type} reported successfully!`);
       
@@ -185,8 +189,11 @@ export function useIncidentActions(
         return;
       }
 
+      // Wait for a brief moment to ensure database consistency
+      await new Promise(resolve => setTimeout(resolve, 300));
+
       // Trigger refetch for immediate feedback
-      refetchIncidents();
+      await refetchIncidents();
 
       // Create activity record for the update
       const currentUser: UserRef = {

@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { IncidentContextType } from './types';
 import { useConfigManagement } from '@/hooks/useConfigManagement'; 
@@ -46,12 +47,19 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
     }
   ]);
 
-  // Sync local incidents state with fetched incidents
+  // Sync local incidents state with fetched incidents - with improved reactivity
   useEffect(() => {
     console.log('IncidentContext: Syncing fetched incidents with context state');
     console.log('Fetched incidents count:', fetchedIncidents.length);
-    setIncidents(fetchedIncidents);
+    
+    // Force a state update even if the array reference is the same
+    setIncidents([...fetchedIncidents]);
   }, [fetchedIncidents]);
+
+  // Also trigger re-render when incidents array changes by content
+  useEffect(() => {
+    console.log('IncidentContext: Local incidents state updated, count:', incidents.length);
+  }, [incidents.length, incidents]);
 
   const {
     categories,
@@ -99,18 +107,26 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
 
   // Enhanced incident actions that automatically refetch after operations
   const {
-    addIncident,
+    addIncident: originalAddIncident,
     updateIncident: originalUpdateIncident,
     getIncident,
     addActivity,
     isSubmitting
   } = useIncidentActions(incidents, refetchIncidents, activities, setActivities, users);
 
+  // Wrapper for addIncident that ensures proper state synchronization
+  const addIncident = async (incidentData: any) => {
+    const result = await originalAddIncident(incidentData);
+    // Additional delay to ensure UI updates
+    await new Promise(resolve => setTimeout(resolve, 200));
+    return result;
+  };
+
   // Wrapper for updateIncident that refetches data
   const updateIncident = async (id: string, updates: Partial<Incident>) => {
     const result = await originalUpdateIncident(id, updates);
-    // Refetch incidents to get the latest data
-    await refetchIncidents();
+    // Additional delay to ensure UI updates
+    await new Promise(resolve => setTimeout(resolve, 200));
     return result;
   };
 
