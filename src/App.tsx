@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
@@ -113,6 +114,8 @@ function App() {
                     <Route path="/assessments/templates/:templateId/bulk-assign" element={<AssessmentsPage />} />
                     <Route path="/assessments/assignments" element={<AssessmentsPage />} />
                     <Route path="/assessments/results" element={<AssessmentsPage />} />
+                    {/* New route for assessment response that matches the navigation */}
+                    <Route path="/assessments/response/:assessmentId" element={<AssessmentResponsePage />} />
                     <Route path="/assessments/respond/:assignmentId" element={<AssessmentResponsePage />} />
 
                     {/* Transport Safety routes */}
@@ -145,6 +148,8 @@ function App() {
                     <Route path="/backoffice/assessments/templates/:templateId/bulk-assign" element={<BackofficeWrapper component={AssessmentsPage} />} />
                     <Route path="/backoffice/assessments/assignments" element={<BackofficeWrapper component={AssessmentsPage} />} />
                     <Route path="/backoffice/assessments/results" element={<BackofficeWrapper component={AssessmentsPage} />} />
+                    {/* New backoffice assessment response route */}
+                    <Route path="/backoffice/assessments/response/:assessmentId" element={<BackofficeWrapper component={AssessmentResponsePage} />} />
                     <Route path="/backoffice/assessments/respond/:assignmentId" element={<BackofficeWrapper component={AssessmentResponsePage} />} />
 
                     {/* 404 route */}
