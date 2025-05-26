@@ -26,7 +26,7 @@ interface Assessment {
 
 const AssessmentsTable: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, employee } = useAuth();
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [filteredAssessments, setFilteredAssessments] = useState<Assessment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,15 +40,20 @@ const AssessmentsTable: React.FC = () => {
       setError(null);
       
       console.log('Fetching assessments with user:', user);
+      console.log('Employee data:', employee);
       
-      // If no user or clientId, show empty state instead of loading forever
-      if (!user?.clientId) {
-        console.log('No user or clientId available');
+      // Get client_id from employee context or user context
+      const clientId = employee?.client_id || user?.clientId;
+      
+      if (!clientId) {
+        console.log('No client ID available');
         setAssessments([]);
         setFilteredAssessments([]);
         setLoading(false);
         return;
       }
+      
+      console.log('Using client_id:', clientId);
       
       // Fetch assessments with employee names
       const { data: assessmentsData, error } = await supabase
@@ -65,7 +70,7 @@ const AssessmentsTable: React.FC = () => {
           creator:employees!assessments_created_by_fkey(first_name, last_name),
           assignee:employees!assessments_assigned_to_fkey(first_name, last_name)
         `)
-        .eq('client_id', user.clientId)
+        .eq('client_id', clientId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -94,7 +99,7 @@ const AssessmentsTable: React.FC = () => {
 
   useEffect(() => {
     fetchAssessments();
-  }, [user?.clientId]);
+  }, [user, employee]);
 
   useEffect(() => {
     let filtered = assessments;
@@ -164,6 +169,22 @@ const AssessmentsTable: React.FC = () => {
     }
   };
 
+  const clientId = employee?.client_id || user?.clientId;
+
+  if (!clientId) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center p-8">
+          <div className="text-center">
+            <AlertCircle className="h-12 w-12 text-amber-500 mx-auto mb-4" />
+            <h3 className="text-lg font-medium mb-2">Authentication Required</h3>
+            <p className="text-gray-500">Please log in to view assessments.</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (loading) {
     return (
       <Card>
@@ -188,20 +209,6 @@ const AssessmentsTable: React.FC = () => {
             <Button onClick={fetchAssessments} variant="outline">
               Try Again
             </Button>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (!user?.clientId) {
-    return (
-      <Card>
-        <CardContent className="flex items-center justify-center p-8">
-          <div className="text-center">
-            <AlertCircle className="h-12 w-12 text-amber-500 mx-auto mb-4" />
-            <h3 className="text-lg font-medium mb-2">Authentication Required</h3>
-            <p className="text-gray-500">Please log in to view assessments.</p>
           </div>
         </CardContent>
       </Card>
