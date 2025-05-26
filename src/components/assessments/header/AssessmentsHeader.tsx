@@ -11,8 +11,8 @@ interface AssessmentsHeaderProps {
 const AssessmentsHeader: React.FC<AssessmentsHeaderProps> = ({ onCreateTemplate }) => {
   const location = useLocation();
 
-  const handleCreateTemplate = () => {
-    console.log("Create template button clicked");
+  const handleCreateAssessment = () => {
+    console.log("Create assessment button clicked");
     if (onCreateTemplate) {
       onCreateTemplate();
     }
@@ -29,7 +29,7 @@ const AssessmentsHeader: React.FC<AssessmentsHeaderProps> = ({ onCreateTemplate 
       
       <div className="flex space-x-2">
         <Button 
-          onClick={handleCreateTemplate}
+          onClick={handleCreateAssessment}
           className="whitespace-nowrap"
         >
           <PlusCircle className="h-4 w-4 mr-2" />
