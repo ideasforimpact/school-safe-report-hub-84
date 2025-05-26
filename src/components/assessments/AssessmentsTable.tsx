@@ -156,6 +156,7 @@ const AssessmentsTable: React.FC = () => {
   };
 
   const handleAnswerQuestions = (assessmentId: string) => {
+    console.log('Navigating to answer assessment page for ID:', assessmentId);
     navigate(`/assessments/answer/${assessmentId}`);
   };
 
