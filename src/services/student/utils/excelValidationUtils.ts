@@ -16,8 +16,13 @@ const requiredFields: (keyof RawStudentData)[] = [
 /**
  * Validate Excel/CSV data to ensure all required fields are present and valid
  */
-export const validateExcelData = async (data: RawStudentData[]): Promise<string[]> => {
+export const validateExcelData = async (data: RawStudentData[], clientId: string): Promise<string[]> => {
   const errors: string[] = [];
+  
+  if (!clientId) {
+    errors.push('Client ID is required for validation');
+    return errors;
+  }
   
   if (!data || data.length === 0) {
     errors.push('File contains no data');
@@ -101,7 +106,8 @@ export const validateExcelData = async (data: RawStudentData[]): Promise<string[
           section: String(row.section),
           campus: String(row.campus)
         }))
-      }
+      },
+      query: { client_id: clientId }
     });
 
     if (validationError) {
