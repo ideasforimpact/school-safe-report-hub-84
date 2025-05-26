@@ -28,6 +28,23 @@ interface UserBasicInfo {
   name: string;
 }
 
+// Helper function to calculate file size from base64 string
+const calculateBase64FileSize = (base64String: string): number => {
+  if (!base64String) return 0;
+  
+  // Remove data URL prefix if present (e.g., "data:image/png;base64,")
+  const base64Data = base64String.includes(',') 
+    ? base64String.split(',')[1] 
+    : base64String;
+  
+  // Calculate approximate file size from base64
+  // Base64 encoding increases size by ~33%, so we reverse that calculation
+  const padding = (base64Data.match(/=/g) || []).length;
+  const approximateSize = (base64Data.length * 3) / 4 - padding;
+  
+  return Math.round(approximateSize);
+};
+
 const ReportIncident = () => {
   const { user, employeeData: authEmployeeData } = useAuth();
   const { id: incidentId } = useParams<{ id?: string }>();
@@ -91,15 +108,19 @@ const ReportIncident = () => {
         
         // Convert documents to FileItem format for the supporting files
         if (existingIncident.documents && Array.isArray(existingIncident.documents)) {
-          const convertedFiles: FileItem[] = existingIncident.documents.map((doc: any, index: number) => ({
-            id: `existing-${index}`,
-            name: doc.name || `Document ${index + 1}`,
-            type: doc.type || 'application/octet-stream',
-            size: 0, // Size not available from existing documents
-            base64: doc.data || ''
-          }));
+          const convertedFiles: FileItem[] = existingIncident.documents.map((doc: any, index: number) => {
+            const fileSize = calculateBase64FileSize(doc.data || '');
+            
+            return {
+              id: `existing-${index}`,
+              name: doc.name || `Document ${index + 1}`,
+              type: doc.type || 'application/octet-stream',
+              size: fileSize,
+              base64: doc.data || ''
+            };
+          });
           handleFilesChange(convertedFiles);
-          console.log('Converted documents to FileItems:', convertedFiles);
+          console.log('Converted documents to FileItems with proper sizes:', convertedFiles);
         }
         
         setIsFormPopulated(true);
