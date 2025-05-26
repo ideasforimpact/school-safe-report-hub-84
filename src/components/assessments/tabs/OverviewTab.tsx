@@ -2,7 +2,6 @@
 import React from 'react';
 import { LucideIcon } from 'lucide-react';
 import AssessmentSummaryCards from '@/components/assessments/AssessmentSummaryCards';
-import AssessmentCard from '@/components/assessments/AssessmentCard';
 import RecentAssessmentsTable from '@/components/assessments/RecentAssessmentsTable';
 
 interface OverviewTabProps {
@@ -40,12 +39,6 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
   return (
     <div className="space-y-6">
       <AssessmentSummaryCards data={summaryData} />
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-        {assessmentTypes.map(assessment => (
-          <AssessmentCard key={assessment.id} assessment={assessment} />
-        ))}
-      </div>
       
       <div className="mt-6">
         <RecentAssessmentsTable assessments={recentAssessments} />
