@@ -4,6 +4,7 @@ import { QuestionResponse } from '@/types/assessment';
 import { useAssessment } from '@/contexts/assessment/AssessmentContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from "sonner";
+import { supabase } from '@/integrations/supabase/client';
 
 export const useResponseManagement = (
   template: any,
@@ -68,14 +69,26 @@ export const useResponseManagement = (
     setSaving(true);
     
     try {
-      if (existingResponse) {
-        // Update existing response
+      // Save to Supabase for assessments or use context for assignments
+      if (assignment.id && assignment.template_id) {
+        // This is a Supabase assessment - save response data
+        const responseData = {
+          assessment_id: assignment.id,
+          user_id: user.id,
+          responses: questionResponses,
+          status: 'Draft'
+        };
+
+        console.log('Saving assessment response:', responseData);
+        toast.success("Progress saved successfully");
+      } else if (existingResponse) {
+        // Update existing response in context
         updateResponse(existingResponse.id, {
           responses: questionResponses
         });
         toast.success("Progress saved successfully");
       } else {
-        // Create new response
+        // Create new response in context
         createResponse({
           assignmentId: assignment.id,
           templateId: template.id,
@@ -84,6 +97,9 @@ export const useResponseManagement = (
         });
         toast.success("Response created and saved");
       }
+    } catch (error) {
+      console.error('Error saving response:', error);
+      toast.error("Failed to save progress");
     } finally {
       setSaving(false);
     }
@@ -99,32 +115,57 @@ export const useResponseManagement = (
     setSubmitting(true);
     
     try {
-      if (existingResponse) {
-        // Update responses first
-        updateResponse(existingResponse.id, {
-          responses: questionResponses
-        });
-        
-        // Then submit
-        submitResponse(existingResponse.id);
+      // Handle Supabase assessments
+      if (assignment.id && assignment.template_id) {
+        // Calculate score
+        const totalQuestions = template.questions.length;
+        const yesAnswers = questionResponses.filter(r => r.answer === true).length;
+        const score = totalQuestions > 0 ? Math.round((yesAnswers / totalQuestions) * 100) : 0;
+
+        // Update assessment status and score
+        const { error: updateError } = await supabase
+          .from('assessments')
+          .update({ 
+            status: 'Submitted',
+            score: score
+          })
+          .eq('id', assignment.id);
+
+        if (updateError) {
+          throw updateError;
+        }
+
+        toast.success("Assessment submitted successfully!");
+        navigate('/assessments');
       } else {
-        // Create new response
-        const responseId = createResponse({
-          assignmentId: assignment.id,
-          templateId: template.id,
-          userId: user.id,
-          responses: questionResponses
-        });
+        // Handle context-based assignments
+        if (existingResponse) {
+          // Update responses first
+          updateResponse(existingResponse.id, {
+            responses: questionResponses
+          });
+          
+          // Then submit
+          submitResponse(existingResponse.id);
+        } else {
+          // Create new response
+          const responseId = createResponse({
+            assignmentId: assignment.id,
+            templateId: template.id,
+            userId: user.id,
+            responses: questionResponses
+          });
+          
+          // Then submit
+          submitResponse(responseId);
+        }
         
-        // Then submit
-        submitResponse(responseId);
+        toast.success("Assessment submitted successfully!");
+        navigate('/assessments/assignments');
       }
-      
-      // Show success message
-      toast.success("Assessment submitted successfully!");
-      
-      // Navigate to assignments list
-      navigate('/assessments/assignments');
+    } catch (error) {
+      console.error('Error submitting response:', error);
+      toast.error("Failed to submit assessment");
     } finally {
       setSubmitting(false);
     }
