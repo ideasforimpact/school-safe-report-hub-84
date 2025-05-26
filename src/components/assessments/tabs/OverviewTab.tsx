@@ -3,6 +3,7 @@ import React from 'react';
 import { LucideIcon } from 'lucide-react';
 import AssessmentSummaryCards from '@/components/assessments/AssessmentSummaryCards';
 import RecentAssessmentsTable from '@/components/assessments/RecentAssessmentsTable';
+import AssessmentsTable from '@/components/assessments/AssessmentsTable';
 
 interface OverviewTabProps {
   summaryData: {
@@ -41,7 +42,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
       <AssessmentSummaryCards data={summaryData} />
       
       <div className="mt-6">
-        <RecentAssessmentsTable assessments={recentAssessments} />
+        <AssessmentsTable />
       </div>
     </div>
   );
