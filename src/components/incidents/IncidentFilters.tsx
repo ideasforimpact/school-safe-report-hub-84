@@ -15,6 +15,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
 import { FilterState } from '@/types/filterTypes';
+import BasicFilters from './filters/BasicFilters';
 
 interface IncidentFiltersProps {
   filters: FilterState;
@@ -82,102 +83,15 @@ const IncidentFilters = ({
         
         <Collapsible open={isOpen} onOpenChange={setIsOpen}>
           <CollapsibleContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                  <Search className="h-4 w-4 text-gray-400" />
-                </div>
-                <Input
-                  type="search"
-                  placeholder="Search incidents or ticket ID..."
-                  className="pl-10"
-                  value={filters.search}
-                  onChange={(e) => onFilterChange('search', e.target.value)}
-                />
-              </div>
-              
-              <Select 
-                value={filters.location} 
-                onValueChange={(value) => onFilterChange('location', value)}
-                disabled={locationOptions.length === 0}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Location" />
-                </SelectTrigger>
-                <SelectContent className="bg-white z-50">
-                  <SelectItem value="">All Locations</SelectItem>
-                  {locationOptions.map(location => (
-                    <SelectItem key={location} value={location}>{location}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              
-              <Select 
-                value={filters.status} 
-                onValueChange={(value) => onFilterChange('status', value)}
-                disabled={statusOptions.length === 0}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent className="bg-white z-50">
-                  <SelectItem value="">All Statuses</SelectItem>
-                  {statusOptions.map(status => (
-                    <SelectItem key={status} value={status}>{status}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-              <Select 
-                value={filters.category} 
-                onValueChange={(value) => onFilterChange('category', value)}
-                disabled={availableCategories.length === 0}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Category" />
-                </SelectTrigger>
-                <SelectContent className="bg-white z-50">
-                  <SelectItem value="">All Categories</SelectItem>
-                  {availableCategories.map(category => (
-                    <SelectItem key={category} value={category}>{category}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              
-              <Select 
-                value={filters.subcategory} 
-                onValueChange={(value) => onFilterChange('subcategory', value)}
-                disabled={availableSubcategories.length === 0}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Subcategory" />
-                </SelectTrigger>
-                <SelectContent className="bg-white z-50">
-                  <SelectItem value="">All Subcategories</SelectItem>
-                  {availableSubcategories.map(subcategory => (
-                    <SelectItem key={subcategory} value={subcategory}>{subcategory}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              
-              <Select 
-                value={filters.priority} 
-                onValueChange={(value) => onFilterChange('priority', value)}
-                disabled={priorityOptions.length === 0}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Priority" />
-                </SelectTrigger>
-                <SelectContent className="bg-white z-50">
-                  <SelectItem value="">All Priorities</SelectItem>
-                  {priorityOptions.map(priority => (
-                    <SelectItem key={priority} value={priority}>{priority}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <BasicFilters 
+              filters={filters}
+              onFilterChange={onFilterChange}
+              availableCategories={availableCategories}
+              availableSubcategories={availableSubcategories}
+              availableLocations={locationOptions}
+              statusOptions={statusOptions}
+              priorityOptions={priorityOptions}
+            />
             
             <div className="flex flex-col sm:flex-row gap-4 mt-4">
               <div className="flex items-center space-x-2">

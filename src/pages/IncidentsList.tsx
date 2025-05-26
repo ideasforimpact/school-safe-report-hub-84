@@ -28,12 +28,22 @@ const IncidentsList = () => {
     availableLocations,
     availableFacilities,
     availableOwners,
+    priorityOptions,
+    statusOptions,
+    locationOptions,
     handleFilterChange,
     toggleAdvancedFilters,
     clearFilters
   } = useIncidentFilters(incidents);
 
   console.log('Filtered incidents:', filteredIncidents);
+  console.log('Filter options:', {
+    categories: availableCategories.length,
+    subcategories: availableSubcategories.length,
+    locations: locationOptions.length,
+    priorities: priorityOptions.length,
+    statuses: statusOptions.length
+  });
 
   // Count active filters
   const activeFilterCount = Object.entries(filters).filter(([key, value]) => {
@@ -132,6 +142,9 @@ const IncidentsList = () => {
             availableLocations={availableLocations}
             availableFacilities={availableFacilities}
             availableOwners={availableOwners}
+            priorityOptions={priorityOptions}
+            statusOptions={statusOptions}
+            locationOptions={locationOptions}
           />
           
           <div className="flex items-center justify-end">

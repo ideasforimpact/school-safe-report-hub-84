@@ -22,6 +22,8 @@ interface BasicFiltersProps {
   availableLocations: string[];
   availableCategories: string[];
   availableSubcategories: string[];
+  statusOptions?: string[];
+  priorityOptions?: string[];
 }
 
 const BasicFilters: React.FC<BasicFiltersProps> = ({
@@ -30,6 +32,8 @@ const BasicFilters: React.FC<BasicFiltersProps> = ({
   availableLocations,
   availableCategories,
   availableSubcategories,
+  statusOptions = [],
+  priorityOptions = []
 }) => {
   return (
     <>
@@ -42,12 +46,11 @@ const BasicFilters: React.FC<BasicFiltersProps> = ({
         <Select 
           value={filters.location} 
           onValueChange={(value) => onFilterChange('location', value)}
-          disabled={availableLocations.length === 0}
         >
           <SelectTrigger>
             <SelectValue placeholder="Location" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="bg-white z-50">
             <SelectItem value="">All Locations</SelectItem>
             {availableLocations.map(location => (
               <SelectItem key={location} value={location}>{location}</SelectItem>
@@ -62,11 +65,11 @@ const BasicFilters: React.FC<BasicFiltersProps> = ({
           <SelectTrigger>
             <SelectValue placeholder="Status" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="bg-white z-50">
             <SelectItem value="">All Statuses</SelectItem>
-            <SelectItem value="Open">Open</SelectItem>
-            <SelectItem value="In Progress">In Progress</SelectItem>
-            <SelectItem value="Closed">Closed</SelectItem>
+            {statusOptions.map(status => (
+              <SelectItem key={status} value={status}>{status}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
@@ -75,12 +78,11 @@ const BasicFilters: React.FC<BasicFiltersProps> = ({
         <Select 
           value={filters.category} 
           onValueChange={(value) => onFilterChange('category', value)}
-          disabled={availableCategories.length === 0}
         >
           <SelectTrigger>
             <SelectValue placeholder="Category" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="bg-white z-50">
             <SelectItem value="">All Categories</SelectItem>
             {availableCategories.map(category => (
               <SelectItem key={category} value={category}>{category}</SelectItem>
@@ -91,12 +93,11 @@ const BasicFilters: React.FC<BasicFiltersProps> = ({
         <Select 
           value={filters.subcategory} 
           onValueChange={(value) => onFilterChange('subcategory', value)}
-          disabled={availableSubcategories.length === 0}
         >
           <SelectTrigger>
             <SelectValue placeholder="Subcategory" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="bg-white z-50">
             <SelectItem value="">All Subcategories</SelectItem>
             {availableSubcategories.map(subcategory => (
               <SelectItem key={subcategory} value={subcategory}>{subcategory}</SelectItem>
@@ -111,12 +112,11 @@ const BasicFilters: React.FC<BasicFiltersProps> = ({
           <SelectTrigger>
             <SelectValue placeholder="Priority" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="bg-white z-50">
             <SelectItem value="">All Priorities</SelectItem>
-            <SelectItem value="Critical">Critical</SelectItem>
-            <SelectItem value="High">High</SelectItem>
-            <SelectItem value="Medium">Medium</SelectItem>
-            <SelectItem value="Low">Low</SelectItem>
+            {priorityOptions.map(priority => (
+              <SelectItem key={priority} value={priority}>{priority}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>

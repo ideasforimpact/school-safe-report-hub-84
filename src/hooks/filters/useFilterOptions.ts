@@ -24,7 +24,7 @@ export const useFilterOptions = () => {
   const [assigneeOptions, setAssigneeOptions] = useState<{id: string, name: string}[]>([]);
   const [reporterOptions, setReporterOptions] = useState<{id: string, name: string}[]>([]);
 
-  // Fetch categories, subcategories, priorities, and status from database
+  // Fetch all filter data from database
   useEffect(() => {
     const fetchFilterData = async () => {
       if (!state.employeeData?.clientId) {
@@ -33,17 +33,22 @@ export const useFilterOptions = () => {
       }
 
       try {
+        console.log('Fetching filter data for client:', state.employeeData.clientId);
+
         // Fetch categories
         const categories = await categoryService.getCategories(state.employeeData.clientId);
         setCategoryOptions(categories.map(cat => cat.name));
+        console.log('Categories loaded:', categories.length);
 
         // Fetch subcategories
         const subcategories = await categoryService.getSubcategories(undefined, state.employeeData.clientId);
         setSubcategoryOptions(subcategories.map(sub => sub.name));
+        console.log('Subcategories loaded:', subcategories.length);
 
         // Fetch priorities
         const priorities = await priorityService.getPriorities(state.employeeData.clientId, true);
         setPriorityOptions(priorities.map(priority => priority.name));
+        console.log('Priorities loaded:', priorities.length);
 
         // Fetch status options from database
         const { data: statusData, error: statusError } = await supabase
@@ -55,6 +60,7 @@ export const useFilterOptions = () => {
           console.error('Error fetching status options:', statusError);
         } else {
           setStatusOptions(statusData?.map(status => status.name) || []);
+          console.log('Status options loaded:', statusData?.length || 0);
         }
 
         // Fetch locations from campuses table
@@ -68,15 +74,24 @@ export const useFilterOptions = () => {
           console.error('Error fetching campus locations:', campusError);
         } else {
           setLocationOptions(campusData?.map(campus => campus.name) || []);
+          console.log('Campus locations loaded:', campusData?.length || 0);
         }
 
-        console.log('Filter data loaded:', {
-          categories: categories.length,
-          subcategories: subcategories.length,
-          priorities: priorities.length,
-          status: statusData?.length || 0,
-          locations: campusData?.length || 0
-        });
+        // Fetch facilities from facilities table
+        const { data: facilityData, error: facilityError } = await supabase
+          .from('facilities')
+          .select('name')
+          .eq('client_id', state.employeeData.clientId)
+          .order('name');
+
+        if (facilityError) {
+          console.error('Error fetching facilities:', facilityError);
+        } else {
+          setFacilityOptions(facilityData?.map(facility => facility.name) || []);
+          console.log('Facilities loaded:', facilityData?.length || 0);
+        }
+
+        console.log('All filter data loaded successfully');
       } catch (error) {
         console.error('Error fetching filter data:', error);
       }
@@ -85,13 +100,9 @@ export const useFilterOptions = () => {
     fetchFilterData();
   }, [state.employeeData?.clientId]);
 
-  // Extract unique values from incidents for other filters
+  // Extract unique values from incidents for assignees and reporters
   useEffect(() => {
     if (incidents && incidents.length > 0) {
-      // Extract facilities
-      const uniqueFacilities = [...new Set(incidents.map(inc => inc.facility).filter(Boolean) as string[])];
-      setFacilityOptions(uniqueFacilities);
-
       // Extract assignees (owners)
       const uniqueAssignees = incidents
         .filter(inc => inc.owner)
@@ -104,6 +115,11 @@ export const useFilterOptions = () => {
         .map(inc => ({ id: inc.reportedBy.id, name: inc.reportedBy.name }))
         .filter((reporter, index, self) => index === self.findIndex(r => r.id === reporter.id));
       setReporterOptions(uniqueReporters);
+
+      console.log('Assignees and reporters extracted from incidents:', {
+        assignees: uniqueAssignees.length,
+        reporters: uniqueReporters.length
+      });
     }
   }, [incidents]);
 
