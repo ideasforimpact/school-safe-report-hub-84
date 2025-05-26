@@ -1,61 +1,78 @@
 
-import { useCallback } from 'react';
-import { v4 as uuidv4 } from 'uuid';
-import { AssessmentQuestion, AssessmentTemplate } from '@/types/assessment';
+import { AssessmentTemplate, AssessmentQuestion } from '@/types/assessment';
+import { templateService } from '@/services/assessment/templateService';
 
-export const useQuestionManagement = (
-  templates: AssessmentTemplate[], 
-  setTemplates: React.Dispatch<React.SetStateAction<AssessmentTemplate[]>>
-) => {
-  const addQuestion = useCallback((templateId: string, questionData: Omit<AssessmentQuestion, 'id'>) => {
-    const questionId = uuidv4();
-    
-    setTemplates(currentTemplates => 
-      currentTemplates.map(template => 
-        template.id === templateId 
-          ? { 
-              ...template, 
-              questions: [
-                ...template.questions, 
-                { id: questionId, ...questionData }
-              ] 
-            } 
-          : template
-      )
-    );
-    
-    return questionId;
-  }, [setTemplates]);
+export const useQuestionManagement = (templates: AssessmentTemplate[], setTemplates: (templates: AssessmentTemplate[]) => void) => {
+  
+  const addQuestion = async (templateId: string, question: Omit<AssessmentQuestion, 'id'>) => {
+    try {
+      const template = templates.find(t => t.id === templateId);
+      if (!template) return;
 
-  const updateQuestion = useCallback((templateId: string, questionId: string, updates: Partial<Omit<AssessmentQuestion, 'id'>>) => {
-    setTemplates(currentTemplates => 
-      currentTemplates.map(template => 
-        template.id === templateId 
-          ? { 
-              ...template, 
-              questions: template.questions.map(question => 
-                question.id === questionId 
-                  ? { ...question, ...updates } 
-                  : question
-              ) 
-            } 
-          : template
-      )
-    );
-  }, [setTemplates]);
+      const questionWithId = {
+        ...question,
+        id: `q_${Date.now()}_${template.questions.length}`
+      };
 
-  const removeQuestion = useCallback((templateId: string, questionId: string) => {
-    setTemplates(currentTemplates => 
-      currentTemplates.map(template => 
-        template.id === templateId 
-          ? { 
-              ...template, 
-              questions: template.questions.filter(q => q.id !== questionId) 
-            } 
-          : template
-      )
-    );
-  }, [setTemplates]);
+      const updatedQuestions = [...template.questions, questionWithId];
+      
+      await templateService.updateTemplate(templateId, { questions: updatedQuestions });
+      
+      // Update local state
+      const updatedTemplates = templates.map(t => 
+        t.id === templateId 
+          ? { ...t, questions: updatedQuestions }
+          : t
+      );
+      setTemplates(updatedTemplates);
+    } catch (error) {
+      console.error('Error adding question:', error);
+    }
+  };
+
+  const updateQuestion = async (templateId: string, questionId: string, updates: Partial<AssessmentQuestion>) => {
+    try {
+      const template = templates.find(t => t.id === templateId);
+      if (!template) return;
+
+      const updatedQuestions = template.questions.map(q => 
+        q.id === questionId ? { ...q, ...updates } : q
+      );
+      
+      await templateService.updateTemplate(templateId, { questions: updatedQuestions });
+      
+      // Update local state
+      const updatedTemplates = templates.map(t => 
+        t.id === templateId 
+          ? { ...t, questions: updatedQuestions }
+          : t
+      );
+      setTemplates(updatedTemplates);
+    } catch (error) {
+      console.error('Error updating question:', error);
+    }
+  };
+
+  const removeQuestion = async (templateId: string, questionId: string) => {
+    try {
+      const template = templates.find(t => t.id === templateId);
+      if (!template) return;
+
+      const updatedQuestions = template.questions.filter(q => q.id !== questionId);
+      
+      await templateService.updateTemplate(templateId, { questions: updatedQuestions });
+      
+      // Update local state
+      const updatedTemplates = templates.map(t => 
+        t.id === templateId 
+          ? { ...t, questions: updatedQuestions }
+          : t
+      );
+      setTemplates(updatedTemplates);
+    } catch (error) {
+      console.error('Error removing question:', error);
+    }
+  };
 
   return {
     addQuestion,

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -16,7 +17,7 @@ interface CreateTemplateFormProps {
 
 const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({ templateId, onCancel }) => {
   const navigate = useNavigate();
-  const { createTemplate, addQuestion } = useAssessment();
+  const { createTemplate } = useAssessment();
   
   // Form state
   const [title, setTitle] = useState('');
@@ -84,35 +85,25 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({ templateId, onC
     try {
       setIsSubmitting(true);
       
-      // Create the template first
+      // Create the template with questions
       const templateData = {
         title,
         description,
         type,
-        questions: [] // Questions will be added separately
+        questions
       };
       
       console.log('Creating template with data:', templateData);
-      const templateId = createTemplate(templateData);
+      const templateId = await createTemplate(templateData);
       console.log('Template created with ID:', templateId);
       
-      // Then add questions to the template
-      if (templateId) {
-        for (const question of questions) {
-          console.log('Adding question to template:', question);
-          addQuestion(templateId, question);
-        }
-        
-        toast.success('Template created successfully');
-        
-        // Always use onCancel if provided, otherwise navigate
-        if (onCancel) {
-          onCancel();
-        } else {
-          navigate('/assessments/templates');
-        }
+      toast.success('Template created successfully');
+      
+      // Always use onCancel if provided, otherwise navigate
+      if (onCancel) {
+        onCancel();
       } else {
-        throw new Error('Failed to create template: No template ID returned');
+        navigate('/assessments/templates');
       }
     } catch (error) {
       console.error('Error creating template:', error);

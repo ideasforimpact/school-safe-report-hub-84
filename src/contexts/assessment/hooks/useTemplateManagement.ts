@@ -1,44 +1,35 @@
 
 import { useState, useEffect } from 'react';
-import { v4 as uuidv4 } from 'uuid';
 import { AssessmentTemplate } from '@/types/assessment';
 import { toast } from 'sonner';
+import { templateService } from '@/services/assessment/templateService';
 
 export const useTemplateManagement = (userId?: string) => {
   const [templates, setTemplates] = useState<AssessmentTemplate[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  // Load data from localStorage on initial render
-  useEffect(() => {
+  // Load templates from Supabase
+  const loadTemplates = async () => {
     try {
-      const storedTemplates = localStorage.getItem('assessmentTemplates');
-      if (storedTemplates) setTemplates(JSON.parse(storedTemplates));
+      setLoading(true);
+      const data = await templateService.getTemplates();
+      setTemplates(data);
     } catch (error) {
-      console.error('Failed to load templates from localStorage:', error);
+      console.error('Failed to load templates:', error);
+      toast.error('Failed to load templates');
+    } finally {
+      setLoading(false);
     }
+  };
+
+  useEffect(() => {
+    loadTemplates();
   }, []);
 
-  // Save data to localStorage whenever it changes
-  useEffect(() => {
+  const createTemplate = async (templateData: Omit<AssessmentTemplate, 'id' | 'createdAt' | 'createdBy' | 'isActive'>) => {
     try {
-      localStorage.setItem('assessmentTemplates', JSON.stringify(templates));
-    } catch (error) {
-      console.error('Failed to save templates to localStorage:', error);
-    }
-  }, [templates]);
-
-  const createTemplate = (templateData: Omit<AssessmentTemplate, 'id' | 'createdAt' | 'createdBy' | 'isActive'>) => {
-    try {
-      const id = uuidv4();
-      const newTemplate: AssessmentTemplate = {
-        id,
-        ...templateData,
-        questions: [],
-        createdAt: new Date().toISOString(),
-        createdBy: userId || 'unknown',
-        isActive: true
-      };
-      
-      setTemplates(prev => [...prev, newTemplate]);
+      const id = await templateService.createTemplate(templateData);
+      await loadTemplates(); // Refresh the list
       return id;
     } catch (error) {
       console.error('Error creating template:', error);
@@ -47,22 +38,20 @@ export const useTemplateManagement = (userId?: string) => {
     }
   };
 
-  const updateTemplate = (id: string, updates: Partial<Omit<AssessmentTemplate, 'id' | 'createdAt' | 'createdBy'>>) => {
+  const updateTemplate = async (id: string, updates: Partial<Omit<AssessmentTemplate, 'id' | 'createdAt' | 'createdBy'>>) => {
     try {
-      setTemplates(prev => 
-        prev.map(template => 
-          template.id === id ? { ...template, ...updates } : template
-        )
-      );
+      await templateService.updateTemplate(id, updates);
+      await loadTemplates(); // Refresh the list
     } catch (error) {
       console.error('Error updating template:', error);
       toast.error('Failed to update template');
     }
   };
 
-  const deleteTemplate = (id: string) => {
+  const deleteTemplate = async (id: string) => {
     try {
-      setTemplates(prev => prev.filter(template => template.id !== id));
+      await templateService.deleteTemplate(id);
+      await loadTemplates(); // Refresh the list
     } catch (error) {
       console.error('Error deleting template:', error);
       toast.error('Failed to delete template');
@@ -80,5 +69,7 @@ export const useTemplateManagement = (userId?: string) => {
     updateTemplate,
     deleteTemplate,
     getTemplateById,
+    loading,
+    refreshTemplates: loadTemplates
   };
 };
