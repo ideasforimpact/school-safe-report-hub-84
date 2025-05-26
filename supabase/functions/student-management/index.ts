@@ -29,16 +29,27 @@ serve(async (req) => {
     const path = headers.get("path") || "";
     const id = headers.get("id") || "";
 
-    // Parse request body if not GET or OPTIONS method
+    // Parse request body and extract query parameters
     let body = {};
+    let clientId = "";
+    
     if (req.method !== "GET" && req.method !== "OPTIONS") {
       body = await req.json();
+      // Extract client_id from query string in body
+      if (body.query) {
+        const queryParams = new URLSearchParams(body.query);
+        clientId = queryParams.get('client_id') || "";
+      }
+    } else {
+      // For GET requests, extract from URL query parameters
+      const url = new URL(req.url);
+      clientId = url.searchParams.get('client_id') || "";
     }
 
     // Handle different API endpoints
     switch (path) {
       case "list":
-        return await handleListStudents(req, corsHeaders, body);
+        return await handleListStudents(req, corsHeaders, clientId);
 
       case "get":
         if (!id) {
@@ -47,10 +58,10 @@ serve(async (req) => {
             { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
-        return await handleGetStudent(id, corsHeaders, body);
+        return await handleGetStudent(id, corsHeaders, clientId);
 
       case "create":
-        return await handleCreateStudent(body, corsHeaders);
+        return await handleCreateStudent(body, corsHeaders, clientId);
 
       case "update":
         if (!id) {
@@ -59,7 +70,7 @@ serve(async (req) => {
             { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
-        return await handleUpdateStudent(id, body, corsHeaders);
+        return await handleUpdateStudent(id, body, corsHeaders, clientId);
 
       case "delete":
         if (!id) {
@@ -68,13 +79,13 @@ serve(async (req) => {
             { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         }
-        return await handleDeleteStudent(id, corsHeaders, body);
+        return await handleDeleteStudent(id, corsHeaders, clientId);
         
       case "validate":
-        return await handleValidateImport(body, corsHeaders);
+        return await handleValidateImport(body, corsHeaders, clientId);
         
       case "bulk-update":
-        return await handleBulkUpdate(body, corsHeaders);
+        return await handleBulkUpdate(body, corsHeaders, clientId);
 
       default:
         return new Response(
@@ -94,10 +105,9 @@ serve(async (req) => {
 
 // Handler functions for different operations
 
-async function handleListStudents(req: Request, corsHeaders: Record<string, string>, body: any) {
+async function handleListStudents(req: Request, corsHeaders: Record<string, string>, clientId: string) {
   const url = new URL(req.url);
   const searchTerm = url.searchParams.get("search") || "";
-  const clientId = body.client_id;
   
   let query = supabaseClient.from("students").select("*");
   
@@ -138,15 +148,15 @@ async function handleListStudents(req: Request, corsHeaders: Record<string, stri
   );
 }
 
-async function handleGetStudent(id: string, corsHeaders: Record<string, string>, body: any) {
+async function handleGetStudent(id: string, corsHeaders: Record<string, string>, clientId: string) {
   let query = supabaseClient
     .from("students")
     .select("*")
     .eq("id", id);
 
   // Filter by client_id if provided
-  if (body.client_id) {
-    query = query.eq("client_id", body.client_id);
+  if (clientId) {
+    query = query.eq("client_id", clientId);
   }
 
   const { data, error } = await query.single();
@@ -172,7 +182,7 @@ async function handleGetStudent(id: string, corsHeaders: Record<string, string>,
   );
 }
 
-async function handleCreateStudent(body: any, corsHeaders: Record<string, string>) {
+async function handleCreateStudent(body: any, corsHeaders: Record<string, string>, clientId: string) {
   // Validate required fields
   const requiredFields = ["studentId", "name", "grade", "section", "campus"];
   for (const field of requiredFields) {
@@ -185,7 +195,7 @@ async function handleCreateStudent(body: any, corsHeaders: Record<string, string
   }
   
   // Validate campus, grade, and section exist in the database
-  const isValid = await validateEducationalStructure(body.campus, body.grade, body.section, body.client_id);
+  const isValid = await validateEducationalStructure(body.campus, body.grade, body.section, clientId);
   if (!isValid.valid) {
     return new Response(
       JSON.stringify({ error: isValid.error }),
@@ -200,7 +210,7 @@ async function handleCreateStudent(body: any, corsHeaders: Record<string, string
     grade: body.grade,
     section: body.section,
     campus: body.campus,
-    client_id: body.client_id
+    client_id: clientId
   };
   
   const { data, error } = await supabaseClient
@@ -309,9 +319,8 @@ async function validateEducationalStructure(campus: string, grade: string, secti
   return { valid: true, error: null };
 }
 
-async function handleValidateImport(body: any, corsHeaders: Record<string, string>) {
+async function handleValidateImport(body: any, corsHeaders: Record<string, string>, clientId: string) {
   const students = body.students || [];
-  const clientId = body.client_id;
   
   if (!Array.isArray(students) || students.length === 0) {
     return new Response(
@@ -321,7 +330,6 @@ async function handleValidateImport(body: any, corsHeaders: Record<string, strin
   }
   
   const errors: string[] = [];
-  const validEntries: Record<string, boolean> = {};
   
   // Get all distinct campuses, grades, and sections from the import data
   const uniqueCampuses = new Set(students.map(s => s.campus?.toLowerCase()));
@@ -440,10 +448,10 @@ async function handleValidateImport(body: any, corsHeaders: Record<string, strin
   );
 }
 
-async function handleUpdateStudent(id: string, body: any, corsHeaders: Record<string, string>) {
+async function handleUpdateStudent(id: string, body: any, corsHeaders: Record<string, string>, clientId: string) {
   // Validate campus, grade, and section if they are being updated
   if (body.campus && body.grade && body.section) {
-    const isValid = await validateEducationalStructure(body.campus, body.grade, body.section, body.client_id);
+    const isValid = await validateEducationalStructure(body.campus, body.grade, body.section, clientId);
     if (!isValid.valid) {
       return new Response(
         JSON.stringify({ error: isValid.error }),
@@ -459,7 +467,7 @@ async function handleUpdateStudent(id: string, body: any, corsHeaders: Record<st
   if (body.grade) updates.grade = body.grade;
   if (body.section) updates.section = body.section;
   if (body.campus) updates.campus = body.campus;
-  if (body.client_id) updates.client_id = body.client_id;
+  if (clientId) updates.client_id = clientId;
   
   let query = supabaseClient
     .from("students")
@@ -467,8 +475,8 @@ async function handleUpdateStudent(id: string, body: any, corsHeaders: Record<st
     .eq("id", id);
 
   // Filter by client_id if provided
-  if (body.client_id) {
-    query = query.eq("client_id", body.client_id);
+  if (clientId) {
+    query = query.eq("client_id", clientId);
   }
 
   const { data, error } = await query.select();
@@ -501,15 +509,15 @@ async function handleUpdateStudent(id: string, body: any, corsHeaders: Record<st
   );
 }
 
-async function handleDeleteStudent(id: string, corsHeaders: Record<string, string>, body: any) {
+async function handleDeleteStudent(id: string, corsHeaders: Record<string, string>, clientId: string) {
   let query = supabaseClient
     .from("students")
     .delete()
     .eq("id", id);
 
   // Filter by client_id if provided
-  if (body.client_id) {
-    query = query.eq("client_id", body.client_id);
+  if (clientId) {
+    query = query.eq("client_id", clientId);
   }
 
   const { error } = await query;
@@ -531,9 +539,8 @@ async function handleDeleteStudent(id: string, corsHeaders: Record<string, strin
  * Handle bulk update of students
  * This function processes a batch of student updates in a single operation
  */
-async function handleBulkUpdate(body: any, corsHeaders: Record<string, string>) {
+async function handleBulkUpdate(body: any, corsHeaders: Record<string, string>, clientId: string) {
   const students = body.students || [];
-  const clientId = body.client_id;
   
   if (!Array.isArray(students) || students.length === 0) {
     return new Response(

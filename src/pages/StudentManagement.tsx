@@ -22,6 +22,7 @@ import {
 import { toast } from 'sonner';
 import { Skeleton } from "@/components/ui/skeleton";
 import { processStudentExcel } from '@/services/student/importStudentService';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface StudentManagementProps {
   embedded?: boolean;
@@ -29,6 +30,7 @@ interface StudentManagementProps {
 
 const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
   const { students, deleteStudent, isLoading } = useStudents();
+  const { employeeData } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -68,7 +70,7 @@ const StudentManagement = ({ embedded = false }: StudentManagementProps) => {
 
   const handleImportStudents = async (file: File) => {
     try {
-      await processStudentExcel(file);
+      await processStudentExcel(file, employeeData?.clientId);
       toast.success("Students imported successfully");
     } catch (error) {
       console.error("Import process failed:", error);
