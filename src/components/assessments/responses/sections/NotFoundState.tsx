@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 
 const NotFoundState = () => {
   const navigate = useNavigate();
-  const { assignmentId } = useParams<{ assignmentId: string }>();
+  const { assessmentId } = useParams<{ assessmentId: string }>();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -24,7 +24,7 @@ const NotFoundState = () => {
         <AlertTriangle className="h-12 w-12 text-amber-500 mb-4" />
         <h2 className="text-xl font-semibold mb-2">Assessment Not Found</h2>
         <p className="text-gray-600 mb-4 text-center">
-          The assessment with ID "{assignmentId}" doesn't exist or you don't have permission to access it.
+          The assessment with ID "{assessmentId}" doesn't exist or you don't have permission to access it.
         </p>
         <p className="text-gray-500 text-sm mb-6">
           This could be because:
@@ -35,10 +35,10 @@ const NotFoundState = () => {
           <li>You don't have permission to view this assessment</li>
         </ul>
         <Button 
-          onClick={() => navigate('/assessments/assignments')} 
+          onClick={() => navigate('/assessments')} 
           className="mt-2"
         >
-          Go to Assignments List
+          Go to Assessments List
         </Button>
       </CardContent>
     </Card>

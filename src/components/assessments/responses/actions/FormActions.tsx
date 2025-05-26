@@ -37,10 +37,10 @@ const FormActions = ({
         type="button"
         variant="outline"
         size="lg"
-        onClick={() => navigate('/assessments/assignments')}
+        onClick={() => navigate('/assessments')}
         className="px-5"
       >
-        Back to Assignments
+        Back to Assessments
       </Button>
       
       <div className="flex space-x-3">

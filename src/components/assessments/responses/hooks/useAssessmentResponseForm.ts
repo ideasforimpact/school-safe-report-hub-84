@@ -10,9 +10,9 @@ import { useProgressCalculation } from './form/useProgressCalculation';
 export const useAssessmentResponseForm = () => {
   const navigate = useNavigate();
   
-  // Get assignment, template and response data
+  // Get assessment, template and response data
   const {
-    assignment,
+    assignment: assessment, // This is actually an assessment now
     template,
     existingResponse,
     user,
@@ -31,7 +31,7 @@ export const useAssessmentResponseForm = () => {
     handleResponseChange,
     handleSave,
     handleSubmit
-  } = useResponseManagement(template, assignment, existingResponse, user);
+  } = useResponseManagement(template, assessment, existingResponse, user);
   
   // Navigation between sections
   const {
@@ -55,12 +55,12 @@ export const useAssessmentResponseForm = () => {
     progressPercentage
   } = useProgressCalculation(template?.questions, questionResponses);
   
-  // If no assignment or template found, redirect to assignments list after a delay
+  // If no assessment or template found, redirect to assessments list after a delay
   useEffect(() => {
     if (notFound) {
       const timer = setTimeout(() => {
         toast.error("Assessment not found");
-        navigate('/assessments/assignments');
+        navigate('/assessments');
       }, 2000);
       
       return () => clearTimeout(timer);
@@ -68,7 +68,7 @@ export const useAssessmentResponseForm = () => {
   }, [notFound, navigate]);
 
   return {
-    assignment,
+    assessment,
     template,
     existingResponse,
     questionResponses,

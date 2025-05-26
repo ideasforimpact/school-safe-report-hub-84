@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { AssessmentTemplate, AssessmentAssignment, QuestionResponse } from '@/types/assessment';
+import { AssessmentTemplate, QuestionResponse } from '@/types/assessment';
 import AssessmentHeader from '../header/AssessmentHeader';
 import FormError from '../error/FormError';
 import FormActions from '../actions/FormActions';
@@ -8,7 +8,7 @@ import AllQuestionsForm from './AllQuestionsForm';
 
 interface FormContainerProps {
   template: AssessmentTemplate;
-  assignment: AssessmentAssignment;
+  assessment: any; // Changed from assignment to assessment
   questionResponses: QuestionResponse[];
   formError: string | null;
   saving: boolean;
@@ -30,7 +30,7 @@ interface FormContainerProps {
 
 const FormContainer = ({
   template,
-  assignment,
+  assessment,
   questionResponses,
   formError,
   saving,
@@ -48,8 +48,8 @@ const FormContainer = ({
       <AssessmentHeader 
         title={template.title}
         description={template.description}
-        status={isCompleted ? 'Completed' : assignment.status}
-        dueDate={assignment.dueDate}
+        status={isCompleted ? 'Completed' : assessment.status}
+        dueDate={assessment.target_completion_date}
         progressPercentage={progressPercentage}
       />
       

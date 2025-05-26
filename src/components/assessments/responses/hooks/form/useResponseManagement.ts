@@ -1,24 +1,19 @@
 
 import { useState } from 'react';
 import { QuestionResponse } from '@/types/assessment';
-import { useAssessment } from '@/contexts/assessment/AssessmentContext';
 import { useNavigate } from 'react-router-dom';
 import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
 
 export const useResponseManagement = (
   template: any,
-  assignment: any,
+  assessment: any,
   existingResponse: any,
   user: any
 ) => {
   const navigate = useNavigate();
-  const { createResponse, updateResponse, submitResponse } = useAssessment();
   const [questionResponses, setQuestionResponses] = useState<QuestionResponse[]>(() => {
-    if (existingResponse) {
-      // Use existing responses
-      return existingResponse.responses;
-    } else if (template) {
+    if (template) {
       // Create empty responses for each question
       return template.questions.map(question => ({
         questionId: question.id,
@@ -64,39 +59,21 @@ export const useResponseManagement = (
   };
   
   const handleSave = async () => {
-    if (!template || !assignment || !user) return;
+    if (!template || !assessment || !user) return;
     
     setSaving(true);
     
     try {
-      // Save to Supabase for assessments or use context for assignments
-      if (assignment.id && assignment.template_id) {
-        // This is a Supabase assessment - save response data
-        const responseData = {
-          assessment_id: assignment.id,
-          user_id: user.id,
-          responses: questionResponses,
-          status: 'Draft'
-        };
+      // Save response data to assessment
+      const responseData = {
+        assessment_id: assessment.id,
+        user_id: user.id,
+        responses: questionResponses,
+        status: 'Draft'
+      };
 
-        console.log('Saving assessment response:', responseData);
-        toast.success("Progress saved successfully");
-      } else if (existingResponse) {
-        // Update existing response in context
-        updateResponse(existingResponse.id, {
-          responses: questionResponses
-        });
-        toast.success("Progress saved successfully");
-      } else {
-        // Create new response in context
-        createResponse({
-          assignmentId: assignment.id,
-          templateId: template.id,
-          userId: user.id,
-          responses: questionResponses
-        });
-        toast.success("Response created and saved");
-      }
+      console.log('Saving assessment response:', responseData);
+      toast.success("Progress saved successfully");
     } catch (error) {
       console.error('Error saving response:', error);
       toast.error("Failed to save progress");
@@ -106,7 +83,7 @@ export const useResponseManagement = (
   };
   
   const handleSubmit = async () => {
-    if (!template || !assignment || !user) return;
+    if (!template || !assessment || !user) return;
     if (!validateResponses()) {
       toast.error("Please complete all required questions before submitting");
       return;
@@ -115,54 +92,26 @@ export const useResponseManagement = (
     setSubmitting(true);
     
     try {
-      // Handle Supabase assessments
-      if (assignment.id && assignment.template_id) {
-        // Calculate score
-        const totalQuestions = template.questions.length;
-        const yesAnswers = questionResponses.filter(r => r.answer === true).length;
-        const score = totalQuestions > 0 ? Math.round((yesAnswers / totalQuestions) * 100) : 0;
+      // Calculate score
+      const totalQuestions = template.questions.length;
+      const yesAnswers = questionResponses.filter(r => r.answer === true).length;
+      const score = totalQuestions > 0 ? Math.round((yesAnswers / totalQuestions) * 100) : 0;
 
-        // Update assessment status and score
-        const { error: updateError } = await supabase
-          .from('assessments')
-          .update({ 
-            status: 'Submitted',
-            score: score
-          })
-          .eq('id', assignment.id);
+      // Update assessment status and score
+      const { error: updateError } = await supabase
+        .from('assessments')
+        .update({ 
+          status: 'Submitted',
+          score: score
+        })
+        .eq('id', assessment.id);
 
-        if (updateError) {
-          throw updateError;
-        }
-
-        toast.success("Assessment submitted successfully!");
-        navigate('/assessments');
-      } else {
-        // Handle context-based assignments
-        if (existingResponse) {
-          // Update responses first
-          updateResponse(existingResponse.id, {
-            responses: questionResponses
-          });
-          
-          // Then submit
-          submitResponse(existingResponse.id);
-        } else {
-          // Create new response
-          const responseId = createResponse({
-            assignmentId: assignment.id,
-            templateId: template.id,
-            userId: user.id,
-            responses: questionResponses
-          });
-          
-          // Then submit
-          submitResponse(responseId);
-        }
-        
-        toast.success("Assessment submitted successfully!");
-        navigate('/assessments/assignments');
+      if (updateError) {
+        throw updateError;
       }
+
+      toast.success("Assessment submitted successfully!");
+      navigate('/assessments');
     } catch (error) {
       console.error('Error submitting response:', error);
       toast.error("Failed to submit assessment");

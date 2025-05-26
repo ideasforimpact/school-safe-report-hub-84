@@ -9,7 +9,7 @@ import { motion } from 'framer-motion';
 const AssessmentResponseForm = () => {
   const {
     template,
-    assignment,
+    assessment, // Changed from assignment to assessment
     questionResponses,
     formError,
     saving,
@@ -42,8 +42,8 @@ const AssessmentResponseForm = () => {
   }
 
   // Safety check to prevent rendering without data
-  if (!assignment || !template) {
-    console.log("Missing assignment or template data", { assignment, template });
+  if (!assessment || !template) {
+    console.log("Missing assessment or template data", { assessment, template });
     return null;
   }
 
@@ -55,7 +55,7 @@ const AssessmentResponseForm = () => {
     >
       <FormContainer
         template={template}
-        assignment={assignment}
+        assessment={assessment}
         questionResponses={questionResponses}
         formError={formError}
         saving={saving}
