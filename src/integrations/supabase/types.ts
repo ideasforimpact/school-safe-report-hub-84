@@ -73,6 +73,7 @@ export type Database = {
       assessments: {
         Row: {
           assessment_type: string
+          assigned_to: string | null
           client_id: string | null
           created_at: string
           created_by: string | null
@@ -80,11 +81,13 @@ export type Database = {
           id: string
           name: string
           status: string
+          target_completion_date: string | null
           template_id: string | null
           updated_at: string
         }
         Insert: {
           assessment_type: string
+          assigned_to?: string | null
           client_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -92,11 +95,13 @@ export type Database = {
           id?: string
           name: string
           status?: string
+          target_completion_date?: string | null
           template_id?: string | null
           updated_at?: string
         }
         Update: {
           assessment_type?: string
+          assigned_to?: string | null
           client_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -104,10 +109,18 @@ export type Database = {
           id?: string
           name?: string
           status?: string
+          target_completion_date?: string | null
           template_id?: string | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "assessments_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "assessments_client_id_fkey"
             columns: ["client_id"]

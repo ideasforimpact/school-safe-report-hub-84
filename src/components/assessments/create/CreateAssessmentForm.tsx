@@ -2,15 +2,17 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAssessment } from '@/contexts/assessment/AssessmentContext';
+import { useEmployees } from '@/hooks/useEmployees';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, Loader } from 'lucide-react';
 import { assessmentTypes } from '../data/assessmentTypes';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 interface CreateAssessmentFormProps {
   onCancel?: () => void;
@@ -19,12 +21,15 @@ interface CreateAssessmentFormProps {
 const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({ onCancel }) => {
   const navigate = useNavigate();
   const { templates } = useAssessment();
+  const { employees, loading: employeesLoading } = useEmployees();
   
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     templateId: '',
-    assessmentType: ''
+    assessmentType: '',
+    assignedTo: '',
+    targetCompletionDate: ''
   });
   
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -54,13 +59,37 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({ onCancel })
       return;
     }
 
+    if (!formData.assignedTo) {
+      toast.error('Please assign the assessment to a staff member');
+      return;
+    }
+
+    if (!formData.targetCompletionDate) {
+      toast.error('Please set a target completion date');
+      return;
+    }
+
     setIsSubmitting(true);
     
     try {
-      // Here you would typically call an API to create the assessment
-      // For now, we'll just show success and navigate back
-      console.log('Creating assessment:', formData);
-      
+      // Insert assessment into database
+      const { data, error } = await supabase
+        .from('assessments')
+        .insert({
+          name: formData.name,
+          description: formData.description || null,
+          template_id: formData.templateId,
+          assessment_type: formData.assessmentType,
+          assigned_to: formData.assignedTo,
+          target_completion_date: formData.targetCompletionDate,
+          status: 'New'
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      console.log('Assessment created:', data);
       toast.success('Assessment created successfully');
       
       if (onCancel) {
@@ -83,6 +112,17 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({ onCancel })
       navigate('/assessments');
     }
   };
+
+  if (employeesLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-center p-8">
+          <Loader className="h-8 w-8 animate-spin" />
+          <span className="ml-2">Loading...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -176,6 +216,44 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({ onCancel })
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Assigned To */}
+              <div className="space-y-2">
+                <Label htmlFor="assignedTo">Assign To *</Label>
+                <Select 
+                  value={formData.assignedTo} 
+                  onValueChange={(value) => handleInputChange('assignedTo', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select staff member" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {employees.map((employee) => (
+                      <SelectItem key={employee.id} value={employee.id}>
+                        {employee.first_name} {employee.last_name} - {employee.department}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {employees.length === 0 && (
+                  <p className="text-sm text-gray-500">
+                    No staff members available.
+                  </p>
+                )}
+              </div>
+
+              {/* Target Completion Date */}
+              <div className="space-y-2">
+                <Label htmlFor="targetDate">Target Completion Date *</Label>
+                <Input
+                  id="targetDate"
+                  type="date"
+                  value={formData.targetCompletionDate}
+                  onChange={(e) => handleInputChange('targetCompletionDate', e.target.value)}
+                  min={new Date().toISOString().split('T')[0]}
+                  required
+                />
+              </div>
             </div>
 
             {/* Action Buttons */}
@@ -190,7 +268,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({ onCancel })
               </Button>
               <Button
                 type="submit"
-                disabled={isSubmitting || templates.length === 0}
+                disabled={isSubmitting || templates.length === 0 || employees.length === 0}
               >
                 <Save className="h-4 w-4 mr-2" />
                 {isSubmitting ? 'Creating...' : 'Create Assessment'}
