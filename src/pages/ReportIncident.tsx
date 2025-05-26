@@ -18,6 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { useIncidentDetail } from '@/hooks/incident/useIncidentDetail';
 import { useIncidentData } from '@/hooks/useIncidentData';
+import { FileItem } from '@/types/fileTypes';
 
 // Define a user type that has only the properties needed by the components
 interface UserBasicInfo {
@@ -87,11 +88,25 @@ const ReportIncident = () => {
       if (mappedFormData) {
         setFormData(mappedFormData);
         setPeopleInvolved(existingIncident.people_involved || []);
+        
+        // Convert documents to FileItem format for the supporting files
+        if (existingIncident.documents && Array.isArray(existingIncident.documents)) {
+          const convertedFiles: FileItem[] = existingIncident.documents.map((doc: any, index: number) => ({
+            id: `existing-${index}`,
+            name: doc.name || `Document ${index + 1}`,
+            type: doc.type || 'application/octet-stream',
+            size: 0, // Size not available from existing documents
+            base64: doc.data || ''
+          }));
+          handleFilesChange(convertedFiles);
+          console.log('Converted documents to FileItems:', convertedFiles);
+        }
+        
         setIsFormPopulated(true);
         console.log('Form data populated successfully');
       }
     }
-  }, [existingIncident, isLoadingIncident, isFormPopulated, isEditMode, getFormData, setFormData, setPeopleInvolved]);
+  }, [existingIncident, isLoadingIncident, isFormPopulated, isEditMode, getFormData, setFormData, setPeopleInvolved, handleFilesChange]);
 
   useEffect(() => {
     populateFormData();

@@ -11,6 +11,7 @@ import IncidentDetails from './IncidentDetails';
 import ActionsList from './ActionsList';
 import { FileItem } from '@/types/incident';
 import { useIncidentData } from '@/hooks/useIncidentData';
+import SupportingDocuments from './SupportingDocuments';
 
 const IncidentDetailContent = ({ 
   incident, 
@@ -82,8 +83,9 @@ const IncidentDetailContent = ({
       />
       
       <Tabs defaultValue="details" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3 mb-4">
+        <TabsList className="grid w-full grid-cols-4 mb-4">
           <TabsTrigger value="details">Details</TabsTrigger>
+          <TabsTrigger value="documents">Documents</TabsTrigger>
           <TabsTrigger value="comments">Comments</TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
@@ -111,6 +113,10 @@ const IncidentDetailContent = ({
               />
             </div>
           </div>
+        </TabsContent>
+
+        <TabsContent value="documents" className="space-y-6">
+          <SupportingDocuments documents={incident.documents || []} />
         </TabsContent>
         
         <TabsContent value="comments" className="space-y-6">
