@@ -59,11 +59,27 @@ const SettingsPage = () => {
           </TabsContent>
           
           <TabsContent value="user" className="p-0">
-            <UserManagement />
+            <Card>
+              <CardHeader>
+                <CardTitle>User Management</CardTitle>
+                <CardDescription>Manage users and their permissions in your institution</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <UserManagement embedded={true} />
+              </CardContent>
+            </Card>
           </TabsContent>
           
           <TabsContent value="student" className="p-0">
-            <StudentManagement embedded={true} />
+            <Card>
+              <CardHeader>
+                <CardTitle>Student Management</CardTitle>
+                <CardDescription>Manage students in your institution</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <StudentManagement embedded={true} />
+              </CardContent>
+            </Card>
           </TabsContent>
           
           <TabsContent value="educational" className="p-0 bg-white rounded-md">
