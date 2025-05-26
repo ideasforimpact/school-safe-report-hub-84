@@ -8,7 +8,6 @@ import IncidentFilters from '@/components/incidents/IncidentFilters';
 import IncidentsTable from '@/components/incidents/IncidentsTable';
 import { useIncidentData } from '@/hooks/useIncidentData';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 
 const IncidentsList = () => {
@@ -122,31 +121,29 @@ const IncidentsList = () => {
           )}
         </div>
 
-        <div className="flex gap-4 items-start">
-          <div className="flex-1">
-            <IncidentFilters 
-              filters={filters}
-              onFilterChange={handleFilterChange}
-              onClearFilters={clearFilters}
-              toggleAdvancedFilters={toggleAdvancedFilters}
-              availableCategories={availableCategories}
-              availableSubcategories={availableSubcategories}
-              availableLocations={availableLocations}
-              availableFacilities={availableFacilities}
-              availableOwners={availableOwners}
-            />
-          </div>
+        <div className="space-y-4">
+          <IncidentFilters 
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            onClearFilters={clearFilters}
+            toggleAdvancedFilters={toggleAdvancedFilters}
+            availableCategories={availableCategories}
+            availableSubcategories={availableSubcategories}
+            availableLocations={availableLocations}
+            availableFacilities={availableFacilities}
+            availableOwners={availableOwners}
+          />
           
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            className="flex items-center gap-2 mt-6"
-          >
-            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-            {isRefreshing ? 'Refreshing...' : 'Refresh'}
-          </Button>
+          <div className="flex items-center justify-end">
+            <button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="p-2 rounded-md hover:bg-gray-100 transition-colors disabled:opacity-50"
+              title={isRefreshing ? 'Refreshing...' : 'Refresh incidents'}
+            >
+              <RefreshCw className={`h-5 w-5 text-gray-600 ${isRefreshing ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
         </div>
 
         <div className="overflow-x-auto w-full">
