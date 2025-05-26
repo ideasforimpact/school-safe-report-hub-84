@@ -65,7 +65,7 @@ const SettingsPage = () => {
                 <CardDescription>Manage users and their permissions in your institution</CardDescription>
               </CardHeader>
               <CardContent>
-                <UserManagement embedded={true} />
+                <UserManagement />
               </CardContent>
             </Card>
           </TabsContent>
