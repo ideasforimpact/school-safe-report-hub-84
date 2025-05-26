@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Loader, ArrowLeft } from 'lucide-react';
@@ -13,11 +13,16 @@ import { AssessmentQuestion } from '@/types/assessment';
 interface CreateTemplateFormProps {
   templateId?: string;
   onCancel?: () => void;
+  isEditMode?: boolean;
 }
 
-const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({ templateId, onCancel }) => {
+const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({ 
+  templateId, 
+  onCancel,
+  isEditMode = false 
+}) => {
   const navigate = useNavigate();
-  const { createTemplate } = useAssessment();
+  const { createTemplate, updateTemplate, getTemplateById } = useAssessment();
   
   // Form state
   const [title, setTitle] = useState('');
@@ -26,6 +31,25 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({ templateId, onC
   const [questions, setQuestions] = useState<AssessmentQuestion[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // Load existing template data if in edit mode
+  useEffect(() => {
+    if (isEditMode && templateId) {
+      setLoading(true);
+      const template = getTemplateById(templateId);
+      if (template) {
+        setTitle(template.title);
+        setDescription(template.description);
+        setType(template.type);
+        setQuestions(template.questions);
+      } else {
+        setFormError('Template not found');
+        toast.error('Template not found');
+      }
+      setLoading(false);
+    }
+  }, [isEditMode, templateId, getTemplateById]);
 
   // Question management
   const handleAddQuestion = () => {
@@ -84,19 +108,30 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({ templateId, onC
     try {
       setIsSubmitting(true);
       
-      // Create the template with questions
-      const templateData = {
-        title,
-        description,
-        type,
-        questions
-      };
-      
-      console.log('Creating template with data:', templateData);
-      const templateId = await createTemplate(templateData);
-      console.log('Template created with ID:', templateId);
-      
-      toast.success('Template created successfully');
+      if (isEditMode && templateId) {
+        // Update existing template
+        await updateTemplate(templateId, {
+          title,
+          description,
+          type,
+          questions
+        });
+        console.log('Template updated successfully');
+        toast.success('Template updated successfully');
+      } else {
+        // Create new template
+        const templateData = {
+          title,
+          description,
+          type,
+          questions
+        };
+        
+        console.log('Creating template with data:', templateData);
+        const newTemplateId = await createTemplate(templateData);
+        console.log('Template created with ID:', newTemplateId);
+        toast.success('Template created successfully');
+      }
       
       // Always use onCancel if provided, otherwise navigate
       if (onCancel) {
@@ -105,9 +140,10 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({ templateId, onC
         navigate('/assessments/templates');
       }
     } catch (error) {
-      console.error('Error creating template:', error);
-      setFormError('Failed to create template. Please try again.');
-      toast.error('Failed to create template');
+      console.error('Error saving template:', error);
+      const errorMessage = isEditMode ? 'Failed to update template. Please try again.' : 'Failed to create template. Please try again.';
+      setFormError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -120,6 +156,17 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({ templateId, onC
       navigate('/assessments/templates');
     }
   };
+
+  if (loading) {
+    return (
+      <div className="max-w-4xl mx-auto py-6">
+        <div className="flex items-center justify-center p-8">
+          <Loader className="h-8 w-8 animate-spin" />
+          <span className="ml-2">Loading template...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto py-6">
@@ -134,9 +181,11 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({ templateId, onC
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Create Assessment Template</h1>
+            <h1 className="text-2xl font-bold text-gray-900">
+              {isEditMode ? 'Edit Assessment Template' : 'Create Assessment Template'}
+            </h1>
             <p className="text-gray-500 mt-1">
-              Create a new template for conducting assessments.
+              {isEditMode ? 'Update your assessment template.' : 'Create a new template for conducting assessments.'}
             </p>
           </div>
         </div>
@@ -178,9 +227,9 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({ templateId, onC
             {isSubmitting ? (
               <>
                 <Loader className="h-4 w-4 mr-2 animate-spin" />
-                Saving...
+                {isEditMode ? 'Updating...' : 'Saving...'}
               </>
-            ) : 'Save Template'}
+            ) : (isEditMode ? 'Update Template' : 'Save Template')}
           </Button>
         </div>
       </form>
