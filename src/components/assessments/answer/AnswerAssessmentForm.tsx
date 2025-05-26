@@ -40,7 +40,7 @@ const AnswerAssessmentForm = () => {
   
   // Parse questions from JSONB
   const questions = Array.isArray(template.questions) 
-    ? template.questions as Question[]
+    ? (template.questions as unknown as Question[])
     : [];
 
   return (

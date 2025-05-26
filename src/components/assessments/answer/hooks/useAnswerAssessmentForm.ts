@@ -75,7 +75,7 @@ export const useAnswerAssessmentForm = () => {
           
           // Parse questions from JSONB and initialize answers array
           const questions = Array.isArray(templateData.questions) 
-            ? templateData.questions as Question[]
+            ? (templateData.questions as unknown as Question[])
             : [];
             
           const initialAnswers = questions.map((question: Question) => ({
@@ -112,7 +112,7 @@ export const useAnswerAssessmentForm = () => {
     if (!template?.questions) return 0;
     
     const questions = Array.isArray(template.questions) 
-      ? template.questions as Question[]
+      ? (template.questions as unknown as Question[])
       : [];
     
     const answeredQuestions = answers.filter(answer => answer.answer !== undefined).length;
@@ -124,7 +124,7 @@ export const useAnswerAssessmentForm = () => {
     
     // Parse questions from JSONB
     const questions = Array.isArray(template.questions) 
-      ? template.questions as Question[]
+      ? (template.questions as unknown as Question[])
       : [];
     
     // Check if all required questions are answered
