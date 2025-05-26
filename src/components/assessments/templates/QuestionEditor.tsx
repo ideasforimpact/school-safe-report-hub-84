@@ -9,9 +9,9 @@ import { Trash } from 'lucide-react';
 import { AssessmentQuestion } from '@/types/assessment';
 
 interface QuestionEditorProps {
-  question: Omit<AssessmentQuestion, 'id'>;
+  question: AssessmentQuestion;
   index: number;
-  onChange: (question: Omit<AssessmentQuestion, 'id'>) => void;
+  onChange: (question: AssessmentQuestion) => void;
   onRemove: () => void;
 }
 

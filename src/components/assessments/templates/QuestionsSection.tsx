@@ -7,9 +7,9 @@ import QuestionEditor from './QuestionEditor';
 import { AssessmentQuestion } from '@/types/assessment';
 
 interface QuestionsSectionProps {
-  questions: Omit<AssessmentQuestion, 'id'>[];
+  questions: AssessmentQuestion[];
   onAddQuestion: () => void;
-  onUpdateQuestion: (index: number, question: Omit<AssessmentQuestion, 'id'>) => void;
+  onUpdateQuestion: (index: number, question: AssessmentQuestion) => void;
   onRemoveQuestion: (index: number) => void;
 }
 
@@ -53,7 +53,7 @@ const QuestionsSection: React.FC<QuestionsSectionProps> = ({
         <div className="space-y-4">
           {questions.map((question, index) => (
             <QuestionEditor
-              key={index}
+              key={question.id || index}
               question={question}
               index={index}
               onChange={updatedQuestion => onUpdateQuestion(index, updatedQuestion)}

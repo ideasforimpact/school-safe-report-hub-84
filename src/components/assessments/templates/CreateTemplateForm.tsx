@@ -23,24 +23,23 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({ templateId, onC
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [type, setType] = useState('Safety');
-  const [questions, setQuestions] = useState<Omit<AssessmentQuestion, 'id'>[]>([]);
+  const [questions, setQuestions] = useState<AssessmentQuestion[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Question management
   const handleAddQuestion = () => {
-    setQuestions([
-      ...questions,
-      {
-        text: '',
-        allowComments: false,
-        allowAttachments: false,
-        required: true
-      }
-    ]);
+    const newQuestion: AssessmentQuestion = {
+      id: `temp_${Date.now()}`,
+      text: '',
+      allowComments: false,
+      allowAttachments: false,
+      required: true
+    };
+    setQuestions([...questions, newQuestion]);
   };
 
-  const handleUpdateQuestion = (index: number, updatedQuestion: Omit<AssessmentQuestion, 'id'>) => {
+  const handleUpdateQuestion = (index: number, updatedQuestion: AssessmentQuestion) => {
     const newQuestions = [...questions];
     newQuestions[index] = updatedQuestion;
     setQuestions(newQuestions);

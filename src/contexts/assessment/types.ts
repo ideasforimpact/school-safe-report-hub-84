@@ -9,7 +9,7 @@ import {
 export interface AssessmentContextType {
   // Templates
   templates: AssessmentTemplate[];
-  createTemplate: (template: Omit<AssessmentTemplate, 'id' | 'createdAt' | 'createdBy' | 'isActive'>) => string;
+  createTemplate: (template: Omit<AssessmentTemplate, 'id' | 'createdAt' | 'createdBy' | 'isActive'>) => Promise<string>;
   updateTemplate: (id: string, updates: Partial<Omit<AssessmentTemplate, 'id' | 'createdAt' | 'createdBy'>>) => void;
   deleteTemplate: (id: string) => void;
   getTemplateById: (id: string) => AssessmentTemplate | undefined;
