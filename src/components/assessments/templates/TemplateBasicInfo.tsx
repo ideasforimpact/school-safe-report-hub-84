@@ -1,18 +1,21 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { templateService, TemplateCategory } from '@/services/assessment/templateService';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 
 interface TemplateBasicInfoProps {
   title: string;
-  setTitle: (value: string) => void;
+  setTitle: (title: string) => void;
   description: string;
-  setDescription: (value: string) => void;
+  setDescription: (description: string) => void;
   type: string;
-  setType: (value: string) => void;
+  setType: (type: string) => void;
+  isActive: boolean;
+  setIsActive: (isActive: boolean) => void;
 }
 
 const TemplateBasicInfo: React.FC<TemplateBasicInfoProps> = ({
@@ -21,72 +24,75 @@ const TemplateBasicInfo: React.FC<TemplateBasicInfoProps> = ({
   description,
   setDescription,
   type,
-  setType
+  setType,
+  isActive,
+  setIsActive
 }) => {
-  const [categories, setCategories] = useState<TemplateCategory[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const loadCategories = async () => {
-      try {
-        const data = await templateService.getTemplateCategories();
-        setCategories(data);
-        
-        // Set default type if not set and categories are available
-        if (!type && data.length > 0) {
-          setType(data[0].name);
-        }
-      } catch (error) {
-        console.error('Failed to load categories:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadCategories();
-  }, [type, setType]);
+  const templateTypes = [
+    'Safety',
+    'Compliance',
+    'Risk',
+    'Quality',
+    'Environmental',
+    'Security',
+    'Training',
+    'Maintenance'
+  ];
 
   return (
-    <div className="space-y-4">
-      <div>
-        <Label htmlFor="title">Template Title</Label>
-        <Input 
-          id="title" 
-          value={title} 
-          onChange={e => setTitle(e.target.value)} 
-          placeholder="Enter template title" 
-          className="mt-1" 
-        />
-      </div>
-      
-      <div>
-        <Label htmlFor="description">Description</Label>
-        <Textarea 
-          id="description" 
-          value={description} 
-          onChange={e => setDescription(e.target.value)} 
-          placeholder="Describe the purpose of this assessment template" 
-          className="mt-1" 
-          rows={3} 
-        />
-      </div>
-      
-      <div>
-        <Label>Template Category</Label>
-        {loading ? (
-          <div className="mt-2 text-sm text-gray-500">Loading categories...</div>
-        ) : (
-          <RadioGroup value={type} onValueChange={setType} className="flex space-x-4 mt-2">
-            {categories.map((category) => (
-              <div key={category.id} className="flex items-center space-x-2">
-                <RadioGroupItem value={category.name} id={category.name.toLowerCase()} />
-                <Label htmlFor={category.name.toLowerCase()}>{category.name}</Label>
-              </div>
-            ))}
-          </RadioGroup>
-        )}
-      </div>
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Basic Information</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div>
+          <Label htmlFor="title">Template Title</Label>
+          <Input
+            id="title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Enter template title"
+            required
+          />
+        </div>
+        
+        <div>
+          <Label htmlFor="description">Description</Label>
+          <Textarea
+            id="description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Enter template description"
+            rows={3}
+          />
+        </div>
+        
+        <div>
+          <Label htmlFor="type">Assessment Type</Label>
+          <Select value={type} onValueChange={setType}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select assessment type" />
+            </SelectTrigger>
+            <SelectContent>
+              {templateTypes.map((templateType) => (
+                <SelectItem key={templateType} value={templateType}>
+                  {templateType}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <Switch
+            id="is-active"
+            checked={isActive}
+            onCheckedChange={setIsActive}
+          />
+          <Label htmlFor="is-active">Enable Template</Label>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 

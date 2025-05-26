@@ -28,6 +28,7 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [type, setType] = useState('Safety');
+  const [isActive, setIsActive] = useState(true);
   const [questions, setQuestions] = useState<AssessmentQuestion[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -42,6 +43,7 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
         setTitle(template.title);
         setDescription(template.description);
         setType(template.type);
+        setIsActive(template.isActive);
         setQuestions(template.questions);
       } else {
         setFormError('Template not found');
@@ -99,7 +101,7 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
   const onFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log('Form submission triggered');
-    console.log('Form data:', { title, description, type, questions });
+    console.log('Form data:', { title, description, type, isActive, questions });
     
     if (!validateForm()) {
       return;
@@ -114,6 +116,7 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
           title,
           description,
           type,
+          isActive,
           questions
         });
         console.log('Template updated successfully');
@@ -199,6 +202,8 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
           setDescription={setDescription}
           type={type}
           setType={setType}
+          isActive={isActive}
+          setIsActive={setIsActive}
         />
         
         <QuestionsSection
