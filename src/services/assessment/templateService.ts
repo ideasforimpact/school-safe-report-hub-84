@@ -64,18 +64,8 @@ export const templateService = {
     type: string;
     questions: Omit<AssessmentQuestion, 'id'>[];
   }): Promise<string> {
-    // Get the current user's employee record
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('No authenticated user');
-
-    const { data: employee } = await supabase
-      .from('employees')
-      .select('id, client_id')
-      .eq('user_id', user.id)
-      .single();
-
-    if (!employee) throw new Error('Employee record not found');
-
+    console.log('Creating template with data:', template);
+    
     // Get category ID by name
     const { data: category } = await supabase
       .from('template_categories')
@@ -89,15 +79,39 @@ export const templateService = {
       id: `q_${Date.now()}_${index}`
     }));
 
+    // Try to get the current user, but don't fail if not authenticated
+    const { data: { user } } = await supabase.auth.getUser();
+    console.log('Current user:', user);
+    
+    let employeeId = null;
+    let clientId = null;
+
+    // Only try to get employee data if user is authenticated
+    if (user) {
+      const { data: employee } = await supabase
+        .from('employees')
+        .select('id, client_id')
+        .eq('user_id', user.id)
+        .single();
+      
+      if (employee) {
+        employeeId = employee.id;
+        clientId = employee.client_id;
+      }
+    }
+
+    console.log('Employee ID:', employeeId);
+    console.log('Client ID:', clientId);
+
     const { data, error } = await supabase
       .from('assessment_templates')
       .insert({
-        client_id: employee.client_id,
+        client_id: clientId,
         title: template.title,
         description: template.description,
         category_id: category?.id || null,
         questions: questionsWithIds,
-        created_by: employee.id,
+        created_by: employeeId,
         is_active: true
       })
       .select()
@@ -108,6 +122,7 @@ export const templateService = {
       throw error;
     }
 
+    console.log('Template created successfully:', data);
     return data.id;
   },
 

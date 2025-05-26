@@ -13,6 +13,7 @@ export const useTemplateManagement = (userId?: string) => {
     try {
       setLoading(true);
       const data = await templateService.getTemplates();
+      console.log('Loaded templates:', data);
       setTemplates(data);
     } catch (error) {
       console.error('Failed to load templates:', error);
@@ -28,7 +29,10 @@ export const useTemplateManagement = (userId?: string) => {
 
   const createTemplate = async (templateData: Omit<AssessmentTemplate, 'id' | 'createdAt' | 'createdBy' | 'isActive'>) => {
     try {
+      console.log('Creating template with data:', templateData);
       const id = await templateService.createTemplate(templateData);
+      console.log('Template created with ID:', id);
+      toast.success('Template created successfully');
       await loadTemplates(); // Refresh the list
       return id;
     } catch (error) {
@@ -41,6 +45,7 @@ export const useTemplateManagement = (userId?: string) => {
   const updateTemplate = async (id: string, updates: Partial<Omit<AssessmentTemplate, 'id' | 'createdAt' | 'createdBy'>>) => {
     try {
       await templateService.updateTemplate(id, updates);
+      toast.success('Template updated successfully');
       await loadTemplates(); // Refresh the list
     } catch (error) {
       console.error('Error updating template:', error);
@@ -52,6 +57,7 @@ export const useTemplateManagement = (userId?: string) => {
   const deleteTemplate = async (id: string) => {
     try {
       await templateService.deleteTemplate(id);
+      toast.success('Template deleted successfully');
       await loadTemplates(); // Refresh the list
     } catch (error) {
       console.error('Error deleting template:', error);
