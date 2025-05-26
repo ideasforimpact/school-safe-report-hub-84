@@ -1,8 +1,7 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Loader } from 'lucide-react';
+import { Loader, ArrowLeft } from 'lucide-react';
 import TemplateBasicInfo from './TemplateBasicInfo';
 import QuestionsSection from './QuestionsSection';
 import FormError from './FormError';
@@ -135,10 +134,22 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({ templateId, onC
   return (
     <div className="max-w-4xl mx-auto py-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Create Assessment Template</h1>
-        <p className="text-gray-500 mt-1">
-          Create a new template for conducting assessments.
-        </p>
+        <div className="flex items-center mb-4">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={handleCancel}
+            className="mr-3 p-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Create Assessment Template</h1>
+            <p className="text-gray-500 mt-1">
+              Create a new template for conducting assessments.
+            </p>
+          </div>
+        </div>
       </div>
       
       <form onSubmit={onFormSubmit} className="space-y-6 bg-white p-6 rounded-lg shadow-sm border border-gray-200">
