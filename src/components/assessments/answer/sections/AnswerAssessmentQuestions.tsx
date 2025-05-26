@@ -2,8 +2,15 @@
 import React from 'react';
 import AnswerQuestionCard from '../components/AnswerQuestionCard';
 
+interface Question {
+  id: string;
+  text: string;
+  required?: boolean;
+  allowComments?: boolean;
+}
+
 interface AnswerAssessmentQuestionsProps {
-  questions: any[];
+  questions: Question[];
   answers: any[];
   onAnswerChange: (questionId: string, field: string, value: any) => void;
 }

@@ -11,6 +11,13 @@ interface Answer {
   comment?: string;
 }
 
+interface Question {
+  id: string;
+  text: string;
+  required?: boolean;
+  allowComments?: boolean;
+}
+
 export const useAnswerAssessmentForm = () => {
   const params = useParams<{ assessmentId?: string }>();
   const assessmentId = params.assessmentId;
@@ -66,12 +73,16 @@ export const useAnswerAssessmentForm = () => {
 
           setTemplate(templateData);
           
-          // Initialize answers array
-          const initialAnswers = templateData.questions?.map((question: any) => ({
+          // Parse questions from JSONB and initialize answers array
+          const questions = Array.isArray(templateData.questions) 
+            ? templateData.questions as Question[]
+            : [];
+            
+          const initialAnswers = questions.map((question: Question) => ({
             questionId: question.id,
             answer: undefined,
             comment: ''
-          })) || [];
+          }));
           
           setAnswers(initialAnswers);
         }
@@ -100,15 +111,24 @@ export const useAnswerAssessmentForm = () => {
   const calculateProgress = () => {
     if (!template?.questions) return 0;
     
+    const questions = Array.isArray(template.questions) 
+      ? template.questions as Question[]
+      : [];
+    
     const answeredQuestions = answers.filter(answer => answer.answer !== undefined).length;
-    return Math.round((answeredQuestions / template.questions.length) * 100);
+    return Math.round((answeredQuestions / questions.length) * 100);
   };
 
   const handleSubmit = async () => {
     if (!assessment || !template) return;
     
+    // Parse questions from JSONB
+    const questions = Array.isArray(template.questions) 
+      ? template.questions as Question[]
+      : [];
+    
     // Check if all required questions are answered
-    const unansweredRequired = template.questions?.some((question: any) => {
+    const unansweredRequired = questions.some((question: Question) => {
       if (question.required) {
         const answer = answers.find(a => a.questionId === question.id);
         return answer?.answer === undefined;
@@ -125,7 +145,7 @@ export const useAnswerAssessmentForm = () => {
     
     try {
       // Calculate score
-      const totalQuestions = template.questions?.length || 0;
+      const totalQuestions = questions.length;
       const yesAnswers = answers.filter(a => a.answer === true).length;
       const score = totalQuestions > 0 ? Math.round((yesAnswers / totalQuestions) * 100) : 0;
 

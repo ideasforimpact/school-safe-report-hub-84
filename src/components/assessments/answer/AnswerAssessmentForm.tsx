@@ -8,6 +8,13 @@ import LoadingState from './sections/LoadingState';
 import ErrorState from './sections/ErrorState';
 import { motion } from 'framer-motion';
 
+interface Question {
+  id: string;
+  text: string;
+  required?: boolean;
+  allowComments?: boolean;
+}
+
 const AnswerAssessmentForm = () => {
   const {
     assessment,
@@ -30,6 +37,11 @@ const AnswerAssessmentForm = () => {
   }
 
   const progress = calculateProgress();
+  
+  // Parse questions from JSONB
+  const questions = Array.isArray(template.questions) 
+    ? template.questions as Question[]
+    : [];
 
   return (
     <motion.div 
@@ -45,7 +57,7 @@ const AnswerAssessmentForm = () => {
       />
       
       <AnswerAssessmentQuestions 
-        questions={template.questions || []}
+        questions={questions}
         answers={answers}
         onAnswerChange={handleAnswerChange}
       />
