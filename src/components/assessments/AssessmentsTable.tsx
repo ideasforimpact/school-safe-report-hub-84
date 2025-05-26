@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -7,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Search, Edit, Trash2, FileText, Calendar, Users, AlertCircle } from 'lucide-react';
+import { Search, Edit, Trash2, FileText, Calendar, Users, AlertCircle, Star } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth';
@@ -21,6 +20,7 @@ interface Assessment {
   assigned_to: string | null;
   template_id: string | null;
   created_at: string;
+  score: number | null;
   creator_name?: string;
   assignee_name?: string;
   client_id: string;
@@ -68,6 +68,7 @@ const AssessmentsTable: React.FC = () => {
           assigned_to,
           template_id,
           created_at,
+          score,
           client_id,
           creator:employees!assessments_created_by_fkey(first_name, last_name),
           assignee:employees!assessments_assigned_to_fkey(first_name, last_name)
@@ -147,6 +148,11 @@ const AssessmentsTable: React.FC = () => {
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'Not set';
     return new Date(dateString).toLocaleDateString();
+  };
+
+  const formatScore = (score: number | null) => {
+    if (score === null || score === undefined) return '0';
+    return score.toString();
   };
 
   const handleAnswerQuestions = (assessmentId: string) => {
@@ -279,6 +285,12 @@ const AssessmentsTable: React.FC = () => {
                 <TableHead>Status</TableHead>
                 <TableHead>
                   <div className="flex items-center gap-1">
+                    <Star className="h-4 w-4" />
+                    Score
+                  </div>
+                </TableHead>
+                <TableHead>
+                  <div className="flex items-center gap-1">
                     <Calendar className="h-4 w-4" />
                     Target Date
                   </div>
@@ -304,6 +316,12 @@ const AssessmentsTable: React.FC = () => {
                   </TableCell>
                   <TableCell>
                     {getStatusBadge(assessment.status)}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1">
+                      <Star className="h-4 w-4 text-yellow-500" />
+                      <span className="font-medium">{formatScore(assessment.score)}</span>
+                    </div>
                   </TableCell>
                   <TableCell>
                     {formatDate(assessment.target_completion_date)}

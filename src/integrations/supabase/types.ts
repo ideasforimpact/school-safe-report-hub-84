@@ -79,6 +79,7 @@ export type Database = {
           description: string | null
           id: string
           name: string
+          score: number | null
           status: string
           target_completion_date: string | null
           template_id: string | null
@@ -92,6 +93,7 @@ export type Database = {
           description?: string | null
           id?: string
           name: string
+          score?: number | null
           status?: string
           target_completion_date?: string | null
           template_id?: string | null
@@ -105,6 +107,7 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
+          score?: number | null
           status?: string
           target_completion_date?: string | null
           template_id?: string | null
