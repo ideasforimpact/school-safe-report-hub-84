@@ -25,7 +25,10 @@ export const useAssignmentData = () => {
   if (assignmentId) {
     // Original flow: find assignment by assignment ID
     assignment = assignments.find(a => a.id === assignmentId);
-    template = assignment ? templates.find(t => t.id === assignment.templateId) : null;
+    const assignmentTemplate = assignment ? templates.find(t => t.id === assignment.templateId) : null;
+    if (assignmentTemplate && !template) {
+      setTemplate(assignmentTemplate);
+    }
   }
   
   const existingResponse = assignment 
