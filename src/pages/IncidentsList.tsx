@@ -6,12 +6,16 @@ import { useIncidentFilters } from '@/hooks/useIncidentFilters';
 import IncidentsHeader from '@/components/incidents/IncidentsHeader';
 import IncidentFilters from '@/components/incidents/IncidentFilters';
 import IncidentsTable from '@/components/incidents/IncidentsTable';
+import { useIncidentData } from '@/hooks/useIncidentData';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const IncidentsList = () => {
   console.log('IncidentsList component rendering');
   
   const { incidents } = useIncidents();
+  const { loading, error } = useIncidentData();
   console.log('Incidents from context:', incidents);
+  console.log('Loading state:', loading);
 
   const {
     filters,
@@ -40,6 +44,53 @@ const IncidentsList = () => {
     }
     return true;
   }).length;
+
+  // Show loading state
+  if (loading) {
+    return (
+      <Layout>
+        <div className="space-y-4 md:space-y-6 w-full overflow-x-hidden">
+          <IncidentsHeader />
+          
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="space-y-4">
+              <Skeleton className="h-8 w-64" />
+              <div className="space-y-3">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <Layout>
+        <div className="space-y-4 md:space-y-6 w-full overflow-x-hidden">
+          <IncidentsHeader />
+          
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="text-center py-8">
+              <p className="text-red-600 mb-4">Error loading incidents: {error}</p>
+              <button 
+                onClick={() => window.location.reload()} 
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>

@@ -10,6 +10,7 @@ import AuditTrail from '@/components/AuditTrail';
 import IncidentDetails from './IncidentDetails';
 import ActionsList from './ActionsList';
 import { FileItem } from '@/types/incident';
+import { useIncidentData } from '@/hooks/useIncidentData';
 
 const IncidentDetailContent = ({ 
   incident, 
@@ -30,6 +31,8 @@ const IncidentDetailContent = ({
   setStatusUpdate,
   handleCommentSubmit
 }) => {
+  const { refetchIncidents } = useIncidentData();
+  
   // State for controlling the incident closure form
   const [isClosureFormOpen, setIsClosureFormOpen] = useState(false);
   
@@ -44,22 +47,26 @@ const IncidentDetailContent = ({
   };
 
   // Handler for closure form submission
-  const handleClosureFormSubmit = (data) => {
-    updateIncident(incident.id, {
+  const handleClosureFormSubmit = async (data) => {
+    await updateIncident(incident.id, {
       status: 'Closed',
       rootCause: data.rootCause,
       contributingFactors: data.contributingFactors,
       actions: data.actions
     });
     setIsClosureFormOpen(false);
+    // Refetch incidents to ensure latest data
+    await refetchIncidents();
   };
 
   // Handler for when comment is successfully added
-  const handleCommentAdded = () => {
+  const handleCommentAdded = async () => {
     // Refresh the incident data
     if (handleCommentSubmit) {
       handleCommentSubmit();
     }
+    // Also refetch incidents to ensure consistency
+    await refetchIncidents();
   };
 
   return (

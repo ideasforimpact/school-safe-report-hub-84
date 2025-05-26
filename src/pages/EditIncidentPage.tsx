@@ -8,12 +8,14 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, ArrowLeft } from 'lucide-react';
 import EditIncidentForm from '@/components/edit-incident/EditIncidentForm';
+import { useIncidentData } from '@/hooks/useIncidentData';
 
 const EditIncidentPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getIncident } = useIncidents();
   const { user } = useAuth();
+  const { refetchIncidents } = useIncidentData();
 
   console.log('EditIncidentPage - ID:', id);
 
@@ -72,6 +74,18 @@ const EditIncidentPage = () => {
     );
   }
 
+  const handleSuccess = async () => {
+    // Refetch incidents before navigating
+    await refetchIncidents();
+    navigate(`/incident/${id}`);
+  };
+
+  const handleCancel = async () => {
+    // Refetch incidents before navigating
+    await refetchIncidents();
+    navigate('/incidents');
+  };
+
   return (
     <Layout>
       <div className="space-y-4 md:space-y-6 w-full overflow-x-hidden bg-gray-50 min-h-screen">
@@ -97,8 +111,8 @@ const EditIncidentPage = () => {
         <div className="w-full py-6">
           <EditIncidentForm 
             incident={incident}
-            onSuccess={() => navigate(`/incident/${id}`)}
-            onCancel={() => navigate('/incidents')}
+            onSuccess={handleSuccess}
+            onCancel={handleCancel}
           />
         </div>
       </div>
