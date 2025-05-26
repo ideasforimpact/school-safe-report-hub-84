@@ -105,7 +105,7 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({ templateId, onC
         
         toast.success('Template created successfully');
         
-        // Reset form if onCancel is provided, otherwise navigate
+        // Always use onCancel if provided, otherwise navigate
         if (onCancel) {
           onCancel();
         } else {
