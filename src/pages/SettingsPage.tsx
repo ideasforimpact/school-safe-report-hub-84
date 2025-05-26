@@ -3,13 +3,14 @@ import React from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { AlertTriangle, Users, GraduationCap, Building } from "lucide-react";
+import { AlertTriangle, Users, GraduationCap, Building, ClipboardCheck } from "lucide-react";
 import { useAuth } from '@/contexts/auth';
 import IncidentConfigurationContent from '@/components/configuration/IncidentConfigurationContent';
 import UserManagement from '@/pages/UserManagement';
 import StudentManagement from '@/pages/StudentManagement';
 import { EducationalStructureConfig } from '@/pages/configuration/EducationalStructureConfig';
 import { useEducationalConfigurationManagement } from '@/hooks/useEducationalConfigurationManagement';
+import AssessmentConfigurationContent from '@/components/configuration/AssessmentConfigurationContent';
 
 const SettingsPage = () => {
   const { activeTab, setActiveTab, loading, campuses, classes, sections, facilities, 
@@ -31,6 +32,10 @@ const SettingsPage = () => {
             <TabsTrigger value="incident" className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4" />
               <span>Incident Configuration</span>
+            </TabsTrigger>
+            <TabsTrigger value="assessment" className="flex items-center gap-2">
+              <ClipboardCheck className="h-4 w-4" />
+              <span>Assessment Configuration</span>
             </TabsTrigger>
             <TabsTrigger value="user" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
@@ -54,6 +59,18 @@ const SettingsPage = () => {
               </CardHeader>
               <CardContent>
                 <IncidentConfigurationContent />
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="assessment">
+            <Card>
+              <CardHeader>
+                <CardTitle>Assessment Configuration</CardTitle>
+                <CardDescription>Create and manage assessment templates with yes/no questions</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <AssessmentConfigurationContent />
               </CardContent>
             </Card>
           </TabsContent>
