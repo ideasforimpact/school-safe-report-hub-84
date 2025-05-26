@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -7,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Search, Edit, Trash2, FileText, Calendar, Users } from 'lucide-react';
+import { Search, Edit, Trash2, FileText, Calendar, Users, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth';
@@ -31,14 +30,25 @@ const AssessmentsTable: React.FC = () => {
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [filteredAssessments, setFilteredAssessments] = useState<Assessment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
 
   const fetchAssessments = async () => {
-    if (!user?.clientId) return;
-    
     try {
       setLoading(true);
+      setError(null);
+      
+      console.log('Fetching assessments with user:', user);
+      
+      // If no user or clientId, show empty state instead of loading forever
+      if (!user?.clientId) {
+        console.log('No user or clientId available');
+        setAssessments([]);
+        setFilteredAssessments([]);
+        setLoading(false);
+        return;
+      }
       
       // Fetch assessments with employee names
       const { data: assessmentsData, error } = await supabase
@@ -70,10 +80,12 @@ const AssessmentsTable: React.FC = () => {
           : 'Unassigned'
       })) || [];
 
+      console.log('Fetched assessments:', formattedAssessments);
       setAssessments(formattedAssessments);
       setFilteredAssessments(formattedAssessments);
     } catch (error) {
       console.error('Error fetching assessments:', error);
+      setError('Failed to fetch assessments');
       toast.error('Failed to fetch assessments');
     } finally {
       setLoading(false);
@@ -159,6 +171,37 @@ const AssessmentsTable: React.FC = () => {
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900 mx-auto mb-4"></div>
             <p>Loading assessments...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center p-8">
+          <div className="text-center">
+            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <h3 className="text-lg font-medium mb-2">Error Loading Assessments</h3>
+            <p className="text-gray-500 mb-4">{error}</p>
+            <Button onClick={fetchAssessments} variant="outline">
+              Try Again
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!user?.clientId) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center p-8">
+          <div className="text-center">
+            <AlertCircle className="h-12 w-12 text-amber-500 mx-auto mb-4" />
+            <h3 className="text-lg font-medium mb-2">Authentication Required</h3>
+            <p className="text-gray-500">Please log in to view assessments.</p>
           </div>
         </CardContent>
       </Card>
