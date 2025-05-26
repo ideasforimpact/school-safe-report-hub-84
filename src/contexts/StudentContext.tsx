@@ -37,10 +37,11 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
 
       const { data, error } = await supabase.functions.invoke('student-management', {
         method: 'GET',
-        headers: { path: 'list' },
-        body: {},
-        // Add client_id as query parameter
-        query: { client_id: employeeData.clientId }
+        headers: { 
+          path: 'list',
+          'client-id': employeeData.clientId
+        },
+        body: {}
       });
 
       if (error) {
@@ -65,9 +66,10 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
       const { data, error } = await supabase.functions.invoke('student-management', {
         body: student,
         method: 'POST',
-        headers: { path: 'create' },
-        // Add client_id as query parameter
-        query: { client_id: employeeData.clientId }
+        headers: { 
+          path: 'create',
+          'client-id': employeeData.clientId
+        }
       });
 
       if (error) {
@@ -91,9 +93,11 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
       const { data, error } = await supabase.functions.invoke('student-management', {
         body: updates,
         method: 'PUT',
-        headers: { path: `update`, id },
-        // Add client_id as query parameter
-        query: { client_id: employeeData.clientId }
+        headers: { 
+          path: `update`,
+          id,
+          'client-id': employeeData.clientId
+        }
       });
 
       if (error) {
@@ -121,9 +125,11 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
       const { error } = await supabase.functions.invoke('student-management', {
         body: {},
         method: 'DELETE',
-        headers: { path: `delete`, id },
-        // Add client_id as query parameter
-        query: { client_id: employeeData.clientId }
+        headers: { 
+          path: `delete`,
+          id,
+          'client-id': employeeData.clientId
+        }
       });
 
       if (error) {

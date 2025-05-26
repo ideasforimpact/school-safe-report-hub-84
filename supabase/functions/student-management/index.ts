@@ -1,11 +1,10 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.0.0";
 
 // Set up CORS headers for cross-origin requests
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, path, id",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, path, id, client-id",
   "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
 };
 
@@ -29,14 +28,11 @@ serve(async (req) => {
     const headers = req.headers;
     const path = headers.get("path") || "";
     const id = headers.get("id") || "";
-
-    // Extract client_id from query parameters
-    const url = new URL(req.url);
-    const clientId = url.searchParams.get("client_id");
+    const clientId = headers.get("client-id");
 
     if (!clientId) {
       return new Response(
-        JSON.stringify({ error: "client_id query parameter is required for all operations" }),
+        JSON.stringify({ error: "client-id header is required for all operations" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

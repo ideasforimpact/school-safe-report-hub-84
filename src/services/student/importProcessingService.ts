@@ -126,14 +126,16 @@ export const processStudentData = async (rawData: RawStudentData[], clientId: st
     
     // Execute bulk update operation if needed
     if (studentsToUpdate.length > 0) {
-      // Use the edge function for bulk updates with client_id as query parameter
+      // Use the edge function for bulk updates with client_id in headers
       const { data: updatedData, error: updateError } = await supabase.functions.invoke('student-management', {
         method: 'POST',
-        headers: { path: 'bulk-update' },
+        headers: { 
+          path: 'bulk-update',
+          'client-id': clientId
+        },
         body: {
           students: studentsToUpdate
-        },
-        query: { client_id: clientId }
+        }
       });
         
       if (updateError) {

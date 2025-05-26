@@ -97,7 +97,10 @@ export const validateExcelData = async (data: RawStudentData[], clientId: string
     // Use the bulk validation endpoint to validate all relationships at once
     const { data: validationResult, error: validationError } = await supabase.functions.invoke('student-management', {
       method: 'POST',
-      headers: { path: 'validate' },
+      headers: { 
+        path: 'validate',
+        'client-id': clientId
+      },
       body: { 
         students: data.map(row => ({
           studentId: String(row.studentId),
@@ -106,8 +109,7 @@ export const validateExcelData = async (data: RawStudentData[], clientId: string
           section: String(row.section),
           campus: String(row.campus)
         }))
-      },
-      query: { client_id: clientId }
+      }
     });
 
     if (validationError) {

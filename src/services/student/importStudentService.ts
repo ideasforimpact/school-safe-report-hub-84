@@ -6,6 +6,41 @@ import { RawStudentData } from './types/importTypes';
 import { useAuth } from '@/contexts/auth';
 
 /**
+ * Validate Excel/CSV data to ensure all required fields are present and valid
+ */
+export const validateStudentExcel = async (file: File): Promise<string[]> => {
+  console.log('Starting student Excel validation for file:', file.name);
+  
+  // Get client ID from auth context
+  const { employeeData } = useAuth();
+  const clientId = employeeData?.clientId;
+  
+  if (!clientId) {
+    throw new Error('Client ID is required for validating students');
+  }
+  
+  try {
+    // Read and parse Excel file
+    const rawData = await readExcelFile(file);
+    console.log('Raw data from Excel:', rawData);
+    
+    if (!rawData || rawData.length === 0) {
+      throw new Error('No data found in the Excel file');
+    }
+    
+    // Validate the data structure and business rules
+    console.log('Validating Excel data...');
+    const validationErrors = await validateExcelData(rawData, clientId);
+    
+    return validationErrors;
+    
+  } catch (error) {
+    console.error('Error in student Excel validation:', error);
+    throw error;
+  }
+};
+
+/**
  * Main function to process Excel file and import students
  */
 export const processStudentExcel = async (file: File): Promise<void> => {
