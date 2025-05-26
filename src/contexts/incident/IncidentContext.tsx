@@ -1,5 +1,4 @@
-
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { IncidentContextType } from './types';
 import { useConfigManagement } from '@/hooks/useConfigManagement'; 
 import { 
@@ -24,7 +23,10 @@ const IncidentContext = createContext<IncidentContextType | undefined>(undefined
 
 export const IncidentProvider = ({ children }: { children: ReactNode }) => {
   // Use the data fetching hook that includes client_id restrictions
-  const { incidents, loading, error, refetchIncidents } = useIncidentData();
+  const { incidents: fetchedIncidents, loading, error, refetchIncidents } = useIncidentData();
+  
+  // Local state that syncs with fetched incidents
+  const [incidents, setIncidents] = useState<Incident[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [users] = useState<IncidentContextType['users']>([
     { 
@@ -43,6 +45,13 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
       role: 'Teacher'
     }
   ]);
+
+  // Sync local incidents state with fetched incidents
+  useEffect(() => {
+    console.log('IncidentContext: Syncing fetched incidents with context state');
+    console.log('Fetched incidents count:', fetchedIncidents.length);
+    setIncidents(fetchedIncidents);
+  }, [fetchedIncidents]);
 
   const {
     categories,

@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useIncidents } from '@/contexts/incident';
 import Layout from '@/components/layout/Layout';
 import { useIncidentFilters } from '@/hooks/useIncidentFilters';
@@ -31,12 +31,6 @@ const IncidentsList = () => {
   } = useIncidentFilters(incidents);
 
   console.log('Filtered incidents:', filteredIncidents);
-
-  // Refetch incidents when component mounts to ensure fresh data
-  useEffect(() => {
-    console.log('IncidentsList mounted, triggering refetch...');
-    refetchIncidents();
-  }, []);
 
   // Count active filters
   const activeFilterCount = Object.entries(filters).filter(([key, value]) => {
