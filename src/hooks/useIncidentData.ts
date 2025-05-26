@@ -39,10 +39,13 @@ export function useIncidentData() {
         throw new Error('No incidents data received');
       }
 
-      console.log('Fetched incidents data:', data.incidents);
+      console.log('Raw API response - incidents count:', data.incidents.length);
+      console.log('Raw incidents data:', data.incidents);
 
       // Transform the data to match our Incident type
-      const transformedIncidents: Incident[] = data.incidents.map((incident: any) => {
+      const transformedIncidents: Incident[] = data.incidents.map((incident: any, index: number) => {
+        console.log(`Processing incident ${index + 1}:`, incident.id, incident.ticket_id);
+        
         // Convert people_involved from Json[] to Person[]
         const peopleInvolved: Person[] = Array.isArray(incident.people_involved) 
           ? incident.people_involved.map((person: any) => {
@@ -134,7 +137,7 @@ export function useIncidentData() {
             })
           : [];
 
-        return {
+        const transformedIncident = {
           id: incident.id,
           ticketId: incident.ticket_id,
           type: (incident.incident_report_types?.name || 'Incident') as IncidentType,
@@ -157,7 +160,7 @@ export function useIncidentData() {
           } : undefined,
           facility: incident.facilities?.name,
           documents,
-          comments, // Use the new comments from database
+          comments,
           createdAt: new Date(incident.created_at),
           updatedAt: new Date(incident.updated_at),
           priority: incident.incident_priorities?.name as 'Low' | 'Medium' | 'High' | 'Critical' | undefined,
@@ -166,15 +169,20 @@ export function useIncidentData() {
           actionTaken: incident.action_taken || undefined,
           contributingFactor: contributingFactor.length > 0 ? contributingFactor : undefined
         };
+
+        console.log(`Transformed incident ${index + 1}:`, transformedIncident.id, transformedIncident.ticketId);
+        return transformedIncident;
       });
 
-      console.log('Transformed incidents:', transformedIncidents);
+      console.log('Total transformed incidents:', transformedIncidents.length);
+      console.log('Transformed incidents summary:', transformedIncidents.map(inc => ({ id: inc.id, ticketId: inc.ticketId, date: inc.createdAt })));
       
       // Sort incidents by creation date (newest first) to ensure new incidents appear at the top
       const sortedIncidents = transformedIncidents.sort((a, b) => 
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
       
+      console.log('Final sorted incidents count:', sortedIncidents.length);
       setIncidents(sortedIncidents);
 
     } catch (error: any) {
