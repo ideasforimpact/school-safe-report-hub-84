@@ -8,12 +8,16 @@ import IncidentFilters from '@/components/incidents/IncidentFilters';
 import IncidentsTable from '@/components/incidents/IncidentsTable';
 import { useIncidentData } from '@/hooks/useIncidentData';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
+import { RefreshCw } from 'lucide-react';
 
 const IncidentsList = () => {
   console.log('IncidentsList component rendering');
   
   const { incidents } = useIncidents();
   const { loading, error, refetchIncidents } = useIncidentData();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  
   console.log('Incidents from context:', incidents);
   console.log('Loading state:', loading);
 
@@ -44,6 +48,19 @@ const IncidentsList = () => {
     }
     return true;
   }).length;
+
+  // Handle refresh button click
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refetchIncidents();
+      console.log('Incidents refreshed successfully');
+    } catch (error) {
+      console.error('Error refreshing incidents:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   // Show loading state
   if (loading) {
@@ -105,17 +122,32 @@ const IncidentsList = () => {
           )}
         </div>
 
-        <IncidentFilters 
-          filters={filters}
-          onFilterChange={handleFilterChange}
-          onClearFilters={clearFilters}
-          toggleAdvancedFilters={toggleAdvancedFilters}
-          availableCategories={availableCategories}
-          availableSubcategories={availableSubcategories}
-          availableLocations={availableLocations}
-          availableFacilities={availableFacilities}
-          availableOwners={availableOwners}
-        />
+        <div className="flex gap-4 items-start">
+          <div className="flex-1">
+            <IncidentFilters 
+              filters={filters}
+              onFilterChange={handleFilterChange}
+              onClearFilters={clearFilters}
+              toggleAdvancedFilters={toggleAdvancedFilters}
+              availableCategories={availableCategories}
+              availableSubcategories={availableSubcategories}
+              availableLocations={availableLocations}
+              availableFacilities={availableFacilities}
+              availableOwners={availableOwners}
+            />
+          </div>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="flex items-center gap-2 mt-6"
+          >
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            {isRefreshing ? 'Refreshing...' : 'Refresh'}
+          </Button>
+        </div>
 
         <div className="overflow-x-auto w-full">
           <IncidentsTable incidents={filteredIncidents} />
