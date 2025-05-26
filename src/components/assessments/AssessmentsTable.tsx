@@ -26,7 +26,7 @@ interface Assessment {
 
 const AssessmentsTable: React.FC = () => {
   const navigate = useNavigate();
-  const { user, employee } = useAuth();
+  const { user, employeeData } = useAuth();
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [filteredAssessments, setFilteredAssessments] = useState<Assessment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,10 +40,10 @@ const AssessmentsTable: React.FC = () => {
       setError(null);
       
       console.log('Fetching assessments with user:', user);
-      console.log('Employee data:', employee);
+      console.log('Employee data:', employeeData);
       
-      // Get client_id from employee context or user context
-      const clientId = employee?.client_id || user?.clientId;
+      // Get client_id from employeeData context or user context
+      const clientId = employeeData?.clientId || user?.clientId;
       
       if (!clientId) {
         console.log('No client ID available');
@@ -99,7 +99,7 @@ const AssessmentsTable: React.FC = () => {
 
   useEffect(() => {
     fetchAssessments();
-  }, [user, employee]);
+  }, [user, employeeData]);
 
   useEffect(() => {
     let filtered = assessments;
@@ -169,7 +169,7 @@ const AssessmentsTable: React.FC = () => {
     }
   };
 
-  const clientId = employee?.client_id || user?.clientId;
+  const clientId = employeeData?.clientId || user?.clientId;
 
   if (!clientId) {
     return (
