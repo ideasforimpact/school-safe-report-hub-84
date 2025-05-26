@@ -167,11 +167,7 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
           <Button 
             onClick={handleSubmit} 
             disabled={!rootCause.trim() || !currentAction.description.trim() || contributingFactors.length === 0 || isSubmitting}
-            className="flex items-center gap-2"
           >
-            {isSubmitting && (
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-            )}
             {isSubmitting ? 'Closing...' : 'Close Incident'}
           </Button>
         </DialogFooter>
