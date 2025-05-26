@@ -33,7 +33,7 @@ const AssessmentsHeader: React.FC<AssessmentsHeaderProps> = ({ onCreateTemplate 
           className="whitespace-nowrap"
         >
           <PlusCircle className="h-4 w-4 mr-2" />
-          Create Template
+          Create Assessment
         </Button>
       </div>
     </div>
