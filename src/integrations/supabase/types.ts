@@ -72,7 +72,6 @@ export type Database = {
       }
       assessments: {
         Row: {
-          assessment_type: string
           assigned_to: string | null
           client_id: string | null
           created_at: string
@@ -86,7 +85,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          assessment_type: string
           assigned_to?: string | null
           client_id?: string | null
           created_at?: string
@@ -100,7 +98,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          assessment_type?: string
           assigned_to?: string | null
           client_id?: string | null
           created_at?: string

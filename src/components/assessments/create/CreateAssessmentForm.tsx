@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAssessment } from '@/contexts/assessment/AssessmentContext';
@@ -9,12 +10,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowLeft, Save, Loader } from 'lucide-react';
-import { assessmentTypes } from '../data/assessmentTypes';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+
 interface CreateAssessmentFormProps {
   onCancel?: () => void;
 }
+
 const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
   onCancel
 }) => {
@@ -30,17 +32,18 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
     name: '',
     description: '',
     templateId: '',
-    assessmentType: '',
     assignedTo: '',
     targetCompletionDate: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }));
   };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) {
@@ -51,10 +54,6 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
       toast.error('Please select a template');
       return;
     }
-    if (!formData.assessmentType) {
-      toast.error('Please select an assessment type');
-      return;
-    }
     if (!formData.assignedTo) {
       toast.error('Please assign the assessment to a staff member');
       return;
@@ -63,6 +62,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
       toast.error('Please set a target completion date');
       return;
     }
+
     setIsSubmitting(true);
     try {
       // Insert assessment into database
@@ -73,12 +73,13 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
         name: formData.name,
         description: formData.description || null,
         template_id: formData.templateId,
-        assessment_type: formData.assessmentType,
         assigned_to: formData.assignedTo,
         target_completion_date: formData.targetCompletionDate,
         status: 'New'
       }).select().single();
+
       if (error) throw error;
+
       console.log('Assessment created:', data);
       toast.success('Assessment created successfully');
       if (onCancel) {
@@ -93,6 +94,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
       setIsSubmitting(false);
     }
   };
+
   const handleCancel = () => {
     if (onCancel) {
       onCancel();
@@ -100,6 +102,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
       navigate('/assessments');
     }
   };
+
   if (employeesLoading) {
     return <div className="space-y-6">
         <div className="flex items-center justify-center p-8">
@@ -108,6 +111,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
         </div>
       </div>;
   }
+
   return <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
@@ -156,9 +160,6 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
                   </p>}
               </div>
 
-              {/* Assessment Type */}
-              
-
               {/* Assigned To */}
               <div className="space-y-2">
                 <Label htmlFor="assignedTo">Assign To *</Label>
@@ -199,4 +200,5 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
       </Card>
     </div>;
 };
+
 export default CreateAssessmentForm;
