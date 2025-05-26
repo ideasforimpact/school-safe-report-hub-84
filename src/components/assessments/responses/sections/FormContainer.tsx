@@ -49,7 +49,7 @@ const FormContainer = ({
         title={template.title}
         description={template.description}
         status={isCompleted ? 'Completed' : assignment.status}
-        dueDate={assignment.dueDate || assignment.target_completion_date}
+        dueDate={assignment.dueDate}
         progressPercentage={progressPercentage}
       />
       
