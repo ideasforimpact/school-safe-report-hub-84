@@ -1,9 +1,9 @@
-
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { Student } from '@/types/student';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth';
+import { fetchStudentsByClientId } from '@/services/student/fetchStudentService';
 
 interface StudentContextType {
   students: Student[];
@@ -21,24 +21,22 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const { employeeData } = useAuth();
 
-  // Fetch students using the edge function on component mount
+  // Fetch students using the new fetch service on component mount
   useEffect(() => {
     fetchStudents();
   }, []);
 
   const fetchStudents = async () => {
+    if (!employeeData?.clientId) {
+      console.log('No client ID available, skipping student fetch');
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke('student-management', {
-        method: 'GET',
-        headers: { path: 'list' }
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      setStudents(data);
+      const studentData = await fetchStudentsByClientId(employeeData.clientId);
+      setStudents(studentData);
     } catch (error) {
       console.error('Error fetching students:', error);
       toast.error('Failed to load students');
