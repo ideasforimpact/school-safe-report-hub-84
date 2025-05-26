@@ -45,18 +45,17 @@ const IncidentsList = () => {
     statuses: statusOptions.length
   });
 
-  // Count active filters
-  const activeFilterCount = Object.entries(filters).filter(([key, value]) => {
-    // Skip these properties when counting active filters
-    if (
-      key === 'showAdvancedFilters' || 
-      (typeof value === 'boolean' && value === false) ||
-      (typeof value === 'string' && value === '')
-    ) {
-      return false;
-    }
-    return true;
-  }).length;
+  // Count active basic filters only (excluding advanced filters)
+  const activeFilterCount = [
+    filters.search && filters.search.trim() !== '',
+    filters.location && filters.location !== '',
+    filters.status && filters.status !== '',
+    filters.category && filters.category !== '',
+    filters.subcategory && filters.subcategory !== '',
+    filters.priority && filters.priority !== '',
+    filters.dateFrom && filters.dateFrom !== '',
+    filters.dateTo && filters.dateTo !== ''
+  ].filter(Boolean).length;
 
   // Handle refresh button click
   const handleRefresh = async () => {
