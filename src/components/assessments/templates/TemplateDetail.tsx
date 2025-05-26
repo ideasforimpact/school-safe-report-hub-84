@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAssessment } from '@/contexts/AssessmentContext';
@@ -13,7 +12,7 @@ import { toast } from 'sonner';
 const TemplateDetail = () => {
   const { templateId } = useParams<{ templateId: string }>();
   const navigate = useNavigate();
-  const { getTemplateById, deleteTemplate } = useAssessment();
+  const { getTemplateById } = useAssessment();
   
   const [template, setTemplate] = useState(templateId ? getTemplateById(templateId) : undefined);
   
@@ -43,14 +42,6 @@ const TemplateDetail = () => {
       </div>
     );
   }
-  
-  const handleDelete = () => {
-    if (confirm('Are you sure you want to delete this template?')) {
-      deleteTemplate(template.id);
-      toast.success('Template deleted successfully');
-      navigate('/assessments/templates');
-    }
-  };
   
   const formatDate = (dateString: string) => {
     return format(new Date(dateString), 'MMMM d, yyyy');
@@ -154,19 +145,12 @@ const TemplateDetail = () => {
         </CardContent>
       </Card>
       
-      <div className="pt-4 border-t mt-8 flex justify-between">
+      <div className="pt-4 border-t mt-8">
         <Button
           variant="outline"
           onClick={() => navigate('/assessments/templates')}
         >
           Back to Templates
-        </Button>
-        
-        <Button
-          variant="destructive"
-          onClick={handleDelete}
-        >
-          Delete Template
         </Button>
       </div>
     </div>

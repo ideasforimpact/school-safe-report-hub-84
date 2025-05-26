@@ -5,7 +5,7 @@ import { useAssessment } from '@/contexts/assessment/AssessmentContext';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Plus, Edit, Trash, ClipboardList, Users, Copy } from 'lucide-react';
+import { Plus, Edit, ClipboardList, Copy } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import DuplicateTemplateDialog from './DuplicateTemplateDialog';
 
@@ -19,10 +19,7 @@ const TemplatesList: React.FC<TemplatesListProps> = ({
   onEditTemplate
 }) => {
   const navigate = useNavigate();
-  const {
-    templates,
-    deleteTemplate
-  } = useAssessment();
+  const { templates } = useAssessment();
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
@@ -129,20 +126,6 @@ const TemplatesList: React.FC<TemplatesListProps> = ({
                           onClick={(e) => handleEditClick(template.id, e)}
                         >
                           <Edit className="h-4 w-4" />
-                        </Button>
-                        
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          className="text-red-500 hover:text-red-700" 
-                          onClick={e => {
-                            e.stopPropagation();
-                            if (confirm('Are you sure you want to delete this template?')) {
-                              deleteTemplate(template.id);
-                            }
-                          }}
-                        >
-                          <Trash className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>
