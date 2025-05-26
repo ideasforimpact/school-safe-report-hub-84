@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FileText, Download, Eye, ImageIcon, Video, File } from 'lucide-react';
@@ -46,14 +45,14 @@ const SupportingDocuments: React.FC<SupportingDocumentsProps> = ({ documents }) 
     }
   };
 
-  const handleDownload = (document: Document) => {
+  const handleDownload = (doc: Document) => {
     try {
-      const link = document.createElement('a');
-      link.href = document.data;
-      link.download = document.name || 'document';
-      document.body.appendChild(link);
+      const link = window.document.createElement('a');
+      link.href = doc.data;
+      link.download = doc.name || 'document';
+      window.document.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
+      window.document.body.removeChild(link);
     } catch (error) {
       console.error('Error downloading document:', error);
     }
