@@ -16,7 +16,7 @@ const requiredFields: (keyof RawStudentData)[] = [
 /**
  * Validate Excel/CSV data to ensure all required fields are present and valid
  */
-export const validateExcelData = async (data: RawStudentData[], clientId?: string): Promise<string[]> => {
+export const validateExcelData = async (data: RawStudentData[]): Promise<string[]> => {
   const errors: string[] = [];
   
   if (!data || data.length === 0) {
@@ -89,12 +89,6 @@ export const validateExcelData = async (data: RawStudentData[], clientId?: strin
   }
 
   try {
-    // Prepare query params for client_id
-    const queryParams = new URLSearchParams();
-    if (clientId) {
-      queryParams.append('client_id', clientId);
-    }
-
     // Use the bulk validation endpoint to validate all relationships at once
     const { data: validationResult, error: validationError } = await supabase.functions.invoke('student-management', {
       method: 'POST',
@@ -106,8 +100,7 @@ export const validateExcelData = async (data: RawStudentData[], clientId?: strin
           grade: String(row.grade),
           section: String(row.section),
           campus: String(row.campus)
-        })),
-        query: queryParams.toString()
+        }))
       }
     });
 

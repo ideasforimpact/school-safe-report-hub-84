@@ -528,11 +528,8 @@ const ReportIncident = () => {
                 <Button 
                   type="submit" 
                   disabled={isSubmitting}
-                  className="px-6 bg-blue-600 hover:bg-blue-700 flex items-center gap-2"
+                  className="px-6 bg-blue-600 hover:bg-blue-700"
                 >
-                  {isSubmitting && (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  )}
                   {isSubmitting ? (isEditMode ? "Saving..." : "Submitting...") : (isEditMode ? "Save Changes" : "Submit Report")}
                 </Button>
               </CardFooter>

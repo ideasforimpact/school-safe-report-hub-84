@@ -1,3 +1,4 @@
+
 import { toast } from 'sonner';
 import { Student } from '@/types/student';
 import { RawStudentData, ImportResult } from './types/importTypes';
@@ -7,7 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
  * Process the raw student data from Excel/CSV and add valid students to the system
  * Handles both new student insertion and existing student updates
  */
-export const processStudentData = async (rawData: RawStudentData[], clientId?: string): Promise<ImportResult> => {
+export const processStudentData = async (rawData: RawStudentData[]): Promise<ImportResult> => {
   const result: ImportResult = {
     addedStudents: [],
     successCount: 0,
@@ -23,16 +24,10 @@ export const processStudentData = async (rawData: RawStudentData[], clientId?: s
     const studentIds = rawData.map(row => String(row.studentId));
     
     // Fetch all existing students matching these IDs in a single query
-    let query = supabase
+    const { data: existingStudents, error: fetchError } = await supabase
       .from('students')
       .select('id, student_id')
       .in('student_id', studentIds);
-    
-    if (clientId) {
-      query = query.eq('client_id', clientId);
-    }
-    
-    const { data: existingStudents, error: fetchError } = await query;
       
     if (fetchError) {
       console.error('Error fetching existing students:', fetchError);
@@ -75,8 +70,7 @@ export const processStudentData = async (rawData: RawStudentData[], clientId?: s
           name: String(row.name),
           grade: String(row.grade),
           section: String(row.section),
-          campus: String(row.campus),
-          client_id: clientId
+          campus: String(row.campus)
         };
         
         const studentIdLower = studentData.student_id.toLowerCase();
@@ -124,18 +118,12 @@ export const processStudentData = async (rawData: RawStudentData[], clientId?: s
     
     // Execute bulk update operation if needed
     if (studentsToUpdate.length > 0) {
-      // Prepare query params for client_id
-      const queryParams = new URLSearchParams();
-      if (clientId) {
-        queryParams.append('client_id', clientId);
-      }
-
+      // Supabase doesn't support bulk upserts with multiple ids, so we need to use the edge function
       const { data: updatedData, error: updateError } = await supabase.functions.invoke('student-management', {
         method: 'POST',
         headers: { path: 'bulk-update' },
         body: {
-          students: studentsToUpdate,
-          query: queryParams.toString()
+          students: studentsToUpdate
         }
       });
         

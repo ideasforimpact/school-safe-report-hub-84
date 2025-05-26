@@ -29,15 +29,9 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
   const fetchStudents = async () => {
     setIsLoading(true);
     try {
-      const queryParams = new URLSearchParams();
-      if (employeeData?.clientId) {
-        queryParams.append('client_id', employeeData.clientId);
-      }
-
       const { data, error } = await supabase.functions.invoke('student-management', {
         method: 'GET',
-        headers: { path: 'list' },
-        body: queryParams.toString() ? { query: queryParams.toString() } : undefined
+        headers: { path: 'list' }
       });
 
       if (error) {
@@ -55,16 +49,14 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
 
   const addStudent = async (student: Omit<Student, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
-      const queryParams = new URLSearchParams();
-      if (employeeData?.clientId) {
-        queryParams.append('client_id', employeeData.clientId);
-      }
+      // Add client_id to the student data
+      const studentWithClientId = {
+        ...student,
+        client_id: employeeData?.clientId
+      };
 
       const { data, error } = await supabase.functions.invoke('student-management', {
-        body: { 
-          ...student,
-          query: queryParams.toString()
-        },
+        body: studentWithClientId,
         method: 'POST',
         headers: { path: 'create' }
       });
@@ -83,16 +75,14 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
 
   const updateStudent = async (id: string, updates: Partial<Student>) => {
     try {
-      const queryParams = new URLSearchParams();
-      if (employeeData?.clientId) {
-        queryParams.append('client_id', employeeData.clientId);
-      }
+      // Add client_id to the updates if it's not present
+      const updatesWithClientId = {
+        ...updates,
+        client_id: employeeData?.clientId
+      };
 
       const { data, error } = await supabase.functions.invoke('student-management', {
-        body: { 
-          ...updates,
-          query: queryParams.toString()
-        },
+        body: updatesWithClientId,
         method: 'PUT',
         headers: { path: `update`, id }
       });
@@ -115,15 +105,11 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
 
   const deleteStudent = async (id: string) => {
     try {
-      const queryParams = new URLSearchParams();
-      if (employeeData?.clientId) {
-        queryParams.append('client_id', employeeData.clientId);
-      }
-
+      // Include client_id in the delete request
       const { error } = await supabase.functions.invoke('student-management', {
         body: { 
           id,
-          query: queryParams.toString()
+          client_id: employeeData?.clientId
         },
         method: 'DELETE',
         headers: { path: `delete`, id }
