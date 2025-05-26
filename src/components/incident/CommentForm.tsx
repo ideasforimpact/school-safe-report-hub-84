@@ -128,7 +128,14 @@ const CommentForm: React.FC<CommentFormProps> = ({
               Cancel
             </Button>
           </DialogClose>
-          <Button type="submit" disabled={isLoading || !commentText.trim()}>
+          <Button 
+            type="submit" 
+            disabled={isLoading || !commentText.trim()}
+            className="flex items-center gap-2"
+          >
+            {isLoading && (
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+            )}
             {isLoading ? 'Adding...' : submitLabel}
           </Button>
         </DialogFooter>
