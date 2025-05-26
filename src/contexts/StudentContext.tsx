@@ -29,9 +29,19 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
   const fetchStudents = async () => {
     setIsLoading(true);
     try {
+      if (!employeeData?.clientId) {
+        throw new Error('Client ID is required to fetch students');
+      }
+
       const { data, error } = await supabase.functions.invoke('student-management', {
-        method: 'GET',
-        headers: { path: 'list' }
+        method: 'POST',
+        headers: { 
+          path: 'list',
+          'Content-Type': 'application/json'
+        },
+        body: {
+          client_id: employeeData.clientId
+        }
       });
 
       if (error) {
@@ -49,16 +59,23 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
 
   const addStudent = async (student: Omit<Student, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
+      if (!employeeData?.clientId) {
+        throw new Error('Client ID is required to add student');
+      }
+
       // Add client_id to the student data
       const studentWithClientId = {
         ...student,
-        client_id: employeeData?.clientId
+        client_id: employeeData.clientId
       };
 
       const { data, error } = await supabase.functions.invoke('student-management', {
         body: studentWithClientId,
         method: 'POST',
-        headers: { path: 'create' }
+        headers: { 
+          path: 'create',
+          'Content-Type': 'application/json'
+        }
       });
 
       if (error) {
@@ -75,16 +92,24 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
 
   const updateStudent = async (id: string, updates: Partial<Student>) => {
     try {
-      // Add client_id to the updates if it's not present
+      if (!employeeData?.clientId) {
+        throw new Error('Client ID is required to update student');
+      }
+
+      // Add client_id to the updates
       const updatesWithClientId = {
         ...updates,
-        client_id: employeeData?.clientId
+        client_id: employeeData.clientId
       };
 
       const { data, error } = await supabase.functions.invoke('student-management', {
         body: updatesWithClientId,
         method: 'PUT',
-        headers: { path: `update`, id }
+        headers: { 
+          path: 'update', 
+          id,
+          'Content-Type': 'application/json'
+        }
       });
 
       if (error) {
@@ -105,14 +130,21 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
 
   const deleteStudent = async (id: string) => {
     try {
-      // Include client_id in the delete request
+      if (!employeeData?.clientId) {
+        throw new Error('Client ID is required to delete student');
+      }
+
+      // Include client_id in the delete request body
       const { error } = await supabase.functions.invoke('student-management', {
         body: { 
-          id,
-          client_id: employeeData?.clientId
+          client_id: employeeData.clientId
         },
         method: 'DELETE',
-        headers: { path: `delete`, id }
+        headers: { 
+          path: 'delete', 
+          id,
+          'Content-Type': 'application/json'
+        }
       });
 
       if (error) {
