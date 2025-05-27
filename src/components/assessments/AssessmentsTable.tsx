@@ -358,6 +358,10 @@ const AssessmentsTable: React.FC = () => {
     setViewDialogOpen(true);
   };
 
+  const isAnswerButtonEnabled = (status: string) => {
+    return status === 'New' || status === 'Draft';
+  };
+
   if (!clientId) {
     return (
       <Card>
@@ -569,7 +573,12 @@ const AssessmentsTable: React.FC = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => handleAnswerQuestions(assessment.assessment_id)}
-                          className="text-blue-600 hover:text-blue-700"
+                          disabled={!isAnswerButtonEnabled(assessment.status)}
+                          className={`${
+                            isAnswerButtonEnabled(assessment.status)
+                              ? 'text-blue-600 hover:text-blue-700'
+                              : 'text-gray-400 cursor-not-allowed opacity-50'
+                          }`}
                         >
                           <FileText className="h-4 w-4 mr-1" />
                           Answer
