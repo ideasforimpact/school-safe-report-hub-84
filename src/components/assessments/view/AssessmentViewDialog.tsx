@@ -257,7 +257,7 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId }: AssessmentVi
 
   const isAssessmentCompleted = assessment?.status === 'Completed' || assessment?.status === 'Submitted';
 
-  const isAnswerButtonEnabled = assessment?.status === 'New' || assessment?.status === 'Draft';
+  const isAnswerButtonEnabled = assessment?.status === 'New' || assessment?.status === 'Draft' || assessment?.status === 'Submitted';
 
   if (!open) return null;
 
