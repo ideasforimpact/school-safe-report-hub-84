@@ -27,9 +27,9 @@ const AssessmentAnswerContainer = () => {
     return <LoadingSpinner />;
   }
 
-  if (error || !assessment || !template) {
-    return <ErrorDisplay error={error} />;
-  }
+  // if (error || !assessment || !template) {
+  //   return <ErrorDisplay error={error} />;
+  // }
 
   return (
     <motion.div
