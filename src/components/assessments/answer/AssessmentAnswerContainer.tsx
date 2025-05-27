@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, FileText, Clock } from 'lucide-react';
+import { ArrowLeft, FileText, Clock, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -60,11 +60,11 @@ const AssessmentAnswerContainer = () => {
               <div className="h-6 w-px bg-gray-300" />
               <div className="flex items-center space-x-2">
                 <FileText className="h-5 w-5 text-blue-600" />
-                <span className="font-medium text-gray-900">{template.title || 'Assessment'}</span>
+                <span className="font-medium text-gray-900">{template.title}</span>
               </div>
             </div>
             <Badge variant="outline" className="text-sm">
-              {assessment.status || 'New'}
+              {assessment.status}
             </Badge>
           </div>
         </div>
@@ -76,7 +76,7 @@ const AssessmentAnswerContainer = () => {
         <Card className="mb-8">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              <span>{template.title || 'Assessment'}</span>
+              <span>{template.title}</span>
               <div className="flex items-center space-x-4 text-sm text-gray-500">
                 {assessment.target_completion_date && (
                   <div className="flex items-center gap-1">
