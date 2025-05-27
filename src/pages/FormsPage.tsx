@@ -5,10 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileText, Users, Calendar, BarChart3, List, Eye, Plus, Edit, Share2 } from 'lucide-react';
+import { FileText, Calendar, BarChart3, List, Eye } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { useCustomForms } from '@/hooks/useCustomForms';
-import { toast } from 'sonner';
 
 interface FormSubmission {
   id: string;
@@ -67,18 +66,6 @@ const FormsPage = () => {
     return statusCounts;
   };
 
-  const handleCreateForm = () => {
-    toast.info('Form creation functionality coming soon!');
-  };
-
-  const handleEditForm = (formId: string) => {
-    toast.info('Form editing functionality coming soon!');
-  };
-
-  const handleShareForm = (formId: string) => {
-    toast.info('Form sharing functionality coming soon!');
-  };
-
   if (loading) {
     return (
       <Layout>
@@ -120,10 +107,6 @@ const FormsPage = () => {
                 </h1>
                 <p className="text-sm text-gray-500 mt-1">Manage your custom forms</p>
               </div>
-              <Button onClick={handleCreateForm} size="sm" className="gap-2">
-                <Plus className="h-4 w-4" />
-                New
-              </Button>
             </div>
           </div>
           
@@ -132,10 +115,7 @@ const FormsPage = () => {
               <div className="text-center py-8">
                 <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-sm font-medium text-gray-900 mb-2">No Forms Found</h3>
-                <p className="text-sm text-gray-500 mb-4">Create your first custom form to get started.</p>
-                <Button onClick={handleCreateForm} size="sm">
-                  Create Form
-                </Button>
+                <p className="text-sm text-gray-500 mb-4">No custom forms available.</p>
               </div>
             ) : (
               <div className="space-y-3">
@@ -161,37 +141,6 @@ const FormsPage = () => {
                           <Calendar className="h-3 w-3" />
                           {new Date(form.created_at).toLocaleDateString()}
                         </div>
-                        <div className="flex items-center gap-1">
-                          <FileText className="h-3 w-3" />
-                          {form.fields?.length || 0} fields
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-2 mt-3">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditForm(form.id);
-                          }}
-                          className="flex-1 gap-1"
-                        >
-                          <Edit className="h-3 w-3" />
-                          Edit
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleShareForm(form.id);
-                          }}
-                          className="flex-1 gap-1"
-                        >
-                          <Share2 className="h-3 w-3" />
-                          Share
-                        </Button>
                       </div>
                     </CardContent>
                   </Card>
@@ -223,59 +172,6 @@ const FormsPage = () => {
 
               {/* Form Details */}
               <div className="flex-1 p-6">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-sm font-medium">Form Information</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <dl className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <dt className="text-gray-500">Status:</dt>
-                          <dd>
-                            <Badge variant={selectedForm.is_active ? "default" : "secondary"}>
-                              {selectedForm.is_active ? "Active" : "Inactive"}
-                            </Badge>
-                          </dd>
-                        </div>
-                        <div className="flex justify-between">
-                          <dt className="text-gray-500">Fields:</dt>
-                          <dd>{selectedForm.fields?.length || 0}</dd>
-                        </div>
-                        <div className="flex justify-between">
-                          <dt className="text-gray-500">Created:</dt>
-                          <dd>{new Date(selectedForm.created_at).toLocaleDateString()}</dd>
-                        </div>
-                        <div className="flex justify-between">
-                          <dt className="text-gray-500">Updated:</dt>
-                          <dd>{new Date(selectedForm.updated_at).toLocaleDateString()}</dd>
-                        </div>
-                      </dl>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-sm font-medium">Form Fields</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        {selectedForm.fields?.map((field: any, index: number) => (
-                          <div key={index} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                            <span className="text-sm font-medium">{field.label}</span>
-                            <Badge variant="outline" className="text-xs">
-                              {field.type}
-                            </Badge>
-                          </div>
-                        ))}
-                        {(!selectedForm.fields || selectedForm.fields.length === 0) && (
-                          <p className="text-sm text-gray-500 italic">No fields configured</p>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-lg font-semibold">Submissions</h3>
                   <div className="flex items-center gap-2">
