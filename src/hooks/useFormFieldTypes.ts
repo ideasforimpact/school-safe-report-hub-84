@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface FormFieldType {
   id: string;
+  key: string;
   name: string;
   active: boolean;
   created_at: string;

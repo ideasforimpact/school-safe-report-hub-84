@@ -51,7 +51,7 @@ const SimpleFormBuilder: React.FC<SimpleFormBuilderProps> = ({ form, onSave, onC
   const handleAddField = () => {
     const newField: FormField = {
       id: `field_${Date.now()}`,
-      type: fieldTypes.length > 0 ? fieldTypes[0].id : 'text_input',
+      type: fieldTypes.length > 0 ? fieldTypes[0].key : 'text_input',
       label: '',
       required: false,
     };
@@ -120,9 +120,9 @@ const SimpleFormBuilder: React.FC<SimpleFormBuilderProps> = ({ form, onSave, onC
     return fieldType === 'dropdown' || fieldType === 'radio_buttons' || fieldType === 'checkboxes';
   };
 
-  const getFieldTypeName = (typeId: string) => {
-    const fieldType = fieldTypes.find(ft => ft.id === typeId);
-    return fieldType?.name || typeId;
+  const getFieldTypeName = (typeKey: string) => {
+    const fieldType = fieldTypes.find(ft => ft.key === typeKey);
+    return fieldType?.name || typeKey;
   };
 
   const handleSave = () => {
@@ -237,7 +237,7 @@ const SimpleFormBuilder: React.FC<SimpleFormBuilderProps> = ({ form, onSave, onC
                           </SelectTrigger>
                           <SelectContent>
                             {fieldTypes.map((fieldType) => (
-                              <SelectItem key={fieldType.id} value={fieldType.id}>
+                              <SelectItem key={fieldType.id} value={fieldType.key}>
                                 {fieldType.name}
                               </SelectItem>
                             ))}

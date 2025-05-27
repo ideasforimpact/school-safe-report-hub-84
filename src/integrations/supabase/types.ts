@@ -606,13 +606,15 @@ export type Database = {
           active: boolean
           created_at: string
           id: string
+          key: string
           name: string
           updated_at: string
         }
         Insert: {
           active?: boolean
           created_at?: string
-          id: string
+          id?: string
+          key: string
           name: string
           updated_at?: string
         }
@@ -620,6 +622,7 @@ export type Database = {
           active?: boolean
           created_at?: string
           id?: string
+          key?: string
           name?: string
           updated_at?: string
         }
