@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -5,7 +6,6 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FileText, Users, Calendar, BarChart3, List, Eye } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
 
 interface Form {
   id: string;
@@ -27,7 +27,6 @@ interface Submission {
 const FormsPage = () => {
   const [selectedForm, setSelectedForm] = useState<Form | null>(null);
   const [submissionsView, setSubmissionsView] = useState<'list' | 'aggregated'>('list');
-  const navigate = useNavigate();
 
   // Mock data
   const forms: Form[] = [
@@ -98,10 +97,6 @@ const FormsPage = () => {
     }, {} as Record<string, number>);
 
     return statusCounts;
-  };
-
-  const handleViewSubmission = (submissionId: string) => {
-    navigate(`/form-submission/${submissionId}`);
   };
 
   return (
@@ -220,12 +215,7 @@ const FormsPage = () => {
                               <TableCell>{submission.submittedAt}</TableCell>
                               <TableCell>{getStatusBadge(submission.status)}</TableCell>
                               <TableCell className="text-right">
-                                <Button 
-                                  variant="outline" 
-                                  size="sm" 
-                                  className="gap-1"
-                                  onClick={() => handleViewSubmission(submission.id)}
-                                >
+                                <Button variant="outline" size="sm" className="gap-1">
                                   <Eye className="h-4 w-4" />
                                   View
                                 </Button>
