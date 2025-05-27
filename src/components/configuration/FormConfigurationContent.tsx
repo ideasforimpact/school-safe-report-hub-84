@@ -90,6 +90,11 @@ const FormConfigurationContent = () => {
     setShowBuilder(true);
   };
 
+  const handlePreviewForm = (form: CustomForm) => {
+    setPreviewForm(form);
+    setPreviewDialogOpen(true);
+  };
+
   const handleSaveForm = (formData: Omit<CustomForm, 'id' | 'createdAt' | 'submissions'>) => {
     if (editingForm) {
       // Update existing form
