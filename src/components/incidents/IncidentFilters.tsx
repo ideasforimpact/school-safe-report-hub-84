@@ -74,7 +74,7 @@ const IncidentFilters = ({
         </div>
         
         <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-          <CollapsibleContent>
+          <CollapsibleContent className="space-y-0">
             <BasicFilters 
               filters={filters}
               onFilterChange={onFilterChange}
