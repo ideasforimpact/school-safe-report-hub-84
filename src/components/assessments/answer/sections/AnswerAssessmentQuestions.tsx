@@ -16,24 +16,10 @@ interface AnswerAssessmentQuestionsProps {
 }
 
 const AnswerAssessmentQuestions = ({ questions, answers, onAnswerChange }: AnswerAssessmentQuestionsProps) => {
-  console.log('Rendering questions:', questions);
-  console.log('Current answers state:', answers);
-  
-  if (!questions || questions.length === 0) {
-    return (
-      <div className="text-center py-8">
-        <p className="text-gray-500">No questions available for this assessment.</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {questions.map((question, index) => {
         const answer = answers.find(a => a.questionId === question.id);
-        
-        console.log(`Question ${index + 1}:`, question);
-        console.log(`Answer for question ${question.id}:`, answer);
         
         return (
           <AnswerQuestionCard
