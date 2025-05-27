@@ -102,8 +102,8 @@ const FormPreviewPage: React.FC = () => {
         description: "Form submitted successfully!"
       });
 
-      // Reset form or navigate away
-      setFormValues({});
+      // Redirect to forms page after successful submission
+      navigate('/forms');
       
     } catch (error) {
       console.error('Form submission error:', error);
