@@ -2,10 +2,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Plus, Edit, Trash2, Eye, EyeOff, FileText } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
@@ -19,11 +17,12 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import SimpleFormBuilder from './SimpleFormBuilder';
-import FormPreviewDialog from './FormPreviewDialog';
+import { useCustomForms } from '@/hooks/useCustomForms';
+import { toast } from '@/hooks/use-toast';
 
 interface FormField {
   id: string;
-  type: 'text' | 'textarea' | 'select' | 'radio' | 'checkbox' | 'attachment' | 'rating';
+  type: string;
   label: string;
   required: boolean;
   options?: string[];
@@ -35,54 +34,25 @@ interface FormField {
 
 interface CustomForm {
   id: string;
+  client_id: string;
   title: string;
   description: string;
   fields: FormField[];
-  isActive: boolean;
-  createdAt: string;
-  submissions: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  submissions_count: number;
 }
 
 const FormConfigurationContent = () => {
   const navigate = useNavigate();
-  
-  const [forms, setForms] = useState<CustomForm[]>([
-    {
-      id: '1',
-      title: 'Student Feedback Form',
-      description: 'Collect feedback from students about their learning experience',
-      fields: [
-        { id: '1', type: 'text', label: 'Student Name', required: true },
-        { id: '2', type: 'select', label: 'Grade', required: true, options: ['9th', '10th', '11th', '12th'] },
-        { id: '3', type: 'textarea', label: 'Feedback', required: true },
-        { id: '4', type: 'rating', label: 'Overall Satisfaction', required: true, maxRating: 5 },
-        { id: '5', type: 'attachment', label: 'Supporting Documents', required: false, allowMultiple: true, maxFiles: 3, allowedFileTypes: ['image/*', 'application/pdf'] }
-      ],
-      isActive: true,
-      createdAt: '2024-01-15',
-      submissions: 23
-    },
-    {
-      id: '2',
-      title: 'Teacher Evaluation',
-      description: 'Annual teacher performance evaluation form',
-      fields: [
-        { id: '1', type: 'text', label: 'Teacher Name', required: true },
-        { id: '2', type: 'radio', label: 'Performance Rating', required: true, options: ['Excellent', 'Good', 'Average', 'Needs Improvement'] },
-        { id: '3', type: 'rating', label: 'Teaching Effectiveness', required: true, maxRating: 10 }
-      ],
-      isActive: false,
-      createdAt: '2024-01-10',
-      submissions: 8
-    }
-  ]);
+  const { forms, loading, saveForm, updateForm, deleteForm, toggleFormActive } = useCustomForms();
   
   const [showBuilder, setShowBuilder] = useState(false);
   const [editingForm, setEditingForm] = useState<CustomForm | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [formToDelete, setFormToDelete] = useState<CustomForm | null>(null);
-  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
-  const [previewForm, setPreviewForm] = useState<CustomForm | null>(null);
 
   const handleCreateForm = () => {
     setEditingForm(null);
@@ -98,26 +68,37 @@ const FormConfigurationContent = () => {
     navigate(`/form-preview/${form.id}`);
   };
 
-  const handleSaveForm = (formData: Omit<CustomForm, 'id' | 'createdAt' | 'submissions'>) => {
-    if (editingForm) {
-      // Update existing form
-      setForms(prev => prev.map(form => 
-        form.id === editingForm.id 
-          ? { ...form, ...formData }
-          : form
-      ));
-    } else {
-      // Create new form
-      const newForm: CustomForm = {
-        ...formData,
-        id: Date.now().toString(),
-        createdAt: new Date().toISOString().split('T')[0],
-        submissions: 0
-      };
-      setForms(prev => [...prev, newForm]);
+  const handleSaveForm = async (formData: Omit<CustomForm, 'id' | 'created_at' | 'updated_at' | 'submissions_count'>) => {
+    try {
+      if (editingForm) {
+        // Update existing form
+        await updateForm(editingForm.id, formData);
+        toast({
+          title: "Success",
+          description: "Form updated successfully"
+        });
+      } else {
+        // Create new form - add default client_id and created_by
+        const newFormData = {
+          ...formData,
+          client_id: 'default-client-id', // You may want to get this from context/auth
+          created_by: null // You may want to get this from auth context
+        };
+        await saveForm(newFormData);
+        toast({
+          title: "Success", 
+          description: "Form created successfully"
+        });
+      }
+      setShowBuilder(false);
+      setEditingForm(null);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save form",
+        variant: "destructive"
+      });
     }
-    setShowBuilder(false);
-    setEditingForm(null);
   };
 
   const handleDeleteClick = (form: CustomForm) => {
@@ -125,29 +106,51 @@ const FormConfigurationContent = () => {
     setDeleteDialogOpen(true);
   };
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (formToDelete) {
-      setForms(prev => prev.filter(form => form.id !== formToDelete.id));
-      setFormToDelete(null);
-      setDeleteDialogOpen(false);
+      try {
+        await deleteForm(formToDelete.id);
+        toast({
+          title: "Success",
+          description: "Form deleted successfully"
+        });
+        setFormToDelete(null);
+        setDeleteDialogOpen(false);
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to delete form",
+          variant: "destructive"
+        });
+      }
     }
   };
 
-  const handleToggleActive = (form: CustomForm) => {
-    setForms(prev => prev.map(f => 
-      f.id === form.id ? { ...f, isActive: !f.isActive } : f
-    ));
+  const handleToggleActive = async (form: CustomForm) => {
+    try {
+      await toggleFormActive(form.id, !form.is_active);
+      toast({
+        title: "Success",
+        description: `Form ${form.is_active ? 'deactivated' : 'activated'} successfully`
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update form status",
+        variant: "destructive"
+      });
+    }
   };
 
   const getFieldTypesDisplay = (fields: FormField[]) => {
     const types = fields.map(field => {
       switch (field.type) {
-        case 'attachment': return 'File';
+        case 'file_attachment': return 'File';
         case 'rating': return 'Rating';
-        case 'textarea': return 'Text Area';
-        case 'select': return 'Dropdown';
-        case 'radio': return 'Radio';
-        case 'checkbox': return 'Checkbox';
+        case 'text_area': return 'Text Area';
+        case 'dropdown': return 'Dropdown';
+        case 'radio_buttons': return 'Radio';
+        case 'checkboxes': return 'Checkbox';
         default: return 'Text';
       }
     });
@@ -164,6 +167,18 @@ const FormConfigurationContent = () => {
           setEditingForm(null);
         }}
       />
+    );
+  }
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <p className="text-gray-500">Loading forms...</p>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
@@ -216,12 +231,12 @@ const FormConfigurationContent = () => {
                       {getFieldTypesDisplay(form.fields)}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={form.isActive ? "default" : "secondary"}>
-                        {form.isActive ? "Active" : "Inactive"}
+                      <Badge variant={form.is_active ? "default" : "secondary"}>
+                        {form.is_active ? "Active" : "Inactive"}
                       </Badge>
                     </TableCell>
-                    <TableCell>{form.submissions}</TableCell>
-                    <TableCell>{form.createdAt}</TableCell>
+                    <TableCell>{form.submissions_count}</TableCell>
+                    <TableCell>{new Date(form.created_at).toLocaleDateString()}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
                         <Button
@@ -239,7 +254,7 @@ const FormConfigurationContent = () => {
                           onClick={() => handleToggleActive(form)}
                           className="gap-1"
                         >
-                          {form.isActive ? (
+                          {form.is_active ? (
                             <>
                               <EyeOff className="h-4 w-4" />
                               Deactivate
@@ -295,12 +310,6 @@ const FormConfigurationContent = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <FormPreviewDialog 
-        form={previewForm}
-        open={previewDialogOpen}
-        onOpenChange={setPreviewDialogOpen}
-      />
     </div>
   );
 };

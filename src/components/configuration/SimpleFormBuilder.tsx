@@ -24,28 +24,33 @@ interface FormField {
 
 interface CustomForm {
   id: string;
+  client_id: string;
   title: string;
   description: string;
   fields: FormField[];
-  isActive: boolean;
-  createdAt: string;
-  submissions: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+  submissions_count: number;
 }
 
 interface SimpleFormBuilderProps {
   form?: CustomForm | null;
-  onSave: (formData: Omit<CustomForm, 'id' | 'createdAt' | 'submissions'>) => void;
+  onSave: (formData: Omit<CustomForm, 'id' | 'created_at' | 'updated_at' | 'submissions_count'>) => void;
   onCancel: () => void;
 }
 
 const SimpleFormBuilder: React.FC<SimpleFormBuilderProps> = ({ form, onSave, onCancel }) => {
   const { fieldTypes, loading: fieldTypesLoading } = useFormFieldTypes();
   
-  const [formData, setFormData] = useState<Omit<CustomForm, 'id' | 'createdAt' | 'submissions'>>({
+  const [formData, setFormData] = useState<Omit<CustomForm, 'id' | 'created_at' | 'updated_at' | 'submissions_count'>>({
+    client_id: form?.client_id || '',
     title: form?.title || '',
     description: form?.description || '',
     fields: form?.fields || [],
-    isActive: form?.isActive || true,
+    is_active: form?.is_active || true,
+    created_by: form?.created_by || null,
   });
 
   const handleAddField = () => {
