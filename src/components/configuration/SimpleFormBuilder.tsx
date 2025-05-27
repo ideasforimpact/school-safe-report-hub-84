@@ -1,18 +1,18 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Trash2, GripVertical, ArrowLeft, Paperclip, Star } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
+import { Plus, X, GripVertical } from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useFormFieldTypes } from '@/hooks/useFormFieldTypes';
 
 interface FormField {
   id: string;
-  type: 'text' | 'textarea' | 'select' | 'radio' | 'checkbox' | 'attachment' | 'rating';
+  type: string;
   label: string;
   required: boolean;
   options?: string[];
@@ -39,415 +39,311 @@ interface SimpleFormBuilderProps {
 }
 
 const SimpleFormBuilder: React.FC<SimpleFormBuilderProps> = ({ form, onSave, onCancel }) => {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [isActive, setIsActive] = useState(true);
-  const [fields, setFields] = useState<FormField[]>([]);
+  const { fieldTypes, loading: fieldTypesLoading } = useFormFieldTypes();
+  
+  const [formData, setFormData] = useState<Omit<CustomForm, 'id' | 'createdAt' | 'submissions'>>({
+    title: form?.title || '',
+    description: form?.description || '',
+    fields: form?.fields || [],
+    isActive: form?.isActive || true,
+  });
 
-  useEffect(() => {
-    if (form) {
-      setTitle(form.title);
-      setDescription(form.description);
-      setIsActive(form.isActive);
-      setFields(form.fields);
-    }
-  }, [form]);
-
-  const addField = () => {
+  const handleAddField = () => {
     const newField: FormField = {
-      id: Date.now().toString(),
-      type: 'text',
+      id: `field_${Date.now()}`,
+      type: fieldTypes.length > 0 ? fieldTypes[0].id : 'text_input',
       label: '',
-      required: false
+      required: false,
     };
-    setFields([...fields, newField]);
+    setFormData(prev => ({
+      ...prev,
+      fields: [...prev.fields, newField]
+    }));
   };
 
-  const updateField = (id: string, updates: Partial<FormField>) => {
-    setFields(fields.map(field => 
-      field.id === id ? { ...field, ...updates } : field
-    ));
+  const handleFieldChange = (fieldId: string, property: keyof FormField, value: any) => {
+    setFormData(prev => ({
+      ...prev,
+      fields: prev.fields.map(field =>
+        field.id === fieldId ? { ...field, [property]: value } : field
+      )
+    }));
   };
 
-  const removeField = (id: string) => {
-    setFields(fields.filter(field => field.id !== id));
+  const handleRemoveField = (fieldId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      fields: prev.fields.filter(field => field.id !== fieldId)
+    }));
   };
 
-  const addOption = (fieldId: string) => {
-    updateField(fieldId, {
-      options: [...(fields.find(f => f.id === fieldId)?.options || []), '']
-    });
+  const handleOptionChange = (fieldId: string, optionIndex: number, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      fields: prev.fields.map(field =>
+        field.id === fieldId
+          ? {
+              ...field,
+              options: field.options?.map((opt, idx) => idx === optionIndex ? value : opt) || []
+            }
+          : field
+      )
+    }));
   };
 
-  const updateOption = (fieldId: string, optionIndex: number, value: string) => {
-    const field = fields.find(f => f.id === fieldId);
-    if (field?.options) {
-      const newOptions = [...field.options];
-      newOptions[optionIndex] = value;
-      updateField(fieldId, { options: newOptions });
-    }
+  const handleAddOption = (fieldId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      fields: prev.fields.map(field =>
+        field.id === fieldId
+          ? { ...field, options: [...(field.options || []), ''] }
+          : field
+      )
+    }));
   };
 
-  const removeOption = (fieldId: string, optionIndex: number) => {
-    const field = fields.find(f => f.id === fieldId);
-    if (field?.options) {
-      const newOptions = field.options.filter((_, index) => index !== optionIndex);
-      updateField(fieldId, { options: newOptions });
-    }
+  const handleRemoveOption = (fieldId: string, optionIndex: number) => {
+    setFormData(prev => ({
+      ...prev,
+      fields: prev.fields.map(field =>
+        field.id === fieldId
+          ? {
+              ...field,
+              options: field.options?.filter((_, idx) => idx !== optionIndex) || []
+            }
+          : field
+      )
+    }));
+  };
+
+  const needsOptions = (fieldType: string) => {
+    return fieldType === 'dropdown' || fieldType === 'radio_buttons' || fieldType === 'checkboxes';
+  };
+
+  const getFieldTypeName = (typeId: string) => {
+    const fieldType = fieldTypes.find(ft => ft.id === typeId);
+    return fieldType?.name || typeId;
   };
 
   const handleSave = () => {
-    if (!title.trim()) return;
-    
-    onSave({
-      title: title.trim(),
-      description: description.trim(),
-      fields,
-      isActive
-    });
+    onSave(formData);
   };
 
-  const getFieldIcon = (type: string) => {
-    switch (type) {
-      case 'text': return '📝';
-      case 'textarea': return '📄';
-      case 'select': return '📋';
-      case 'radio': return '🔘';
-      case 'checkbox': return '☑️';
-      case 'attachment': return '📎';
-      case 'rating': return '⭐';
-      default: return '❓';
-    }
-  };
+  if (fieldTypesLoading) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <p className="text-gray-500">Loading form builder...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" onClick={onCancel} className="gap-2">
-          <ArrowLeft className="h-4 w-4" />
-          Back to Forms
-        </Button>
-        <div>
-          <h3 className="text-lg font-medium">
-            {form ? 'Edit Form' : 'Create New Form'}
-          </h3>
-          <p className="text-sm text-gray-500">
-            Build your custom form by adding fields and configuring their properties
-          </p>
-        </div>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>{form ? 'Edit Form' : 'Create New Form'}</CardTitle>
+          <CardDescription>
+            {form ? 'Update your form details and fields' : 'Build a custom form with various field types'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Form Basic Info */}
+          <div className="grid grid-cols-1 gap-4">
+            <div>
+              <Label htmlFor="title">Form Title</Label>
+              <Input
+                id="title"
+                value={formData.title}
+                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                placeholder="Enter form title"
+              />
+            </div>
+            <div>
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Enter form description"
+                rows={3}
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="active"
+                checked={formData.isActive}
+                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isActive: checked }))}
+              />
+              <Label htmlFor="active">Active</Label>
+            </div>
+          </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Form Configuration */}
-        <div className="lg:col-span-1 space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Form Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="title">Form Title</Label>
-                <Input
-                  id="title"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Enter form title"
-                  className="mt-1"
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Enter form description"
-                  className="mt-1"
-                  rows={3}
-                />
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <Label htmlFor="active">Active</Label>
-                <Switch
-                  id="active"
-                  checked={isActive}
-                  onCheckedChange={setIsActive}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Add Field</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Button onClick={addField} className="w-full gap-2">
-                <Plus className="h-4 w-4" />
+          {/* Form Fields */}
+          <div>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-medium">Form Fields</h3>
+              <Button onClick={handleAddField} size="sm">
+                <Plus className="h-4 w-4 mr-2" />
                 Add Field
               </Button>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
 
-        {/* Form Fields */}
-        <div className="lg:col-span-2 space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Form Fields ({fields.length})</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {fields.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <p>No fields added yet. Click "Add Field" to get started.</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {fields.map((field, index) => (
-                    <Card key={field.id} className="border-l-4 border-l-blue-500">
-                      <CardContent className="pt-4">
-                        <div className="flex items-start gap-4">
-                          <div className="flex items-center gap-2 text-gray-400">
-                            <GripVertical className="h-4 w-4" />
-                            <span className="text-lg">{getFieldIcon(field.type)}</span>
-                          </div>
-                          
-                          <div className="flex-1 space-y-3">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                              <div>
-                                <Label htmlFor={`label-${field.id}`}>Field Label</Label>
-                                <Input
-                                  id={`label-${field.id}`}
-                                  value={field.label}
-                                  onChange={(e) => updateField(field.id, { label: e.target.value })}
-                                  placeholder="Enter field label"
-                                  className="mt-1"
-                                />
-                              </div>
-                              
-                              <div>
-                                <Label htmlFor={`type-${field.id}`}>Field Type</Label>
-                                <Select
-                                  value={field.type}
-                                  onValueChange={(value) => {
-                                    const baseUpdate: Partial<FormField> = { 
-                                      type: value as FormField['type']
-                                    };
-                                    
-                                    // Set default options for fields that need them
-                                    if (['select', 'radio', 'checkbox'].includes(value)) {
-                                      baseUpdate.options = [''];
-                                    } else {
-                                      baseUpdate.options = undefined;
-                                    }
-                                    
-                                    // Set default values for rating fields
-                                    if (value === 'rating') {
-                                      baseUpdate.maxRating = 5;
-                                    } else {
-                                      baseUpdate.maxRating = undefined;
-                                    }
-                                    
-                                    // Set default values for attachment fields
-                                    if (value === 'attachment') {
-                                      baseUpdate.allowMultiple = true;
-                                      baseUpdate.maxFiles = 5;
-                                      baseUpdate.allowedFileTypes = ['image/*', 'application/pdf'];
-                                    } else {
-                                      baseUpdate.allowMultiple = undefined;
-                                      baseUpdate.maxFiles = undefined;
-                                      baseUpdate.allowedFileTypes = undefined;
-                                    }
-                                    
-                                    updateField(field.id, baseUpdate);
-                                  }}
-                                >
-                                  <SelectTrigger className="mt-1">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="text">Text Input</SelectItem>
-                                    <SelectItem value="textarea">Text Area</SelectItem>
-                                    <SelectItem value="select">Dropdown</SelectItem>
-                                    <SelectItem value="radio">Radio Buttons</SelectItem>
-                                    <SelectItem value="checkbox">Checkboxes</SelectItem>
-                                    <SelectItem value="attachment">File Attachment</SelectItem>
-                                    <SelectItem value="rating">Rating</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
+            {formData.fields.length === 0 ? (
+              <div className="text-center py-8 bg-gray-50 rounded-lg border border-dashed">
+                <p className="text-gray-500 mb-4">No fields added yet</p>
+                <Button onClick={handleAddField} variant="outline">
+                  Add Your First Field
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {formData.fields.map((field, index) => (
+                  <Card key={field.id} className="p-4">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-2">
+                        <GripVertical className="h-5 w-5 text-gray-400 cursor-move" />
+                        <span className="font-medium">Field {index + 1}</span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemoveField(field.id)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label>Field Label</Label>
+                        <Input
+                          value={field.label}
+                          onChange={(e) => handleFieldChange(field.id, 'label', e.target.value)}
+                          placeholder="Enter field label"
+                        />
+                      </div>
+                      <div>
+                        <Label>Field Type</Label>
+                        <Select
+                          value={field.type}
+                          onValueChange={(value) => handleFieldChange(field.id, 'type', value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select field type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {fieldTypes.map((fieldType) => (
+                              <SelectItem key={fieldType.id} value={fieldType.id}>
+                                {fieldType.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Switch
+                          checked={field.required}
+                          onCheckedChange={(checked) => handleFieldChange(field.id, 'required', checked)}
+                        />
+                        <Label>Required</Label>
+                      </div>
+                    </div>
+
+                    {/* Options for dropdown, radio, and checkbox fields */}
+                    {needsOptions(field.type) && (
+                      <div className="mt-4">
+                        <Label>Options</Label>
+                        <div className="space-y-2 mt-2">
+                          {(field.options || []).map((option, optionIndex) => (
+                            <div key={optionIndex} className="flex items-center gap-2">
+                              <Input
+                                value={option}
+                                onChange={(e) => handleOptionChange(field.id, optionIndex, e.target.value)}
+                                placeholder={`Option ${optionIndex + 1}`}
+                              />
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleRemoveOption(field.id, optionIndex)}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
                             </div>
-                            
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <Switch
-                                  checked={field.required}
-                                  onCheckedChange={(checked) => updateField(field.id, { required: checked })}
-                                />
-                                <Label>Required</Label>
-                              </div>
-                              
-                              <Badge variant="secondary">
-                                Field {index + 1}
-                              </Badge>
-                            </div>
-                            
-                            {/* Options for select, radio, checkbox */}
-                            {(['select', 'radio', 'checkbox'].includes(field.type)) && (
-                              <div>
-                                <div className="flex items-center justify-between mb-2">
-                                  <Label>Options</Label>
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => addOption(field.id)}
-                                    className="gap-1"
-                                  >
-                                    <Plus className="h-3 w-3" />
-                                    Add Option
-                                  </Button>
-                                </div>
-                                <div className="space-y-2">
-                                  {field.options?.map((option, optionIndex) => (
-                                    <div key={optionIndex} className="flex gap-2">
-                                      <Input
-                                        value={option}
-                                        onChange={(e) => updateOption(field.id, optionIndex, e.target.value)}
-                                        placeholder={`Option ${optionIndex + 1}`}
-                                      />
-                                      <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="icon"
-                                        onClick={() => removeOption(field.id, optionIndex)}
-                                      >
-                                        <Trash2 className="h-4 w-4" />
-                                      </Button>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                            
-                            {/* Rating configuration */}
-                            {field.type === 'rating' && (
-                              <div>
-                                <Label htmlFor={`rating-${field.id}`}>Maximum Rating</Label>
-                                <Input
-                                  id={`rating-${field.id}`}
-                                  type="number"
-                                  min="1"
-                                  max="10"
-                                  value={field.maxRating || 5}
-                                  onChange={(e) => updateField(field.id, { maxRating: parseInt(e.target.value) || 5 })}
-                                  className="mt-1"
-                                />
-                              </div>
-                            )}
-                            
-                            {/* Attachment configuration */}
-                            {field.type === 'attachment' && (
-                              <div className="space-y-3">
-                                <div className="flex items-center gap-2">
-                                  <Switch
-                                    checked={field.allowMultiple || false}
-                                    onCheckedChange={(checked) => updateField(field.id, { allowMultiple: checked })}
-                                  />
-                                  <Label>Allow Multiple Files</Label>
-                                </div>
-                                
-                                {field.allowMultiple && (
-                                  <div>
-                                    <Label htmlFor={`maxFiles-${field.id}`}>Maximum Files</Label>
-                                    <Input
-                                      id={`maxFiles-${field.id}`}
-                                      type="number"
-                                      min="1"
-                                      max="20"
-                                      value={field.maxFiles || 5}
-                                      onChange={(e) => updateField(field.id, { maxFiles: parseInt(e.target.value) || 5 })}
-                                      className="mt-1"
-                                    />
-                                  </div>
-                                )}
-                                
-                                <div>
-                                  <Label>Allowed File Types</Label>
-                                  <div className="space-y-2 mt-2">
-                                    {field.allowedFileTypes?.map((fileType, index) => (
-                                      <div key={index} className="flex gap-2">
-                                        <Input
-                                          value={fileType}
-                                          onChange={(e) => {
-                                            const newTypes = [...(field.allowedFileTypes || [])];
-                                            newTypes[index] = e.target.value;
-                                            updateField(field.id, { allowedFileTypes: newTypes });
-                                          }}
-                                          placeholder="e.g., image/*, .pdf, .doc"
-                                        />
-                                        <Button
-                                          type="button"
-                                          variant="outline"
-                                          size="icon"
-                                          onClick={() => {
-                                            const newTypes = field.allowedFileTypes?.filter((_, i) => i !== index);
-                                            updateField(field.id, { allowedFileTypes: newTypes });
-                                          }}
-                                        >
-                                          <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                      </div>
-                                    ))}
-                                    <Button
-                                      type="button"
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => {
-                                        const newTypes = [...(field.allowedFileTypes || []), ''];
-                                        updateField(field.id, { allowedFileTypes: newTypes });
-                                      }}
-                                      className="gap-1"
-                                    >
-                                      <Plus className="h-3 w-3" />
-                                      Add File Type
-                                    </Button>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                          
+                          ))}
                           <Button
                             variant="outline"
-                            size="icon"
-                            onClick={() => removeField(field.id)}
-                            className="text-red-600 hover:text-red-700"
+                            size="sm"
+                            onClick={() => handleAddOption(field.id)}
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Option
                           </Button>
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+                      </div>
+                    )}
 
-      {/* Actions */}
-      <div className="flex justify-end gap-4 pt-4 border-t">
-        <Button variant="outline" onClick={onCancel}>
-          Cancel
-        </Button>
-        <Button onClick={handleSave} disabled={!title.trim()}>
-          {form ? 'Update Form' : 'Create Form'}
-        </Button>
-      </div>
+                    {/* Rating field specific options */}
+                    {field.type === 'rating' && (
+                      <div className="mt-4">
+                        <Label>Maximum Rating</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          max="10"
+                          value={field.maxRating || 5}
+                          onChange={(e) => handleFieldChange(field.id, 'maxRating', parseInt(e.target.value))}
+                        />
+                      </div>
+                    )}
+
+                    {/* File attachment specific options */}
+                    {field.type === 'file_attachment' && (
+                      <div className="mt-4 space-y-4">
+                        <div className="flex items-center space-x-2">
+                          <Switch
+                            checked={field.allowMultiple || false}
+                            onCheckedChange={(checked) => handleFieldChange(field.id, 'allowMultiple', checked)}
+                          />
+                          <Label>Allow Multiple Files</Label>
+                        </div>
+                        {field.allowMultiple && (
+                          <div>
+                            <Label>Maximum Files</Label>
+                            <Input
+                              type="number"
+                              min="1"
+                              max="10"
+                              value={field.maxFiles || 3}
+                              onChange={(e) => handleFieldChange(field.id, 'maxFiles', parseInt(e.target.value))}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex justify-end space-x-4 pt-6 border-t">
+            <Button variant="outline" onClick={onCancel}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSave} 
+              disabled={!formData.title.trim() || formData.fields.length === 0}
+            >
+              {form ? 'Update Form' : 'Create Form'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
