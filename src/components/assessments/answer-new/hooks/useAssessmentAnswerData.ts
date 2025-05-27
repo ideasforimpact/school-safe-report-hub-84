@@ -44,6 +44,8 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
       try {
         setLoading(true);
         
+        console.log('Fetching assessment with ID:', assessmentId, 'and clientId:', clientId);
+        
         // Fetch assessment by assessment_id instead of id
         const { data: assessmentData, error: assessmentError } = await supabase
           .from('assessments')
@@ -53,9 +55,11 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
           .single();
 
         if (assessmentError) {
+          console.error('Assessment fetch error:', assessmentError);
           throw new Error('Assessment not found or access denied');
         }
 
+        console.log('Fetched assessment data:', assessmentData);
         setAssessment(assessmentData);
 
         // Fetch template
@@ -68,9 +72,11 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
             .single();
 
           if (templateError) {
+            console.error('Template fetch error:', templateError);
             throw new Error('Assessment template not found');
           }
 
+          console.log('Fetched template data:', templateData);
           setTemplate(templateData);
           
           // Parse questions from JSONB and initialize answers array
@@ -78,13 +84,29 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
             ? (templateData.questions as unknown as Question[])
             : [];
             
-          // Load existing answers if they exist
-          const existingAnswers = assessmentData.answers || [];
+          console.log('Parsed questions:', questions);
+          
+          // Load existing answers if they exist - handle different data types
+          let existingAnswers: any[] = [];
+          
+          if (assessmentData.answers) {
+            if (Array.isArray(assessmentData.answers)) {
+              existingAnswers = assessmentData.answers;
+            } else if (typeof assessmentData.answers === 'object') {
+              // If it's an object, try to extract an array
+              existingAnswers = Object.values(assessmentData.answers);
+            }
+          }
+          
           console.log('Existing answers from database:', existingAnswers);
           
           const initialAnswers = questions.map((question: Question) => {
             // Find existing answer for this question
-            const existingAnswer = existingAnswers.find((ans: any) => ans.questionId === question.id);
+            const existingAnswer = existingAnswers.find((ans: any) => 
+              ans && typeof ans === 'object' && ans.questionId === question.id
+            );
+            
+            console.log(`Question ${question.id} existing answer:`, existingAnswer);
             
             return {
               questionId: question.id,
@@ -110,6 +132,7 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
   }, [assessmentId, clientId]);
 
   const handleAnswerChange = (questionId: string, field: string, value: any) => {
+    console.log(`Updating answer for question ${questionId}, field ${field}:`, value);
     setAnswers(prev => 
       prev.map(answer => 
         answer.questionId === questionId 
@@ -146,6 +169,8 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
         attachments: answer.attachments || []
       }));
 
+      console.log('Saving draft with answers:', answersData);
+
       // Update assessment with current answers but keep status as is (or set to 'Draft' if it's 'New')
       const currentStatus = assessment.status === 'New' ? 'Draft' : assessment.status;
       
@@ -159,6 +184,7 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
         .eq('client_id', clientId);
 
       if (updateError) {
+        console.error('Draft save error:', updateError);
         throw updateError;
       }
 
@@ -210,6 +236,8 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
         attachments: answer.attachments || []
       }));
 
+      console.log('Submitting assessment with answers:', answersData);
+
       // Update assessment status, score, and answers using assessment_id
       const { error: updateError } = await supabase
         .from('assessments')
@@ -222,6 +250,7 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
         .eq('client_id', clientId);
 
       if (updateError) {
+        console.error('Submit error:', updateError);
         throw updateError;
       }
 
