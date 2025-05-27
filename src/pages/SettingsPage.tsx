@@ -3,7 +3,7 @@ import React from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { AlertTriangle, Users, GraduationCap, Building, ClipboardCheck } from "lucide-react";
+import { AlertTriangle, Users, GraduationCap, Building, ClipboardCheck, FileText } from "lucide-react";
 import { useAuth } from '@/contexts/auth';
 import IncidentConfigurationContent from '@/components/configuration/IncidentConfigurationContent';
 import UserManagement from '@/pages/UserManagement';
@@ -11,6 +11,7 @@ import StudentManagement from '@/pages/StudentManagement';
 import { EducationalStructureConfig } from '@/pages/configuration/EducationalStructureConfig';
 import { useEducationalConfigurationManagement } from '@/hooks/useEducationalConfigurationManagement';
 import AssessmentConfigurationContent from '@/components/configuration/AssessmentConfigurationContent';
+import FormConfigurationContent from '@/components/configuration/FormConfigurationContent';
 
 const SettingsPage = () => {
   const { activeTab, setActiveTab, loading, campuses, classes, sections, facilities, 
@@ -36,6 +37,10 @@ const SettingsPage = () => {
             <TabsTrigger value="assessment" className="flex items-center gap-2">
               <ClipboardCheck className="h-4 w-4" />
               <span>Assessment Configuration</span>
+            </TabsTrigger>
+            <TabsTrigger value="form" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              <span>Form Configuration</span>
             </TabsTrigger>
             <TabsTrigger value="user" className="flex items-center gap-2">
               <Users className="h-4 w-4" />
@@ -71,6 +76,18 @@ const SettingsPage = () => {
               </CardHeader>
               <CardContent>
                 <AssessmentConfigurationContent />
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="form">
+            <Card>
+              <CardHeader>
+                <CardTitle>Form Configuration</CardTitle>
+                <CardDescription>Create and manage custom forms with a simple form builder</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <FormConfigurationContent />
               </CardContent>
             </Card>
           </TabsContent>
