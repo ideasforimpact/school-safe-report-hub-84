@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -33,6 +32,7 @@ interface Assessment {
   template_id: string | null;
   created_at: string;
   score: number | null;
+  answers: any[] | null;
   creator_name?: string;
   assignee_name?: string;
   client_id: string;
@@ -70,7 +70,7 @@ const AssessmentsTable: React.FC = () => {
         return;
       }
       
-      // Fetch assessments with employee names for the specific client
+      // Fetch assessments with employee names and template data for the specific client
       const { data: assessmentsData, error } = await supabase
         .from('assessments')
         .select(`
@@ -84,9 +84,11 @@ const AssessmentsTable: React.FC = () => {
           template_id,
           created_at,
           score,
+          answers,
           client_id,
           creator:employees!assessments_created_by_fkey(first_name, last_name),
-          assignee:employees!assessments_assigned_to_fkey(first_name, last_name)
+          assignee:employees!assessments_assigned_to_fkey(first_name, last_name),
+          template:assessment_templates(questions)
         `)
         .eq('client_id', clientId)
         .order('created_at', { ascending: false });
@@ -113,6 +115,24 @@ const AssessmentsTable: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Calculate completion percentage based on answers
+  const calculateCompletionPercentage = (assessment: Assessment) => {
+    if (!assessment.answers || !assessment.template?.questions) {
+      return 0;
+    }
+
+    const answers = Array.isArray(assessment.answers) ? assessment.answers : [];
+    const totalQuestions = assessment.template.questions.length;
+    
+    if (totalQuestions === 0) return 0;
+    
+    const answeredQuestions = answers.filter(answer => 
+      answer && typeof answer === 'object' && answer.answer !== undefined
+    ).length;
+    
+    return Math.round((answeredQuestions / totalQuestions) * 100);
   };
 
   useEffect(() => {
@@ -149,6 +169,7 @@ const AssessmentsTable: React.FC = () => {
   const getStatusBadge = (status: string) => {
     const statusColors = {
       'New': 'bg-blue-100 text-blue-800',
+      'Draft': 'bg-gray-100 text-gray-800',
       'In Progress': 'bg-yellow-100 text-yellow-800',
       'Submitted': 'bg-purple-100 text-purple-800',
       'Completed': 'bg-green-100 text-green-800',
@@ -350,6 +371,7 @@ const AssessmentsTable: React.FC = () => {
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
                 <SelectItem value="new">New</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
                 <SelectItem value="in progress">In Progress</SelectItem>
                 <SelectItem value="submitted">Submitted</SelectItem>
                 <SelectItem value="completed">Completed</SelectItem>
@@ -379,7 +401,7 @@ const AssessmentsTable: React.FC = () => {
                   <TableHead>
                     <div className="flex items-center gap-1">
                       <Star className="h-4 w-4" />
-                      Score
+                      Percentage Completed
                     </div>
                   </TableHead>
                   <TableHead>
@@ -413,7 +435,7 @@ const AssessmentsTable: React.FC = () => {
                     <TableCell>
                       <div className="flex items-center gap-1">
                         <Star className="h-4 w-4 text-yellow-500" />
-                        <span className="font-medium">{formatScore(assessment.score)}</span>
+                        <span className="font-medium">{calculateCompletionPercentage(assessment)}%</span>
                       </div>
                     </TableCell>
                     <TableCell>
