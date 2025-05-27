@@ -88,7 +88,7 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId }: AssessmentVi
 
       const formattedAssessment: AssessmentData = {
         ...data,
-        answers: Array.isArray(data.answers) ? data.answers as Answer[] : [],
+        answers: Array.isArray(data.answers) ? (data.answers as unknown as Answer[]) : [],
         creator_name: data.creator 
           ? `${data.creator.first_name} ${data.creator.last_name}`
           : 'Unknown',
@@ -98,7 +98,7 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId }: AssessmentVi
         template: data.template ? {
           title: data.template.title,
           description: data.template.description,
-          questions: Array.isArray(data.template.questions) ? data.template.questions as Question[] : []
+          questions: Array.isArray(data.template.questions) ? (data.template.questions as unknown as Question[]) : []
         } : undefined
       };
 
