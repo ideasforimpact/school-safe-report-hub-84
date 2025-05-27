@@ -180,8 +180,8 @@ const SimpleFormBuilder: React.FC<SimpleFormBuilderProps> = ({ form, onSave, onC
             <div className="flex items-center space-x-2">
               <Switch
                 id="active"
-                checked={formData.isActive}
-                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isActive: checked }))}
+                checked={formData.is_active}
+                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_active: checked }))}
               />
               <Label htmlFor="active">Active</Label>
             </div>

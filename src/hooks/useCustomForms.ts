@@ -27,6 +27,20 @@ interface CustomForm {
   submissions_count: number;
 }
 
+// Database type for Supabase operations
+interface DatabaseCustomForm {
+  id?: string;
+  client_id: string;
+  title: string;
+  description?: string;
+  fields: any; // JSON in database
+  is_active: boolean;
+  created_at?: string;
+  updated_at?: string;
+  created_by?: string | null;
+  submissions_count?: number;
+}
+
 export const useCustomForms = () => {
   const [forms, setForms] = useState<CustomForm[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +55,14 @@ export const useCustomForms = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setForms(data || []);
+      
+      // Transform database data to our interface
+      const transformedForms: CustomForm[] = (data || []).map(form => ({
+        ...form,
+        fields: Array.isArray(form.fields) ? form.fields : []
+      }));
+      
+      setForms(transformedForms);
     } catch (err) {
       console.error('Error fetching forms:', err);
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -52,9 +73,19 @@ export const useCustomForms = () => {
 
   const saveForm = async (formData: Omit<CustomForm, 'id' | 'created_at' | 'updated_at' | 'submissions_count'>) => {
     try {
+      // Transform to database format
+      const dbFormData: Omit<DatabaseCustomForm, 'id' | 'created_at' | 'updated_at' | 'submissions_count'> = {
+        client_id: formData.client_id,
+        title: formData.title,
+        description: formData.description,
+        fields: formData.fields,
+        is_active: formData.is_active,
+        created_by: formData.created_by
+      };
+
       const { data, error } = await supabase
         .from('custom_forms')
-        .insert([formData])
+        .insert([dbFormData])
         .select()
         .single();
 
@@ -69,9 +100,15 @@ export const useCustomForms = () => {
 
   const updateForm = async (id: string, formData: Partial<CustomForm>) => {
     try {
+      // Transform to database format
+      const dbFormData: Partial<DatabaseCustomForm> = {
+        ...formData,
+        fields: formData.fields ? formData.fields : undefined
+      };
+
       const { data, error } = await supabase
         .from('custom_forms')
-        .update(formData)
+        .update(dbFormData)
         .eq('id', id)
         .select()
         .single();
