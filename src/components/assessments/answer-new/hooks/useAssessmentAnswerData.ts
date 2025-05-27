@@ -206,6 +206,9 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
 
       toast.success('Assessment saved as draft successfully!');
       
+      // Navigate back to assessments list page
+      navigate('/assessments');
+      
     } catch (error) {
       console.error('Error saving draft:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
@@ -275,6 +278,7 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
         description: `Your score: ${score}%`
       });
       
+      // Navigate back to assessments list page
       navigate('/assessments');
     } catch (error) {
       console.error('Error submitting assessment:', error);
