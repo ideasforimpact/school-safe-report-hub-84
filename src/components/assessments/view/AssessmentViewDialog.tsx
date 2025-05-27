@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -87,9 +86,9 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId }: AssessmentVi
 
       if (error) throw error;
 
-      const formattedAssessment = {
+      const formattedAssessment: AssessmentData = {
         ...data,
-        answers: Array.isArray(data.answers) ? data.answers : [],
+        answers: Array.isArray(data.answers) ? data.answers as Answer[] : [],
         creator_name: data.creator 
           ? `${data.creator.first_name} ${data.creator.last_name}`
           : 'Unknown',
@@ -99,7 +98,7 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId }: AssessmentVi
         template: data.template ? {
           title: data.template.title,
           description: data.template.description,
-          questions: Array.isArray(data.template.questions) ? data.template.questions : []
+          questions: Array.isArray(data.template.questions) ? data.template.questions as Question[] : []
         } : undefined
       };
 
