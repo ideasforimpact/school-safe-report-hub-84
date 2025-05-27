@@ -44,12 +44,20 @@ export const useCustomForms = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Get client_id from context or auth - for now using a default
+  // You may want to get this from your auth context or client context
+  const getClientId = () => {
+    // TODO: Replace with actual client_id from your auth/client context
+    return 'default-client-id';
+  };
+
   const fetchForms = async () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
         .from('custom_forms')
         .select('*')
+        .eq('client_id', getClientId())
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -71,9 +79,9 @@ export const useCustomForms = () => {
 
   const saveForm = async (formData: Omit<CustomForm, 'id' | 'created_at' | 'updated_at'>) => {
     try {
-      // Transform to database format
-      const dbFormData: Omit<DatabaseCustomForm, 'id' | 'created_at' | 'updated_at'> = {
-        client_id: formData.client_id,
+      const payload = {
+        operation: 'create',
+        client_id: getClientId(),
         title: formData.title,
         description: formData.description,
         fields: formData.fields,
@@ -81,15 +89,18 @@ export const useCustomForms = () => {
         created_by: formData.created_by
       };
 
-      const { data, error } = await supabase
-        .from('custom_forms')
-        .insert([dbFormData])
-        .select()
-        .single();
+      const { data, error } = await supabase.functions.invoke('custom-forms-management', {
+        body: payload
+      });
 
       if (error) throw error;
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to create form');
+      }
+
       await fetchForms(); // Refresh the list
-      return data;
+      return data.data;
     } catch (err) {
       console.error('Error saving form:', err);
       throw err;
@@ -98,22 +109,25 @@ export const useCustomForms = () => {
 
   const updateForm = async (id: string, formData: Partial<CustomForm>) => {
     try {
-      // Transform to database format
-      const dbFormData: Partial<DatabaseCustomForm> = {
-        ...formData,
-        fields: formData.fields ? formData.fields : undefined
+      const payload = {
+        operation: 'update',
+        formId: id,
+        client_id: getClientId(),
+        ...formData
       };
 
-      const { data, error } = await supabase
-        .from('custom_forms')
-        .update(dbFormData)
-        .eq('id', id)
-        .select()
-        .single();
+      const { data, error } = await supabase.functions.invoke('custom-forms-management', {
+        body: payload
+      });
 
       if (error) throw error;
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to update form');
+      }
+
       await fetchForms(); // Refresh the list
-      return data;
+      return data.data;
     } catch (err) {
       console.error('Error updating form:', err);
       throw err;
@@ -122,12 +136,22 @@ export const useCustomForms = () => {
 
   const deleteForm = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('custom_forms')
-        .delete()
-        .eq('id', id);
+      const payload = {
+        operation: 'delete',
+        formId: id,
+        client_id: getClientId()
+      };
+
+      const { data, error } = await supabase.functions.invoke('custom-forms-management', {
+        body: payload
+      });
 
       if (error) throw error;
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to delete form');
+      }
+
       await fetchForms(); // Refresh the list
     } catch (err) {
       console.error('Error deleting form:', err);
@@ -137,7 +161,23 @@ export const useCustomForms = () => {
 
   const toggleFormActive = async (id: string, isActive: boolean) => {
     try {
-      await updateForm(id, { is_active: isActive });
+      const payload = {
+        operation: isActive ? 'activate' : 'deactivate',
+        formId: id,
+        client_id: getClientId()
+      };
+
+      const { data, error } = await supabase.functions.invoke('custom-forms-management', {
+        body: payload
+      });
+
+      if (error) throw error;
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to toggle form status');
+      }
+
+      await fetchForms(); // Refresh the list
     } catch (err) {
       console.error('Error toggling form active status:', err);
       throw err;

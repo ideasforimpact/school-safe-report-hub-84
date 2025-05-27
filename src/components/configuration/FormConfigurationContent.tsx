@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -53,6 +52,12 @@ const FormConfigurationContent = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [formToDelete, setFormToDelete] = useState<CustomForm | null>(null);
 
+  // Get client_id from context or auth - for now using a default
+  // TODO: Replace with actual client_id from your auth/client context
+  const getClientId = () => {
+    return 'default-client-id';
+  };
+
   const handleCreateForm = () => {
     setEditingForm(null);
     setShowBuilder(true);
@@ -70,17 +75,21 @@ const FormConfigurationContent = () => {
   const handleSaveForm = async (formData: Omit<CustomForm, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       if (editingForm) {
-        // Update existing form
-        await updateForm(editingForm.id, formData);
+        // Update existing form - ensure client_id is included
+        const updateData = {
+          ...formData,
+          client_id: getClientId()
+        };
+        await updateForm(editingForm.id, updateData);
         toast({
           title: "Success",
           description: "Form updated successfully"
         });
       } else {
-        // Create new form - add default client_id and created_by
+        // Create new form - ensure client_id is included
         const newFormData = {
           ...formData,
-          client_id: 'default-client-id', // You may want to get this from context/auth
+          client_id: getClientId(),
           created_by: null // You may want to get this from auth context
         };
         await saveForm(newFormData);
@@ -92,9 +101,10 @@ const FormConfigurationContent = () => {
       setShowBuilder(false);
       setEditingForm(null);
     } catch (error) {
+      console.error('Form save error:', error);
       toast({
         title: "Error",
-        description: "Failed to save form",
+        description: error instanceof Error ? error.message : "Failed to save form",
         variant: "destructive"
       });
     }
