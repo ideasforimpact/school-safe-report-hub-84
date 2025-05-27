@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -6,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { FileText, Calendar, User, Star, Check, X, MessageCircle, Paperclip, Eye, Download, ExternalLink } from 'lucide-react';
+import { FileText, Calendar, User, Star, Check, X, MessageCircle, Paperclip, Eye, Download, ExternalLink, CheckCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth';
@@ -53,6 +52,7 @@ interface AssessmentData {
 const AssessmentViewDialog = ({ open, onOpenChange, assessmentId }: AssessmentViewDialogProps) => {
   const [assessment, setAssessment] = useState<AssessmentData | null>(null);
   const [loading, setLoading] = useState(false);
+  const [completing, setCompleting] = useState(false);
   const { user, employeeData } = useAuth();
   const clientId = employeeData?.clientId || user?.clientId;
 
@@ -109,6 +109,43 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId }: AssessmentVi
       toast.error('Failed to load assessment details');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCompleteAssessment = async () => {
+    if (!assessment || !clientId) {
+      toast.error('Assessment or client information is missing');
+      return;
+    }
+
+    if (assessment.status === 'Completed') {
+      toast.info('Assessment is already completed');
+      return;
+    }
+
+    try {
+      setCompleting(true);
+      
+      const { error } = await supabase
+        .from('assessments')
+        .update({ 
+          status: 'Completed',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', assessment.id)
+        .eq('client_id', clientId);
+
+      if (error) throw error;
+
+      // Update local state
+      setAssessment(prev => prev ? { ...prev, status: 'Completed' } : null);
+      
+      toast.success('Assessment marked as completed successfully');
+    } catch (error) {
+      console.error('Error completing assessment:', error);
+      toast.error('Failed to complete assessment. Please try again.');
+    } finally {
+      setCompleting(false);
     }
   };
 
@@ -221,182 +258,203 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId }: AssessmentVi
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
           </div>
         ) : assessment ? (
-          <ScrollArea className="h-full max-h-[75vh]">
-            <div className="space-y-6 p-1">
-              {/* Assessment Header */}
-              <Card>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-2">
-                      <CardTitle className="text-xl">{assessment.name}</CardTitle>
-                      <div className="flex items-center gap-4 text-sm text-gray-600">
-                        <span className="flex items-center gap-1">
-                          <FileText className="h-4 w-4" />
-                          #{assessment.assessment_id}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-4 w-4" />
-                          Created: {formatDate(assessment.created_at)}
-                        </span>
-                        {assessment.target_completion_date && (
-                          <span className="flex items-center gap-1">
-                            <Calendar className="h-4 w-4" />
-                            Due: {new Date(assessment.target_completion_date).toLocaleDateString()}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {getStatusBadge(assessment.status)}
-                      <div className="flex items-center gap-1">
-                        <Star className="h-4 w-4 text-yellow-500" />
-                        <span className="font-medium">{calculateProgress()}%</span>
-                      </div>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <span className="text-sm font-medium text-gray-500">Created By:</span>
-                      <p className="flex items-center gap-1">
-                        <User className="h-4 w-4" />
-                        {assessment.creator_name}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-sm font-medium text-gray-500">Assigned To:</span>
-                      <p className="flex items-center gap-1">
-                        <User className="h-4 w-4" />
-                        {assessment.assignee_name}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Template Info */}
-              {assessment.template && (
+          <div className="flex flex-col h-full">
+            <ScrollArea className="flex-1 max-h-[65vh]">
+              <div className="space-y-6 p-1">
+                {/* Assessment Header */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">Template: {assessment.template.title}</CardTitle>
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-2">
+                        <CardTitle className="text-xl">{assessment.name}</CardTitle>
+                        <div className="flex items-center gap-4 text-sm text-gray-600">
+                          <span className="flex items-center gap-1">
+                            <FileText className="h-4 w-4" />
+                            #{assessment.assessment_id}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-4 w-4" />
+                            Created: {formatDate(assessment.created_at)}
+                          </span>
+                          {assessment.target_completion_date && (
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-4 w-4" />
+                              Due: {new Date(assessment.target_completion_date).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {getStatusBadge(assessment.status)}
+                        <div className="flex items-center gap-1">
+                          <Star className="h-4 w-4 text-yellow-500" />
+                          <span className="font-medium">{calculateProgress()}%</span>
+                        </div>
+                      </div>
+                    </div>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-gray-600">{assessment.template.description}</p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <span className="text-sm font-medium text-gray-500">Created By:</span>
+                        <p className="flex items-center gap-1">
+                          <User className="h-4 w-4" />
+                          {assessment.creator_name}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-sm font-medium text-gray-500">Assigned To:</span>
+                        <p className="flex items-center gap-1">
+                          <User className="h-4 w-4" />
+                          {assessment.assignee_name}
+                        </p>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
-              )}
 
-              {/* Questions and Answers */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Questions & Answers</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {assessment.template?.questions.map((question, index) => {
-                    const answer = getAnswerForQuestion(question.id);
-                    const isAnswered = answer?.answer !== undefined;
-                    
-                    return (
-                      <div key={question.id} className="border-l-4 border-l-gray-200 pl-4 space-y-3">
-                        <div className="flex items-start gap-3">
-                          <span className={`flex justify-center items-center w-6 h-6 rounded-full text-sm ${
-                            isAnswered 
-                              ? "bg-green-100 text-green-700" 
-                              : "bg-gray-100 text-gray-600"
-                          }`}>
-                            {isAnswered ? <Check className="h-3 w-3" /> : index + 1}
-                          </span>
-                          <div className="flex-1">
-                            <p className="font-medium">
-                              {question.text}
-                              {question.required && <span className="text-red-500 ml-1">*</span>}
-                            </p>
-                            
-                            {/* Answer */}
-                            <div className="mt-2">
-                              {isAnswered ? (
-                                <div className="flex items-center gap-2">
-                                  {answer.answer ? (
-                                    <div className="flex items-center gap-1 text-green-600">
-                                      <Check className="h-4 w-4" />
-                                      <span className="font-medium">Yes</span>
-                                    </div>
-                                  ) : (
-                                    <div className="flex items-center gap-1 text-red-600">
-                                      <X className="h-4 w-4" />
-                                      <span className="font-medium">No</span>
-                                    </div>
-                                  )}
+                {/* Template Info */}
+                {assessment.template && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">Template: {assessment.template.title}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-gray-600">{assessment.template.description}</p>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Questions and Answers */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Questions & Answers</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {assessment.template?.questions.map((question, index) => {
+                      const answer = getAnswerForQuestion(question.id);
+                      const isAnswered = answer?.answer !== undefined;
+                      
+                      return (
+                        <div key={question.id} className="border-l-4 border-l-gray-200 pl-4 space-y-3">
+                          <div className="flex items-start gap-3">
+                            <span className={`flex justify-center items-center w-6 h-6 rounded-full text-sm ${
+                              isAnswered 
+                                ? "bg-green-100 text-green-700" 
+                                : "bg-gray-100 text-gray-600"
+                            }`}>
+                              {isAnswered ? <Check className="h-3 w-3" /> : index + 1}
+                            </span>
+                            <div className="flex-1">
+                              <p className="font-medium">
+                                {question.text}
+                                {question.required && <span className="text-red-500 ml-1">*</span>}
+                              </p>
+                              
+                              {/* Answer */}
+                              <div className="mt-2">
+                                {isAnswered ? (
+                                  <div className="flex items-center gap-2">
+                                    {answer.answer ? (
+                                      <div className="flex items-center gap-1 text-green-600">
+                                        <Check className="h-4 w-4" />
+                                        <span className="font-medium">Yes</span>
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center gap-1 text-red-600">
+                                        <X className="h-4 w-4" />
+                                        <span className="font-medium">No</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-400 italic">Not answered</span>
+                                )}
+                              </div>
+
+                              {/* Comment */}
+                              {answer?.comment && (
+                                <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <MessageCircle className="h-4 w-4 text-blue-600" />
+                                    <span className="text-sm font-medium text-blue-800">Comment</span>
+                                  </div>
+                                  <p className="text-sm text-gray-700">{answer.comment}</p>
                                 </div>
-                              ) : (
-                                <span className="text-gray-400 italic">Not answered</span>
+                              )}
+
+                              {/* Attachments */}
+                              {answer?.attachments && answer.attachments.length > 0 && (
+                                <div className="mt-3">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <Paperclip className="h-4 w-4 text-gray-600" />
+                                    <span className="text-sm font-medium text-gray-700">Attachments</span>
+                                  </div>
+                                  <div className="space-y-2">
+                                    {answer.attachments.map((attachment, idx) => (
+                                      <div key={idx} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border">
+                                        <FileText className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                                        <span className="text-sm flex-1 truncate" title={attachment.name}>
+                                          {attachment.name}
+                                        </span>
+                                        <div className="flex items-center gap-1">
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => openDocumentViewer(attachment)}
+                                            className="h-8 w-8 p-0 hover:bg-blue-100"
+                                            title="View document"
+                                          >
+                                            <ExternalLink className="h-4 w-4 text-blue-600" />
+                                          </Button>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => downloadAttachment(attachment)}
+                                            className="h-8 w-8 p-0 hover:bg-green-100"
+                                            title="Download document"
+                                          >
+                                            <Download className="h-4 w-4 text-green-600" />
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
                               )}
                             </div>
-
-                            {/* Comment */}
-                            {answer?.comment && (
-                              <div className="mt-3 p-3 bg-blue-50 rounded-lg">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <MessageCircle className="h-4 w-4 text-blue-600" />
-                                  <span className="text-sm font-medium text-blue-800">Comment</span>
-                                </div>
-                                <p className="text-sm text-gray-700">{answer.comment}</p>
-                              </div>
-                            )}
-
-                            {/* Attachments */}
-                            {answer?.attachments && answer.attachments.length > 0 && (
-                              <div className="mt-3">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <Paperclip className="h-4 w-4 text-gray-600" />
-                                  <span className="text-sm font-medium text-gray-700">Attachments</span>
-                                </div>
-                                <div className="space-y-2">
-                                  {answer.attachments.map((attachment, idx) => (
-                                    <div key={idx} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border">
-                                      <FileText className="h-4 w-4 text-gray-500 flex-shrink-0" />
-                                      <span className="text-sm flex-1 truncate" title={attachment.name}>
-                                        {attachment.name}
-                                      </span>
-                                      <div className="flex items-center gap-1">
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() => openDocumentViewer(attachment)}
-                                          className="h-8 w-8 p-0 hover:bg-blue-100"
-                                          title="View document"
-                                        >
-                                          <ExternalLink className="h-4 w-4 text-blue-600" />
-                                        </Button>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          onClick={() => downloadAttachment(attachment)}
-                                          className="h-8 w-8 p-0 hover:bg-green-100"
-                                          title="Download document"
-                                        >
-                                          <Download className="h-4 w-4 text-green-600" />
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
                           </div>
+                          
+                          {index < assessment.template.questions.length - 1 && (
+                            <Separator className="mt-4" />
+                          )}
                         </div>
-                        
-                        {index < assessment.template.questions.length - 1 && (
-                          <Separator className="mt-4" />
-                        )}
-                      </div>
-                    );
-                  })}
-                </CardContent>
-              </Card>
+                      );
+                    })}
+                  </CardContent>
+                </Card>
+              </div>
+            </ScrollArea>
+
+            {/* Complete Assessment Button */}
+            <div className="border-t pt-4 mt-4">
+              <div className="flex justify-end">
+                <Button
+                  onClick={handleCompleteAssessment}
+                  disabled={completing || assessment.status === 'Completed'}
+                  className={`flex items-center gap-2 ${
+                    assessment.status === 'Completed' 
+                      ? 'bg-green-600 hover:bg-green-700' 
+                      : 'bg-blue-600 hover:bg-blue-700'
+                  }`}
+                >
+                  <CheckCircle className="h-4 w-4" />
+                  {completing ? 'Completing...' : 
+                   assessment.status === 'Completed' ? 'Assessment Completed' : 'Complete Assessment'}
+                </Button>
+              </div>
             </div>
-          </ScrollArea>
+          </div>
         ) : (
           <div className="flex items-center justify-center p-8">
             <p className="text-gray-500">Assessment not found</p>
