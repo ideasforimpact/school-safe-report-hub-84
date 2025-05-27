@@ -257,6 +257,8 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId }: AssessmentVi
 
   const isAssessmentCompleted = assessment?.status === 'Completed' || assessment?.status === 'Submitted';
 
+  const isAnswerButtonEnabled = assessment?.status === 'New' || assessment?.status === 'Draft';
+
   if (!open) return null;
 
   return (
@@ -469,15 +471,15 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId }: AssessmentVi
                 <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
                   <AlertDialogTrigger asChild>
                     <Button
-                      disabled={completing || isAssessmentCompleted}
+                      disabled={completing || !isAnswerButtonEnabled}
                       className={`flex items-center gap-2 ${
-                        isAssessmentCompleted 
-                          ? 'bg-green-600 hover:bg-green-700' 
+                        !isAnswerButtonEnabled 
+                          ? 'bg-gray-400 hover:bg-gray-400 cursor-not-allowed' 
                           : 'bg-blue-600 hover:bg-blue-700'
                       }`}
                     >
                       <CheckCircle className="h-4 w-4" />
-                      {isAssessmentCompleted ? 'Assessment Completed' : 'Complete Assessment'}
+                      {!isAnswerButtonEnabled ? 'Assessment Completed' : 'Complete Assessment'}
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
