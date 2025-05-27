@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -193,6 +192,7 @@ const AssessmentsTable: React.FC = () => {
 
     try {
       console.log('Attempting to delete assessment:', assessmentToDelete);
+      console.log('Using assessment ID for deletion:', assessmentToDelete.id);
       
       const { error } = await supabase
         .from('assessments')
@@ -207,28 +207,29 @@ const AssessmentsTable: React.FC = () => {
 
       console.log('Assessment deleted successfully from database');
       
-      // Immediately remove from local state for instant UI update
+      // Immediately remove from local state using the same ID field
       const updatedAssessments = assessments.filter(a => a.id !== assessmentToDelete.id);
       setAssessments(updatedAssessments);
-      setFilteredAssessments(updatedAssessments.filter(assessment => {
-        // Apply existing filters
-        let filtered = true;
-        
-        if (searchTerm) {
-          filtered = filtered && (
-            assessment.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            assessment.creator_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            assessment.assignee_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            assessment.assessment_id.toString().includes(searchTerm)
-          );
-        }
+      
+      // Re-apply filters to the updated list
+      let filteredList = updatedAssessments;
+      
+      if (searchTerm) {
+        filteredList = filteredList.filter(assessment =>
+          assessment.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          assessment.creator_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          assessment.assignee_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          assessment.assessment_id.toString().includes(searchTerm)
+        );
+      }
 
-        if (statusFilter !== 'all') {
-          filtered = filtered && assessment.status.toLowerCase() === statusFilter.toLowerCase();
-        }
-
-        return filtered;
-      }));
+      if (statusFilter !== 'all') {
+        filteredList = filteredList.filter(assessment => 
+          assessment.status.toLowerCase() === statusFilter.toLowerCase()
+        );
+      }
+      
+      setFilteredAssessments(filteredList);
 
       toast.success('Assessment deleted successfully');
       
