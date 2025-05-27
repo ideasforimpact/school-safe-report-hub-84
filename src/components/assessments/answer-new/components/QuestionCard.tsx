@@ -58,7 +58,7 @@ const QuestionCard = ({ question, answer, index, onAnswerChange }: QuestionCardP
             <div className="flex items-center gap-2">
               {getAnswerIcon()}
               {question.required && (
-                <Badge variant="destructive" size="sm">Required</Badge>
+                <Badge variant="destructive">Required</Badge>
               )}
             </div>
           </div>
