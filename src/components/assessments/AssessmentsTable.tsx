@@ -156,7 +156,7 @@ const AssessmentsTable: React.FC = () => {
   };
 
   const handleAnswerQuestions = (assessmentId: string) => {
-    navigate(`/assessments/answer/${assessmentId}`);
+    navigate(`/assessment/answer/${assessmentId}`);
   };
 
   const handleEdit = (assessmentId: string) => {

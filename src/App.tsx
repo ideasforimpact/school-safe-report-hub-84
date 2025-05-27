@@ -34,6 +34,7 @@ import FacilityManagement from '@/pages/FacilityManagement';
 import AssessmentsPage from '@/pages/AssessmentsPage';
 import AssessmentResponsePage from '@/pages/AssessmentResponsePage';
 import AnswerAssessmentPage from '@/pages/AnswerAssessmentPage';
+import AssessmentAnswerPage from '@/pages/AssessmentAnswerPage';
 import IncidentConfiguration from '@/pages/IncidentConfiguration';
 import ProfilePage from '@/pages/ProfilePage';
 
@@ -114,9 +115,10 @@ function App() {
                     <Route path="/assessments/templates/:templateId/bulk-assign" element={<AssessmentsPage />} />
                     <Route path="/assessments/assignments" element={<AssessmentsPage />} />
                     <Route path="/assessments/results" element={<AssessmentsPage />} />
-                    {/* New route for answering assessments */}
+                    {/* New route for answering assessments with new design */}
+                    <Route path="/assessment/answer/:assessmentId" element={<AssessmentAnswerPage />} />
+                    {/* Keep existing routes for backward compatibility */}
                     <Route path="/assessments/answer/:assessmentId" element={<AnswerAssessmentPage />} />
-                    {/* Existing assessment response route */}
                     <Route path="/assessments/response/:assessmentId" element={<AssessmentResponsePage />} />
                     <Route path="/assessments/respond/:assignmentId" element={<AssessmentResponsePage />} />
 
@@ -151,8 +153,9 @@ function App() {
                     <Route path="/backoffice/assessments/assignments" element={<BackofficeWrapper component={AssessmentsPage} />} />
                     <Route path="/backoffice/assessments/results" element={<BackofficeWrapper component={AssessmentsPage} />} />
                     {/* New backoffice assessment answer route */}
-                    <Route path="/backoffice/assessments/answer/:assessmentId" element={<BackofficeWrapper component={AnswerAssessmentPage} />} />
+                    <Route path="/backoffice/assessment/answer/:assessmentId" element={<BackofficeWrapper component={AssessmentAnswerPage} />} />
                     {/* Existing backoffice assessment response routes */}
+                    <Route path="/backoffice/assessments/answer/:assessmentId" element={<BackofficeWrapper component={AnswerAssessmentPage} />} />
                     <Route path="/backoffice/assessments/response/:assessmentId" element={<BackofficeWrapper component={AssessmentResponsePage} />} />
                     <Route path="/backoffice/assessments/respond/:assignmentId" element={<BackofficeWrapper component={AssessmentResponsePage} />} />
 
