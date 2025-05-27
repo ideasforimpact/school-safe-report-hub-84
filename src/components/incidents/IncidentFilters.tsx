@@ -37,7 +37,7 @@ const IncidentFilters = ({
   locationOptions = [],
   statusOptions = []
 }: IncidentFiltersProps) => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
 
   // Count active basic filters only
   const activeFilterCount = [
