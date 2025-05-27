@@ -44,11 +44,11 @@ export const useAnswerAssessmentForm = () => {
       try {
         setLoading(true);
         
-        // Fetch assessment
+        // Fetch assessment by assessment_id instead of id
         const { data: assessmentData, error: assessmentError } = await supabase
           .from('assessments')
           .select('*')
-          .eq('id', assessmentId)
+          .eq('assessment_id', parseInt(assessmentId))
           .eq('client_id', clientId)
           .single();
 
@@ -149,14 +149,16 @@ export const useAnswerAssessmentForm = () => {
       const yesAnswers = answers.filter(a => a.answer === true).length;
       const score = totalQuestions > 0 ? Math.round((yesAnswers / totalQuestions) * 100) : 0;
 
-      // Update assessment status and score
+      // Update assessment status, score, and answers using assessment_id
       const { error: updateError } = await supabase
         .from('assessments')
         .update({ 
           status: 'Submitted',
-          score: score
+          score: score,
+          answers: answers
         })
-        .eq('id', assessment.id);
+        .eq('assessment_id', parseInt(assessmentId!))
+        .eq('client_id', clientId);
 
       if (updateError) {
         throw updateError;

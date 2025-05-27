@@ -25,11 +25,12 @@ export const useAssignmentData = () => {
         try {
           setLoading(true);
           
-          // Fetch assessment from Supabase
+          // Fetch assessment from Supabase using assessment_id
           const { data: assessmentData, error: assessmentError } = await supabase
             .from('assessments')
             .select(`
               id,
+              assessment_id,
               name,
               description,
               status,
@@ -40,7 +41,7 @@ export const useAssignmentData = () => {
               score,
               client_id
             `)
-            .eq('id', assessmentId)
+            .eq('assessment_id', parseInt(assessmentId))
             .eq('client_id', clientId)
             .single();
 

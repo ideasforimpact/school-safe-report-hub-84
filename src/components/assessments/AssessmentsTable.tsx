@@ -13,6 +13,7 @@ import { useAuth } from '@/contexts/auth';
 
 interface Assessment {
   id: string;
+  assessment_id: number;
   name: string;
   status: string;
   target_completion_date: string | null;
@@ -61,6 +62,7 @@ const AssessmentsTable: React.FC = () => {
         .from('assessments')
         .select(`
           id,
+          assessment_id,
           name,
           status,
           target_completion_date,
@@ -116,7 +118,8 @@ const AssessmentsTable: React.FC = () => {
       filtered = filtered.filter(assessment =>
         assessment.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         assessment.creator_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        assessment.assignee_name?.toLowerCase().includes(searchTerm.toLowerCase())
+        assessment.assignee_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        assessment.assessment_id.toString().includes(searchTerm)
       );
     }
 
@@ -155,16 +158,16 @@ const AssessmentsTable: React.FC = () => {
     return score.toString();
   };
 
-  const handleAnswerQuestions = (assessmentId: string) => {
+  const handleAnswerQuestions = (assessmentId: number) => {
     navigate(`/assessment/answer/${assessmentId}`);
   };
 
-  const handleEdit = (assessmentId: string) => {
+  const handleEdit = (assessmentId: number) => {
     // Navigate to edit assessment page or open edit dialog
     toast.info('Edit functionality will be implemented');
   };
 
-  const handleDelete = async (assessmentId: string) => {
+  const handleDelete = async (assessmentId: number) => {
     if (!clientId) {
       toast.error('Client ID is required for this operation');
       return;
@@ -174,8 +177,8 @@ const AssessmentsTable: React.FC = () => {
       const { error } = await supabase
         .from('assessments')
         .delete()
-        .eq('id', assessmentId)
-        .eq('client_id', clientId); // Ensure we only delete assessments for the current client
+        .eq('assessment_id', assessmentId)
+        .eq('client_id', clientId);
 
       if (error) throw error;
 
@@ -307,9 +310,9 @@ const AssessmentsTable: React.FC = () => {
             </TableHeader>
             <TableBody>
               {filteredAssessments.map((assessment) => (
-                <TableRow key={assessment.id}>
+                <TableRow key={assessment.assessment_id}>
                   <TableCell className="font-mono text-sm">
-                    {assessment.id.substring(0, 8)}...
+                    #{assessment.assessment_id}
                   </TableCell>
                   <TableCell className="font-medium">
                     {assessment.name}
@@ -337,7 +340,7 @@ const AssessmentsTable: React.FC = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleAnswerQuestions(assessment.id)}
+                        onClick={() => handleAnswerQuestions(assessment.assessment_id)}
                         className="text-blue-600 hover:text-blue-700"
                       >
                         <FileText className="h-4 w-4 mr-1" />
@@ -346,14 +349,14 @@ const AssessmentsTable: React.FC = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleEdit(assessment.id)}
+                        onClick={() => handleEdit(assessment.assessment_id)}
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleDelete(assessment.id)}
+                        onClick={() => handleDelete(assessment.assessment_id)}
                         className="text-red-600 hover:text-red-700"
                       >
                         <Trash2 className="h-4 w-4" />
