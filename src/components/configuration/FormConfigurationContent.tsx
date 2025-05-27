@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useNavigate } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -42,6 +42,8 @@ interface CustomForm {
 }
 
 const FormConfigurationContent = () => {
+  const navigate = useNavigate();
+  
   const [forms, setForms] = useState<CustomForm[]>([
     {
       id: '1',
@@ -91,8 +93,7 @@ const FormConfigurationContent = () => {
   };
 
   const handlePreviewForm = (form: CustomForm) => {
-    const previewUrl = `/form-preview/${form.id}`;
-    window.open(previewUrl, '_blank');
+    navigate(`/form-preview/${form.id}`);
   };
 
   const handleSaveForm = (formData: Omit<CustomForm, 'id' | 'createdAt' | 'submissions'>) => {
