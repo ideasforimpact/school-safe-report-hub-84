@@ -359,7 +359,6 @@ export type Database = {
           fields: Json
           id: string
           is_active: boolean
-          submissions_count: number
           title: string
           updated_at: string
         }
@@ -371,7 +370,6 @@ export type Database = {
           fields?: Json
           id?: string
           is_active?: boolean
-          submissions_count?: number
           title: string
           updated_at?: string
         }
@@ -383,7 +381,6 @@ export type Database = {
           fields?: Json
           id?: string
           is_active?: boolean
-          submissions_count?: number
           title?: string
           updated_at?: string
         }

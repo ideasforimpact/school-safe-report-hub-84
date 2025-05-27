@@ -24,7 +24,6 @@ interface CustomForm {
   created_at: string;
   updated_at: string;
   created_by: string | null;
-  submissions_count: number;
 }
 
 // Database type for Supabase operations
@@ -38,7 +37,6 @@ interface DatabaseCustomForm {
   created_at?: string;
   updated_at?: string;
   created_by?: string | null;
-  submissions_count?: number;
 }
 
 export const useCustomForms = () => {
@@ -71,10 +69,10 @@ export const useCustomForms = () => {
     }
   };
 
-  const saveForm = async (formData: Omit<CustomForm, 'id' | 'created_at' | 'updated_at' | 'submissions_count'>) => {
+  const saveForm = async (formData: Omit<CustomForm, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       // Transform to database format
-      const dbFormData: Omit<DatabaseCustomForm, 'id' | 'created_at' | 'updated_at' | 'submissions_count'> = {
+      const dbFormData: Omit<DatabaseCustomForm, 'id' | 'created_at' | 'updated_at'> = {
         client_id: formData.client_id,
         title: formData.title,
         description: formData.description,

@@ -42,7 +42,6 @@ interface CustomForm {
   created_at: string;
   updated_at: string;
   created_by: string | null;
-  submissions_count: number;
 }
 
 const FormConfigurationContent = () => {
@@ -68,7 +67,7 @@ const FormConfigurationContent = () => {
     navigate(`/form-preview/${form.id}`);
   };
 
-  const handleSaveForm = async (formData: Omit<CustomForm, 'id' | 'created_at' | 'updated_at' | 'submissions_count'>) => {
+  const handleSaveForm = async (formData: Omit<CustomForm, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       if (editingForm) {
         // Update existing form
@@ -216,7 +215,6 @@ const FormConfigurationContent = () => {
                   <TableHead>Fields</TableHead>
                   <TableHead>Field Types</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Submissions</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -235,7 +233,6 @@ const FormConfigurationContent = () => {
                         {form.is_active ? "Active" : "Inactive"}
                       </Badge>
                     </TableCell>
-                    <TableCell>{form.submissions_count}</TableCell>
                     <TableCell>{new Date(form.created_at).toLocaleDateString()}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">

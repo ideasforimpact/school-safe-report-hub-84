@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,19 +31,18 @@ interface CustomForm {
   created_at: string;
   updated_at: string;
   created_by: string | null;
-  submissions_count: number;
 }
 
 interface SimpleFormBuilderProps {
   form?: CustomForm | null;
-  onSave: (formData: Omit<CustomForm, 'id' | 'created_at' | 'updated_at' | 'submissions_count'>) => void;
+  onSave: (formData: Omit<CustomForm, 'id' | 'created_at' | 'updated_at'>) => void;
   onCancel: () => void;
 }
 
 const SimpleFormBuilder: React.FC<SimpleFormBuilderProps> = ({ form, onSave, onCancel }) => {
   const { fieldTypes, loading: fieldTypesLoading } = useFormFieldTypes();
   
-  const [formData, setFormData] = useState<Omit<CustomForm, 'id' | 'created_at' | 'updated_at' | 'submissions_count'>>({
+  const [formData, setFormData] = useState<Omit<CustomForm, 'id' | 'created_at' | 'updated_at'>>({
     client_id: form?.client_id || '',
     title: form?.title || '',
     description: form?.description || '',
