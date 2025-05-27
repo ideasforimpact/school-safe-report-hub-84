@@ -6,6 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { FileText, Calendar, User, Star, Check, X, MessageCircle, Paperclip, Eye, Download, ExternalLink, CheckCircle, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -43,6 +45,9 @@ interface AssessmentData {
   answers: Answer[];
   creator_name?: string;
   assignee_name?: string;
+  completed_by_name?: string;
+  completed_on?: string | null;
+  closure_comments?: string | null;
   template?: {
     title: string;
     description: string;
@@ -55,6 +60,7 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId }: AssessmentVi
   const [loading, setLoading] = useState(false);
   const [completing, setCompleting] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [completionComments, setCompletionComments] = useState('');
   const { user, employeeData } = useAuth();
   const clientId = employeeData?.clientId || user?.clientId;
 
@@ -79,8 +85,11 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId }: AssessmentVi
           created_at,
           score,
           answers,
+          completed_on,
+          closure_comments,
           creator:employees!assessments_created_by_fkey(first_name, last_name),
           assignee:employees!assessments_assigned_to_fkey(first_name, last_name),
+          completed_by_employee:employees!assessments_completed_by_fkey(first_name, last_name),
           template:assessment_templates(title, description, questions)
         `)
         .eq('assessment_id', assessmentId)
@@ -98,6 +107,9 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId }: AssessmentVi
         assignee_name: data.assignee 
           ? `${data.assignee.first_name} ${data.assignee.last_name}`
           : 'Unassigned',
+        completed_by_name: data.completed_by_employee 
+          ? `${data.completed_by_employee.first_name} ${data.completed_by_employee.last_name}`
+          : null,
         template: data.template ? {
           title: data.template.title,
           description: data.template.description,
@@ -115,8 +127,8 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId }: AssessmentVi
   };
 
   const handleCompleteAssessment = async () => {
-    if (!assessment || !clientId) {
-      toast.error('Assessment or client information is missing');
+    if (!assessment || !clientId || !employeeData?.id) {
+      toast.error('Assessment or employee information is missing');
       return;
     }
 
@@ -132,6 +144,9 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId }: AssessmentVi
         .from('assessments')
         .update({ 
           status: 'Completed',
+          completed_by: employeeData.id,
+          completed_on: new Date().toISOString(),
+          closure_comments: completionComments.trim() || null,
           updated_at: new Date().toISOString()
         })
         .eq('id', assessment.id)
@@ -140,10 +155,17 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId }: AssessmentVi
       if (error) throw error;
 
       // Update local state
-      setAssessment(prev => prev ? { ...prev, status: 'Completed' } : null);
+      setAssessment(prev => prev ? { 
+        ...prev, 
+        status: 'Completed',
+        completed_by_name: `${employeeData.firstName} ${employeeData.lastName}`,
+        completed_on: new Date().toISOString(),
+        closure_comments: completionComments.trim() || null
+      } : null);
       
-      toast.success('Assessment marked as completed successfully');
+      toast.success('Assessment completed successfully');
       setShowConfirmDialog(false);
+      setCompletionComments('');
     } catch (error) {
       console.error('Error completing assessment:', error);
       toast.error('Failed to complete assessment. Please try again.');
@@ -255,9 +277,7 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId }: AssessmentVi
     }
   };
 
-  const isAssessmentCompleted = assessment?.status === 'Completed' || assessment?.status === 'Submitted';
-
-  const isAnswerButtonEnabled = assessment?.status === 'Submitted';
+  const isCompleteButtonEnabled = assessment?.status === 'Submitted';
 
   if (!open) return null;
 
@@ -330,6 +350,44 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId }: AssessmentVi
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* Completion Information */}
+                {assessment.status === 'Completed' && assessment.completed_on && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <CheckCircle className="h-5 w-5 text-green-600" />
+                        Completion Information
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <span className="text-sm font-medium text-gray-500">Completed By:</span>
+                          <p className="flex items-center gap-1">
+                            <User className="h-4 w-4" />
+                            {assessment.completed_by_name || 'Unknown'}
+                          </p>
+                        </div>
+                        <div>
+                          <span className="text-sm font-medium text-gray-500">Completed On:</span>
+                          <p className="flex items-center gap-1">
+                            <Calendar className="h-4 w-4" />
+                            {formatDate(assessment.completed_on)}
+                          </p>
+                        </div>
+                      </div>
+                      {assessment.closure_comments && (
+                        <div>
+                          <span className="text-sm font-medium text-gray-500">Completion Comments:</span>
+                          <div className="mt-2 p-3 bg-green-50 rounded-lg border border-green-200">
+                            <p className="text-sm text-gray-700">{assessment.closure_comments}</p>
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Template Info */}
                 {assessment.template && (
@@ -466,50 +524,64 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId }: AssessmentVi
             </ScrollArea>
 
             {/* Complete Assessment Button with Confirmation Dialog */}
-            <div className="border-t pt-4 mt-4">
-              <div className="flex justify-end">
-                <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-                  <AlertDialogTrigger asChild>
-                    <Button
-                      disabled={completing || !isAnswerButtonEnabled}
-                      className={`flex items-center gap-2 ${
-                        !isAnswerButtonEnabled 
-                          ? 'bg-gray-400 hover:bg-gray-400 cursor-not-allowed' 
-                          : 'bg-blue-600 hover:bg-blue-700'
-                      }`}
-                    >
-                      <CheckCircle className="h-4 w-4" />
-                      {!isAnswerButtonEnabled ? 'Complete Assessment (Submitted Only)' : 'Complete Assessment'}
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle className="flex items-center gap-2">
-                        <AlertTriangle className="h-5 w-5 text-amber-500" />
-                        Complete Assessment
-                      </AlertDialogTitle>
-                      <AlertDialogDescription className="space-y-2">
-                        <p>Are you sure you want to complete this assessment?</p>
-                        <p className="font-medium text-amber-600">
-                          ⚠️ Warning: Once completed, this assessment cannot be edited or modified.
-                        </p>
-                        <p>Please ensure you have reviewed all answers and attachments before proceeding.</p>
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={handleCompleteAssessment}
+            {isCompleteButtonEnabled && (
+              <div className="border-t pt-4 mt-4">
+                <div className="flex justify-end">
+                  <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+                    <AlertDialogTrigger asChild>
+                      <Button
                         disabled={completing}
-                        className="bg-blue-600 hover:bg-blue-700"
+                        className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
                       >
-                        {completing ? 'Completing...' : 'Yes, Complete Assessment'}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                        <CheckCircle className="h-4 w-4" />
+                        Complete Assessment
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="max-w-lg">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                          <CheckCircle className="h-5 w-5 text-blue-600" />
+                          Complete Assessment
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="space-y-4">
+                          <p>You are about to complete this assessment. Please add any completion comments below:</p>
+                          
+                          <div className="space-y-2">
+                            <Label htmlFor="completion-comments">Completion Comments</Label>
+                            <Textarea
+                              id="completion-comments"
+                              placeholder="Enter any comments about the assessment completion..."
+                              value={completionComments}
+                              onChange={(e) => setCompletionComments(e.target.value)}
+                              rows={4}
+                              className="resize-none"
+                            />
+                          </div>
+                          
+                          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                            <p className="text-sm text-amber-800">
+                              <strong>Note:</strong> Once completed, this assessment cannot be modified.
+                            </p>
+                          </div>
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setCompletionComments('')}>
+                          Cancel
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={handleCompleteAssessment}
+                          disabled={completing}
+                          className="bg-blue-600 hover:bg-blue-700"
+                        >
+                          {completing ? 'Completing...' : 'Complete Assessment'}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         ) : (
           <div className="flex items-center justify-center p-8">

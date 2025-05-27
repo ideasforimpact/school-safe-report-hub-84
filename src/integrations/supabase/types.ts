@@ -76,6 +76,9 @@ export type Database = {
           assessment_id: number
           assigned_to: string | null
           client_id: string | null
+          closure_comments: string | null
+          completed_by: string | null
+          completed_on: string | null
           created_at: string
           created_by: string | null
           description: string | null
@@ -92,6 +95,9 @@ export type Database = {
           assessment_id?: number
           assigned_to?: string | null
           client_id?: string | null
+          closure_comments?: string | null
+          completed_by?: string | null
+          completed_on?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -108,6 +114,9 @@ export type Database = {
           assessment_id?: number
           assigned_to?: string | null
           client_id?: string | null
+          closure_comments?: string | null
+          completed_by?: string | null
+          completed_on?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -132,6 +141,13 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessments_completed_by_fkey"
+            columns: ["completed_by"]
+            isOneToOne: false
+            referencedRelation: "employees"
             referencedColumns: ["id"]
           },
           {
