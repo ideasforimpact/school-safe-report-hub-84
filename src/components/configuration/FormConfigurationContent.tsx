@@ -91,8 +91,8 @@ const FormConfigurationContent = () => {
   };
 
   const handlePreviewForm = (form: CustomForm) => {
-    setPreviewForm(form);
-    setPreviewDialogOpen(true);
+    const previewUrl = `/form-preview/${form.id}`;
+    window.open(previewUrl, '_blank');
   };
 
   const handleSaveForm = (formData: Omit<CustomForm, 'id' | 'createdAt' | 'submissions'>) => {
