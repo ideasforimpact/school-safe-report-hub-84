@@ -7,6 +7,16 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Search, Edit, Trash2, FileText, Calendar, Users, AlertCircle, Star } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth';
@@ -36,6 +46,8 @@ const AssessmentsTable: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [assessmentToDelete, setAssessmentToDelete] = useState<Assessment | null>(null);
 
   // Get client_id from either employeeData or user context
   const clientId = employeeData?.clientId || user?.clientId;
@@ -167,27 +179,48 @@ const AssessmentsTable: React.FC = () => {
     toast.info('Edit functionality will be implemented');
   };
 
-  const handleDelete = async (assessmentId: number) => {
-    if (!clientId) {
-      toast.error('Client ID is required for this operation');
+  const handleDeleteClick = (assessment: Assessment) => {
+    setAssessmentToDelete(assessment);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!assessmentToDelete || !clientId) {
+      toast.error('Assessment or client information is missing');
       return;
     }
 
     try {
+      console.log('Deleting assessment:', assessmentToDelete);
+      
       const { error } = await supabase
         .from('assessments')
         .delete()
-        .eq('assessment_id', assessmentId)
+        .eq('id', assessmentToDelete.id)
         .eq('client_id', clientId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Delete error:', error);
+        throw error;
+      }
 
       toast.success('Assessment deleted successfully');
-      fetchAssessments();
+      
+      // Refresh the assessments list
+      await fetchAssessments();
+      
+      // Close the dialog
+      setDeleteDialogOpen(false);
+      setAssessmentToDelete(null);
     } catch (error) {
       console.error('Error deleting assessment:', error);
-      toast.error('Failed to delete assessment');
+      toast.error('Failed to delete assessment. Please try again.');
     }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false);
+    setAssessmentToDelete(null);
   };
 
   if (!clientId) {
@@ -235,141 +268,164 @@ const AssessmentsTable: React.FC = () => {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileText className="h-5 w-5" />
-          Assessments
-        </CardTitle>
-        
-        {/* Filters */}
-        <div className="flex gap-4 mt-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <Input
-              placeholder="Search assessments..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Assessments
+          </CardTitle>
+          
+          {/* Filters */}
+          <div className="flex gap-4 mt-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                placeholder="Search assessments..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="new">New</SelectItem>
+                <SelectItem value="in progress">In Progress</SelectItem>
+                <SelectItem value="submitted">Submitted</SelectItem>
+                <SelectItem value="completed">Completed</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="new">New</SelectItem>
-              <SelectItem value="in progress">In Progress</SelectItem>
-              <SelectItem value="submitted">Submitted</SelectItem>
-              <SelectItem value="completed">Completed</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </CardHeader>
+        </CardHeader>
 
-      <CardContent>
-        {filteredAssessments.length === 0 ? (
-          <div className="text-center py-8">
-            <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium mb-2">No Assessments Found</h3>
-            <p className="text-gray-500">
-              {searchTerm || statusFilter !== 'all' 
-                ? 'No assessments match your current filters.' 
-                : 'No assessments have been created yet.'}
-            </p>
-          </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Assessment ID</TableHead>
-                <TableHead>Title</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>
-                  <div className="flex items-center gap-1">
-                    <Star className="h-4 w-4" />
-                    Score
-                  </div>
-                </TableHead>
-                <TableHead>
-                  <div className="flex items-center gap-1">
-                    <Calendar className="h-4 w-4" />
-                    Target Date
-                  </div>
-                </TableHead>
-                <TableHead>Created By</TableHead>
-                <TableHead>
-                  <div className="flex items-center gap-1">
-                    <Users className="h-4 w-4" />
-                    Assigned To
-                  </div>
-                </TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredAssessments.map((assessment) => (
-                <TableRow key={assessment.assessment_id}>
-                  <TableCell className="font-mono text-sm">
-                    #{assessment.assessment_id}
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    {assessment.name}
-                  </TableCell>
-                  <TableCell>
-                    {getStatusBadge(assessment.status)}
-                  </TableCell>
-                  <TableCell>
+        <CardContent>
+          {filteredAssessments.length === 0 ? (
+            <div className="text-center py-8">
+              <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium mb-2">No Assessments Found</h3>
+              <p className="text-gray-500">
+                {searchTerm || statusFilter !== 'all' 
+                  ? 'No assessments match your current filters.' 
+                  : 'No assessments have been created yet.'}
+              </p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Assessment ID</TableHead>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>
                     <div className="flex items-center gap-1">
-                      <Star className="h-4 w-4 text-yellow-500" />
-                      <span className="font-medium">{formatScore(assessment.score)}</span>
+                      <Star className="h-4 w-4" />
+                      Score
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    {formatDate(assessment.target_completion_date)}
-                  </TableCell>
-                  <TableCell>
-                    {assessment.creator_name}
-                  </TableCell>
-                  <TableCell>
-                    {assessment.assignee_name}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleAnswerQuestions(assessment.assessment_id)}
-                        className="text-blue-600 hover:text-blue-700"
-                      >
-                        <FileText className="h-4 w-4 mr-1" />
-                        Answer
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEdit(assessment.assessment_id)}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDelete(assessment.assessment_id)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                  </TableHead>
+                  <TableHead>
+                    <div className="flex items-center gap-1">
+                      <Calendar className="h-4 w-4" />
+                      Target Date
                     </div>
-                  </TableCell>
+                  </TableHead>
+                  <TableHead>Created By</TableHead>
+                  <TableHead>
+                    <div className="flex items-center gap-1">
+                      <Users className="h-4 w-4" />
+                      Assigned To
+                    </div>
+                  </TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </CardContent>
-    </Card>
+              </TableHeader>
+              <TableBody>
+                {filteredAssessments.map((assessment) => (
+                  <TableRow key={assessment.assessment_id}>
+                    <TableCell className="font-mono text-sm">
+                      #{assessment.assessment_id}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {assessment.name}
+                    </TableCell>
+                    <TableCell>
+                      {getStatusBadge(assessment.status)}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Star className="h-4 w-4 text-yellow-500" />
+                        <span className="font-medium">{formatScore(assessment.score)}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {formatDate(assessment.target_completion_date)}
+                    </TableCell>
+                    <TableCell>
+                      {assessment.creator_name}
+                    </TableCell>
+                    <TableCell>
+                      {assessment.assignee_name}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleAnswerQuestions(assessment.assessment_id)}
+                          className="text-blue-600 hover:text-blue-700"
+                        >
+                          <FileText className="h-4 w-4 mr-1" />
+                          Answer
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEdit(assessment.assessment_id)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeleteClick(assessment)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Assessment</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{assessmentToDelete?.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleDeleteCancel}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteConfirm}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 };
 
