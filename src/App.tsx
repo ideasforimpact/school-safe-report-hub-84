@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
@@ -37,6 +38,8 @@ import AnswerAssessmentPage from '@/pages/AnswerAssessmentPage';
 import AssessmentAnswerPage from '@/pages/AssessmentAnswerPage';
 import IncidentConfiguration from '@/pages/IncidentConfiguration';
 import ProfilePage from '@/pages/ProfilePage';
+import FormPreviewPage from '@/pages/FormPreviewPage';
+import FormsPage from '@/pages/FormsPage';
 
 // Employee Verification Pages
 import EmployeeVerificationPage from '@/pages/employee-verification/EmployeeVerificationPage';
@@ -94,6 +97,10 @@ function App() {
                     
                     {/* Profile route */}
                     <Route path="/profile" element={<ProfilePage />} />
+
+                    {/* Form routes */}
+                    <Route path="/forms" element={<FormsPage />} />
+                    <Route path="/form-preview/:formId" element={<FormPreviewPage />} />
 
                     {/* Incident routes - Make sure both patterns work */}
                     <Route path="/incidents" element={<IncidentsList />} />
