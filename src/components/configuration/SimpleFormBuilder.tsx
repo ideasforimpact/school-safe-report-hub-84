@@ -7,15 +7,19 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Trash2, GripVertical, ArrowLeft } from 'lucide-react';
+import { Plus, Trash2, GripVertical, ArrowLeft, Paperclip, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 interface FormField {
   id: string;
-  type: 'text' | 'textarea' | 'select' | 'radio' | 'checkbox';
+  type: 'text' | 'textarea' | 'select' | 'radio' | 'checkbox' | 'attachment' | 'rating';
   label: string;
   required: boolean;
   options?: string[];
+  maxRating?: number;
+  allowMultiple?: boolean;
+  maxFiles?: number;
+  allowedFileTypes?: string[];
 }
 
 interface CustomForm {
@@ -110,6 +114,8 @@ const SimpleFormBuilder: React.FC<SimpleFormBuilderProps> = ({ form, onSave, onC
       case 'select': return '📋';
       case 'radio': return '🔘';
       case 'checkbox': return '☑️';
+      case 'attachment': return '📎';
+      case 'rating': return '⭐';
       default: return '❓';
     }
   };
@@ -225,10 +231,38 @@ const SimpleFormBuilder: React.FC<SimpleFormBuilderProps> = ({ form, onSave, onC
                                 <Label htmlFor={`type-${field.id}`}>Field Type</Label>
                                 <Select
                                   value={field.type}
-                                  onValueChange={(value) => updateField(field.id, { 
-                                    type: value as FormField['type'],
-                                    options: ['select', 'radio', 'checkbox'].includes(value) ? [''] : undefined
-                                  })}
+                                  onValueChange={(value) => {
+                                    const baseUpdate: Partial<FormField> = { 
+                                      type: value as FormField['type']
+                                    };
+                                    
+                                    // Set default options for fields that need them
+                                    if (['select', 'radio', 'checkbox'].includes(value)) {
+                                      baseUpdate.options = [''];
+                                    } else {
+                                      baseUpdate.options = undefined;
+                                    }
+                                    
+                                    // Set default values for rating fields
+                                    if (value === 'rating') {
+                                      baseUpdate.maxRating = 5;
+                                    } else {
+                                      baseUpdate.maxRating = undefined;
+                                    }
+                                    
+                                    // Set default values for attachment fields
+                                    if (value === 'attachment') {
+                                      baseUpdate.allowMultiple = true;
+                                      baseUpdate.maxFiles = 5;
+                                      baseUpdate.allowedFileTypes = ['image/*', 'application/pdf'];
+                                    } else {
+                                      baseUpdate.allowMultiple = undefined;
+                                      baseUpdate.maxFiles = undefined;
+                                      baseUpdate.allowedFileTypes = undefined;
+                                    }
+                                    
+                                    updateField(field.id, baseUpdate);
+                                  }}
                                 >
                                   <SelectTrigger className="mt-1">
                                     <SelectValue />
@@ -239,6 +273,8 @@ const SimpleFormBuilder: React.FC<SimpleFormBuilderProps> = ({ form, onSave, onC
                                     <SelectItem value="select">Dropdown</SelectItem>
                                     <SelectItem value="radio">Radio Buttons</SelectItem>
                                     <SelectItem value="checkbox">Checkboxes</SelectItem>
+                                    <SelectItem value="attachment">File Attachment</SelectItem>
+                                    <SelectItem value="rating">Rating</SelectItem>
                                   </SelectContent>
                                 </Select>
                               </div>
@@ -292,6 +328,93 @@ const SimpleFormBuilder: React.FC<SimpleFormBuilderProps> = ({ form, onSave, onC
                                       </Button>
                                     </div>
                                   ))}
+                                </div>
+                              </div>
+                            )}
+                            
+                            {/* Rating configuration */}
+                            {field.type === 'rating' && (
+                              <div>
+                                <Label htmlFor={`rating-${field.id}`}>Maximum Rating</Label>
+                                <Input
+                                  id={`rating-${field.id}`}
+                                  type="number"
+                                  min="1"
+                                  max="10"
+                                  value={field.maxRating || 5}
+                                  onChange={(e) => updateField(field.id, { maxRating: parseInt(e.target.value) || 5 })}
+                                  className="mt-1"
+                                />
+                              </div>
+                            )}
+                            
+                            {/* Attachment configuration */}
+                            {field.type === 'attachment' && (
+                              <div className="space-y-3">
+                                <div className="flex items-center gap-2">
+                                  <Switch
+                                    checked={field.allowMultiple || false}
+                                    onCheckedChange={(checked) => updateField(field.id, { allowMultiple: checked })}
+                                  />
+                                  <Label>Allow Multiple Files</Label>
+                                </div>
+                                
+                                {field.allowMultiple && (
+                                  <div>
+                                    <Label htmlFor={`maxFiles-${field.id}`}>Maximum Files</Label>
+                                    <Input
+                                      id={`maxFiles-${field.id}`}
+                                      type="number"
+                                      min="1"
+                                      max="20"
+                                      value={field.maxFiles || 5}
+                                      onChange={(e) => updateField(field.id, { maxFiles: parseInt(e.target.value) || 5 })}
+                                      className="mt-1"
+                                    />
+                                  </div>
+                                )}
+                                
+                                <div>
+                                  <Label>Allowed File Types</Label>
+                                  <div className="space-y-2 mt-2">
+                                    {field.allowedFileTypes?.map((fileType, index) => (
+                                      <div key={index} className="flex gap-2">
+                                        <Input
+                                          value={fileType}
+                                          onChange={(e) => {
+                                            const newTypes = [...(field.allowedFileTypes || [])];
+                                            newTypes[index] = e.target.value;
+                                            updateField(field.id, { allowedFileTypes: newTypes });
+                                          }}
+                                          placeholder="e.g., image/*, .pdf, .doc"
+                                        />
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          size="icon"
+                                          onClick={() => {
+                                            const newTypes = field.allowedFileTypes?.filter((_, i) => i !== index);
+                                            updateField(field.id, { allowedFileTypes: newTypes });
+                                          }}
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </div>
+                                    ))}
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        const newTypes = [...(field.allowedFileTypes || []), ''];
+                                        updateField(field.id, { allowedFileTypes: newTypes });
+                                      }}
+                                      className="gap-1"
+                                    >
+                                      <Plus className="h-3 w-3" />
+                                      Add File Type
+                                    </Button>
+                                  </div>
                                 </div>
                               </div>
                             )}

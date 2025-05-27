@@ -21,10 +21,14 @@ import SimpleFormBuilder from './SimpleFormBuilder';
 
 interface FormField {
   id: string;
-  type: 'text' | 'textarea' | 'select' | 'radio' | 'checkbox';
+  type: 'text' | 'textarea' | 'select' | 'radio' | 'checkbox' | 'attachment' | 'rating';
   label: string;
   required: boolean;
   options?: string[];
+  maxRating?: number;
+  allowMultiple?: boolean;
+  maxFiles?: number;
+  allowedFileTypes?: string[];
 }
 
 interface CustomForm {
@@ -46,7 +50,9 @@ const FormConfigurationContent = () => {
       fields: [
         { id: '1', type: 'text', label: 'Student Name', required: true },
         { id: '2', type: 'select', label: 'Grade', required: true, options: ['9th', '10th', '11th', '12th'] },
-        { id: '3', type: 'textarea', label: 'Feedback', required: true }
+        { id: '3', type: 'textarea', label: 'Feedback', required: true },
+        { id: '4', type: 'rating', label: 'Overall Satisfaction', required: true, maxRating: 5 },
+        { id: '5', type: 'attachment', label: 'Supporting Documents', required: false, allowMultiple: true, maxFiles: 3, allowedFileTypes: ['image/*', 'application/pdf'] }
       ],
       isActive: true,
       createdAt: '2024-01-15',
@@ -58,7 +64,8 @@ const FormConfigurationContent = () => {
       description: 'Annual teacher performance evaluation form',
       fields: [
         { id: '1', type: 'text', label: 'Teacher Name', required: true },
-        { id: '2', type: 'radio', label: 'Performance Rating', required: true, options: ['Excellent', 'Good', 'Average', 'Needs Improvement'] }
+        { id: '2', type: 'radio', label: 'Performance Rating', required: true, options: ['Excellent', 'Good', 'Average', 'Needs Improvement'] },
+        { id: '3', type: 'rating', label: 'Teaching Effectiveness', required: true, maxRating: 10 }
       ],
       isActive: false,
       createdAt: '2024-01-10',
@@ -122,6 +129,21 @@ const FormConfigurationContent = () => {
     ));
   };
 
+  const getFieldTypesDisplay = (fields: FormField[]) => {
+    const types = fields.map(field => {
+      switch (field.type) {
+        case 'attachment': return 'File';
+        case 'rating': return 'Rating';
+        case 'textarea': return 'Text Area';
+        case 'select': return 'Dropdown';
+        case 'radio': return 'Radio';
+        case 'checkbox': return 'Checkbox';
+        default: return 'Text';
+      }
+    });
+    return [...new Set(types)].join(', ');
+  };
+
   if (showBuilder) {
     return (
       <SimpleFormBuilder
@@ -167,6 +189,7 @@ const FormConfigurationContent = () => {
                   <TableHead>Form Title</TableHead>
                   <TableHead>Description</TableHead>
                   <TableHead>Fields</TableHead>
+                  <TableHead>Field Types</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Submissions</TableHead>
                   <TableHead>Created</TableHead>
@@ -179,6 +202,9 @@ const FormConfigurationContent = () => {
                     <TableCell className="font-medium">{form.title}</TableCell>
                     <TableCell className="max-w-xs truncate">{form.description}</TableCell>
                     <TableCell>{form.fields.length} fields</TableCell>
+                    <TableCell className="max-w-xs truncate text-sm text-gray-600">
+                      {getFieldTypesDisplay(form.fields)}
+                    </TableCell>
                     <TableCell>
                       <Badge variant={form.isActive ? "default" : "secondary"}>
                         {form.isActive ? "Active" : "Inactive"}
