@@ -285,52 +285,31 @@ const AssessmentsTable: React.FC = () => {
     }
 
     try {
-      console.log('=== DELETION DEBUG INFO ===');
+      console.log('=== CALLING DELETE EDGE FUNCTION ===');
       console.log('Assessment to delete:', assessmentToDelete);
       console.log('Assessment UUID (id):', assessmentToDelete.id);
-      console.log('Assessment numeric ID (assessment_id):', assessmentToDelete.assessment_id);
       console.log('Client ID:', clientId);
-      
-      // First, let's check if the assessment exists in the database
-      const { data: existingAssessment, error: checkError } = await supabase
-        .from('assessments')
-        .select('id, assessment_id, name, client_id')
-        .eq('id', assessmentToDelete.id)
-        .eq('client_id', clientId)
-        .single();
 
-      console.log('Existing assessment check:', existingAssessment);
-      
-      if (checkError) {
-        console.error('Error checking existing assessment:', checkError);
-        toast.error('Assessment not found in database');
-        return;
+      // Call the delete-assessment edge function
+      const { data, error } = await supabase.functions.invoke('delete-assessment', {
+        method: 'DELETE',
+        body: JSON.stringify({
+          assessment_id: assessmentToDelete.id,
+          client_id: clientId
+        })
+      });
+
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(error.message || 'Failed to delete assessment');
       }
 
-      if (!existingAssessment) {
-        console.log('Assessment not found in database');
-        toast.error('Assessment not found in database');
-        return;
+      if (!data.success) {
+        console.error('Delete operation failed:', data);
+        throw new Error(data.error || 'Failed to delete assessment');
       }
 
-      // Now delete the assessment
-      console.log('Attempting to delete assessment with UUID:', assessmentToDelete.id);
-      const { error: deleteError, data: deleteData } = await supabase
-        .from('assessments')
-        .delete()
-        .eq('id', assessmentToDelete.id)
-        .eq('client_id', clientId)
-        .select();
-
-      console.log('Delete operation result:', { deleteError, deleteData });
-
-      if (deleteError) {
-        console.error('Delete error:', deleteError);
-        throw deleteError;
-      }
-
-      console.log('Assessment deleted successfully from database');
-      console.log('Deleted records:', deleteData);
+      console.log('Assessment deleted successfully via edge function:', data);
       
       // Remove from local state
       const updatedAssessments = assessments.filter(a => a.id !== assessmentToDelete.id);
