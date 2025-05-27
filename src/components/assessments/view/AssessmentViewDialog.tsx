@@ -257,7 +257,7 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId }: AssessmentVi
 
   const isAssessmentCompleted = assessment?.status === 'Completed' || assessment?.status === 'Submitted';
 
-  const isAnswerButtonEnabled = assessment?.status === 'New' || assessment?.status === 'Draft' || assessment?.status === 'Submitted';
+  const isAnswerButtonEnabled = assessment?.status === 'Submitted';
 
   if (!open) return null;
 
@@ -479,7 +479,7 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId }: AssessmentVi
                       }`}
                     >
                       <CheckCircle className="h-4 w-4" />
-                      {!isAnswerButtonEnabled ? 'Assessment Completed' : 'Complete Assessment'}
+                      {!isAnswerButtonEnabled ? 'Complete Assessment (Submitted Only)' : 'Complete Assessment'}
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
