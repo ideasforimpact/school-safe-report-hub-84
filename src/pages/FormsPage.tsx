@@ -8,44 +8,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FileText, Calendar, BarChart3, List, Eye } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { useFetchForms } from '@/hooks/useFetchForms';
-
-interface FormSubmission {
-  id: string;
-  formId: string;
-  submitterName: string;
-  submittedAt: string;
-  status: 'new' | 'reviewed' | 'resolved';
-}
+import { useFormSubmissions } from '@/hooks/useFormSubmissions';
 
 const FormsPage = () => {
   const { forms, loading, error } = useFetchForms();
   const [selectedForm, setSelectedForm] = useState<any | null>(null);
   const [submissionsView, setSubmissionsView] = useState<'list' | 'aggregated'>('list');
-
-  // Mock submissions data - in a real app, this would come from the database
-  const submissions: FormSubmission[] = [
-    {
-      id: '1',
-      formId: selectedForm?.id || '',
-      submitterName: 'John Doe',
-      submittedAt: '2024-01-25 10:30',
-      status: 'new'
-    },
-    {
-      id: '2',
-      formId: selectedForm?.id || '',
-      submitterName: 'Jane Smith',
-      submittedAt: '2024-01-24 14:20',
-      status: 'reviewed'
-    },
-    {
-      id: '3',
-      formId: selectedForm?.id || '',
-      submitterName: 'Mike Johnson',
-      submittedAt: '2024-01-23 09:15',
-      status: 'resolved'
-    }
-  ];
+  
+  const { submissions, loading: submissionsLoading } = useFormSubmissions(selectedForm?.id || null);
 
   const getStatusBadge = (status: string) => {
     const variants = {
@@ -53,17 +23,20 @@ const FormsPage = () => {
       reviewed: 'secondary',
       resolved: 'outline'
     } as const;
-    return <Badge variant={variants[status as keyof typeof variants]}>{status}</Badge>;
+    return <Badge variant={variants[status as keyof typeof variants] || 'default'}>{status}</Badge>;
   };
 
   const getSubmissionStats = () => {
-    const formSubmissions = submissions.filter(s => s.formId === selectedForm?.id);
-    const statusCounts = formSubmissions.reduce((acc, sub) => {
+    const statusCounts = submissions.reduce((acc, sub) => {
       acc[sub.status] = (acc[sub.status] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
 
     return statusCounts;
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleString();
   };
 
   if (loading) {
@@ -200,39 +173,48 @@ const FormsPage = () => {
                   <TabsContent value="list" className="mt-0">
                     <Card>
                       <CardContent className="p-0">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Submitter</TableHead>
-                              <TableHead>Submitted At</TableHead>
-                              <TableHead>Status</TableHead>
-                              <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {submissions.length === 0 ? (
+                        {submissionsLoading ? (
+                          <div className="text-center py-8">
+                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                            <p className="text-gray-500">Loading submissions...</p>
+                          </div>
+                        ) : (
+                          <Table>
+                            <TableHeader>
                               <TableRow>
-                                <TableCell colSpan={4} className="text-center py-8 text-gray-500">
-                                  No submissions yet
-                                </TableCell>
+                                <TableHead>Submitter</TableHead>
+                                <TableHead>Submitted At</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
                               </TableRow>
-                            ) : (
-                              submissions.map((submission) => (
-                                <TableRow key={submission.id}>
-                                  <TableCell className="font-medium">{submission.submitterName}</TableCell>
-                                  <TableCell>{submission.submittedAt}</TableCell>
-                                  <TableCell>{getStatusBadge(submission.status)}</TableCell>
-                                  <TableCell className="text-right">
-                                    <Button variant="outline" size="sm" className="gap-1">
-                                      <Eye className="h-4 w-4" />
-                                      View
-                                    </Button>
+                            </TableHeader>
+                            <TableBody>
+                              {submissions.length === 0 ? (
+                                <TableRow>
+                                  <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                                    No submissions yet
                                   </TableCell>
                                 </TableRow>
-                              ))
-                            )}
-                          </TableBody>
-                        </Table>
+                              ) : (
+                                submissions.map((submission) => (
+                                  <TableRow key={submission.id}>
+                                    <TableCell className="font-medium">
+                                      {submission.submitter_name || 'Anonymous'}
+                                    </TableCell>
+                                    <TableCell>{formatDate(submission.created_at)}</TableCell>
+                                    <TableCell>{getStatusBadge(submission.status)}</TableCell>
+                                    <TableCell className="text-right">
+                                      <Button variant="outline" size="sm" className="gap-1">
+                                        <Eye className="h-4 w-4" />
+                                        View
+                                      </Button>
+                                    </TableCell>
+                                  </TableRow>
+                                ))
+                              )}
+                            </TableBody>
+                          </Table>
+                        )}
                       </CardContent>
                     </Card>
                   </TabsContent>
@@ -265,15 +247,15 @@ const FormsPage = () => {
                             <p className="text-sm text-gray-500 italic text-center py-4">No recent activity</p>
                           ) : (
                             submissions
-                              .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime())
+                              .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
                               .slice(0, 5)
                               .map((submission) => (
                                 <div key={submission.id} className="flex items-center justify-between p-3 border rounded-lg">
                                   <div className="flex items-center gap-3">
                                     <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                                     <div>
-                                      <div className="font-medium">{submission.submitterName}</div>
-                                      <div className="text-sm text-gray-500">{submission.submittedAt}</div>
+                                      <div className="font-medium">{submission.submitter_name || 'Anonymous'}</div>
+                                      <div className="text-sm text-gray-500">{formatDate(submission.created_at)}</div>
                                     </div>
                                   </div>
                                   {getStatusBadge(submission.status)}
