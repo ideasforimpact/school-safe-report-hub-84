@@ -518,12 +518,7 @@ const AssessmentsTable: React.FC = () => {
                   <TableHead>Assessment ID</TableHead>
                   <TableHead>Title</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>
-                    <div className="flex items-center gap-1">
-                      <Star className="h-4 w-4" />
-                      Percentage Completed
-                    </div>
-                  </TableHead>
+                  <TableHead>Percentage Completed</TableHead>
                   <TableHead>
                     <div className="flex items-center gap-1">
                       <Calendar className="h-4 w-4" />
@@ -553,10 +548,7 @@ const AssessmentsTable: React.FC = () => {
                       {getStatusBadge(assessment.status)}
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Star className="h-4 w-4 text-yellow-500" />
-                        <span className="font-medium">{calculateCompletionPercentage(assessment)}%</span>
-                      </div>
+                      <span className="font-medium">{calculateCompletionPercentage(assessment)}%</span>
                     </TableCell>
                     <TableCell>
                       {formatDate(assessment.target_completion_date)}
