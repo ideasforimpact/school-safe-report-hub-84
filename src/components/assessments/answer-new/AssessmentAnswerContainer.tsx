@@ -18,9 +18,11 @@ const AssessmentAnswerContainer = () => {
     loading,
     error,
     submitting,
+    saving,
     progress,
     handleAnswerChange,
-    handleSubmit
+    handleSubmit,
+    handleSaveAsDraft
   } = useAssessmentAnswerData(assessmentId);
 
   if (loading) {
@@ -53,7 +55,9 @@ const AssessmentAnswerContainer = () => {
         
         <AssessmentAnswerFooter
           onSubmit={handleSubmit}
+          onSaveAsDraft={handleSaveAsDraft}
           submitting={submitting}
+          saving={saving}
           progress={progress}
           totalQuestions={template.questions?.length || 0}
           answeredQuestions={answers.filter(a => a.answer !== undefined).length}

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth/AuthContext';
@@ -9,6 +8,7 @@ interface Answer {
   questionId: string;
   answer: boolean | undefined;
   comment?: string;
+  attachments?: any[];
 }
 
 interface Question {
@@ -16,6 +16,7 @@ interface Question {
   text: string;
   required?: boolean;
   allowComments?: boolean;
+  allowAttachments?: boolean;
 }
 
 export const useAssessmentAnswerData = (assessmentId?: string) => {
@@ -28,6 +29,7 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
   const [template, setTemplate] = useState(null);
   const [answers, setAnswers] = useState<Answer[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [saving, setSaving] = useState(false);
   
   const clientId = employeeData?.clientId || user?.clientId;
 
@@ -76,12 +78,23 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
             ? (templateData.questions as unknown as Question[])
             : [];
             
-          const initialAnswers = questions.map((question: Question) => ({
-            questionId: question.id,
-            answer: undefined,
-            comment: ''
-          }));
+          // Load existing answers if they exist
+          const existingAnswers = assessmentData.answers || [];
+          console.log('Existing answers from database:', existingAnswers);
           
+          const initialAnswers = questions.map((question: Question) => {
+            // Find existing answer for this question
+            const existingAnswer = existingAnswers.find((ans: any) => ans.questionId === question.id);
+            
+            return {
+              questionId: question.id,
+              answer: existingAnswer?.answer !== undefined ? existingAnswer.answer : undefined,
+              comment: existingAnswer?.comment || '',
+              attachments: existingAnswer?.attachments || []
+            };
+          });
+          
+          console.log('Initialized answers with existing data:', initialAnswers);
           setAnswers(initialAnswers);
         }
         
@@ -119,6 +132,46 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
     return Math.round((answeredQuestions / questions.length) * 100);
   };
 
+  const handleSaveAsDraft = async () => {
+    if (!assessment || !template) return;
+
+    setSaving(true);
+    
+    try {
+      // Convert answers to a format compatible with JSONB
+      const answersData = answers.map(answer => ({
+        questionId: answer.questionId,
+        answer: answer.answer,
+        comment: answer.comment || '',
+        attachments: answer.attachments || []
+      }));
+
+      // Update assessment with current answers but keep status as is (or set to 'Draft' if it's 'New')
+      const currentStatus = assessment.status === 'New' ? 'Draft' : assessment.status;
+      
+      const { error: updateError } = await supabase
+        .from('assessments')
+        .update({ 
+          status: currentStatus,
+          answers: answersData as any
+        })
+        .eq('assessment_id', parseInt(assessmentId!))
+        .eq('client_id', clientId);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      toast.success('Assessment saved as draft successfully!');
+      
+    } catch (error) {
+      console.error('Error saving draft:', error);
+      toast.error('Failed to save draft. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!assessment || !template) return;
     
@@ -153,7 +206,8 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
       const answersData = answers.map(answer => ({
         questionId: answer.questionId,
         answer: answer.answer,
-        comment: answer.comment || ''
+        comment: answer.comment || '',
+        attachments: answer.attachments || []
       }));
 
       // Update assessment status, score, and answers using assessment_id
@@ -193,8 +247,10 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
     loading,
     error,
     submitting,
+    saving,
     progress,
     handleAnswerChange,
-    handleSubmit
+    handleSubmit,
+    handleSaveAsDraft
   };
 };
