@@ -321,6 +321,19 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId }: AssessmentVi
                             </span>
                           )}
                         </div>
+                        {/* Completion details at the top */}
+                        {assessment.status === 'Completed' && assessment.completed_on && (
+                          <div className="flex items-center gap-4 text-sm text-green-700 bg-green-50 p-2 rounded-lg border border-green-200 mt-3">
+                            <span className="flex items-center gap-1">
+                              <CheckCircle className="h-4 w-4" />
+                              Completed: {formatDate(assessment.completed_on)}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <User className="h-4 w-4" />
+                              by {assessment.completed_by_name || 'Unknown'}
+                            </span>
+                          </div>
+                        )}
                       </div>
                       <div className="flex items-center gap-2">
                         {getStatusBadge(assessment.status)}
