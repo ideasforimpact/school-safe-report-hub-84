@@ -1,11 +1,13 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { FileText, Calendar, User, Star, Check, X, MessageCircle, Paperclip, Eye, Download, ExternalLink, CheckCircle } from 'lucide-react';
+import { FileText, Calendar, User, Star, Check, X, MessageCircle, Paperclip, Eye, Download, ExternalLink, CheckCircle, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth';
@@ -53,6 +55,7 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId }: AssessmentVi
   const [assessment, setAssessment] = useState<AssessmentData | null>(null);
   const [loading, setLoading] = useState(false);
   const [completing, setCompleting] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const { user, employeeData } = useAuth();
   const clientId = employeeData?.clientId || user?.clientId;
 
@@ -141,6 +144,7 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId }: AssessmentVi
       setAssessment(prev => prev ? { ...prev, status: 'Completed' } : null);
       
       toast.success('Assessment marked as completed successfully');
+      setShowConfirmDialog(false);
     } catch (error) {
       console.error('Error completing assessment:', error);
       toast.error('Failed to complete assessment. Please try again.');
@@ -458,22 +462,49 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId }: AssessmentVi
               </div>
             </ScrollArea>
 
-            {/* Complete Assessment Button */}
+            {/* Complete Assessment Button with Confirmation Dialog */}
             <div className="border-t pt-4 mt-4">
               <div className="flex justify-end">
-                <Button
-                  onClick={handleCompleteAssessment}
-                  disabled={completing || assessment.status === 'Completed'}
-                  className={`flex items-center gap-2 ${
-                    assessment.status === 'Completed' 
-                      ? 'bg-green-600 hover:bg-green-700' 
-                      : 'bg-blue-600 hover:bg-blue-700'
-                  }`}
-                >
-                  <CheckCircle className="h-4 w-4" />
-                  {completing ? 'Completing...' : 
-                   assessment.status === 'Completed' ? 'Assessment Completed' : 'Complete Assessment'}
-                </Button>
+                <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      disabled={completing || assessment.status === 'Completed'}
+                      className={`flex items-center gap-2 ${
+                        assessment.status === 'Completed' 
+                          ? 'bg-green-600 hover:bg-green-700' 
+                          : 'bg-blue-600 hover:bg-blue-700'
+                      }`}
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                      {assessment.status === 'Completed' ? 'Assessment Completed' : 'Complete Assessment'}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="flex items-center gap-2">
+                        <AlertTriangle className="h-5 w-5 text-amber-500" />
+                        Complete Assessment
+                      </AlertDialogTitle>
+                      <AlertDialogDescription className="space-y-2">
+                        <p>Are you sure you want to complete this assessment?</p>
+                        <p className="font-medium text-amber-600">
+                          ⚠️ Warning: Once completed, this assessment cannot be edited or modified.
+                        </p>
+                        <p>Please ensure you have reviewed all answers and attachments before proceeding.</p>
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleCompleteAssessment}
+                        disabled={completing}
+                        className="bg-blue-600 hover:bg-blue-700"
+                      >
+                        {completing ? 'Completing...' : 'Yes, Complete Assessment'}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             </div>
           </div>
