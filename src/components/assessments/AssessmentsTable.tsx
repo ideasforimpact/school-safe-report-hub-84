@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Search, Edit, Trash2, FileText, Calendar, Users, AlertCircle, Star } from 'lucide-react';
+import { Search, Edit, Trash2, FileText, Calendar, Users, AlertCircle, Star, Filter } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,9 +17,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { DatePicker } from '@/components/ui/date-picker';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth';
+
+interface AssessmentTemplate {
+  questions: any[];
+}
 
 interface Assessment {
   id: string;
@@ -36,6 +41,7 @@ interface Assessment {
   creator_name?: string;
   assignee_name?: string;
   client_id: string;
+  template?: AssessmentTemplate;
 }
 
 const AssessmentsTable: React.FC = () => {
@@ -47,11 +53,36 @@ const AssessmentsTable: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [createdByFilter, setCreatedByFilter] = useState('all');
+  const [assignedToFilter, setAssignedToFilter] = useState('all');
+  const [targetDateFrom, setTargetDateFrom] = useState<Date | undefined>(undefined);
+  const [targetDateTo, setTargetDateTo] = useState<Date | undefined>(undefined);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [assessmentToDelete, setAssessmentToDelete] = useState<Assessment | null>(null);
 
   // Get client_id from either employeeData or user context
   const clientId = employeeData?.clientId || user?.clientId;
+
+  // Get unique creators and assignees for filter options
+  const getUniqueCreators = () => {
+    const creators = assessments
+      .filter(a => a.creator_name)
+      .map(a => ({ id: a.created_by, name: a.creator_name }))
+      .filter((creator, index, self) => 
+        creator.name && self.findIndex(c => c.id === creator.id) === index
+      );
+    return creators;
+  };
+
+  const getUniqueAssignees = () => {
+    const assignees = assessments
+      .filter(a => a.assignee_name && a.assignee_name !== 'Unassigned')
+      .map(a => ({ id: a.assigned_to, name: a.assignee_name }))
+      .filter((assignee, index, self) => 
+        assignee.name && self.findIndex(a => a.id === assignee.id) === index
+      );
+    return assignees;
+  };
 
   const fetchAssessments = async () => {
     try {
@@ -97,6 +128,7 @@ const AssessmentsTable: React.FC = () => {
 
       const formattedAssessments = assessmentsData?.map(assessment => ({
         ...assessment,
+        answers: Array.isArray(assessment.answers) ? assessment.answers : [],
         creator_name: assessment.creator 
           ? `${assessment.creator.first_name} ${assessment.creator.last_name}`
           : 'Unknown',
@@ -163,8 +195,44 @@ const AssessmentsTable: React.FC = () => {
       );
     }
 
+    // Filter by created by
+    if (createdByFilter !== 'all') {
+      filtered = filtered.filter(assessment => 
+        assessment.created_by === createdByFilter
+      );
+    }
+
+    // Filter by assigned to
+    if (assignedToFilter !== 'all') {
+      filtered = filtered.filter(assessment => 
+        assessment.assigned_to === assignedToFilter
+      );
+    }
+
+    // Filter by target date range
+    if (targetDateFrom || targetDateTo) {
+      filtered = filtered.filter(assessment => {
+        if (!assessment.target_completion_date) return false;
+        
+        const targetDate = new Date(assessment.target_completion_date);
+        const fromMatch = !targetDateFrom || targetDate >= targetDateFrom;
+        const toMatch = !targetDateTo || targetDate <= targetDateTo;
+        
+        return fromMatch && toMatch;
+      });
+    }
+
     setFilteredAssessments(filtered);
-  }, [assessments, searchTerm, statusFilter]);
+  }, [assessments, searchTerm, statusFilter, createdByFilter, assignedToFilter, targetDateFrom, targetDateTo]);
+
+  const clearAllFilters = () => {
+    setSearchTerm('');
+    setStatusFilter('all');
+    setCreatedByFilter('all');
+    setAssignedToFilter('all');
+    setTargetDateFrom(undefined);
+    setTargetDateTo(undefined);
+  };
 
   const getStatusBadge = (status: string) => {
     const statusColors = {
@@ -353,30 +421,88 @@ const AssessmentsTable: React.FC = () => {
             Assessments
           </CardTitle>
           
-          {/* Filters */}
-          <div className="flex gap-4 mt-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                placeholder="Search assessments..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
+          {/* Enhanced Filters */}
+          <div className="space-y-4">
+            {/* First row - Search and Status */}
+            <div className="flex gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Search assessments..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Filter by status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="new">New</SelectItem>
+                  <SelectItem value="draft">Draft</SelectItem>
+                  <SelectItem value="in progress">In Progress</SelectItem>
+                  <SelectItem value="submitted">Submitted</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="new">New</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="in progress">In Progress</SelectItem>
-                <SelectItem value="submitted">Submitted</SelectItem>
-                <SelectItem value="completed">Completed</SelectItem>
-              </SelectContent>
-            </Select>
+
+            {/* Second row - Created By, Assigned To, and Date Range */}
+            <div className="flex gap-4 flex-wrap">
+              <Select value={createdByFilter} onValueChange={setCreatedByFilter}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Filter by creator" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Creators</SelectItem>
+                  {getUniqueCreators().map((creator) => (
+                    <SelectItem key={creator.id} value={creator.id || ''}>
+                      {creator.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={assignedToFilter} onValueChange={setAssignedToFilter}>
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Filter by assignee" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Assignees</SelectItem>
+                  {getUniqueAssignees().map((assignee) => (
+                    <SelectItem key={assignee.id} value={assignee.id || ''}>
+                      {assignee.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <div className="flex gap-2">
+                <DatePicker
+                  date={targetDateFrom}
+                  onChange={setTargetDateFrom}
+                  placeholderText="Target date from"
+                  className="w-48"
+                />
+                <DatePicker
+                  date={targetDateTo}
+                  onChange={setTargetDateTo}
+                  placeholderText="Target date to"
+                  className="w-48"
+                />
+              </div>
+
+              <Button
+                variant="outline"
+                onClick={clearAllFilters}
+                className="flex items-center gap-2"
+              >
+                <Filter className="h-4 w-4" />
+                Clear Filters
+              </Button>
+            </div>
           </div>
         </CardHeader>
 
@@ -386,7 +512,7 @@ const AssessmentsTable: React.FC = () => {
               <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium mb-2">No Assessments Found</h3>
               <p className="text-gray-500">
-                {searchTerm || statusFilter !== 'all' 
+                {searchTerm || statusFilter !== 'all' || createdByFilter !== 'all' || assignedToFilter !== 'all' || targetDateFrom || targetDateTo
                   ? 'No assessments match your current filters.' 
                   : 'No assessments have been created yet.'}
               </p>
