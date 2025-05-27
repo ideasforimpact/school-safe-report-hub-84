@@ -149,13 +149,20 @@ export const useAnswerAssessmentForm = () => {
       const yesAnswers = answers.filter(a => a.answer === true).length;
       const score = totalQuestions > 0 ? Math.round((yesAnswers / totalQuestions) * 100) : 0;
 
+      // Convert answers to a format compatible with JSONB
+      const answersData = answers.map(answer => ({
+        questionId: answer.questionId,
+        answer: answer.answer,
+        comment: answer.comment || ''
+      }));
+
       // Update assessment status, score, and answers using assessment_id
       const { error: updateError } = await supabase
         .from('assessments')
         .update({ 
           status: 'Submitted',
           score: score,
-          answers: answers
+          answers: answersData as any
         })
         .eq('assessment_id', parseInt(assessmentId!))
         .eq('client_id', clientId);
