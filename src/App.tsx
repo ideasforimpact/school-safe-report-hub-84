@@ -1,28 +1,31 @@
 
 import React from 'react';
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
-import FormsPage from './pages/FormsPage';
-import FormPreviewPage from './pages/FormPreviewPage';
-import FeedbackPage from './pages/feedback/FeedbackPage';
-import FormResponsePage from './pages/feedback/FormResponsePage';
-import GrievancesPage from './pages/grievances/GrievancesPage';
-import ConfigurationManagement from './pages/configuration/ConfigurationManagement';
-import FormSubmissionDetailsPage from './pages/FormSubmissionDetailsPage';
+import { RouterProvider } from 'react-router-dom';
+import routes from './routes';
+import { AuthProvider } from './contexts/auth/AuthProvider';
+import { EmployeeProvider } from './store/EmployeeContext';
+import { ClientProvider } from './contexts/ClientContext';
+import { EmployeeVerificationProvider } from './contexts/employee-verification';
+import { Toaster } from '@/components/ui/sonner';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-function App() {
+const queryClient = new QueryClient();
+
+function AppWrapper() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/forms" element={<FormsPage />} />
-        <Route path="/form-preview/:formId" element={<FormPreviewPage />} />
-        <Route path="/feedback" element={<FeedbackPage />} />
-        <Route path="/feedback/responses/:responseId" element={<FormResponsePage />} />
-        <Route path="/grievances" element={<GrievancesPage />} />
-        <Route path="/configuration" element={<ConfigurationManagement />} />
-        <Route path="/form-submission/:submissionId" element={<FormSubmissionDetailsPage />} />
-      </Routes>
-    </Router>
+    <QueryClientProvider client={queryClient}>
+      <ClientProvider>
+        <EmployeeProvider>
+          <EmployeeVerificationProvider>
+            <AuthProvider>
+              <RouterProvider router={routes} />
+              <Toaster />
+            </AuthProvider>
+          </EmployeeVerificationProvider>
+        </EmployeeProvider>
+      </ClientProvider>
+    </QueryClientProvider>
   );
 }
 
-export default App;
+export default AppWrapper;

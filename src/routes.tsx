@@ -1,6 +1,8 @@
 
 import React from 'react';
 import { createBrowserRouter } from 'react-router-dom';
+import Layout from '@/components/layout/Layout';
+import RouteGuard from '@/components/RouteGuard';
 import Home from '@/pages/Home';
 import Login from '@/pages/Login';
 import Dashboard from '@/pages/Dashboard';
@@ -14,7 +16,7 @@ import StudentManagement from '@/pages/StudentManagement';
 import EditIncident from '@/pages/EditIncident';
 import NotFound from '@/pages/NotFound';
 import EmployeeManagement from '@/pages/EmployeeManagement';
-import ConfigurationManagement from '@/pages/ConfigurationManagement';
+import ConfigurationManagement from '@/pages/configuration/ConfigurationManagement';
 import EducationalConfiguration from '@/pages/EducationalConfiguration';
 import OtherConfiguration from '@/pages/OtherConfiguration';
 import IncidentConfiguration from '@/pages/IncidentConfiguration';
@@ -56,6 +58,7 @@ import NewsPage from '@/pages/NewsPage';
 import ProfilePage from '@/pages/ProfilePage';
 import FormPreviewPage from '@/pages/FormPreviewPage';
 import FormsPage from '@/pages/FormsPage';
+import FormSubmissionDetailsPage from '@/pages/FormSubmissionDetailsPage';
 
 const routes = createBrowserRouter([
   {
@@ -67,132 +70,8 @@ const routes = createBrowserRouter([
     element: <Login />,
   },
   {
-    path: "/dashboard",
-    element: <Dashboard />,
-  },
-  {
-    path: "/report-incident",
-    element: <ReportIncident />,
-  },
-  {
-    path: "/incidents",
-    element: <IncidentsList />,
-  },
-  {
-    path: "/incidents/:id",
-    element: <IncidentDetail />,
-  },
-  {
-    path: "/insights",
-    element: <Insights />,
-  },
-  {
-    path: "/settings",
-    element: <SettingsPage />,
-  },
-  {
-    path: "/users",
-    element: <UserManagement />,
-  },
-  {
-    path: "/students",
-    element: <StudentManagement />,
-  },
-  {
-    path: "/edit-incident/:id",
-    element: <EditIncident />,
-  },
-  {
-    path: "/employees",
-    element: <EmployeeManagement />,
-  },
-  {
-    path: "/configuration",
-    element: <ConfigurationManagement />,
-  },
-  {
-    path: "/educational-configuration",
-    element: <EducationalConfiguration />,
-  },
-  {
-    path: "/other-configuration",
-    element: <OtherConfiguration />,
-  },
-  {
-    path: "/incident-configuration",
-    element: <IncidentConfiguration />,
-  },
-  {
-    path: "/facilities",
-    element: <FacilityManagement />,
-  },
-  {
-    path: "/assessments",
-    element: <AssessmentsPage />,
-  },
-  {
     path: "/backoffice/login",
     element: <BackofficeLogin />,
-  },
-  {
-    path: "/assessment-response/:assignmentId",
-    element: <AssessmentResponsePage />,
-  },
-  {
-    path: "/answer-assessment/:assignmentId",
-    element: <AnswerAssessmentPage />,
-  },
-  {
-    path: "/assessment-answer/:assignmentId",
-    element: <AssessmentAnswerPage />,
-  },
-  {
-    path: "/edusafe",
-    element: <EduSafeResourcesPage />,
-  },
-  {
-    path: "/edusafe/upload",
-    element: <UploadResourcePage />,
-  },
-  {
-    path: "/edusafe/edit/:id",
-    element: <EditResourcePage />,
-  },
-  {
-    path: "/employee-verification",
-    element: <EmployeeVerificationPage />,
-  },
-  {
-    path: "/employee-verification/dashboard",
-    element: <VerificationDashboardPage />,
-  },
-  {
-    path: "/employee-verification/employee/:id",
-    element: <EmployeeDetailPage />,
-  },
-  {
-    path: "/employee-verification/upload/:employeeId",
-    element: <UploadDocumentPage />,
-  },
-  {
-    path: "/feedback",
-    element: <FeedbackPage />,
-  },
-  {
-    path: "/feedback/form/:formId",
-    element: <FormResponsePage />,
-  },
-  {
-    path: "/grievances",
-    element: <GrievancesPage />,
-  },
-  {
-    path: "/grievances/dashboard",
-    element: <GrievancesDashboardPage />,
-  },
-  {
-    path: "/grievances/submit",
-    element: <GrievanceSubmitPage />,
   },
   {
     path: "/grievances/submit-public",
@@ -201,50 +80,6 @@ const routes = createBrowserRouter([
   {
     path: "/grievances/thank-you",
     element: <ThankYouPage />,
-  },
-  {
-    path: "/transport-safety",
-    element: <TransportSafetyPage />,
-  },
-  {
-    path: "/transport-safety/dashboard",
-    element: <DashboardPage />,
-  },
-  {
-    path: "/transport-safety/vehicle/:id",
-    element: <VehicleDetailPage />,
-  },
-  {
-    path: "/transport-safety/documents",
-    element: <DocumentsPage />,
-  },
-  {
-    path: "/benchmarking",
-    element: <Benchmarking />,
-  },
-  {
-    path: "/clients",
-    element: <ClientManagement />,
-  },
-  {
-    path: "/backoffice",
-    element: <BackofficeDashboard />,
-  },
-  {
-    path: "/backoffice/analytics",
-    element: <BackofficeAnalytics />,
-  },
-  {
-    path: "/backoffice/settings",
-    element: <BackofficeSettings />,
-  },
-  {
-    path: "/backoffice/assessment-templates",
-    element: <AssessmentTemplatesManagementPage />,
-  },
-  {
-    path: "/backoffice/edusafe-resources",
-    element: <EduSafeResourcesManagementPage />,
   },
   {
     path: "/pricing",
@@ -262,17 +97,202 @@ const routes = createBrowserRouter([
     path: "/news",
     element: <NewsPage />,
   },
+  // All protected routes wrapped with Layout
   {
-    path: "/profile",
-    element: <ProfilePage />,
-  },
-  {
-    path: "/forms",
-    element: <FormsPage />,
-  },
-  {
-    path: "/form-preview/:formId",
-    element: <FormPreviewPage />,
+    path: "/",
+    element: (
+      <RouteGuard>
+        <Layout>
+          <div>Protected Routes</div>
+        </Layout>
+      </RouteGuard>
+    ),
+    children: [
+      {
+        path: "dashboard",
+        element: <Dashboard />,
+      },
+      {
+        path: "report-incident",
+        element: <ReportIncident />,
+      },
+      {
+        path: "incidents",
+        element: <IncidentsList />,
+      },
+      {
+        path: "incidents/:id",
+        element: <IncidentDetail />,
+      },
+      {
+        path: "insights",
+        element: <Insights />,
+      },
+      {
+        path: "settings",
+        element: <SettingsPage />,
+      },
+      {
+        path: "users",
+        element: <UserManagement />,
+      },
+      {
+        path: "students",
+        element: <StudentManagement />,
+      },
+      {
+        path: "edit-incident/:id",
+        element: <EditIncident />,
+      },
+      {
+        path: "employees",
+        element: <EmployeeManagement />,
+      },
+      {
+        path: "configuration",
+        element: <ConfigurationManagement />,
+      },
+      {
+        path: "educational-configuration",
+        element: <EducationalConfiguration />,
+      },
+      {
+        path: "other-configuration",
+        element: <OtherConfiguration />,
+      },
+      {
+        path: "incident-configuration",
+        element: <IncidentConfiguration />,
+      },
+      {
+        path: "facilities",
+        element: <FacilityManagement />,
+      },
+      {
+        path: "assessments",
+        element: <AssessmentsPage />,
+      },
+      {
+        path: "assessment-response/:assignmentId",
+        element: <AssessmentResponsePage />,
+      },
+      {
+        path: "answer-assessment/:assignmentId",
+        element: <AnswerAssessmentPage />,
+      },
+      {
+        path: "assessment-answer/:assignmentId",
+        element: <AssessmentAnswerPage />,
+      },
+      {
+        path: "edusafe",
+        element: <EduSafeResourcesPage />,
+      },
+      {
+        path: "edusafe/upload",
+        element: <UploadResourcePage />,
+      },
+      {
+        path: "edusafe/edit/:id",
+        element: <EditResourcePage />,
+      },
+      {
+        path: "employee-verification",
+        element: <EmployeeVerificationPage />,
+      },
+      {
+        path: "employee-verification/dashboard",
+        element: <VerificationDashboardPage />,
+      },
+      {
+        path: "employee-verification/employee/:id",
+        element: <EmployeeDetailPage />,
+      },
+      {
+        path: "employee-verification/upload/:employeeId",
+        element: <UploadDocumentPage />,
+      },
+      {
+        path: "feedback",
+        element: <FeedbackPage />,
+      },
+      {
+        path: "feedback/form/:formId",
+        element: <FormResponsePage />,
+      },
+      {
+        path: "grievances",
+        element: <GrievancesPage />,
+      },
+      {
+        path: "grievances/dashboard",
+        element: <GrievancesDashboardPage />,
+      },
+      {
+        path: "grievances/submit",
+        element: <GrievanceSubmitPage />,
+      },
+      {
+        path: "transport-safety",
+        element: <TransportSafetyPage />,
+      },
+      {
+        path: "transport-safety/dashboard",
+        element: <DashboardPage />,
+      },
+      {
+        path: "transport-safety/vehicle/:id",
+        element: <VehicleDetailPage />,
+      },
+      {
+        path: "transport-safety/documents",
+        element: <DocumentsPage />,
+      },
+      {
+        path: "benchmarking",
+        element: <Benchmarking />,
+      },
+      {
+        path: "clients",
+        element: <ClientManagement />,
+      },
+      {
+        path: "backoffice",
+        element: <BackofficeDashboard />,
+      },
+      {
+        path: "backoffice/analytics",
+        element: <BackofficeAnalytics />,
+      },
+      {
+        path: "backoffice/settings",
+        element: <BackofficeSettings />,
+      },
+      {
+        path: "backoffice/assessment-templates",
+        element: <AssessmentTemplatesManagementPage />,
+      },
+      {
+        path: "backoffice/edusafe-resources",
+        element: <EduSafeResourcesManagementPage />,
+      },
+      {
+        path: "profile",
+        element: <ProfilePage />,
+      },
+      {
+        path: "forms",
+        element: <FormsPage />,
+      },
+      {
+        path: "form-preview/:formId",
+        element: <FormPreviewPage />,
+      },
+      {
+        path: "form-submission/:submissionId",
+        element: <FormSubmissionDetailsPage />,
+      },
+    ],
   },
   {
     path: "*",
