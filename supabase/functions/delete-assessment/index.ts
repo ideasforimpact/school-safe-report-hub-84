@@ -5,10 +5,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.22.0";
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'DELETE, OPTIONS',
 };
 
-const supabaseUrl = Deno.env.get('SUPABASE_URL') || 'https://ybvxkiubnnixntghojyy.supabase.co';
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -17,7 +18,12 @@ serve(async (req) => {
   }
 
   try {
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
     
     if (req.method !== 'DELETE') {
       return new Response(JSON.stringify({ error: 'Method not allowed' }), {
@@ -26,11 +32,10 @@ serve(async (req) => {
       });
     }
 
-    const url = new URL(req.url);
-    const assessmentId = url.searchParams.get('assessment_id');
-    const clientId = url.searchParams.get('client_id');
+    // Get the assessment_id and client_id from the request body
+    const { assessment_id, client_id } = await req.json();
 
-    if (!assessmentId || !clientId) {
+    if (!assessment_id || !client_id) {
       return new Response(JSON.stringify({ 
         error: 'Assessment ID and Client ID are required' 
       }), {
@@ -40,15 +45,15 @@ serve(async (req) => {
     }
 
     console.log('=== ASSESSMENT DELETION ===');
-    console.log('Assessment ID:', assessmentId);
-    console.log('Client ID:', clientId);
+    console.log('Assessment ID:', assessment_id);
+    console.log('Client ID:', client_id);
 
     // First, verify the assessment exists and belongs to the client
     const { data: existingAssessment, error: checkError } = await supabase
       .from('assessments')
       .select('id, assessment_id, name, client_id')
-      .eq('id', assessmentId)
-      .eq('client_id', clientId)
+      .eq('id', assessment_id)
+      .eq('client_id', client_id)
       .single();
 
     if (checkError) {
@@ -77,8 +82,8 @@ serve(async (req) => {
     const { error: deleteError, data: deleteData } = await supabase
       .from('assessments')
       .delete()
-      .eq('id', assessmentId)
-      .eq('client_id', clientId)
+      .eq('id', assessment_id)
+      .eq('client_id', client_id)
       .select();
 
     if (deleteError) {

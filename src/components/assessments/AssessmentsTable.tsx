@@ -292,11 +292,10 @@ const AssessmentsTable: React.FC = () => {
 
       // Call the delete-assessment edge function
       const { data, error } = await supabase.functions.invoke('delete-assessment', {
-        method: 'DELETE',
-        body: JSON.stringify({
+        body: {
           assessment_id: assessmentToDelete.id,
           client_id: clientId
-        })
+        }
       });
 
       if (error) {
