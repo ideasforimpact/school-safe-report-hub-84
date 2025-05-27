@@ -23,7 +23,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth';
 
 interface AssessmentTemplate {
-  questions: any[];
+  questions: any;
 }
 
 interface Assessment {
@@ -134,7 +134,10 @@ const AssessmentsTable: React.FC = () => {
           : 'Unknown',
         assignee_name: assessment.assignee 
           ? `${assessment.assignee.first_name} ${assessment.assignee.last_name}`
-          : 'Unassigned'
+          : 'Unassigned',
+        template: assessment.template ? {
+          questions: Array.isArray(assessment.template.questions) ? assessment.template.questions : []
+        } : undefined
       })) || [];
 
       console.log('Fetched assessments:', formattedAssessments);
@@ -156,7 +159,8 @@ const AssessmentsTable: React.FC = () => {
     }
 
     const answers = Array.isArray(assessment.answers) ? assessment.answers : [];
-    const totalQuestions = assessment.template.questions.length;
+    const questions = Array.isArray(assessment.template.questions) ? assessment.template.questions : [];
+    const totalQuestions = questions.length;
     
     if (totalQuestions === 0) return 0;
     
