@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
@@ -256,6 +255,8 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId }: AssessmentVi
     }
   };
 
+  const isAssessmentCompleted = assessment?.status === 'Completed' || assessment?.status === 'Submitted';
+
   if (!open) return null;
 
   return (
@@ -468,15 +469,15 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId }: AssessmentVi
                 <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
                   <AlertDialogTrigger asChild>
                     <Button
-                      disabled={completing || assessment.status === 'Completed'}
+                      disabled={completing || isAssessmentCompleted}
                       className={`flex items-center gap-2 ${
-                        assessment.status === 'Completed' 
+                        isAssessmentCompleted 
                           ? 'bg-green-600 hover:bg-green-700' 
                           : 'bg-blue-600 hover:bg-blue-700'
                       }`}
                     >
                       <CheckCircle className="h-4 w-4" />
-                      {assessment.status === 'Completed' ? 'Assessment Completed' : 'Complete Assessment'}
+                      {isAssessmentCompleted ? 'Assessment Completed' : 'Complete Assessment'}
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
