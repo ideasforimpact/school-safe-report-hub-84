@@ -187,13 +187,17 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId }: AssessmentVi
   };
 
   const openDocumentViewer = (attachment: any) => {
-    if (attachment.url) {
-      // Open the document in a new tab/window
-      window.open(attachment.url, '_blank', 'noopener,noreferrer');
-    } else if (attachment.base64) {
-      // If it's a base64 encoded file, create a blob URL and open it
-      try {
-        const byteCharacters = atob(attachment.base64.split(',')[1] || attachment.base64);
+    try {
+      if (attachment.url) {
+        // Open the document in a new tab/window
+        window.open(attachment.url, '_blank', 'noopener,noreferrer');
+      } else if (attachment.base64) {
+        // If it's a base64 encoded file, create a blob URL and open it
+        const base64Data = attachment.base64.includes(',') 
+          ? attachment.base64.split(',')[1] 
+          : attachment.base64;
+        
+        const byteCharacters = atob(base64Data);
         const byteNumbers = new Array(byteCharacters.length);
         for (let i = 0; i < byteCharacters.length; i++) {
           byteNumbers[i] = byteCharacters.charCodeAt(i);
@@ -205,39 +209,46 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId }: AssessmentVi
         
         // Clean up the blob URL after a short delay
         setTimeout(() => URL.revokeObjectURL(url), 1000);
-      } catch (error) {
-        console.error('Error opening document:', error);
-        toast.error('Unable to open document');
+      } else {
+        toast.error('Document URL not available for viewing');
       }
-    } else {
-      toast.error('Document URL not available');
+    } catch (error) {
+      console.error('Error opening document:', error);
+      toast.error('Unable to open document. Please try downloading instead.');
     }
   };
 
   const downloadAttachment = (attachment: any) => {
-    if (attachment.url) {
-      // Create a temporary anchor element to trigger download
+    try {
       const link = document.createElement('a');
-      link.href = attachment.url;
-      link.download = attachment.name || 'attachment';
-      link.target = '_blank';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } else if (attachment.base64) {
-      try {
-        const link = document.createElement('a');
-        link.href = attachment.base64.startsWith('data:') ? attachment.base64 : `data:${attachment.type || 'application/octet-stream'};base64,${attachment.base64}`;
+      
+      if (attachment.url) {
+        // For URL-based attachments
+        link.href = attachment.url;
+        link.download = attachment.name || 'attachment';
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success('Download started');
+      } else if (attachment.base64) {
+        // For base64-encoded attachments
+        const base64Data = attachment.base64.includes(',') 
+          ? attachment.base64 
+          : `data:${attachment.type || 'application/octet-stream'};base64,${attachment.base64}`;
+        
+        link.href = base64Data;
         link.download = attachment.name || 'attachment';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-      } catch (error) {
-        console.error('Error downloading document:', error);
-        toast.error('Unable to download document');
+        toast.success('Download started');
+      } else {
+        toast.error('Document not available for download');
       }
-    } else {
-      toast.error('Document not available for download');
+    } catch (error) {
+      console.error('Error downloading document:', error);
+      toast.error('Unable to download document');
     }
   };
 
@@ -388,33 +399,44 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId }: AssessmentVi
                                 <div className="mt-3">
                                   <div className="flex items-center gap-2 mb-2">
                                     <Paperclip className="h-4 w-4 text-gray-600" />
-                                    <span className="text-sm font-medium text-gray-700">Attachments</span>
+                                    <span className="text-sm font-medium text-gray-700">
+                                      Attachments ({answer.attachments.length})
+                                    </span>
                                   </div>
                                   <div className="space-y-2">
                                     {answer.attachments.map((attachment, idx) => (
-                                      <div key={idx} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border">
-                                        <FileText className="h-4 w-4 text-gray-500 flex-shrink-0" />
-                                        <span className="text-sm flex-1 truncate" title={attachment.name}>
-                                          {attachment.name}
-                                        </span>
+                                      <div key={idx} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border hover:bg-gray-100 transition-colors">
+                                        <FileText className="h-5 w-5 text-gray-500 flex-shrink-0" />
+                                        <div className="flex-1 min-w-0">
+                                          <p className="text-sm font-medium truncate" title={attachment.name}>
+                                            {attachment.name || `Attachment ${idx + 1}`}
+                                          </p>
+                                          {attachment.type && (
+                                            <p className="text-xs text-gray-500">
+                                              {attachment.type}
+                                            </p>
+                                          )}
+                                        </div>
                                         <div className="flex items-center gap-1">
                                           <Button
-                                            variant="ghost"
+                                            variant="outline"
                                             size="sm"
                                             onClick={() => openDocumentViewer(attachment)}
-                                            className="h-8 w-8 p-0 hover:bg-blue-100"
+                                            className="h-8 px-3 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                                             title="View document"
                                           >
-                                            <ExternalLink className="h-4 w-4 text-blue-600" />
+                                            <Eye className="h-4 w-4 mr-1" />
+                                            View
                                           </Button>
                                           <Button
-                                            variant="ghost"
+                                            variant="outline"
                                             size="sm"
                                             onClick={() => downloadAttachment(attachment)}
-                                            className="h-8 w-8 p-0 hover:bg-green-100"
+                                            className="h-8 px-3 text-green-600 hover:text-green-700 hover:bg-green-50"
                                             title="Download document"
                                           >
-                                            <Download className="h-4 w-4 text-green-600" />
+                                            <Download className="h-4 w-4 mr-1" />
+                                            Download
                                           </Button>
                                         </div>
                                       </div>
