@@ -1,9 +1,10 @@
 
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
 import { AuthProvider } from '@/contexts/auth/AuthProvider';
 import { AssessmentProvider } from '@/contexts/assessment/AssessmentContext';
+import { IncidentProvider } from './contexts/IncidentContext';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -16,7 +17,6 @@ import BackofficeLogin from './pages/BackofficeLogin';
 import IncidentsList from './pages/IncidentsList';
 import IncidentDetail from './pages/IncidentDetail';
 import EditIncidentPage from './pages/EditIncidentPage';
-import { IncidentProvider } from './contexts/IncidentContext';
 import SettingsPage from './pages/SettingsPage';
 
 function App() {
