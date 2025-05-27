@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import SimpleFormBuilder from './SimpleFormBuilder';
 import { useCustomForms } from '@/hooks/useCustomForms';
+import { useEmployeeAccess } from '@/contexts/auth/hooks/useEmployeeAccess';
 import { toast } from '@/hooks/use-toast';
 
 interface FormField {
@@ -46,17 +48,12 @@ interface CustomForm {
 const FormConfigurationContent = () => {
   const navigate = useNavigate();
   const { forms, loading, saveForm, updateForm, deleteForm, toggleFormActive } = useCustomForms();
+  const { getClientId, getEmployeeId } = useEmployeeAccess();
   
   const [showBuilder, setShowBuilder] = useState(false);
   const [editingForm, setEditingForm] = useState<CustomForm | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [formToDelete, setFormToDelete] = useState<CustomForm | null>(null);
-
-  // Get client_id from context or auth - for now using a default
-  // TODO: Replace with actual client_id from your auth/client context
-  const getClientId = () => {
-    return 'default-client-id';
-  };
 
   const handleCreateForm = () => {
     setEditingForm(null);
@@ -74,11 +71,23 @@ const FormConfigurationContent = () => {
 
   const handleSaveForm = async (formData: Omit<CustomForm, 'id' | 'created_at' | 'updated_at'>) => {
     try {
+      const clientId = getClientId();
+      const employeeId = getEmployeeId();
+      
+      if (!clientId) {
+        toast({
+          title: "Error",
+          description: "Client ID not available. Please ensure you are logged in.",
+          variant: "destructive"
+        });
+        return;
+      }
+
       if (editingForm) {
         // Update existing form - ensure client_id is included
         const updateData = {
           ...formData,
-          client_id: getClientId()
+          client_id: clientId
         };
         await updateForm(editingForm.id, updateData);
         toast({
@@ -86,11 +95,11 @@ const FormConfigurationContent = () => {
           description: "Form updated successfully"
         });
       } else {
-        // Create new form - ensure client_id is included
+        // Create new form - ensure client_id and created_by are included
         const newFormData = {
           ...formData,
-          client_id: getClientId(),
-          created_by: null // You may want to get this from auth context
+          client_id: clientId,
+          created_by: employeeId
         };
         await saveForm(newFormData);
         toast({

@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useEmployeeAccess } from '@/contexts/auth/hooks/useEmployeeAccess';
 
 interface FormField {
   id: string;
@@ -43,21 +44,23 @@ export const useCustomForms = () => {
   const [forms, setForms] = useState<CustomForm[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Get client_id from context or auth - for now using a default
-  // You may want to get this from your auth context or client context
-  const getClientId = () => {
-    // TODO: Replace with actual client_id from your auth/client context
-    return 'default-client-id';
-  };
+  
+  // Get client_id and employee_id from employee access context
+  const { getClientId, getEmployeeId } = useEmployeeAccess();
 
   const fetchForms = async () => {
     try {
       setLoading(true);
+      const clientId = getClientId();
+      
+      if (!clientId) {
+        throw new Error('Client ID not available. Please ensure you are logged in.');
+      }
+
       const { data, error } = await supabase
         .from('custom_forms')
         .select('*')
-        .eq('client_id', getClientId())
+        .eq('client_id', clientId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -79,14 +82,21 @@ export const useCustomForms = () => {
 
   const saveForm = async (formData: Omit<CustomForm, 'id' | 'created_at' | 'updated_at'>) => {
     try {
+      const clientId = getClientId();
+      const employeeId = getEmployeeId();
+      
+      if (!clientId) {
+        throw new Error('Client ID not available. Please ensure you are logged in.');
+      }
+
       const payload = {
         operation: 'create',
-        client_id: getClientId(),
+        client_id: clientId,
         title: formData.title,
         description: formData.description,
         fields: formData.fields,
         is_active: formData.is_active,
-        created_by: formData.created_by
+        created_by: employeeId
       };
 
       const { data, error } = await supabase.functions.invoke('custom-forms-management', {
@@ -109,10 +119,16 @@ export const useCustomForms = () => {
 
   const updateForm = async (id: string, formData: Partial<CustomForm>) => {
     try {
+      const clientId = getClientId();
+      
+      if (!clientId) {
+        throw new Error('Client ID not available. Please ensure you are logged in.');
+      }
+
       const payload = {
         operation: 'update',
         formId: id,
-        client_id: getClientId(),
+        client_id: clientId,
         ...formData
       };
 
@@ -136,10 +152,16 @@ export const useCustomForms = () => {
 
   const deleteForm = async (id: string) => {
     try {
+      const clientId = getClientId();
+      
+      if (!clientId) {
+        throw new Error('Client ID not available. Please ensure you are logged in.');
+      }
+
       const payload = {
         operation: 'delete',
         formId: id,
-        client_id: getClientId()
+        client_id: clientId
       };
 
       const { data, error } = await supabase.functions.invoke('custom-forms-management', {
@@ -161,10 +183,16 @@ export const useCustomForms = () => {
 
   const toggleFormActive = async (id: string, isActive: boolean) => {
     try {
+      const clientId = getClientId();
+      
+      if (!clientId) {
+        throw new Error('Client ID not available. Please ensure you are logged in.');
+      }
+
       const payload = {
         operation: isActive ? 'activate' : 'deactivate',
         formId: id,
-        client_id: getClientId()
+        client_id: clientId
       };
 
       const { data, error } = await supabase.functions.invoke('custom-forms-management', {
