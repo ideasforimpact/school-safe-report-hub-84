@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -5,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { FileText, Calendar, User, Star, Check, X, MessageCircle, Paperclip, Eye, Download } from 'lucide-react';
+import { FileText, Calendar, User, Star, Check, X, MessageCircle, Paperclip, Eye, Download, ExternalLink } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth';
@@ -150,7 +151,56 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId }: AssessmentVi
 
   const openDocumentViewer = (attachment: any) => {
     if (attachment.url) {
-      window.open(attachment.url, '_blank');
+      // Open the document in a new tab/window
+      window.open(attachment.url, '_blank', 'noopener,noreferrer');
+    } else if (attachment.base64) {
+      // If it's a base64 encoded file, create a blob URL and open it
+      try {
+        const byteCharacters = atob(attachment.base64.split(',')[1] || attachment.base64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: attachment.type || 'application/octet-stream' });
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        
+        // Clean up the blob URL after a short delay
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } catch (error) {
+        console.error('Error opening document:', error);
+        toast.error('Unable to open document');
+      }
+    } else {
+      toast.error('Document URL not available');
+    }
+  };
+
+  const downloadAttachment = (attachment: any) => {
+    if (attachment.url) {
+      // Create a temporary anchor element to trigger download
+      const link = document.createElement('a');
+      link.href = attachment.url;
+      link.download = attachment.name || 'attachment';
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else if (attachment.base64) {
+      try {
+        const link = document.createElement('a');
+        link.href = attachment.base64.startsWith('data:') ? attachment.base64 : `data:${attachment.type || 'application/octet-stream'};base64,${attachment.base64}`;
+        link.download = attachment.name || 'attachment';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } catch (error) {
+        console.error('Error downloading document:', error);
+        toast.error('Unable to download document');
+      }
+    } else {
+      toast.error('Document not available for download');
     }
   };
 
@@ -304,17 +354,31 @@ const AssessmentViewDialog = ({ open, onOpenChange, assessmentId }: AssessmentVi
                                 </div>
                                 <div className="space-y-2">
                                   {answer.attachments.map((attachment, idx) => (
-                                    <div key={idx} className="flex items-center gap-2 p-2 bg-gray-50 rounded border">
-                                      <FileText className="h-4 w-4 text-gray-500" />
-                                      <span className="text-sm flex-1">{attachment.name}</span>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => openDocumentViewer(attachment)}
-                                        className="h-8 w-8 p-0"
-                                      >
-                                        <Eye className="h-4 w-4" />
-                                      </Button>
+                                    <div key={idx} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border">
+                                      <FileText className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                                      <span className="text-sm flex-1 truncate" title={attachment.name}>
+                                        {attachment.name}
+                                      </span>
+                                      <div className="flex items-center gap-1">
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => openDocumentViewer(attachment)}
+                                          className="h-8 w-8 p-0 hover:bg-blue-100"
+                                          title="View document"
+                                        >
+                                          <ExternalLink className="h-4 w-4 text-blue-600" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => downloadAttachment(attachment)}
+                                          className="h-8 w-8 p-0 hover:bg-green-100"
+                                          title="Download document"
+                                        >
+                                          <Download className="h-4 w-4 text-green-600" />
+                                        </Button>
+                                      </div>
                                     </div>
                                   ))}
                                 </div>
