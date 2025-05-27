@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
@@ -24,18 +24,21 @@ interface QuestionCardProps {
 
 const QuestionCard = ({ question, answer, index, onAnswerChange }: QuestionCardProps) => {
   const [isOpen, setIsOpen] = useState(false);
-  const [attachments, setAttachments] = useState<FileItem[]>(answer?.attachments || []);
+
+  console.log(`QuestionCard for question ${question.id}:`, { question, answer });
 
   const handleAnswerChange = (value: string) => {
+    console.log(`Setting answer for question ${question.id} to:`, value === 'yes');
     onAnswerChange(question.id, 'answer', value === 'yes');
   };
 
   const handleCommentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    console.log(`Setting comment for question ${question.id} to:`, e.target.value);
     onAnswerChange(question.id, 'comment', e.target.value);
   };
 
   const handleAttachmentsChange = (files: FileItem[]) => {
-    setAttachments(files);
+    console.log(`Setting attachments for question ${question.id} to:`, files);
     onAnswerChange(question.id, 'attachments', files);
   };
 
@@ -158,7 +161,7 @@ const QuestionCard = ({ question, answer, index, onAnswerChange }: QuestionCardP
                   </div>
                   <MultipleFilesUpload
                     onFilesChange={handleAttachmentsChange}
-                    initialFiles={attachments}
+                    initialFiles={answer?.attachments || []}
                     maxFiles={5}
                     className="border-gray-200 bg-white"
                   />
