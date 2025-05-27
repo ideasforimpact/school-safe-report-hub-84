@@ -11,6 +11,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Star, Paperclip, ArrowLeft } from 'lucide-react';
 import { useCustomForms } from '@/hooks/useCustomForms';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 
 interface FormField {
   id: string;
@@ -41,6 +43,8 @@ const FormPreviewPage: React.FC = () => {
   const navigate = useNavigate();
   const { forms, loading } = useCustomForms();
   const [form, setForm] = useState<CustomForm | null>(null);
+  const [formValues, setFormValues] = useState<Record<string, any>>({});
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (formId && forms.length > 0) {
@@ -48,6 +52,70 @@ const FormPreviewPage: React.FC = () => {
       setForm(foundForm || null);
     }
   }, [formId, forms]);
+
+  const handleFieldChange = (fieldId: string, value: any) => {
+    setFormValues(prev => ({
+      ...prev,
+      [fieldId]: value
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!form) return;
+
+    setSubmitting(true);
+
+    try {
+      // Prepare responses array based on form values
+      const responses = form.fields.map(field => ({
+        type: field.type,
+        label: field.label,
+        value: formValues[field.id] || ''
+      }));
+
+      console.log('Submitting form:', { form_id: form.id, responses });
+
+      // Call the submit-form edge function
+      const { data, error } = await supabase.functions.invoke('submit-form', {
+        body: {
+          form_id: form.id,
+          responses: responses,
+          submitter_name: formValues['submitter_name'] || null,
+          submitter_email: formValues['submitter_email'] || null,
+          comments: formValues['comments'] || null
+        }
+      });
+
+      if (error) {
+        console.error('Error submitting form:', error);
+        throw error;
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to submit form');
+      }
+
+      toast({
+        title: "Success",
+        description: "Form submitted successfully!"
+      });
+
+      // Reset form or navigate away
+      setFormValues({});
+      
+    } catch (error) {
+      console.error('Form submission error:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to submit form"
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const renderField = (field: FormField) => {
     const baseProps = {
@@ -63,7 +131,14 @@ const FormPreviewPage: React.FC = () => {
               {field.label}
               {field.required && <span className="text-red-500 ml-1">*</span>}
             </Label>
-            <Input id={field.id} placeholder={`Enter ${field.label.toLowerCase()}`} {...baseProps} />
+            <Input 
+              id={field.id} 
+              placeholder={`Enter ${field.label.toLowerCase()}`} 
+              value={formValues[field.id] || ''}
+              onChange={(e) => handleFieldChange(field.id, e.target.value)}
+              disabled={submitting}
+              {...baseProps} 
+            />
           </div>
         );
 
@@ -74,7 +149,15 @@ const FormPreviewPage: React.FC = () => {
               {field.label}
               {field.required && <span className="text-red-500 ml-1">*</span>}
             </Label>
-            <Textarea id={field.id} placeholder={`Enter ${field.label.toLowerCase()}`} rows={3} {...baseProps} />
+            <Textarea 
+              id={field.id} 
+              placeholder={`Enter ${field.label.toLowerCase()}`} 
+              rows={3} 
+              value={formValues[field.id] || ''}
+              onChange={(e) => handleFieldChange(field.id, e.target.value)}
+              disabled={submitting}
+              {...baseProps} 
+            />
           </div>
         );
 
@@ -85,7 +168,11 @@ const FormPreviewPage: React.FC = () => {
               {field.label}
               {field.required && <span className="text-red-500 ml-1">*</span>}
             </Label>
-            <Select>
+            <Select 
+              value={formValues[field.id] || ''} 
+              onValueChange={(value) => handleFieldChange(field.id, value)}
+              disabled={submitting}
+            >
               <SelectTrigger {...baseProps}>
                 <SelectValue placeholder={`Select ${field.label.toLowerCase()}`} />
               </SelectTrigger>
@@ -105,7 +192,12 @@ const FormPreviewPage: React.FC = () => {
               {field.label}
               {field.required && <span className="text-red-500 ml-1">*</span>}
             </Label>
-            <RadioGroup {...baseProps}>
+            <RadioGroup 
+              value={formValues[field.id] || ''} 
+              onValueChange={(value) => handleFieldChange(field.id, value)}
+              disabled={submitting}
+              {...baseProps}
+            >
               {field.options?.map((option, index) => (
                 <div key={index} className="flex items-center space-x-2">
                   <RadioGroupItem value={option} id={`${field.id}-${index}`} />
@@ -126,7 +218,19 @@ const FormPreviewPage: React.FC = () => {
             <div className="space-y-2 mt-1">
               {field.options?.map((option, index) => (
                 <div key={index} className="flex items-center space-x-2">
-                  <Checkbox id={`${field.id}-${index}`} />
+                  <Checkbox 
+                    id={`${field.id}-${index}`}
+                    checked={(formValues[field.id] || []).includes(option)}
+                    onCheckedChange={(checked) => {
+                      const currentValues = formValues[field.id] || [];
+                      if (checked) {
+                        handleFieldChange(field.id, [...currentValues, option]);
+                      } else {
+                        handleFieldChange(field.id, currentValues.filter((v: string) => v !== option));
+                      }
+                    }}
+                    disabled={submitting}
+                  />
                   <Label htmlFor={`${field.id}-${index}`}>{option}</Label>
                 </div>
               ))}
@@ -163,7 +267,12 @@ const FormPreviewPage: React.FC = () => {
               {Array.from({ length: field.maxRating || 5 }, (_, index) => (
                 <Star
                   key={index}
-                  className="h-6 w-6 text-gray-300 hover:text-yellow-400 cursor-pointer transition-colors"
+                  className={`h-6 w-6 cursor-pointer transition-colors ${
+                    (formValues[field.id] || 0) > index 
+                      ? 'text-yellow-400 fill-yellow-400' 
+                      : 'text-gray-300 hover:text-yellow-400'
+                  } ${submitting ? 'pointer-events-none' : ''}`}
+                  onClick={() => !submitting && handleFieldChange(field.id, index + 1)}
                 />
               ))}
             </div>
@@ -208,13 +317,14 @@ const FormPreviewPage: React.FC = () => {
             variant="outline" 
             onClick={() => navigate(-1)}
             className="gap-2"
+            disabled={submitting}
           >
             <ArrowLeft className="h-4 w-4" />
             Back
           </Button>
         </div>
         
-        <div className="bg-white rounded-lg shadow p-8">
+        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-8">
           <div className="mb-8">
             <div className="flex items-center gap-2 mb-4">
               <h1 className="text-2xl font-bold">{form.title}</h1>
@@ -232,9 +342,15 @@ const FormPreviewPage: React.FC = () => {
           </div>
           
           <div className="flex justify-end pt-8 border-t mt-8">
-            <Button size="lg">Submit Form</Button>
+            <Button 
+              type="submit" 
+              size="lg" 
+              disabled={submitting || !form.is_active}
+            >
+              {submitting ? 'Submitting...' : 'Submit Form'}
+            </Button>
           </div>
-        </div>
+        </form>
       </div>
     </div>
   );
