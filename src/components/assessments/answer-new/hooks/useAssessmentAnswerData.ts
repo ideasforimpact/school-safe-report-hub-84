@@ -156,7 +156,11 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
   };
 
   const handleSaveAsDraft = async () => {
-    if (!assessment || !template) return;
+    if (!assessment || !template || !assessmentId) {
+      console.error('Missing required data for saving draft:', { assessment, template, assessmentId });
+      toast.error('Missing required data. Please try again.');
+      return;
+    }
 
     setSaving(true);
     
@@ -170,23 +174,32 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
       }));
 
       console.log('Saving draft with answers:', answersData);
+      console.log('Assessment ID:', assessmentId, 'Client ID:', clientId);
 
       // Update assessment with current answers but keep status as is (or set to 'Draft' if it's 'New')
       const currentStatus = assessment.status === 'New' ? 'Draft' : assessment.status;
       
-      const { error: updateError } = await supabase
+      const { data, error: updateError } = await supabase
         .from('assessments')
         .update({ 
           status: currentStatus,
-          answers: answersData as any
+          answers: answersData
         })
-        .eq('assessment_id', parseInt(assessmentId!))
-        .eq('client_id', clientId);
+        .eq('assessment_id', parseInt(assessmentId))
+        .eq('client_id', clientId)
+        .select();
 
       if (updateError) {
-        console.error('Draft save error:', updateError);
-        throw updateError;
+        console.error('Draft save error details:', {
+          message: updateError.message,
+          details: updateError.details,
+          hint: updateError.hint,
+          code: updateError.code
+        });
+        throw new Error(`Failed to save draft: ${updateError.message}`);
       }
+
+      console.log('Draft saved successfully:', data);
 
       // Update local assessment state to reflect the saved status
       setAssessment(prev => prev ? { ...prev, status: currentStatus, answers: answersData } : null);
@@ -195,7 +208,8 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
       
     } catch (error) {
       console.error('Error saving draft:', error);
-      toast.error('Failed to save draft. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      toast.error(`Failed to save draft: ${errorMessage}`);
     } finally {
       setSaving(false);
     }
