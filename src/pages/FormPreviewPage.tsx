@@ -68,7 +68,7 @@ const FormPreviewPage: React.FC = () => {
     setSubmitting(true);
 
     try {
-      // Prepare responses array based on form values
+      // Prepare responses array based on form values with label included
       const responses = form.fields.map(field => ({
         type: field.type,
         label: field.label,
@@ -327,25 +327,25 @@ const FormPreviewPage: React.FC = () => {
         <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-8">
           <div className="mb-8">
             <div className="flex items-center gap-2 mb-4">
-              <h1 className="text-2xl font-bold">{form.title}</h1>
-              <Badge variant={form.is_active ? "default" : "secondary"}>
-                {form.is_active ? "Active" : "Inactive"}
+              <h1 className="text-2xl font-bold">{form?.title}</h1>
+              <Badge variant={form?.is_active ? "default" : "secondary"}>
+                {form?.is_active ? "Active" : "Inactive"}
               </Badge>
             </div>
-            {form.description && (
+            {form?.description && (
               <p className="text-gray-600">{form.description}</p>
             )}
           </div>
           
           <div className="space-y-6">
-            {form.fields.map(renderField)}
+            {form?.fields.map(renderField)}
           </div>
           
           <div className="flex justify-end pt-8 border-t mt-8">
             <Button 
               type="submit" 
               size="lg" 
-              disabled={submitting || !form.is_active}
+              disabled={submitting || !form?.is_active}
             >
               {submitting ? 'Submitting...' : 'Submit Form'}
             </Button>
