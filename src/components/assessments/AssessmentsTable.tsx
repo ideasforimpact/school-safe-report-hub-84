@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -191,23 +192,54 @@ const AssessmentsTable: React.FC = () => {
     }
 
     try {
-      console.log('Attempting to delete assessment:', assessmentToDelete);
-      console.log('Using assessment ID for deletion:', assessmentToDelete.id);
+      console.log('=== DELETION DEBUG INFO ===');
+      console.log('Assessment to delete:', assessmentToDelete);
+      console.log('Assessment UUID (id):', assessmentToDelete.id);
+      console.log('Assessment numeric ID (assessment_id):', assessmentToDelete.assessment_id);
+      console.log('Client ID:', clientId);
       
-      const { error } = await supabase
+      // First, let's check if the assessment exists in the database
+      const { data: existingAssessment, error: checkError } = await supabase
+        .from('assessments')
+        .select('id, assessment_id, name, client_id')
+        .eq('id', assessmentToDelete.id)
+        .eq('client_id', clientId)
+        .single();
+
+      console.log('Existing assessment check:', existingAssessment);
+      
+      if (checkError) {
+        console.error('Error checking existing assessment:', checkError);
+        toast.error('Assessment not found in database');
+        return;
+      }
+
+      if (!existingAssessment) {
+        console.log('Assessment not found in database');
+        toast.error('Assessment not found in database');
+        return;
+      }
+
+      // Now delete the assessment
+      console.log('Attempting to delete assessment with UUID:', assessmentToDelete.id);
+      const { error: deleteError, data: deleteData } = await supabase
         .from('assessments')
         .delete()
         .eq('id', assessmentToDelete.id)
-        .eq('client_id', clientId);
+        .eq('client_id', clientId)
+        .select();
 
-      if (error) {
-        console.error('Delete error:', error);
-        throw error;
+      console.log('Delete operation result:', { deleteError, deleteData });
+
+      if (deleteError) {
+        console.error('Delete error:', deleteError);
+        throw deleteError;
       }
 
       console.log('Assessment deleted successfully from database');
+      console.log('Deleted records:', deleteData);
       
-      // Immediately remove from local state using the same ID field
+      // Remove from local state
       const updatedAssessments = assessments.filter(a => a.id !== assessmentToDelete.id);
       setAssessments(updatedAssessments);
       
