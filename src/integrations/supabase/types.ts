@@ -679,6 +679,50 @@ export type Database = {
         }
         Relationships: []
       }
+      form_submissions: {
+        Row: {
+          comments: string | null
+          created_at: string
+          form_id: string
+          id: string
+          responses: Json
+          status: string
+          submitter_email: string | null
+          submitter_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          comments?: string | null
+          created_at?: string
+          form_id: string
+          id?: string
+          responses?: Json
+          status?: string
+          submitter_email?: string | null
+          submitter_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          comments?: string | null
+          created_at?: string
+          form_id?: string
+          id?: string
+          responses?: Json
+          status?: string
+          submitter_email?: string | null
+          submitter_name?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "form_submissions_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "custom_forms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       grades: {
         Row: {
           campus_id: string
