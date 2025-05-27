@@ -235,6 +235,12 @@ export const getClientItems = (permissions: any) => [
     allowed: true,
   },
   {
+    icon: FileText,
+    label: 'Forms',
+    path: '/forms',
+    allowed: true,
+  },
+  {
     icon: Users,
     label: 'Users',
     path: '/users',
