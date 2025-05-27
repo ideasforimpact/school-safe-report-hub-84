@@ -59,7 +59,7 @@ export const useCustomForms = () => {
       // Transform database data to our interface
       const transformedForms: CustomForm[] = (data || []).map(form => ({
         ...form,
-        fields: Array.isArray(form.fields) ? form.fields as FormField[] : []
+        fields: Array.isArray(form.fields) ? (form.fields as unknown as FormField[]) : []
       }));
       
       setForms(transformedForms);
