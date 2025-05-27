@@ -1,0 +1,347 @@
+
+import React, { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { FileText, Calendar, User, Star, Check, X, MessageCircle, Paperclip, Eye, Download } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { useAuth } from '@/contexts/auth';
+
+interface AssessmentViewDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  assessmentId: number;
+}
+
+interface Question {
+  id: string;
+  text: string;
+  required?: boolean;
+  allowComments?: boolean;
+  allowAttachments?: boolean;
+}
+
+interface Answer {
+  questionId: string;
+  answer?: boolean;
+  comment?: string;
+  attachments?: any[];
+}
+
+interface AssessmentData {
+  id: string;
+  assessment_id: number;
+  name: string;
+  status: string;
+  target_completion_date: string | null;
+  created_at: string;
+  score: number | null;
+  answers: Answer[];
+  creator_name?: string;
+  assignee_name?: string;
+  template?: {
+    title: string;
+    description: string;
+    questions: Question[];
+  };
+}
+
+const AssessmentViewDialog = ({ open, onOpenChange, assessmentId }: AssessmentViewDialogProps) => {
+  const [assessment, setAssessment] = useState<AssessmentData | null>(null);
+  const [loading, setLoading] = useState(false);
+  const { user, employeeData } = useAuth();
+  const clientId = employeeData?.clientId || user?.clientId;
+
+  useEffect(() => {
+    if (open && assessmentId && clientId) {
+      fetchAssessmentDetails();
+    }
+  }, [open, assessmentId, clientId]);
+
+  const fetchAssessmentDetails = async () => {
+    try {
+      setLoading(true);
+      
+      const { data, error } = await supabase
+        .from('assessments')
+        .select(`
+          id,
+          assessment_id,
+          name,
+          status,
+          target_completion_date,
+          created_at,
+          score,
+          answers,
+          creator:employees!assessments_created_by_fkey(first_name, last_name),
+          assignee:employees!assessments_assigned_to_fkey(first_name, last_name),
+          template:assessment_templates(title, description, questions)
+        `)
+        .eq('assessment_id', assessmentId)
+        .eq('client_id', clientId)
+        .single();
+
+      if (error) throw error;
+
+      const formattedAssessment = {
+        ...data,
+        answers: Array.isArray(data.answers) ? data.answers : [],
+        creator_name: data.creator 
+          ? `${data.creator.first_name} ${data.creator.last_name}`
+          : 'Unknown',
+        assignee_name: data.assignee 
+          ? `${data.assignee.first_name} ${data.assignee.last_name}`
+          : 'Unassigned',
+        template: data.template ? {
+          title: data.template.title,
+          description: data.template.description,
+          questions: Array.isArray(data.template.questions) ? data.template.questions : []
+        } : undefined
+      };
+
+      setAssessment(formattedAssessment);
+    } catch (error) {
+      console.error('Error fetching assessment details:', error);
+      toast.error('Failed to load assessment details');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    const statusColors = {
+      'New': 'bg-blue-100 text-blue-800',
+      'Draft': 'bg-gray-100 text-gray-800',
+      'In Progress': 'bg-yellow-100 text-yellow-800',
+      'Submitted': 'bg-purple-100 text-purple-800',
+      'Completed': 'bg-green-100 text-green-800',
+    };
+    
+    return (
+      <Badge className={statusColors[status as keyof typeof statusColors] || 'bg-gray-100 text-gray-800'}>
+        {status}
+      </Badge>
+    );
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const getAnswerForQuestion = (questionId: string) => {
+    return assessment?.answers.find(answer => answer.questionId === questionId);
+  };
+
+  const calculateProgress = () => {
+    if (!assessment?.template?.questions || !assessment.answers) return 0;
+    const totalQuestions = assessment.template.questions.length;
+    const answeredQuestions = assessment.answers.filter(answer => answer.answer !== undefined).length;
+    return totalQuestions > 0 ? Math.round((answeredQuestions / totalQuestions) * 100) : 0;
+  };
+
+  const openDocumentViewer = (attachment: any) => {
+    if (attachment.url) {
+      window.open(attachment.url, '_blank');
+    }
+  };
+
+  if (!open) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Assessment Details
+          </DialogTitle>
+        </DialogHeader>
+
+        {loading ? (
+          <div className="flex items-center justify-center p-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+          </div>
+        ) : assessment ? (
+          <ScrollArea className="h-full max-h-[75vh]">
+            <div className="space-y-6 p-1">
+              {/* Assessment Header */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-2">
+                      <CardTitle className="text-xl">{assessment.name}</CardTitle>
+                      <div className="flex items-center gap-4 text-sm text-gray-600">
+                        <span className="flex items-center gap-1">
+                          <FileText className="h-4 w-4" />
+                          #{assessment.assessment_id}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-4 w-4" />
+                          Created: {formatDate(assessment.created_at)}
+                        </span>
+                        {assessment.target_completion_date && (
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-4 w-4" />
+                            Due: {new Date(assessment.target_completion_date).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {getStatusBadge(assessment.status)}
+                      <div className="flex items-center gap-1">
+                        <Star className="h-4 w-4 text-yellow-500" />
+                        <span className="font-medium">{calculateProgress()}%</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-sm font-medium text-gray-500">Created By:</span>
+                      <p className="flex items-center gap-1">
+                        <User className="h-4 w-4" />
+                        {assessment.creator_name}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-sm font-medium text-gray-500">Assigned To:</span>
+                      <p className="flex items-center gap-1">
+                        <User className="h-4 w-4" />
+                        {assessment.assignee_name}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Template Info */}
+              {assessment.template && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Template: {assessment.template.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-gray-600">{assessment.template.description}</p>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Questions and Answers */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Questions & Answers</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {assessment.template?.questions.map((question, index) => {
+                    const answer = getAnswerForQuestion(question.id);
+                    const isAnswered = answer?.answer !== undefined;
+                    
+                    return (
+                      <div key={question.id} className="border-l-4 border-l-gray-200 pl-4 space-y-3">
+                        <div className="flex items-start gap-3">
+                          <span className={`flex justify-center items-center w-6 h-6 rounded-full text-sm ${
+                            isAnswered 
+                              ? "bg-green-100 text-green-700" 
+                              : "bg-gray-100 text-gray-600"
+                          }`}>
+                            {isAnswered ? <Check className="h-3 w-3" /> : index + 1}
+                          </span>
+                          <div className="flex-1">
+                            <p className="font-medium">
+                              {question.text}
+                              {question.required && <span className="text-red-500 ml-1">*</span>}
+                            </p>
+                            
+                            {/* Answer */}
+                            <div className="mt-2">
+                              {isAnswered ? (
+                                <div className="flex items-center gap-2">
+                                  {answer.answer ? (
+                                    <div className="flex items-center gap-1 text-green-600">
+                                      <Check className="h-4 w-4" />
+                                      <span className="font-medium">Yes</span>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center gap-1 text-red-600">
+                                      <X className="h-4 w-4" />
+                                      <span className="font-medium">No</span>
+                                    </div>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-gray-400 italic">Not answered</span>
+                              )}
+                            </div>
+
+                            {/* Comment */}
+                            {answer?.comment && (
+                              <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <MessageCircle className="h-4 w-4 text-blue-600" />
+                                  <span className="text-sm font-medium text-blue-800">Comment</span>
+                                </div>
+                                <p className="text-sm text-gray-700">{answer.comment}</p>
+                              </div>
+                            )}
+
+                            {/* Attachments */}
+                            {answer?.attachments && answer.attachments.length > 0 && (
+                              <div className="mt-3">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Paperclip className="h-4 w-4 text-gray-600" />
+                                  <span className="text-sm font-medium text-gray-700">Attachments</span>
+                                </div>
+                                <div className="space-y-2">
+                                  {answer.attachments.map((attachment, idx) => (
+                                    <div key={idx} className="flex items-center gap-2 p-2 bg-gray-50 rounded border">
+                                      <FileText className="h-4 w-4 text-gray-500" />
+                                      <span className="text-sm flex-1">{attachment.name}</span>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => openDocumentViewer(attachment)}
+                                        className="h-8 w-8 p-0"
+                                      >
+                                        <Eye className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        
+                        {index < assessment.template.questions.length - 1 && (
+                          <Separator className="mt-4" />
+                        )}
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            </div>
+          </ScrollArea>
+        ) : (
+          <div className="flex items-center justify-center p-8">
+            <p className="text-gray-500">Assessment not found</p>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default AssessmentViewDialog;

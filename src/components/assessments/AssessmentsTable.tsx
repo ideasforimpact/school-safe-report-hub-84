@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Search, Edit, Trash2, FileText, Calendar, Users, AlertCircle, Star, Filter } from 'lucide-react';
+import { Search, Eye, Trash2, FileText, Calendar, Users, AlertCircle, Star, Filter } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,6 +21,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/auth';
+import AssessmentViewDialog from './view/AssessmentViewDialog';
 
 interface AssessmentTemplate {
   questions: any;
@@ -59,6 +60,8 @@ const AssessmentsTable: React.FC = () => {
   const [targetDateTo, setTargetDateTo] = useState<Date | undefined>(undefined);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [assessmentToDelete, setAssessmentToDelete] = useState<Assessment | null>(null);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [selectedAssessmentId, setSelectedAssessmentId] = useState<number | null>(null);
 
   // Get client_id from either employeeData or user context
   const clientId = employeeData?.clientId || user?.clientId;
@@ -350,6 +353,11 @@ const AssessmentsTable: React.FC = () => {
     setAssessmentToDelete(null);
   };
 
+  const handleView = (assessmentId: number) => {
+    setSelectedAssessmentId(assessmentId);
+    setViewDialogOpen(true);
+  };
+
   if (!clientId) {
     return (
       <Card>
@@ -569,9 +577,10 @@ const AssessmentsTable: React.FC = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleEdit(assessment.assessment_id)}
+                          onClick={() => handleView(assessment.assessment_id)}
+                          className="text-green-600 hover:text-green-700"
                         >
-                          <Edit className="h-4 w-4" />
+                          <Eye className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="outline"
@@ -611,6 +620,13 @@ const AssessmentsTable: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Assessment View Dialog */}
+      <AssessmentViewDialog
+        open={viewDialogOpen}
+        onOpenChange={setViewDialogOpen}
+        assessmentId={selectedAssessmentId || 0}
+      />
     </>
   );
 };
