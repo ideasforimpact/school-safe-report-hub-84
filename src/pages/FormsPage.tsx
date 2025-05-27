@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,11 +8,13 @@ import { FileText, Calendar, BarChart3, List, Eye } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { useFetchForms } from '@/hooks/useFetchForms';
 import { useFormSubmissions } from '@/hooks/useFormSubmissions';
+import SubmissionDetailDialog from '@/components/forms/SubmissionDetailDialog';
 
 const FormsPage = () => {
   const { forms, loading, error } = useFetchForms();
   const [selectedForm, setSelectedForm] = useState<any | null>(null);
   const [submissionsView, setSubmissionsView] = useState<'list' | 'aggregated'>('list');
+  const [selectedSubmission, setSelectedSubmission] = useState<any | null>(null);
   
   const { submissions, loading: submissionsLoading } = useFormSubmissions(selectedForm?.id || null);
 
@@ -37,6 +38,10 @@ const FormsPage = () => {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString();
+  };
+
+  const handleViewSubmission = (submission: any) => {
+    setSelectedSubmission(submission);
   };
 
   if (loading) {
@@ -204,7 +209,12 @@ const FormsPage = () => {
                                     <TableCell>{formatDate(submission.created_at)}</TableCell>
                                     <TableCell>{getStatusBadge(submission.status)}</TableCell>
                                     <TableCell className="text-right">
-                                      <Button variant="outline" size="sm" className="gap-1">
+                                      <Button 
+                                        variant="outline" 
+                                        size="sm" 
+                                        className="gap-1"
+                                        onClick={() => handleViewSubmission(submission)}
+                                      >
                                         <Eye className="h-4 w-4" />
                                         View
                                       </Button>
@@ -280,6 +290,14 @@ const FormsPage = () => {
           )}
         </div>
       </div>
+
+      {/* Submission Detail Dialog */}
+      {selectedSubmission && (
+        <SubmissionDetailDialog
+          submission={selectedSubmission}
+          onClose={() => setSelectedSubmission(null)}
+        />
+      )}
     </Layout>
   );
 };
