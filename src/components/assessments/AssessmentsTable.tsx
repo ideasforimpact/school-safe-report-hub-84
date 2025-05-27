@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -191,7 +192,7 @@ const AssessmentsTable: React.FC = () => {
     }
 
     try {
-      console.log('Deleting assessment:', assessmentToDelete);
+      console.log('Attempting to delete assessment:', assessmentToDelete);
       
       const { error } = await supabase
         .from('assessments')
@@ -204,10 +205,32 @@ const AssessmentsTable: React.FC = () => {
         throw error;
       }
 
-      toast.success('Assessment deleted successfully');
+      console.log('Assessment deleted successfully from database');
       
-      // Refresh the assessments list
-      await fetchAssessments();
+      // Immediately remove from local state for instant UI update
+      const updatedAssessments = assessments.filter(a => a.id !== assessmentToDelete.id);
+      setAssessments(updatedAssessments);
+      setFilteredAssessments(updatedAssessments.filter(assessment => {
+        // Apply existing filters
+        let filtered = true;
+        
+        if (searchTerm) {
+          filtered = filtered && (
+            assessment.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            assessment.creator_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            assessment.assignee_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            assessment.assessment_id.toString().includes(searchTerm)
+          );
+        }
+
+        if (statusFilter !== 'all') {
+          filtered = filtered && assessment.status.toLowerCase() === statusFilter.toLowerCase();
+        }
+
+        return filtered;
+      }));
+
+      toast.success('Assessment deleted successfully');
       
       // Close the dialog
       setDeleteDialogOpen(false);
