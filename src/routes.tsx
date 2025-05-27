@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { createBrowserRouter } from 'react-router-dom';
 import Home from '@/pages/Home';
@@ -55,6 +54,7 @@ import Blog from '@/pages/Blog';
 import NewsPage from '@/pages/NewsPage';
 import ProfilePage from '@/pages/ProfilePage';
 import FormPreviewPage from '@/pages/FormPreviewPage';
+import FormsPage from '@/pages/FormsPage';
 
 const routes = createBrowserRouter([
   {
@@ -264,6 +264,10 @@ const routes = createBrowserRouter([
   {
     path: "/profile",
     element: <ProfilePage />,
+  },
+  {
+    path: "/forms",
+    element: <FormsPage />,
   },
   {
     path: "/form-preview/:formId",
