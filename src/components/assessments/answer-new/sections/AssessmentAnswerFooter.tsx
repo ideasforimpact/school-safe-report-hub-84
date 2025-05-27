@@ -14,6 +14,8 @@ interface AssessmentAnswerFooterProps {
   progress: number;
   totalQuestions: number;
   answeredQuestions: number;
+  template: any;
+  answers: any[];
 }
 
 const AssessmentAnswerFooter = ({ 
@@ -23,10 +25,30 @@ const AssessmentAnswerFooter = ({
   saving,
   progress, 
   totalQuestions, 
-  answeredQuestions 
+  answeredQuestions,
+  template,
+  answers
 }: AssessmentAnswerFooterProps) => {
   const navigate = useNavigate();
-  const isComplete = progress === 100;
+  
+  // Check if all required questions are answered
+  const checkAllRequiredAnswered = () => {
+    if (!template?.questions) return false;
+    
+    const questions = Array.isArray(template.questions) 
+      ? template.questions
+      : [];
+    
+    const requiredQuestions = questions.filter((q: any) => q.required);
+    
+    return requiredQuestions.every((requiredQ: any) => {
+      const answer = answers.find(a => a.questionId === requiredQ.id);
+      return answer?.answer !== undefined;
+    });
+  };
+
+  const allRequiredAnswered = checkAllRequiredAnswered();
+  const canSubmit = allRequiredAnswered && !submitting && !saving;
 
   return (
     <motion.div
@@ -41,6 +63,7 @@ const AssessmentAnswerFooter = ({
               variant="outline"
               onClick={() => navigate('/assessments')}
               className="flex items-center gap-2 order-1 sm:order-none"
+              disabled={submitting || saving}
             >
               <ArrowLeft className="h-4 w-4" />
               Back to Assessments
@@ -59,14 +82,14 @@ const AssessmentAnswerFooter = ({
               
               <Button
                 onClick={onSubmit}
-                disabled={submitting || saving}
+                disabled={!canSubmit}
                 className={`flex items-center gap-2 ${
-                  isComplete 
+                  canSubmit
                     ? 'bg-green-600 hover:bg-green-700 text-white' 
                     : 'bg-gray-400 text-gray-200 cursor-not-allowed'
                 }`}
               >
-                {isComplete ? (
+                {allRequiredAnswered ? (
                   <CheckCircle className="h-4 w-4" />
                 ) : (
                   <AlertTriangle className="h-4 w-4" />
@@ -76,12 +99,12 @@ const AssessmentAnswerFooter = ({
             </div>
           </div>
           
-          {!isComplete && (
+          {!allRequiredAnswered && (
             <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
               <div className="flex items-center gap-2 text-amber-800">
                 <AlertTriangle className="h-4 w-4" />
                 <span className="text-sm font-medium">
-                  Complete all questions to submit ({answeredQuestions}/{totalQuestions} answered)
+                  Answer all required questions to submit ({answeredQuestions}/{totalQuestions} answered)
                 </span>
               </div>
             </div>

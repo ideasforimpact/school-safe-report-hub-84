@@ -188,6 +188,9 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
         throw updateError;
       }
 
+      // Update local assessment state to reflect the saved status
+      setAssessment(prev => prev ? { ...prev, status: currentStatus, answers: answersData } : null);
+
       toast.success('Assessment saved as draft successfully!');
       
     } catch (error) {

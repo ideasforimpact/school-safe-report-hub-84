@@ -61,6 +61,8 @@ const AssessmentAnswerContainer = () => {
           progress={progress}
           totalQuestions={template.questions?.length || 0}
           answeredQuestions={answers.filter(a => a.answer !== undefined).length}
+          template={template}
+          answers={answers}
         />
       </div>
     </motion.div>
