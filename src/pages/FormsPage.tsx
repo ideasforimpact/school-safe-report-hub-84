@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FileText, Calendar, BarChart3, List, Eye } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
-import { useCustomForms } from '@/hooks/useCustomForms';
+import { useFetchForms } from '@/hooks/useFetchForms';
 
 interface FormSubmission {
   id: string;
@@ -18,7 +18,7 @@ interface FormSubmission {
 }
 
 const FormsPage = () => {
-  const { forms, loading, error } = useCustomForms();
+  const { forms, loading, error } = useFetchForms();
   const [selectedForm, setSelectedForm] = useState<any | null>(null);
   const [submissionsView, setSubmissionsView] = useState<'list' | 'aggregated'>('list');
 
