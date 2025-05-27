@@ -1,9 +1,11 @@
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, FileText, Clock, User, Target } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Calendar, FileText, Clock, User, Target, ArrowLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface AssessmentAnswerHeaderProps {
@@ -13,12 +15,30 @@ interface AssessmentAnswerHeaderProps {
 }
 
 const AssessmentAnswerHeader = ({ assessment, template, progress }: AssessmentAnswerHeaderProps) => {
+  const navigate = useNavigate();
+
+  const handleBackToAssessments = () => {
+    navigate('/assessments');
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.5 }}
     >
+      {/* Back Button */}
+      <div className="mb-4">
+        <Button
+          variant="outline"
+          onClick={handleBackToAssessments}
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Assessments
+        </Button>
+      </div>
+
       <Card className="bg-white/80 backdrop-blur-sm border-0 shadow-xl">
         <CardContent className="p-8">
           <div className="space-y-6">
