@@ -1,9 +1,8 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Plus, Edit, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, EyeOff, FileText } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -18,6 +17,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import SimpleFormBuilder from './SimpleFormBuilder';
+import FormPreviewDialog from './FormPreviewDialog';
 
 interface FormField {
   id: string;
@@ -77,6 +77,8 @@ const FormConfigurationContent = () => {
   const [editingForm, setEditingForm] = useState<CustomForm | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [formToDelete, setFormToDelete] = useState<CustomForm | null>(null);
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+  const [previewForm, setPreviewForm] = useState<CustomForm | null>(null);
 
   const handleCreateForm = () => {
     setEditingForm(null);
@@ -217,6 +219,15 @@ const FormConfigurationContent = () => {
                         <Button
                           variant="outline"
                           size="sm"
+                          onClick={() => handlePreviewForm(form)}
+                          className="gap-1"
+                        >
+                          <FileText className="h-4 w-4" />
+                          Preview
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => handleToggleActive(form)}
                           className="gap-1"
                         >
@@ -276,6 +287,12 @@ const FormConfigurationContent = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <FormPreviewDialog 
+        form={previewForm}
+        open={previewDialogOpen}
+        onOpenChange={setPreviewDialogOpen}
+      />
     </div>
   );
 };
