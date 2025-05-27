@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { useParams } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,11 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Star, Paperclip } from 'lucide-react';
+import { Star, Paperclip, ArrowLeft } from 'lucide-react';
+import { useCustomForms } from '@/hooks/useCustomForms';
 
 interface FormField {
   id: string;
-  type: 'text' | 'textarea' | 'select' | 'radio' | 'checkbox' | 'attachment' | 'rating';
+  type: string;
   label: string;
   required: boolean;
   options?: string[];
@@ -25,61 +26,28 @@ interface FormField {
 
 interface CustomForm {
   id: string;
+  client_id: string;
   title: string;
   description: string;
   fields: FormField[];
-  isActive: boolean;
-  createdAt: string;
-  submissions: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
 }
 
 const FormPreviewPage: React.FC = () => {
   const { formId } = useParams<{ formId: string }>();
+  const navigate = useNavigate();
+  const { forms, loading } = useCustomForms();
+  const [form, setForm] = useState<CustomForm | null>(null);
 
-  // Mock data for demo - in real app, this would come from an API or context
-  const mockForms: CustomForm[] = [
-    {
-      id: '1',
-      title: 'Student Feedback Form',
-      description: 'Collect feedback from students about their learning experience',
-      fields: [
-        { id: '1', type: 'text', label: 'Student Name', required: true },
-        { id: '2', type: 'select', label: 'Grade', required: true, options: ['9th', '10th', '11th', '12th'] },
-        { id: '3', type: 'textarea', label: 'Feedback', required: true },
-        { id: '4', type: 'rating', label: 'Overall Satisfaction', required: true, maxRating: 5 },
-        { id: '5', type: 'attachment', label: 'Supporting Documents', required: false, allowMultiple: true, maxFiles: 3, allowedFileTypes: ['image/*', 'application/pdf'] }
-      ],
-      isActive: true,
-      createdAt: '2024-01-15',
-      submissions: 23
-    },
-    {
-      id: '2',
-      title: 'Teacher Evaluation',
-      description: 'Annual teacher performance evaluation form',
-      fields: [
-        { id: '1', type: 'text', label: 'Teacher Name', required: true },
-        { id: '2', type: 'radio', label: 'Performance Rating', required: true, options: ['Excellent', 'Good', 'Average', 'Needs Improvement'] },
-        { id: '3', type: 'rating', label: 'Teaching Effectiveness', required: true, maxRating: 10 }
-      ],
-      isActive: false,
-      createdAt: '2024-01-10',
-      submissions: 8
+  useEffect(() => {
+    if (formId && forms.length > 0) {
+      const foundForm = forms.find(f => f.id === formId);
+      setForm(foundForm || null);
     }
-  ];
-
-  const form = mockForms.find(f => f.id === formId);
-
-  if (!form) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Form Not Found</h1>
-          <p className="text-gray-600">The form you're looking for could not be found.</p>
-        </div>
-      </div>
-    );
-  }
+  }, [formId, forms]);
 
   const renderField = (field: FormField) => {
     const baseProps = {
@@ -88,7 +56,7 @@ const FormPreviewPage: React.FC = () => {
     };
 
     switch (field.type) {
-      case 'text':
+      case 'text_input':
         return (
           <div className="space-y-2">
             <Label htmlFor={field.id}>
@@ -99,7 +67,7 @@ const FormPreviewPage: React.FC = () => {
           </div>
         );
 
-      case 'textarea':
+      case 'text_area':
         return (
           <div className="space-y-2">
             <Label htmlFor={field.id}>
@@ -110,7 +78,7 @@ const FormPreviewPage: React.FC = () => {
           </div>
         );
 
-      case 'select':
+      case 'dropdown':
         return (
           <div className="space-y-2">
             <Label htmlFor={field.id}>
@@ -130,7 +98,7 @@ const FormPreviewPage: React.FC = () => {
           </div>
         );
 
-      case 'radio':
+      case 'radio_buttons':
         return (
           <div className="space-y-2">
             <Label>
@@ -148,7 +116,7 @@ const FormPreviewPage: React.FC = () => {
           </div>
         );
 
-      case 'checkbox':
+      case 'checkboxes':
         return (
           <div className="space-y-2">
             <Label>
@@ -166,7 +134,7 @@ const FormPreviewPage: React.FC = () => {
           </div>
         );
 
-      case 'attachment':
+      case 'file_attachment':
         return (
           <div className="space-y-2">
             <Label htmlFor={field.id}>
@@ -207,15 +175,51 @@ const FormPreviewPage: React.FC = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-500">Loading form...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!form) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Form Not Found</h1>
+          <p className="text-gray-600 mb-6">The form you're looking for could not be found.</p>
+          <Button onClick={() => navigate(-1)} className="gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            Go Back
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-2xl mx-auto px-4">
+        <div className="mb-6">
+          <Button 
+            variant="outline" 
+            onClick={() => navigate(-1)}
+            className="gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
+        </div>
+        
         <div className="bg-white rounded-lg shadow p-8">
           <div className="mb-8">
             <div className="flex items-center gap-2 mb-4">
               <h1 className="text-2xl font-bold">{form.title}</h1>
-              <Badge variant={form.isActive ? "default" : "secondary"}>
-                {form.isActive ? "Active" : "Inactive"}
+              <Badge variant={form.is_active ? "default" : "secondary"}>
+                {form.is_active ? "Active" : "Inactive"}
               </Badge>
             </div>
             {form.description && (
