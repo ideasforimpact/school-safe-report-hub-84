@@ -1,4 +1,3 @@
-
 import { EmployeeData } from '@/contexts/auth/types';
 
 export interface Module {
@@ -9,6 +8,8 @@ export interface Module {
   level: string;
   enabled: boolean;
   accessLevel?: Record<string, any>;
+  order?: number; // Added order property
+  url?: string; // Added url property
 }
 
 export interface EmployeeState {

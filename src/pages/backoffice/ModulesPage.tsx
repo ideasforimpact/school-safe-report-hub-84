@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -86,27 +85,19 @@ const ModulesPage = () => {
     }
 
     try {
-      const { error } = await supabase.functions.invoke('manage-modules', {
-        body: null,
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      const { error } = await supabase
+        .from('modules')
+        .delete()
+        .eq('id', moduleId);
 
-      // The correct way to pass the ID for DELETE requests
-      const response = await fetch(`https://ybvxkiubnnixntghojyy.supabase.co/functions/v1/manage-modules?id=${moduleId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${supabase.supabaseKey}`,
-          'apikey': supabase.supabaseKey,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete module');
+      if (error) {
+        console.error('Error deleting module:', error);
+        toast({
+          title: "Error",
+          description: "Failed to delete module",
+          variant: "destructive",
+        });
+        return;
       }
 
       toast({
