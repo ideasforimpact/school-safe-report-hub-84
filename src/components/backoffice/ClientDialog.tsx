@@ -59,6 +59,10 @@ const ClientDialog = ({
     }
   };
 
+  const handleLogoUpload = (logoUrl: string) => {
+    setFormData({ ...formData, logo: logoUrl });
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -81,13 +85,14 @@ const ClientDialog = ({
             <BasicInfoTab
               formData={formData}
               setFormData={setFormData}
+              handleLogoUpload={handleLogoUpload}
             />
           </TabsContent>
 
           <TabsContent value="auth" className="space-y-4">
             <AuthTab
               formData={formData}
-              setFormData={setFormData}
+              onFormDataChange={setFormData}
             />
           </TabsContent>
 
