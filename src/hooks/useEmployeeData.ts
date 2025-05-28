@@ -100,7 +100,7 @@ export const useEmployeeData = () => {
         order: module.order || 999 // Include ORDER
       }));
 
-      console.log("Configured modules with URL and ORDER:", configuredModules);
+      console.log("Configured modules with URL and ORDER:", configuredModules,data.modules);
       dispatch(setConfiguredModules(configuredModules));
 
     } catch (error) {
