@@ -86,23 +86,28 @@ const SidebarContent = () => {
     
   }, [isSaasOwner, isBackofficeRoute, user, isProviderAuthenticated, configuredModules]);
 
-  // Determine if a path is active, and add '/backoffice' prefix for SaaS owners
+  // Determine if a path is active
   const isActive = (path: string) => {
     const currentPath = location.pathname;
-    const activePath = path;
     // Check if the current path matches the menu item path or starts with it (for nested routes)
-    return currentPath === activePath || (activePath !== '/' && currentPath.startsWith(activePath));
+    return currentPath === path || (path !== '/' && currentPath.startsWith(path));
   };
 
-  // Process paths for SaaS owners - add /backoffice prefix if not already present
+  // Process paths - avoid double prefixes
   const getProcessedPath = (path: string) => {
-    // If user is SaaS owner and path doesn't already start with /backoffice, add it
-    if (isSaasOwner && user?.role === 'saas_owner') {
+    // If path already starts with /backoffice, don't add another prefix
+    if (path.startsWith('/backoffice')) {
+      return path;
+    }
+    
+    // If user is SaaS owner and we're in backoffice route, add /backoffice prefix
+    if (isSaasOwner && user?.role === 'saas_owner' && isBackofficeRoute) {
       if (path === '/') {
         return '/backoffice';
       }
-      return path.startsWith('/backoffice') ? path : `/backoffice${path}`;
+      return `/backoffice${path}`;
     }
+    
     return path;
   };
 
