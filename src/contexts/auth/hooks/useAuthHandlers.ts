@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { User, UserRole, EmployeeData } from '../types';
 import { getUserFromStorage, saveUserToStorage, saveEmployeeDataToStorage } from '@/services/auth/authService';
@@ -72,7 +71,7 @@ export const useAuthHandlers = ({
             module_id,
             enabled,
             access_level,
-            modules(id, name, icon, level)
+            modules(id, name, icon, level, url, order)
           `)
           .eq('client_id', clientId)
           .eq('enabled', true);
@@ -83,7 +82,7 @@ export const useAuthHandlers = ({
           return [];
         }
 
-        // Convert client modules to the expected format
+        // Convert client modules to the expected format with url and order
         configuredModules = clientModules?.map(cm => {
           const moduleObj = cm.modules;
           if (!moduleObj) return null;
@@ -94,7 +93,9 @@ export const useAuthHandlers = ({
             icon: moduleObj.icon || '',
             level: moduleObj.level, // Include the level property
             enabled: true,
-            accessLevel: cm.access_level || {}
+            accessLevel: cm.access_level || {},
+            url: moduleObj.url || `/${moduleObj.name.toLowerCase().replace(/\s+/g, '-')}`, // Include URL
+            order: moduleObj.order || 999 // Include ORDER
           };
         }).filter(Boolean) as Module[] || [];
         
@@ -108,7 +109,7 @@ export const useAuthHandlers = ({
             module_id,
             enabled,
             access_level,
-            modules(id, name, icon, level)
+            modules(id, name, icon, level, url, order)
           `)
           .eq('client_id', clientId)
           .eq('enabled', true);
@@ -140,7 +141,7 @@ export const useAuthHandlers = ({
           employeeModuleMap.set(em.module_id, em.access_level);
         });
 
-        // Combine client modules with employee-specific permissions
+        // Combine client modules with employee-specific permissions, including url and order
         configuredModules = clientModules?.map(cm => {
           const moduleObj = cm.modules;
           if (!moduleObj) return null;
@@ -160,12 +161,14 @@ export const useAuthHandlers = ({
             icon: moduleObj.icon || '',
             level: moduleObj.level,
             enabled: true,
-            accessLevel: employeeModuleMap.get(moduleObj.id) || cm.access_level || {}
+            accessLevel: employeeModuleMap.get(moduleObj.id) || cm.access_level || {},
+            url: moduleObj.url || `/${moduleObj.name.toLowerCase().replace(/\s+/g, '-')}`, // Include URL
+            order: moduleObj.order || 999 // Include ORDER
           };
         }).filter(Boolean) as Module[] || [];
       }
 
-      // If no modules found, provide a dashboard
+      // If no modules found, provide a dashboard with url and order
       if (configuredModules.length === 0) {
         configuredModules = [{
           id: 'dashboard-default',
@@ -174,12 +177,16 @@ export const useAuthHandlers = ({
           icon: 'LayoutDashboard',
           level: 'client',
           enabled: true,
-          accessLevel: {}
+          accessLevel: {},
+          url: '/dashboard', // Include URL for default dashboard
+          order: 1 // Include ORDER for default dashboard
         }];
       }
       
-      // Only log the modules length since employeeModules might be undefined or out of scope here
-      console.log("Modules fetched during auth:", configuredModules.length);
+      // Sort modules by order
+      configuredModules.sort((a, b) => (a.order || 999) - (b.order || 999));
+      
+      console.log("Modules fetched during auth with URL and ORDER:", configuredModules.length, configuredModules.map(m => ({ name: m.name, url: m.url, order: m.order })));
       return configuredModules;
       
     } catch (error) {
