@@ -1,13 +1,12 @@
 
 import React from 'react';
-import Layout from '@/components/layout/Layout';
-import AnswerAssessmentForm from '@/components/assessments/answer/AnswerAssessmentForm';
 
 const AnswerAssessmentPage = () => {
   return (
-    <Layout>
-      <AnswerAssessmentForm />
-    </Layout>
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-4">Answer Assessment</h1>
+      <p>Answer assessment content coming soon...</p>
+    </div>
   );
 };
 

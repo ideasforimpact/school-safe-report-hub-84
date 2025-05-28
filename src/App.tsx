@@ -1,3 +1,4 @@
+
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -21,7 +22,7 @@ import EduSafeResourcesPage from '@/pages/EduSafeResourcesPage';
 import UsersPage from '@/pages/UsersPage';
 import ConfigurationPage from '@/pages/ConfigurationPage';
 import FormsPage from '@/pages/FormsPage';
-import { EmployeeDataProvider } from '@/components/employee/EmployeeDataProvider';
+import EmployeeDataProvider from '@/components/employee/EmployeeDataProvider';
 
 // Backoffice Pages
 import BackofficeDashboard from '@/pages/backoffice/BackofficeDashboard';
@@ -46,94 +47,94 @@ function App() {
 
               {/* Client Routes */}
               <Route path="/dashboard" element={
-                <RouteGuard requiresAuth={true}>
+                <RouteGuard>
                   <DashboardPage />
                 </RouteGuard>
               } />
               <Route path="/incidents" element={
-                <RouteGuard requiresAuth={true}>
+                <RouteGuard>
                   <IncidentsPage />
                 </RouteGuard>
               } />
               <Route path="/incidents/:id" element={
-                <RouteGuard requiresAuth={true}>
+                <RouteGuard>
                   <IncidentDetailPage />
                 </RouteGuard>
               } />
               <Route path="/report" element={
-                <RouteGuard requiresAuth={true}>
+                <RouteGuard>
                   <ReportIncidentPage />
                 </RouteGuard>
               } />
               <Route path="/incidents/:id/edit" element={
-                <RouteGuard requiresAuth={true}>
+                <RouteGuard>
                   <EditIncidentPage />
                 </RouteGuard>
               } />
               <Route path="/insights" element={
-                <RouteGuard requiresAuth={true}>
+                <RouteGuard>
                   <InsightsPage />
                 </RouteGuard>
               } />
               <Route path="/assessments" element={
-                <RouteGuard requiresAuth={true}>
+                <RouteGuard>
                   <AssessmentsPage />
                 </RouteGuard>
               } />
               <Route path="/assessments/:id/answer" element={
-                <RouteGuard requiresAuth={true}>
+                <RouteGuard>
                   <AnswerAssessmentPage />
                 </RouteGuard>
               } />
               <Route path="/assessments/:id/answer/form" element={
-                <RouteGuard requiresAuth={true}>
+                <RouteGuard>
                   <AssessmentResponseFormPage />
                 </RouteGuard>
               } />
               <Route path="/assessments/answer/new" element={
-                <RouteGuard requiresAuth={true}>
+                <RouteGuard>
                   <AnswerAssessmentNewPage />
                 </RouteGuard>
               } />
               <Route path="/employee-verification" element={
-                <RouteGuard requiresAuth={true}>
+                <RouteGuard>
                   <EmployeeVerificationPage />
                 </RouteGuard>
               } />
               <Route path="/grievances" element={
-                <RouteGuard requiresAuth={true}>
+                <RouteGuard>
                   <GrievancesPage />
                 </RouteGuard>
               } />
               <Route path="/transport-safety" element={
-                <RouteGuard requiresAuth={true}>
+                <RouteGuard>
                   <TransportSafetyPage />
                 </RouteGuard>
               } />
               <Route path="/edusafe-resources" element={
-                <RouteGuard requiresAuth={true}>
+                <RouteGuard>
                   <EduSafeResourcesPage />
                 </RouteGuard>
               } />
               <Route path="/users" element={
-                <RouteGuard requiresAuth={true}>
+                <RouteGuard>
                   <UsersPage />
                 </RouteGuard>
               } />
               <Route path="/configuration" element={
-                <RouteGuard requiresAuth={true}>
+                <RouteGuard>
                   <ConfigurationPage />
                 </RouteGuard>
               } />
               <Route path="/forms" element={
-                <RouteGuard requiresAuth={true}>
+                <RouteGuard>
                   <FormsPage />
                 </RouteGuard>
               } />
 
               {/* Backoffice Routes */}
               <Route path="/backoffice/*" element={
-                <RouteGuard requiresAuth={true}>
+                <RouteGuard>
                   <Routes>
                     <Route index element={<Navigate to="/backoffice/dashboard" replace />} />
                     <Route path="dashboard" element={<BackofficeDashboard />} />
