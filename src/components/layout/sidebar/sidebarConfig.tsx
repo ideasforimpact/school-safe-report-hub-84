@@ -27,6 +27,7 @@ export interface Module {
   active?: boolean;
   description?: string;
   access_level?: any; // Added to support access levels from client_modules
+  url?: string; // Added URL field to match the database schema
 }
 
 // Map string icon names to Lucide components
