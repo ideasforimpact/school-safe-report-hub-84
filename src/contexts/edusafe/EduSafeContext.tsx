@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { EduSafeResource } from '@/types/eduSafeTypes';
 import { useAuth } from '@/contexts/auth/AuthContext';
@@ -50,7 +49,7 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
         title: record.title,
         description: record.description || '',
         category: record.category as any,
-        tags: Array.isArray(record.tags) ? record.tags : [],
+        tags: Array.isArray(record.tags) ? (record.tags as string[]) : [],
         uploadDate: record.created_at,
         uploaderId: record.uploaded_by || 'unknown',
         uploaderName: 'User', // We'll need to fetch this from users table if needed
