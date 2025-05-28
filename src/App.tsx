@@ -49,11 +49,6 @@ import VerificationDashboardPage from '@/pages/employee-verification/Verificatio
 import BackofficeLogin from '@/pages/BackofficeLogin';
 import SettingsPage from '@/pages/SettingsPage';
 
-// EduSafe Pages
-import EduSafeResourcesPage from '@/pages/edusafe/EduSafeResourcesPage';
-import UploadResourcePage from '@/pages/edusafe/UploadResourcePage';
-import EditResourcePage from '@/pages/edusafe/EditResourcePage';
-
 // Backoffice Pages
 import ModulesPage from '@/pages/backoffice/ModulesPage';
 
@@ -136,14 +131,6 @@ function App() {
                     <Route path="/assessments/answer/:assessmentId" element={<AnswerAssessmentPage />} />
                     <Route path="/assessments/response/:assessmentId" element={<AssessmentResponsePage />} />
                     <Route path="/assessments/respond/:assignmentId" element={<AssessmentResponsePage />} />
-
-                    {/* EduSafe routes */}
-                    <Route path="/edusafe" element={<EduSafeResourcesPage />} />
-                    <Route path="/edusafe-resources" element={<EduSafeResourcesPage />} />
-                    <Route path="/edusafe-resources/upload" element={<UploadResourcePage />} />
-                    <Route path="/edusafe-resources/edit/:id" element={<EditResourcePage />} />
-                    <Route path="/edusafe/upload" element={<UploadResourcePage />} />
-                    <Route path="/edusafe/edit/:id" element={<EditResourcePage />} />
 
                     {/* Transport Safety routes */}
                     <Route path="/transport-safety" element={<TransportSafetyPage />} />
