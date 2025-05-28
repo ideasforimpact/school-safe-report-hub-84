@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, AlertCircle } from 'lucide-react';
@@ -57,7 +56,7 @@ const EditResourceContent = () => {
           The resource you're looking for doesn't exist or has been removed.
         </p>
         <Button asChild>
-          <Link to="/edusafe-resources">Return to Resources</Link>
+          <Link to="/edusafe">Return to Resources</Link>
         </Button>
       </div>
     );
@@ -72,7 +71,7 @@ const EditResourceContent = () => {
           You don't have permission to edit this resource.
         </p>
         <Button asChild>
-          <Link to="/edusafe-resources">Return to Resources</Link>
+          <Link to="/edusafe">Return to Resources</Link>
         </Button>
       </div>
     );
@@ -111,14 +110,14 @@ const EditResourceContent = () => {
       tags
     });
     
-    navigate('/edusafe-resources');
+    navigate('/edusafe');
   };
   
   return (
     <div className="container mx-auto py-6 max-w-3xl">
       <div className="flex items-center mb-8">
         <Button asChild variant="ghost" className="mr-4">
-          <Link to="/edusafe-resources">
+          <Link to="/edusafe">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Resources
           </Link>
@@ -227,7 +226,7 @@ const EditResourceContent = () => {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => navigate('/edusafe-resources')}
+                onClick={() => navigate('/edusafe')}
               >
                 Cancel
               </Button>

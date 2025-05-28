@@ -74,7 +74,7 @@ const EduSafeResourcesContent = () => {
         </div>
         
         <Button asChild>
-          <Link to="/edusafe-resources/upload">
+          <Link to="/edusafe/upload">
             <FilePlus className="h-4 w-4 mr-2" />
             Upload Resource
           </Link>

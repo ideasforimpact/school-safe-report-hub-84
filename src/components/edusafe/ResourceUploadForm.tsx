@@ -127,7 +127,7 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
     if (onComplete) {
       onComplete();
     } else {
-      navigate('/edusafe-resources');
+      navigate('/edusafe');
     }
   };
   
@@ -273,7 +273,7 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
         <Button
           type="button"
           variant="outline"
-          onClick={() => navigate('/edusafe-resources')}
+          onClick={() => navigate('/edusafe')}
         >
           Cancel
         </Button>

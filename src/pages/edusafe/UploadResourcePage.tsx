@@ -13,7 +13,7 @@ const UploadResourceContent = () => {
     <div className="container mx-auto py-6 max-w-3xl">
       <div className="flex items-center mb-8">
         <Button asChild variant="ghost" className="mr-4">
-          <Link to="/edusafe-resources">
+          <Link to="/edusafe">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Resources
           </Link>
