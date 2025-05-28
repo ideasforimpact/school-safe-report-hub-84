@@ -49,6 +49,22 @@ import VerificationDashboardPage from '@/pages/employee-verification/Verificatio
 import BackofficeLogin from '@/pages/BackofficeLogin';
 import SettingsPage from '@/pages/SettingsPage';
 
+// EduSafe Pages
+import EduSafeResourcesPage from '@/pages/edusafe/EduSafeResourcesPage';
+import UploadResourcePage from '@/pages/edusafe/UploadResourcePage';
+import EditResourcePage from '@/pages/edusafe/EditResourcePage';
+
+// Feedback Pages
+import FeedbackPage from '@/pages/feedback/FeedbackPage';
+import FormResponsePage from '@/pages/feedback/FormResponsePage';
+
+// Grievances Pages
+import GrievancesPage from '@/pages/grievances/GrievancesPage';
+import GrievancesDashboardPage from '@/pages/grievances/GrievancesDashboardPage';
+import GrievanceSubmitPage from '@/pages/grievances/GrievanceSubmitPage';
+import PublicGrievanceForm from '@/pages/grievances/PublicGrievanceForm';
+import ThankYouPage from '@/pages/grievances/ThankYouPage';
+
 // Backoffice Pages
 import ModulesPage from '@/pages/backoffice/ModulesPage';
 
@@ -131,6 +147,22 @@ function App() {
                     <Route path="/assessments/answer/:assessmentId" element={<AnswerAssessmentPage />} />
                     <Route path="/assessments/response/:assessmentId" element={<AssessmentResponsePage />} />
                     <Route path="/assessments/respond/:assignmentId" element={<AssessmentResponsePage />} />
+
+                    {/* EduSafe routes */}
+                    <Route path="/edusafe" element={<EduSafeResourcesPage />} />
+                    <Route path="/edusafe/upload" element={<UploadResourcePage />} />
+                    <Route path="/edusafe/edit/:id" element={<EditResourcePage />} />
+
+                    {/* Feedback routes */}
+                    <Route path="/feedback" element={<FeedbackPage />} />
+                    <Route path="/feedback/form/:formId" element={<FormResponsePage />} />
+
+                    {/* Grievances routes */}
+                    <Route path="/grievances" element={<GrievancesPage />} />
+                    <Route path="/grievances/dashboard" element={<GrievancesDashboardPage />} />
+                    <Route path="/grievances/submit" element={<GrievanceSubmitPage />} />
+                    <Route path="/grievances/submit-public" element={<PublicGrievanceForm />} />
+                    <Route path="/grievances/thank-you" element={<ThankYouPage />} />
 
                     {/* Transport Safety routes */}
                     <Route path="/transport-safety" element={<TransportSafetyPage />} />
