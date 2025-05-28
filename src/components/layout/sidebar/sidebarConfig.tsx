@@ -173,10 +173,8 @@ export const convertModulesToSidebarItems = (modules: Module[], permissions: any
     // Get the icon component from our mapping, or default to LayoutDashboard
     const IconComponent = iconMap[module.icon || 'LayoutDashboard'] || LayoutDashboard;
     
-    // Use exact URL from database, or fallback to generated path
-    const path = module.url ? 
-      (basePath ? `${basePath}${module.url}` : module.url) : 
-      `${basePath}/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
+    // Determine path based on name and base path
+    const path = `${basePath}/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
     
     // All modules are allowed now - we filter at the database/API level
     let allowed = true;
@@ -187,7 +185,6 @@ export const convertModulesToSidebarItems = (modules: Module[], permissions: any
       path,
       allowed,
       accessLevel: module.access_level || {},
-      order: module.order
     });
   });
   

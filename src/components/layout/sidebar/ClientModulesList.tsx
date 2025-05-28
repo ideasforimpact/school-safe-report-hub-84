@@ -36,7 +36,6 @@ interface ModuleItem {
   path: string;
   allowed: boolean;
   accessLevel?: any;
-  order?: number;
 }
 
 const ClientModulesList = () => {
@@ -47,37 +46,28 @@ const ClientModulesList = () => {
   const isLoading = getEmployeeLoadingState(state); // Use selector
   const [sidebarModules, setSidebarModules] = useState<ModuleItem[]>([]);
 
-  console.log(configuredModules,"configuredModules")
-  
+console.log(configuredModules,"configuredModules")
   // Transform Redux store modules into sidebar menu items
   useEffect(() => {
     if (configuredModules && configuredModules.length > 0) {
       console.log("Using modules from Redux store:", configuredModules);
       
-      // Map store modules to sidebar items and sort by order
-      const modules = configuredModules
-        .map(module => {
-          // Get icon component
-          const IconComponent = iconMap[module.icon || 'LayoutDashboard'] || LayoutDashboard;
-          
-          // Use exact URL from database, fallback to generated path if URL is empty
-          const path = module.url || `/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
-          
-          return {
-            icon: IconComponent,
-            label: module.name,
-            path,
-            allowed: true,
-            accessLevel: module.accessLevel || {},
-            order: module.order
-          };
-        })
-        .sort((a, b) => {
-          // Sort by order field (nulls last)
-          if (a.order === null || a.order === undefined) return 1;
-          if (b.order === null || b.order === undefined) return -1;
-          return a.order - b.order;
-        });
+      // Map store modules to sidebar items
+      const modules = configuredModules.map(module => {
+        // Get icon component
+        const IconComponent = iconMap[module.icon || 'LayoutDashboard'] || LayoutDashboard;
+        
+        // Create path from module name
+        const path = `/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
+        
+        return {
+          icon: IconComponent,
+          label: module.name,
+          path,
+          allowed: true,
+          accessLevel: module.accessLevel || {}
+        };
+      });
       
       setSidebarModules(modules);
     } else {
@@ -87,8 +77,7 @@ const ClientModulesList = () => {
         icon: LayoutDashboard,
         label: 'Dashboard',
         path: '/dashboard',
-        allowed: true,
-        order: 1
+        allowed: true
       }]);
     }
   }, [configuredModules]);
