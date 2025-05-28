@@ -51,15 +51,14 @@ export const fetchClientDetails = async (clientId: string): Promise<ClientDetail
   try {
     console.log(`Calling client-management edge function with clientId: ${clientId}`);
     
-    const { data, error } = await supabase.functions.invoke('client-management', {
+    // Construct the URL with query parameters
+    const functionUrl = `client-management?clientId=${encodeURIComponent(clientId)}`;
+    
+    const { data, error } = await supabase.functions.invoke(functionUrl, {
       method: 'GET',
-      body: null,
       headers: {
         'Content-Type': 'application/json',
       },
-    }, {
-      // Pass clientId as a query parameter
-      query: { clientId }
     });
 
     if (error) {
