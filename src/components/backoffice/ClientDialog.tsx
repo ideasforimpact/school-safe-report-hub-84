@@ -59,8 +59,59 @@ const ClientDialog = ({
     }
   };
 
-  const handleLogoUpload = (logoUrl: string) => {
-    setFormData({ ...formData, logo: logoUrl });
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Create object URL for preview
+      const logoUrl = URL.createObjectURL(file);
+      setFormData({ ...formData, logo: logoUrl });
+    }
+  };
+
+  const handleAddDomain = (domain: string) => {
+    const currentDomains = formData.allowedDomains || [];
+    if (!currentDomains.includes(domain)) {
+      setFormData({
+        ...formData,
+        allowedDomains: [...currentDomains, domain]
+      });
+    }
+  };
+
+  const handleRemoveDomain = (domain: string) => {
+    const currentDomains = formData.allowedDomains || [];
+    setFormData({
+      ...formData,
+      allowedDomains: currentDomains.filter(d => d !== domain)
+    });
+  };
+
+  const handleAddSuperAdminDomain = (domain: string) => {
+    const currentDomains = formData.superAdminAllowedDomains || [];
+    if (!currentDomains.includes(domain)) {
+      setFormData({
+        ...formData,
+        superAdminAllowedDomains: [...currentDomains, domain]
+      });
+    }
+  };
+
+  const handleRemoveSuperAdminDomain = (domain: string) => {
+    const currentDomains = formData.superAdminAllowedDomains || [];
+    setFormData({
+      ...formData,
+      superAdminAllowedDomains: currentDomains.filter(d => d !== domain)
+    });
+  };
+
+  const handleProviderChange = (provider: string, value: boolean) => {
+    setFormData({
+      ...formData,
+      authProviders: {
+        ...formData.authProviders,
+        [provider]: value
+      }
+    });
   };
 
   return (
@@ -92,7 +143,11 @@ const ClientDialog = ({
           <TabsContent value="auth" className="space-y-4">
             <AuthTab
               formData={formData}
-              onFormDataChange={setFormData}
+              onAddDomain={handleAddDomain}
+              onRemoveDomain={handleRemoveDomain}
+              onAddSuperAdminDomain={handleAddSuperAdminDomain}
+              onRemoveSuperAdminDomain={handleRemoveSuperAdminDomain}
+              onProviderChange={handleProviderChange}
             />
           </TabsContent>
 
