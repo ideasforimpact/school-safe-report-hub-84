@@ -22,7 +22,6 @@ import EduSafeResourcesPage from '@/pages/EduSafeResourcesPage';
 import UsersPage from '@/pages/UsersPage';
 import ConfigurationPage from '@/pages/ConfigurationPage';
 import FormsPage from '@/pages/FormsPage';
-import EmployeeDataProvider from '@/components/employee/EmployeeDataProvider';
 
 // Backoffice Pages
 import BackofficeDashboard from '@/pages/backoffice/BackofficeDashboard';
@@ -39,121 +38,119 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <EmployeeDataProvider>
-          <Router>
-            <Routes>
-              <Route path="/" element={<HomePage />} />
-              <Route path="/home" element={<HomePage />} />
+        <Router>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/home" element={<HomePage />} />
 
-              {/* Client Routes */}
-              <Route path="/dashboard" element={
-                <RouteGuard>
-                  <DashboardPage />
-                </RouteGuard>
-              } />
-              <Route path="/incidents" element={
-                <RouteGuard>
-                  <IncidentsPage />
-                </RouteGuard>
-              } />
-              <Route path="/incidents/:id" element={
-                <RouteGuard>
-                  <IncidentDetailPage />
-                </RouteGuard>
-              } />
-              <Route path="/report" element={
-                <RouteGuard>
-                  <ReportIncidentPage />
-                </RouteGuard>
-              } />
-              <Route path="/incidents/:id/edit" element={
-                <RouteGuard>
-                  <EditIncidentPage />
-                </RouteGuard>
-              } />
-              <Route path="/insights" element={
-                <RouteGuard>
-                  <InsightsPage />
-                </RouteGuard>
-              } />
-              <Route path="/assessments" element={
-                <RouteGuard>
-                  <AssessmentsPage />
-                </RouteGuard>
-              } />
-              <Route path="/assessments/:id/answer" element={
-                <RouteGuard>
-                  <AnswerAssessmentPage />
-                </RouteGuard>
-              } />
-              <Route path="/assessments/:id/answer/form" element={
-                <RouteGuard>
-                  <AssessmentResponseFormPage />
-                </RouteGuard>
-              } />
-              <Route path="/assessments/answer/new" element={
-                <RouteGuard>
-                  <AnswerAssessmentNewPage />
-                </RouteGuard>
-              } />
-              <Route path="/employee-verification" element={
-                <RouteGuard>
-                  <EmployeeVerificationPage />
-                </RouteGuard>
-              } />
-              <Route path="/grievances" element={
-                <RouteGuard>
-                  <GrievancesPage />
-                </RouteGuard>
-              } />
-              <Route path="/transport-safety" element={
-                <RouteGuard>
-                  <TransportSafetyPage />
-                </RouteGuard>
-              } />
-              <Route path="/edusafe-resources" element={
-                <RouteGuard>
-                  <EduSafeResourcesPage />
-                </RouteGuard>
-              } />
-              <Route path="/users" element={
-                <RouteGuard>
-                  <UsersPage />
-                </RouteGuard>
-              } />
-              <Route path="/configuration" element={
-                <RouteGuard>
-                  <ConfigurationPage />
-                </RouteGuard>
-              } />
-              <Route path="/forms" element={
-                <RouteGuard>
-                  <FormsPage />
-                </RouteGuard>
-              } />
+            {/* Client Routes */}
+            <Route path="/dashboard" element={
+              <RouteGuard>
+                <DashboardPage />
+              </RouteGuard>
+            } />
+            <Route path="/incidents" element={
+              <RouteGuard>
+                <IncidentsPage />
+              </RouteGuard>
+            } />
+            <Route path="/incidents/:id" element={
+              <RouteGuard>
+                <IncidentDetailPage />
+              </RouteGuard>
+            } />
+            <Route path="/report" element={
+              <RouteGuard>
+                <ReportIncidentPage />
+              </RouteGuard>
+            } />
+            <Route path="/incidents/:id/edit" element={
+              <RouteGuard>
+                <EditIncidentPage />
+              </RouteGuard>
+            } />
+            <Route path="/insights" element={
+              <RouteGuard>
+                <InsightsPage />
+              </RouteGuard>
+            } />
+            <Route path="/assessments" element={
+              <RouteGuard>
+                <AssessmentsPage />
+              </RouteGuard>
+            } />
+            <Route path="/assessments/:id/answer" element={
+              <RouteGuard>
+                <AnswerAssessmentPage />
+              </RouteGuard>
+            } />
+            <Route path="/assessments/:id/answer/form" element={
+              <RouteGuard>
+                <AssessmentResponseFormPage />
+              </RouteGuard>
+            } />
+            <Route path="/assessments/answer/new" element={
+              <RouteGuard>
+                <AnswerAssessmentNewPage />
+              </RouteGuard>
+            } />
+            <Route path="/employee-verification" element={
+              <RouteGuard>
+                <EmployeeVerificationPage />
+              </RouteGuard>
+            } />
+            <Route path="/grievances" element={
+              <RouteGuard>
+                <GrievancesPage />
+              </RouteGuard>
+            } />
+            <Route path="/transport-safety" element={
+              <RouteGuard>
+                <TransportSafetyPage />
+              </RouteGuard>
+            } />
+            <Route path="/edusafe-resources" element={
+              <RouteGuard>
+                <EduSafeResourcesPage />
+              </RouteGuard>
+            } />
+            <Route path="/users" element={
+              <RouteGuard>
+                <UsersPage />
+              </RouteGuard>
+            } />
+            <Route path="/configuration" element={
+              <RouteGuard>
+                <ConfigurationPage />
+              </RouteGuard>
+            } />
+            <Route path="/forms" element={
+              <RouteGuard>
+                <FormsPage />
+              </RouteGuard>
+            } />
 
-              {/* Backoffice Routes */}
-              <Route path="/backoffice/*" element={
-                <RouteGuard>
-                  <Routes>
-                    <Route index element={<Navigate to="/backoffice/dashboard" replace />} />
-                    <Route path="dashboard" element={<BackofficeDashboard />} />
-                    <Route path="clients" element={<ClientsPage />} />
-                    <Route path="modules" element={<ModulesPage />} />
-                    <Route path="assessments/templates" element={<AssessmentTemplatesPage />} />
-                    <Route path="edusafe-resources" element={<BackofficeEduSafeResourcesPage />} />
-                    <Route path="analytics" element={<AnalyticsPage />} />
-                    <Route path="settings" element={<BackofficeSettingsPage />} />
-                  </Routes>
-                </RouteGuard>
-              } />
+            {/* Backoffice Routes */}
+            <Route path="/backoffice/*" element={
+              <RouteGuard>
+                <Routes>
+                  <Route index element={<Navigate to="/backoffice/dashboard" replace />} />
+                  <Route path="dashboard" element={<BackofficeDashboard />} />
+                  <Route path="clients" element={<ClientsPage />} />
+                  <Route path="modules" element={<ModulesPage />} />
+                  <Route path="assessments/templates" element={<AssessmentTemplatesPage />} />
+                  <Route path="edusafe-resources" element={<BackofficeEduSafeResourcesPage />} />
+                  <Route path="analytics" element={<AnalyticsPage />} />
+                  <Route path="settings" element={<BackofficeSettingsPage />} />
+                </Routes>
+              </RouteGuard>
+            } />
 
-              {/* Public Routes */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
-          </Router>
-          <Toaster />
-        </EmployeeDataProvider>
+            {/* Public Routes */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Router>
+        <Toaster />
       </AuthProvider>
     </QueryClientProvider>
   );
