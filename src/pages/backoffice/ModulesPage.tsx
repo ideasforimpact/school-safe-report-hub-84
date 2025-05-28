@@ -1,38 +1,222 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Settings } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Settings, Plus, Edit, Trash2, Eye } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+
+interface Module {
+  id: string;
+  name: string;
+  icon: string;
+  level: string;
+  order: number | null;
+  created_at: string;
+  updated_at: string;
+}
 
 const ModulesPage = () => {
+  const [modules, setModules] = useState<Module[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    fetchModules();
+  }, []);
+
+  const fetchModules = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('modules')
+        .select('*')
+        .order('order', { ascending: true, nullsFirst: false });
+
+      if (error) {
+        console.error('Error fetching modules:', error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch modules",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setModules(data || []);
+    } catch (error) {
+      console.error('Error fetching modules:', error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch modules",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleView = (moduleId: string) => {
+    console.log('View module:', moduleId);
+    // Implement view functionality
+  };
+
+  const handleEdit = (moduleId: string) => {
+    console.log('Edit module:', moduleId);
+    // Implement edit functionality
+  };
+
+  const handleDelete = async (moduleId: string) => {
+    if (!confirm('Are you sure you want to delete this module?')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('modules')
+        .delete()
+        .eq('id', moduleId);
+
+      if (error) {
+        console.error('Error deleting module:', error);
+        toast({
+          title: "Error",
+          description: "Failed to delete module",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Success",
+        description: "Module deleted successfully",
+      });
+      
+      // Refresh the modules list
+      fetchModules();
+    } catch (error) {
+      console.error('Error deleting module:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete module",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCreateModule = () => {
+    console.log('Create new module');
+    // Implement create module functionality
+  };
+
   return (
     <Layout>
       <div className="space-y-8">
-        <div className="flex items-center space-x-3">
-          <Settings className="h-8 w-8 text-blue-600" />
-          <div>
-            <h1 className="text-3xl font-bold">Modules Management</h1>
-            <p className="text-gray-500 mt-1">Manage system modules and configurations</p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <Settings className="h-8 w-8 text-blue-600" />
+            <div>
+              <h1 className="text-3xl font-bold">Modules Management</h1>
+              <p className="text-gray-500 mt-1">Manage system modules and configurations</p>
+            </div>
           </div>
+          <Button onClick={handleCreateModule} className="flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            Create Module
+          </Button>
         </div>
         
         <Card>
           <CardHeader>
-            <CardTitle>Module Configuration</CardTitle>
+            <CardTitle>System Modules</CardTitle>
             <CardDescription>
-              Configure and manage system modules for different user levels
+              View and manage all system modules
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-12">
-              <Settings className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                Modules Management
-              </h3>
-              <p className="text-gray-500">
-                Module management functionality will be implemented here
-              </p>
-            </div>
+            {loading ? (
+              <div className="text-center py-12">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <p className="mt-4 text-gray-500">Loading modules...</p>
+              </div>
+            ) : modules.length === 0 ? (
+              <div className="text-center py-12">
+                <Settings className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  No Modules Found
+                </h3>
+                <p className="text-gray-500 mb-4">
+                  No modules are currently configured in the system
+                </p>
+                <Button onClick={handleCreateModule} className="flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Create First Module
+                </Button>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Icon</TableHead>
+                    <TableHead>Level</TableHead>
+                    <TableHead>Order</TableHead>
+                    <TableHead>Created At</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {modules.map((module) => (
+                    <TableRow key={module.id}>
+                      <TableCell className="font-medium">{module.name}</TableCell>
+                      <TableCell>{module.icon}</TableCell>
+                      <TableCell>
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          module.level === 'backoffice' 
+                            ? 'bg-blue-100 text-blue-800' 
+                            : 'bg-green-100 text-green-800'
+                        }`}>
+                          {module.level}
+                        </span>
+                      </TableCell>
+                      <TableCell>{module.order || '-'}</TableCell>
+                      <TableCell>{new Date(module.created_at).toLocaleDateString()}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleView(module.id)}
+                            title="View module"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleEdit(module.id)}
+                            title="Edit module"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(module.id)}
+                            title="Delete module"
+                            className="text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </CardContent>
         </Card>
       </div>
