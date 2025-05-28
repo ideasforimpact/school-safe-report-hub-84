@@ -304,9 +304,9 @@ serve(async (req) => {
       let query = supabase.from('modules').select('*');
       
       if (level === 'backoffice') {
-        // For backoffice users, fetch modules with level = 'backoffice'
+        // For backoffice users, fetch modules with level = 'backoffice' ordered by order column
         console.log('Fetching backoffice modules');
-        query = query.eq('level', 'backoffice');
+        query = query.eq('level', 'backoffice').order('order', { ascending: true, nullsFirst: false });
       } else if (level === 'client') {
         // For client users, fetch modules with level != 'backoffice'
         console.log('Fetching client modules');
@@ -337,7 +337,8 @@ serve(async (req) => {
           icon: 'LayoutDashboard',
           level: level,
           key: 'dashboard',
-          access_level: {}
+          access_level: {},
+          order: 1 // Give dashboard order 1 by default
         });
       }
     }

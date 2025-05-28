@@ -20,6 +20,7 @@ export interface Module {
   name: string;
   icon: string; 
   level: string;
+  order?: number; // Added order field
   created_at?: string;
   updated_at?: string;
   key?: string; // Module key for permission mapping
@@ -64,7 +65,7 @@ export const fetchModules = async (isBackoffice: boolean, user?: any, employeeDa
         .from('modules')
         .select('*')
         .eq('level', 'backoffice')
-        .order('name');
+        .order('order', { ascending: true, nullsFirst: false }); // Order by the order column
         
       if (error) {
         console.error('Error fetching backoffice modules:', error);
@@ -160,8 +161,15 @@ export const fetchModules = async (isBackoffice: boolean, user?: any, employeeDa
 export const convertModulesToSidebarItems = (modules: Module[], permissions: any, basePath: string = '') => {
   const items = [];
   
-  // Process modules
-  modules.forEach(module => {
+  // Sort modules by order field (nulls last)
+  const sortedModules = [...modules].sort((a, b) => {
+    if (a.order === null || a.order === undefined) return 1;
+    if (b.order === null || b.order === undefined) return -1;
+    return a.order - b.order;
+  });
+  
+  // Process sorted modules
+  sortedModules.forEach(module => {
     // Get the icon component from our mapping, or default to LayoutDashboard
     const IconComponent = iconMap[module.icon || 'LayoutDashboard'] || LayoutDashboard;
     
