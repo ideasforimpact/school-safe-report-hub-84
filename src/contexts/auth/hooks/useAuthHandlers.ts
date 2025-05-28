@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { User, UserRole, EmployeeData } from '../types';
 import { getUserFromStorage, saveUserToStorage, saveEmployeeDataToStorage } from '@/services/auth/authService';
@@ -94,8 +95,8 @@ export const useAuthHandlers = ({
             level: moduleObj.level, // Include the level property
             enabled: true,
             accessLevel: cm.access_level || {},
-            order: moduleObj.order || 999, // Default high order if not set
-            url: moduleObj.url || `/${moduleObj.name.toLowerCase().replace(/\s+/g, '-')}` // Use module URL or generate from name
+            order: moduleObj.order || 999, // Use order from modules table
+            url: moduleObj.url || `/${moduleObj.name.toLowerCase().replace(/\s+/g, '-')}` // Use URL from modules table or generate from name
           };
         }).filter(Boolean) as Module[] || [];
         
@@ -162,8 +163,8 @@ export const useAuthHandlers = ({
             level: moduleObj.level,
             enabled: true,
             accessLevel: employeeModuleMap.get(moduleObj.id) || cm.access_level || {},
-            order: moduleObj.order || 999, // Default high order if not set
-            url: moduleObj.url || `/${moduleObj.name.toLowerCase().replace(/\s+/g, '-')}` // Use module URL or generate from name
+            order: moduleObj.order || 999, // Use order from modules table
+            url: moduleObj.url || `/${moduleObj.name.toLowerCase().replace(/\s+/g, '-')}` // Use URL from modules table or generate from name
           };
         }).filter(Boolean) as Module[] || [];
       }

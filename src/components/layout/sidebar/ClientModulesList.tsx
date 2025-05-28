@@ -57,8 +57,8 @@ console.log(configuredModules,"configuredModules")
         // Get icon component
         const IconComponent = iconMap[module.icon || 'LayoutDashboard'] || LayoutDashboard;
         
-        // Create path from module name
-        const path = `/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
+        // Use URL from database or create path from module name as fallback
+        const path = module.url || `/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
         
         return {
           icon: IconComponent,
