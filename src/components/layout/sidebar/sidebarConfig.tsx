@@ -27,7 +27,6 @@ export interface Module {
   active?: boolean;
   description?: string;
   access_level?: any; // Added to support access levels from client_modules
-  url?: string; // Added url property
 }
 
 // Map string icon names to Lucide components
@@ -159,7 +158,7 @@ export const fetchModules = async (isBackoffice: boolean, user?: any, employeeDa
 };
 
 // Convert database modules to sidebar items
-export const convertModulesToSidebarItems = (modules: Module[], permissions: any) => {
+export const convertModulesToSidebarItems = (modules: Module[], permissions: any, basePath: string = '') => {
   const items = [];
   
   // Sort modules by order field (nulls last)
@@ -174,8 +173,8 @@ export const convertModulesToSidebarItems = (modules: Module[], permissions: any
     // Get the icon component from our mapping, or default to LayoutDashboard
     const IconComponent = iconMap[module.icon || 'LayoutDashboard'] || LayoutDashboard;
     
-    // Use the URL from the module if available, otherwise create path from module name
-    const path = module.url || `/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
+    // Determine path based on name and base path
+    const path = `${basePath}/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
     
     // All modules are allowed now - we filter at the database/API level
     let allowed = true;

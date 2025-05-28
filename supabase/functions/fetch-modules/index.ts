@@ -190,12 +190,11 @@ serve(async (req) => {
               }
             });
             
-            // Fetch the module details including url and order
+            // Fetch the module details
             const { data: modulesData, error: modulesError } = await supabase
               .from('modules')
               .select('*')
-              .in('id', moduleIds)
-              .order('order', { ascending: true, nullsFirst: false });
+              .in('id', moduleIds);
               
             if (modulesError) {
               console.error('Error fetching modules by IDs for super admin:', modulesError);
@@ -244,12 +243,11 @@ serve(async (req) => {
               }
             });
             
-            // Fetch the module details including url and order
+            // Fetch the module details
             const { data: modulesData, error: modulesError } = await supabase
               .from('modules')
               .select('*')
-              .in('id', moduleIds)
-              .order('order', { ascending: true, nullsFirst: false });
+              .in('id', moduleIds);
               
             if (modulesError) {
               console.error('Error fetching modules by IDs for employee:', modulesError);
@@ -290,9 +288,7 @@ serve(async (req) => {
             level: 'client',
             key: 'dashboard',
             access_level: {},
-            is_admin: userIsSuperAdmin, // Super admins get admin access to dashboard
-            url: '/dashboard',
-            order: 1
+            is_admin: userIsSuperAdmin // Super admins get admin access to dashboard
           });
         }
         
@@ -314,11 +310,10 @@ serve(async (req) => {
       } else if (level === 'client') {
         // For client users, fetch modules with level != 'backoffice'
         console.log('Fetching client modules');
-        query = query.neq('level', 'backoffice').order('order', { ascending: true, nullsFirst: false });
+        query = query.neq('level', 'backoffice');
       } else if (level === 'all') {
         // Fetch all modules if explicitly requested
         console.log('Fetching all modules');
-        query = query.order('order', { ascending: true, nullsFirst: false });
       }
       
       const { data, error } = await query;
@@ -343,8 +338,7 @@ serve(async (req) => {
           level: level,
           key: 'dashboard',
           access_level: {},
-          order: 1,
-          url: '/dashboard'
+          order: 1 // Give dashboard order 1 by default
         });
       }
     }

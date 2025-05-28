@@ -1,85 +1,96 @@
 
-import { supabase } from '@/integrations/supabase/client';
+import { Client } from '@/contexts/ClientContext';
+import { toast } from "@/components/ui/sonner";
 
-export interface ClientModule {
-  id: string;
-  client_id: string;
-  module_id: string;
-  enabled: boolean;
-  access_level: Record<string, any>;
-  modules: {
-    id: string;
-    name: string;
-    icon: string;
-    level: string;
-    url?: string;
-    order?: number;
+/**
+ * Add a new client
+ */
+export const addClient = (
+  clients: Client[],
+  clientData: Omit<Client, 'id' | 'creationDate'>
+): Client[] => {
+  const newClient: Client = {
+    ...clientData,
+    id: Date.now().toString(),
+    creationDate: new Date().toISOString(),
   };
-}
 
-export interface AvailableModule {
-  id: string;
-  name: string;
-  icon: string;
-  level: string;
-  url?: string;
-  order?: number;
-}
-
-export interface ClientData {
-  id: string;
-  name: string;
-  email?: string;
-  contact_person?: string;
-  phone?: string;
-  logo?: string;
-  institution_type?: string;
-  allowed_domains?: string;
-  auth_providers?: string;
-  super_admin_allowed_domain?: string;
-  active: boolean;
-  creation_date: string;
-}
-
-export interface ClientDetailsResponse {
-  client: ClientData;
-  modules: ClientModule[];
-  availableModules: AvailableModule[];
-}
-
-export const fetchClientDetails = async (clientId: string): Promise<ClientDetailsResponse> => {
-  try {
-    const { data, error } = await supabase.functions.invoke('client-management', {
-      method: 'GET',
-      body: null,
-    });
-
-    if (error) {
-      throw new Error(`Failed to fetch client details: ${error.message}`);
-    }
-
-    return data;
-  } catch (error) {
-    console.error('Error fetching client details:', error);
-    throw error;
-  }
+  const updatedClients = [...clients, newClient];
+  toast.success("Client added successfully");
+  return updatedClients;
 };
 
-export const updateClientModule = async (moduleId: string, updateData: { enabled: boolean }) => {
-  try {
-    const { data, error } = await supabase
-      .from('client_modules')
-      .update(updateData)
-      .eq('id', moduleId)
-      .select();
-
-    if (error) {
-      throw new Error(`Failed to update client module: ${error.message}`);
+/**
+ * Update an existing client
+ */
+export const updateClient = (
+  clients: Client[],
+  id: string, 
+  updates: Partial<Client>
+): Client[] => {
+  const updatedClients = clients.map(client => {
+    if (client.id === id) {
+      return { ...client, ...updates };
     }
+    return client;
+  });
+  
+  toast.success("Client updated successfully");
+  return updatedClients;
+};
 
-    return data;
-  } catch (error) {
-    console.error('Error updating client module:', error);
-    throw error;
+/**
+ * Delete a client
+ */
+export const deleteClient = (
+  clients: Client[],
+  id: string
+): Client[] => {
+  const updatedClients = clients.filter(client => client.id !== id);
+  toast.success("Client deleted successfully");
+  return updatedClients;
+};
+
+/**
+ * Get a client by ID
+ */
+export const getClientById = (
+  clients: Client[],
+  id: string
+): Client | undefined => {
+  return clients.find(client => client.id === id);
+};
+
+/**
+ * Validate if an email domain is allowed for a client
+ */
+export const isEmailDomainAllowed = (
+  email: string,
+  client: Client | undefined
+): boolean => {
+  if (!client || !client.allowedDomains || client.allowedDomains.length === 0) {
+    return false;
   }
+
+  const domain = email.split('@')[1]?.toLowerCase();
+  if (!domain) return false;
+
+  return client.allowedDomains.some(allowedDomain => 
+    allowedDomain.toLowerCase() === domain
+  );
+};
+
+/**
+ * Load clients from localStorage
+ */
+export const getClientsFromStorage = (): Client[] => {
+  const savedClients = localStorage.getItem('clients');
+  return savedClients ? JSON.parse(savedClients) : [];
+};
+
+/**
+ * Save clients to localStorage
+ */
+export const saveClientsToStorage = (clients: Client[]): void => {
+  localStorage.setItem('clients', JSON.stringify(clients));
 };

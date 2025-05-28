@@ -36,7 +36,6 @@ interface ModuleItem {
   path: string;
   allowed: boolean;
   accessLevel?: any;
-  order?: number;
 }
 
 const ClientModulesList = () => {
@@ -47,8 +46,7 @@ const ClientModulesList = () => {
   const isLoading = getEmployeeLoadingState(state); // Use selector
   const [sidebarModules, setSidebarModules] = useState<ModuleItem[]>([]);
 
-  console.log(configuredModules,"configuredModules")
-  
+console.log(configuredModules,"configuredModules")
   // Transform Redux store modules into sidebar menu items
   useEffect(() => {
     if (configuredModules && configuredModules.length > 0) {
@@ -59,27 +57,19 @@ const ClientModulesList = () => {
         // Get icon component
         const IconComponent = iconMap[module.icon || 'LayoutDashboard'] || LayoutDashboard;
         
-        // Use the URL from the module if available, otherwise create path from module name
-        const path = module.url || `/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
+        // Create path from module name
+        const path = `/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
         
         return {
           icon: IconComponent,
           label: module.name,
           path,
           allowed: true,
-          accessLevel: module.accessLevel || {},
-          order: module.order || 999 // Use module order, default to 999 for modules without order
+          accessLevel: module.accessLevel || {}
         };
       });
       
-      // Sort modules by order
-      const sortedModules = modules.sort((a, b) => {
-        const orderA = a.order || 999;
-        const orderB = b.order || 999;
-        return orderA - orderB;
-      });
-      
-      setSidebarModules(sortedModules);
+      setSidebarModules(modules);
     } else {
       // Fallback to dashboard if no modules are in the store
       console.log("No modules in Redux store, using default dashboard");
@@ -87,8 +77,7 @@ const ClientModulesList = () => {
         icon: LayoutDashboard,
         label: 'Dashboard',
         path: '/dashboard',
-        allowed: true,
-        order: 1
+        allowed: true
       }]);
     }
   }, [configuredModules]);

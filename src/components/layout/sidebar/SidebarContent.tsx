@@ -48,13 +48,12 @@ const SidebarContent = () => {
           // For backoffice, fetch modules from database
           console.log('Loading backoffice modules from database');
           const modules = await fetchModules(true, user);
-          const items = convertModulesToSidebarItems(modules, {});
+          const items = convertModulesToSidebarItems(modules, {}, '/backoffice');
           setDynamicMenuItems(items);
         } else if (configuredModules.length > 0) {
           // Convert Redux store modules to sidebar format
           const items = configuredModules.map(module => {
-            // Use the URL from the module if available, otherwise create path from module name
-            const path = module.url || `/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
+            const path = `/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
             return {
               icon: null, // Will be resolved in ClientModulesList
               label: module.name,
@@ -82,11 +81,24 @@ const SidebarContent = () => {
     
   }, [isSaasOwner, isBackofficeRoute, user, isProviderAuthenticated, configuredModules]);
 
-  // Determine if a path is active
+  // Determine if a path is active, and add '/backoffice' prefix for SaaS owners
   const isActive = (path: string) => {
     const currentPath = location.pathname;
+    const activePath = path;
     // Check if the current path matches the menu item path or starts with it (for nested routes)
-    return currentPath === path || (path !== '/' && currentPath.startsWith(path));
+    return currentPath === activePath || (activePath !== '/' && currentPath.startsWith(activePath));
+  };
+
+  // Process paths for SaaS owners - add /backoffice prefix if not already present
+  const getProcessedPath = (path: string) => {
+    // If user is SaaS owner and path doesn't already start with /backoffice, add it
+    if (isSaasOwner && user?.role === 'saas_owner') {
+      if (path === '/') {
+        return '/backoffice';
+      }
+      return path.startsWith('/backoffice') ? path : `/backoffice${path}`;
+    }
+    return path;
   };
 
   // For provider-authenticated users on client routes, use the dedicated component
@@ -113,8 +125,8 @@ const SidebarContent = () => {
                 key={item.path}
                 icon={item.icon}
                 label={item.label}
-                path={item.path}
-                isActive={isActive(item.path)}
+                path={getProcessedPath(item.path)}
+                isActive={isActive(getProcessedPath(item.path))}
               />
             ))}
         </ul>
