@@ -46,7 +46,7 @@ export const useEmployeeData = () => {
         return;
       }
 
-      // Prepare employee info for fetchModules
+      // Prepare employee info for fetchModules - ENSURE ALL FIELDS ARE PRESENT
       const employeeInfo = {
         id: employeeDetails.id,
         clientId: employeeDetails.client_id,
@@ -60,9 +60,9 @@ export const useEmployeeData = () => {
         status: employeeDetails.status !== undefined ? employeeDetails.status : true
       };
 
-      console.log("Calling fetchModules with employee info:", employeeInfo);
+      console.log("Calling fetchModules with complete employee info:", employeeInfo);
 
-      // Call fetch-modules edge function
+      // Call fetch-modules edge function with COMPLETE employee info
       const { data, error } = await supabase.functions.invoke('fetch-modules', {
         body: { 
           userInfo: user ? {
@@ -70,7 +70,7 @@ export const useEmployeeData = () => {
             email: user.email,
             role: user.role
           } : null,
-          employeeInfo,
+          employeeInfo: employeeInfo, // Pass complete employee info
           fetchLevel: 'client'
         }
       });
@@ -87,7 +87,7 @@ export const useEmployeeData = () => {
         return;
       }
 
-      // Convert the returned modules to our format
+      // Convert the returned modules to our format - INCLUDE URL AND ORDER
       const configuredModules: Module[] = data.modules.map((module: any) => ({
         id: module.id,
         name: module.name,
@@ -96,11 +96,11 @@ export const useEmployeeData = () => {
         level: module.level,
         enabled: true,
         accessLevel: module.access_level || {},
-        url: module.url,
-        order: module.order
+        url: module.url || `/${module.name.toLowerCase().replace(/\s+/g, '-')}`, // Include URL
+        order: module.order || 999 // Include ORDER
       }));
 
-      console.log("Configured modules from fetch-modules:", configuredModules);
+      console.log("Configured modules with URL and ORDER:", configuredModules);
       dispatch(setConfiguredModules(configuredModules));
 
     } catch (error) {

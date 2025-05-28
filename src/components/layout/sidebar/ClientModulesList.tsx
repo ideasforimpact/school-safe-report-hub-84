@@ -47,12 +47,12 @@ const ClientModulesList = () => {
   const isLoading = getEmployeeLoadingState(state); // Use selector
   const [sidebarModules, setSidebarModules] = useState<ModuleItem[]>([]);
 
-  console.log(configuredModules,"configuredModules")
+  console.log("configuredModules with URL and ORDER:", configuredModules);
   
   // Transform Redux store modules into sidebar menu items
   useEffect(() => {
     if (configuredModules && configuredModules.length > 0) {
-      console.log("Using modules from Redux store:", configuredModules);
+      console.log("Using modules from Redux store with ORDER and URL:", configuredModules);
       
       // Map store modules to sidebar items
       const modules = configuredModules.map(module => {
@@ -61,6 +61,8 @@ const ClientModulesList = () => {
         
         // Use the URL from the module if available, otherwise create path from module name
         const path = module.url || `/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
+        
+        console.log(`Module: ${module.name}, URL: ${module.url}, Order: ${module.order}`);
         
         return {
           icon: IconComponent,
@@ -76,8 +78,11 @@ const ClientModulesList = () => {
       const sortedModules = modules.sort((a, b) => {
         const orderA = a.order || 999;
         const orderB = b.order || 999;
+        console.log(`Sorting: ${orderA} vs ${orderB}`);
         return orderA - orderB;
       });
+      
+      console.log("Final sorted modules:", sortedModules.map(m => ({ name: m.label, order: m.order, path: m.path })));
       
       setSidebarModules(sortedModules);
     } else {
