@@ -4,6 +4,7 @@ import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Settings, Edit, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -22,12 +23,18 @@ interface Module {
 
 const ModulesPage = () => {
   const [modules, setModules] = useState<Module[]>([]);
+  const [filteredModules, setFilteredModules] = useState<Module[]>([]);
   const [loading, setLoading] = useState(true);
+  const [levelFilter, setLevelFilter] = useState<string>('all');
   const { toast } = useToast();
 
   useEffect(() => {
     fetchModules();
   }, []);
+
+  useEffect(() => {
+    filterModules();
+  }, [modules, levelFilter]);
 
   const fetchModules = async () => {
     try {
@@ -57,6 +64,14 @@ const ModulesPage = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const filterModules = () => {
+    if (levelFilter === 'all') {
+      setFilteredModules(modules);
+    } else {
+      setFilteredModules(modules.filter(module => module.level === levelFilter));
     }
   };
 
@@ -125,10 +140,29 @@ const ModulesPage = () => {
         
         <Card>
           <CardHeader>
-            <CardTitle>System Modules</CardTitle>
-            <CardDescription>
-              View and manage all system modules
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>System Modules</CardTitle>
+                <CardDescription>
+                  View and manage all system modules
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">Filter by Level:</span>
+                  <Select value={levelFilter} onValueChange={setLevelFilter}>
+                    <SelectTrigger className="w-40">
+                      <SelectValue placeholder="Select level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Levels</SelectItem>
+                      <SelectItem value="backoffice">Backoffice</SelectItem>
+                      <SelectItem value="user">User</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -136,14 +170,17 @@ const ModulesPage = () => {
                 <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 <p className="mt-4 text-gray-500">Loading modules...</p>
               </div>
-            ) : modules.length === 0 ? (
+            ) : filteredModules.length === 0 ? (
               <div className="text-center py-12">
                 <Settings className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  No Modules Found
+                  {levelFilter === 'all' ? 'No Modules Found' : `No ${levelFilter} Modules Found`}
                 </h3>
                 <p className="text-gray-500 mb-4">
-                  No modules are currently configured in the system
+                  {levelFilter === 'all' 
+                    ? 'No modules are currently configured in the system'
+                    : `No modules with level "${levelFilter}" are currently configured`
+                  }
                 </p>
                 <CreateModuleDialog 
                   onSuccess={fetchModules}
@@ -169,7 +206,7 @@ const ModulesPage = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {modules.map((module) => (
+                  {filteredModules.map((module) => (
                     <TableRow key={module.id}>
                       <TableCell className="font-medium">{module.name}</TableCell>
                       <TableCell>{module.icon}</TableCell>
