@@ -87,24 +87,26 @@ const ModulesPage = () => {
 
     try {
       const { error } = await supabase.functions.invoke('manage-modules', {
-        method: 'DELETE',
         body: null,
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
 
-      // Add the ID as a query parameter for DELETE requests
-      const deleteUrl = `manage-modules?id=${moduleId}`;
-      const { error: deleteError } = await supabase.functions.invoke(deleteUrl, {
-        method: 'DELETE'
+      // The correct way to pass the ID for DELETE requests
+      const response = await fetch(`https://ybvxkiubnnixntghojyy.supabase.co/functions/v1/manage-modules?id=${moduleId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${supabase.supabaseKey}`,
+          'apikey': supabase.supabaseKey,
+          'Content-Type': 'application/json',
+        },
       });
 
-      if (deleteError) {
-        console.error('Error deleting module:', deleteError);
-        toast({
-          title: "Error",
-          description: "Failed to delete module",
-          variant: "destructive",
-        });
-        return;
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete module');
       }
 
       toast({
