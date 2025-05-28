@@ -56,6 +56,40 @@ export const fetchModules = async (isBackoffice: boolean, user?: any, employeeDa
       return cachedClientModules;
     }
     
+    // For backoffice, fetch modules directly from modules table where level = 'backoffice'
+    if (isBackoffice) {
+      console.log('Fetching backoffice modules from database');
+      
+      const { data: modulesData, error } = await supabase
+        .from('modules')
+        .select('*')
+        .eq('level', 'backoffice')
+        .order('name');
+        
+      if (error) {
+        console.error('Error fetching backoffice modules:', error);
+        return [];
+      }
+      
+      if (!modulesData || modulesData.length === 0) {
+        console.log('No backoffice modules found in database');
+        return [];
+      }
+      
+      console.log(`Found ${modulesData.length} backoffice modules:`, modulesData.map(m => m.name));
+      
+      // Map modules and add keys for permission mapping
+      const modules = modulesData.map(module => ({
+        ...module,
+        key: module.name.toLowerCase().replace(/\s+/g, '_'),
+        access_level: {}
+      }));
+      
+      // Cache the results
+      cachedBackofficeModules = modules;
+      return modules;
+    }
+    
     // Prepare user info to send for determining module level and logging
     const userInfo = user ? {
       id: user.id,
@@ -131,7 +165,7 @@ export const convertModulesToSidebarItems = (modules: Module[], permissions: any
     // Get the icon component from our mapping, or default to LayoutDashboard
     const IconComponent = iconMap[module.icon || 'LayoutDashboard'] || LayoutDashboard;
     
-    // Determine path based on name
+    // Determine path based on name and base path
     const path = `${basePath}/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
     
     // All modules are allowed now - we filter at the database/API level

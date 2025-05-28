@@ -3,14 +3,13 @@ import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
-  getSaasOwnerItems, 
-  getClientItems
+  fetchModules,
+  convertModulesToSidebarItems
 } from './sidebarConfig';
 import SidebarMenuItem from './SidebarMenuItem';
 import ClientModulesList from './ClientModulesList';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getConfiguredModules } from '@/store/employeeSelectors';
-import { Module as SidebarModule } from './sidebarConfig';
 
 const SidebarContent = () => {
   const location = useLocation();
@@ -34,7 +33,7 @@ const SidebarContent = () => {
     }
   }, [isSaasOwner, user, location.pathname, navigate]);
   
-  // Use modules from Redux
+  // Fetch modules dynamically
   useEffect(() => {
     if (isProviderAuthenticated && !isBackofficeRoute) {
       // Use ClientModulesList component for provider-authenticated users
@@ -43,40 +42,42 @@ const SidebarContent = () => {
     
     setIsLoading(true);
     
-    try {
-      // If in backoffice mode, use static config
-      if (isSaasOwner && isBackofficeRoute) {
-        const items = getSaasOwnerItems();
-        setDynamicMenuItems(items);
-      } else if (configuredModules.length > 0) {
-        // Convert Redux store modules to sidebar format
-        const basePath = '';
-        
-        const items = configuredModules.map(module => {
-          const path = `/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
-          return {
-            icon: null, // Will be resolved in ClientModulesList
-            label: module.name,
-            path,
-            allowed: true
-          };
-        });
-        
-        setDynamicMenuItems(items);
-      } else {
-        // Fallback to static configuration
-        const items = getClientItems({});
-        setDynamicMenuItems(items);
+    const loadModules = async () => {
+      try {
+        if (isSaasOwner && isBackofficeRoute) {
+          // For backoffice, fetch modules from database
+          console.log('Loading backoffice modules from database');
+          const modules = await fetchModules(true, user);
+          const items = convertModulesToSidebarItems(modules, {}, '/backoffice');
+          setDynamicMenuItems(items);
+        } else if (configuredModules.length > 0) {
+          // Convert Redux store modules to sidebar format
+          const items = configuredModules.map(module => {
+            const path = `/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
+            return {
+              icon: null, // Will be resolved in ClientModulesList
+              label: module.name,
+              path,
+              allowed: true
+            };
+          });
+          
+          setDynamicMenuItems(items);
+        } else {
+          // Fallback to API call for client modules
+          const modules = await fetchModules(false, user);
+          const items = convertModulesToSidebarItems(modules, {});
+          setDynamicMenuItems(items);
+        }
+      } catch (error) {
+        console.error('Error loading modules:', error);
+        setDynamicMenuItems([]);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error) {
-      console.error('Error preparing sidebar items:', error);
-      // Fall back to static configuration
-      const fallbackItems = (isSaasOwner && isBackofficeRoute) ? 
-        getSaasOwnerItems() : getClientItems({});
-      setDynamicMenuItems(fallbackItems);
-    } finally {
-      setIsLoading(false);
-    }
+    };
+    
+    loadModules();
     
   }, [isSaasOwner, isBackofficeRoute, user, isProviderAuthenticated, configuredModules]);
 
