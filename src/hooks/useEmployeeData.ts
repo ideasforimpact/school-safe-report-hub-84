@@ -1,4 +1,3 @@
-
 import { useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEmployeeStore } from '@/store/EmployeeContext';
@@ -87,7 +86,7 @@ export const useEmployeeData = () => {
         return;
       }
 
-      // Convert the returned modules to our format - INCLUDE URL AND ORDER
+      // Convert the returned modules to our format - PROPERLY INCLUDE URL AND ORDER
       const configuredModules: Module[] = data.modules.map((module: any) => ({
         id: module.id,
         name: module.name,
@@ -96,11 +95,11 @@ export const useEmployeeData = () => {
         level: module.level,
         enabled: true,
         accessLevel: module.access_level || {},
-        url: module.url || `/${module.name.toLowerCase().replace(/\s+/g, '-')}`, // Include URL
-        order: module.order || 999 // Include ORDER
+        url: module.url || `/${module.name.toLowerCase().replace(/\s+/g, '-')}`, // Properly map URL from response
+        order: typeof module.order === 'number' ? module.order : 999 // Properly map ORDER from response
       }));
 
-      console.log("Configured modules with URL and ORDER:", configuredModules,data.modules);
+      console.log("Configured modules with URL and ORDER properly mapped:", configuredModules);
       dispatch(setConfiguredModules(configuredModules));
 
     } catch (error) {
