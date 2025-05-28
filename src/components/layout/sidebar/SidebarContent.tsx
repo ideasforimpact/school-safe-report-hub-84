@@ -135,7 +135,7 @@ const SidebarContent = () => {
                 key={item.path}
                 icon={item.icon}
                 label={item.label}
-                path={item.path}
+                path={getProcessedPath(item.path)}
                 isActive={isActive(getProcessedPath(item.path))}
               />
             ))}

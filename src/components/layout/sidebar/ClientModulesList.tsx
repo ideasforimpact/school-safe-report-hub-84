@@ -61,7 +61,7 @@ const ClientModulesList = () => {
           const IconComponent = iconMap[module.icon || 'LayoutDashboard'] || LayoutDashboard;
           
           // Use exact URL from database, fallback to generated path if URL is empty
-          const path = module.url;
+          const path = module.url || `/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
           
           return {
             icon: IconComponent,
@@ -100,13 +100,13 @@ const ClientModulesList = () => {
     return currentPath === path || (path !== '/' && currentPath.startsWith(path));
   };
 
-  // if (isLoading) {
-  //   return (
-  //     <div className="flex-1 py-6 text-white flex justify-center items-center">
-  //       <span className="text-sm">Loading...</span>
-  //     </div>
-  //   );
-  // }
+  if (isLoading) {
+    return (
+      <div className="flex-1 py-6 text-white flex justify-center items-center">
+        <span className="text-sm">Loading...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 py-6">
