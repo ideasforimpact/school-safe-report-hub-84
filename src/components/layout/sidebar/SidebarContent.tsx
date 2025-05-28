@@ -51,16 +51,21 @@ const SidebarContent = () => {
           const items = convertModulesToSidebarItems(modules, {}, '/backoffice');
           setDynamicMenuItems(items);
         } else if (configuredModules.length > 0) {
-          // Convert Redux store modules to sidebar format
-          const items = configuredModules.map(module => {
-            const path = `/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
-            return {
+          // Convert Redux store modules to sidebar format - use exact URLs and order
+          const items = configuredModules
+            .sort((a, b) => {
+              // Sort by order field (nulls last)
+              if (a.order === null || a.order === undefined) return 1;
+              if (b.order === null || b.order === undefined) return -1;
+              return a.order - b.order;
+            })
+            .map(module => ({
               icon: null, // Will be resolved in ClientModulesList
               label: module.name,
-              path,
-              allowed: true
-            };
-          });
+              path: module.url || `/${module.name.toLowerCase().replace(/\s+/g, '-')}`, // Use exact URL from database
+              allowed: true,
+              order: module.order
+            }));
           
           setDynamicMenuItems(items);
         } else {
