@@ -1,168 +1,133 @@
 
-import React, { useState } from 'react';
-import { Button } from "@/components/ui/button";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
-  DialogTitle
-} from "@/components/ui/dialog";
+import React, { useState, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import BasicInfoTab from './tabs/BasicInfoTab';
-import ModuleAccessTab, { ModuleInfo } from './tabs/ModuleAccessTab';
 import AuthTab from './tabs/AuthTab';
-import { OAuthProviderName } from '@/utils/authProviders';
-import { ClientFormData } from '@/hooks/useClientManagement';
-import { Loader2, Asterisk } from 'lucide-react'; // Import both loading spinner and asterisk
+import ModuleAccessTab from './tabs/ModuleAccessTab';
+import { Button } from "@/components/ui/button";
+import { Loader2 } from 'lucide-react';
+import { fetchClientDetails, ClientDetailsResponse } from '@/services/client/clientService';
 
 interface ClientDialogProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  formData: ClientFormData;
-  setFormData: React.Dispatch<React.SetStateAction<ClientFormData>>;
+  formData: any;
+  setFormData: (data: any) => void;
   onSubmit: () => void;
   onCancel: () => void;
-  isEdit?: boolean;
-  isLoading?: boolean;
+  isEdit: boolean;
+  isLoading: boolean;
 }
 
-const ClientDialog: React.FC<ClientDialogProps> = ({
+const ClientDialog = ({
   isOpen,
   onOpenChange,
   formData,
   setFormData,
   onSubmit,
   onCancel,
-  isEdit = false,
-  isLoading = false
-}) => {
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        setFormData({...formData, logo: reader.result as string});
-      };
-      reader.readAsDataURL(file);
+  isEdit,
+  isLoading
+}: ClientDialogProps) => {
+  const [clientDetails, setClientDetails] = useState<ClientDetailsResponse | null>(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+
+  useEffect(() => {
+    if (isEdit && formData.id && isOpen) {
+      loadClientDetails();
+    }
+  }, [isEdit, formData.id, isOpen]);
+
+  const loadClientDetails = async () => {
+    if (!formData.id) return;
+    
+    setLoadingDetails(true);
+    try {
+      const details = await fetchClientDetails(formData.id);
+      setClientDetails(details);
+    } catch (error) {
+      console.error('Error loading client details:', error);
+    } finally {
+      setLoadingDetails(false);
     }
   };
 
-  const handleModuleInfoChange = (moduleInfoArray: ModuleInfo[]) => {
-    setFormData({
-      ...formData,
-      moduleInfoArray
-    });
-    
-    console.log("Updated moduleInfoArray in formData:", moduleInfoArray);
-  };
-
-  const handleAuthProviderChange = (provider: OAuthProviderName, value: boolean) => {
-    setFormData({
-      ...formData,
-      authProviders: {
-        ...formData.authProviders,
-        [provider]: value
-      }
-    });
-  };
-
-  const addDomain = (domain: string) => {
-    setFormData({
-      ...formData,
-      allowedDomains: [...formData.allowedDomains, domain]
-    });
-  };
-
-  const removeDomain = (domain: string) => {
-    setFormData({
-      ...formData,
-      allowedDomains: formData.allowedDomains.filter(d => d !== domain)
-    });
-  };
-
-  const addSuperAdminDomain = (domain: string) => {
-    setFormData({
-      ...formData,
-      superAdminAllowedDomains: [...formData.superAdminAllowedDomains, domain]
-    });
-  };
-
-  const removeSuperAdminDomain = (domain: string) => {
-    setFormData({
-      ...formData,
-      superAdminAllowedDomains: formData.superAdminAllowedDomains.filter(d => d !== domain)
-    });
-  };
-
-  // Ensure allowedDomains and superAdminAllowedDomains are always arrays
-  const safeFormData = {
-    ...formData,
-    allowedDomains: formData.allowedDomains || [],
-    superAdminAllowedDomains: formData.superAdminAllowedDomains || []
+  const handleModulesUpdate = () => {
+    if (formData.id) {
+      loadClientDetails();
+    }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isEdit ? 'Edit Client' : 'Add New Client'}</DialogTitle>
-          <DialogDescription>
-            {isEdit ? 'Update client information' : 'Quickly onboard a new client to the platform'}
-          </DialogDescription>
+          <DialogTitle>
+            {isEdit ? 'Edit Client' : 'Add New Client'}
+          </DialogTitle>
         </DialogHeader>
 
-        <Tabs defaultValue="basic" className="w-full">
-          <TabsList className="grid grid-cols-3 mb-4">
+        <Tabs defaultValue="basic" className="space-y-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="basic">Basic Info</TabsTrigger>
-            <TabsTrigger value="access">Module Access</TabsTrigger>
             <TabsTrigger value="auth">Authentication</TabsTrigger>
+            <TabsTrigger value="modules" disabled={!isEdit}>
+              Module Access
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="basic">
-            <BasicInfoTab 
-              formData={safeFormData} 
-              setFormData={setFormData} 
-              handleLogoUpload={handleLogoUpload} 
+          <TabsContent value="basic" className="space-y-4">
+            <BasicInfoTab
+              formData={formData}
+              setFormData={setFormData}
             />
           </TabsContent>
 
-          <TabsContent value="access">
-            <ModuleAccessTab 
-              formData={safeFormData}
-              onModuleInfoChange={handleModuleInfoChange}
-              isEdit={isEdit}
+          <TabsContent value="auth" className="space-y-4">
+            <AuthTab
+              formData={formData}
+              setFormData={setFormData}
             />
           </TabsContent>
 
-          <TabsContent value="auth">
-            <AuthTab 
-              formData={safeFormData}
-              onAddDomain={addDomain}
-              onRemoveDomain={removeDomain}
-              onAddSuperAdminDomain={addSuperAdminDomain}
-              onRemoveSuperAdminDomain={removeSuperAdminDomain}
-              onProviderChange={handleAuthProviderChange}
-            />
+          <TabsContent value="modules" className="space-y-4">
+            {loadingDetails ? (
+              <div className="flex justify-center items-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin" />
+                <span className="ml-2">Loading modules...</span>
+              </div>
+            ) : clientDetails ? (
+              <ModuleAccessTab
+                client={clientDetails.client}
+                modules={clientDetails.modules}
+                availableModules={clientDetails.availableModules}
+                onModulesUpdate={handleModulesUpdate}
+              />
+            ) : isEdit ? (
+              <div className="text-center py-8 text-gray-500">
+                Unable to load module information
+              </div>
+            ) : null}
           </TabsContent>
         </Tabs>
 
-        <DialogFooter className="mt-6">
-          <Button variant="outline" onClick={onCancel} disabled={isLoading}>
+        <div className="flex justify-end gap-2 pt-4 border-t">
+          <Button
+            variant="outline"
+            onClick={onCancel}
+            disabled={isLoading}
+          >
             Cancel
           </Button>
-          <Button onClick={onSubmit} disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {isEdit ? 'Updating...' : 'Adding...'}
-              </>
-            ) : (
-              isEdit ? 'Update Client' : 'Add Client'
-            )}
+          <Button
+            onClick={onSubmit}
+            disabled={isLoading}
+          >
+            {isLoading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+            {isEdit ? 'Update Client' : 'Create Client'}
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );

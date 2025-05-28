@@ -1,9 +1,9 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
-import { ClientModule, AvailableModule } from '@/services/client/clientService';
+import { ClientModule, AvailableModule, updateClientModule } from '@/services/client/clientService';
 import { useToast } from "@/hooks/use-toast"
-import { updateClientModule } from '@/services/client/clientService';
 
 interface ModuleAccessTabProps {
   client: any;

@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 
 export interface ClientModule {
@@ -60,6 +61,25 @@ export const fetchClientDetails = async (clientId: string): Promise<ClientDetail
     return data;
   } catch (error) {
     console.error('Error fetching client details:', error);
+    throw error;
+  }
+};
+
+export const updateClientModule = async (moduleId: string, updateData: { enabled: boolean }) => {
+  try {
+    const { data, error } = await supabase
+      .from('client_modules')
+      .update(updateData)
+      .eq('id', moduleId)
+      .select();
+
+    if (error) {
+      throw new Error(`Failed to update client module: ${error.message}`);
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error updating client module:', error);
     throw error;
   }
 };
