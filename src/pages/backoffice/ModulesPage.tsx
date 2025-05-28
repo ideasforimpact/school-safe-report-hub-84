@@ -4,15 +4,17 @@ import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Settings, Plus, Edit, Trash2, Eye } from 'lucide-react';
+import { Settings, Edit, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import CreateModuleDialog from '@/components/modules/CreateModuleDialog';
 
 interface Module {
   id: string;
   name: string;
   icon: string;
   level: string;
+  url: string | null;
   order: number | null;
   created_at: string;
   updated_at: string;
@@ -58,14 +60,9 @@ const ModulesPage = () => {
     }
   };
 
-  const handleView = (moduleId: string) => {
-    console.log('View module:', moduleId);
-    // Implement view functionality
-  };
-
   const handleEdit = (moduleId: string) => {
     console.log('Edit module:', moduleId);
-    // Implement edit functionality
+    // The edit functionality will be handled by the CreateModuleDialog component
   };
 
   const handleDelete = async (moduleId: string) => {
@@ -74,13 +71,19 @@ const ModulesPage = () => {
     }
 
     try {
-      const { error } = await supabase
-        .from('modules')
-        .delete()
-        .eq('id', moduleId);
+      const { error } = await supabase.functions.invoke('manage-modules', {
+        method: 'DELETE',
+        body: null,
+      });
 
-      if (error) {
-        console.error('Error deleting module:', error);
+      // Add the ID as a query parameter for DELETE requests
+      const deleteUrl = `manage-modules?id=${moduleId}`;
+      const { error: deleteError } = await supabase.functions.invoke(deleteUrl, {
+        method: 'DELETE'
+      });
+
+      if (deleteError) {
+        console.error('Error deleting module:', deleteError);
         toast({
           title: "Error",
           description: "Failed to delete module",
@@ -106,11 +109,6 @@ const ModulesPage = () => {
     }
   };
 
-  const handleCreateModule = () => {
-    console.log('Create new module');
-    // Implement create module functionality
-  };
-
   return (
     <Layout>
       <div className="space-y-8">
@@ -122,10 +120,7 @@ const ModulesPage = () => {
               <p className="text-gray-500 mt-1">Manage system modules and configurations</p>
             </div>
           </div>
-          <Button onClick={handleCreateModule} className="flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            Create Module
-          </Button>
+          <CreateModuleDialog onSuccess={fetchModules} />
         </div>
         
         <Card>
@@ -150,10 +145,15 @@ const ModulesPage = () => {
                 <p className="text-gray-500 mb-4">
                   No modules are currently configured in the system
                 </p>
-                <Button onClick={handleCreateModule} className="flex items-center gap-2">
-                  <Plus className="h-4 w-4" />
-                  Create First Module
-                </Button>
+                <CreateModuleDialog 
+                  onSuccess={fetchModules}
+                  trigger={
+                    <Button className="flex items-center gap-2">
+                      <Settings className="h-4 w-4" />
+                      Create First Module
+                    </Button>
+                  }
+                />
               </div>
             ) : (
               <Table>
@@ -162,6 +162,7 @@ const ModulesPage = () => {
                     <TableHead>Name</TableHead>
                     <TableHead>Icon</TableHead>
                     <TableHead>Level</TableHead>
+                    <TableHead>URL</TableHead>
                     <TableHead>Order</TableHead>
                     <TableHead>Created At</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -181,26 +182,25 @@ const ModulesPage = () => {
                           {module.level}
                         </span>
                       </TableCell>
+                      <TableCell>{module.url || '-'}</TableCell>
                       <TableCell>{module.order || '-'}</TableCell>
                       <TableCell>{new Date(module.created_at).toLocaleDateString()}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleView(module.id)}
-                            title="View module"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEdit(module.id)}
-                            title="Edit module"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
+                          <CreateModuleDialog
+                            module={module}
+                            isEdit={true}
+                            onSuccess={fetchModules}
+                            trigger={
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                title="Edit module"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            }
+                          />
                           <Button
                             variant="ghost"
                             size="icon"
