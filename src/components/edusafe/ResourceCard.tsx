@@ -29,11 +29,11 @@ const ResourceCard: React.FC<ResourceCardProps> = ({ resource, onView }) => {
     downloadResource(resource);
   };
   
-  const handleDelete = (e: React.MouseEvent) => {
+  const handleDelete = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (window.confirm(`Are you sure you want to delete "${resource.title}"?`)) {
-      deleteResource(resource.id);
+      await deleteResource(resource.id);
     }
   };
 
@@ -52,9 +52,9 @@ const ResourceCard: React.FC<ResourceCardProps> = ({ resource, onView }) => {
         
         <div className="mt-4 text-left">
           <div className="text-xs text-gray-500 flex items-center space-x-2 mb-2">
-            <span>Type: {resource.file.type.split('/')[1].toUpperCase()}</span>
+            <span>Type: {resource.file.type.split('/')[1]?.toUpperCase() || 'PDF'}</span>
             <span>•</span>
-            <span>{formatFileSize(resource.file.size)}</span>
+            <span>{formatFileSize(resource.file.size || 0)}</span>
           </div>
           
           <div className="flex flex-wrap gap-2 mt-2">
@@ -100,7 +100,7 @@ const ResourceCard: React.FC<ResourceCardProps> = ({ resource, onView }) => {
                 variant="ghost" 
                 asChild
               >
-                <Link to={`/edusafe-resources/edit/${resource.id}`}>
+                <Link to={`/edusafe/edit/${resource.id}`}>
                   <Edit className="h-4 w-4 mr-1" />
                   Edit
                 </Link>

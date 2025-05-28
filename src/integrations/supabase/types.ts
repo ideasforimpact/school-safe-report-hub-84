@@ -425,6 +425,45 @@ export type Database = {
         }
         Relationships: []
       }
+      edusafe_resources: {
+        Row: {
+          category: string
+          client_id: string | null
+          created_at: string
+          description: string | null
+          document_url: string
+          id: string
+          tags: Json | null
+          title: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          category: string
+          client_id?: string | null
+          created_at?: string
+          description?: string | null
+          document_url: string
+          id?: string
+          tags?: Json | null
+          title: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          category?: string
+          client_id?: string | null
+          created_at?: string
+          description?: string | null
+          document_url?: string
+          id?: string
+          tags?: Json | null
+          title?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
       employee_document_type: {
         Row: {
           created_at: string

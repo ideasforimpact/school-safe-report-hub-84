@@ -103,7 +103,7 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
     }
   };
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!file) {
@@ -116,18 +116,22 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
       return;
     }
     
-    addResource({
-      title: title.trim(),
-      description: description.trim(),
-      category,
-      tags,
-      file
-    });
-    
-    if (onComplete) {
-      onComplete();
-    } else {
-      navigate('/edusafe');
+    try {
+      await addResource({
+        title: title.trim(),
+        description: description.trim(),
+        category,
+        tags,
+        file
+      });
+      
+      if (onComplete) {
+        onComplete();
+      } else {
+        navigate('/edusafe');
+      }
+    } catch (error) {
+      // Error handling is done in the context
     }
   };
   
