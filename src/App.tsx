@@ -49,6 +49,9 @@ import VerificationDashboardPage from '@/pages/employee-verification/Verificatio
 import BackofficeLogin from '@/pages/BackofficeLogin';
 import SettingsPage from '@/pages/SettingsPage';
 
+// Backoffice Pages
+import ModulesPage from '@/pages/backoffice/ModulesPage';
+
 // Layout for Backoffice
 import BackofficeLayout from '@/components/layout/BackofficeLayout';
 
@@ -145,6 +148,7 @@ function App() {
                     <Route path="/backoffice/dashboard" element={<BackofficeWrapper component={Dashboard} />} />
                     <Route path="/backoffice/clients" element={<BackofficeWrapper component={ClientManagement} />} />
                     <Route path="/backoffice/settings" element={<BackofficeWrapper component={SettingsPage} />} />
+                    <Route path="/backoffice/modules" element={<BackofficeWrapper component={ModulesPage} />} />
                     
                     {/* Backoffice Profile route */}
                     <Route path="/backoffice/profile" element={<BackofficeWrapper component={ProfilePage} />} />
