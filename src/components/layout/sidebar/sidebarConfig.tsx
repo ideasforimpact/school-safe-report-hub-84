@@ -20,14 +20,14 @@ export interface Module {
   name: string;
   icon: string; 
   level: string;
-  order?: number;
+  order?: number; // Added order field
   created_at?: string;
   updated_at?: string;
-  key?: string;
+  key?: string; // Module key for permission mapping
   active?: boolean;
   description?: string;
-  access_level?: any;
-  url?: string;
+  access_level?: any; // Added to support access levels from client_modules
+  url?: string; // Added url property
 }
 
 // Map string icon names to Lucide components
@@ -66,7 +66,7 @@ export const fetchModules = async (isBackoffice: boolean, user?: any, employeeDa
         .from('modules')
         .select('*')
         .eq('level', 'backoffice')
-        .order('order', { ascending: true, nullsFirst: false });
+        .order('order', { ascending: true, nullsFirst: false }); // Order by the order column
         
       if (error) {
         console.error('Error fetching backoffice modules:', error);
@@ -98,25 +98,24 @@ export const fetchModules = async (isBackoffice: boolean, user?: any, employeeDa
       email: user.email,
       role: user.role,
       isSaasOwner: user.role === 'saas_owner',
-      provider: user.provider
+      provider: user.provider // Include provider information
     } : null;
     
-    // Prepare employee data if available - ensure all required fields are present
+    // Prepare employee data if available
     const employeeInfo = employeeData ? {
       id: employeeData.id,
       clientId: employeeData.clientId,
       email: employeeData.email,
       firstName: employeeData.firstName,
       lastName: employeeData.lastName,
-      employeeType: employeeData.employeeType || 'user',
-      employeeId: employeeData.employeeId || employeeData.id,
+      employeeType: employeeData.employeeType,
+      employeeId: employeeData.id,
       department: employeeData.department || '',
       isSuperAdmin: typeof employeeData.isSuperAdmin === 'boolean' ? employeeData.isSuperAdmin : false,
       status: employeeData.status !== undefined ? employeeData.status : true
     } : null;
 
-    console.log("Employee data being sent to fetch-modules:", employeeInfo);
-    console.log("User data being sent to fetch-modules:", userInfo);
+    console.log("Employee data being sent:", employeeInfo);
     
     // Call our edge function with user and employee info
     const { data, error } = await supabase.functions.invoke('fetch-modules', {
@@ -234,6 +233,7 @@ export const getSaasOwnerItems = () => [
   },
 ];
 
+// Client Admin and User Menu Items
 export const getClientItems = (permissions: any) => [
   {
     icon: LayoutDashboard,

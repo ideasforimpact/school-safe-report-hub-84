@@ -16,8 +16,7 @@ const BackofficeDashboard = () => {
     isAddDialogOpen,
     setIsAddDialogOpen,
     handleAddClient,
-    resetForm,
-    loading
+    resetForm
   } = useClientManagement();
   
   // Sample metrics data (in a real app, this would come from an API)
@@ -83,7 +82,6 @@ const BackofficeDashboard = () => {
         onSubmit={handleAddClient}
         onCancel={handleCancelAdd}
         isEdit={false}
-        isLoading={loading}
       />
     </BackofficeLayout>
   );

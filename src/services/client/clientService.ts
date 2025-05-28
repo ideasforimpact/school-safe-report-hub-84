@@ -49,24 +49,15 @@ export interface ClientDetailsResponse {
 
 export const fetchClientDetails = async (clientId: string): Promise<ClientDetailsResponse> => {
   try {
-    console.log(`Calling client-management edge function with clientId: ${clientId}`);
-    
-    // Construct the URL with query parameters
-    const functionUrl = `client-management?clientId=${encodeURIComponent(clientId)}`;
-    
-    const { data, error } = await supabase.functions.invoke(functionUrl, {
+    const { data, error } = await supabase.functions.invoke('client-management', {
       method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      body: null,
     });
 
     if (error) {
-      console.error('Error from client-management function:', error);
       throw new Error(`Failed to fetch client details: ${error.message}`);
     }
 
-    console.log('Response from client-management:', data);
     return data;
   } catch (error) {
     console.error('Error fetching client details:', error);

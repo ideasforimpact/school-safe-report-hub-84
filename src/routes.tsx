@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { createBrowserRouter } from 'react-router-dom';
 import Home from '@/pages/Home';
@@ -148,18 +149,6 @@ const routes = createBrowserRouter([
   {
     path: "/edusafe",
     element: <EduSafeResourcesPage />,
-  },
-  {
-    path: "/edusafe-resources",
-    element: <EduSafeResourcesPage />,
-  },
-  {
-    path: "/edusafe-resources/upload",
-    element: <UploadResourcePage />,
-  },
-  {
-    path: "/edusafe-resources/edit/:id",
-    element: <EditResourcePage />,
   },
   {
     path: "/edusafe/upload",
