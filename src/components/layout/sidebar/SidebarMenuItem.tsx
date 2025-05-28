@@ -13,18 +13,13 @@ interface SidebarMenuItemProps {
 const SidebarMenuItem = ({ icon: IconComponent, label, path, isActive }: SidebarMenuItemProps) => {
   const navigate = useNavigate();
   
-  const handleNavigation = () => {
-    // Navigate to the provided path, which already includes the correct prefix for backoffice or user level
-    navigate(path);
-  };
-  
   // Split the label by newline character to handle multiline labels
   const labelParts = label.split('\n');
   
   return (
     <li>
       <button
-        onClick={handleNavigation}
+        onClick={() => navigate(path)}
         className={cn(
           "w-full flex flex-col items-center justify-center py-3 px-2 rounded-md transition-colors text-center",
           isActive

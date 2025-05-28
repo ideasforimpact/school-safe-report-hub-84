@@ -30,9 +30,9 @@ serve(async (req) => {
     switch (method) {
       case 'POST': {
         const body = await req.json();
-        const { name, icon, level, url: moduleUrl, order } = body;
+        const { name, icon, level, url: moduleUrl } = body;
 
-        console.log('Creating module:', { name, icon, level, url: moduleUrl, order });
+        console.log('Creating module:', { name, icon, level, url: moduleUrl });
 
         const { data, error } = await supabase
           .from('modules')
@@ -40,8 +40,7 @@ serve(async (req) => {
             name,
             icon,
             level,
-            url: moduleUrl,
-            order: order ? parseInt(order) : null
+            url: moduleUrl
           })
           .select()
           .single();
@@ -76,9 +75,9 @@ serve(async (req) => {
         }
 
         const body = await req.json();
-        const { name, icon, level, url: moduleUrl, order } = body;
+        const { name, icon, level, url: moduleUrl } = body;
 
-        console.log('Updating module:', { id: moduleId, name, icon, level, url: moduleUrl, order });
+        console.log('Updating module:', { id: moduleId, name, icon, level, url: moduleUrl });
 
         const { data, error } = await supabase
           .from('modules')
@@ -87,7 +86,6 @@ serve(async (req) => {
             icon,
             level,
             url: moduleUrl,
-            order: order ? parseInt(order) : null,
             updated_at: new Date().toISOString()
           })
           .eq('id', moduleId)

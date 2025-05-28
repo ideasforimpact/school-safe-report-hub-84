@@ -34,8 +34,7 @@ const CreateModuleDialog = ({ module, isEdit = false, onSuccess, trigger }: Crea
     name: '',
     icon: '',
     level: '',
-    url: '',
-    order: ''
+    url: ''
   });
   const { toast } = useToast();
 
@@ -45,16 +44,14 @@ const CreateModuleDialog = ({ module, isEdit = false, onSuccess, trigger }: Crea
         name: module.name || '',
         icon: module.icon || '',
         level: module.level || '',
-        url: module.url || '',
-        order: module.order ? module.order.toString() : ''
+        url: module.url || ''
       });
     } else {
       setFormData({
         name: '',
         icon: '',
         level: '',
-        url: '',
-        order: ''
+        url: ''
       });
     }
   }, [module, isEdit, isOpen]);
@@ -166,17 +163,6 @@ const CreateModuleDialog = ({ module, isEdit = false, onSuccess, trigger }: Crea
               value={formData.url}
               onChange={(e) => handleInputChange('url', e.target.value)}
               placeholder="Enter module URL"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="order">Order (Optional)</Label>
-            <Input
-              id="order"
-              type="number"
-              value={formData.order}
-              onChange={(e) => handleInputChange('order', e.target.value)}
-              placeholder="Enter display order (e.g., 1, 2, 3...)"
             />
           </div>
 

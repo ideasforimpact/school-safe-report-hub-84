@@ -86,13 +86,20 @@ const ModulesPage = () => {
     }
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
+      const { error } = await supabase.functions.invoke('manage-modules', {
+        body: null,
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      // The correct way to pass the ID for DELETE requests
       const response = await fetch(`https://ybvxkiubnnixntghojyy.supabase.co/functions/v1/manage-modules?id=${moduleId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${session?.access_token || ''}`,
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlidnhraXVibm5peG50Z2hvanl5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY3ODcxMzksImV4cCI6MjA2MjM2MzEzOX0.z8KKLi5uNyE0jxUoQtoB6M5iXr2D7hfAeXm5t1piWKo',
+          'Authorization': `Bearer ${supabase.supabaseKey}`,
+          'apikey': supabase.supabaseKey,
           'Content-Type': 'application/json',
         },
       });
