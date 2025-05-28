@@ -1,12 +1,12 @@
 
 import React from 'react';
-import BackofficeLayout from '@/components/layout/BackofficeLayout';
+import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Settings } from 'lucide-react';
 
 const ModulesPage = () => {
   return (
-    <BackofficeLayout>
+    <Layout>
       <div className="space-y-8">
         <div className="flex items-center space-x-3">
           <Settings className="h-8 w-8 text-blue-600" />
@@ -36,7 +36,7 @@ const ModulesPage = () => {
           </CardContent>
         </Card>
       </div>
-    </BackofficeLayout>
+    </Layout>
   );
 };
 

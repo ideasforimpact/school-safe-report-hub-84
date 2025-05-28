@@ -144,11 +144,11 @@ function App() {
                     <Route path="/employee-verification/:employeeId/upload-document" element={<UploadDocumentPage />} />
                     <Route path="/employee-verification/dashboard" element={<VerificationDashboardPage />} />
 
-                    {/* Backoffice routes - duplicated routes with /backoffice prefix */}
+                    {/* Backoffice routes - updated modules route to use standard Layout */}
                     <Route path="/backoffice/dashboard" element={<BackofficeWrapper component={Dashboard} />} />
                     <Route path="/backoffice/clients" element={<BackofficeWrapper component={ClientManagement} />} />
                     <Route path="/backoffice/settings" element={<BackofficeWrapper component={SettingsPage} />} />
-                    <Route path="/backoffice/modules" element={<BackofficeWrapper component={ModulesPage} />} />
+                    <Route path="/backoffice/modules" element={<ModulesPage />} />
                     
                     {/* Backoffice Profile route */}
                     <Route path="/backoffice/profile" element={<BackofficeWrapper component={ProfilePage} />} />
