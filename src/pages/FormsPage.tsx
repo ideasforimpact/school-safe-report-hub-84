@@ -16,7 +16,7 @@ const FormsPage = () => {
   const [submissionsView, setSubmissionsView] = useState<'list' | 'aggregated'>('list');
   const [selectedSubmission, setSelectedSubmission] = useState<any | null>(null);
   
-  const { submissions, loading: submissionsLoading } = useFormSubmissions(selectedForm?.id || null);
+  const { submissions, loading: submissionsLoading, refetch } = useFormSubmissions(selectedForm?.id || null);
 
   const getStatusBadge = (status: string) => {
     const variants = {
@@ -42,6 +42,10 @@ const FormsPage = () => {
 
   const handleViewSubmission = (submission: any) => {
     setSelectedSubmission(submission);
+  };
+
+  const handleSubmissionUpdate = () => {
+    refetch();
   };
 
   if (loading) {
@@ -296,6 +300,7 @@ const FormsPage = () => {
         <SubmissionDetailDialog
           submission={selectedSubmission}
           onClose={() => setSelectedSubmission(null)}
+          onUpdate={handleSubmissionUpdate}
         />
       )}
     </Layout>

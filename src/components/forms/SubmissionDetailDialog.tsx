@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import {
   Dialog,
@@ -13,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Calendar, User, MessageSquare } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface FormSubmission {
   id: string;
@@ -33,11 +35,13 @@ interface FormSubmission {
 interface SubmissionDetailDialogProps {
   submission: FormSubmission;
   onClose: () => void;
+  onUpdate?: () => void;
 }
 
 const SubmissionDetailDialog: React.FC<SubmissionDetailDialogProps> = ({ 
   submission, 
-  onClose 
+  onClose,
+  onUpdate
 }) => {
   const [acknowledgmentComment, setAcknowledgmentComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -68,17 +72,36 @@ const SubmissionDetailDialog: React.FC<SubmissionDetailDialogProps> = ({
     setSubmitting(true);
     
     try {
-      // Here you would typically call an API to update the submission status
-      // and add the acknowledgment comment
-      console.log('Acknowledging submission:', {
+      console.log('Updating submission:', {
         submissionId: submission.id,
         comment: acknowledgmentComment
       });
+
+      const { data, error } = await supabase.functions.invoke('update-form-submission', {
+        body: {
+          submission_id: submission.id,
+          comments: acknowledgmentComment,
+          status: 'reviewed'
+        }
+      });
+
+      if (error) {
+        console.error('Error calling update-form-submission function:', error);
+        throw error;
+      }
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to update submission');
+      }
 
       toast({
         title: "Success",
         description: "Submission acknowledged successfully"
       });
+
+      if (onUpdate) {
+        onUpdate();
+      }
 
       onClose();
     } catch (error) {
@@ -149,16 +172,10 @@ const SubmissionDetailDialog: React.FC<SubmissionDetailDialogProps> = ({
             <h3 className="text-lg font-semibold">Form Responses</h3>
             <div className="space-y-3">
               {submission.responses.map((response, index) => (
-                <div key={index} className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border rounded-lg">
+                <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border rounded-lg">
                   <div>
                     <Label className="text-sm font-medium text-gray-600">Field</Label>
                     <p className="mt-1 font-medium">{response.label}</p>
-                  </div>
-                  <div>
-                    <Label className="text-sm font-medium text-gray-600">Type</Label>
-                    <p className="mt-1 text-sm text-gray-500 capitalize">
-                      {response.type.replace('_', ' ')}
-                    </p>
                   </div>
                   <div>
                     <Label className="text-sm font-medium text-gray-600">Response</Label>
