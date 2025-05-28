@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { User, UserRole, EmployeeData } from '../types';
 import { getUserFromStorage, saveUserToStorage, saveEmployeeDataToStorage } from '@/services/auth/authService';
@@ -72,7 +71,7 @@ export const useAuthHandlers = ({
             module_id,
             enabled,
             access_level,
-            modules(id, name, icon, level)
+            modules(id, name, icon, level, order, url)
           `)
           .eq('client_id', clientId)
           .eq('enabled', true);
@@ -83,7 +82,7 @@ export const useAuthHandlers = ({
           return [];
         }
 
-        // Convert client modules to the expected format
+        // Convert client modules to the expected format and sort by order
         configuredModules = clientModules?.map(cm => {
           const moduleObj = cm.modules;
           if (!moduleObj) return null;
@@ -94,7 +93,9 @@ export const useAuthHandlers = ({
             icon: moduleObj.icon || '',
             level: moduleObj.level, // Include the level property
             enabled: true,
-            accessLevel: cm.access_level || {}
+            accessLevel: cm.access_level || {},
+            order: moduleObj.order || 999, // Default high order if not set
+            url: moduleObj.url || `/${moduleObj.name.toLowerCase().replace(/\s+/g, '-')}` // Use module URL or generate from name
           };
         }).filter(Boolean) as Module[] || [];
         
@@ -108,7 +109,7 @@ export const useAuthHandlers = ({
             module_id,
             enabled,
             access_level,
-            modules(id, name, icon, level)
+            modules(id, name, icon, level, order, url)
           `)
           .eq('client_id', clientId)
           .eq('enabled', true);
@@ -160,10 +161,19 @@ export const useAuthHandlers = ({
             icon: moduleObj.icon || '',
             level: moduleObj.level,
             enabled: true,
-            accessLevel: employeeModuleMap.get(moduleObj.id) || cm.access_level || {}
+            accessLevel: employeeModuleMap.get(moduleObj.id) || cm.access_level || {},
+            order: moduleObj.order || 999, // Default high order if not set
+            url: moduleObj.url || `/${moduleObj.name.toLowerCase().replace(/\s+/g, '-')}` // Use module URL or generate from name
           };
         }).filter(Boolean) as Module[] || [];
       }
+
+      // Sort modules by order field (nulls last)
+      configuredModules.sort((a, b) => {
+        if (a.order === null || a.order === undefined) return 1;
+        if (b.order === null || b.order === undefined) return -1;
+        return a.order - b.order;
+      });
 
       // If no modules found, provide a dashboard
       if (configuredModules.length === 0) {
@@ -174,7 +184,9 @@ export const useAuthHandlers = ({
           icon: 'LayoutDashboard',
           level: 'client',
           enabled: true,
-          accessLevel: {}
+          accessLevel: {},
+          order: 1,
+          url: '/dashboard'
         }];
       }
       
