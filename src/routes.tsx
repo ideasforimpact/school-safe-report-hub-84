@@ -56,6 +56,7 @@ import ProfilePage from '@/pages/ProfilePage';
 import FormPreviewPage from '@/pages/FormPreviewPage';
 import FormsPage from '@/pages/FormsPage';
 import PublicFormSubmissionPage from '@/pages/PublicFormSubmissionPage';
+import PublicFormSubmissionSuccessPage from '@/pages/PublicFormSubmissionSuccessPage';
 import BackofficeLayout from '@/components/layout/BackofficeLayout';
 
 const BackofficeWrapper = ({ component: Component }) => {
@@ -286,6 +287,10 @@ const routes = createBrowserRouter([
   {
     path: "/public-form/:formId",
     element: <PublicFormSubmissionPage />,
+  },
+  {
+    path: "/public-form-submission-success",
+    element: <PublicFormSubmissionSuccessPage />,
   },
   {
     path: "*",

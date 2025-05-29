@@ -1,5 +1,6 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -14,11 +15,23 @@ import AssessmentConfigurationContent from '@/components/configuration/Assessmen
 import FormConfigurationContent from '@/components/configuration/FormConfigurationContent';
 
 const SettingsPage = () => {
+  const [searchParams] = useSearchParams();
   const { activeTab, setActiveTab, loading, campuses, classes, sections, facilities, 
           handleAddCampus, handleUpdateCampus, handleDeleteCampus,
           handleAddClass, handleUpdateClass, handleDeleteClass,
           handleAddSection, handleUpdateSection, handleDeleteSection,
           handleAddFacility, handleUpdateFacility, handleDeleteFacility } = useEducationalConfigurationManagement();
+
+  // Check for tab parameter in URL and set active tab accordingly
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'form') {
+      // Don't change activeTab since that's for educational configuration
+      // The Tabs component will handle the form tab activation
+    }
+  }, [searchParams]);
+
+  const defaultTab = searchParams.get('tab') === 'form' ? 'form' : 'incident';
 
   return (
     <Layout>
@@ -28,7 +41,7 @@ const SettingsPage = () => {
           <p className="text-gray-500 mt-1">Configure system settings</p>
         </div>
         
-        <Tabs defaultValue="incident" className="w-full">
+        <Tabs defaultValue={defaultTab} className="w-full">
           <TabsList className="mb-6">
             <TabsTrigger value="incident" className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4" />

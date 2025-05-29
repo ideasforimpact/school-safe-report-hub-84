@@ -13,12 +13,14 @@ interface ConditionalFormRendererProps {
   fields: FormField[];
   onSubmit?: (data: Record<string, any>) => void;
   isPreview?: boolean;
+  isSubmitting?: boolean;
 }
 
 const ConditionalFormRenderer: React.FC<ConditionalFormRendererProps> = ({
   fields,
   onSubmit,
-  isPreview = false
+  isPreview = false,
+  isSubmitting = false
 }) => {
   const [formData, setFormData] = useState<Record<string, any>>({});
   const [visibleFields, setVisibleFields] = useState<Set<string>>(new Set());
@@ -52,7 +54,7 @@ const ConditionalFormRenderer: React.FC<ConditionalFormRendererProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (onSubmit) {
+    if (onSubmit && !isSubmitting) {
       onSubmit(formData);
     }
   };
@@ -77,6 +79,7 @@ const ConditionalFormRenderer: React.FC<ConditionalFormRendererProps> = ({
               value={value}
               onChange={(e) => handleFieldChange(field.id, e.target.value)}
               required={field.required}
+              disabled={isSubmitting}
             />
           </div>
         );
@@ -94,6 +97,7 @@ const ConditionalFormRenderer: React.FC<ConditionalFormRendererProps> = ({
               onChange={(e) => handleFieldChange(field.id, e.target.value)}
               required={field.required}
               rows={3}
+              disabled={isSubmitting}
             />
           </div>
         );
@@ -108,6 +112,7 @@ const ConditionalFormRenderer: React.FC<ConditionalFormRendererProps> = ({
             <Select
               value={value}
               onValueChange={(val) => handleFieldChange(field.id, val)}
+              disabled={isSubmitting}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select an option" />
@@ -133,6 +138,7 @@ const ConditionalFormRenderer: React.FC<ConditionalFormRendererProps> = ({
             <RadioGroup
               value={value}
               onValueChange={(val) => handleFieldChange(field.id, val)}
+              disabled={isSubmitting}
             >
               {field.options?.map((option) => (
                 <div key={option} className="flex items-center space-x-2">
@@ -165,6 +171,7 @@ const ConditionalFormRenderer: React.FC<ConditionalFormRendererProps> = ({
                         handleFieldChange(field.id, currentValues.filter((v: string) => v !== option));
                       }
                     }}
+                    disabled={isSubmitting}
                   />
                   <Label htmlFor={`${field.id}-${option}`}>{option}</Label>
                 </div>
@@ -188,6 +195,7 @@ const ConditionalFormRenderer: React.FC<ConditionalFormRendererProps> = ({
                   variant={value === rating ? "default" : "outline"}
                   size="sm"
                   onClick={() => handleFieldChange(field.id, rating)}
+                  disabled={isSubmitting}
                 >
                   {rating}
                 </Button>
@@ -208,6 +216,7 @@ const ConditionalFormRenderer: React.FC<ConditionalFormRendererProps> = ({
               value={value}
               onChange={(e) => handleFieldChange(field.id, e.target.value)}
               required={field.required}
+              disabled={isSubmitting}
             />
           </div>
         );
@@ -219,8 +228,8 @@ const ConditionalFormRenderer: React.FC<ConditionalFormRendererProps> = ({
       {fields.map(renderField)}
       
       {!isPreview && (
-        <Button type="submit" className="w-full">
-          Submit Form
+        <Button type="submit" className="w-full" disabled={isSubmitting}>
+          {isSubmitting ? "Submitting..." : "Submit Form"}
         </Button>
       )}
       

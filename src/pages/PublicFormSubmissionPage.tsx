@@ -1,6 +1,6 @@
 
-import React from 'react';
-import { useParams } from 'react-router-dom';
+import React, { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { usePublicForm } from '@/hooks/usePublicForm';
 import ConditionalFormRenderer from '@/components/forms/ConditionalFormRenderer';
@@ -12,6 +12,8 @@ import { toast } from '@/hooks/use-toast';
 const PublicFormSubmissionPage = () => {
   const { formId } = useParams<{ formId: string }>();
   const { form, loading, error } = usePublicForm(formId);
+  const navigate = useNavigate();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (loading) {
     return (
@@ -46,6 +48,10 @@ const PublicFormSubmissionPage = () => {
   }
 
   const handleFormSubmit = async (data: Record<string, any>) => {
+    if (isSubmitting) return;
+    
+    setIsSubmitting(true);
+    
     try {
       console.log('Submitting form data:', data);
 
@@ -78,6 +84,7 @@ const PublicFormSubmissionPage = () => {
           description: "Failed to submit form. Please try again.",
           variant: "destructive"
         });
+        setIsSubmitting(false);
         return;
       }
 
@@ -88,17 +95,14 @@ const PublicFormSubmissionPage = () => {
           description: result.error || "Failed to submit form. Please try again.",
           variant: "destructive"
         });
+        setIsSubmitting(false);
         return;
       }
 
       console.log('Form submitted successfully:', result.data);
-      toast({
-        title: "Success",
-        description: "Form submitted successfully! Thank you for your submission."
-      });
-
-      // Optionally redirect or clear the form
-      // window.location.reload(); // Uncomment if you want to reload the page
+      
+      // Redirect to success page after successful submission
+      navigate('/public-form-submission-success');
 
     } catch (err) {
       console.error('Unexpected error during form submission:', err);
@@ -107,6 +111,7 @@ const PublicFormSubmissionPage = () => {
         description: "An unexpected error occurred. Please try again.",
         variant: "destructive"
       });
+      setIsSubmitting(false);
     }
   };
 
@@ -126,6 +131,7 @@ const PublicFormSubmissionPage = () => {
               fields={form.fields} 
               onSubmit={handleFormSubmit}
               isPreview={false}
+              isSubmitting={isSubmitting}
             />
           </CardContent>
         </Card>
