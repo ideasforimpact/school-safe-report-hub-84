@@ -8,30 +8,8 @@ import { Plus, X, GripVertical } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFormFieldTypes } from '@/hooks/useFormFieldTypes';
-
-interface FormField {
-  id: string;
-  type: string;
-  label: string;
-  required: boolean;
-  options?: string[];
-  maxRating?: number;
-  allowMultiple?: boolean;
-  maxFiles?: number;
-  allowedFileTypes?: string[];
-}
-
-interface CustomForm {
-  id: string;
-  client_id: string;
-  title: string;
-  description: string;
-  fields: FormField[];
-  is_active: boolean;
-  created_at: string;
-  updated_at: string;
-  created_by: string | null;
-}
+import ConditionalLogicSection from './ConditionalLogicSection';
+import { FormField, CustomForm } from '@/types/formTypes';
 
 interface SimpleFormBuilderProps {
   form?: CustomForm | null;
@@ -80,7 +58,7 @@ const SimpleFormBuilder: React.FC<SimpleFormBuilderProps> = ({ form, onSave, onC
     }));
   };
 
-  const handleOptionChange = (fieldId: string, optionIndex: number, value: string) => {
+  function handleOptionChange(fieldId: string, optionIndex: number, value: string) {
     setFormData(prev => ({
       ...prev,
       fields: prev.fields.map(field =>
@@ -92,9 +70,9 @@ const SimpleFormBuilder: React.FC<SimpleFormBuilderProps> = ({ form, onSave, onC
           : field
       )
     }));
-  };
+  }
 
-  const handleAddOption = (fieldId: string) => {
+  function handleAddOption(fieldId: string) {
     setFormData(prev => ({
       ...prev,
       fields: prev.fields.map(field =>
@@ -103,9 +81,9 @@ const SimpleFormBuilder: React.FC<SimpleFormBuilderProps> = ({ form, onSave, onC
           : field
       )
     }));
-  };
+  }
 
-  const handleRemoveOption = (fieldId: string, optionIndex: number) => {
+  function handleRemoveOption(fieldId: string, optionIndex: number) {
     setFormData(prev => ({
       ...prev,
       fields: prev.fields.map(field =>
@@ -117,20 +95,20 @@ const SimpleFormBuilder: React.FC<SimpleFormBuilderProps> = ({ form, onSave, onC
           : field
       )
     }));
-  };
+  }
 
-  const needsOptions = (fieldType: string) => {
+  function needsOptions(fieldType: string) {
     return fieldType === 'dropdown' || fieldType === 'radio_buttons' || fieldType === 'checkboxes';
-  };
+  }
 
-  const getFieldTypeName = (typeKey: string) => {
+  function getFieldTypeName(typeKey: string) {
     const fieldType = fieldTypes.find(ft => ft.key === typeKey);
     return fieldType?.name || typeKey;
-  };
+  }
 
-  const handleSave = () => {
+  function handleSave() {
     onSave(formData);
-  };
+  }
 
   if (fieldTypesLoading) {
     return (
@@ -150,7 +128,7 @@ const SimpleFormBuilder: React.FC<SimpleFormBuilderProps> = ({ form, onSave, onC
         <CardHeader>
           <CardTitle>{form ? 'Edit Form' : 'Create New Form'}</CardTitle>
           <CardDescription>
-            {form ? 'Update your form details and fields' : 'Build a custom form with various field types'}
+            {form ? 'Update your form details and fields' : 'Build a custom form with various field types and conditional logic'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -327,6 +305,14 @@ const SimpleFormBuilder: React.FC<SimpleFormBuilderProps> = ({ form, onSave, onC
                         )}
                       </div>
                     )}
+
+                    {/* Conditional Logic Section */}
+                    <ConditionalLogicSection
+                      field={field}
+                      allFields={formData.fields}
+                      onUpdateField={handleFieldChange}
+                      fieldIndex={index}
+                    />
                   </Card>
                 ))}
               </div>
