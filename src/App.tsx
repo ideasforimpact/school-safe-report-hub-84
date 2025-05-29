@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
@@ -69,25 +68,11 @@ import ThankYouPage from '@/pages/grievances/ThankYouPage';
 // Backoffice Pages
 import ModulesPage from '@/pages/backoffice/ModulesPage';
 
-// ConnectSchool Pages
-import ConnectSchoolDashboard from '@/pages/connectschool/ConnectSchoolDashboard';
-import ConnectSchoolAnalytics from '@/pages/connectschool/ConnectSchoolAnalytics';
-import ConnectSchoolSettings from '@/pages/connectschool/ConnectSchoolSettings';
-
 // Layout for Backoffice
 import BackofficeLayout from '@/components/layout/BackofficeLayout';
 
 // Backoffice Wrapper Component for routing
 const BackofficeWrapper = ({ component: Component }) => {
-  return (
-    <BackofficeLayout>
-      <Component />
-    </BackofficeLayout>
-  );
-};
-
-// ConnectSchool Wrapper Component for routing
-const ConnectSchoolWrapper = ({ component: Component }) => {
   return (
     <BackofficeLayout>
       <Component />
@@ -217,15 +202,6 @@ function App() {
                     <Route path="/backoffice/assessments/answer/:assessmentId" element={<BackofficeWrapper component={AnswerAssessmentPage} />} />
                     <Route path="/backoffice/assessments/response/:assessmentId" element={<BackofficeWrapper component={AssessmentResponsePage} />} />
                     <Route path="/backoffice/assessments/respond/:assignmentId" element={<BackofficeWrapper component={AssessmentResponsePage} />} />
-
-                    {/* ConnectSchool routes - completely separate from backoffice */}
-                    <Route path="/connectschool" element={<ConnectSchoolWrapper component={ConnectSchoolDashboard} />} />
-                    <Route path="/connectschool/dashboard" element={<ConnectSchoolWrapper component={ConnectSchoolDashboard} />} />
-                    <Route path="/connectschool/analytics" element={<ConnectSchoolWrapper component={ConnectSchoolAnalytics} />} />
-                    <Route path="/connectschool/settings" element={<ConnectSchoolWrapper component={ConnectSchoolSettings} />} />
-                    <Route path="/connectschool/clients" element={<ConnectSchoolWrapper component={ClientManagement} />} />
-                    <Route path="/connectschool/modules" element={<ModulesPage />} />
-                    <Route path="/connectschool/profile" element={<ConnectSchoolWrapper component={ProfilePage} />} />
 
                     {/* 404 route */}
                     <Route path="*" element={<NotFound />} />

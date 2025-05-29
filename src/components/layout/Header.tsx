@@ -11,7 +11,6 @@ import UserProfileMenu from './UserProfileMenu';
 import HeaderIcons from './HeaderIcons';
 import AdminSettingsMenu from './AdminSettingsMenu';
 import UserRoleBadge from './UserRoleBadge';
-import HeaderEnvironmentDropdown from './HeaderEnvironmentDropdown';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getEmployeeData, isEmployeeAdmin, isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 
@@ -39,8 +38,8 @@ const Header = () => {
   // Check if we're on the home page
   const isHomePage = location.pathname === "/" || location.pathname === "/home";
   
-  // Check if we're in any backoffice environment
-  const isAnyBackoffice = location.pathname.startsWith('/backoffice') || location.pathname.startsWith('/connectschool');
+  // Check if we're in the backoffice
+  const isBackoffice = location.pathname.startsWith('/backoffice');
   
   // Find the client associated with the current user - Use employeeData.clientId from Redux if available
   const userClient = employeeData?.clientId 
@@ -89,11 +88,8 @@ const Header = () => {
                 />
               )}
               
-              {/* Environment Dropdown - Show only in backoffice environments */}
-              {isAnyBackoffice && <HeaderEnvironmentDropdown />}
-              
               {/* Settings Menu - Show on all routes if admin/superadmin */}
-              {showAdminSettings && !isAnyBackoffice && <AdminSettingsMenu />}
+              {showAdminSettings && !isBackoffice && <AdminSettingsMenu />}
 
               <UserProfileMenu />
             </div>
