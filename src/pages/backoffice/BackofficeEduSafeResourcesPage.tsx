@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Search, FileText, Download, Edit, Trash, Upload } from 'lucide-react';
@@ -248,8 +247,8 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
                 <CardDescription>Manage EduSafe resources for the selected client</CardDescription>
               </div>
               <Button onClick={() => setIsAddDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Resource
+                <Upload className="h-4 w-4 mr-2" />
+                Upload Resource
               </Button>
             </div>
           </CardHeader>
@@ -347,39 +346,47 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
         </Card>
       )}
 
-      {/* Add Resource Dialog */}
+      {/* Upload Resource Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="sm:max-w-[525px]">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Add New Resource</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Upload className="h-5 w-5" />
+              Upload Resource
+            </DialogTitle>
             <DialogDescription>
               Add a new EduSafe resource for the selected client
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="title" className="text-right">Title</Label>
+          
+          <div className="space-y-6 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="title">Title *</Label>
               <Input
                 id="title"
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="col-span-3"
+                placeholder="Enter resource title"
+                required
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="description" className="text-right">Description</Label>
+            
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
               <Textarea
                 id="description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="col-span-3"
+                placeholder="Provide a brief description of this resource"
+                rows={3}
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="category" className="text-right">Category</Label>
+            
+            <div className="space-y-2">
+              <Label htmlFor="category">Category *</Label>
               <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue />
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
                   {categories.map(cat => (
@@ -390,66 +397,121 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="tags" className="text-right">Tags</Label>
+            
+            <div className="space-y-2">
+              <Label htmlFor="tags">Tags</Label>
               <Input
                 id="tags"
                 value={formData.tags}
                 onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-                placeholder="Comma separated tags"
-                className="col-span-3"
+                placeholder="Comma separated tags (e.g., safety, emergency, procedures)"
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="file" className="text-right">File</Label>
-              <Input
-                id="file"
-                type="file"
-                onChange={(e) => setFormData({ ...formData, file: e.target.files?.[0] || null })}
-                className="col-span-3"
-              />
+            
+            <div className="space-y-2">
+              <Label htmlFor="file">Upload File *</Label>
+              {formData.file ? (
+                <div className="border rounded-md p-4 flex justify-between items-center bg-gray-50">
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-blue-50 p-2 rounded-md">
+                      <FileText className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">{formData.file.name}</p>
+                      <p className="text-xs text-gray-500">
+                        {(formData.file.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                    </div>
+                  </div>
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => setFormData({ ...formData, file: null })}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              ) : (
+                <div className="border-2 border-dashed border-gray-300 rounded-md p-6 text-center hover:border-gray-400 transition-colors">
+                  <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                  <p className="text-sm font-medium mb-1">Click to upload</p>
+                  <p className="text-xs text-gray-500 mb-4">PDF, DOCX, or Images up to 10MB</p>
+                  <input
+                    id="file"
+                    type="file"
+                    className="sr-only"
+                    onChange={(e) => setFormData({ ...formData, file: e.target.files?.[0] || null })}
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => document.getElementById('file')?.click()}
+                  >
+                    Select File
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
+          
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleAddResource}>Add Resource</Button>
+            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleAddResource} 
+              disabled={!formData.title || !formData.file}
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Upload Resource
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Edit Resource Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[525px]">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit Resource</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit className="h-5 w-5" />
+              Edit Resource
+            </DialogTitle>
             <DialogDescription>
               Update the resource information
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-title" className="text-right">Title</Label>
+          
+          <div className="space-y-6 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-title">Title *</Label>
               <Input
                 id="edit-title"
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                className="col-span-3"
+                placeholder="Enter resource title"
+                required
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-description" className="text-right">Description</Label>
+            
+            <div className="space-y-2">
+              <Label htmlFor="edit-description">Description</Label>
               <Textarea
                 id="edit-description"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="col-span-3"
+                placeholder="Provide a brief description of this resource"
+                rows={3}
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-category" className="text-right">Category</Label>
+            
+            <div className="space-y-2">
+              <Label htmlFor="edit-category">Category *</Label>
               <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
-                <SelectTrigger className="col-span-3">
-                  <SelectValue />
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
                   {categories.map(cat => (
@@ -460,32 +522,76 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-tags" className="text-right">Tags</Label>
+            
+            <div className="space-y-2">
+              <Label htmlFor="edit-tags">Tags</Label>
               <Input
                 id="edit-tags"
                 value={formData.tags}
                 onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-                placeholder="Comma separated tags"
-                className="col-span-3"
+                placeholder="Comma separated tags (e.g., safety, emergency, procedures)"
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="edit-file" className="text-right">File</Label>
-              <Input
-                id="edit-file"
-                type="file"
-                onChange={(e) => setFormData({ ...formData, file: e.target.files?.[0] || null })}
-                className="col-span-3"
-              />
-              <div className="col-span-4 text-sm text-gray-500 text-center">
-                Leave empty to keep current file
-              </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="edit-file">Replace File (Optional)</Label>
+              {formData.file ? (
+                <div className="border rounded-md p-4 flex justify-between items-center bg-gray-50">
+                  <div className="flex items-center space-x-3">
+                    <div className="bg-blue-50 p-2 rounded-md">
+                      <FileText className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">{formData.file.name}</p>
+                      <p className="text-xs text-gray-500">
+                        {(formData.file.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                    </div>
+                  </div>
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => setFormData({ ...formData, file: null })}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              ) : (
+                <div className="border-2 border-dashed border-gray-300 rounded-md p-6 text-center hover:border-gray-400 transition-colors">
+                  <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                  <p className="text-sm font-medium mb-1">Click to upload new file</p>
+                  <p className="text-xs text-gray-500 mb-4">PDF, DOCX, or Images up to 10MB</p>
+                  <input
+                    id="edit-file"
+                    type="file"
+                    className="sr-only"
+                    onChange={(e) => setFormData({ ...formData, file: e.target.files?.[0] || null })}
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => document.getElementById('edit-file')?.click()}
+                  >
+                    Select File
+                  </Button>
+                </div>
+              )}
+              <p className="text-xs text-gray-500">
+                Leave empty to keep the current file
+              </p>
             </div>
           </div>
+          
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleEditResource}>Update Resource</Button>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleEditResource}>
+              <Edit className="h-4 w-4 mr-2" />
+              Update Resource
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
