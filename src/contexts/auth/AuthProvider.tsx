@@ -1,4 +1,3 @@
-
 import React, { createContext, useEffect, useState, useRef } from 'react';
 import { User, AuthContextType, UserWithPassword, EmployeeData, Client, ClientType } from './types';
 import { 
@@ -222,6 +221,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  // Helper function to update user with client information
+  const updateUserWithClientInfo = async (user: User): Promise<User> => {
+    if (!user.clientId) return user;
+    
+    try {
+      const { client, clientType } = await fetchClientInfo(user.clientId);
+      return {
+        ...user,
+        client,
+        clientType
+      };
+    } catch (error) {
+      console.error("Error updating user with client info:", error);
+      return user;
+    }
+  };
+
   // Handle login
   const handleLogin = async (email: string, password: string): Promise<boolean> => {
     setAuthError(null);
@@ -232,8 +248,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (user) {
         console.log("Regular user login successful, setting current user");
-        setCurrentUser(user);
-        saveUserToStorage(user);
+        
+        // Update user with client information before setting it
+        const userWithClientInfo = await updateUserWithClientInfo(user);
+        setCurrentUser(userWithClientInfo);
+        saveUserToStorage(userWithClientInfo);
         
         // Fetch employee data after successful login
         try {
@@ -286,7 +305,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           dispatch(setLoading(false));
         }
         
-        toast.success(`Welcome back, ${user.firstName}!`);
+        toast.success(`Welcome back, ${userWithClientInfo.firstName}!`);
         return true;
       }
 
@@ -339,7 +358,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             transportSafetyAdmin: true,
             eduSafeResourceAccess: true
           },
-          createdAt: backofficeUser.created_at
+          createdAt: backofficeUser.created_at,
+          client: null,
+          clientType: null
         };
         
         // Update local state

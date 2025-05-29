@@ -64,6 +64,8 @@ export interface User {
   department?: DepartmentType;
   joiningDate?: string;
   isSuperAdmin?: boolean;
+  client?: Client | null;
+  clientType?: ClientType | null;
 }
 
 export interface UserWithPassword extends User {
@@ -104,8 +106,8 @@ export interface EmployeeData {
   isSuperAdmin?: boolean;
   department?: string;
   employeeType?: string;
-  client?: Client;
-  clientType?: ClientType;
+  client?: Client | null;
+  clientType?: ClientType | null;
 }
 
 export interface AuthProviderProps {
