@@ -308,24 +308,24 @@ export type Database = {
       }
       client_type: {
         Row: {
-          client_id: string
           created_at: string
           id: string
-          type: string
+          key: string
+          name: string
           updated_at: string
         }
         Insert: {
-          client_id: string
           created_at?: string
           id?: string
-          type: string
+          key?: string
+          name?: string
           updated_at?: string
         }
         Update: {
-          client_id?: string
           created_at?: string
           id?: string
-          type?: string
+          key?: string
+          name?: string
           updated_at?: string
         }
         Relationships: []
@@ -335,6 +335,7 @@ export type Database = {
           active: boolean
           allowed_domains: string | null
           auth_providers: string | null
+          client_type_id: string | null
           contact_person: string | null
           creation_date: string
           email: string | null
@@ -349,6 +350,7 @@ export type Database = {
           active?: boolean
           allowed_domains?: string | null
           auth_providers?: string | null
+          client_type_id?: string | null
           contact_person?: string | null
           creation_date?: string
           email?: string | null
@@ -363,6 +365,7 @@ export type Database = {
           active?: boolean
           allowed_domains?: string | null
           auth_providers?: string | null
+          client_type_id?: string | null
           contact_person?: string | null
           creation_date?: string
           email?: string | null
@@ -373,7 +376,15 @@ export type Database = {
           phone?: string | null
           super_admin_allowed_domain?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "clients_client_type_id_fkey"
+            columns: ["client_type_id"]
+            isOneToOne: false
+            referencedRelation: "client_type"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       contributing_factors: {
         Row: {

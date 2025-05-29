@@ -284,13 +284,14 @@ export const useClientManagement = () => {
           institutionType: (client.institutionType as InstitutionType) || 'Other',
           allowedDomains: client.allowedDomains || [],
           superAdminEmail: employeeData?.email || '',
+          clientTypeId: client.clientTypeId || '',
           superAdminAllowedDomains: client.superAdminAllowedDomains || [], 
           authProviders: {
             google: client.authProviders?.google ?? false,
             microsoft: client.authProviders?.microsoft ?? false,
             zoho: client.authProviders?.zoho ?? false
           },
-          moduleInfoArray: moduleInfoArray // Set the moduleInfoArray with the data from the database
+          moduleInfoArray: moduleInfoArray
         });
       } catch (err) {
         console.error('Error in fetchClientData:', err);

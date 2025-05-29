@@ -20,11 +20,13 @@ interface ClientData {
   active: boolean;
   logo?: string;
   institution_type?: string;
+  client_type_id?: string;
   allowed_domains?: string;
   super_admin_allowed_domain?: string;
   auth_providers?: string;
   moduleAccess?: Record<string, boolean>;
   superAdminEmail?: string;
+  clientTypeId?: string;
 }
 
 interface ModuleInfo {
@@ -238,13 +240,15 @@ async function processModuleAccess(clientId: string, moduleInfoArray: ModuleInfo
         .insert({
           client_id: clientId,
           module_id: module_id,
-          enabled: true,
-          access_level: accessLevel
+          access_level: accessLevel,
+          enabled: true
         });
         
       if (insertError) {
-        console.error(`Error inserting module ${module_id}:`, insertError);
-        continue;
+        console.error(`Error inserting module ${module_id} for client ${clientId}:`, insertError);
+        return false;
+      } else {
+        console.log(`Successfully inserted module ${module_id} for client ${clientId}`);
       }
     }
     
@@ -256,222 +260,146 @@ async function processModuleAccess(clientId: string, moduleInfoArray: ModuleInfo
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: corsHeaders })
   }
 
   try {
-    // Create a Supabase client with the auth context of the function
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      {
-        global: { headers: { Authorization: req.headers.get('Authorization')! } },
-      }
-    );
+    const { operation, client } = await req.json()
+    console.log('Client management operation:', operation, 'Client data:', client)
 
-    // Get the request data
-    const requestData = req.method === 'POST' ? await req.json() : null;
-    console.log(`Received ${req.method} request:`, JSON.stringify(requestData, null, 2));
-
-    // Process requests based on the operation
-    if (req.method === 'POST') {
-      const operation = requestData.operation;
-      console.log(`Processing operation: ${operation}`);
-
-      if (operation === 'create') {
-        // Process modules for a client that has already been created
-        const clientId = requestData.client.id;
-        const moduleInfoArray: ModuleInfo[] = requestData.client.modules || [];
-        const superAdminEmail = requestData.client.superAdminEmail;
-        
-        console.log('Processing modules for client with ID:', clientId);
-        console.log('Modules to process:', JSON.stringify(moduleInfoArray, null, 2));
-        
-        if (!clientId) {
-          return new Response(JSON.stringify({ 
-            error: 'Client ID is required' 
-          }), {
-            headers: { 'Content-Type': 'application/json', ...corsHeaders },
-            status: 400,
-          });
-        }
-
-        // Process module access if provided
-        if (moduleInfoArray.length > 0) {
-          const success = await processModuleAccess(clientId, moduleInfoArray);
-          if (!success) {
-            console.error('Failed to process module access');
-          }
-        }
-
-        // Create employee from super admin email if provided
-        let employee = null;
-        if (superAdminEmail) {
-          employee = await createEmployeeFromSuperAdminEmail(clientId, superAdminEmail);
-        }
-
-        // Get the client data to return
-        const { data: clientData, error: fetchError } = await supabase
-          .from('clients')
-          .select('*')
-          .eq('id', clientId)
-          .single();
-          
-        if (fetchError) {
-          console.error('Error fetching client data:', fetchError);
-          throw fetchError;
-        }
-
-        return new Response(JSON.stringify({ 
-          client: {
-            ...clientData,
-            moduleInfoArray,
-            superAdminEmail
-          },
-          employee
-        }), {
-          headers: { 'Content-Type': 'application/json', ...corsHeaders },
-          status: 200,
-        });
-      } else if (operation === 'update') {
-        // Update an existing client with module access
-        const { id, moduleAccess, superAdminEmail, modules: moduleInfoArray = [] } = requestData.client;
-
-        if (!id) {
-          return new Response(JSON.stringify({ error: 'Client ID is required' }), {
-            headers: { 'Content-Type': 'application/json', ...corsHeaders },
-            status: 400,
-          });
-        }
-        
-        console.log('Updating client modules:', JSON.stringify(moduleInfoArray, null, 2));
-        
-        // Get current client data to check super admin domain validation
-        const { data: currentClient, error: fetchError } = await supabase
-          .from('clients')
-          .select('super_admin_allowed_domain')
-          .eq('id', id)
-          .single();
-          
-        if (fetchError) {
-          console.error('Error fetching current client data:', fetchError);
-        }
-
-        // Validate super admin email domain if restrictions are set
-        if (superAdminEmail && (requestData.client.super_admin_allowed_domain || 
-            (currentClient && currentClient.super_admin_allowed_domain))) {
-          const domains = requestData.client.super_admin_allowed_domain || 
-            (currentClient ? currentClient.super_admin_allowed_domain : null);
-            
-          if (domains && !isSuperAdminEmailDomainAllowed(superAdminEmail, domains)) {
-            return new Response(JSON.stringify({ 
-              error: 'Super Admin email domain is not allowed. Please check the Super Admin Allowed Domains.' 
-            }), {
-              headers: { 'Content-Type': 'application/json', ...corsHeaders },
-              status: 400,
-            });
-          }
-        }
-
-        // Process modules if provided
-        if (moduleInfoArray && moduleInfoArray.length > 0) {
-          const success = await processModuleAccess(id, moduleInfoArray);
-          if (!success) {
-            console.error('Failed to process module access');
-          }
-        }
-
-        // Handle super admin email update
-        let employee = null;
-        if (superAdminEmail) {
-          employee = await updateSuperAdminEmployee(id, superAdminEmail);
-        }
-
-        // Get the updated client data
-        const { data: updatedClient, error: clientFetchError } = await supabase
-          .from('clients')
-          .select('*')
-          .eq('id', id)
-          .single();
-          
-        if (clientFetchError) {
-          console.error('Error fetching updated client data:', clientFetchError);
-          throw clientFetchError;
-        }
-
-        return new Response(JSON.stringify({ 
-          client: {
-            ...updatedClient,
-            moduleInfoArray,
-            superAdminEmail
-          },
-          employee
-        }), {
-          headers: { 'Content-Type': 'application/json', ...corsHeaders },
-          status: 200,
-        });
-      } else if (operation === 'delete') {
-        // Delete a client and its module access
-        const { id } = requestData;
-
-        if (!id) {
-          return new Response(JSON.stringify({ error: 'Client ID is required' }), {
-            headers: { 'Content-Type': 'application/json', ...corsHeaders },
-            status: 400,
-          });
-        }
-
-        // Delete all client employees and their module permissions
-        await deleteClientEmployees(id);
-
-        // Delete client modules (due to foreign key constraints)
-        const { error: moduleError } = await supabase
-          .from('client_modules')
-          .delete()
-          .eq('client_id', id);
-
-        if (moduleError) {
-          console.error('Error deleting client modules:', moduleError);
-        }
-
-        // Delete client
-        const { error } = await supabase
-          .from('clients')
-          .delete()
-          .eq('id', id);
-
-        if (error) throw error;
-
-        return new Response(JSON.stringify({ success: true, id }), {
-          headers: { 'Content-Type': 'application/json', ...corsHeaders },
-          status: 200,
-        });
-      } else {
-        return new Response(JSON.stringify({ error: 'Invalid operation' }), {
-          headers: { 'Content-Type': 'application/json', ...corsHeaders },
-          status: 400,
-        });
-      }
-    } else if (req.method === 'GET') {
-      // Handle GET requests if needed
-      return new Response(JSON.stringify({ message: "GET method not implemented" }), {
-        headers: { 'Content-Type': 'application/json', ...corsHeaders },
-        status: 501, // Not Implemented
-      });
+    switch (operation) {
+      case 'create':
+        return await handleCreateClient(client)
+      case 'update':
+        return await handleUpdateClient(client)
+      case 'delete':
+        return await handleDeleteClient(client)
+      default:
+        throw new Error(`Unknown operation: ${operation}`)
     }
-
-    // If no matching operation is found
-    return new Response(JSON.stringify({ error: 'Invalid request' }), {
-      headers: { 'Content-Type': 'application/json', ...corsHeaders },
-      status: 400,
-    });
   } catch (error) {
-    console.error('Error processing request:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      headers: { 'Content-Type': 'application/json', ...corsHeaders },
-      status: 500,
-    });
+    console.error('Error in client-management function:', error)
+    return new Response(
+      JSON.stringify({ error: error.message }),
+      { 
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
+    )
   }
-});
+})
+
+async function handleCreateClient(clientData: any) {
+  console.log('Creating client with data:', clientData);
+  
+  try {
+    const { id: clientId, modules, superAdminEmail, clientTypeId } = clientData;
+    
+    // If client type is provided, update the client record
+    if (clientTypeId) {
+      const { error: updateError } = await supabase
+        .from('clients')
+        .update({ client_type_id: clientTypeId })
+        .eq('id', clientId);
+        
+      if (updateError) {
+        console.error('Error updating client type:', updateError);
+      } else {
+        console.log('Successfully updated client type');
+      }
+    }
+    
+    // Process module access
+    if (modules && modules.length > 0) {
+      const moduleSuccess = await processModuleAccess(clientId, modules);
+      if (!moduleSuccess) {
+        throw new Error('Failed to process module access');
+      }
+    }
+    
+    // Create super admin employee if email provided
+    if (superAdminEmail) {
+      const employee = await createEmployeeFromSuperAdminEmail(clientId, superAdminEmail);
+      if (!employee) {
+        console.error('Failed to create super admin employee');
+      }
+    }
+    
+    return new Response(
+      JSON.stringify({ success: true, client_id: clientId }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    console.error('Error in handleCreateClient:', error);
+    throw error;
+  }
+}
+
+async function handleUpdateClient(clientData: any) {
+  console.log('Updating client with data:', clientData);
+  
+  try {
+    const { id: clientId, modules, superAdminEmail, clientTypeId } = clientData;
+    
+    // If client type is provided, update the client record
+    if (clientTypeId) {
+      const { error: updateError } = await supabase
+        .from('clients')
+        .update({ client_type_id: clientTypeId })
+        .eq('id', clientId);
+        
+      if (updateError) {
+        console.error('Error updating client type:', updateError);
+      } else {
+        console.log('Successfully updated client type');
+      }
+    }
+    
+    // Process module access
+    if (modules && modules.length > 0) {
+      const moduleSuccess = await processModuleAccess(clientId, modules);
+      if (!moduleSuccess) {
+        throw new Error('Failed to process module access');
+      }
+    }
+    
+    // Update super admin employee if email provided
+    if (superAdminEmail) {
+      const employee = await updateSuperAdminEmployee(clientId, superAdminEmail);
+      if (!employee) {
+        console.error('Failed to update super admin employee');
+      }
+    }
+    
+    return new Response(
+      JSON.stringify({ success: true, client_id: clientId }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    console.error('Error in handleUpdateClient:', error);
+    throw error;
+  }
+}
+
+async function handleDeleteClient(clientData: any) {
+  console.log('Deleting client with data:', clientData);
+  
+  try {
+    const { id: clientId } = clientData;
+    
+    // Delete client employees first
+    const employeesDeleted = await deleteClientEmployees(clientId);
+    if (!employeesDeleted) {
+      console.error('Failed to delete client employees');
+    }
+    
+    return new Response(
+      JSON.stringify({ success: true, client_id: clientId }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  } catch (error) {
+    console.error('Error in handleDeleteClient:', error);
+    throw error;
+  }
+}

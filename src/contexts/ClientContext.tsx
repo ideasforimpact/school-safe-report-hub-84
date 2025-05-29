@@ -17,10 +17,11 @@ export interface Client {
   active: boolean;
   logo?: string;
   institutionType?: string;
+  clientTypeId?: string;
   moduleAccess?: Partial<ModulePermissions>;
   allowedDomains?: string[];
   superAdminAllowedDomains?: string[]; 
-  superAdminEmail?: string; // Added property
+  superAdminEmail?: string;
   authProviders?: {
     [key in OAuthProviderName]?: boolean;
   };
@@ -90,7 +91,8 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           
           return {
             ...mapDbClientToClient(dbClient),
-            moduleAccess
+            moduleAccess,
+            clientTypeId: dbClient.client_type_id
           };
         });
 
@@ -203,7 +205,8 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
                 id: data.id, 
                 moduleAccess: clientData.moduleAccess,
                 modules: modules,
-                superAdminEmail: clientData.superAdminEmail
+                superAdminEmail: clientData.superAdminEmail,
+                clientTypeId: clientData.clientTypeId
               }
             }
           });
@@ -219,7 +222,8 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           ...mapDbClientToClient(data),
           moduleAccess: clientData.moduleAccess,
           superAdminAllowedDomains: clientData.superAdminAllowedDomains,
-          superAdminEmail: clientData.superAdminEmail
+          superAdminEmail: clientData.superAdminEmail,
+          clientTypeId: clientData.clientTypeId
         };
         
         setClients(prev => [...prev, newClient]);
@@ -275,7 +279,8 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
               id: id,
               moduleAccess: updates.moduleAccess,
               modules: modules,
-              superAdminEmail: updates.superAdminEmail
+              superAdminEmail: updates.superAdminEmail,
+              clientTypeId: updates.clientTypeId
             }
           }
         });
@@ -369,3 +374,5 @@ export const useClient = (): ClientContextType => {
 
 // Export types
 export type { ClientContextType };
+
+export default ClientProvider;

@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ImageIcon, Asterisk } from 'lucide-react';
@@ -11,6 +11,13 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { InstitutionType } from '@/contexts/ClientContext';
+import { supabase } from '@/integrations/supabase/client';
+
+interface ClientType {
+  id: string;
+  key: string;
+  name: string;
+}
 
 interface BasicInfoTabProps {
   formData: {
@@ -23,15 +30,43 @@ interface BasicInfoTabProps {
     institutionType: InstitutionType;
     superAdminEmail?: string;
     website?: string;
+    clientTypeId?: string;
   };
   setFormData: (formData: any) => void;
   handleLogoUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
 const BasicInfoTab = ({ formData, setFormData, handleLogoUpload }: BasicInfoTabProps) => {
+  const [clientTypes, setClientTypes] = useState<ClientType[]>([]);
+  const [loading, setLoading] = useState(true);
+
   const institutionTypes: InstitutionType[] = [
     'CBSE', 'IB', 'IGCSE', 'ICSE', 'Matric', 'Combined Campus', 'Other'
   ];
+
+  useEffect(() => {
+    fetchClientTypes();
+  }, []);
+
+  const fetchClientTypes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('client_type')
+        .select('id, key, name')
+        .order('name');
+
+      if (error) {
+        console.error('Error fetching client types:', error);
+        return;
+      }
+
+      setClientTypes(data || []);
+    } catch (error) {
+      console.error('Error fetching client types:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Component for required field label
   const RequiredFieldLabel = ({ children }: { children: React.ReactNode }) => (
@@ -83,6 +118,28 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload }: BasicInfoTabP
           placeholder="Enter client name"
           required
         />
+      </div>
+
+      <div className="space-y-2">
+        <RequiredFieldLabel>
+          <label htmlFor="clientType">Client Type</label>
+        </RequiredFieldLabel>
+        <Select
+          value={formData.clientTypeId || ''}
+          onValueChange={(value) => setFormData({...formData, clientTypeId: value})}
+          required
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder={loading ? "Loading..." : "Select client type"} />
+          </SelectTrigger>
+          <SelectContent>
+            {clientTypes.map((type) => (
+              <SelectItem key={type.id} value={type.id}>
+                {type.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       
       <div className="space-y-2">
