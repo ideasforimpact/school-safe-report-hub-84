@@ -172,7 +172,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // If user has clientId but no client info, fetch it
     if (user.clientId && !user.client) {
       try {
-        const userWithClientInfo = await updateUserWithClientInfo(user);
+        const { client, clientType } = await fetchClientInfo(user.clientId);
+        const userWithClientInfo = {
+          ...user,
+          client,
+          clientType
+        };
         setCurrentUser(userWithClientInfo);
         saveUserToStorage(userWithClientInfo);
       } catch (error) {
