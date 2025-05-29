@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Client, useClient, InstitutionType, ModuleInfo } from '@/contexts/ClientContext';
 import { OAuthProviderName } from '@/utils/authProviders';
@@ -16,6 +17,7 @@ export interface ClientFormData {
   allowedDomains: string[];
   superAdminEmail: string;
   website?: string;
+  clientTypeId?: string; // Added this missing property
   authProviders: {
     [key in OAuthProviderName]?: boolean;
   };
@@ -34,6 +36,7 @@ const initialFormData: ClientFormData = {
   allowedDomains: [],
   superAdminEmail: '',
   website: '',
+  clientTypeId: '', // Added this to initial form data
   authProviders: {
     google: false,
     microsoft: false,
