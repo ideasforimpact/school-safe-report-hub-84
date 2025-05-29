@@ -1,4 +1,3 @@
-
 import React, { createContext, useEffect, useState, useRef } from 'react';
 import { User, AuthContextType, UserWithPassword, EmployeeData } from './types';
 import { 
@@ -191,6 +190,35 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             .single();
           
           if (employeeData && !error) {
+            // Fetch client information based on client_id
+            let clientInfo = null;
+            let clientTypeInfo = null;
+            
+            if (employeeData.client_id) {
+              const { data: clientData, error: clientError } = await supabase
+                .from('clients')
+                .select('id, name, email, contact_person, phone, active, logo, institution_type, client_type_id, allowed_domains, super_admin_allowed_domain, auth_providers')
+                .eq('id', employeeData.client_id)
+                .single();
+              
+              if (clientData && !clientError) {
+                clientInfo = clientData;
+                
+                // Fetch client type information if client_type_id exists
+                if (clientData.client_type_id) {
+                  const { data: clientTypeData, error: clientTypeError } = await supabase
+                    .from('client_type')
+                    .select('id, name, key')
+                    .eq('id', clientData.client_type_id)
+                    .single();
+                  
+                  if (clientTypeData && !clientTypeError) {
+                    clientTypeInfo = clientTypeData;
+                  }
+                }
+              }
+            }
+            
             const employee: EmployeeData = {
               id: employeeData.id,
               clientId: employeeData.client_id,
@@ -199,10 +227,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               lastName: employeeData.last_name,
               isSuperAdmin: employeeData.is_super_admin,
               department: employeeData.department, 
-              employeeType: employeeData.employee_type
+              employeeType: employeeData.employee_type,
+              // Include client and client type information
+              client: clientInfo,
+              clientType: clientTypeInfo
             };
             
-            console.log("Employee data fetched for regular user:", employee);
+            console.log("Employee data fetched for regular user with client info:", employee);
             
             // Update local state
             setEmployeeDataState(employee);
@@ -295,7 +326,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           lastName: 'Admin',
           isSuperAdmin: true,
           department: 'Management',
-          employeeType: 'admin'
+          employeeType: 'admin',
+          // Backoffice users don't have client or client type info
+          client: null,
+          clientType: null
         };
         
         // Update local state
