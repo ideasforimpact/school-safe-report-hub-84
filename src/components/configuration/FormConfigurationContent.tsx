@@ -269,10 +269,8 @@ const FormConfigurationContent = () => {
                           variant="outline"
                           size="sm"
                           onClick={() => handleCopyFormUrl(form)}
-                          className="gap-1"
                         >
                           <Copy className="h-4 w-4" />
-                          Copy URL
                         </Button>
                         <Button
                           variant="outline"
