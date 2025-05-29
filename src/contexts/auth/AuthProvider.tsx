@@ -44,7 +44,7 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // State for the current user, all users, and auth error
-  const [currentUser, setCurrentUser] = useState<User | null>(getUserFromStorage());
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [users, setUsersState] = useState<UserWithPassword[]>(getUsersFromStorage());
   const [displayUsers, setDisplayUsers] = useState<User[]>(
     users.map(({ password, ...user }) => user)
@@ -82,6 +82,115 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Compute roles
   const isAdmin = Boolean(currentUser?.role === 'admin' || currentUser?.modulePermissions?.superAdmin);
   const isSaasOwner = Boolean(currentUser?.role === 'saas_owner' || isBackofficeUser);
+
+  // Helper function to fetch client and client type information
+  const fetchClientInfo = async (clientId: string): Promise<{ client: Client | null, clientType: ClientType | null }> => {
+    try {
+      // Fetch client information with client type
+      const { data: clientData, error: clientError } = await supabase
+        .from('clients')
+        .select(`
+          *,
+          client_type:client_type_id (
+            id,
+            name,
+            key,
+            created_at,
+            updated_at
+          )
+        `)
+        .eq('id', clientId)
+        .single();
+
+      if (clientError || !clientData) {
+        console.error("Error fetching client data:", clientError);
+        return { client: null, clientType: null };
+      }
+
+      const client: Client = {
+        id: clientData.id,
+        name: clientData.name,
+        email: clientData.email,
+        contact_person: clientData.contact_person,
+        phone: clientData.phone,
+        allowed_domains: clientData.allowed_domains,
+        super_admin_allowed_domain: clientData.super_admin_allowed_domain,
+        auth_providers: clientData.auth_providers,
+        creation_date: clientData.creation_date,
+        active: clientData.active,
+        client_type_id: clientData.client_type_id,
+        institution_type: clientData.institution_type,
+        logo: clientData.logo,
+        client_type: clientData.client_type
+      };
+
+      const clientType: ClientType | null = clientData.client_type ? {
+        id: clientData.client_type.id,
+        name: clientData.client_type.name,
+        key: clientData.client_type.key,
+        created_at: clientData.client_type.created_at,
+        updated_at: clientData.client_type.updated_at
+      } : null;
+
+      return { client, clientType };
+    } catch (error) {
+      console.error("Error in fetchClientInfo:", error);
+      return { client: null, clientType: null };
+    }
+  };
+
+  // Helper function to update user with client information
+  const updateUserWithClientInfo = async (user: User): Promise<User> => {
+    if (!user.clientId) return user;
+    
+    try {
+      const { client, clientType } = await fetchClientInfo(user.clientId);
+      return {
+        ...user,
+        client,
+        clientType
+      };
+    } catch (error) {
+      console.error("Error updating user with client info:", error);
+      return user;
+    }
+  };
+
+  // Enhanced setCurrentUser function that ensures client info is included
+  const setCurrentUserWithClientInfo = async (user: User | null) => {
+    if (!user) {
+      setCurrentUser(null);
+      return;
+    }
+
+    // If user already has client info, use it directly
+    if (user.client !== undefined && user.clientType !== undefined) {
+      setCurrentUser(user);
+      return;
+    }
+
+    // If user has clientId but no client info, fetch it
+    if (user.clientId && !user.client) {
+      try {
+        const userWithClientInfo = await updateUserWithClientInfo(user);
+        setCurrentUser(userWithClientInfo);
+        saveUserToStorage(userWithClientInfo);
+      } catch (error) {
+        console.error("Error fetching client info for user:", error);
+        setCurrentUser(user);
+      }
+    } else {
+      setCurrentUser(user);
+    }
+  };
+
+  // Initialize user from storage with client info
+  useEffect(() => {
+    const storedUser = getUserFromStorage();
+    if (storedUser) {
+      setCurrentUserWithClientInfo(storedUser);
+    }
+  }, []);
 
   // Setup Supabase auth listener for Google authentication
   useEffect(() => {
@@ -165,79 +274,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkSupabaseAuth();
   }, []);
 
-  // Helper function to fetch client and client type information
-  const fetchClientInfo = async (clientId: string): Promise<{ client: Client | null, clientType: ClientType | null }> => {
-    try {
-      // Fetch client information with client type
-      const { data: clientData, error: clientError } = await supabase
-        .from('clients')
-        .select(`
-          *,
-          client_type:client_type_id (
-            id,
-            name,
-            key,
-            created_at,
-            updated_at
-          )
-        `)
-        .eq('id', clientId)
-        .single();
-
-      if (clientError || !clientData) {
-        console.error("Error fetching client data:", clientError);
-        return { client: null, clientType: null };
-      }
-
-      const client: Client = {
-        id: clientData.id,
-        name: clientData.name,
-        email: clientData.email,
-        contact_person: clientData.contact_person,
-        phone: clientData.phone,
-        allowed_domains: clientData.allowed_domains,
-        super_admin_allowed_domain: clientData.super_admin_allowed_domain,
-        auth_providers: clientData.auth_providers,
-        creation_date: clientData.creation_date,
-        active: clientData.active,
-        client_type_id: clientData.client_type_id,
-        institution_type: clientData.institution_type,
-        logo: clientData.logo,
-        client_type: clientData.client_type
-      };
-
-      const clientType: ClientType | null = clientData.client_type ? {
-        id: clientData.client_type.id,
-        name: clientData.client_type.name,
-        key: clientData.client_type.key,
-        created_at: clientData.client_type.created_at,
-        updated_at: clientData.client_type.updated_at
-      } : null;
-
-      return { client, clientType };
-    } catch (error) {
-      console.error("Error in fetchClientInfo:", error);
-      return { client: null, clientType: null };
-    }
-  };
-
-  // Helper function to update user with client information
-  const updateUserWithClientInfo = async (user: User): Promise<User> => {
-    if (!user.clientId) return user;
-    
-    try {
-      const { client, clientType } = await fetchClientInfo(user.clientId);
-      return {
-        ...user,
-        client,
-        clientType
-      };
-    } catch (error) {
-      console.error("Error updating user with client info:", error);
-      return user;
-    }
-  };
-
   // Handle login
   const handleLogin = async (email: string, password: string): Promise<boolean> => {
     setAuthError(null);
@@ -251,8 +287,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         
         // Update user with client information before setting it
         const userWithClientInfo = await updateUserWithClientInfo(user);
-        setCurrentUser(userWithClientInfo);
-        saveUserToStorage(userWithClientInfo);
+        await setCurrentUserWithClientInfo(userWithClientInfo);
         
         // Fetch employee data after successful login
         try {
@@ -364,9 +399,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         };
         
         // Update local state
-        setCurrentUser(saasUser);
+        await setCurrentUserWithClientInfo(saasUser);
         setIsBackofficeUser(true);
-        saveUserToStorage(saasUser);
         
         // Create employee data for backoffice user
         const backofficeEmployeeData: EmployeeData = {
