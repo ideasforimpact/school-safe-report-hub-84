@@ -71,12 +71,58 @@ async function listResources(supabase: any, { client_id }: { client_id: string }
 async function createResource(supabase: any, data: any) {
   console.log('Creating resource for client:', data.client_id)
   
+  let document_url = data.document_url;
+  
+  // If document_url contains base64 data, upload to storage
+  if (data.document_url && data.document_url.startsWith('data:')) {
+    try {
+      // Extract file extension from mime type or use pdf as default
+      const mimeMatch = data.document_url.match(/data:([^;]+)/);
+      const mimeType = mimeMatch ? mimeMatch[1] : 'application/pdf';
+      const extension = getFileExtension(mimeType);
+      
+      // Generate unique filename
+      const timestamp = new Date().getTime();
+      const filename = `${data.client_id}/${timestamp}_${data.title.replace(/[^a-zA-Z0-9]/g, '_')}.${extension}`;
+      
+      // Convert base64 to blob
+      const base64Data = data.document_url.split(',')[1];
+      const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+      
+      // Upload to storage
+      const { data: uploadResult, error: uploadError } = await supabase.storage
+        .from('edusafe-resources')
+        .upload(filename, binaryData, {
+          contentType: mimeType,
+          upsert: true
+        });
+      
+      if (uploadError) {
+        console.error('Storage upload error:', uploadError);
+        throw new Error(`Failed to upload file: ${uploadError.message}`);
+      }
+      
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('edusafe-resources')
+        .getPublicUrl(filename);
+      
+      document_url = urlData.publicUrl;
+      console.log('File uploaded successfully:', document_url);
+      
+    } catch (storageError) {
+      console.error('Error uploading to storage:', storageError);
+      // Fallback to base64 if storage fails
+      console.log('Falling back to base64 storage');
+    }
+  }
+  
   const resourceData = {
     title: data.title,
     description: data.description,
     category: data.category,
-    tags: data.tags || [],
-    document_url: data.document_url,
+    tags: Array.isArray(data.tags) ? data.tags : [],
+    document_url: document_url,
     client_id: data.client_id,
     uploaded_by: 'backoffice-admin', // This would ideally come from auth context
   }
@@ -107,13 +153,51 @@ async function updateResource(supabase: any, data: any) {
     title: data.title,
     description: data.description,
     category: data.category,
-    tags: data.tags || [],
+    tags: Array.isArray(data.tags) ? data.tags : [],
     updated_at: new Date().toISOString()
   }
 
-  // Only update document_url if provided
-  if (data.document_url) {
-    updateData.document_url = data.document_url
+  // Handle file update if provided
+  if (data.document_url && data.document_url.startsWith('data:')) {
+    try {
+      // Extract file extension from mime type or use pdf as default
+      const mimeMatch = data.document_url.match(/data:([^;]+)/);
+      const mimeType = mimeMatch ? mimeMatch[1] : 'application/pdf';
+      const extension = getFileExtension(mimeType);
+      
+      // Generate unique filename
+      const timestamp = new Date().getTime();
+      const filename = `${data.client_id || 'unknown'}/${timestamp}_${data.title.replace(/[^a-zA-Z0-9]/g, '_')}.${extension}`;
+      
+      // Convert base64 to blob
+      const base64Data = data.document_url.split(',')[1];
+      const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+      
+      // Upload to storage
+      const { data: uploadResult, error: uploadError } = await supabase.storage
+        .from('edusafe-resources')
+        .upload(filename, binaryData, {
+          contentType: mimeType,
+          upsert: true
+        });
+      
+      if (uploadError) {
+        console.error('Storage upload error:', uploadError);
+        throw new Error(`Failed to upload file: ${uploadError.message}`);
+      }
+      
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('edusafe-resources')
+        .getPublicUrl(filename);
+      
+      updateData.document_url = urlData.publicUrl;
+      console.log('File uploaded successfully:', updateData.document_url);
+      
+    } catch (storageError) {
+      console.error('Error uploading to storage:', storageError);
+      // Don't update document_url if storage fails
+    }
   }
 
   const { data: resource, error } = await supabase
@@ -139,6 +223,18 @@ async function updateResource(supabase: any, data: any) {
 async function deleteResource(supabase: any, { id }: { id: string }) {
   console.log('Deleting resource:', id)
   
+  // Get the resource to find the file URL
+  const { data: resource, error: fetchError } = await supabase
+    .from('backoffice_edusafe_resource')
+    .select('document_url')
+    .eq('id', id)
+    .single()
+  
+  if (fetchError) {
+    console.error('Error fetching resource for deletion:', fetchError)
+  }
+  
+  // Delete from database
   const { error } = await supabase
     .from('backoffice_edusafe_resource')
     .delete()
@@ -148,6 +244,20 @@ async function deleteResource(supabase: any, { id }: { id: string }) {
     console.error('Error deleting resource:', error)
     throw error
   }
+  
+  // Try to delete from storage if it's a storage URL
+  if (resource && resource.document_url && resource.document_url.includes('/storage/v1/object/public/edusafe-resources/')) {
+    try {
+      const filename = resource.document_url.split('/storage/v1/object/public/edusafe-resources/')[1];
+      await supabase.storage
+        .from('edusafe-resources')
+        .remove([filename]);
+      console.log('File deleted from storage:', filename);
+    } catch (storageError) {
+      console.error('Error deleting file from storage:', storageError);
+      // Continue even if storage deletion fails
+    }
+  }
 
   console.log('Deleted resource:', id)
 
@@ -155,4 +265,19 @@ async function deleteResource(supabase: any, { id }: { id: string }) {
     JSON.stringify({ success: true }),
     { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
   )
+}
+
+function getFileExtension(mimeType: string): string {
+  const mimeToExt: { [key: string]: string } = {
+    'application/pdf': 'pdf',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+    'application/msword': 'doc',
+    'image/jpeg': 'jpg',
+    'image/jpg': 'jpg',
+    'image/png': 'png',
+    'image/gif': 'gif',
+    'text/plain': 'txt'
+  };
+  
+  return mimeToExt[mimeType] || 'pdf';
 }

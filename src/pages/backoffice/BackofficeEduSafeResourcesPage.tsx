@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Search, FileText, Download, Edit, Trash, Upload } from 'lucide-react';
+import { ArrowLeft, Plus, Search, FileText, Download, Edit, Trash, Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -41,9 +42,10 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
     title: '',
     description: '',
     category: 'procedures',
-    tags: '',
+    tags: [] as string[],
     file: null as File | null
   });
+  const [newTag, setNewTag] = useState('');
 
   const categories = ['posters', 'procedures', 'guidelines', 'forms', 'other'];
 
@@ -75,6 +77,30 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
     }
   };
 
+  const handleAddTag = () => {
+    if (newTag.trim() && !formData.tags.includes(newTag.trim())) {
+      setFormData(prev => ({
+        ...prev,
+        tags: [...prev.tags, newTag.trim()]
+      }));
+      setNewTag('');
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setFormData(prev => ({
+      ...prev,
+      tags: prev.tags.filter(tag => tag !== tagToRemove)
+    }));
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleAddTag();
+    }
+  };
+
   const handleAddResource = async () => {
     if (!selectedClientId || !formData.file) {
       toast.error('Please select a client and file');
@@ -91,20 +117,20 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
           title: formData.title,
           description: formData.description,
           category: formData.category,
-          tags: formData.tags.split(',').map(tag => tag.trim()).filter(Boolean),
+          tags: formData.tags,
           document_url: base64
         }
       });
 
       if (error) throw error;
       
-      toast.success('Resource added successfully');
+      toast.success('Resource uploaded successfully');
       setIsAddDialogOpen(false);
       resetForm();
       fetchResources();
     } catch (error) {
       console.error('Error adding resource:', error);
-      toast.error('Failed to add resource');
+      toast.error('Failed to upload resource');
     }
   };
 
@@ -125,7 +151,7 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
           title: formData.title,
           description: formData.description,
           category: formData.category,
-          tags: formData.tags.split(',').map(tag => tag.trim()).filter(Boolean),
+          tags: formData.tags,
           document_url
         }
       });
@@ -177,9 +203,10 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
       title: '',
       description: '',
       category: 'procedures',
-      tags: '',
+      tags: [],
       file: null
     });
+    setNewTag('');
     setCurrentResource(null);
   };
 
@@ -189,7 +216,7 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
       title: resource.title,
       description: resource.description,
       category: resource.category,
-      tags: resource.tags.join(', '),
+      tags: [...resource.tags],
       file: null
     });
     setIsEditDialogOpen(true);
@@ -400,12 +427,39 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
             
             <div className="space-y-2">
               <Label htmlFor="tags">Tags</Label>
-              <Input
-                id="tags"
-                value={formData.tags}
-                onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-                placeholder="Comma separated tags (e.g., safety, emergency, procedures)"
-              />
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <Input
+                    id="tags"
+                    value={newTag}
+                    onChange={(e) => setNewTag(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder="Add a tag and press Enter"
+                    className="flex-1"
+                  />
+                  <Button type="button" onClick={handleAddTag} disabled={!newTag.trim()}>
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                {formData.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {formData.tags.map((tag, index) => (
+                      <Badge key={index} variant="secondary" className="flex items-center gap-1">
+                        {tag}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-auto p-0 hover:bg-transparent"
+                          onClick={() => handleRemoveTag(tag)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
             
             <div className="space-y-2">
@@ -525,12 +579,39 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
             
             <div className="space-y-2">
               <Label htmlFor="edit-tags">Tags</Label>
-              <Input
-                id="edit-tags"
-                value={formData.tags}
-                onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-                placeholder="Comma separated tags (e.g., safety, emergency, procedures)"
-              />
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  <Input
+                    id="edit-tags"
+                    value={newTag}
+                    onChange={(e) => setNewTag(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder="Add a tag and press Enter"
+                    className="flex-1"
+                  />
+                  <Button type="button" onClick={handleAddTag} disabled={!newTag.trim()}>
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                {formData.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {formData.tags.map((tag, index) => (
+                      <Badge key={index} variant="secondary" className="flex items-center gap-1">
+                        {tag}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-auto p-0 hover:bg-transparent"
+                          onClick={() => handleRemoveTag(tag)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
             
             <div className="space-y-2">
