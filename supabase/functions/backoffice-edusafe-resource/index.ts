@@ -1,6 +1,6 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -117,6 +117,9 @@ async function createResource(supabase: any, data: any) {
     }
   }
   
+  // Generate a proper UUID for uploaded_by field
+  const uploadedByUuid = crypto.randomUUID();
+  
   const resourceData = {
     title: data.title,
     description: data.description,
@@ -124,7 +127,7 @@ async function createResource(supabase: any, data: any) {
     tags: Array.isArray(data.tags) ? data.tags : [],
     document_url: document_url,
     client_id: data.client_id,
-    uploaded_by: 'backoffice-admin', // This would ideally come from auth context
+    uploaded_by: uploadedByUuid, // Use proper UUID instead of string
   }
 
   const { data: resource, error } = await supabase

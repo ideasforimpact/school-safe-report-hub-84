@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Search, FileText, Download, Edit, Trash, Upload, X } from 'lucide-react';
+import { ArrowLeft, Plus, Search, FileText, Download, Edit, Trash, Upload, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -34,6 +33,8 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [resources, setResources] = useState<BackofficeEduSafeResource[]>([]);
   const [loading, setLoading] = useState(false);
+  const [uploadLoading, setUploadLoading] = useState(false);
+  const [updateLoading, setUpdateLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -107,6 +108,7 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
       return;
     }
 
+    setUploadLoading(true);
     try {
       const base64 = await fileToBase64(formData.file);
       
@@ -131,12 +133,15 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
     } catch (error) {
       console.error('Error adding resource:', error);
       toast.error('Failed to upload resource');
+    } finally {
+      setUploadLoading(false);
     }
   };
 
   const handleEditResource = async () => {
     if (!currentResource) return;
 
+    setUpdateLoading(true);
     try {
       let document_url = currentResource.document_url;
       
@@ -165,6 +170,8 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
     } catch (error) {
       console.error('Error updating resource:', error);
       toast.error('Failed to update resource');
+    } finally {
+      setUpdateLoading(false);
     }
   };
 
@@ -395,6 +402,7 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 placeholder="Enter resource title"
                 required
+                disabled={uploadLoading}
               />
             </div>
             
@@ -406,12 +414,17 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Provide a brief description of this resource"
                 rows={3}
+                disabled={uploadLoading}
               />
             </div>
             
             <div className="space-y-2">
               <Label htmlFor="category">Category *</Label>
-              <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
+              <Select 
+                value={formData.category} 
+                onValueChange={(value) => setFormData({ ...formData, category: value })}
+                disabled={uploadLoading}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
@@ -436,8 +449,13 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
                     onKeyPress={handleKeyPress}
                     placeholder="Add a tag and press Enter"
                     className="flex-1"
+                    disabled={uploadLoading}
                   />
-                  <Button type="button" onClick={handleAddTag} disabled={!newTag.trim()}>
+                  <Button 
+                    type="button" 
+                    onClick={handleAddTag} 
+                    disabled={!newTag.trim() || uploadLoading}
+                  >
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
@@ -452,6 +470,7 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
                           size="sm"
                           className="h-auto p-0 hover:bg-transparent"
                           onClick={() => handleRemoveTag(tag)}
+                          disabled={uploadLoading}
                         >
                           <X className="h-3 w-3" />
                         </Button>
@@ -482,6 +501,7 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
                     variant="ghost" 
                     size="sm"
                     onClick={() => setFormData({ ...formData, file: null })}
+                    disabled={uploadLoading}
                   >
                     Remove
                   </Button>
@@ -497,11 +517,13 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
                     className="sr-only"
                     onChange={(e) => setFormData({ ...formData, file: e.target.files?.[0] || null })}
                     accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                    disabled={uploadLoading}
                   />
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => document.getElementById('file')?.click()}
+                    disabled={uploadLoading}
                   >
                     Select File
                   </Button>
@@ -511,15 +533,28 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
           </div>
           
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsAddDialogOpen(false)}
+              disabled={uploadLoading}
+            >
               Cancel
             </Button>
             <Button 
               onClick={handleAddResource} 
-              disabled={!formData.title || !formData.file}
+              disabled={!formData.title || !formData.file || uploadLoading}
             >
-              <Upload className="h-4 w-4 mr-2" />
-              Upload Resource
+              {uploadLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload Resource
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -547,6 +582,7 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 placeholder="Enter resource title"
                 required
+                disabled={updateLoading}
               />
             </div>
             
@@ -558,12 +594,17 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Provide a brief description of this resource"
                 rows={3}
+                disabled={updateLoading}
               />
             </div>
             
             <div className="space-y-2">
               <Label htmlFor="edit-category">Category *</Label>
-              <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
+              <Select 
+                value={formData.category} 
+                onValueChange={(value) => setFormData({ ...formData, category: value })}
+                disabled={updateLoading}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
@@ -588,8 +629,13 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
                     onKeyPress={handleKeyPress}
                     placeholder="Add a tag and press Enter"
                     className="flex-1"
+                    disabled={updateLoading}
                   />
-                  <Button type="button" onClick={handleAddTag} disabled={!newTag.trim()}>
+                  <Button 
+                    type="button" 
+                    onClick={handleAddTag} 
+                    disabled={!newTag.trim() || updateLoading}
+                  >
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
@@ -604,6 +650,7 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
                           size="sm"
                           className="h-auto p-0 hover:bg-transparent"
                           onClick={() => handleRemoveTag(tag)}
+                          disabled={updateLoading}
                         >
                           <X className="h-3 w-3" />
                         </Button>
@@ -634,6 +681,7 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
                     variant="ghost" 
                     size="sm"
                     onClick={() => setFormData({ ...formData, file: null })}
+                    disabled={updateLoading}
                   >
                     Remove
                   </Button>
@@ -649,11 +697,13 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
                     className="sr-only"
                     onChange={(e) => setFormData({ ...formData, file: e.target.files?.[0] || null })}
                     accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                    disabled={updateLoading}
                   />
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => document.getElementById('edit-file')?.click()}
+                    disabled={updateLoading}
                   >
                     Select File
                   </Button>
@@ -666,12 +716,28 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
           </div>
           
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+            <Button 
+              variant="outline" 
+              onClick={() => setIsEditDialogOpen(false)}
+              disabled={updateLoading}
+            >
               Cancel
             </Button>
-            <Button onClick={handleEditResource}>
-              <Edit className="h-4 w-4 mr-2" />
-              Update Resource
+            <Button 
+              onClick={handleEditResource}
+              disabled={updateLoading}
+            >
+              {updateLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <Edit className="h-4 w-4 mr-2" />
+                  Update Resource
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
