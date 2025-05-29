@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, AlertCircle } from 'lucide-react';
@@ -14,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 import { EduSafeProvider, useEduSafe } from '@/contexts/edusafe/EduSafeContext';
 import { ResourceCategory } from '@/types/eduSafeTypes';
 import { useAuth } from '@/contexts/auth/AuthContext';
@@ -21,7 +23,7 @@ import { X } from 'lucide-react';
 
 const EditResourceContent = () => {
   const { resourceId } = useParams<{ resourceId: string }>();
-  const { getResourceById, updateResource } = useEduSafe();
+  const { getResourceById, updateResource, loading } = useEduSafe();
   const { user } = useAuth();
   const navigate = useNavigate();
   
@@ -46,6 +48,64 @@ const EditResourceContent = () => {
   // Check if user has permission to edit
   const canEdit = user?.role === 'saas_owner' || 
                  (resource?.ownerType === 'school' && resource?.uploaderId === user?.id);
+  
+  // Show loading skeleton while data is being fetched
+  if (loading) {
+    return (
+      <div className="container mx-auto py-6 max-w-3xl">
+        <div className="flex items-center mb-8">
+          <Button asChild variant="ghost" className="mr-4">
+            <Link to="/edusafe">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Resources
+            </Link>
+          </Button>
+        </div>
+        
+        <Card>
+          <CardHeader className="pb-3">
+            <Skeleton className="h-6 w-48" />
+          </CardHeader>
+          
+          <CardContent>
+            <div className="space-y-6">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+                
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-20 w-full" />
+                </div>
+                
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+                
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-12" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+                
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-10" />
+                  <Skeleton className="h-16 w-full" />
+                </div>
+              </div>
+              
+              <div className="flex justify-end space-x-2">
+                <Skeleton className="h-10 w-20" />
+                <Skeleton className="h-10 w-28" />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
   
   if (!resource) {
     return (
