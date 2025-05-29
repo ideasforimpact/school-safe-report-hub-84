@@ -166,6 +166,45 @@ export type Database = {
           },
         ]
       }
+      backoffice_edusafe_resource: {
+        Row: {
+          category: string
+          client_id: string | null
+          created_at: string
+          description: string | null
+          document_url: string
+          id: string
+          tags: Json | null
+          title: string
+          updated_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          category: string
+          client_id?: string | null
+          created_at?: string
+          description?: string | null
+          document_url: string
+          id?: string
+          tags?: Json | null
+          title: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          category?: string
+          client_id?: string | null
+          created_at?: string
+          description?: string | null
+          document_url?: string
+          id?: string
+          tags?: Json | null
+          title?: string
+          updated_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
       backoffice_users: {
         Row: {
           created_at: string
@@ -266,6 +305,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      client_type: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       clients: {
         Row: {

@@ -2,12 +2,15 @@ import React, { useState } from 'react';
 import { FileItem } from '@/types/fileTypes';
 import { ResourceCategory } from '@/types/eduSafeTypes';
 import { useEduSafe } from '@/contexts/edusafe/EduSafeContext';
+import { useAuth } from '@/contexts/auth/AuthContext';
 import { FileText, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { formatFileSize } from '@/utils/fileUtils';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import {
   Select,
   SelectContent,
@@ -27,18 +30,17 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
   const [category, setCategory] = useState<ResourceCategory>('posters');
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
-  const [file, setFile] = useState<FileItem | null>(null);
+  const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   
-  const { addResource } = useEduSafe();
+  const { refreshResources } = useEduSafe();
+  const { user } = useAuth();
   const navigate = useNavigate();
   
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
 
-    setIsUploading(true);
-    
     // Validate file type
     const allowedTypes = [
       'application/pdf', 
@@ -49,40 +51,17 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
     ];
     
     if (!allowedTypes.includes(selectedFile.type)) {
-      alert('Please upload a PDF, DOCX, or image file');
-      setIsUploading(false);
+      toast.error('Please upload a PDF, DOCX, or image file');
       return;
     }
     
     // Validate file size (max 10MB)
     if (selectedFile.size > 10 * 1024 * 1024) {
-      alert('File size must be less than 10MB');
-      setIsUploading(false);
+      toast.error('File size must be less than 10MB');
       return;
     }
 
-    // Convert to Base64 for storage
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const base64String = reader.result as string;
-      
-      setFile({
-        id: `file-${Date.now()}`,
-        name: selectedFile.name,
-        type: selectedFile.type,
-        size: selectedFile.size,
-        base64: base64String
-      });
-      
-      setIsUploading(false);
-    };
-    
-    reader.onerror = () => {
-      alert('Error reading file');
-      setIsUploading(false);
-    };
-    
-    reader.readAsDataURL(selectedFile);
+    setFile(selectedFile);
   };
   
   const handleAddTag = () => {
@@ -107,23 +86,56 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
     e.preventDefault();
     
     if (!file) {
-      alert('Please upload a file');
+      toast.error('Please upload a file');
       return;
     }
     
     if (!title.trim()) {
-      alert('Please enter a title');
+      toast.error('Please enter a title');
+      return;
+    }
+
+    if (!user?.clientId) {
+      toast.error('No client ID found. Please contact support.');
       return;
     }
     
+    setIsUploading(true);
+    
     try {
-      await addResource({
-        title: title.trim(),
-        description: description.trim(),
-        category,
-        tags,
-        file
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('title', title.trim());
+      formData.append('description', description.trim());
+      formData.append('category', category);
+      formData.append('tags', JSON.stringify(tags));
+      formData.append('client_id', user.clientId);
+      if (user.id) {
+        formData.append('uploaded_by', user.id);
+      }
+
+      console.log('Uploading resource with client_id:', user.clientId);
+
+      // Call the edge function
+      const { data, error } = await supabase.functions.invoke('edusafe-resource-upload', {
+        body: formData
       });
+
+      if (error) {
+        console.error('Edge function error:', error);
+        throw new Error(error.message || 'Failed to upload resource');
+      }
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to upload resource');
+      }
+
+      console.log('Resource uploaded successfully:', data.resource);
+      toast.success('Resource uploaded successfully');
+      
+      // Refresh the resources list
+      await refreshResources();
       
       if (onComplete) {
         onComplete();
@@ -131,7 +143,10 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
         navigate('/edusafe');
       }
     } catch (error) {
-      // Error handling is done in the context
+      console.error('Upload error:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to upload resource');
+    } finally {
+      setIsUploading(false);
     }
   };
   
@@ -248,7 +263,7 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
               <div className="text-center">
                 <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
                 <p className="text-sm font-medium">
-                  {isUploading ? 'Uploading...' : 'Click to upload'}
+                  Click to upload
                 </p>
                 <p className="text-xs text-gray-500 mt-1">
                   PDF, DOCX, or Images up to 10MB
@@ -265,7 +280,7 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
                   htmlFor="file"
                   className="mt-4 inline-block px-4 py-2 bg-blue-600 text-white rounded-md cursor-pointer text-sm font-medium hover:bg-blue-700"
                 >
-                  {isUploading ? 'Processing...' : 'Select File'}
+                  Select File
                 </label>
               </div>
             </div>
@@ -285,7 +300,7 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
           type="submit" 
           disabled={!file || !title.trim() || isUploading}
         >
-          Upload Resource
+          {isUploading ? 'Uploading...' : 'Upload Resource'}
         </Button>
       </div>
     </form>
