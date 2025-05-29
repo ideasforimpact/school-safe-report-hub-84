@@ -19,6 +19,14 @@ const FormsPage = () => {
   
   const { submissions, loading: submissionsLoading, refetch } = useFormSubmissions(selectedForm?.id || null);
 
+  // Add debug logging
+  console.log('FormsPage Debug:', {
+    selectedFormId: selectedForm?.id,
+    submissionsCount: submissions.length,
+    submissions: submissions,
+    submissionsLoading
+  });
+
   // Filter submissions based on search term
   const filteredSubmissions = useMemo(() => {
     if (!searchTerm.trim()) {
@@ -84,6 +92,7 @@ const FormsPage = () => {
   };
 
   const handleViewSubmission = (submission: any) => {
+    console.log('Opening submission detail for:', submission);
     setSelectedSubmission(submission);
   };
 
@@ -239,26 +248,37 @@ const FormsPage = () => {
                               </TableCell>
                             </TableRow>
                           ) : (
-                            filteredSubmissions.map((submission) => (
-                              <TableRow key={submission.id}>
-                                <TableCell className="font-medium">
-                                  {submission.submitter_name || 'Anonymous'}
-                                </TableCell>
-                                <TableCell>{formatDate(submission.created_at)}</TableCell>
-                                <TableCell>{getStatusBadge(submission.status)}</TableCell>
-                                <TableCell className="text-right">
-                                  <Button 
-                                    variant="outline" 
-                                    size="sm" 
-                                    className="gap-1"
-                                    onClick={() => handleViewSubmission(submission)}
-                                  >
-                                    <Eye className="h-4 w-4" />
-                                    View
-                                  </Button>
-                                </TableCell>
-                              </TableRow>
-                            ))
+                            filteredSubmissions.map((submission, index) => {
+                              // Add debug logging for each submission
+                              console.log(`Rendering submission ${index}:`, {
+                                id: submission.id,
+                                submitter_name: submission.submitter_name,
+                                status: submission.status,
+                                hasResponses: submission.responses && Array.isArray(submission.responses),
+                                responsesLength: submission.responses?.length
+                              });
+                              
+                              return (
+                                <TableRow key={submission.id}>
+                                  <TableCell className="font-medium">
+                                    {submission.submitter_name || 'Anonymous'}
+                                  </TableCell>
+                                  <TableCell>{formatDate(submission.created_at)}</TableCell>
+                                  <TableCell>{getStatusBadge(submission.status)}</TableCell>
+                                  <TableCell className="text-right">
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm" 
+                                      className="gap-1"
+                                      onClick={() => handleViewSubmission(submission)}
+                                    >
+                                      <Eye className="h-4 w-4" />
+                                      View
+                                    </Button>
+                                  </TableCell>
+                                </TableRow>
+                              );
+                            })
                           )}
                         </TableBody>
                       </Table>
