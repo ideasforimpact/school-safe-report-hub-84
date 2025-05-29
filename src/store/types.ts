@@ -1,29 +1,15 @@
-
-import { ClientInfo, ClientTypeInfo } from '@/contexts/auth/types';
-
-export interface EmployeeData {
-  id: string;
-  clientId: string | null;
-  email: string;
-  firstName: string;
-  lastName: string;
-  isSuperAdmin?: boolean;
-  department?: string;
-  employeeType?: string;
-  client?: ClientInfo | null;
-  clientType?: ClientTypeInfo | null;
-}
+import { EmployeeData } from '@/contexts/auth/types';
 
 export interface Module {
   id: string;
   name: string;
-  key: string;
-  icon: string;
+  key?: string;
+  icon?: string;
   level: string;
   enabled: boolean;
-  accessLevel: any;
-  order?: number;
-  url?: string;
+  accessLevel?: Record<string, any>;
+  order?: number; // Added order property
+  url?: string; // Added url property
 }
 
 export interface EmployeeState {
@@ -31,7 +17,7 @@ export interface EmployeeState {
   configuredModules: Module[];
   isLoading: boolean;
   error: string | null;
-  clientId: string | null;
+  clientId: string | null; // Added clientId property
 }
 
 export enum EmployeeActionTypes {
@@ -39,8 +25,8 @@ export enum EmployeeActionTypes {
   SET_CONFIGURED_MODULES = 'SET_CONFIGURED_MODULES',
   SET_LOADING = 'SET_LOADING',
   SET_ERROR = 'SET_ERROR',
-  SET_CLIENT_ID = 'SET_CLIENT_ID',
-  RESET_EMPLOYEE = 'RESET_EMPLOYEE'
+  RESET_EMPLOYEE = 'RESET_EMPLOYEE',
+  SET_CLIENT_ID = 'SET_CLIENT_ID' // Added new action type
 }
 
 export interface SetEmployeeDataAction {
@@ -63,19 +49,19 @@ export interface SetErrorAction {
   payload: string | null;
 }
 
+export interface ResetEmployeeAction {
+  type: EmployeeActionTypes.RESET_EMPLOYEE;
+}
+
 export interface SetClientIdAction {
   type: EmployeeActionTypes.SET_CLIENT_ID;
   payload: string | null;
-}
-
-export interface ResetEmployeeAction {
-  type: EmployeeActionTypes.RESET_EMPLOYEE;
 }
 
 export type EmployeeAction = 
   | SetEmployeeDataAction 
   | SetConfiguredModulesAction 
   | SetLoadingAction 
-  | SetErrorAction 
-  | SetClientIdAction 
-  | ResetEmployeeAction;
+  | SetErrorAction
+  | ResetEmployeeAction
+  | SetClientIdAction;
