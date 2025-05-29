@@ -1,47 +1,24 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { FormField } from '@/types/formTypes';
+import { toast } from '@/hooks/use-toast';
 
 interface ConditionalFormRendererProps {
   fields: FormField[];
-  onSubmit?: (data: Record<string, any>) => void;
+  onSubmit: (data: Record<string, any>) => void;
   isPreview?: boolean;
+  isSubmitting?: boolean;
 }
 
-const ConditionalFormRenderer: React.FC<ConditionalFormRendererProps> = ({
-  fields,
-  onSubmit,
-  isPreview = false
-}) => {
+const ConditionalFormRenderer = ({ fields, onSubmit, isPreview = false, isSubmitting = false }: ConditionalFormRendererProps) => {
   const [formData, setFormData] = useState<Record<string, any>>({});
-  const [visibleFields, setVisibleFields] = useState<Set<string>>(new Set());
-
-  // Calculate which fields should be visible based on conditional logic
-  useEffect(() => {
-    const newVisibleFields = new Set<string>();
-
-    fields.forEach(field => {
-      if (!field.conditional) {
-        // Field has no conditions, always visible
-        newVisibleFields.add(field.id);
-      } else {
-        // Field has conditions, check if they're met
-        const dependencyValue = formData[field.conditional.dependsOn];
-        if (dependencyValue === field.conditional.showWhen) {
-          newVisibleFields.add(field.id);
-        }
-      }
-    });
-
-    setVisibleFields(newVisibleFields);
-  }, [fields, formData]);
 
   const handleFieldChange = (fieldId: string, value: any) => {
     setFormData(prev => ({
@@ -52,30 +29,48 @@ const ConditionalFormRenderer: React.FC<ConditionalFormRendererProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (onSubmit) {
-      onSubmit(formData);
+    
+    if (isPreview) {
+      toast({
+        title: "Preview Mode",
+        description: "This is a preview. Form submission is disabled."
+      });
+      return;
     }
+
+    // Validate required fields
+    const requiredFields = fields.filter(field => field.required);
+    const missingFields = requiredFields.filter(field => 
+      !formData[field.id] || (typeof formData[field.id] === 'string' && formData[field.id].trim() === '')
+    );
+
+    if (missingFields.length > 0) {
+      toast({
+        title: "Validation Error",
+        description: `Please fill in all required fields: ${missingFields.map(f => f.label).join(', ')}`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    onSubmit(formData);
   };
 
   const renderField = (field: FormField) => {
-    if (!visibleFields.has(field.id)) {
-      return null;
-    }
-
-    const value = formData[field.id] || '';
+    const fieldValue = formData[field.id] || '';
 
     switch (field.type) {
       case 'text_input':
         return (
           <div key={field.id} className="space-y-2">
             <Label htmlFor={field.id}>
-              {field.label}
-              {field.required && <span className="text-red-500 ml-1">*</span>}
+              {field.label} {field.required && <span className="text-red-500">*</span>}
             </Label>
             <Input
               id={field.id}
-              value={value}
+              value={fieldValue}
               onChange={(e) => handleFieldChange(field.id, e.target.value)}
+              placeholder={`Enter ${field.label.toLowerCase()}`}
               required={field.required}
             />
           </div>
@@ -85,15 +80,15 @@ const ConditionalFormRenderer: React.FC<ConditionalFormRendererProps> = ({
         return (
           <div key={field.id} className="space-y-2">
             <Label htmlFor={field.id}>
-              {field.label}
-              {field.required && <span className="text-red-500 ml-1">*</span>}
+              {field.label} {field.required && <span className="text-red-500">*</span>}
             </Label>
             <Textarea
               id={field.id}
-              value={value}
+              value={fieldValue}
               onChange={(e) => handleFieldChange(field.id, e.target.value)}
+              placeholder={`Enter ${field.label.toLowerCase()}`}
               required={field.required}
-              rows={3}
+              rows={4}
             />
           </div>
         );
@@ -102,19 +97,15 @@ const ConditionalFormRenderer: React.FC<ConditionalFormRendererProps> = ({
         return (
           <div key={field.id} className="space-y-2">
             <Label htmlFor={field.id}>
-              {field.label}
-              {field.required && <span className="text-red-500 ml-1">*</span>}
+              {field.label} {field.required && <span className="text-red-500">*</span>}
             </Label>
-            <Select
-              value={value}
-              onValueChange={(val) => handleFieldChange(field.id, val)}
-            >
+            <Select value={fieldValue} onValueChange={(value) => handleFieldChange(field.id, value)}>
               <SelectTrigger>
-                <SelectValue placeholder="Select an option" />
+                <SelectValue placeholder={`Select ${field.label.toLowerCase()}`} />
               </SelectTrigger>
               <SelectContent>
-                {field.options?.map((option) => (
-                  <SelectItem key={option} value={option}>
+                {field.options?.map((option, index) => (
+                  <SelectItem key={index} value={option}>
                     {option}
                   </SelectItem>
                 ))}
@@ -127,17 +118,16 @@ const ConditionalFormRenderer: React.FC<ConditionalFormRendererProps> = ({
         return (
           <div key={field.id} className="space-y-2">
             <Label>
-              {field.label}
-              {field.required && <span className="text-red-500 ml-1">*</span>}
+              {field.label} {field.required && <span className="text-red-500">*</span>}
             </Label>
             <RadioGroup
-              value={value}
-              onValueChange={(val) => handleFieldChange(field.id, val)}
+              value={fieldValue}
+              onValueChange={(value) => handleFieldChange(field.id, value)}
             >
-              {field.options?.map((option) => (
-                <div key={option} className="flex items-center space-x-2">
-                  <RadioGroupItem value={option} id={`${field.id}-${option}`} />
-                  <Label htmlFor={`${field.id}-${option}`}>{option}</Label>
+              {field.options?.map((option, index) => (
+                <div key={index} className="flex items-center space-x-2">
+                  <RadioGroupItem value={option} id={`${field.id}-${index}`} />
+                  <Label htmlFor={`${field.id}-${index}`}>{option}</Label>
                 </div>
               ))}
             </RadioGroup>
@@ -148,17 +138,16 @@ const ConditionalFormRenderer: React.FC<ConditionalFormRendererProps> = ({
         return (
           <div key={field.id} className="space-y-2">
             <Label>
-              {field.label}
-              {field.required && <span className="text-red-500 ml-1">*</span>}
+              {field.label} {field.required && <span className="text-red-500">*</span>}
             </Label>
             <div className="space-y-2">
-              {field.options?.map((option) => (
-                <div key={option} className="flex items-center space-x-2">
+              {field.options?.map((option, index) => (
+                <div key={index} className="flex items-center space-x-2">
                   <Checkbox
-                    id={`${field.id}-${option}`}
-                    checked={(value || []).includes(option)}
+                    id={`${field.id}-${index}`}
+                    checked={(fieldValue || []).includes(option)}
                     onCheckedChange={(checked) => {
-                      const currentValues = value || [];
+                      const currentValues = fieldValue || [];
                       if (checked) {
                         handleFieldChange(field.id, [...currentValues, option]);
                       } else {
@@ -166,7 +155,7 @@ const ConditionalFormRenderer: React.FC<ConditionalFormRendererProps> = ({
                       }
                     }}
                   />
-                  <Label htmlFor={`${field.id}-${option}`}>{option}</Label>
+                  <Label htmlFor={`${field.id}-${index}`}>{option}</Label>
                 </div>
               ))}
             </div>
@@ -177,15 +166,14 @@ const ConditionalFormRenderer: React.FC<ConditionalFormRendererProps> = ({
         return (
           <div key={field.id} className="space-y-2">
             <Label>
-              {field.label}
-              {field.required && <span className="text-red-500 ml-1">*</span>}
+              {field.label} {field.required && <span className="text-red-500">*</span>}
             </Label>
-            <div className="flex space-x-1">
+            <div className="flex space-x-2">
               {Array.from({ length: field.maxRating || 5 }, (_, i) => i + 1).map((rating) => (
                 <Button
                   key={rating}
                   type="button"
-                  variant={value === rating ? "default" : "outline"}
+                  variant={fieldValue === rating ? "default" : "outline"}
                   size="sm"
                   onClick={() => handleFieldChange(field.id, rating)}
                 >
@@ -196,21 +184,38 @@ const ConditionalFormRenderer: React.FC<ConditionalFormRendererProps> = ({
           </div>
         );
 
-      default:
+      case 'file_attachment':
         return (
           <div key={field.id} className="space-y-2">
             <Label htmlFor={field.id}>
-              {field.label}
-              {field.required && <span className="text-red-500 ml-1">*</span>}
+              {field.label} {field.required && <span className="text-red-500">*</span>}
             </Label>
             <Input
               id={field.id}
-              value={value}
-              onChange={(e) => handleFieldChange(field.id, e.target.value)}
-              required={field.required}
+              type="file"
+              onChange={(e) => {
+                const files = e.target.files;
+                if (files && files.length > 0) {
+                  if (field.allowMultiple) {
+                    handleFieldChange(field.id, Array.from(files));
+                  } else {
+                    handleFieldChange(field.id, files[0]);
+                  }
+                }
+              }}
+              multiple={field.allowMultiple}
+              accept={field.allowedFileTypes?.join(',')}
             />
+            {field.allowedFileTypes && (
+              <p className="text-sm text-gray-500">
+                Allowed types: {field.allowedFileTypes.join(', ')}
+              </p>
+            )}
           </div>
         );
+
+      default:
+        return null;
     }
   };
 
@@ -218,17 +223,24 @@ const ConditionalFormRenderer: React.FC<ConditionalFormRendererProps> = ({
     <form onSubmit={handleSubmit} className="space-y-6">
       {fields.map(renderField)}
       
-      {!isPreview && (
-        <Button type="submit" className="w-full">
-          Submit Form
+      <div className="pt-4">
+        <Button 
+          type="submit" 
+          className="w-full" 
+          disabled={isPreview || isSubmitting}
+        >
+          {isSubmitting ? (
+            <div className="flex items-center gap-2">
+              <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div>
+              <span>Submitting...</span>
+            </div>
+          ) : isPreview ? (
+            'Preview Mode - Submit Disabled'
+          ) : (
+            'Submit Form'
+          )}
         </Button>
-      )}
-      
-      {isPreview && (
-        <div className="text-sm text-gray-500 italic">
-          This is a preview. Form submission is disabled.
-        </div>
-      )}
+      </div>
     </form>
   );
 };
