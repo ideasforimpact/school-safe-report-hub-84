@@ -19,12 +19,19 @@ const FormsPage = () => {
   
   const { submissions, loading: submissionsLoading, refetch } = useFormSubmissions(selectedForm?.id || null);
 
-  // Add debug logging
-  console.log('FormsPage Debug:', {
+  // Enhanced debug logging
+  console.log('FormsPage Enhanced Debug:', {
     selectedFormId: selectedForm?.id,
+    selectedFormTitle: selectedForm?.title,
     submissionsCount: submissions.length,
-    submissions: submissions,
-    submissionsLoading
+    submissionsLoading,
+    submissions: submissions.map(sub => ({
+      id: sub.id,
+      submitter_name: sub.submitter_name,
+      status: sub.status,
+      created_at: sub.created_at,
+      hasAllFields: !!(sub.submitter_name && sub.status && sub.created_at)
+    }))
   });
 
   // Filter submissions based on search term
@@ -235,10 +242,10 @@ const FormsPage = () => {
                         <Table>
                           <TableHeader>
                             <TableRow>
-                              <TableHead className="min-w-[150px]">Submitter</TableHead>
-                              <TableHead className="min-w-[150px]">Submitted At</TableHead>
-                              <TableHead className="min-w-[100px]">Status</TableHead>
-                              <TableHead className="min-w-[100px] text-right">Actions</TableHead>
+                              <TableHead className="w-[200px]">Submitter</TableHead>
+                              <TableHead className="w-[200px]">Submitted At</TableHead>
+                              <TableHead className="w-[120px]">Status</TableHead>
+                              <TableHead className="w-[120px] text-right">Actions</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -250,23 +257,39 @@ const FormsPage = () => {
                               </TableRow>
                             ) : (
                               filteredSubmissions.map((submission, index) => {
-                                // Add debug logging for each submission
+                                // Enhanced debug logging for each submission
                                 console.log(`Rendering submission ${index}:`, {
                                   id: submission.id,
                                   submitter_name: submission.submitter_name,
+                                  submitter_email: submission.submitter_email,
                                   status: submission.status,
+                                  created_at: submission.created_at,
                                   hasResponses: submission.responses && Array.isArray(submission.responses),
-                                  responsesLength: submission.responses?.length
+                                  responsesLength: submission.responses?.length,
+                                  fullSubmission: submission
                                 });
                                 
                                 return (
                                   <TableRow key={submission.id}>
-                                    <TableCell className="font-medium min-w-[150px]">
-                                      {submission.submitter_name || 'Anonymous'}
+                                    <TableCell className="w-[200px] font-medium">
+                                      <div className="truncate">
+                                        {submission.submitter_name || 'Anonymous'}
+                                        {submission.submitter_email && (
+                                          <div className="text-xs text-gray-500 truncate">
+                                            {submission.submitter_email}
+                                          </div>
+                                        )}
+                                      </div>
                                     </TableCell>
-                                    <TableCell className="min-w-[150px]">{formatDate(submission.created_at)}</TableCell>
-                                    <TableCell className="min-w-[100px]">{getStatusBadge(submission.status)}</TableCell>
-                                    <TableCell className="min-w-[100px] text-right">
+                                    <TableCell className="w-[200px]">
+                                      {submission.created_at ? formatDate(submission.created_at) : 'Unknown'}
+                                    </TableCell>
+                                    <TableCell className="w-[120px]">
+                                      {submission.status ? getStatusBadge(submission.status) : 
+                                        <Badge variant="secondary">Unknown</Badge>
+                                      }
+                                    </TableCell>
+                                    <TableCell className="w-[120px] text-right">
                                       <Button 
                                         variant="outline" 
                                         size="sm" 
