@@ -169,7 +169,7 @@ export type Database = {
       backoffice_edusafe_resource: {
         Row: {
           category: string
-          client_id: string | null
+          client_type_id: string | null
           created_at: string
           description: string | null
           document_url: string
@@ -181,7 +181,7 @@ export type Database = {
         }
         Insert: {
           category: string
-          client_id?: string | null
+          client_type_id?: string | null
           created_at?: string
           description?: string | null
           document_url: string
@@ -193,7 +193,7 @@ export type Database = {
         }
         Update: {
           category?: string
-          client_id?: string | null
+          client_type_id?: string | null
           created_at?: string
           description?: string | null
           document_url?: string
@@ -203,7 +203,15 @@ export type Database = {
           updated_at?: string
           uploaded_by?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "backoffice_edusafe_resource_client_type_id_fkey"
+            columns: ["client_type_id"]
+            isOneToOne: false
+            referencedRelation: "client_type"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       backoffice_users: {
         Row: {

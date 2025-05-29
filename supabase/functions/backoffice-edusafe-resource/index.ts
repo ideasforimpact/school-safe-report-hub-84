@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts"
@@ -46,13 +47,13 @@ serve(async (req) => {
   }
 })
 
-async function listResources(supabase: any, { client_id }: { client_id: string }) {
-  console.log('Listing resources for client:', client_id)
+async function listResources(supabase: any, { client_type_id }: { client_type_id: string }) {
+  console.log('Listing resources for client type:', client_type_id)
   
   const { data: resources, error } = await supabase
     .from('backoffice_edusafe_resource')
     .select('*')
-    .eq('client_id', client_id)
+    .eq('client_type_id', client_type_id)
     .order('created_at', { ascending: false })
 
   if (error) {
@@ -69,7 +70,7 @@ async function listResources(supabase: any, { client_id }: { client_id: string }
 }
 
 async function createResource(supabase: any, data: any) {
-  console.log('Creating resource for client:', data.client_id)
+  console.log('Creating resource for client type:', data.client_type_id)
   
   let document_url = data.document_url;
   
@@ -83,7 +84,7 @@ async function createResource(supabase: any, data: any) {
       
       // Generate unique filename
       const timestamp = new Date().getTime();
-      const filename = `${data.client_id}/${timestamp}_${data.title.replace(/[^a-zA-Z0-9]/g, '_')}.${extension}`;
+      const filename = `${data.client_type_id}/${timestamp}_${data.title.replace(/[^a-zA-Z0-9]/g, '_')}.${extension}`;
       
       // Convert base64 to blob
       const base64Data = data.document_url.split(',')[1];
@@ -126,7 +127,7 @@ async function createResource(supabase: any, data: any) {
     category: data.category,
     tags: Array.isArray(data.tags) ? data.tags : [],
     document_url: document_url,
-    client_id: data.client_id,
+    client_type_id: data.client_type_id,
     uploaded_by: uploadedByUuid, // Use proper UUID instead of string
   }
 
@@ -170,7 +171,7 @@ async function updateResource(supabase: any, data: any) {
       
       // Generate unique filename
       const timestamp = new Date().getTime();
-      const filename = `${data.client_id || 'unknown'}/${timestamp}_${data.title.replace(/[^a-zA-Z0-9]/g, '_')}.${extension}`;
+      const filename = `${data.client_type_id || 'unknown'}/${timestamp}_${data.title.replace(/[^a-zA-Z0-9]/g, '_')}.${extension}`;
       
       // Convert base64 to blob
       const base64Data = data.document_url.split(',')[1];

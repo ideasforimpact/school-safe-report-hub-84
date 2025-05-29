@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Search, FileText, Download, Edit, Trash, Upload, X, Loader2 } from 'lucide-react';
@@ -11,7 +12,6 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
-import { useClient } from '@/contexts/ClientContext';
 import { toast } from 'sonner';
 
 interface BackofficeEduSafeResource {
@@ -21,16 +21,24 @@ interface BackofficeEduSafeResource {
   category: string;
   tags: string[];
   document_url: string;
-  client_id: string;
+  client_type_id: string;
   uploaded_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface ClientType {
+  id: string;
+  name: string;
+  key: string;
   created_at: string;
   updated_at: string;
 }
 
 const BackofficeEduSafeResourcesPage: React.FC = () => {
   const navigate = useNavigate();
-  const { clients } = useClient();
-  const [selectedClientId, setSelectedClientId] = useState<string>('');
+  const [clientTypes, setClientTypes] = useState<ClientType[]>([]);
+  const [selectedClientTypeId, setSelectedClientTypeId] = useState<string>('');
   const [resources, setResources] = useState<BackofficeEduSafeResource[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploadLoading, setUploadLoading] = useState(false);
@@ -51,20 +59,39 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
   const categories = ['posters', 'procedures', 'guidelines', 'forms', 'other'];
 
   useEffect(() => {
-    if (selectedClientId) {
+    fetchClientTypes();
+  }, []);
+
+  useEffect(() => {
+    if (selectedClientTypeId) {
       fetchResources();
     }
-  }, [selectedClientId]);
+  }, [selectedClientTypeId]);
+
+  const fetchClientTypes = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('client_type')
+        .select('*')
+        .order('name');
+
+      if (error) throw error;
+      setClientTypes(data || []);
+    } catch (error) {
+      console.error('Error fetching client types:', error);
+      toast.error('Failed to fetch client types');
+    }
+  };
 
   const fetchResources = async () => {
-    if (!selectedClientId) return;
+    if (!selectedClientTypeId) return;
     
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('backoffice-edusafe-resource', {
         body: { 
           action: 'list',
-          client_id: selectedClientId 
+          client_type_id: selectedClientTypeId 
         }
       });
 
@@ -103,8 +130,8 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
   };
 
   const handleAddResource = async () => {
-    if (!selectedClientId || !formData.file) {
-      toast.error('Please select a client and file');
+    if (!selectedClientTypeId || !formData.file) {
+      toast.error('Please select a client type and file');
       return;
     }
 
@@ -115,7 +142,7 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
       const { data, error } = await supabase.functions.invoke('backoffice-edusafe-resource', {
         body: {
           action: 'create',
-          client_id: selectedClientId,
+          client_type_id: selectedClientTypeId,
           title: formData.title,
           description: formData.description,
           category: formData.category,
@@ -247,23 +274,23 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Client Selection */}
+      {/* Client Type Selection */}
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>Select Client</CardTitle>
-          <CardDescription>Choose a client to manage their EduSafe resources</CardDescription>
+          <CardTitle>Select Client Type</CardTitle>
+          <CardDescription>Choose a client type to manage their EduSafe resources</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="w-full max-w-md">
-            <Label htmlFor="client-select">Client</Label>
-            <Select value={selectedClientId} onValueChange={setSelectedClientId}>
-              <SelectTrigger id="client-select">
-                <SelectValue placeholder="Select a client" />
+            <Label htmlFor="client-type-select">Client Type</Label>
+            <Select value={selectedClientTypeId} onValueChange={setSelectedClientTypeId}>
+              <SelectTrigger id="client-type-select">
+                <SelectValue placeholder="Select a client type" />
               </SelectTrigger>
               <SelectContent>
-                {clients.map((client) => (
-                  <SelectItem key={client.id} value={client.id}>
-                    {client.name}
+                {clientTypes.map((clientType) => (
+                  <SelectItem key={clientType.id} value={clientType.id}>
+                    {clientType.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -272,13 +299,13 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
         </CardContent>
       </Card>
 
-      {selectedClientId && (
+      {selectedClientTypeId && (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle>Resources</CardTitle>
-                <CardDescription>Manage EduSafe resources for the selected client</CardDescription>
+                <CardDescription>Manage EduSafe resources for the selected client type</CardDescription>
               </div>
               <Button onClick={() => setIsAddDialogOpen(true)}>
                 <Upload className="h-4 w-4 mr-2" />
@@ -389,7 +416,7 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
               Upload Resource
             </DialogTitle>
             <DialogDescription>
-              Add a new EduSafe resource for the selected client
+              Add a new EduSafe resource for the selected client type
             </DialogDescription>
           </DialogHeader>
           
@@ -459,22 +486,23 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
+                
                 {formData.tags.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {formData.tags.map((tag, index) => (
-                      <Badge key={index} variant="secondary" className="flex items-center gap-1">
-                        {tag}
+                      <div key={index} className="flex items-center gap-1 bg-gray-100 rounded-full px-3 py-1">
+                        <span className="text-sm">{tag}</span>
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
-                          className="h-auto p-0 hover:bg-transparent"
+                          className="h-4 w-4 p-0 hover:bg-transparent"
                           onClick={() => handleRemoveTag(tag)}
                           disabled={uploadLoading}
                         >
                           <X className="h-3 w-3" />
                         </Button>
-                      </Badge>
+                      </div>
                     ))}
                   </div>
                 )}
@@ -482,62 +510,20 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="file">Upload File *</Label>
-              {formData.file ? (
-                <div className="border rounded-md p-4 flex justify-between items-center bg-gray-50">
-                  <div className="flex items-center space-x-3">
-                    <div className="bg-blue-50 p-2 rounded-md">
-                      <FileText className="h-5 w-5 text-blue-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm">{formData.file.name}</p>
-                      <p className="text-xs text-gray-500">
-                        {(formData.file.size / 1024 / 1024).toFixed(2)} MB
-                      </p>
-                    </div>
-                  </div>
-                  <Button 
-                    type="button" 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => setFormData({ ...formData, file: null })}
-                    disabled={uploadLoading}
-                  >
-                    Remove
-                  </Button>
-                </div>
-              ) : (
-                <div className="border-2 border-dashed border-gray-300 rounded-md p-6 text-center hover:border-gray-400 transition-colors">
-                  <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                  <p className="text-sm font-medium mb-1">Click to upload</p>
-                  <p className="text-xs text-gray-500 mb-4">PDF, DOCX, or Images up to 10MB</p>
-                  <input
-                    id="file"
-                    type="file"
-                    className="sr-only"
-                    onChange={(e) => setFormData({ ...formData, file: e.target.files?.[0] || null })}
-                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                    disabled={uploadLoading}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => document.getElementById('file')?.click()}
-                    disabled={uploadLoading}
-                  >
-                    Select File
-                  </Button>
-                </div>
-              )}
+              <Label htmlFor="file">File *</Label>
+              <Input
+                id="file"
+                type="file"
+                onChange={(e) => setFormData({ ...formData, file: e.target.files?.[0] || null })}
+                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                required
+                disabled={uploadLoading}
+              />
             </div>
           </div>
           
           <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => setIsAddDialogOpen(false)}
-              disabled={uploadLoading}
-            >
+            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)} disabled={uploadLoading}>
               Cancel
             </Button>
             <Button 
@@ -550,10 +536,7 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
                   Uploading...
                 </>
               ) : (
-                <>
-                  <Upload className="h-4 w-4 mr-2" />
-                  Upload Resource
-                </>
+                'Upload Resource'
               )}
             </Button>
           </DialogFooter>
@@ -569,7 +552,7 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
               Edit Resource
             </DialogTitle>
             <DialogDescription>
-              Update the resource information
+              Update the EduSafe resource details
             </DialogDescription>
           </DialogHeader>
           
@@ -639,22 +622,23 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
                     <Plus className="h-4 w-4" />
                   </Button>
                 </div>
+                
                 {formData.tags.length > 0 && (
                   <div className="flex flex-wrap gap-2">
                     {formData.tags.map((tag, index) => (
-                      <Badge key={index} variant="secondary" className="flex items-center gap-1">
-                        {tag}
+                      <div key={index} className="flex items-center gap-1 bg-gray-100 rounded-full px-3 py-1">
+                        <span className="text-sm">{tag}</span>
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
-                          className="h-auto p-0 hover:bg-transparent"
+                          className="h-4 w-4 p-0 hover:bg-transparent"
                           onClick={() => handleRemoveTag(tag)}
                           disabled={updateLoading}
                         >
                           <X className="h-3 w-3" />
                         </Button>
-                      </Badge>
+                      </div>
                     ))}
                   </div>
                 )}
@@ -662,70 +646,24 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="edit-file">Replace File (Optional)</Label>
-              {formData.file ? (
-                <div className="border rounded-md p-4 flex justify-between items-center bg-gray-50">
-                  <div className="flex items-center space-x-3">
-                    <div className="bg-blue-50 p-2 rounded-md">
-                      <FileText className="h-5 w-5 text-blue-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm">{formData.file.name}</p>
-                      <p className="text-xs text-gray-500">
-                        {(formData.file.size / 1024 / 1024).toFixed(2)} MB
-                      </p>
-                    </div>
-                  </div>
-                  <Button 
-                    type="button" 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => setFormData({ ...formData, file: null })}
-                    disabled={updateLoading}
-                  >
-                    Remove
-                  </Button>
-                </div>
-              ) : (
-                <div className="border-2 border-dashed border-gray-300 rounded-md p-6 text-center hover:border-gray-400 transition-colors">
-                  <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                  <p className="text-sm font-medium mb-1">Click to upload new file</p>
-                  <p className="text-xs text-gray-500 mb-4">PDF, DOCX, or Images up to 10MB</p>
-                  <input
-                    id="edit-file"
-                    type="file"
-                    className="sr-only"
-                    onChange={(e) => setFormData({ ...formData, file: e.target.files?.[0] || null })}
-                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                    disabled={updateLoading}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => document.getElementById('edit-file')?.click()}
-                    disabled={updateLoading}
-                  >
-                    Select File
-                  </Button>
-                </div>
-              )}
-              <p className="text-xs text-gray-500">
-                Leave empty to keep the current file
-              </p>
+              <Label htmlFor="edit-file">File (optional - leave empty to keep current file)</Label>
+              <Input
+                id="edit-file"
+                type="file"
+                onChange={(e) => setFormData({ ...formData, file: e.target.files?.[0] || null })}
+                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                disabled={updateLoading}
+              />
             </div>
           </div>
           
           <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => setIsEditDialogOpen(false)}
-              disabled={updateLoading}
-            >
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)} disabled={updateLoading}>
               Cancel
             </Button>
             <Button 
-              onClick={handleEditResource}
-              disabled={updateLoading}
+              onClick={handleEditResource} 
+              disabled={!formData.title || updateLoading}
             >
               {updateLoading ? (
                 <>
@@ -733,10 +671,7 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
                   Updating...
                 </>
               ) : (
-                <>
-                  <Edit className="h-4 w-4 mr-2" />
-                  Update Resource
-                </>
+                'Update Resource'
               )}
             </Button>
           </DialogFooter>
