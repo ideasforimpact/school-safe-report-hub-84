@@ -1,8 +1,7 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Plus, Edit, Trash2, Eye, EyeOff, FileText } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, EyeOff, FileText, Copy } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -67,6 +66,23 @@ const FormConfigurationContent = () => {
 
   const handlePreviewForm = (form: CustomForm) => {
     navigate(`/form-preview/${form.id}`);
+  };
+
+  const handleCopyFormUrl = async (form: CustomForm) => {
+    try {
+      const formUrl = `${window.location.origin}/public-form/${form.id}`;
+      await navigator.clipboard.writeText(formUrl);
+      toast({
+        title: "Success",
+        description: "Form submission URL copied to clipboard"
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to copy URL to clipboard",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleSaveForm = async (formData: Omit<CustomForm, 'id' | 'created_at' | 'updated_at'>) => {
@@ -255,6 +271,15 @@ const FormConfigurationContent = () => {
                     <TableCell>{new Date(form.created_at).toLocaleDateString()}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleCopyFormUrl(form)}
+                          className="gap-1"
+                        >
+                          <Copy className="h-4 w-4" />
+                          Copy URL
+                        </Button>
                         <Button
                           variant="outline"
                           size="sm"
