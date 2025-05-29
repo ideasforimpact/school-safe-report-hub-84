@@ -1,10 +1,10 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileText, Calendar, BarChart3, List, Eye } from 'lucide-react';
+import { FileText, Calendar, Eye } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { useFetchForms } from '@/hooks/useFetchForms';
 import { useFormSubmissions } from '@/hooks/useFormSubmissions';
@@ -13,7 +13,6 @@ import SubmissionDetailDialog from '@/components/forms/SubmissionDetailDialog';
 const FormsPage = () => {
   const { forms, loading, error } = useFetchForms();
   const [selectedForm, setSelectedForm] = useState<any | null>(null);
-  const [submissionsView, setSubmissionsView] = useState<'list' | 'aggregated'>('list');
   const [selectedSubmission, setSelectedSubmission] = useState<any | null>(null);
   
   const { submissions, loading: submissionsLoading, refetch } = useFormSubmissions(selectedForm?.id || null);
@@ -25,15 +24,6 @@ const FormsPage = () => {
       resolved: 'outline'
     } as const;
     return <Badge variant={variants[status as keyof typeof variants] || 'default'}>{status}</Badge>;
-  };
-
-  const getSubmissionStats = () => {
-    const statusCounts = submissions.reduce((acc, sub) => {
-      acc[sub.status] = (acc[sub.status] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
-
-    return statusCounts;
   };
 
   const formatDate = (dateString: string) => {
@@ -152,135 +142,63 @@ const FormsPage = () => {
                 </div>
               </div>
 
-              {/* Form Details */}
+              {/* Form Submissions */}
               <div className="flex-1 p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-lg font-semibold">Submissions</h3>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant={submissionsView === 'list' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setSubmissionsView('list')}
-                      className="gap-2"
-                    >
-                      <List className="h-4 w-4" />
-                      List View
-                    </Button>
-                    <Button
-                      variant={submissionsView === 'aggregated' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setSubmissionsView('aggregated')}
-                      className="gap-2"
-                    >
-                      <BarChart3 className="h-4 w-4" />
-                      Aggregated View
-                    </Button>
-                  </div>
                 </div>
 
-                <Tabs value={submissionsView} onValueChange={(value) => setSubmissionsView(value as 'list' | 'aggregated')}>
-                  <TabsContent value="list" className="mt-0">
-                    <Card>
-                      <CardContent className="p-0">
-                        {submissionsLoading ? (
-                          <div className="text-center py-8">
-                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                            <p className="text-gray-500">Loading submissions...</p>
-                          </div>
-                        ) : (
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead>Submitter</TableHead>
-                                <TableHead>Submitted At</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {submissions.length === 0 ? (
-                                <TableRow>
-                                  <TableCell colSpan={4} className="text-center py-8 text-gray-500">
-                                    No submissions yet
-                                  </TableCell>
-                                </TableRow>
-                              ) : (
-                                submissions.map((submission) => (
-                                  <TableRow key={submission.id}>
-                                    <TableCell className="font-medium">
-                                      {submission.submitter_name || 'Anonymous'}
-                                    </TableCell>
-                                    <TableCell>{formatDate(submission.created_at)}</TableCell>
-                                    <TableCell>{getStatusBadge(submission.status)}</TableCell>
-                                    <TableCell className="text-right">
-                                      <Button 
-                                        variant="outline" 
-                                        size="sm" 
-                                        className="gap-1"
-                                        onClick={() => handleViewSubmission(submission)}
-                                      >
-                                        <Eye className="h-4 w-4" />
-                                        View
-                                      </Button>
-                                    </TableCell>
-                                  </TableRow>
-                                ))
-                              )}
-                            </TableBody>
-                          </Table>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </TabsContent>
-
-                  <TabsContent value="aggregated" className="mt-0">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      {Object.entries(getSubmissionStats()).map(([status, count]) => (
-                        <Card key={status}>
-                          <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium capitalize">{status} Submissions</CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="text-2xl font-bold">{count}</div>
-                            <p className="text-xs text-gray-500">
-                              {submissions.length > 0 ? ((count / submissions.length) * 100).toFixed(1) : 0}% of total
-                            </p>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-
-                    <Card className="mt-6">
-                      <CardHeader>
-                        <CardTitle className="text-lg">Recent Activity</CardTitle>
-                        <CardDescription>Latest form submissions</CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="space-y-4">
+                <Card>
+                  <CardContent className="p-0">
+                    {submissionsLoading ? (
+                      <div className="text-center py-8">
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                        <p className="text-gray-500">Loading submissions...</p>
+                      </div>
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Submitter</TableHead>
+                            <TableHead>Submitted At</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
                           {submissions.length === 0 ? (
-                            <p className="text-sm text-gray-500 italic text-center py-4">No recent activity</p>
+                            <TableRow>
+                              <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                                No submissions yet
+                              </TableCell>
+                            </TableRow>
                           ) : (
-                            submissions
-                              .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-                              .slice(0, 5)
-                              .map((submission) => (
-                                <div key={submission.id} className="flex items-center justify-between p-3 border rounded-lg">
-                                  <div className="flex items-center gap-3">
-                                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                                    <div>
-                                      <div className="font-medium">{submission.submitter_name || 'Anonymous'}</div>
-                                      <div className="text-sm text-gray-500">{formatDate(submission.created_at)}</div>
-                                    </div>
-                                  </div>
-                                  {getStatusBadge(submission.status)}
-                                </div>
-                              ))
+                            submissions.map((submission) => (
+                              <TableRow key={submission.id}>
+                                <TableCell className="font-medium">
+                                  {submission.submitter_name || 'Anonymous'}
+                                </TableCell>
+                                <TableCell>{formatDate(submission.created_at)}</TableCell>
+                                <TableCell>{getStatusBadge(submission.status)}</TableCell>
+                                <TableCell className="text-right">
+                                  <Button 
+                                    variant="outline" 
+                                    size="sm" 
+                                    className="gap-1"
+                                    onClick={() => handleViewSubmission(submission)}
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                    View
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))
                           )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </TabsContent>
-                </Tabs>
+                        </TableBody>
+                      </Table>
+                    )}
+                  </CardContent>
+                </Card>
               </div>
             </>
           ) : (
