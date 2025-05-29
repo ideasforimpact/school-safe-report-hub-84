@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
@@ -151,7 +150,7 @@ function App() {
                     {/* EduSafe routes */}
                     <Route path="/edusafe" element={<EduSafeResourcesPage />} />
                     <Route path="/edusafe/upload" element={<UploadResourcePage />} />
-                    <Route path="/edusafe/edit/:id" element={<EditResourcePage />} />
+                    <Route path="/edusafe/edit/:resourceId" element={<EditResourcePage />} />
 
                     {/* Feedback routes */}
                     <Route path="/feedback" element={<FeedbackPage />} />
