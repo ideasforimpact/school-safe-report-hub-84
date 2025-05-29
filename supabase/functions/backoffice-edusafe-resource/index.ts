@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts"
@@ -26,6 +25,8 @@ serve(async (req) => {
     switch (action) {
       case 'list':
         return await listResources(supabase, body)
+      case 'list_all':
+        return await listAllResources(supabase)
       case 'create':
         return await createResource(supabase, body)
       case 'update':
@@ -58,6 +59,27 @@ async function listResources(supabase: any, { client_type_id }: { client_type_id
 
   if (error) {
     console.error('Error fetching resources:', error)
+    throw error
+  }
+
+  console.log('Found resources:', resources?.length || 0)
+
+  return new Response(
+    JSON.stringify({ resources: resources || [] }),
+    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  )
+}
+
+async function listAllResources(supabase: any) {
+  console.log('Listing all resources')
+  
+  const { data: resources, error } = await supabase
+    .from('backoffice_edusafe_resource')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('Error fetching all resources:', error)
     throw error
   }
 

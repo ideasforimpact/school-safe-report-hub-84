@@ -38,7 +38,6 @@ interface ClientType {
 const BackofficeEduSafeResourcesPage: React.FC = () => {
   const navigate = useNavigate();
   const [clientTypes, setClientTypes] = useState<ClientType[]>([]);
-  const [selectedClientTypeId, setSelectedClientTypeId] = useState<string>('');
   const [resources, setResources] = useState<BackofficeEduSafeResource[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploadLoading, setUploadLoading] = useState(false);
@@ -52,7 +51,8 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
     description: '',
     category: 'procedures',
     tags: [] as string[],
-    file: null as File | null
+    file: null as File | null,
+    client_type_id: ''
   });
   const [newTag, setNewTag] = useState('');
 
@@ -60,13 +60,8 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
 
   useEffect(() => {
     fetchClientTypes();
+    fetchAllResources();
   }, []);
-
-  useEffect(() => {
-    if (selectedClientTypeId) {
-      fetchResources();
-    }
-  }, [selectedClientTypeId]);
 
   const fetchClientTypes = async () => {
     try {
@@ -83,15 +78,12 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
     }
   };
 
-  const fetchResources = async () => {
-    if (!selectedClientTypeId) return;
-    
+  const fetchAllResources = async () => {
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('backoffice-edusafe-resource', {
         body: { 
-          action: 'list',
-          client_type_id: selectedClientTypeId 
+          action: 'list_all'
         }
       });
 
@@ -130,7 +122,7 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
   };
 
   const handleAddResource = async () => {
-    if (!selectedClientTypeId || !formData.file) {
+    if (!formData.client_type_id || !formData.file) {
       toast.error('Please select a client type and file');
       return;
     }
@@ -142,7 +134,7 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
       const { data, error } = await supabase.functions.invoke('backoffice-edusafe-resource', {
         body: {
           action: 'create',
-          client_type_id: selectedClientTypeId,
+          client_type_id: formData.client_type_id,
           title: formData.title,
           description: formData.description,
           category: formData.category,
@@ -156,7 +148,7 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
       toast.success('Resource uploaded successfully');
       setIsAddDialogOpen(false);
       resetForm();
-      fetchResources();
+      fetchAllResources();
     } catch (error) {
       console.error('Error adding resource:', error);
       toast.error('Failed to upload resource');
@@ -193,7 +185,7 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
       toast.success('Resource updated successfully');
       setIsEditDialogOpen(false);
       resetForm();
-      fetchResources();
+      fetchAllResources();
     } catch (error) {
       console.error('Error updating resource:', error);
       toast.error('Failed to update resource');
@@ -216,7 +208,7 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
       if (error) throw error;
       
       toast.success('Resource deleted successfully');
-      fetchResources();
+      fetchAllResources();
     } catch (error) {
       console.error('Error deleting resource:', error);
       toast.error('Failed to delete resource');
@@ -238,7 +230,8 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
       description: '',
       category: 'procedures',
       tags: [],
-      file: null
+      file: null,
+      client_type_id: ''
     });
     setNewTag('');
     setCurrentResource(null);
@@ -251,9 +244,15 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
       description: resource.description,
       category: resource.category,
       tags: [...resource.tags],
-      file: null
+      file: null,
+      client_type_id: resource.client_type_id
     });
     setIsEditDialogOpen(true);
+  };
+
+  const getClientTypeName = (clientTypeId: string) => {
+    const clientType = clientTypes.find(ct => ct.id === clientTypeId);
+    return clientType ? clientType.name : 'Unknown';
   };
 
   const filteredResources = resources.filter(resource =>
@@ -274,138 +273,117 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Client Type Selection */}
-      <Card className="mb-6">
+      <Card>
         <CardHeader>
-          <CardTitle>Select Client Type</CardTitle>
-          <CardDescription>Choose a client type to manage their EduSafe resources</CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>All Resources</CardTitle>
+              <CardDescription>Manage EduSafe resources for all client types</CardDescription>
+            </div>
+            <Button onClick={() => setIsAddDialogOpen(true)}>
+              <Upload className="h-4 w-4 mr-2" />
+              Upload Resource
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="w-full max-w-md">
-            <Label htmlFor="client-type-select">Client Type</Label>
-            <Select value={selectedClientTypeId} onValueChange={setSelectedClientTypeId}>
-              <SelectTrigger id="client-type-select">
-                <SelectValue placeholder="Select a client type" />
-              </SelectTrigger>
-              <SelectContent>
-                {clientTypes.map((clientType) => (
-                  <SelectItem key={clientType.id} value={clientType.id}>
-                    {clientType.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {/* Search */}
+          <div className="flex items-center space-x-2 mb-4">
+            <Search className="h-4 w-4 text-gray-500" />
+            <Input
+              placeholder="Search resources..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="max-w-sm"
+            />
+          </div>
+
+          {/* Resources Table */}
+          <div className="border rounded-md">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Client Type</TableHead>
+                  <TableHead>Category</TableHead>
+                  <TableHead>Tags</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8">
+                      Loading resources...
+                    </TableCell>
+                  </TableRow>
+                ) : filteredResources.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                      {searchTerm ? 'No resources match your search' : 'No resources found'}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredResources.map((resource) => (
+                    <TableRow key={resource.id}>
+                      <TableCell>
+                        <div className="flex items-center">
+                          <FileText className="h-4 w-4 mr-2 text-gray-400" />
+                          <div>
+                            <div className="font-medium">{resource.title}</div>
+                            <div className="text-sm text-gray-500">{resource.description}</div>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">
+                          {getClientTypeName(resource.client_type_id)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary">
+                          {resource.category.charAt(0).toUpperCase() + resource.category.slice(1)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {resource.tags.map((tag, i) => (
+                            <Badge key={i} variant="outline" className="text-xs">
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {new Date(resource.created_at).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end space-x-2">
+                          <Button variant="ghost" size="sm">
+                            <Download className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={() => openEditDialog(resource)}>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-red-500 hover:text-red-700"
+                            onClick={() => handleDeleteResource(resource.id)}
+                          >
+                            <Trash className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </div>
         </CardContent>
       </Card>
-
-      {selectedClientTypeId && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Resources</CardTitle>
-                <CardDescription>Manage EduSafe resources for the selected client type</CardDescription>
-              </div>
-              <Button onClick={() => setIsAddDialogOpen(true)}>
-                <Upload className="h-4 w-4 mr-2" />
-                Upload Resource
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {/* Search */}
-            <div className="flex items-center space-x-2 mb-4">
-              <Search className="h-4 w-4 text-gray-500" />
-              <Input
-                placeholder="Search resources..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="max-w-sm"
-              />
-            </div>
-
-            {/* Resources Table */}
-            <div className="border rounded-md">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Tags</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8">
-                        Loading resources...
-                      </TableCell>
-                    </TableRow>
-                  ) : filteredResources.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
-                        {searchTerm ? 'No resources match your search' : 'No resources found'}
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredResources.map((resource) => (
-                      <TableRow key={resource.id}>
-                        <TableCell>
-                          <div className="flex items-center">
-                            <FileText className="h-4 w-4 mr-2 text-gray-400" />
-                            <div>
-                              <div className="font-medium">{resource.title}</div>
-                              <div className="text-sm text-gray-500">{resource.description}</div>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="secondary">
-                            {resource.category.charAt(0).toUpperCase() + resource.category.slice(1)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {resource.tags.map((tag, i) => (
-                              <Badge key={i} variant="outline" className="text-xs">
-                                {tag}
-                              </Badge>
-                            ))}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {new Date(resource.created_at).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end space-x-2">
-                            <Button variant="ghost" size="sm">
-                              <Download className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => openEditDialog(resource)}>
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="text-red-500 hover:text-red-700"
-                              onClick={() => handleDeleteResource(resource.id)}
-                            >
-                              <Trash className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Upload Resource Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
@@ -416,11 +394,31 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
               Upload Resource
             </DialogTitle>
             <DialogDescription>
-              Add a new EduSafe resource for the selected client type
+              Add a new EduSafe resource for a specific client type
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-6 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="client-type">Client Type *</Label>
+              <Select 
+                value={formData.client_type_id} 
+                onValueChange={(value) => setFormData({ ...formData, client_type_id: value })}
+                disabled={uploadLoading}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select client type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clientTypes.map((clientType) => (
+                    <SelectItem key={clientType.id} value={clientType.id}>
+                      {clientType.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="title">Title *</Label>
               <Input
@@ -528,7 +526,7 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
             </Button>
             <Button 
               onClick={handleAddResource} 
-              disabled={!formData.title || !formData.file || uploadLoading}
+              disabled={!formData.title || !formData.file || !formData.client_type_id || uploadLoading}
             >
               {uploadLoading ? (
                 <>
@@ -557,6 +555,26 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
           </DialogHeader>
           
           <div className="space-y-6 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-client-type">Client Type *</Label>
+              <Select 
+                value={formData.client_type_id} 
+                onValueChange={(value) => setFormData({ ...formData, client_type_id: value })}
+                disabled={updateLoading}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select client type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clientTypes.map((clientType) => (
+                    <SelectItem key={clientType.id} value={clientType.id}>
+                      {clientType.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="edit-title">Title *</Label>
               <Input
@@ -663,7 +681,7 @@ const BackofficeEduSafeResourcesPage: React.FC = () => {
             </Button>
             <Button 
               onClick={handleEditResource} 
-              disabled={!formData.title || updateLoading}
+              disabled={!formData.title || !formData.client_type_id || updateLoading}
             >
               {updateLoading ? (
                 <>
