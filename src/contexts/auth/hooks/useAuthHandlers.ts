@@ -345,6 +345,8 @@ export const useAuthHandlers = ({
       let department = null;
       let employeeType = null;
       let isSuperAdmin = false;
+      let client: Client | null = null;
+      let clientType: ClientType | null = null;
       
       // First, try to find the employee by user ID if it exists
       if (supabaseUser.id) {
@@ -356,7 +358,9 @@ export const useAuthHandlers = ({
           
         if (!error && data) {
           // Fetch client and client type information
-          const { client, clientType } = await fetchClientInfo(data.client_id);
+          const clientInfo = await fetchClientInfo(data.client_id);
+          client = clientInfo.client;
+          clientType = clientInfo.clientType;
 
           employeeData = {
             id: data.id,
@@ -422,7 +426,9 @@ export const useAuthHandlers = ({
           
         if (!error && data) {
           // Fetch client and client type information
-          const { client, clientType } = await fetchClientInfo(data.client_id);
+          const clientInfo = await fetchClientInfo(data.client_id);
+          client = clientInfo.client;
+          clientType = clientInfo.clientType;
 
           employeeData = {
             id: data.id,
@@ -540,7 +546,7 @@ export const useAuthHandlers = ({
         }
       }
       
-      // Create a new user object
+      // Create a new user object with client information
       const newUser: User = {
         id: supabaseUser.id,
         firstName,
@@ -551,9 +557,11 @@ export const useAuthHandlers = ({
         provider,
         clientId,
         createdAt: supabaseUser.created_at || new Date().toISOString(),
-        department, // Add department
-        employeeType, // Add employeeType
-        isSuperAdmin // Add isSuperAdmin flag
+        department,
+        employeeType,
+        isSuperAdmin,
+        client,
+        clientType
       };
 
       // Save the user to localStorage and context
@@ -636,7 +644,7 @@ export const useAuthHandlers = ({
     } finally {
       setIsProcessingAuth(false);
     }
-  }, [isProcessingAuth, setAuthError, setUser, authInitCompleteRef, setEmployeeData, fetchConfiguredModules, dispatch, validateDomain, users, setUsers]);
+  }, [isProcessingAuth, setAuthError, setUser, authInitCompleteRef, setEmployeeData, fetchConfiguredModules, dispatch, validateDomain, users, setUsers, fetchClientInfo]);
 
   return {
     handleUserAuthentication
