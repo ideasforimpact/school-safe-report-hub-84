@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { EduSafeResource } from '@/types/eduSafeTypes';
 import { useAuth } from '@/contexts/auth/AuthContext';
@@ -36,33 +37,92 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const fetchResources = async () => {
     try {
       setLoading(true);
+      
+      // Fetch data with LEFT JOIN to include both regular and backoffice resources
       const { data, error } = await supabase
         .from('edusafe_resources')
-        .select('*')
+        .select(`
+          *,
+          backoffice_resource:backoffice_edusafe_resource!left(
+            id,
+            title,
+            description,
+            category,
+            tags,
+            document_url,
+            created_at,
+            updated_at,
+            uploaded_by,
+            client_id
+          )
+        `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
       // Transform database records to EduSafeResource format
-      const transformedResources: EduSafeResource[] = (data || []).map(record => ({
-        id: record.id,
-        title: record.title,
-        description: record.description || '',
-        category: record.category as any,
-        tags: Array.isArray(record.tags) ? (record.tags as string[]) : [],
-        uploadDate: record.created_at,
-        uploaderId: record.uploaded_by || 'unknown',
-        uploaderName: 'User', // We'll need to fetch this from users table if needed
-        ownerType: record.client_id ? 'school' : 'saas',
-        clientId: record.client_id,
-        file: {
-          id: `file-${record.id}`,
-          name: record.title,
-          type: 'application/pdf', // Default type, could be enhanced
-          size: 0, // Not stored in DB
-          base64: record.document_url
-        }
-      }));
+      const transformedResources: EduSafeResource[] = [];
+
+      // Process regular edusafe_resources
+      (data || []).forEach(record => {
+        transformedResources.push({
+          id: record.id,
+          title: record.title,
+          description: record.description || '',
+          category: record.category as any,
+          tags: Array.isArray(record.tags) ? (record.tags as string[]) : [],
+          uploadDate: record.created_at,
+          uploaderId: record.uploaded_by || 'unknown',
+          uploaderName: 'User',
+          ownerType: 'school',
+          clientId: record.client_id,
+          resourceType: 'School Resource',
+          file: {
+            id: `file-${record.id}`,
+            name: record.title,
+            type: 'application/pdf',
+            size: 0,
+            base64: record.document_url
+          }
+        });
+      });
+
+      // Fetch backoffice resources separately to add them with Global Resource type
+      const { data: backofficeData, error: backofficeError } = await supabase
+        .from('backoffice_edusafe_resource')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (backofficeError) throw backofficeError;
+
+      // Process backoffice resources
+      (backofficeData || []).forEach(record => {
+        transformedResources.push({
+          id: `backoffice-${record.id}`,
+          title: record.title,
+          description: record.description || '',
+          category: record.category as any,
+          tags: Array.isArray(record.tags) ? (record.tags as string[]) : [],
+          uploadDate: record.created_at,
+          uploaderId: record.uploaded_by || 'unknown',
+          uploaderName: 'Admin',
+          ownerType: 'saas',
+          clientId: record.client_id,
+          resourceType: 'Global Resource',
+          file: {
+            id: `file-backoffice-${record.id}`,
+            name: record.title,
+            type: 'application/pdf',
+            size: 0,
+            base64: record.document_url
+          }
+        });
+      });
+
+      // Sort all resources by created date
+      transformedResources.sort((a, b) => 
+        new Date(b.uploadDate).getTime() - new Date(a.uploadDate).getTime()
+      );
 
       setResources(transformedResources);
     } catch (error) {
@@ -195,6 +255,10 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const refreshResources = async () => {
     await fetchResources();
   };
+
+  useEffect(() => {
+    fetchResources();
+  }, []);
 
   const value = {
     resources,
