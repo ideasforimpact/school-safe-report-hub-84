@@ -41,6 +41,7 @@ import ProfilePage from '@/pages/ProfilePage';
 import FormPreviewPage from '@/pages/FormPreviewPage';
 import FormsPage from '@/pages/FormsPage';
 import PublicFormSubmissionPage from '@/pages/PublicFormSubmissionPage';
+import PublicFormSubmissionSuccessPage from '@/pages/PublicFormSubmissionSuccessPage';
 
 // Employee Verification Pages
 import EmployeeVerificationPage from '@/pages/employee-verification/EmployeeVerificationPage';
@@ -123,6 +124,7 @@ function App() {
                     <Route path="/forms" element={<FormsPage />} />
                     <Route path="/form-preview/:formId" element={<FormPreviewPage />} />
                     <Route path="/public-form/:formId" element={<PublicFormSubmissionPage />} />
+                    <Route path="/public-form-submission-success" element={<PublicFormSubmissionSuccessPage />} />
 
                     {/* Incident routes - Make sure both patterns work */}
                     <Route path="/incidents" element={<IncidentsList />} />
