@@ -53,14 +53,24 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
       if (regularError) throw regularError;
 
-      // Fetch backoffice resources filtered by client_id
-      const { data: backofficeResources, error: backofficeError } = await supabase
-        .from('backoffice_edusafe_resource')
-        .select('*')
-        .eq('client_id', user.clientId)
-        .order('created_at', { ascending: false });
+      // Get client type ID from user data
+      const clientTypeId = user?.client?.client_type?.id || user?.clientType?.id;
 
-      if (backofficeError) throw backofficeError;
+      // Fetch backoffice resources filtered by client_type_id
+      let backofficeResources = [];
+      if (clientTypeId) {
+        const { data: backofficeData, error: backofficeError } = await supabase
+          .from('backoffice_edusafe_resource')
+          .select('*')
+          .eq('client_type_id', clientTypeId)
+          .order('created_at', { ascending: false });
+
+        if (backofficeError) {
+          console.error('Error fetching backoffice resources:', backofficeError);
+        } else {
+          backofficeResources = backofficeData || [];
+        }
+      }
 
       // Transform database records to EduSafeResource format
       const transformedResources: EduSafeResource[] = [];
@@ -90,7 +100,7 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
       });
 
       // Process backoffice resources (Global Resources)
-      (backofficeResources || []).forEach(record => {
+      backofficeResources.forEach(record => {
         transformedResources.push({
           id: `backoffice-${record.id}`,
           title: record.title,
@@ -101,7 +111,7 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
           uploaderId: record.uploaded_by || 'unknown',
           uploaderName: 'Admin',
           ownerType: 'saas',
-          clientId: record.client_id,
+          clientId: user.clientId, // Use user's client ID for compatibility
           resourceType: 'Global Resource',
           file: {
             id: `file-backoffice-${record.id}`,
