@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { EduSafeResource } from '@/types/eduSafeTypes';
 import { useAuth } from '@/contexts/auth/AuthContext';
@@ -38,18 +37,26 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
     try {
       setLoading(true);
       
-      // Fetch regular edusafe_resources
+      if (!user?.clientId) {
+        console.log('No client ID available, skipping fetch');
+        setResources([]);
+        return;
+      }
+      
+      // Fetch regular edusafe_resources filtered by client_id
       const { data: regularResources, error: regularError } = await supabase
         .from('edusafe_resources')
         .select('*')
+        .eq('client_id', user.clientId)
         .order('created_at', { ascending: false });
 
       if (regularError) throw regularError;
 
-      // Fetch backoffice resources
+      // Fetch backoffice resources filtered by client_id
       const { data: backofficeResources, error: backofficeError } = await supabase
         .from('backoffice_edusafe_resource')
         .select('*')
+        .eq('client_id', user.clientId)
         .order('created_at', { ascending: false });
 
       if (backofficeError) throw backofficeError;
@@ -120,8 +127,10 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   useEffect(() => {
-    fetchResources();
-  }, []);
+    if (user?.clientId) {
+      fetchResources();
+    }
+  }, [user?.clientId]);
 
   const addResource = async (resource: Omit<EduSafeResource, 'id' | 'uploadDate' | 'uploaderId' | 'uploaderName' | 'ownerType' | 'resourceType'>) => {
     try {
