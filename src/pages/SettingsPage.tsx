@@ -1,90 +1,155 @@
 
-import React, { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings, User, Bell, Shield, FileText } from 'lucide-react';
-import UserManagementContent from '@/components/configuration/UserManagementContent';
-import FormConfigurationContent from '@/components/configuration/FormConfigurationContent';
+import React from 'react';
+import Layout from '@/components/layout/Layout';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { AlertTriangle, Users, GraduationCap, Building, ClipboardCheck, FileText } from "lucide-react";
+import { useAuth } from '@/contexts/auth';
+import IncidentConfigurationContent from '@/components/configuration/IncidentConfigurationContent';
+import UserManagement from '@/pages/UserManagement';
+import StudentManagement from '@/pages/StudentManagement';
+import { EducationalStructureConfig } from '@/pages/configuration/EducationalStructureConfig';
+import { useEducationalConfigurationManagement } from '@/hooks/useEducationalConfigurationManagement';
 import AssessmentConfigurationContent from '@/components/configuration/AssessmentConfigurationContent';
+import FormConfigurationContent from '@/components/configuration/FormConfigurationContent';
 
 const SettingsPage = () => {
-  const [searchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState('general');
-
-  useEffect(() => {
-    const tab = searchParams.get('tab');
-    if (tab) {
-      setActiveTab(tab);
-    }
-  }, [searchParams]);
+  const { activeTab, setActiveTab, loading, campuses, classes, sections, facilities, 
+          handleAddCampus, handleUpdateCampus, handleDeleteCampus,
+          handleAddClass, handleUpdateClass, handleDeleteClass,
+          handleAddSection, handleUpdateSection, handleDeleteSection,
+          handleAddFacility, handleUpdateFacility, handleDeleteFacility } = useEducationalConfigurationManagement();
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div className="flex items-center gap-2 mb-6">
-        <Settings className="h-6 w-6 text-primary" />
-        <h1 className="text-2xl font-bold">Settings</h1>
+    <Layout>
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-3xl font-bold">Settings</h1>
+          <p className="text-gray-500 mt-1">Configure system settings</p>
+        </div>
+        
+        <Tabs defaultValue="incident" className="w-full">
+          <TabsList className="mb-6">
+            <TabsTrigger value="incident" className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4" />
+              <span>Incident Configuration</span>
+            </TabsTrigger>
+            <TabsTrigger value="assessment" className="flex items-center gap-2">
+              <ClipboardCheck className="h-4 w-4" />
+              <span>Assessment Configuration</span>
+            </TabsTrigger>
+            <TabsTrigger value="form" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              <span>Form Configuration</span>
+            </TabsTrigger>
+            <TabsTrigger value="user" className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              <span>User Management</span>
+            </TabsTrigger>
+            <TabsTrigger value="student" className="flex items-center gap-2">
+              <GraduationCap className="h-4 w-4" />
+              <span>Student Management</span>
+            </TabsTrigger>
+            <TabsTrigger value="educational" className="flex items-center gap-2">
+              <Building className="h-4 w-4" />
+              <span>Educational Structure</span>
+            </TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="incident">
+            <Card>
+              <CardHeader>
+                <CardTitle>Incident Configuration</CardTitle>
+                <CardDescription>Configure incident categories, priorities, and other settings</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <IncidentConfigurationContent />
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="assessment">
+            <Card>
+              <CardHeader>
+                <CardTitle>Assessment Configuration</CardTitle>
+                <CardDescription>Create and manage assessment templates with yes/no questions</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <AssessmentConfigurationContent />
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="form">
+            <Card>
+              <CardHeader>
+                <CardTitle>Form Configuration</CardTitle>
+                <CardDescription>Create and manage custom forms with a simple form builder</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <FormConfigurationContent />
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="user" className="p-0">
+            <Card>
+              <CardHeader>
+                <CardTitle>User Management</CardTitle>
+                <CardDescription>Manage users and their permissions in your institution</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <UserManagement />
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="student" className="p-0">
+            <Card>
+              <CardHeader>
+                <CardTitle>Student Management</CardTitle>
+                <CardDescription>Manage students in your institution</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <StudentManagement embedded={true} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="educational" className="p-0 bg-white rounded-md">
+            <Card>
+              <CardHeader>
+                <CardTitle>Educational Structure Configuration</CardTitle>
+                <CardDescription>Manage campuses, classes, sections, and facilities</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <EducationalStructureConfig 
+                  activeTab={activeTab}
+                  setActiveTab={setActiveTab}
+                  loading={loading}
+                  campuses={campuses}
+                  addCampus={handleAddCampus}
+                  updateCampus={handleUpdateCampus}
+                  deleteCampus={handleDeleteCampus}
+                  classes={classes}
+                  addClass={handleAddClass}
+                  updateClass={handleUpdateClass}
+                  deleteClass={handleDeleteClass}
+                  sections={sections}
+                  addSection={handleAddSection}
+                  updateSection={handleUpdateSection}
+                  deleteSection={handleDeleteSection}
+                  facilities={facilities}
+                  addFacility={handleAddFacility}
+                  updateFacility={handleUpdateFacility}
+                  deleteFacility={handleDeleteFacility}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
-
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="general" className="gap-2">
-            <Settings className="h-4 w-4" />
-            General
-          </TabsTrigger>
-          <TabsTrigger value="users" className="gap-2">
-            <User className="h-4 w-4" />
-            Users
-          </TabsTrigger>
-          <TabsTrigger value="form-configuration" className="gap-2">
-            <FileText className="h-4 w-4" />
-            Forms
-          </TabsTrigger>
-          <TabsTrigger value="assessments" className="gap-2">
-            <Shield className="h-4 w-4" />
-            Assessments
-          </TabsTrigger>
-          <TabsTrigger value="notifications" className="gap-2">
-            <Bell className="h-4 w-4" />
-            Notifications
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="general">
-          <Card>
-            <CardHeader>
-              <CardTitle>General Settings</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600">General application settings will be available here.</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="users">
-          <UserManagementContent />
-        </TabsContent>
-
-        <TabsContent value="form-configuration">
-          <FormConfigurationContent />
-        </TabsContent>
-
-        <TabsContent value="assessments">
-          <AssessmentConfigurationContent />
-        </TabsContent>
-
-        <TabsContent value="notifications">
-          <Card>
-            <CardHeader>
-              <CardTitle>Notification Settings</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-600">Notification preferences will be available here.</p>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
-    </div>
+    </Layout>
   );
 };
 
