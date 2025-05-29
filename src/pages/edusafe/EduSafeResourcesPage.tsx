@@ -16,13 +16,36 @@ import ResourcePreviewDialog from '@/components/edusafe/ResourcePreviewDialog';
 
 const EduSafeResourcesContent = () => {
   const { resources, getMyResources, getSaasResources } = useEduSafe();
-  const { user } = useAuth();
+  const { user, employeeData } = useAuth();
   
   const [selectedTab, setSelectedTab] = useState<'all' | 'saas' | 'school'>('all');
   const [selectedCategory, setSelectedCategory] = useState<ResourceCategory | 'all'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedResource, setSelectedResource] = useState<EduSafeResource | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+  
+  // Check client type from employeeData first, then from user
+  const getClientTypeKey = () => {
+    // First check employeeData
+    if (employeeData?.clientType?.key) {
+      return employeeData.clientType.key;
+    }
+    
+    // Then check user.clientType
+    if (user?.clientType?.key) {
+      return user.clientType.key;
+    }
+    
+    // Then check user.client.client_type.key
+    if (user?.client?.client_type?.key) {
+      return user.client.client_type.key;
+    }
+    
+    return null;
+  };
+  
+  const clientTypeKey = getClientTypeKey();
+  const isSchoolClient = clientTypeKey === 'school';
   
   // Filter resources based on selected tab, category and search term
   const filteredResources = resources.filter(resource => {
@@ -95,17 +118,20 @@ const EduSafeResourcesContent = () => {
             </div>
           </div>
           
-          <Tabs 
-            value={selectedTab} 
-            onValueChange={(value) => setSelectedTab(value as 'all' | 'saas' | 'school')}
-            className="w-full md:w-1/2"
-          >
-            <TabsList className="grid grid-cols-3 w-full">
-              <TabsTrigger value="all">All Resources</TabsTrigger>
-              <TabsTrigger value="saas">Global Resources</TabsTrigger>
-              <TabsTrigger value="school">School Resources</TabsTrigger>
-            </TabsList>
-          </Tabs>
+          {/* Only show tabs if client type is "school" */}
+          {isSchoolClient && (
+            <Tabs 
+              value={selectedTab} 
+              onValueChange={(value) => setSelectedTab(value as 'all' | 'saas' | 'school')}
+              className="w-full md:w-1/2"
+            >
+              <TabsList className="grid grid-cols-3 w-full">
+                <TabsTrigger value="all">All Resources</TabsTrigger>
+                <TabsTrigger value="saas">Global Resources</TabsTrigger>
+                <TabsTrigger value="school">School Resources</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          )}
         </div>
         
         <CategoryFilter
