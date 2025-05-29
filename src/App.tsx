@@ -4,7 +4,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { AuthProvider } from '@/contexts/auth';
 import { ClientProvider } from '@/contexts/ClientContext';
 import { StudentProvider } from './contexts/StudentContext';
-import { IncidentProvider } from './contexts/incident'; // Fixed import path - using the proper context
+import { IncidentProvider } from './contexts/incident';
 import { EmployeeVerificationProvider } from './contexts/employee-verification';
 import { FacilityProvider } from './contexts/FacilityContext';
 import { AssessmentProvider } from '@/contexts/assessment/AssessmentContext';
@@ -67,6 +67,7 @@ import ThankYouPage from '@/pages/grievances/ThankYouPage';
 
 // Backoffice Pages
 import ModulesPage from '@/pages/backoffice/ModulesPage';
+import BackofficeEduSafeResourcesPage from '@/pages/backoffice/BackofficeEduSafeResourcesPage';
 
 // Layout for Backoffice
 import BackofficeLayout from '@/components/layout/BackofficeLayout';
@@ -203,6 +204,9 @@ function App() {
                     <Route path="/backoffice/assessments/response/:assessmentId" element={<BackofficeWrapper component={AssessmentResponsePage} />} />
                     <Route path="/backoffice/assessments/respond/:assignmentId" element={<BackofficeWrapper component={AssessmentResponsePage} />} />
 
+                    {/* New Backoffice EduSafe Resources route */}
+                    <Route path="/backoffice/edusafe-resource" element={<BackofficeWrapper component={BackofficeEduSafeResourcesPage} />} />
+                    
                     {/* 404 route */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>

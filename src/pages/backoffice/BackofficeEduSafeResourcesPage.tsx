@@ -1,0 +1,496 @@
+
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, Plus, Search, FileText, Download, Edit, Trash, Upload } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { supabase } from '@/integrations/supabase/client';
+import { useClient } from '@/contexts/ClientContext';
+import { toast } from 'sonner';
+
+interface BackofficeEduSafeResource {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  tags: string[];
+  document_url: string;
+  client_id: string;
+  uploaded_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+const BackofficeEduSafeResourcesPage: React.FC = () => {
+  const navigate = useNavigate();
+  const { clients } = useClient();
+  const [selectedClientId, setSelectedClientId] = useState<string>('');
+  const [resources, setResources] = useState<BackofficeEduSafeResource[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [currentResource, setCurrentResource] = useState<BackofficeEduSafeResource | null>(null);
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    category: 'procedures',
+    tags: '',
+    file: null as File | null
+  });
+
+  const categories = ['posters', 'procedures', 'guidelines', 'forms', 'other'];
+
+  useEffect(() => {
+    if (selectedClientId) {
+      fetchResources();
+    }
+  }, [selectedClientId]);
+
+  const fetchResources = async () => {
+    if (!selectedClientId) return;
+    
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('backoffice-edusafe-resource', {
+        body: { 
+          action: 'list',
+          client_id: selectedClientId 
+        }
+      });
+
+      if (error) throw error;
+      setResources(data.resources || []);
+    } catch (error) {
+      console.error('Error fetching resources:', error);
+      toast.error('Failed to fetch resources');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddResource = async () => {
+    if (!selectedClientId || !formData.file) {
+      toast.error('Please select a client and file');
+      return;
+    }
+
+    try {
+      const base64 = await fileToBase64(formData.file);
+      
+      const { data, error } = await supabase.functions.invoke('backoffice-edusafe-resource', {
+        body: {
+          action: 'create',
+          client_id: selectedClientId,
+          title: formData.title,
+          description: formData.description,
+          category: formData.category,
+          tags: formData.tags.split(',').map(tag => tag.trim()).filter(Boolean),
+          document_url: base64
+        }
+      });
+
+      if (error) throw error;
+      
+      toast.success('Resource added successfully');
+      setIsAddDialogOpen(false);
+      resetForm();
+      fetchResources();
+    } catch (error) {
+      console.error('Error adding resource:', error);
+      toast.error('Failed to add resource');
+    }
+  };
+
+  const handleEditResource = async () => {
+    if (!currentResource) return;
+
+    try {
+      let document_url = currentResource.document_url;
+      
+      if (formData.file) {
+        document_url = await fileToBase64(formData.file);
+      }
+
+      const { data, error } = await supabase.functions.invoke('backoffice-edusafe-resource', {
+        body: {
+          action: 'update',
+          id: currentResource.id,
+          title: formData.title,
+          description: formData.description,
+          category: formData.category,
+          tags: formData.tags.split(',').map(tag => tag.trim()).filter(Boolean),
+          document_url
+        }
+      });
+
+      if (error) throw error;
+      
+      toast.success('Resource updated successfully');
+      setIsEditDialogOpen(false);
+      resetForm();
+      fetchResources();
+    } catch (error) {
+      console.error('Error updating resource:', error);
+      toast.error('Failed to update resource');
+    }
+  };
+
+  const handleDeleteResource = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this resource?')) return;
+
+    try {
+      const { data, error } = await supabase.functions.invoke('backoffice-edusafe-resource', {
+        body: {
+          action: 'delete',
+          id
+        }
+      });
+
+      if (error) throw error;
+      
+      toast.success('Resource deleted successfully');
+      fetchResources();
+    } catch (error) {
+      console.error('Error deleting resource:', error);
+      toast.error('Failed to delete resource');
+    }
+  };
+
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+    });
+  };
+
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      description: '',
+      category: 'procedures',
+      tags: '',
+      file: null
+    });
+    setCurrentResource(null);
+  };
+
+  const openEditDialog = (resource: BackofficeEduSafeResource) => {
+    setCurrentResource(resource);
+    setFormData({
+      title: resource.title,
+      description: resource.description,
+      category: resource.category,
+      tags: resource.tags.join(', '),
+      file: null
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const filteredResources = resources.filter(resource =>
+    resource.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    resource.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    resource.category.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div className="flex flex-col w-full">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center">
+          <Button variant="ghost" size="sm" onClick={() => navigate('/backoffice/dashboard')} className="mr-2">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Button>
+          <h1 className="text-2xl font-bold">EduSafe Resources Management</h1>
+        </div>
+      </div>
+
+      {/* Client Selection */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Select Client</CardTitle>
+          <CardDescription>Choose a client to manage their EduSafe resources</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="w-full max-w-md">
+            <Label htmlFor="client-select">Client</Label>
+            <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+              <SelectTrigger id="client-select">
+                <SelectValue placeholder="Select a client" />
+              </SelectTrigger>
+              <SelectContent>
+                {clients.map((client) => (
+                  <SelectItem key={client.id} value={client.id}>
+                    {client.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {selectedClientId && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Resources</CardTitle>
+                <CardDescription>Manage EduSafe resources for the selected client</CardDescription>
+              </div>
+              <Button onClick={() => setIsAddDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Resource
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {/* Search */}
+            <div className="flex items-center space-x-2 mb-4">
+              <Search className="h-4 w-4 text-gray-500" />
+              <Input
+                placeholder="Search resources..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="max-w-sm"
+              />
+            </div>
+
+            {/* Resources Table */}
+            <div className="border rounded-md">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Tags</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {loading ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-8">
+                        Loading resources...
+                      </TableCell>
+                    </TableRow>
+                  ) : filteredResources.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
+                        {searchTerm ? 'No resources match your search' : 'No resources found'}
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredResources.map((resource) => (
+                      <TableRow key={resource.id}>
+                        <TableCell>
+                          <div className="flex items-center">
+                            <FileText className="h-4 w-4 mr-2 text-gray-400" />
+                            <div>
+                              <div className="font-medium">{resource.title}</div>
+                              <div className="text-sm text-gray-500">{resource.description}</div>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">
+                            {resource.category.charAt(0).toUpperCase() + resource.category.slice(1)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {resource.tags.map((tag, i) => (
+                              <Badge key={i} variant="outline" className="text-xs">
+                                {tag}
+                              </Badge>
+                            ))}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {new Date(resource.created_at).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end space-x-2">
+                            <Button variant="ghost" size="sm">
+                              <Download className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => openEditDialog(resource)}>
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-red-500 hover:text-red-700"
+                              onClick={() => handleDeleteResource(resource.id)}
+                            >
+                              <Trash className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Add Resource Dialog */}
+      <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <DialogContent className="sm:max-w-[525px]">
+          <DialogHeader>
+            <DialogTitle>Add New Resource</DialogTitle>
+            <DialogDescription>
+              Add a new EduSafe resource for the selected client
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="title" className="text-right">Title</Label>
+              <Input
+                id="title"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="description" className="text-right">Description</Label>
+              <Textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="category" className="text-right">Category</Label>
+              <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map(cat => (
+                    <SelectItem key={cat} value={cat}>
+                      {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="tags" className="text-right">Tags</Label>
+              <Input
+                id="tags"
+                value={formData.tags}
+                onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+                placeholder="Comma separated tags"
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="file" className="text-right">File</Label>
+              <Input
+                id="file"
+                type="file"
+                onChange={(e) => setFormData({ ...formData, file: e.target.files?.[0] || null })}
+                className="col-span-3"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleAddResource}>Add Resource</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Resource Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-[525px]">
+          <DialogHeader>
+            <DialogTitle>Edit Resource</DialogTitle>
+            <DialogDescription>
+              Update the resource information
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-title" className="text-right">Title</Label>
+              <Input
+                id="edit-title"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-description" className="text-right">Description</Label>
+              <Textarea
+                id="edit-description"
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-category" className="text-right">Category</Label>
+              <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
+                <SelectTrigger className="col-span-3">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map(cat => (
+                    <SelectItem key={cat} value={cat}>
+                      {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-tags" className="text-right">Tags</Label>
+              <Input
+                id="edit-tags"
+                value={formData.tags}
+                onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+                placeholder="Comma separated tags"
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="edit-file" className="text-right">File</Label>
+              <Input
+                id="edit-file"
+                type="file"
+                onChange={(e) => setFormData({ ...formData, file: e.target.files?.[0] || null })}
+                className="col-span-3"
+              />
+              <div className="col-span-4 text-sm text-gray-500 text-center">
+                Leave empty to keep current file
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleEditResource}>Update Resource</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+export default BackofficeEduSafeResourcesPage;
