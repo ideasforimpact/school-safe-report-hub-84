@@ -1,10 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { FileText, Calendar, Eye } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { FileText, Calendar, Eye, Search } from 'lucide-react';
 import Layout from '@/components/layout/Layout';
 import { useFetchForms } from '@/hooks/useFetchForms';
 import { useFormSubmissions } from '@/hooks/useFormSubmissions';
@@ -14,8 +15,60 @@ const FormsPage = () => {
   const { forms, loading, error } = useFetchForms();
   const [selectedForm, setSelectedForm] = useState<any | null>(null);
   const [selectedSubmission, setSelectedSubmission] = useState<any | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
   
   const { submissions, loading: submissionsLoading, refetch } = useFormSubmissions(selectedForm?.id || null);
+
+  // Filter submissions based on search term
+  const filteredSubmissions = useMemo(() => {
+    if (!searchTerm.trim()) {
+      return submissions;
+    }
+
+    const searchLower = searchTerm.toLowerCase();
+    
+    return submissions.filter((submission) => {
+      // Search in submitter name
+      if (submission.submitter_name?.toLowerCase().includes(searchLower)) {
+        return true;
+      }
+      
+      // Search in submitter email
+      if (submission.submitter_email?.toLowerCase().includes(searchLower)) {
+        return true;
+      }
+      
+      // Search in status
+      if (submission.status?.toLowerCase().includes(searchLower)) {
+        return true;
+      }
+      
+      // Search in responses data
+      if (submission.responses && Array.isArray(submission.responses)) {
+        return submission.responses.some((response: any) => {
+          // Check if response has answer property
+          if (response.answer && typeof response.answer === 'string') {
+            return response.answer.toLowerCase().includes(searchLower);
+          }
+          
+          // Check if response has value property
+          if (response.value && typeof response.value === 'string') {
+            return response.value.toLowerCase().includes(searchLower);
+          }
+          
+          // Search in any string properties of the response object
+          return Object.values(response).some((value) => {
+            if (typeof value === 'string') {
+              return value.toLowerCase().includes(searchLower);
+            }
+            return false;
+          });
+        });
+      }
+      
+      return false;
+    });
+  }, [submissions, searchTerm]);
 
   const getStatusBadge = (status: string) => {
     const variants = {
@@ -135,8 +188,10 @@ const FormsPage = () => {
                   </div>
                   <div className="flex items-center gap-4">
                     <div className="text-right">
-                      <div className="text-2xl font-bold">{submissions.length}</div>
-                      <div className="text-sm text-gray-500">Total Submissions</div>
+                      <div className="text-2xl font-bold">{filteredSubmissions.length}</div>
+                      <div className="text-sm text-gray-500">
+                        {searchTerm ? 'Filtered Results' : 'Total Submissions'}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -146,6 +201,17 @@ const FormsPage = () => {
               <div className="flex-1 p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-lg font-semibold">Submissions</h3>
+                  
+                  {/* Search Input */}
+                  <div className="relative w-80">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <Input
+                      placeholder="Search submissions..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
                 </div>
 
                 <Card>
@@ -166,14 +232,14 @@ const FormsPage = () => {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {submissions.length === 0 ? (
+                          {filteredSubmissions.length === 0 ? (
                             <TableRow>
                               <TableCell colSpan={4} className="text-center py-8 text-gray-500">
-                                No submissions yet
+                                {searchTerm ? 'No submissions match your search' : 'No submissions yet'}
                               </TableCell>
                             </TableRow>
                           ) : (
-                            submissions.map((submission) => (
+                            filteredSubmissions.map((submission) => (
                               <TableRow key={submission.id}>
                                 <TableCell className="font-medium">
                                   {submission.submitter_name || 'Anonymous'}
