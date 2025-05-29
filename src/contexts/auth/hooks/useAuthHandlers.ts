@@ -1,6 +1,5 @@
-
 import { useState, useCallback } from 'react';
-import { User, UserRole, EmployeeData } from '../types';
+import { User, UserRole, EmployeeData, Client, ClientType } from '../types';
 import { getUserFromStorage, saveUserToStorage, saveEmployeeDataToStorage } from '@/services/auth/authService';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -48,6 +47,62 @@ export const useAuthHandlers = ({
   
   // Debug log to check if dispatch is available in useAuthHandlers
   console.log("useAuthHandlers - dispatch available:", !!dispatch);
+
+  // Helper function to fetch client and client type information
+  const fetchClientInfo = useCallback(async (clientId: string): Promise<{ client: Client | null, clientType: ClientType | null }> => {
+    try {
+      // Fetch client information with client type
+      const { data: clientData, error: clientError } = await supabase
+        .from('clients')
+        .select(`
+          *,
+          client_type:client_type_id (
+            id,
+            name,
+            key,
+            created_at,
+            updated_at
+          )
+        `)
+        .eq('id', clientId)
+        .single();
+
+      if (clientError || !clientData) {
+        console.error("Error fetching client data:", clientError);
+        return { client: null, clientType: null };
+      }
+
+      const client: Client = {
+        id: clientData.id,
+        name: clientData.name,
+        email: clientData.email,
+        contact_person: clientData.contact_person,
+        phone: clientData.phone,
+        allowed_domains: clientData.allowed_domains,
+        super_admin_allowed_domain: clientData.super_admin_allowed_domain,
+        auth_providers: clientData.auth_providers,
+        creation_date: clientData.creation_date,
+        active: clientData.active,
+        client_type_id: clientData.client_type_id,
+        institution_type: clientData.institution_type,
+        logo: clientData.logo,
+        client_type: clientData.client_type
+      };
+
+      const clientType: ClientType | null = clientData.client_type ? {
+        id: clientData.client_type.id,
+        name: clientData.client_type.name,
+        key: clientData.client_type.key,
+        created_at: clientData.client_type.created_at,
+        updated_at: clientData.client_type.updated_at
+      } : null;
+
+      return { client, clientType };
+    } catch (error) {
+      console.error("Error in fetchClientInfo:", error);
+      return { client: null, clientType: null };
+    }
+  }, []);
   
   // New function to fetch configured modules for an employee
   const fetchConfiguredModules = useCallback(async (employeeId: string, clientId: string | null, isSuperAdmin: boolean) => {
@@ -300,6 +355,9 @@ export const useAuthHandlers = ({
           .single();
           
         if (!error && data) {
+          // Fetch client and client type information
+          const { client, clientType } = await fetchClientInfo(data.client_id);
+
           employeeData = {
             id: data.id,
             clientId: data.client_id,
@@ -308,7 +366,9 @@ export const useAuthHandlers = ({
             email: data.email,
             isSuperAdmin: data.is_super_admin,
             department: data.department,
-            employeeType: data.employee_type
+            employeeType: data.employee_type,
+            client: client,
+            clientType: clientType
           };
           
           // Store values for use later
@@ -361,6 +421,9 @@ export const useAuthHandlers = ({
           .single();
           
         if (!error && data) {
+          // Fetch client and client type information
+          const { client, clientType } = await fetchClientInfo(data.client_id);
+
           employeeData = {
             id: data.id,
             clientId: data.client_id,
@@ -369,7 +432,9 @@ export const useAuthHandlers = ({
             email: data.email,
             isSuperAdmin: data.is_super_admin,
             department: data.department,
-            employeeType: data.employee_type
+            employeeType: data.employee_type,
+            client: client,
+            clientType: clientType
           };
           
           // Store values for use later
@@ -405,14 +470,6 @@ export const useAuthHandlers = ({
             await supabase.auth.signOut();
             setIsProcessingAuth(false);
             return;
-          }
-          
-          // Update the user_id in employees table if it's not set
-          if (data.user_id !== supabaseUser.id) {
-            await supabase
-              .from('employees')
-              .update({ user_id: supabaseUser.id })
-              .eq('id', data.id);
           }
           
           console.log("useAuthHandlers - Found employee record by email:", employeeData);
@@ -581,5 +638,7 @@ export const useAuthHandlers = ({
     }
   }, [isProcessingAuth, setAuthError, setUser, authInitCompleteRef, setEmployeeData, fetchConfiguredModules, dispatch, validateDomain, users, setUsers]);
 
-  return { handleUserAuthentication };
+  return {
+    handleUserAuthentication
+  };
 };

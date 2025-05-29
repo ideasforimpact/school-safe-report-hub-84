@@ -70,6 +70,31 @@ export interface UserWithPassword extends User {
   password: string;
 }
 
+export interface ClientType {
+  id: string;
+  name: string;
+  key: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Client {
+  id: string;
+  name: string;
+  email?: string;
+  contact_person?: string;
+  phone?: string;
+  allowed_domains?: string;
+  super_admin_allowed_domain?: string;
+  auth_providers?: string;
+  creation_date: string;
+  active: boolean;
+  client_type_id?: string;
+  institution_type?: string;
+  logo?: string;
+  client_type?: ClientType;
+}
+
 export interface EmployeeData {
   id: string;
   clientId: string | null;
@@ -79,6 +104,8 @@ export interface EmployeeData {
   isSuperAdmin?: boolean;
   department?: string;
   employeeType?: string;
+  client?: Client;
+  clientType?: ClientType;
 }
 
 export interface AuthProviderProps {

@@ -1,6 +1,6 @@
 
 import React, { createContext, useEffect, useState, useRef } from 'react';
-import { User, AuthContextType, UserWithPassword, EmployeeData } from './types';
+import { User, AuthContextType, UserWithPassword, EmployeeData, Client, ClientType } from './types';
 import { 
   getUserFromStorage, 
   logoutUser, 
@@ -166,6 +166,62 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkSupabaseAuth();
   }, []);
 
+  // Helper function to fetch client and client type information
+  const fetchClientInfo = async (clientId: string): Promise<{ client: Client | null, clientType: ClientType | null }> => {
+    try {
+      // Fetch client information with client type
+      const { data: clientData, error: clientError } = await supabase
+        .from('clients')
+        .select(`
+          *,
+          client_type:client_type_id (
+            id,
+            name,
+            key,
+            created_at,
+            updated_at
+          )
+        `)
+        .eq('id', clientId)
+        .single();
+
+      if (clientError || !clientData) {
+        console.error("Error fetching client data:", clientError);
+        return { client: null, clientType: null };
+      }
+
+      const client: Client = {
+        id: clientData.id,
+        name: clientData.name,
+        email: clientData.email,
+        contact_person: clientData.contact_person,
+        phone: clientData.phone,
+        allowed_domains: clientData.allowed_domains,
+        super_admin_allowed_domain: clientData.super_admin_allowed_domain,
+        auth_providers: clientData.auth_providers,
+        creation_date: clientData.creation_date,
+        active: clientData.active,
+        client_type_id: clientData.client_type_id,
+        institution_type: clientData.institution_type,
+        logo: clientData.logo,
+        client_type: clientData.client_type
+      };
+
+      const clientType: ClientType | null = clientData.client_type ? {
+        id: clientData.client_type.id,
+        name: clientData.client_type.name,
+        key: clientData.client_type.key,
+        created_at: clientData.client_type.created_at,
+        updated_at: clientData.client_type.updated_at
+      } : null;
+
+      return { client, clientType };
+    } catch (error) {
+      console.error("Error in fetchClientInfo:", error);
+      return { client: null, clientType: null };
+    }
+  };
+
   // Handle login
   const handleLogin = async (email: string, password: string): Promise<boolean> => {
     setAuthError(null);
@@ -191,6 +247,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             .single();
           
           if (employeeData && !error) {
+            // Fetch client and client type information
+            const { client, clientType } = await fetchClientInfo(employeeData.client_id);
+
             const employee: EmployeeData = {
               id: employeeData.id,
               clientId: employeeData.client_id,
@@ -199,7 +258,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               lastName: employeeData.last_name,
               isSuperAdmin: employeeData.is_super_admin,
               department: employeeData.department, 
-              employeeType: employeeData.employee_type
+              employeeType: employeeData.employee_type,
+              client: client,
+              clientType: clientType
             };
             
             console.log("Employee data fetched for regular user:", employee);
@@ -295,7 +356,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           lastName: 'Admin',
           isSuperAdmin: true,
           department: 'Management',
-          employeeType: 'admin'
+          employeeType: 'admin',
+          client: null,
+          clientType: null
         };
         
         // Update local state

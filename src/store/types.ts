@@ -1,3 +1,4 @@
+
 import { EmployeeData } from '@/contexts/auth/types';
 
 export interface Module {
