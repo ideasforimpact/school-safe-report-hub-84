@@ -39,6 +39,7 @@ import IncidentConfiguration from '@/pages/IncidentConfiguration';
 import ProfilePage from '@/pages/ProfilePage';
 import FormPreviewPage from '@/pages/FormPreviewPage';
 import FormsPage from '@/pages/FormsPage';
+import PublicFormSubmissionPage from '@/pages/PublicFormSubmissionPage';
 
 // Employee Verification Pages
 import EmployeeVerificationPage from '@/pages/employee-verification/EmployeeVerificationPage';
@@ -119,6 +120,7 @@ function App() {
                     {/* Form routes */}
                     <Route path="/forms" element={<FormsPage />} />
                     <Route path="/form-preview/:formId" element={<FormPreviewPage />} />
+                    <Route path="/public-form/:formId" element={<PublicFormSubmissionPage />} />
 
                     {/* Incident routes - Make sure both patterns work */}
                     <Route path="/incidents" element={<IncidentsList />} />

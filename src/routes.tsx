@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { createBrowserRouter } from 'react-router-dom';
 import Home from '@/pages/Home';
@@ -56,6 +55,7 @@ import NewsPage from '@/pages/NewsPage';
 import ProfilePage from '@/pages/ProfilePage';
 import FormPreviewPage from '@/pages/FormPreviewPage';
 import FormsPage from '@/pages/FormsPage';
+import PublicFormSubmissionPage from '@/pages/PublicFormSubmissionPage';
 
 const routes = createBrowserRouter([
   {
@@ -273,6 +273,10 @@ const routes = createBrowserRouter([
   {
     path: "/form-preview/:formId",
     element: <FormPreviewPage />,
+  },
+  {
+    path: "/public-form/:formId",
+    element: <PublicFormSubmissionPage />,
   },
   {
     path: "*",
