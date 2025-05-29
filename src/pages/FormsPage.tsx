@@ -231,57 +231,59 @@ const FormsPage = () => {
                         <p className="text-gray-500">Loading submissions...</p>
                       </div>
                     ) : (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Submitter</TableHead>
-                            <TableHead>Submitted At</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {filteredSubmissions.length === 0 ? (
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader>
                             <TableRow>
-                              <TableCell colSpan={4} className="text-center py-8 text-gray-500">
-                                {searchTerm ? 'No submissions match your search' : 'No submissions yet'}
-                              </TableCell>
+                              <TableHead className="min-w-[150px]">Submitter</TableHead>
+                              <TableHead className="min-w-[150px]">Submitted At</TableHead>
+                              <TableHead className="min-w-[100px]">Status</TableHead>
+                              <TableHead className="min-w-[100px] text-right">Actions</TableHead>
                             </TableRow>
-                          ) : (
-                            filteredSubmissions.map((submission, index) => {
-                              // Add debug logging for each submission
-                              console.log(`Rendering submission ${index}:`, {
-                                id: submission.id,
-                                submitter_name: submission.submitter_name,
-                                status: submission.status,
-                                hasResponses: submission.responses && Array.isArray(submission.responses),
-                                responsesLength: submission.responses?.length
-                              });
-                              
-                              return (
-                                <TableRow key={submission.id}>
-                                  <TableCell className="font-medium">
-                                    {submission.submitter_name || 'Anonymous'}
-                                  </TableCell>
-                                  <TableCell>{formatDate(submission.created_at)}</TableCell>
-                                  <TableCell>{getStatusBadge(submission.status)}</TableCell>
-                                  <TableCell className="text-right">
-                                    <Button 
-                                      variant="outline" 
-                                      size="sm" 
-                                      className="gap-1"
-                                      onClick={() => handleViewSubmission(submission)}
-                                    >
-                                      <Eye className="h-4 w-4" />
-                                      View
-                                    </Button>
-                                  </TableCell>
-                                </TableRow>
-                              );
-                            })
-                          )}
-                        </TableBody>
-                      </Table>
+                          </TableHeader>
+                          <TableBody>
+                            {filteredSubmissions.length === 0 ? (
+                              <TableRow>
+                                <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                                  {searchTerm ? 'No submissions match your search' : 'No submissions yet'}
+                                </TableCell>
+                              </TableRow>
+                            ) : (
+                              filteredSubmissions.map((submission, index) => {
+                                // Add debug logging for each submission
+                                console.log(`Rendering submission ${index}:`, {
+                                  id: submission.id,
+                                  submitter_name: submission.submitter_name,
+                                  status: submission.status,
+                                  hasResponses: submission.responses && Array.isArray(submission.responses),
+                                  responsesLength: submission.responses?.length
+                                });
+                                
+                                return (
+                                  <TableRow key={submission.id}>
+                                    <TableCell className="font-medium min-w-[150px]">
+                                      {submission.submitter_name || 'Anonymous'}
+                                    </TableCell>
+                                    <TableCell className="min-w-[150px]">{formatDate(submission.created_at)}</TableCell>
+                                    <TableCell className="min-w-[100px]">{getStatusBadge(submission.status)}</TableCell>
+                                    <TableCell className="min-w-[100px] text-right">
+                                      <Button 
+                                        variant="outline" 
+                                        size="sm" 
+                                        className="gap-1"
+                                        onClick={() => handleViewSubmission(submission)}
+                                      >
+                                        <Eye className="h-4 w-4" />
+                                        View
+                                      </Button>
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
                     )}
                   </CardContent>
                 </Card>
