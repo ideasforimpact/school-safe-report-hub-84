@@ -6,6 +6,8 @@ import { usePublicForm } from '@/hooks/usePublicForm';
 import ConditionalFormRenderer from '@/components/forms/ConditionalFormRenderer';
 import PublicLayout from '@/components/layout/PublicLayout';
 import { AlertCircle } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 
 const PublicFormSubmissionPage = () => {
   const { formId } = useParams<{ formId: string }>();
@@ -43,10 +45,69 @@ const PublicFormSubmissionPage = () => {
     );
   }
 
-  const handleFormSubmit = (data: Record<string, any>) => {
-    console.log('Form submitted:', data);
-    // TODO: Implement form submission logic
-    alert('Form submitted successfully! (This is a placeholder - implementation needed)');
+  const handleFormSubmit = async (data: Record<string, any>) => {
+    try {
+      console.log('Submitting form data:', data);
+
+      // Convert form data to responses array format
+      const responses = Object.entries(data).map(([fieldId, value]) => {
+        const field = form.fields.find(f => f.id === fieldId);
+        return {
+          field_id: fieldId,
+          field_label: field?.label || 'Unknown Field',
+          field_type: field?.type || 'text_input',
+          value: value
+        };
+      });
+
+      // Call the submit-form edge function
+      const { data: result, error } = await supabase.functions.invoke('submit-form', {
+        body: {
+          form_id: formId,
+          responses: responses,
+          submitter_name: data.submitter_name || null,
+          submitter_email: data.submitter_email || null,
+          comments: data.comments || null
+        }
+      });
+
+      if (error) {
+        console.error('Form submission error:', error);
+        toast({
+          title: "Error",
+          description: "Failed to submit form. Please try again.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (!result.success) {
+        console.error('Form submission failed:', result.error);
+        toast({
+          title: "Error", 
+          description: result.error || "Failed to submit form. Please try again.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      console.log('Form submitted successfully:', result.data);
+      toast({
+        title: "Success",
+        description: "Form submitted successfully! Thank you for your submission."
+      });
+
+      // Optionally redirect or clear the form
+      // window.location.reload(); // Uncomment if you want to reload the page
+
+    } catch (err) {
+      console.error('Unexpected error during form submission:', err);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
