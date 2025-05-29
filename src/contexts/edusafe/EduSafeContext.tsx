@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { EduSafeResource } from '@/types/eduSafeTypes';
 import { useAuth } from '@/contexts/auth/AuthContext';
@@ -8,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 interface EduSafeContextType {
   resources: EduSafeResource[];
-  addResource: (resource: Omit<EduSafeResource, 'id' | 'uploadDate' | 'uploaderId' | 'uploaderName' | 'ownerType'>) => Promise<void>;
+  addResource: (resource: Omit<EduSafeResource, 'id' | 'uploadDate' | 'uploaderId' | 'uploaderName' | 'ownerType' | 'resourceType'>) => Promise<void>;
   updateResource: (id: string, updatedResource: Partial<EduSafeResource>) => Promise<void>;
   deleteResource: (id: string) => Promise<void>;
   getResourceById: (id: string) => EduSafeResource | undefined;
@@ -137,7 +136,7 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
     fetchResources();
   }, []);
 
-  const addResource = async (resource: Omit<EduSafeResource, 'id' | 'uploadDate' | 'uploaderId' | 'uploaderName' | 'ownerType'>) => {
+  const addResource = async (resource: Omit<EduSafeResource, 'id' | 'uploadDate' | 'uploaderId' | 'uploaderName' | 'ownerType' | 'resourceType'>) => {
     try {
       const { data, error } = await supabase
         .from('edusafe_resources')

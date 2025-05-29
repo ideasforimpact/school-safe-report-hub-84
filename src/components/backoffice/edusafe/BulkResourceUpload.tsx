@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Upload, Check, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -82,7 +81,7 @@ const BulkResourceUploadInner: React.FC = () => {
             ? `${title} - ${file.name}`
             : title;
           
-          addResource({
+          await addResource({
             title: resourceTitle,
             description,
             category,

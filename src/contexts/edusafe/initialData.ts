@@ -23,7 +23,8 @@ export const initialResources: EduSafeResource[] = [
     uploadDate: currentDate,
     uploaderId: 'admin-1',
     uploaderName: 'System Administrator',
-    ownerType: 'saas'
+    ownerType: 'saas',
+    resourceType: 'Global Resource'
   },
   {
     id: uuidv4(),
@@ -41,7 +42,8 @@ export const initialResources: EduSafeResource[] = [
     uploadDate: currentDate,
     uploaderId: 'admin-1',
     uploaderName: 'System Administrator',
-    ownerType: 'saas'
+    ownerType: 'saas',
+    resourceType: 'Global Resource'
   },
   {
     id: uuidv4(),
@@ -59,7 +61,8 @@ export const initialResources: EduSafeResource[] = [
     uploadDate: currentDate,
     uploaderId: 'admin-1',
     uploaderName: 'System Administrator',
-    ownerType: 'saas'
+    ownerType: 'saas',
+    resourceType: 'Global Resource'
   },
   {
     id: uuidv4(),
@@ -77,7 +80,8 @@ export const initialResources: EduSafeResource[] = [
     uploadDate: currentDate,
     uploaderId: 'admin-1',
     uploaderName: 'System Administrator',
-    ownerType: 'saas'
+    ownerType: 'saas',
+    resourceType: 'Global Resource'
   },
   {
     id: uuidv4(),
@@ -96,6 +100,7 @@ export const initialResources: EduSafeResource[] = [
     uploaderId: 'client-1',
     uploaderName: 'North Valley School Admin',
     ownerType: 'school',
-    clientId: 'client-1'
+    clientId: 'client-1',
+    resourceType: 'School Resource'
   }
 ];
