@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { EduSafeResource } from '@/types/eduSafeTypes';
 import { useAuth } from '@/contexts/auth/AuthContext';
@@ -37,33 +38,27 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
     try {
       setLoading(true);
       
-      // Fetch data with LEFT JOIN to include both regular and backoffice resources
-      const { data, error } = await supabase
+      // Fetch regular edusafe_resources
+      const { data: regularResources, error: regularError } = await supabase
         .from('edusafe_resources')
-        .select(`
-          *,
-          backoffice_resource:backoffice_edusafe_resource!left(
-            id,
-            title,
-            description,
-            category,
-            tags,
-            document_url,
-            created_at,
-            updated_at,
-            uploaded_by,
-            client_id
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (regularError) throw regularError;
+
+      // Fetch backoffice resources
+      const { data: backofficeResources, error: backofficeError } = await supabase
+        .from('backoffice_edusafe_resource')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (backofficeError) throw backofficeError;
 
       // Transform database records to EduSafeResource format
       const transformedResources: EduSafeResource[] = [];
 
       // Process regular edusafe_resources
-      (data || []).forEach(record => {
+      (regularResources || []).forEach(record => {
         transformedResources.push({
           id: record.id,
           title: record.title,
@@ -86,16 +81,8 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
         });
       });
 
-      // Fetch backoffice resources separately to add them with Global Resource type
-      const { data: backofficeData, error: backofficeError } = await supabase
-        .from('backoffice_edusafe_resource')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (backofficeError) throw backofficeError;
-
-      // Process backoffice resources
-      (backofficeData || []).forEach(record => {
+      // Process backoffice resources (Global Resources)
+      (backofficeResources || []).forEach(record => {
         transformedResources.push({
           id: `backoffice-${record.id}`,
           title: record.title,
@@ -254,10 +241,6 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const refreshResources = async () => {
     await fetchResources();
   };
-
-  useEffect(() => {
-    fetchResources();
-  }, []);
 
   const value = {
     resources,
