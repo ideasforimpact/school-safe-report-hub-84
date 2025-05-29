@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { EduSafeResource } from '@/types/eduSafeTypes';
 import { useAuth } from '@/contexts/auth/AuthContext';
@@ -129,6 +130,10 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     if (user?.clientId) {
       fetchResources();
+    } else {
+      // Set loading to false and clear resources when no client ID
+      setLoading(false);
+      setResources([]);
     }
   }, [user?.clientId]);
 
