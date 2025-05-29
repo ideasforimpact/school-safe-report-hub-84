@@ -247,8 +247,6 @@ const FormConfigurationContent = () => {
                 <TableRow>
                   <TableHead>Form Title</TableHead>
                   <TableHead>Description</TableHead>
-                  <TableHead>Fields</TableHead>
-                  <TableHead>Field Types</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -259,10 +257,6 @@ const FormConfigurationContent = () => {
                   <TableRow key={form.id}>
                     <TableCell className="font-medium">{form.title}</TableCell>
                     <TableCell className="max-w-xs truncate">{form.description}</TableCell>
-                    <TableCell>{form.fields.length} fields</TableCell>
-                    <TableCell className="max-w-xs truncate text-sm text-gray-600">
-                      {getFieldTypesDisplay(form.fields)}
-                    </TableCell>
                     <TableCell>
                       <Badge variant={form.is_active ? "default" : "secondary"}>
                         {form.is_active ? "Active" : "Inactive"}
