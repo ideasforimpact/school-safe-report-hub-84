@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { EduSafeResource } from '@/types/eduSafeTypes';
 import { useAuth } from '@/contexts/auth/AuthContext';
@@ -56,19 +55,20 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
       // Get client type ID from user data
       const clientTypeId = user?.client?.client_type?.id || user?.clientType?.id;
 
-      // Fetch backoffice resources filtered by client_type_id
+      // Fetch backoffice resources using the edge function with client_type_id
       let backofficeResources = [];
       if (clientTypeId) {
-        const { data: backofficeData, error: backofficeError } = await supabase
-          .from('backoffice_edusafe_resource')
-          .select('*')
-          .eq('client_type_id', clientTypeId)
-          .order('created_at', { ascending: false });
+        const { data: backofficeData, error: backofficeError } = await supabase.functions.invoke('backoffice-edusafe-resource', {
+          body: { 
+            action: 'list',
+            client_type_id: clientTypeId
+          }
+        });
 
         if (backofficeError) {
           console.error('Error fetching backoffice resources:', backofficeError);
         } else {
-          backofficeResources = backofficeData || [];
+          backofficeResources = backofficeData.resources || [];
         }
       }
 
