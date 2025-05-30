@@ -10,6 +10,7 @@ import Layout from '@/components/layout/Layout';
 import { useFetchForms } from '@/hooks/useFetchForms';
 import { useFormSubmissions } from '@/hooks/useFormSubmissions';
 import SubmissionDetailDialog from '@/components/forms/SubmissionDetailDialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 const FormsPage = () => {
   const { forms, loading, error } = useFetchForms();
@@ -30,6 +31,7 @@ const FormsPage = () => {
       submitter_name: sub.submitter_name,
       status: sub.status,
       created_at: sub.created_at,
+      comments: sub.comments,
       hasAllFields: !!(sub.submitter_name && sub.status && sub.created_at)
     }))
   });
@@ -55,6 +57,11 @@ const FormsPage = () => {
       
       // Search in status
       if (submission.status?.toLowerCase().includes(searchLower)) {
+        return true;
+      }
+
+      // Search in comments
+      if (submission.comments?.toLowerCase().includes(searchLower)) {
         return true;
       }
       
@@ -105,6 +112,32 @@ const FormsPage = () => {
 
   const handleSubmissionUpdate = () => {
     refetch();
+  };
+
+  // Function to truncate comments and show full text on hover
+  const renderComments = (comments: string | null) => {
+    if (!comments) {
+      return <span className="text-gray-400">-</span>;
+    }
+
+    if (comments.length <= 20) {
+      return <span>{comments}</span>;
+    }
+
+    const truncated = comments.substring(0, 20) + '...';
+    
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="cursor-help">{truncated}</span>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-xs break-words">
+            <p>{comments}</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
   };
 
   if (loading) {
@@ -244,6 +277,7 @@ const FormsPage = () => {
                             <TableRow>
                               <TableHead className="w-[200px]">Submitter</TableHead>
                               <TableHead className="w-[200px]">Submitted At</TableHead>
+                              <TableHead className="w-[200px]">Comments</TableHead>
                               <TableHead className="w-[120px]">Status</TableHead>
                               <TableHead className="w-[120px] text-right">Actions</TableHead>
                             </TableRow>
@@ -251,7 +285,7 @@ const FormsPage = () => {
                           <TableBody>
                             {filteredSubmissions.length === 0 ? (
                               <TableRow>
-                                <TableCell colSpan={4} className="text-center py-8 text-gray-500">
+                                <TableCell colSpan={5} className="text-center py-8 text-gray-500">
                                   {searchTerm ? 'No submissions match your search' : 'No submissions yet'}
                                 </TableCell>
                               </TableRow>
@@ -264,6 +298,7 @@ const FormsPage = () => {
                                   submitter_email: submission.submitter_email,
                                   status: submission.status,
                                   created_at: submission.created_at,
+                                  comments: submission.comments,
                                   hasResponses: submission.responses && Array.isArray(submission.responses),
                                   responsesLength: submission.responses?.length,
                                   fullSubmission: submission
@@ -283,6 +318,9 @@ const FormsPage = () => {
                                     </TableCell>
                                     <TableCell className="w-[200px]">
                                       {submission.created_at ? formatDate(submission.created_at) : 'Unknown'}
+                                    </TableCell>
+                                    <TableCell className="w-[200px]">
+                                      {renderComments(submission.comments)}
                                     </TableCell>
                                     <TableCell className="w-[120px]">
                                       {submission.status ? getStatusBadge(submission.status) : 

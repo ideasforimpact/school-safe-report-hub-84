@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -184,7 +185,7 @@ const UserManagement = () => {
             isActive: employee.status === true,
             createdAt: employee.createdAt || new Date().toISOString(),
             clientId: employee.clientId,
-            isSuperAdmin: employee.isSuperAdmin, // Fixed: Changed from is_super_admin to isSuperAdmin
+            isSuperAdmin: employee.isSuperAdmin,
             // Store module access items directly
             moduleAccessPayload: moduleAccessItems,
             // Add default role property to satisfy User interface
@@ -341,7 +342,7 @@ const UserManagement = () => {
             isActive: employee.status === true,
             createdAt: employee.createdAt || new Date().toISOString(),
             clientId: employee.clientId,
-            isSuperAdmin: employee.isSuperAdmin, // Fixed: Changed from is_super_admin to isSuperAdmin
+            isSuperAdmin: employee.isSuperAdmin,
             // Store module access items directly
             moduleAccessPayload: moduleAccessItems,
             // Add default role property to satisfy User interface
@@ -548,6 +549,26 @@ const UserManagement = () => {
     } catch (error) {
       console.error("Error reactivating user:", error);
       toast.error("Failed to reactivate user");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handler for importing employees from Excel
+  const handleImportEmployees = async (file: File) => {
+    if (!clientId) {
+      toast.error("No client context available for import");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      await processEmployeeExcel(file, clientId);
+      await refreshEmployeesList();
+      toast.success("Employees imported successfully");
+    } catch (error) {
+      console.error("Error importing employees:", error);
+      toast.error("Failed to import employees");
     } finally {
       setIsLoading(false);
     }
