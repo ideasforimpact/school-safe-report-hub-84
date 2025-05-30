@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { UserRole, ModulePermissions } from '@/contexts/auth/types';
 import {
@@ -15,24 +14,7 @@ import { Edit, Trash2, UserX, UserCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ModuleAccessItem } from '@/types/moduleAccess';
 import { EmployeeType, DepartmentType } from '@/contexts/auth/types';
-
-// Define EmployeeUser interface to match what's used in UserManagement
-interface EmployeeUser {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  employeeId?: string;
-  employeeType?: EmployeeType; 
-  department?: DepartmentType;
-  joiningDate?: string;
-  isActive: boolean;
-  createdAt: string;
-  clientId?: string;
-  isSuperAdmin?: boolean;
-  moduleAccessPayload?: ModuleAccessItem[];
-  role: 'user' | 'admin' | 'saas_owner';
-}
+import { EmployeeUser } from '@/pages/UserManagement';
 
 interface UserListProps {
   users: EmployeeUser[];

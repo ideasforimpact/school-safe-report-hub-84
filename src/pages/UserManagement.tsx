@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -64,8 +63,8 @@ const convertDepartmentType = (department: EmployeeContextDepartmentType): Depar
   return department as DepartmentType;
 };
 
-// Define a custom type for employees that we display in the UI
-interface EmployeeUser extends Omit<User, 'modulePermissions'> {
+// Export the EmployeeUser interface so it can be used by other components
+export interface EmployeeUser extends Omit<User, 'modulePermissions'> {
   moduleAccessPayload?: ModuleAccessItem[];
   employeeId?: string;
   employeeType?: EmployeeType; 
