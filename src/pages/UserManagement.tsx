@@ -14,7 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
-import { UserPlus, FileUp, RefreshCw } from 'lucide-react';
+import { UserPlus, FileUp, RefreshCw, AlertCircle } from 'lucide-react';
 import { User } from '@/contexts/auth/types';
 import { 
   Employee,
@@ -146,10 +146,20 @@ const UserManagement = () => {
 
   // Fetch employees from Supabase and map them to User format
   useEffect(() => {
-    fetchEmployeesList();
-  }, []);
+    // Only fetch if we have a clientId
+    if (clientId) {
+      fetchEmployeesList();
+    }
+  }, [clientId]);
 
   const fetchEmployeesList = async () => {
+    // Add clientId restriction check
+    if (!clientId) {
+      console.warn("Cannot fetch employees: No clientId available");
+      toast.error("Unable to load employees: No client context available");
+      return;
+    }
+
     try {
       setIsLoading(true);
       // Pass clientId to filter employees by client
@@ -304,6 +314,12 @@ const UserManagement = () => {
 
   // Function to refresh the employees list after changes
   const refreshEmployeesList = async () => {
+    // Add clientId restriction check
+    if (!clientId) {
+      console.warn("Cannot refresh employees: No clientId available");
+      return;
+    }
+
     try {
       // Pass clientId to filter employees by client
       const employeeData = await getAllEmployeesFromApi(clientId);
@@ -549,89 +565,21 @@ const UserManagement = () => {
     setCurrentUser(null);
   };
 
-  // Handler for editing a user click - Uses moduleAccessPayload only
-  const handleEditClick = async (user: EmployeeUser) => {
-    setCurrentUser(user);
-    
-    try {
-      // Get the module access items directly
-      let moduleAccessItems: ModuleAccessItem[] = [];
-      try {
-        // Check if user already has moduleAccessPayload
-        if (user.moduleAccessPayload && Array.isArray(user.moduleAccessPayload)) {
-          console.log("Using existing moduleAccessPayload from user:", user.moduleAccessPayload);
-          moduleAccessItems = user.moduleAccessPayload;
-        } else {
-          // Fetch from API if not available
-          moduleAccessItems = await getEmployeeModuleAccessItems(user.id);
-          console.log("Retrieved module access items from API:", moduleAccessItems);
-        }
-      } catch (error) {
-        console.error("Error fetching module access items:", error);
-        moduleAccessItems = [];
-      }
-      
-      setFormData({
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        employeeId: user.employeeId,
-        employeeType: user.employeeType,
-        department: user.department,
-        joiningDate: user.joiningDate,
-        moduleAccessPayload: moduleAccessItems
-      });
-    } catch (error) {
-      console.error("Error preparing user data for edit:", error);
-      toast.error("Failed to prepare user data for editing");
-    }
-    
-    setIsEditDialogOpen(true);
-  };
-
-  // Handler for importing employees
-  const handleImportEmployees = async (file: File) => {
-    try {
-      setIsLoading(true);
-      console.log("Importing employees with clientId:", clientId);
-      
-      await processEmployeeExcel(file, clientId);
-      
-      await fetchEmployeesList();
-      toast.success("Employees imported successfully");
-      setIsImportDialogOpen(false);
-    } catch (error) {
-      console.error("Import process failed:", error);
-      toast.error(`Failed to process employee import: ${(error as Error).message || 'Unknown error'}`);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Handle refresh button click
-  const handleRefreshEmployeesList = async () => {
-    try {
-      setIsLoading(true);
-      await fetchEmployeesList();
-      toast.success("Employee list refreshed");
-    } catch (error) {
-      console.error("Failed to refresh employees:", error);
-      toast.error("Failed to refresh employee list");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  if (!isAdmin && !isSuperAdmin) {
+  // If no clientId is available, show a warning message
+  if (!clientId) {
     return (
       <Layout>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center">
-              <p>You don't have permission to access this page.</p>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="container mx-auto py-6 max-w-7xl">
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-12">
+              <AlertCircle className="h-16 w-16 text-amber-500 mb-4" />
+              <h2 className="text-xl font-semibold text-gray-900 mb-2">No Client Context Available</h2>
+              <p className="text-gray-600 text-center max-w-md">
+                Unable to load user management. Please ensure you have a valid client context or contact your administrator.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
       </Layout>
     );
   }
@@ -674,7 +622,7 @@ const UserManagement = () => {
             <Button
               variant="ghost"
               size="sm"
-              onClick={handleRefreshEmployeesList}
+              onClick={fetchEmployeesList}
               disabled={isLoading}
               title="Refresh employee list"
             >
@@ -689,10 +637,51 @@ const UserManagement = () => {
             ) : (
               <UserList 
                 users={employeeUsers.length > 0 ? employeeUsers : []}
-                onEditClick={handleEditClick}
-                onDeleteUser={handleDeleteUser}
-                onDeactivateUser={handleDeactivateUser}
-                onReactivateUser={handleReactivateUser}
+                onEditClick={(user) => {
+                  setCurrentUser(user);
+                  setFormData({
+                    firstName: user.firstName,
+                    lastName: user.lastName,
+                    email: user.email,
+                    employeeId: user.employeeId,
+                    employeeType: user.employeeType,
+                    department: user.department,
+                    joiningDate: user.joiningDate,
+                    clientId: user.clientId || clientId,
+                    moduleAccessPayload: user.moduleAccessPayload || []
+                  });
+                  setIsEditDialogOpen(true);
+                }}
+                onDeleteUser={async (id) => {
+                  try {
+                    await deleteExistingUser([] as any, id);
+                    await refreshEmployeesList();
+                    toast.success("User deleted successfully");
+                  } catch (error) {
+                    console.error("Error deleting user:", error);
+                    toast.error("Failed to delete user");
+                  }
+                }}
+                onDeactivateUser={async (id) => {
+                  try {
+                    await deactivateExistingUser([] as any, id);
+                    await refreshEmployeesList();
+                    toast.success("User deactivated successfully");
+                  } catch (error) {
+                    console.error("Error deactivating user:", error);
+                    toast.error("Failed to deactivate user");
+                  }
+                }}
+                onReactivateUser={async (id) => {
+                  try {
+                    await reactivateExistingUser([] as any, id);
+                    await refreshEmployeesList();
+                    toast.success("User reactivated successfully");
+                  } catch (error) {
+                    console.error("Error reactivating user:", error);
+                    toast.error("Failed to reactivate user");
+                  }
+                }}
               />
             )}
           </CardContent>
