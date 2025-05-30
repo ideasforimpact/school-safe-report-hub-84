@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { User, UserRole, ModulePermissions } from '@/contexts/auth/types';
+import { UserRole, ModulePermissions } from '@/contexts/auth/types';
 import {
   Table,
   TableBody,
@@ -13,10 +13,30 @@ import { Button } from '@/components/ui/button';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Edit, Trash2, UserX, UserCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { ModuleAccessItem } from '@/types/moduleAccess';
+import { EmployeeType, DepartmentType } from '@/contexts/auth/types';
+
+// Define EmployeeUser interface to match what's used in UserManagement
+interface EmployeeUser {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  employeeId?: string;
+  employeeType?: EmployeeType; 
+  department?: DepartmentType;
+  joiningDate?: string;
+  isActive: boolean;
+  createdAt: string;
+  clientId?: string;
+  isSuperAdmin?: boolean;
+  moduleAccessPayload?: ModuleAccessItem[];
+  role: 'user' | 'admin' | 'saas_owner';
+}
 
 interface UserListProps {
-  users: User[];
-  onEditClick: (user: User) => void;
+  users: EmployeeUser[];
+  onEditClick: (user: EmployeeUser) => void;
   onDeleteUser: (id: string) => void;
   onDeactivateUser: (id: string) => void;
   onReactivateUser: (id: string) => void;
