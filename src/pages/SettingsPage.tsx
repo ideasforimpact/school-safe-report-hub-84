@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -13,9 +13,14 @@ import { EducationalStructureConfig } from '@/pages/configuration/EducationalStr
 import { useEducationalConfigurationManagement } from '@/hooks/useEducationalConfigurationManagement';
 import AssessmentConfigurationContent from '@/components/configuration/AssessmentConfigurationContent';
 import FormConfigurationContent from '@/components/configuration/FormConfigurationContent';
+import { useEmployeeData } from '@/hooks/useEmployeeData';
 
 const SettingsPage = () => {
   const [searchParams] = useSearchParams();
+  const { user } = useAuth();
+  const { employeeData } = useEmployeeData();
+  const [clientType, setClientType] = useState<string | null>(null);
+  
   const { activeTab, setActiveTab, loading, campuses, classes, sections, facilities, 
           handleAddCampus, handleUpdateCampus, handleDeleteCampus,
           handleAddClass, handleUpdateClass, handleDeleteClass,
@@ -31,7 +36,36 @@ const SettingsPage = () => {
     }
   }, [searchParams]);
 
+  // Determine client type from employeeData or user data
+  useEffect(() => {
+    console.log('SettingsPage - employeeData:', employeeData);
+    console.log('SettingsPage - user:', user);
+    
+    let detectedClientType = null;
+    
+    // First check employeeData
+    if (employeeData?.clientType?.key) {
+      detectedClientType = employeeData.clientType.key;
+    } else if (employeeData?.client?.client_type?.key) {
+      detectedClientType = employeeData.client.client_type.key;
+    } 
+    // Fallback to user data if employeeData doesn't have clientType
+    else if (user?.clientType?.key) {
+      detectedClientType = user.clientType.key;
+    } else if (user?.client?.client_type?.key) {
+      detectedClientType = user.client.client_type.key;
+    }
+    
+    console.log('SettingsPage - Detected client type:', detectedClientType);
+    setClientType(detectedClientType);
+  }, [employeeData, user]);
+
   const defaultTab = searchParams.get('tab') === 'form' ? 'form' : 'incident';
+
+  // Determine if educational tabs should be shown (for schools and similar educational institutions)
+  const showEducationalTabs = clientType === 'school' || clientType === 'college' || clientType === 'university' || clientType === 'educational';
+
+  console.log('SettingsPage - showEducationalTabs:', showEducationalTabs, 'clientType:', clientType);
 
   return (
     <Layout>
@@ -59,14 +93,18 @@ const SettingsPage = () => {
               <Users className="h-4 w-4" />
               <span>User Management</span>
             </TabsTrigger>
-            <TabsTrigger value="student" className="flex items-center gap-2">
-              <GraduationCap className="h-4 w-4" />
-              <span>Student Management</span>
-            </TabsTrigger>
-            <TabsTrigger value="educational" className="flex items-center gap-2">
-              <Building className="h-4 w-4" />
-              <span>Educational Structure</span>
-            </TabsTrigger>
+            {showEducationalTabs && (
+              <>
+                <TabsTrigger value="student" className="flex items-center gap-2">
+                  <GraduationCap className="h-4 w-4" />
+                  <span>Student Management</span>
+                </TabsTrigger>
+                <TabsTrigger value="educational" className="flex items-center gap-2">
+                  <Building className="h-4 w-4" />
+                  <span>Educational Structure</span>
+                </TabsTrigger>
+              </>
+            )}
           </TabsList>
           
           <TabsContent value="incident">
@@ -117,49 +155,53 @@ const SettingsPage = () => {
             </Card>
           </TabsContent>
           
-          <TabsContent value="student" className="p-0">
-            <Card>
-              <CardHeader>
-                <CardTitle>Student Management</CardTitle>
-                <CardDescription>Manage students in your institution</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <StudentManagement embedded={true} />
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="educational" className="p-0 bg-white rounded-md">
-            <Card>
-              <CardHeader>
-                <CardTitle>Educational Structure Configuration</CardTitle>
-                <CardDescription>Manage campuses, classes, sections, and facilities</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <EducationalStructureConfig 
-                  activeTab={activeTab}
-                  setActiveTab={setActiveTab}
-                  loading={loading}
-                  campuses={campuses}
-                  addCampus={handleAddCampus}
-                  updateCampus={handleUpdateCampus}
-                  deleteCampus={handleDeleteCampus}
-                  classes={classes}
-                  addClass={handleAddClass}
-                  updateClass={handleUpdateClass}
-                  deleteClass={handleDeleteClass}
-                  sections={sections}
-                  addSection={handleAddSection}
-                  updateSection={handleUpdateSection}
-                  deleteSection={handleDeleteSection}
-                  facilities={facilities}
-                  addFacility={handleAddFacility}
-                  updateFacility={handleUpdateFacility}
-                  deleteFacility={handleDeleteFacility}
-                />
-              </CardContent>
-            </Card>
-          </TabsContent>
+          {showEducationalTabs && (
+            <>
+              <TabsContent value="student" className="p-0">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Student Management</CardTitle>
+                    <CardDescription>Manage students in your institution</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <StudentManagement embedded={true} />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              
+              <TabsContent value="educational" className="p-0 bg-white rounded-md">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Educational Structure Configuration</CardTitle>
+                    <CardDescription>Manage campuses, classes, sections, and facilities</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <EducationalStructureConfig 
+                      activeTab={activeTab}
+                      setActiveTab={setActiveTab}
+                      loading={loading}
+                      campuses={campuses}
+                      addCampus={handleAddCampus}
+                      updateCampus={handleUpdateCampus}
+                      deleteCampus={handleDeleteCampus}
+                      classes={classes}
+                      addClass={handleAddClass}
+                      updateClass={handleUpdateClass}
+                      deleteClass={handleDeleteClass}
+                      sections={sections}
+                      addSection={handleAddSection}
+                      updateSection={handleUpdateSection}
+                      deleteSection={handleDeleteSection}
+                      facilities={facilities}
+                      addFacility={handleAddFacility}
+                      updateFacility={handleUpdateFacility}
+                      deleteFacility={handleDeleteFacility}
+                    />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </>
+          )}
         </Tabs>
       </div>
     </Layout>
