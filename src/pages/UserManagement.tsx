@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -63,13 +64,14 @@ const convertDepartmentType = (department: EmployeeContextDepartmentType): Depar
   return department as DepartmentType;
 };
 
-// Define a custom type for employees that we display in the UI - extending User properly
-interface EmployeeUser extends User {
+// Define a custom type for employees that we display in the UI
+interface EmployeeUser extends Omit<User, 'modulePermissions'> {
   moduleAccessPayload?: ModuleAccessItem[];
   employeeId?: string;
   employeeType?: EmployeeType; 
   department?: DepartmentType;
   joiningDate?: string;
+  // No need to explicitly define role here since we're extending from User
 }
 
 // Main UserManagement component
@@ -186,10 +188,9 @@ const UserManagement = () => {
             isSuperAdmin: employee.isSuperAdmin,
             // Store module access items directly
             moduleAccessPayload: moduleAccessItems,
-            // Add required properties from User interface
-            role: 'user' as const,
-            modulePermissions: {} as any
-          } as EmployeeUser;
+            // Add default role property to satisfy User interface
+            role: 'user' as const
+          };
         }));
 
         setEmployeeUsers(processedUsers);
@@ -293,7 +294,7 @@ const UserManagement = () => {
               toast.success("Employee record created via local storage");
             }
             
-            await fetchEmployeesList();
+            refreshEmployeesList();
           } catch (empError) {
             console.error("Error adding employee record:", empError);
             toast.error("User added but employee record creation failed");
@@ -301,13 +302,7 @@ const UserManagement = () => {
         }
         
         // toast.success("User added successfully");
-        setFormData({
-          firstName: '',
-          lastName: '',
-          email: '',
-          clientId: clientId,
-          moduleAccessPayload: []
-        });
+        resetForm();
         setIsAddDialogOpen(false);
       }
     } catch (error) {
@@ -443,13 +438,7 @@ const UserManagement = () => {
           }
         }
         
-        setFormData({
-          firstName: '',
-          lastName: '',
-          email: '',
-          clientId: clientId,
-          moduleAccessPayload: []
-        });
+        resetForm();
         setIsEditDialogOpen(false);
         await refreshEmployeesList();
       }
@@ -575,7 +564,7 @@ const UserManagement = () => {
     try {
       setIsLoading(true);
       await processEmployeeExcel(file, clientId);
-      await fetchEmployeesList();
+      await refreshEmployeesList();
       toast.success("Employees imported successfully");
     } catch (error) {
       console.error("Error importing employees:", error);
@@ -687,7 +676,7 @@ const UserManagement = () => {
                 onDeleteUser={async (id) => {
                   try {
                     await deleteExistingUser([] as any, id);
-                    await fetchEmployeesList();
+                    await refreshEmployeesList();
                     toast.success("User deleted successfully");
                   } catch (error) {
                     console.error("Error deleting user:", error);
@@ -697,7 +686,7 @@ const UserManagement = () => {
                 onDeactivateUser={async (id) => {
                   try {
                     await deactivateExistingUser([] as any, id);
-                    await fetchEmployeesList();
+                    await refreshEmployeesList();
                     toast.success("User deactivated successfully");
                   } catch (error) {
                     console.error("Error deactivating user:", error);
@@ -707,7 +696,7 @@ const UserManagement = () => {
                 onReactivateUser={async (id) => {
                   try {
                     await reactivateExistingUser([] as any, id);
-                    await fetchEmployeesList();
+                    await refreshEmployeesList();
                     toast.success("User reactivated successfully");
                   } catch (error) {
                     console.error("Error reactivating user:", error);
@@ -726,126 +715,8 @@ const UserManagement = () => {
         setIsOpen={setIsAddDialogOpen}
         formData={formData}
         setFormData={setFormData}
-        onSubmit={async () => {
-          try {
-            setIsLoading(true);
-            
-            // Make sure clientId is set
-            if (!formData.clientId && clientId) {
-              setFormData(prev => ({
-                ...prev,
-                clientId: clientId
-              }));
-            }
-            
-            console.log("Adding new user with data:", formData);
-            console.log("Module access payload:", formData.moduleAccessPayload);
-            
-            if (!formData.moduleAccessPayload || formData.moduleAccessPayload.length === 0) {
-              console.warn("No module access items selected.");
-            }
-            
-            // In a real app, we'd validate the form data here
-            const updatedUsers = await addNewUser(
-              [] as any,
-              { 
-                ...formData, 
-                clientId: formData.clientId || clientId,
-                password: 'defaultPassword123',
-                isActive: true,
-                // Add required modulePermissions property to satisfy interface
-                modulePermissions: {} as any,
-                // Default role
-                role: 'user' as const
-              }
-            );
-            
-            if (updatedUsers) {
-              // Also add the user as an employee using the Supabase edge function
-              if (formData.employeeId && formData.employeeType && formData.department && formData.joiningDate) {
-                try {
-                  // Prepare employee data for the edge function
-                  const employeeData = {
-                    employeeId: formData.employeeId,
-                    firstName: formData.firstName,
-                    lastName: formData.lastName,
-                    email: formData.email,
-                    employeeType: formData.employeeType as any,
-                    department: formData.department as any,
-                    joiningDate: formData.joiningDate,
-                    status: 'active' as EmploymentStatus,
-                    clientId: formData.clientId || clientId,
-                    moduleAccessPayload: formData.moduleAccessPayload || []
-                  };
-                  
-                  // First try the edge function
-                  try {
-                    console.log("Attempting to create employee via edge function:", employeeData);
-                    const { data, error } = await supabase.functions.invoke('employee-management', {
-                      body: JSON.stringify({
-                        operation: 'create',
-                        employee: employeeData
-                      })
-                    });
-                    
-                    if (error) {
-                      console.error("Edge function error:", error);
-                      throw error;
-                    }
-
-                    if(data?.hasOwnProperty("error")){
-                       toast.error(data?.error);
-                    }
-                    else{
-                        console.log("Employee created via edge function:", data);
-                        toast.success("Employee record created successfully");
-                    }
-                    
-                  } catch (edgeFuncError) {
-                    console.error("Edge function error:", edgeFuncError);
-                    // Fall back to the context function if the edge function fails
-                    await addEmployee({
-                      ...employeeData,
-                    } as any); // Cast as any to bypass type checking
-                    
-                    console.log("Employee created via context function");
-                    toast.success("Employee record created via local storage");
-                  }
-                  
-                  await fetchEmployeesList();
-                } catch (empError) {
-                  console.error("Error adding employee record:", empError);
-                  toast.error("User added but employee record creation failed");
-                }
-              }
-              
-              // toast.success("User added successfully");
-              setFormData({
-                firstName: '',
-                lastName: '',
-                email: '',
-                clientId: clientId,
-                moduleAccessPayload: []
-              });
-              setIsAddDialogOpen(false);
-            }
-          } catch (error) {
-            console.error("Error adding user:", error);
-            toast.error("Failed to add user");
-          } finally {
-            setIsLoading(false);
-          }
-        }}
-        resetForm={() => {
-          setFormData({
-            firstName: '',
-            lastName: '',
-            email: '',
-            clientId: clientId,
-            moduleAccessPayload: []
-          });
-          setCurrentUser(null);
-        }}
+        onSubmit={handleAddUser}
+        resetForm={resetForm}
         isLoading={isLoading}
         clientId={clientId}
       />
@@ -856,112 +727,8 @@ const UserManagement = () => {
         setIsOpen={setIsEditDialogOpen}
         formData={formData}
         setFormData={setFormData}
-        onSubmit={async () => {
-          if (!currentUser) return;
-          
-          try {
-            setIsLoading(true);
-            
-            console.log("Updating user with data:", formData);
-            console.log("Module access payload:", formData.moduleAccessPayload);
-            
-            // Need to provide modulePermissions for API compatibility
-            const updatedUsers = await updateExistingUser(
-              [] as any,
-              currentUser.id,
-              {
-                ...formData,
-                // Add required modulePermissions property to satisfy interface
-                modulePermissions: {} as any,
-                // Keep existing role
-                role: currentUser.role || 'user' as const
-              }
-            );
-            
-            if (updatedUsers) {
-              // Also update the employee record if it exists
-              if (formData.employeeId) {
-                try {
-                  // Prepare update data
-                  const updateData = {
-                    firstName: formData.firstName,
-                    lastName: formData.lastName,
-                    email: formData.email,
-                    employeeType: formData.employeeType,
-                    department: formData.department,
-                    moduleAccessPayload: formData.moduleAccessPayload || []
-                  };
-                  
-                  // Try to update via edge function first
-                  try {
-                    const { data, error } = await supabase.functions.invoke('employee-management', {
-                      body: JSON.stringify({
-                        operation: 'update',
-                        employee: {
-                          id: currentUser.id,
-                          ...updateData
-                        }
-                      })
-                    });
-                    
-                    if (error) throw error;
-                    
-                    // Check if the response contains an error
-                    if (data && data.error) {
-                      console.error("Error from edge function:", data.error);
-                      toast.error(data.error);
-                      return;
-                    }
-                    
-                    // If moduleAccessPayload exists, update it directly
-                    if (formData.moduleAccessPayload && formData.moduleAccessPayload.length > 0) {
-                      await updateEmployeeModulePermissions(currentUser.id, formData.moduleAccessPayload);
-                    }
-                    
-                    console.log("Employee updated via edge function:", data);
-                    
-                    // Only show success message if no error
-                    if (!data.error) {
-                      toast.success("User updated successfully");
-                    }
-                  } catch (edgeFuncError) {
-                    console.error("Edge function update error:", edgeFuncError);
-                    // Fall back to context if needed
-                    toast.error("Error updating employee via edge function");
-                  }
-                } catch (empError) {
-                  console.error("Error updating employee record:", empError);
-                  toast.error("User updated but employee record update failed");
-                }
-              }
-              
-              setFormData({
-                firstName: '',
-                lastName: '',
-                email: '',
-                clientId: clientId,
-                moduleAccessPayload: []
-              });
-              setIsEditDialogOpen(false);
-              await fetchEmployeesList();
-            }
-          } catch (error) {
-            console.error("Error updating user:", error);
-            toast.error("Failed to update user");
-          } finally {
-            setIsLoading(false);
-          }
-        }}
-        resetForm={() => {
-          setFormData({
-            firstName: '',
-            lastName: '',
-            email: '',
-            clientId: clientId,
-            moduleAccessPayload: []
-          });
-          setCurrentUser(null);
-        }}
+        onSubmit={handleUpdateUser}
+        resetForm={resetForm}
         isLoading={isLoading}
         clientId={clientId}
       />
@@ -970,24 +737,7 @@ const UserManagement = () => {
       <ImportEmployeeDialog
         isOpen={isImportDialogOpen}
         setIsOpen={setIsImportDialogOpen}
-        onImportEmployees={async (file: File) => {
-          if (!clientId) {
-            toast.error("No client context available for import");
-            return;
-          }
-
-          try {
-            setIsLoading(true);
-            await processEmployeeExcel(file, clientId);
-            await fetchEmployeesList();
-            toast.success("Employees imported successfully");
-          } catch (error) {
-            console.error("Error importing employees:", error);
-            toast.error("Failed to import employees");
-          } finally {
-            setIsLoading(false);
-          }
-        }}
+        onImportEmployees={handleImportEmployees}
         clientId={clientId}
       />
     </Layout>
