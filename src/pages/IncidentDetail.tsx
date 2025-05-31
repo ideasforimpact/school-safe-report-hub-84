@@ -25,9 +25,9 @@ const IncidentDetail = () => {
   
   // Priority: Use fetched incident data if available, otherwise fall back to context
   useEffect(() => {
-    //console.log("IncidentDetail - Looking for incident with ID:", id);
-    //console.log("IncidentDetail - Fetched incident:", fetchedIncident);
-    //console.log("IncidentDetail - Available incidents in context:", incidents.length);
+    console.log("IncidentDetail - Looking for incident with ID:", id);
+    console.log("IncidentDetail - Fetched incident:", fetchedIncident);
+    console.log("IncidentDetail - Available incidents in context:", incidents.length);
     
     if (isFetchingIncident) {
       setIsLoading(true);
@@ -62,13 +62,13 @@ const IncidentDetail = () => {
         priority: fetchedIncident.priority.name,
         comments: fetchedIncident.comments || []
       };
-      //console.log("IncidentDetail - Using fetched incident data:", convertedIncident);
+      console.log("IncidentDetail - Using fetched incident data:", convertedIncident);
       setIncident(convertedIncident);
       setIsLoading(false);
     } else if (id && incidents.length > 0) {
       // Fall back to context data if fetch failed
       const contextIncident = getIncident(id);
-      //console.log("IncidentDetail - Using context incident:", contextIncident);
+      console.log("IncidentDetail - Using context incident:", contextIncident);
       setIncident(contextIncident || null);
       setIsLoading(false);
     } else if (!isFetchingIncident) {

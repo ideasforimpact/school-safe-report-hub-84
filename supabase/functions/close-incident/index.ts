@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
       throw new Error('Invalid authentication')
     }
 
-    //console.log('User attempting to close incident:', user.id)
+    console.log('User attempting to close incident:', user.id)
 
     const requestBody: CloseIncidentRequest = await req.json()
     
@@ -62,7 +62,7 @@ Deno.serve(async (req) => {
       throw new Error('contributing_factor is mandatory and must contain at least one factor')
     }
 
-    //console.log('Closing incident with payload:', requestBody)
+    console.log('Closing incident with payload:', requestBody)
 
     // Verify the incident exists and belongs to the client
     const { data: incident, error: fetchError } = await supabase
@@ -77,7 +77,7 @@ Deno.serve(async (req) => {
       throw new Error('Incident not found or access denied')
     }
 
-    //console.log('Found incident:', incident)
+    console.log('Found incident:', incident)
 
     // Get employee data to check permissions
     const { data: employee, error: employeeError } = await supabase
@@ -91,7 +91,7 @@ Deno.serve(async (req) => {
       throw new Error('Employee not found')
     }
 
-    //console.log('Employee data:', employee)
+    console.log('Employee data:', employee)
 
     // Check permissions
     const canClose = employee.is_super_admin || 
@@ -99,7 +99,7 @@ Deno.serve(async (req) => {
                     employee.client_id === requestBody.client_id
 
     if (!canClose) {
-      //console.log('Permission denied for user:', user.id)
+      console.log('Permission denied for user:', user.id)
       throw new Error('You do not have permission to close this incident')
     }
 
@@ -115,7 +115,7 @@ Deno.serve(async (req) => {
       throw new Error('Could not find Closed status')
     }
 
-    //console.log('Closed status ID:', closedStatus.id)
+    console.log('Closed status ID:', closedStatus.id)
 
     // Update the incident with closure data
     const { data: updatedIncident, error: updateError } = await supabase
@@ -136,7 +136,7 @@ Deno.serve(async (req) => {
       throw new Error(`Failed to close incident: ${updateError.message}`)
     }
 
-    //console.log('Successfully closed incident:', updatedIncident)
+    console.log('Successfully closed incident:', updatedIncident)
 
     return new Response(
       JSON.stringify({ 

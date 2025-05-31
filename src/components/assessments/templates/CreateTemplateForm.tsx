@@ -100,8 +100,8 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
 
   const onFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    //console.log('Form submission triggered');
-    //console.log('Form data:', { title, description, type, isActive, questions });
+    console.log('Form submission triggered');
+    console.log('Form data:', { title, description, type, isActive, questions });
     
     if (!validateForm()) {
       return;
@@ -119,7 +119,7 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
           isActive,
           questions
         });
-        //console.log('Template updated successfully');
+        console.log('Template updated successfully');
         toast.success('Template updated successfully');
       } else {
         // Create new template
@@ -130,9 +130,9 @@ const CreateTemplateForm: React.FC<CreateTemplateFormProps> = ({
           questions
         };
         
-        //console.log('Creating template with data:', templateData);
+        console.log('Creating template with data:', templateData);
         const newTemplateId = await createTemplate(templateData);
-        //console.log('Template created with ID:', newTemplateId);
+        console.log('Template created with ID:', newTemplateId);
         toast.success('Template created successfully');
       }
       

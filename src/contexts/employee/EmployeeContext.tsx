@@ -76,9 +76,9 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
       setLoading(true);
       
       // Enhanced logging for clientId debugging
-      //console.log("EmployeeContext: Adding employee with data:", employeeData);
-      //console.log("clientId value:", employeeData.clientId);
-      //console.log("typeof clientId:", typeof employeeData.clientId);
+      console.log("EmployeeContext: Adding employee with data:", employeeData);
+      console.log("clientId value:", employeeData.clientId);
+      console.log("typeof clientId:", typeof employeeData.clientId);
       
       // Prepare module access payload if employee has module permissions but no moduleAccessPayload
       if (employeeData.modulePermissions && !employeeData.moduleAccessPayload) {
@@ -92,7 +92,7 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
           }));
           
         employeeData.moduleAccessPayload = moduleAccessPayload;
-        //console.log("Generated module access payload:", moduleAccessPayload);
+        console.log("Generated module access payload:", moduleAccessPayload);
       }
       
       // Try to add employee to API first
@@ -112,8 +112,8 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
         }
         
         // Log the new employee with its ID and clientId
-        //console.log("Employee added successfully:", newEmployee);
-        //console.log("New employee clientId:", newEmployee.clientId);
+        console.log("Employee added successfully:", newEmployee);
+        console.log("New employee clientId:", newEmployee.clientId);
         
         setEmployees(prev => [...prev, newEmployee]);
         return newEmployee;
@@ -149,8 +149,8 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
         updates.clientId = currentEmployee.clientId;
       }
       
-      //console.log("EmployeeContext: Updating employee with updates:", updates);
-      //console.log("clientId in updates:", updates.clientId);
+      console.log("EmployeeContext: Updating employee with updates:", updates);
+      console.log("clientId in updates:", updates.clientId);
       
       // Try to update employee in API first
       try {
@@ -185,7 +185,7 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
       
       // Try to deactivate employee in API first
       try {
-        //console.log("Sending deactivation request for employee:", id);
+        console.log("Sending deactivation request for employee:", id);
         
         // Validate that we have a valid ID before proceeding
         if (!id) {
@@ -214,7 +214,7 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
         }
         
         const result = await response.json();
-        //console.log("Deactivation response:", result);
+        console.log("Deactivation response:", result);
         
         if (response.ok && !result.error) {
           // Update the local state to reflect the deactivated employee

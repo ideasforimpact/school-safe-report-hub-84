@@ -30,14 +30,14 @@ export function useIncidentFormData() {
   useEffect(() => {
     async function fetchData() {
       if (!employeeData?.clientId) {
-        //console.log('No client ID available for fetching incident form data');
+        console.log('No client ID available for fetching incident form data');
         setLoading(false);
         return;
       }
 
       setLoading(true);
       try {
-        //console.log('Fetching incident form data for client:', employeeData.clientId);
+        console.log('Fetching incident form data for client:', employeeData.clientId);
 
         // Fetch report types filtered by client_id
         const { data: reportTypes, error: reportTypesError } = await supabase
@@ -101,7 +101,7 @@ export function useIncidentFormData() {
           priorities: priorities || []
         });
 
-        //console.log('Successfully fetched incident form data:', {
+        console.log('Successfully fetched incident form data:', {
           reportTypes: reportTypes?.length || 0,
           categories: categories?.length || 0,
           subcategories: subcategories?.length || 0,

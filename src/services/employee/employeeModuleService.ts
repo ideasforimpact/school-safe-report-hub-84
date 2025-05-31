@@ -34,7 +34,7 @@ export const updateEmployeeModulePermissions = async (
 
     // Don't proceed if no permissions to add
     if (!permissionsArray.length) {
-      //console.log("No permissions to add");
+      console.log("No permissions to add");
       return true;
     }
 

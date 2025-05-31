@@ -26,7 +26,7 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      //console.log("File selected:", file.name, file.type, file.size);
+      console.log("File selected:", file.name, file.type, file.size);
       setSelectedFile(file);
       // Reset verification status when file changes
       setIsVerified(false);
@@ -43,7 +43,7 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
       return;
     }
     
-    //console.log("Starting verification for file:", selectedFile.name);
+    console.log("Starting verification for file:", selectedFile.name);
     setIsVerifying(true);
     try {
       const errors = await validateEmployeeExcel(selectedFile);
@@ -86,12 +86,12 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
       return;
     }
     
-    //console.log("Starting import process with client ID:", manualClientId || clientId);
+    console.log("Starting import process with client ID:", manualClientId || clientId);
     setIsLoading(true);
     try {
       // Use the manually entered clientId or fall back to the prop
       const effectiveClientId = manualClientId || clientId;
-      //console.log("Using effective client ID for import:", effectiveClientId);
+      console.log("Using effective client ID for import:", effectiveClientId);
       
       await onImportEmployees(selectedFile, effectiveClientId);
       setIsOpen(false);
@@ -107,7 +107,7 @@ const ImportEmployeeDialog = ({ isOpen, setIsOpen, onImportEmployees, clientId }
   
   // Function to programmatically click the file input
   const triggerFileSelect = () => {
-    //console.log("Triggering file selection dialog");
+    console.log("Triggering file selection dialog");
     fileInputRef.current?.click();
   };
 

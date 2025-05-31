@@ -17,7 +17,7 @@ export const processStudentData = async (rawData: RawStudentData[]): Promise<Imp
     updatedCount: 0
   };
 
-  //console.log("Processing student data:", rawData);
+  console.log("Processing student data:", rawData);
   
   try {
     // First, identify existing students by student_id for bulk processing
@@ -112,7 +112,7 @@ export const processStudentData = async (rawData: RawStudentData[]): Promise<Imp
           createdData.map(transformStudentData)
         );
         result.successCount = createdData.length;
-        //console.log(`Successfully added ${createdData.length} new students`);
+        console.log(`Successfully added ${createdData.length} new students`);
       }
     }
     
@@ -134,7 +134,7 @@ export const processStudentData = async (rawData: RawStudentData[]): Promise<Imp
       
       if (updatedData && updatedData.updated) {
         result.updatedCount = updatedData.count || studentsToUpdate.length;
-        //console.log(`Successfully updated ${result.updatedCount} existing students`);
+        console.log(`Successfully updated ${result.updatedCount} existing students`);
         
         if (updatedData.students) {
           result.addedStudents = result.addedStudents.concat(updatedData.students);

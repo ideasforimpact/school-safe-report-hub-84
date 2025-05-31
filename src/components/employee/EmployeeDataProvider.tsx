@@ -27,9 +27,9 @@ const EmployeeDataProvider: React.FC<EmployeeDataProviderProps> = ({ children })
   const isAdmin = isEmployeeAdmin(state);
   const isSuperAdmin = isEmployeeSuperAdmin(state);
   
-  //console.log("EmployeeDataProvider - employeeData:", employeeData);
-  //console.log("EmployeeDataProvider - isAdmin:", isAdmin);
-  //console.log("EmployeeDataProvider - isSuperAdmin:", isSuperAdmin);
+  console.log("EmployeeDataProvider - employeeData:", employeeData);
+  console.log("EmployeeDataProvider - isAdmin:", isAdmin);
+  console.log("EmployeeDataProvider - isSuperAdmin:", isSuperAdmin);
   
   return <>{children({ employeeData, isLoading, error, isAdmin, isSuperAdmin })}</>;
 };

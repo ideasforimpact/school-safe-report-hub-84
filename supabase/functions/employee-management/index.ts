@@ -18,16 +18,16 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    //console.log("Auth header present:", req.headers.get('Authorization') ? 'Yes' : 'No');
+    console.log("Auth header present:", req.headers.get('Authorization') ? 'Yes' : 'No');
 
     const rawBody = await req.text();
-    //console.log("Raw request body:", rawBody);
+    console.log("Raw request body:", rawBody);
 
     const { operation, employee, id } = JSON.parse(rawBody);
-    //console.log("Request body parsed successfully:", { operation, employee, id });
-    //console.log("Employee object:", JSON.stringify(employee, null, 2));
+    console.log("Request body parsed successfully:", { operation, employee, id });
+    console.log("Employee object:", JSON.stringify(employee, null, 2));
 
-    //console.log("Handling operation:", operation);
+    console.log("Handling operation:", operation);
 
     // Validate client exists for operations that need it
     if (operation === 'create' || operation === 'update') {
@@ -40,7 +40,7 @@ serve(async (req) => {
         clientId = employee.client_id;
       }
       
-      //console.log("Extracted clientId:", clientId);
+      console.log("Extracted clientId:", clientId);
       
       if (!clientId) {
         console.error("No client ID found in employee object:", employee);
@@ -56,7 +56,7 @@ serve(async (req) => {
         );
       }
 
-      //console.log("Validating client with ID:", clientId);
+      console.log("Validating client with ID:", clientId);
 
       const { data: client, error: clientError } = await supabaseClient
         .from('clients')
@@ -78,7 +78,7 @@ serve(async (req) => {
         );
       }
       
-      //console.log("Client validation successful for:", clientId);
+      console.log("Client validation successful for:", clientId);
     }
 
     switch (operation) {
@@ -116,10 +116,10 @@ serve(async (req) => {
 async function handleCreate(supabaseClient: any, employee: any) {
   const clientId = employee.clientId || employee.client_id;
   
-  //console.log("Creating employee with clientId:", clientId);
+  console.log("Creating employee with clientId:", clientId);
   
   // Check for duplicate email within the same client
-  //console.log("Checking for existing email", employee.email, "for client", clientId);
+  console.log("Checking for existing email", employee.email, "for client", clientId);
   const { data: existingEmployee, error: checkError } = await supabaseClient
     .from('employees')
     .select('id')
@@ -138,7 +138,7 @@ async function handleCreate(supabaseClient: any, employee: any) {
     );
   }
 
-  //console.log("Email", employee.email, "exists for client", clientId + ":", !!existingEmployee);
+  console.log("Email", employee.email, "exists for client", clientId + ":", !!existingEmployee);
 
   if (existingEmployee) {
     const errorMessage = `An employee with email ${employee.email} already exists for this client.`;
@@ -169,7 +169,7 @@ async function handleCreate(supabaseClient: any, employee: any) {
     is_super_admin: employee.is_super_admin || false
   };
 
-  //console.log("Creating employee with data:", employeeData);
+  console.log("Creating employee with data:", employeeData);
 
   const { data: newEmployee, error: createError } = await supabaseClient
     .from('employees')
@@ -201,7 +201,7 @@ async function handleCreate(supabaseClient: any, employee: any) {
     );
   }
 
-  //console.log("Employee created successfully:", newEmployee);
+  console.log("Employee created successfully:", newEmployee);
 
   // Handle module access if provided
   if (employee.moduleAccessPayload && Array.isArray(employee.moduleAccessPayload)) {
@@ -220,10 +220,10 @@ async function handleCreate(supabaseClient: any, employee: any) {
 async function handleUpdate(supabaseClient: any, employee: any) {
   const clientId = employee.clientId || employee.client_id;
   
-  //console.log("Updating employee with ID:", employee.id, "clientId:", clientId);
+  console.log("Updating employee with ID:", employee.id, "clientId:", clientId);
 
   // Check for duplicate email within the same client (excluding current employee)
-  //console.log("Checking for existing email", employee.email, "for client", clientId);
+  console.log("Checking for existing email", employee.email, "for client", clientId);
   const { data: existingEmployee, error: checkError } = await supabaseClient
     .from('employees')
     .select('id')
@@ -243,7 +243,7 @@ async function handleUpdate(supabaseClient: any, employee: any) {
     );
   }
 
-  //console.log("Email", employee.email, "exists for client", clientId + ":", !!existingEmployee);
+  console.log("Email", employee.email, "exists for client", clientId + ":", !!existingEmployee);
 
   if (existingEmployee) {
     const errorMessage = `An employee with email ${employee.email} already exists for this client.`;
@@ -268,7 +268,7 @@ async function handleUpdate(supabaseClient: any, employee: any) {
     department: employee.department
   };
 
-  //console.log("Update data:", updateData);
+  console.log("Update data:", updateData);
 
   const { data: updatedEmployee, error: updateError } = await supabaseClient
     .from('employees')
@@ -288,7 +288,7 @@ async function handleUpdate(supabaseClient: any, employee: any) {
     );
   }
 
-  //console.log("Employee updated successfully:", updatedEmployee);
+  console.log("Employee updated successfully:", updatedEmployee);
 
   // Handle module access update if provided
   if (employee.moduleAccessPayload && Array.isArray(employee.moduleAccessPayload)) {
@@ -307,7 +307,7 @@ async function handleUpdate(supabaseClient: any, employee: any) {
 async function handleEmployeeModuleAccess(supabaseClient: any, employeeId: string, moduleAccessPayload: any[]) {
   try {
     // First, delete all existing module access for this employee
-    //console.log("Deleting all module access for employee:", employeeId);
+    console.log("Deleting all module access for employee:", employeeId);
     const { error: deleteError } = await supabaseClient
       .from('employee_modules')
       .delete()
@@ -318,7 +318,7 @@ async function handleEmployeeModuleAccess(supabaseClient: any, employeeId: strin
       return;
     }
 
-    //console.log("Successfully deleted all module access for employee:", employeeId);
+    console.log("Successfully deleted all module access for employee:", employeeId);
 
     // Prepare module entries for insertion
     const moduleEntries = moduleAccessPayload.map(moduleAccess => {
@@ -338,7 +338,7 @@ async function handleEmployeeModuleAccess(supabaseClient: any, employeeId: strin
       };
     });
 
-    //console.log("Adding module entries:", moduleEntries);
+    console.log("Adding module entries:", moduleEntries);
 
     // Insert new module access entries
     const { error: insertError } = await supabaseClient
@@ -351,14 +351,14 @@ async function handleEmployeeModuleAccess(supabaseClient: any, employeeId: strin
       return;
     }
 
-    //console.log("Successfully added module access for employee:", employeeId);
+    console.log("Successfully added module access for employee:", employeeId);
   } catch (error) {
     console.error("Error updating module access:", error);
   }
 }
 
 async function handleDelete(supabaseClient: any, employeeId: string) {
-  //console.log("Deleting employee with ID:", employeeId);
+  console.log("Deleting employee with ID:", employeeId);
 
   // First, delete all module permissions for this employee
   const { error: moduleError } = await supabaseClient
@@ -397,7 +397,7 @@ async function handleDelete(supabaseClient: any, employeeId: string) {
 }
 
 async function handleDeactivate(supabaseClient: any, employeeId: string) {
-  //console.log("Deactivating employee with ID:", employeeId);
+  console.log("Deactivating employee with ID:", employeeId);
 
   const { data: deactivatedEmployee, error: deactivateError } = await supabaseClient
     .from('employees')
@@ -437,7 +437,7 @@ async function handleDeactivate(supabaseClient: any, employeeId: string) {
 }
 
 async function handleReactivate(supabaseClient: any, employeeId: string) {
-  //console.log("Reactivating employee with ID:", employeeId);
+  console.log("Reactivating employee with ID:", employeeId);
 
   const { data: reactivatedEmployee, error: reactivateError } = await supabaseClient
     .from('employees')

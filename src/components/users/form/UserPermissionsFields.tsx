@@ -22,8 +22,8 @@ const UserPermissionsFields = ({
   const [selectedModules, setSelectedModules] = useState<ModuleAccessItem[]>([]);
   
   // Debug log for configured modules
-  //console.log("UserPermissionsFields - Available configured modules:", state.configuredModules);
-  //console.log("UserPermissionsFields - Initial permissions:", permissions);
+  console.log("UserPermissionsFields - Available configured modules:", state.configuredModules);
+  console.log("UserPermissionsFields - Initial permissions:", permissions);
   
   // Use modules from Redux if available
   const modules = state.configuredModules && state.configuredModules.length > 0
@@ -38,7 +38,7 @@ const UserPermissionsFields = ({
   useEffect(() => {
     // Check if permissions is an array already
     if (Array.isArray(permissions)) {
-      //console.log("UserPermissionsFields - Setting modules from array:", permissions);
+      console.log("UserPermissionsFields - Setting modules from array:", permissions);
       setSelectedModules(permissions);
       return;
     }
@@ -57,7 +57,7 @@ const UserPermissionsFields = ({
         };
       });
       
-    //console.log("UserPermissionsFields - Setting converted modules:", initialSelectedModules);
+    console.log("UserPermissionsFields - Setting converted modules:", initialSelectedModules);
     setSelectedModules(initialSelectedModules);
   }, [permissions, employeeId, state.configuredModules]);
 
@@ -72,7 +72,7 @@ const UserPermissionsFields = ({
 
   // Handler for checkbox change
   const handleModuleChange = (moduleKey: string, moduleName: string, moduleId: string, checked: boolean) => {
-    //console.log("Module change:", { moduleKey, moduleName, moduleId, checked });
+    console.log("Module change:", { moduleKey, moduleName, moduleId, checked });
     
     // Create a new array based on current selected modules
     let updatedModules: ModuleAccessItem[];
@@ -81,7 +81,7 @@ const UserPermissionsFields = ({
       // Add module to selection if it's not already there
       const moduleExists = isModuleSelected(moduleId);
       
-      //console.log("Module exists:", moduleExists);
+      console.log("Module exists:", moduleExists);
       
       if (!moduleExists) {
         const newModule: ModuleAccessItem = {
@@ -99,7 +99,7 @@ const UserPermissionsFields = ({
       updatedModules = selectedModules.filter(m => m.module_id !== moduleId);
     }
     
-    //console.log("Updated modules:", updatedModules);
+    console.log("Updated modules:", updatedModules);
     
     // Update local state
     setSelectedModules(updatedModules);
@@ -116,7 +116,7 @@ const UserPermissionsFields = ({
           // Check if this module is selected by module_id
           const isSelected = isModuleSelected(module.module_id);
           
-          //console.log(`Module ${module.name} selected:`, isSelected);
+          console.log(`Module ${module.name} selected:`, isSelected);
           
           return (
             <div key={module.key || module.module_id} className="flex items-center space-x-2">

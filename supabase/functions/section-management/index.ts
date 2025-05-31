@@ -21,7 +21,7 @@ serve(async (req) => {
 
   try {
     const { action, id, name, gradeId, campusId, clientId } = await req.json();
-    //console.log(`Section management: Action=${action}, ID=${id}, Name=${name}, GradeID=${gradeId}, CampusID=${campusId}, ClientID=${clientId}`);
+    console.log(`Section management: Action=${action}, ID=${id}, Name=${name}, GradeID=${gradeId}, CampusID=${campusId}, ClientID=${clientId}`);
 
     if (!clientId) {
       throw new Error("Client ID is required for all operations");

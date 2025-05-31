@@ -30,7 +30,7 @@ serve(async (req) => {
       verification_notes 
     } = requestBody;
     
-    //console.log(`Received ${action} request`, { 
+    console.log(`Received ${action} request`, { 
       documentId, 
       hasDocNumber: !!documentNumber, 
       hasTxnId: !!txnId, 
@@ -62,11 +62,11 @@ serve(async (req) => {
       baseUrl = "https://kyc-api.surepass.io";
       apiKey = Deno.env.get("SUREPASS_PRODUCTION_API_KEY");
       
-      //console.log(`Using production API for ${action}: ${baseUrl}`);
+      console.log(`Using production API for ${action}: ${baseUrl}`);
     }
     
     // First, fetch document status IDs for governance, manual and rejected statuses
-    //console.log("Fetching document status IDs");
+    console.log("Fetching document status IDs");
     
     const { data: governanceStatus, error: governanceError } = await supabase
       .from('document_status')
@@ -114,7 +114,7 @@ serve(async (req) => {
     const manualStatusId = manualStatus?.id;
     const rejectedStatusId = rejectedStatus?.id;
     
-    //console.log("Found status IDs:", {
+    console.log("Found status IDs:", {
       governance: governanceStatusId,
       manual: manualStatusId,
       rejected: rejectedStatusId
@@ -131,7 +131,7 @@ serve(async (req) => {
       }
       
       try {
-        //console.log(`Processing manual verification for document ID: ${documentId}`);
+        console.log(`Processing manual verification for document ID: ${documentId}`);
         
         // First fetch the current logs
         const { data: document, error: fetchError } = await supabase
@@ -170,8 +170,8 @@ serve(async (req) => {
           }
         };
         
-        //console.log("Updating document with manual verification status and log entry");
-        //console.log("Using manual status ID:", manualStatusId);
+        console.log("Updating document with manual verification status and log entry");
+        console.log("Using manual status ID:", manualStatusId);
         
         // Update document with verification status, log entry, and manual status ID
         const { data: updateData, error: updateError } = await supabase
@@ -193,7 +193,7 @@ serve(async (req) => {
           );
         }
         
-        //console.log("Manual verification successful. Updated document:", updateData);
+        console.log("Manual verification successful. Updated document:", updateData);
         
         // Check if all documents are verified for this employee
         const { data: employeeDocs, error: docsError } = await supabase
@@ -207,8 +207,8 @@ serve(async (req) => {
           const allVerified = employeeDocs?.every(doc => doc.verification_status === 'verified');
           
           if (allVerified) {
-            //console.log("All documents verified for employee:", employeeId);
-            //console.log("Updating employee status to true");
+            console.log("All documents verified for employee:", employeeId);
+            console.log("Updating employee status to true");
             
             const { error: employeeError } = await supabase
               .from('employees')
@@ -218,7 +218,7 @@ serve(async (req) => {
             if (employeeError) {
               console.error("Error updating employee status:", employeeError);
             } else {
-              //console.log("Employee status updated to verified");
+              console.log("Employee status updated to verified");
             }
           }
         }
@@ -259,9 +259,9 @@ serve(async (req) => {
           const currentTime = new Date();
           // Calculate time difference in minutes
           const timeDiffMinutes = (currentTime.getTime() - lastOtpTime.getTime()) / (1000 * 60);
-          //console.log("Current time:", currentTime.toISOString());
-          //console.log("Last OTP time:", lastOtpTime.toISOString());
-          //console.log("Time difference since last OTP (minutes):", timeDiffMinutes);
+          console.log("Current time:", currentTime.toISOString());
+          console.log("Last OTP time:", lastOtpTime.toISOString());
+          console.log("Time difference since last OTP (minutes):", timeDiffMinutes);
           
           // OTP validity period: 3 minutes
           const OTP_VALIDITY_MINUTES = 3;
@@ -270,7 +270,7 @@ serve(async (req) => {
           if (timeDiffMinutes < OTP_VALIDITY_MINUTES) {
             // Calculate remaining validity time in seconds
             const remainingSeconds = Math.ceil((OTP_VALIDITY_MINUTES - timeDiffMinutes) * 60);
-            //console.log(`OTP still valid. ${remainingSeconds} seconds remaining for use.`);
+            console.log(`OTP still valid. ${remainingSeconds} seconds remaining for use.`);
             
             return new Response(
               JSON.stringify({ 
@@ -281,7 +281,7 @@ serve(async (req) => {
               { headers: { ...corsHeaders, "Content-Type": "application/json" } }
             );
           } else {
-            //console.log("Previous OTP has expired, allowing new OTP request");
+            console.log("Previous OTP has expired, allowing new OTP request");
           }
         }
       }
@@ -295,7 +295,7 @@ serve(async (req) => {
           );
         }
         
-        //console.log("Making request to Surepass API to generate OTP with base URL:", baseUrl);
+        console.log("Making request to Surepass API to generate OTP with base URL:", baseUrl);
         
         const response = await fetch(`${baseUrl}/api/v1/aadhaar-v2/generate-otp`, {
           method: 'POST',
@@ -307,7 +307,7 @@ serve(async (req) => {
         });
         
         const data = await response.json();
-        //console.log("Surepass API response:", JSON.stringify(data));
+        console.log("Surepass API response:", JSON.stringify(data));
         
         // Handle API success case
         if (data.success) {
@@ -355,7 +355,7 @@ serve(async (req) => {
       }
       
       try {
-        //console.log("Making request to Surepass API to verify OTP with base URL:", baseUrl);
+        console.log("Making request to Surepass API to verify OTP with base URL:", baseUrl);
         
         const requestBody: any = {
           otp
@@ -371,7 +371,7 @@ serve(async (req) => {
           requestBody.client_id = client_id;
         }
         
-        //console.log("Submit OTP request body:", requestBody);
+        console.log("Submit OTP request body:", requestBody);
         
         const response = await fetch(`${baseUrl}/api/v1/aadhaar-v2/submit-otp`, {
           method: 'POST',
@@ -383,7 +383,7 @@ serve(async (req) => {
         });
         
         const data = await response.json();
-        //console.log("Surepass API verification response:", JSON.stringify(data));
+        console.log("Surepass API verification response:", JSON.stringify(data));
         
         // Check status_code in API response
         if (data.success && data.status_code === 200) {

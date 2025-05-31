@@ -27,7 +27,7 @@ serve(async (req) => {
       verification_notes
     } = requestBody;
     
-    //console.log(`PAN Verification: Received ${action} request`, { 
+    console.log(`PAN Verification: Received ${action} request`, { 
       documentId, 
       hasDocNumber: !!documentNumber,
       notes: verification_notes
@@ -97,7 +97,7 @@ serve(async (req) => {
     const manualStatusId = manualStatus?.id;
     const rejectedStatusId = rejectedStatus?.id;
     
-    //console.log("Status IDs found:", {
+    console.log("Status IDs found:", {
       governance: governanceStatusId,
       manual: manualStatusId,
       rejected: rejectedStatusId
@@ -138,7 +138,7 @@ serve(async (req) => {
       }
       
       try {
-        //console.log("Making request to Surepass API to verify PAN with base URL:", baseUrl);
+        console.log("Making request to Surepass API to verify PAN with base URL:", baseUrl);
         
         // Changed API endpoint from pan-comprehensive-v2 to pan-comprehensive
         const response = await fetch(`${baseUrl}/api/v1/pan/pan-comprehensive`, {
@@ -151,7 +151,7 @@ serve(async (req) => {
         });
         
         const data = await response.json();
-        //console.log("Surepass API response:", JSON.stringify(data));
+        console.log("Surepass API response:", JSON.stringify(data));
         
         // Create an API log entry with timestamp
         const apiLogEntry = {

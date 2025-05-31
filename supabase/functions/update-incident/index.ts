@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
       throw new Error('Invalid authentication')
     }
 
-    //console.log('User attempting to update incident:', user.id)
+    console.log('User attempting to update incident:', user.id)
 
     const { incidentId, updates }: UpdateIncidentRequest = await req.json()
 
@@ -58,7 +58,7 @@ Deno.serve(async (req) => {
       throw new Error('Incident ID is required')
     }
 
-    //console.log('Updating incident:', incidentId, 'with updates:', updates)
+    console.log('Updating incident:', incidentId, 'with updates:', updates)
 
     // First, get the current incident to check permissions
     const { data: currentIncident, error: fetchError } = await supabase
@@ -72,7 +72,7 @@ Deno.serve(async (req) => {
       throw new Error('Incident not found')
     }
 
-    //console.log('Current incident:', currentIncident)
+    console.log('Current incident:', currentIncident)
 
     // Get employee data to check permissions
     const { data: employee, error: employeeError } = await supabase
@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
       throw new Error('Employee not found')
     }
 
-    //console.log('Employee data:', employee)
+    console.log('Employee data:', employee)
 
     // Check permissions
     const canEdit = employee.is_super_admin || 
@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
                    (employee.client_id === currentIncident.client_id)
 
     if (!canEdit) {
-      //console.log('Permission denied for user:', user.id)
+      console.log('Permission denied for user:', user.id)
       throw new Error('You do not have permission to edit this incident')
     }
 
@@ -122,7 +122,7 @@ Deno.serve(async (req) => {
 
     // Handle status_id - look up the status ID by name
     if (updates.status_id) {
-      //console.log('Looking up status ID for name:', updates.status_id)
+      console.log('Looking up status ID for name:', updates.status_id)
       const { data: statusData, error: statusError } = await supabase
         .from('incident_status')
         .select('id')
@@ -134,14 +134,14 @@ Deno.serve(async (req) => {
         throw new Error(`Status '${updates.status_id}' not found`)
       }
       
-      //console.log('Found status ID:', statusData.id)
+      console.log('Found status ID:', statusData.id)
       updateData.status_id = statusData.id
     }
 
     // Always update the updated_at timestamp
     updateData.updated_at = new Date().toISOString()
 
-    //console.log('Final update data:', updateData)
+    console.log('Final update data:', updateData)
 
     // Update the incident
     const { data: updatedIncident, error: updateError } = await supabase
@@ -156,7 +156,7 @@ Deno.serve(async (req) => {
       throw new Error(`Failed to update incident: ${updateError.message}`)
     }
 
-    //console.log('Successfully updated incident:', updatedIncident)
+    console.log('Successfully updated incident:', updatedIncident)
 
     return new Response(
       JSON.stringify({ 

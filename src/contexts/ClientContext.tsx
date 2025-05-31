@@ -151,7 +151,7 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           // Add more cases as needed
           default:
             // If you don't have an exact mapping yet, you can log it
-            //console.log(`Unknown module_id: ${module.module_id}`);
+            console.log(`Unknown module_id: ${module.module_id}`);
             break;
         }
       }
@@ -196,7 +196,7 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       if (data) {
         // Now handle module access with the edge function
         if (modules && modules.length > 0) {
-          //console.log('Sending modules to client-management edge function:', modules);
+          console.log('Sending modules to client-management edge function:', modules);
           
           const { error: modulesError } = await supabase.functions.invoke('client-management', {
             body: { 
@@ -270,7 +270,7 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
       // Handle module access updates through edge function
       if (modules && modules.length > 0) {
-        //console.log('Sending modules to client-management edge function:', modules);
+        console.log('Sending modules to client-management edge function:', modules);
         
         const { error: modulesError } = await supabase.functions.invoke('client-management', {
           body: { 

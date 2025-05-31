@@ -109,7 +109,7 @@ export const getDocumentStatus = (vehicle: Vehicle, docType: string): DocumentSt
   
   // Return status based on field value
   if (!fieldItem || !fieldItem.value) {
-    //console.log(`Document ${docType} (${fieldName}) is missing in vehicle ${vehicle.registrationNumber}`);
+    console.log(`Document ${docType} (${fieldName}) is missing in vehicle ${vehicle.registrationNumber}`);
     return { status: 'missing' };
   }
   

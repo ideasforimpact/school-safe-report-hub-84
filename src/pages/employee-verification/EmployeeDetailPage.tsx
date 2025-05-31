@@ -47,13 +47,13 @@ const EmployeeDetailPage = () => {
 
   const handleRefreshDocuments = useCallback(async () => {
     if (employeeId && !isRefreshing) {
-      //console.log('Refresh button clicked for employee:', employeeId, 'with timeframe:', timeframeFilter || 'all');
+      console.log('Refresh button clicked for employee:', employeeId, 'with timeframe:', timeframeFilter || 'all');
       setIsRefreshing(true);
       try {
         // Fetch employee documents using the selected timeframe filter
         const result = await fetchEmployeeDocuments(employeeId, timeframeFilter);
-        //console.log('Documents refreshed for employee:', employeeId, 'with timeframe:', timeframeFilter || 'all');
-        //console.log('Refresh result:', result);
+        console.log('Documents refreshed for employee:', employeeId, 'with timeframe:', timeframeFilter || 'all');
+        console.log('Refresh result:', result);
         
         toast({
           title: "Data Refreshed",
@@ -75,7 +75,7 @@ const EmployeeDetailPage = () => {
   // Handle timeframe filter change
   const handleTimeframeChange = useCallback(async (value: string) => {
     setTimeframeFilter(value === 'all' ? undefined : value);
-    //console.log('Timeframe filter changed to:', value);
+    console.log('Timeframe filter changed to:', value);
     
     // Immediately apply the filter if we have an employee ID
     if (employeeId) {
@@ -83,7 +83,7 @@ const EmployeeDetailPage = () => {
       try {
         const timeframe = value === 'all' ? undefined : value;
         const result = await fetchEmployeeDocuments(employeeId, timeframe);
-        //console.log('Filter applied, documents fetched:', result);
+        console.log('Filter applied, documents fetched:', result);
         
         toast({
           title: "Filter Applied",
@@ -108,13 +108,13 @@ const EmployeeDetailPage = () => {
     
     const loadData = async () => {
       try {
-        //console.log('Initial data loading for employee:', employeeId);
+        console.log('Initial data loading for employee:', employeeId);
         // Fetch documents and statuses in parallel on initial load
         await Promise.all([
           fetchEmployeeDocuments(employeeId),
           fetchDocumentStatuses()
         ]);
-        //console.log('Initial data loading complete for employee:', employeeId);
+        console.log('Initial data loading complete for employee:', employeeId);
         setInitialLoadComplete(true);
       } catch (error) {
         console.error('Error loading initial data:', error);

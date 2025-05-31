@@ -32,7 +32,7 @@ serve(async (req) => {
         const body = await req.json();
         const { name, icon, level, url: moduleUrl } = body;
 
-        //console.log('Creating module:', { name, icon, level, url: moduleUrl });
+        console.log('Creating module:', { name, icon, level, url: moduleUrl });
 
         const { data, error } = await supabase
           .from('modules')
@@ -56,7 +56,7 @@ serve(async (req) => {
           );
         }
 
-        //console.log('Module created successfully:', data);
+        console.log('Module created successfully:', data);
         return new Response(
           JSON.stringify({ data }),
           { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
@@ -77,7 +77,7 @@ serve(async (req) => {
         const body = await req.json();
         const { name, icon, level, url: moduleUrl } = body;
 
-        //console.log('Updating module:', { id: moduleId, name, icon, level, url: moduleUrl });
+        console.log('Updating module:', { id: moduleId, name, icon, level, url: moduleUrl });
 
         const { data, error } = await supabase
           .from('modules')
@@ -103,7 +103,7 @@ serve(async (req) => {
           );
         }
 
-        //console.log('Module updated successfully:', data);
+        console.log('Module updated successfully:', data);
         return new Response(
           JSON.stringify({ data }),
           { headers: { 'Content-Type': 'application/json', ...corsHeaders } }
@@ -121,7 +121,7 @@ serve(async (req) => {
           );
         }
 
-        //console.log('Deleting module:', moduleId);
+        console.log('Deleting module:', moduleId);
 
         const { error } = await supabase
           .from('modules')
@@ -139,7 +139,7 @@ serve(async (req) => {
           );
         }
 
-        //console.log('Module deleted successfully');
+        console.log('Module deleted successfully');
         return new Response(
           JSON.stringify({ success: true }),
           { headers: { 'Content-Type': 'application/json', ...corsHeaders } }

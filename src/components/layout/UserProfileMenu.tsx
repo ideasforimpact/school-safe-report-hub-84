@@ -45,15 +45,15 @@ const UserProfileMenu = () => {
 
   const handleLogout = async () => {
     try {
-      //console.log('🚪 Logging out user');
+      console.log('🚪 Logging out user');
       
       // First sign out from Supabase
       await supabase.auth.signOut();
-      //console.log('✅ Signed out from Supabase');
+      console.log('✅ Signed out from Supabase');
       
       // Then proceed with our app's logout
       await logout();
-      //console.log('✅ Local logout complete');
+      console.log('✅ Local logout complete');
       
       toast.success('You have been logged out successfully');
       navigate('/login');
@@ -65,7 +65,7 @@ const UserProfileMenu = () => {
 
   const handleProfileClick = () => {
     // Navigate to profile page using React Router's navigate
-    //console.log("Navigating to profile page");
+    console.log("Navigating to profile page");
     navigate('/profile');
   };
 

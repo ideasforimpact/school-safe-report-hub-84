@@ -48,21 +48,21 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
 
   // Sync local incidents state with fetched incidents - with enhanced logging
   useEffect(() => {
-    //console.log('IncidentContext: Syncing fetched incidents with context state');
-    //console.log('Fetched incidents count:', fetchedIncidents.length);
-    //console.log('Fetched incidents IDs:', fetchedIncidents.map(inc => inc.id));
+    console.log('IncidentContext: Syncing fetched incidents with context state');
+    console.log('Fetched incidents count:', fetchedIncidents.length);
+    console.log('Fetched incidents IDs:', fetchedIncidents.map(inc => inc.id));
     
     // Ensure we have a complete new array reference for React to detect changes
     const newIncidents = [...fetchedIncidents];
     setIncidents(newIncidents);
     
-    //console.log('IncidentContext: Context state updated with incidents count:', newIncidents.length);
+    console.log('IncidentContext: Context state updated with incidents count:', newIncidents.length);
   }, [fetchedIncidents, fetchedIncidents.length]); // Added dependency on length to catch array changes
 
   // Monitor local state changes
   useEffect(() => {
-    //console.log('IncidentContext: Local incidents state changed, count:', incidents.length);
-    //console.log('IncidentContext: Local incidents IDs:', incidents.map(inc => inc.id));
+    console.log('IncidentContext: Local incidents state changed, count:', incidents.length);
+    console.log('IncidentContext: Local incidents IDs:', incidents.map(inc => inc.id));
   }, [incidents, incidents.length]);
 
   const {
@@ -120,9 +120,9 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
 
   // Wrapper for addIncident that ensures proper state synchronization
   const addIncident = async (incidentData: any) => {
-    //console.log('IncidentContext: Adding new incident');
+    console.log('IncidentContext: Adding new incident');
     const result = await originalAddIncident(incidentData);
-    //console.log('IncidentContext: Incident added, triggering additional sync');
+    console.log('IncidentContext: Incident added, triggering additional sync');
     // Additional delay to ensure UI updates
     await new Promise(resolve => setTimeout(resolve, 300));
     return result;
@@ -130,7 +130,7 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
 
   // Wrapper for updateIncident that refetches data
   const updateIncident = async (id: string, updates: Partial<Incident>) => {
-    //console.log('IncidentContext: Updating incident', id);
+    console.log('IncidentContext: Updating incident', id);
     const result = await originalUpdateIncident(id, updates);
     // Additional delay to ensure UI updates
     await new Promise(resolve => setTimeout(resolve, 200));

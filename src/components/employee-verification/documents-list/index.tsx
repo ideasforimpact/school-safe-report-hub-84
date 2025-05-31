@@ -42,7 +42,7 @@ const DocumentsList: React.FC<DocumentsListProps> = ({
 
   // Handle real-time document updates
   const handleDocumentUpdate = useCallback((updatedDocument) => {
-    //console.log('Document updated via real-time:', updatedDocument);
+    console.log('Document updated via real-time:', updatedDocument);
     toast({
       title: "Document Updated",
       description: `Document status changed to ${updatedDocument.documentStatusName || updatedDocument.verificationStatus}`,

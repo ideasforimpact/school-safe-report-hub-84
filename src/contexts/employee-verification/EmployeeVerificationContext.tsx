@@ -59,7 +59,7 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
     // Check if we've fetched document types in the last minute
     const now = Date.now();
     if (lastFetchTime.documentTypes && now - lastFetchTime.documentTypes < 60000) {
-      //console.log('Skipping document types fetch - recently fetched');
+      console.log('Skipping document types fetch - recently fetched');
       return;
     }
     
@@ -98,7 +98,7 @@ export const EmployeeVerificationProvider: React.FC<{ children: ReactNode }> = (
     // Check if we've fetched document statuses in the last minute
     const now = Date.now();
     if (lastFetchTime.documentStatuses && now - lastFetchTime.documentStatuses < 60000) {
-      //console.log('Skipping document statuses fetch - recently fetched');
+      console.log('Skipping document statuses fetch - recently fetched');
       return;
     }
     

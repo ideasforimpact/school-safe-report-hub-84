@@ -44,9 +44,9 @@ serve(async (req) => {
       });
     }
 
-    //console.log('=== ASSESSMENT DELETION ===');
-    //console.log('Assessment ID:', assessment_id);
-    //console.log('Client ID:', client_id);
+    console.log('=== ASSESSMENT DELETION ===');
+    console.log('Assessment ID:', assessment_id);
+    console.log('Client ID:', client_id);
 
     // First, verify the assessment exists and belongs to the client
     const { data: existingAssessment, error: checkError } = await supabase
@@ -67,7 +67,7 @@ serve(async (req) => {
     }
 
     if (!existingAssessment) {
-      //console.log('Assessment not found in database');
+      console.log('Assessment not found in database');
       return new Response(JSON.stringify({ 
         error: 'Assessment not found' 
       }), {
@@ -76,7 +76,7 @@ serve(async (req) => {
       });
     }
 
-    //console.log('Found assessment:', existingAssessment);
+    console.log('Found assessment:', existingAssessment);
 
     // Delete the assessment
     const { error: deleteError, data: deleteData } = await supabase
@@ -96,7 +96,7 @@ serve(async (req) => {
       });
     }
 
-    //console.log('Assessment deleted successfully:', deleteData);
+    console.log('Assessment deleted successfully:', deleteData);
 
     return new Response(JSON.stringify({ 
       success: true,

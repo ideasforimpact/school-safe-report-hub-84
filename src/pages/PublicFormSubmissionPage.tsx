@@ -53,7 +53,7 @@ const PublicFormSubmissionPage = () => {
     setIsSubmitting(true);
     
     try {
-      //console.log('Submitting form data:', data);
+      console.log('Submitting form data:', data);
 
       // Convert form data to responses array format
       const responses = Object.entries(data).map(([fieldId, value]) => {
@@ -99,7 +99,7 @@ const PublicFormSubmissionPage = () => {
         return;
       }
 
-      //console.log('Form submitted successfully:', result.data);
+      console.log('Form submitted successfully:', result.data);
       
       // Redirect to success page after successful submission
       navigate('/public-form-submission-success');

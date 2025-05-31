@@ -103,7 +103,7 @@ export const useClientManagement = () => {
 
       // If employee exists, return the existing record
       if (existingEmployee) {
-        //console.log('Employee already exists for this client:', existingEmployee);
+        console.log('Employee already exists for this client:', existingEmployee);
         return existingEmployee;
       }
 
@@ -119,7 +119,7 @@ export const useClientManagement = () => {
         return null;
       }
 
-      //console.log('Created new super admin employee:', data[0]);
+      console.log('Created new super admin employee:', data[0]);
       return data[0];
     } catch (err) {
       console.error('Error in createEmployeeFromSuperAdminEmail:', err);
@@ -201,7 +201,7 @@ export const useClientManagement = () => {
       // Use moduleInfoArray directly from formData
       const moduleInfoArray = formData.moduleInfoArray || [];
       
-      //console.log('Module info for client creation:', moduleInfoArray);
+      console.log('Module info for client creation:', moduleInfoArray);
       
       // First, add the client and get the client object back with proper typing
       const result = await addClient({
@@ -234,7 +234,7 @@ export const useClientManagement = () => {
     const fetchClientData = async (clientId: string) => {
       try {
         // Fetch client modules
-        //console.log("Fetching client modules for edit", clientId);
+        console.log("Fetching client modules for edit", clientId);
         const { data: clientModulesData, error: modulesError } = await supabase
           .from('client_modules')
           .select('*')
@@ -327,7 +327,7 @@ export const useClientManagement = () => {
       // Use moduleInfoArray directly from formData
       const moduleInfoArray = formData.moduleInfoArray || [];
       
-      //console.log('Module info for client update:', moduleInfoArray);
+      console.log('Module info for client update:', moduleInfoArray);
       
       // Step 1: Delete all existing client modules (keep this part)
       const { error: deleteError } = await supabase

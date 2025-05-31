@@ -48,7 +48,7 @@ export function useIncidentActions(
       // Validate client access
       const clientId = validateClientAccess();
       
-      //console.log('Adding incident with data:', incidentData);
+      console.log('Adding incident with data:', incidentData);
       
       // Use provided status_id or fetch the "New" status ID as default
       let statusId = incidentData.statusId;
@@ -67,7 +67,7 @@ export function useIncidentActions(
         }
         
         statusId = statusData.id;
-        //console.log('Got status ID:', statusId);
+        console.log('Got status ID:', statusId);
       }
       
       // Generate a new ticket ID
@@ -105,7 +105,7 @@ export function useIncidentActions(
         dbRecord['priority_id'] = incidentData.priorityId;
       }
       
-      //console.log('Submitting record to database:', dbRecord);
+      console.log('Submitting record to database:', dbRecord);
       
       const { data, error } = await supabase
         .from('incidents')
@@ -117,7 +117,7 @@ export function useIncidentActions(
         throw error;
       }
       
-      //console.log('Incident created successfully:', data);
+      console.log('Incident created successfully:', data);
       
       // Create corresponding activity log
       const newActivity: Activity = {

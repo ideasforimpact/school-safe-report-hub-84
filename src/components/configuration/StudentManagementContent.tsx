@@ -7,11 +7,11 @@ const StudentManagementContent = () => {
   const [students] = useState<Student[]>([]);
 
   const handleEditClick = (student: Student) => {
-    //console.log('Edit student:', student);
+    console.log('Edit student:', student);
   };
 
   const handleDeleteStudent = (id: string) => {
-    //console.log('Delete student:', id);
+    console.log('Delete student:', id);
   };
 
   return (

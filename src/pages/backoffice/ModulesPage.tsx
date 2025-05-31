@@ -75,7 +75,7 @@ const ModulesPage = () => {
   };
 
   const handleEdit = (moduleId: string) => {
-    //console.log('Edit module:', moduleId);
+    console.log('Edit module:', moduleId);
     // The edit functionality will be handled by the CreateModuleDialog component
   };
 

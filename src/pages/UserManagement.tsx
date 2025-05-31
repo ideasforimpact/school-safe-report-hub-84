@@ -93,10 +93,10 @@ const UserManagement = () => {
   const isAdmin = isEmployeeAdmin(state);
   const isSuperAdmin = isEmployeeSuperAdmin(state);
   
-  //console.log("UserManagement - Redux employeeData:", employeeData);
-  //console.log("UserManagement - Redux isAdmin:", isAdmin);
-  //console.log("UserManagement - Redux isSuperAdmin:", isSuperAdmin);
-  //console.log("UserManagement - User from auth context:", user);
+  console.log("UserManagement - Redux employeeData:", employeeData);
+  console.log("UserManagement - Redux isAdmin:", isAdmin);
+  console.log("UserManagement - Redux isSuperAdmin:", isSuperAdmin);
+  console.log("UserManagement - User from auth context:", user);
   
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -110,9 +110,9 @@ const UserManagement = () => {
 
   // Log the clientId for debugging
   useEffect(() => {
-    //console.log("UserManagement - Current employee data:", employeeData);
-    //console.log("UserManagement - Current user data:", user);
-    //console.log("UserManagement - ClientId being used:", clientId);
+    console.log("UserManagement - Current employee data:", employeeData);
+    console.log("UserManagement - Current user data:", user);
+    console.log("UserManagement - ClientId being used:", clientId);
   }, [employeeData, user, clientId]);
   
   // Default form data for the user forms - Using only moduleAccessPayload
@@ -164,7 +164,7 @@ const UserManagement = () => {
       setIsLoading(true);
       // Pass clientId to filter employees by client
       const employeeData = await getAllEmployeesFromApi(clientId);
-      //console.log(employeeData, "employeeData124")
+      console.log(employeeData, "employeeData124")
       
       if (employeeData && employeeData.length > 0) {
         // Process each employee to get their module access items
@@ -193,9 +193,9 @@ const UserManagement = () => {
         }));
 
         setEmployeeUsers(processedUsers);
-        //console.log("Fetched employees:", processedUsers);
+        console.log("Fetched employees:", processedUsers);
       } else {
-        //console.log("No employees found or error fetching employees");
+        console.log("No employees found or error fetching employees");
         setEmployeeUsers([]);
       }
     } catch (error) {
@@ -219,8 +219,8 @@ const UserManagement = () => {
         }));
       }
       
-      //console.log("Adding new user with data:", formData);
-      //console.log("Module access payload:", formData.moduleAccessPayload);
+      console.log("Adding new user with data:", formData);
+      console.log("Module access payload:", formData.moduleAccessPayload);
       
       if (!formData.moduleAccessPayload || formData.moduleAccessPayload.length === 0) {
         console.warn("No module access items selected.");
@@ -261,7 +261,7 @@ const UserManagement = () => {
             
             // First try the edge function
             try {
-              //console.log("Attempting to create employee via edge function:", employeeData);
+              console.log("Attempting to create employee via edge function:", employeeData);
               const { data, error } = await supabase.functions.invoke('employee-management', {
                 body: JSON.stringify({
                   operation: 'create',
@@ -278,7 +278,7 @@ const UserManagement = () => {
                  toast.error(data?.error);
               }
               else{
-                  //console.log("Employee created via edge function:", data);
+                  console.log("Employee created via edge function:", data);
                   toast.success("Employee record created successfully");
               }
               
@@ -289,7 +289,7 @@ const UserManagement = () => {
                 ...employeeData,
               } as any); // Cast as any to bypass type checking
               
-              //console.log("Employee created via context function");
+              console.log("Employee created via context function");
               toast.success("Employee record created via local storage");
             }
             
@@ -350,7 +350,7 @@ const UserManagement = () => {
         }));
 
         setEmployeeUsers(processedUsers);
-        //console.log("Refreshed employees list:", processedUsers);
+        console.log("Refreshed employees list:", processedUsers);
       }
     } catch (error) {
       console.error("Error refreshing employees:", error);
@@ -379,7 +379,7 @@ const UserManagement = () => {
           });
           
           if (error) throw error;
-          //console.log("Employee deleted via edge function:", data);
+          console.log("Employee deleted via edge function:", data);
           
           refreshEmployeesList();
         } catch (edgeFuncError) {
@@ -413,9 +413,9 @@ const UserManagement = () => {
           if (error) {
             console.error("Edge function deactivate error:", error);
             await deactivateEmployee(userId);
-            //console.log("Employee deactivated via context function");
+            console.log("Employee deactivated via context function");
           } else {
-            //console.log("Employee deactivated via edge function:", data);
+            console.log("Employee deactivated via edge function:", data);
           }
           
           await refreshEmployeesList();
@@ -450,7 +450,7 @@ const UserManagement = () => {
           if (error) {
             console.error("Edge function reactivate error:", error);
           } else {
-            //console.log("Employee reactivated via edge function:", data);
+            console.log("Employee reactivated via edge function:", data);
           }
           
           await refreshEmployeesList();

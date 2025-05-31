@@ -25,8 +25,8 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
     updatedCount: 0
   };
 
-  //console.log("Processing employee data:", rawData);
-  //console.log("Using clientId:", clientId); // Log clientId for debugging
+  console.log("Processing employee data:", rawData);
+  console.log("Using clientId:", clientId); // Log clientId for debugging
   
   try {
     // Prepare employee data
@@ -97,11 +97,11 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
       return result;
     }
     
-    //console.log(`Sending ${employees.length} employees for bulk processing with clientId: ${clientId}`);
+    console.log(`Sending ${employees.length} employees for bulk processing with clientId: ${clientId}`);
 
     // Check if clientId is in numeric format and needs conversion to UUID
     if (clientId && !isValidUUID(clientId)) {
-      //console.log("ClientId is not in UUID format, converting numeric ID to proper UUID format");
+      console.log("ClientId is not in UUID format, converting numeric ID to proper UUID format");
       // For numeric IDs, we need to use a UUID format that's compatible with the database
       // This approach generates a deterministic UUID based on the client number
       const numericClientId = parseInt(clientId);
@@ -110,7 +110,7 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
         // This creates a UUID v5 using a combination of a namespace and the client ID
         const namespaceUUID = "00000000-0000-0000-0000-000000000000"; // Base namespace
         const clientUUID = generateDeterministicUUID(namespaceUUID, clientId);
-        //console.log("Generated UUID for clientId:", clientUUID);
+        console.log("Generated UUID for clientId:", clientUUID);
         clientId = clientUUID;
       } else {
         console.warn("Could not convert clientId to numeric value for UUID generation");
@@ -127,13 +127,13 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
     };
     
     // Log the request body as a string to verify its content
-    //console.log("Request payload:", requestBody);
-    //console.log("Request payload stringified:", JSON.stringify(requestBody));
+    console.log("Request payload:", requestBody);
+    console.log("Request payload stringified:", JSON.stringify(requestBody));
     
     // Use Supabase functions invoke method instead of direct fetch
     // This automatically handles authentication
     try {
-      //console.log("Using Supabase functions invoke method");
+      console.log("Using Supabase functions invoke method");
       const { data: functionData, error: functionError } = await supabase.functions.invoke(
         'employee-management',
         {
@@ -147,7 +147,7 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
       }
       
       const responseData = functionData;
-      //console.log('Bulk processing result from invoke:', responseData);
+      console.log('Bulk processing result from invoke:', responseData);
       
       if (responseData && responseData.success) {
         // Update the result with counts from the bulk operation
@@ -171,7 +171,7 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
       console.error('Error invoking function:', invokeFunctionError);
       
       // Fall back to fetch approach with proper authorization if invoke method fails
-      //console.log("Falling back to direct fetch with authorization");
+      console.log("Falling back to direct fetch with authorization");
       
       // Get current session
       const { data: sessionData } = await supabase.auth.getSession();
@@ -186,18 +186,18 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
       // Add authorization header if session is available
       if (sessionData?.session?.access_token) {
         headers['Authorization'] = `Bearer ${sessionData.session.access_token}`;
-        //console.log("Using auth token for API call");
+        console.log("Using auth token for API call");
       } else {
         // Try to get the service role key for admin operations
         // This is a fallback for operations from the user management page
         // where we might not have a user session but still need to perform admin operations
         const serviceRoleKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyORzIg41cTZeK8FnABznVJht8';
         headers['Authorization'] = `Bearer ${serviceRoleKey}`;
-        //console.log("Using service role key for API call");
+        console.log("Using service role key for API call");
       }
       
-      //console.log("Calling function with URL:", 'https://ybvxkiubnnixntghojyy.supabase.co/functions/v1/employee-management');
-      //console.log("Headers:", JSON.stringify(headers));
+      console.log("Calling function with URL:", 'https://ybvxkiubnnixntghojyy.supabase.co/functions/v1/employee-management');
+      console.log("Headers:", JSON.stringify(headers));
       
       // Using fetch with prepared headers
       const response = await fetch('https://ybvxkiubnnixntghojyy.supabase.co/functions/v1/employee-management', {
@@ -213,7 +213,7 @@ export const processEmployeeData = async (rawData: RawEmployeeData[], clientId?:
       }
       
       const responseData = await response.json();
-      //console.log('Bulk processing result from fetch:', responseData);
+      console.log('Bulk processing result from fetch:', responseData);
       
       if (responseData && responseData.success) {
         // Update the result with counts from the bulk operation

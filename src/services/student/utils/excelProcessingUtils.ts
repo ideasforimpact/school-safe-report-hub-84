@@ -45,7 +45,7 @@ export const parseExcelFile = (file: File): Promise<RawStudentData[]> => {
         }
 
         // Log the raw data for debugging
-        //console.log("Raw Excel/CSV data before mapping:", rawData);
+        console.log("Raw Excel/CSV data before mapping:", rawData);
         
         // Get the header row keys
         const headers = Object.keys(rawData[0]);
@@ -77,7 +77,7 @@ export const parseExcelFile = (file: File): Promise<RawStudentData[]> => {
           }
         });
 
-        //console.log("Header mapping:", headerMap);
+        console.log("Header mapping:", headerMap);
         
         // Transform the data using our header mapping
         const transformedData: RawStudentData[] = rawData.map(row => {
@@ -91,7 +91,7 @@ export const parseExcelFile = (file: File): Promise<RawStudentData[]> => {
           return transformed as RawStudentData;
         });
         
-        //console.log("Transformed data after mapping:", transformedData);
+        console.log("Transformed data after mapping:", transformedData);
         resolve(transformedData);
       } catch (error) {
         console.error('Error processing Excel/CSV file:', error);

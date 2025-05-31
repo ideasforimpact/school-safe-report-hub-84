@@ -45,7 +45,7 @@ export const useFetchForms = () => {
         throw new Error('Client ID not available. Please ensure you are logged in.');
       }
 
-      //console.log('Fetching forms for client:', clientId);
+      console.log('Fetching forms for client:', clientId);
 
       const { data, error } = await supabase.functions.invoke('fetch-forms', {
         body: { client_id: clientId }

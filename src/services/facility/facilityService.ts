@@ -8,7 +8,7 @@ export interface FacilityItem extends ConfigItem {
 
 export const getFacilitiesByCampus = async (campusId: string): Promise<FacilityItem[]> => {
   try {
-    //console.log(`Fetching facilities for campus ID: ${campusId}`);
+    console.log(`Fetching facilities for campus ID: ${campusId}`);
     
     const { data, error } = await supabase
       .from('facilities')
@@ -20,7 +20,7 @@ export const getFacilitiesByCampus = async (campusId: string): Promise<FacilityI
       throw error;
     }
     
-    //console.log(`Successfully fetched ${data.length} facilities for campus ID ${campusId}:`, data);
+    console.log(`Successfully fetched ${data.length} facilities for campus ID ${campusId}:`, data);
     
     // Map facilities to FacilityItem format
     return data.map(facility => ({

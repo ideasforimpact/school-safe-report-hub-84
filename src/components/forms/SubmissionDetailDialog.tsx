@@ -72,7 +72,7 @@ const SubmissionDetailDialog: React.FC<SubmissionDetailDialogProps> = ({
     setSubmitting(true);
     
     try {
-      //console.log('Updating submission:', {
+      console.log('Updating submission:', {
         submissionId: submission.id,
         comment: acknowledgmentComment
       });

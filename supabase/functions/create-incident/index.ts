@@ -35,7 +35,7 @@ serve(async (req) => {
       clientId
     } = await req.json();
 
-    //console.log('Creating incident with data:', {
+    console.log('Creating incident with data:', {
       typeId,
       categoryId,
       subcategoryId,
@@ -85,7 +85,7 @@ serve(async (req) => {
       client_id: clientId
     };
 
-    //console.log('Inserting incident record:', incidentRecord);
+    console.log('Inserting incident record:', incidentRecord);
 
     const { data: incident, error: incidentError } = await supabaseClient
       .from('incidents')
@@ -98,7 +98,7 @@ serve(async (req) => {
       throw new Error(`Failed to create incident: ${incidentError.message}`);
     }
 
-    //console.log('Incident created successfully:', incident);
+    console.log('Incident created successfully:', incident);
 
     return new Response(
       JSON.stringify({ 

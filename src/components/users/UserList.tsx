@@ -25,7 +25,7 @@ interface UserListProps {
 }
 
 const UserList = ({ users, onEditClick, onDeleteUser, onDeactivateUser, onReactivateUser }: UserListProps) => {
-  //console.log("UserList component - Users:", users);
+  console.log("UserList component - Users:", users);
   return (
     <Table>
       <TableHeader>

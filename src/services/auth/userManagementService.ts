@@ -66,7 +66,7 @@ export const addNewUser = async (
         .filter(([_, enabled]) => enabled)
         .map(([key, _]) => key);
 
-      //console.log("Module permissions to be stored for employee:", moduleEntries);
+      console.log("Module permissions to be stored for employee:", moduleEntries);
       
       // For a real backend, you would save these permissions to user metadata or a related table
       // This could be done via hooks or triggers in a production Supabase implementation
@@ -117,7 +117,7 @@ export const updateExistingUser = async (
         .filter(([_, enabled]) => enabled)
         .map(([key, _]) => key);
 
-      //console.log("Module permissions to be updated for employee:", moduleEntries);
+      console.log("Module permissions to be updated for employee:", moduleEntries);
       
       // For a real backend implementation, you would update the user's permissions here
       // await supabase.from('user_metadata').update({ modulePermissions: updates.modulePermissions }).eq('user_id', id);
@@ -166,7 +166,7 @@ export const deleteExistingUser = (
     // Example:
     // await supabase.auth.admin.deleteUser(id);
     
-    //console.log("Employee deleted:", id);
+    console.log("Employee deleted:", id);
   } catch (error) {
     console.error("Error deleting employee:", error);
     toast.error("Failed to delete employee");
@@ -194,7 +194,7 @@ export const deactivateExistingUser = (
     //   user_metadata: { isActive: false } 
     // });
     
-    //console.log("Employee deactivated:", id);
+    console.log("Employee deactivated:", id);
   } catch (error) {
     console.error("Error deactivating employee:", error);
     toast.error("Failed to deactivate employee");
@@ -224,7 +224,7 @@ export const reactivateExistingUser = (
     //   user_metadata: { isActive: true } 
     // });
     
-    //console.log("Employee reactivated:", id);
+    console.log("Employee reactivated:", id);
   } catch (error) {
     console.error("Error reactivating employee:", error);
     toast.error("Failed to reactivate employee");
@@ -255,7 +255,7 @@ export const fetchEmployeeModules = async (userId: string): Promise<ModulePermis
     // if (error) throw error;
     // return data.modulePermissions;
     
-    //console.log("Fetching modules for employee:", userId);
+    console.log("Fetching modules for employee:", userId);
     
     // For demo purposes, return default permissions
     return {

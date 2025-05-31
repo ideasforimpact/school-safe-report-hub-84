@@ -38,8 +38,8 @@ const SettingsPage = () => {
 
   // Determine client type from employeeData or user data
   useEffect(() => {
-    //console.log('SettingsPage - employeeData:', employeeData);
-    //console.log('SettingsPage - user:', user);
+    console.log('SettingsPage - employeeData:', employeeData);
+    console.log('SettingsPage - user:', user);
     
     let detectedClientType = null;
     
@@ -56,7 +56,7 @@ const SettingsPage = () => {
       detectedClientType = user.client.client_type.key;
     }
     
-    //console.log('SettingsPage - Detected client type:', detectedClientType);
+    console.log('SettingsPage - Detected client type:', detectedClientType);
     setClientType(detectedClientType);
   }, [employeeData, user]);
 
@@ -65,7 +65,7 @@ const SettingsPage = () => {
   // Determine if educational tabs should be shown (for schools and similar educational institutions)
   const showEducationalTabs = clientType === 'school' || clientType === 'college' || clientType === 'university' || clientType === 'educational';
 
-  //console.log('SettingsPage - showEducationalTabs:', showEducationalTabs, 'clientType:', clientType);
+  console.log('SettingsPage - showEducationalTabs:', showEducationalTabs, 'clientType:', clientType);
 
   return (
     <Layout>

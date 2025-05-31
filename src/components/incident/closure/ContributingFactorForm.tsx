@@ -48,7 +48,7 @@ const ContributingFactorForm: React.FC<ContributingFactorFormProps> = ({
     const fetchContributingFactors = async () => {
       try {
         if (!state.employeeData?.clientId) {
-          //console.log('No client ID available');
+          console.log('No client ID available');
           setIsLoading(false);
           return;
         }
@@ -64,7 +64,7 @@ const ContributingFactorForm: React.FC<ContributingFactorFormProps> = ({
           return;
         }
 
-        //console.log('Fetched contributing factors:', factors);
+        console.log('Fetched contributing factors:', factors);
         setFactorOptions(factors || []);
 
         // Extract unique weight values

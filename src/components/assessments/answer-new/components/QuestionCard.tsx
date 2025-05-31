@@ -25,20 +25,20 @@ interface QuestionCardProps {
 const QuestionCard = ({ question, answer, index, onAnswerChange }: QuestionCardProps) => {
   const [isOpen, setIsOpen] = useState(false);
 
-  //console.log(`QuestionCard for question ${question.id}:`, { question, answer });
+  console.log(`QuestionCard for question ${question.id}:`, { question, answer });
 
   const handleAnswerChange = (value: string) => {
-    //console.log(`Setting answer for question ${question.id} to:`, value === 'yes');
+    console.log(`Setting answer for question ${question.id} to:`, value === 'yes');
     onAnswerChange(question.id, 'answer', value === 'yes');
   };
 
   const handleCommentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    //console.log(`Setting comment for question ${question.id} to:`, e.target.value);
+    console.log(`Setting comment for question ${question.id} to:`, e.target.value);
     onAnswerChange(question.id, 'comment', e.target.value);
   };
 
   const handleAttachmentsChange = (files: FileItem[]) => {
-    //console.log(`Setting attachments for question ${question.id} to:`, files);
+    console.log(`Setting attachments for question ${question.id} to:`, files);
     onAnswerChange(question.id, 'attachments', files);
   };
 

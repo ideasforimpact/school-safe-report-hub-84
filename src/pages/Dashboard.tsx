@@ -81,7 +81,7 @@ const Dashboard = () => {
 
   // Handler for activity clicks
   const handleActivityClick = (activity: any) => {
-    //console.log("Activity clicked:", activity);
+    console.log("Activity clicked:", activity);
     // Navigate or show details as needed
   };
 

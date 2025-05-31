@@ -27,7 +27,7 @@ serve(async (req) => {
       verification_notes
     } = requestBody;
     
-    //console.log(`Received ${action} request for driving license`, { 
+    console.log(`Received ${action} request for driving license`, { 
       documentId, 
       hasDocNumber: !!documentNumber
     });
@@ -96,7 +96,7 @@ serve(async (req) => {
     const rejectedStatusId = rejectedStatus?.id;
     const manualStatusId = manualStatus?.id;
     
-    //console.log("Status IDs found:", {
+    console.log("Status IDs found:", {
       governanceStatusId,
       rejectedStatusId,
       manualStatusId
@@ -145,7 +145,7 @@ serve(async (req) => {
       }
       
       try {
-        //console.log("Making request to Surepass API to verify driving license with:", {
+        console.log("Making request to Surepass API to verify driving license with:", {
           licenseNumber,
           dob,
           baseUrl
@@ -161,7 +161,7 @@ serve(async (req) => {
         });
         
         const apiResponse = await response.json();
-        //console.log("Surepass API driving license verification response:", apiResponse);
+        console.log("Surepass API driving license verification response:", apiResponse);
         
         // First fetch the current logs
         const { data: currentDoc, error: fetchError } = await supabase

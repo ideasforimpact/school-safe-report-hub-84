@@ -22,7 +22,7 @@ serve(async (req) => {
     );
 
     const { action, name, id, campusId, clientId } = await req.json();
-    //console.log(`Facility management: Action=${action}, ID=${id}, Name=${name}, CampusID=${campusId}, ClientID=${clientId}`);
+    console.log(`Facility management: Action=${action}, ID=${id}, Name=${name}, CampusID=${campusId}, ClientID=${clientId}`);
 
     switch (action) {
       case 'create':

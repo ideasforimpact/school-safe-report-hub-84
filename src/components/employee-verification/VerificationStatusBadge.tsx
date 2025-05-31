@@ -100,38 +100,38 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
                                      documentLogs &&
                                      documentLogs.length > 0;
   
-  //console.log('VerificationStatusBadge - Document Type:', documentType);
-  //console.log('VerificationStatusBadge - Status:', status);
-  //console.log('VerificationStatusBadge - Document Status Name:', documentStatusName);
-  //console.log('VerificationStatusBadge - Has Logs:', documentLogs ? documentLogs.length > 0 : false);
-  //console.log('VerificationStatusBadge - isDrivingLicenseWithGovernance:', isDrivingLicenseWithGovernance);
-  //console.log('VerificationStatusBadge - isBankStatementWithGovernance:', isBankStatementWithGovernance);
+  console.log('VerificationStatusBadge - Document Type:', documentType);
+  console.log('VerificationStatusBadge - Status:', status);
+  console.log('VerificationStatusBadge - Document Status Name:', documentStatusName);
+  console.log('VerificationStatusBadge - Has Logs:', documentLogs ? documentLogs.length > 0 : false);
+  console.log('VerificationStatusBadge - isDrivingLicenseWithGovernance:', isDrivingLicenseWithGovernance);
+  console.log('VerificationStatusBadge - isBankStatementWithGovernance:', isBankStatementWithGovernance);
   
   const isClickable = !!onClick || isPanWithGovernance || isVoterIdWithGovernance || 
                      isDrivingLicenseWithGovernance || isBankStatementWithGovernance;
   
   const handleClick = () => {
-    //console.log('VerificationStatusBadge - Badge clicked!');
-    //console.log('VerificationStatusBadge - onClick handler exists:', !!onClick);
-    //console.log('VerificationStatusBadge - isPanWithGovernance:', isPanWithGovernance);
-    //console.log('VerificationStatusBadge - isVoterIdWithGovernance:', isVoterIdWithGovernance);
-    //console.log('VerificationStatusBadge - isDrivingLicenseWithGovernance:', isDrivingLicenseWithGovernance);
-    //console.log('VerificationStatusBadge - isBankStatementWithGovernance:', isBankStatementWithGovernance);
+    console.log('VerificationStatusBadge - Badge clicked!');
+    console.log('VerificationStatusBadge - onClick handler exists:', !!onClick);
+    console.log('VerificationStatusBadge - isPanWithGovernance:', isPanWithGovernance);
+    console.log('VerificationStatusBadge - isVoterIdWithGovernance:', isVoterIdWithGovernance);
+    console.log('VerificationStatusBadge - isDrivingLicenseWithGovernance:', isDrivingLicenseWithGovernance);
+    console.log('VerificationStatusBadge - isBankStatementWithGovernance:', isBankStatementWithGovernance);
     
     if (onClick) {
-      //console.log('VerificationStatusBadge - Calling provided onClick handler');
+      console.log('VerificationStatusBadge - Calling provided onClick handler');
       onClick();
     } else if (isPanWithGovernance) {
-      //console.log('VerificationStatusBadge - Opening PAN dialog');
+      console.log('VerificationStatusBadge - Opening PAN dialog');
       setPanDialogOpen(true);
     } else if (isVoterIdWithGovernance) {
-      //console.log('VerificationStatusBadge - Opening Voter ID dialog');
+      console.log('VerificationStatusBadge - Opening Voter ID dialog');
       setVoterIdDialogOpen(true);
     } else if (isDrivingLicenseWithGovernance) {
-      //console.log('VerificationStatusBadge - Opening Driving License dialog');
+      console.log('VerificationStatusBadge - Opening Driving License dialog');
       setDrivingLicenseDialogOpen(true);
     } else if (isBankStatementWithGovernance) {
-      //console.log('VerificationStatusBadge - Opening Bank Statement dialog');
+      console.log('VerificationStatusBadge - Opening Bank Statement dialog');
       setBankStatementDialogOpen(true);
     }
   };
@@ -179,19 +179,19 @@ const VerificationStatusBadge: React.FC<VerificationStatusBadgeProps> = ({
     ) : null;
   
   // Log detailed information about found logs
-  //console.log('VerificationStatusBadge - Found PAN verification log:', !!panVerificationLog);
-  //console.log('VerificationStatusBadge - Found Voter ID verification log:', !!voterIdVerificationLog);
-  //console.log('VerificationStatusBadge - Found Driving License verification log:', !!drivingLicenseVerificationLog);
-  //console.log('VerificationStatusBadge - Found Bank Statement verification log:', !!bankStatementVerificationLog);
-  //console.log('VerificationStatusBadge - Found fallback Driving License log:', !!fallbackDrivingLicenseLog);
-  //console.log('VerificationStatusBadge - Found fallback Bank Statement log:', !!fallbackBankStatementLog);
+  console.log('VerificationStatusBadge - Found PAN verification log:', !!panVerificationLog);
+  console.log('VerificationStatusBadge - Found Voter ID verification log:', !!voterIdVerificationLog);
+  console.log('VerificationStatusBadge - Found Driving License verification log:', !!drivingLicenseVerificationLog);
+  console.log('VerificationStatusBadge - Found Bank Statement verification log:', !!bankStatementVerificationLog);
+  console.log('VerificationStatusBadge - Found fallback Driving License log:', !!fallbackDrivingLicenseLog);
+  console.log('VerificationStatusBadge - Found fallback Bank Statement log:', !!fallbackBankStatementLog);
   
   if (documentType === 'driving_license' && documentLogs) {
-    //console.log('VerificationStatusBadge - All logs for driving license:', documentLogs);
+    console.log('VerificationStatusBadge - All logs for driving license:', documentLogs);
   }
   
   if (documentType === 'bank_account' && documentLogs) {
-    //console.log('VerificationStatusBadge - All logs for bank account:', documentLogs);
+    console.log('VerificationStatusBadge - All logs for bank account:', documentLogs);
   }
   
   return (

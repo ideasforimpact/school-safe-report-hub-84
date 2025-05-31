@@ -80,7 +80,7 @@ async function createEmployeeFromSuperAdminEmail(clientId: string, superAdminEma
 
     // If employee exists, return the existing record
     if (existingEmployee) {
-      //console.log('Employee already exists for this client:', existingEmployee);
+      console.log('Employee already exists for this client:', existingEmployee);
       return existingEmployee;
     }
 
@@ -96,7 +96,7 @@ async function createEmployeeFromSuperAdminEmail(clientId: string, superAdminEma
       return null;
     }
 
-    //console.log('Created new super admin employee:', data);
+    console.log('Created new super admin employee:', data);
     return data;
   } catch (err) {
     console.error('Error in createEmployeeFromSuperAdminEmail:', err);
@@ -196,10 +196,10 @@ async function deleteClientEmployees(clientId: string) {
 // Function to process module access based on the provided module information
 async function processModuleAccess(clientId: string, moduleInfoArray: ModuleInfo[]): Promise<boolean> {
   try {
-    //console.log(`Processing modules for client ${clientId}:`, JSON.stringify(moduleInfoArray, null, 2));
+    console.log(`Processing modules for client ${clientId}:`, JSON.stringify(moduleInfoArray, null, 2));
     
     if (!moduleInfoArray || moduleInfoArray.length === 0) {
-      //console.log('No modules to process');
+      console.log('No modules to process');
       return true;
     }
 
@@ -213,7 +213,7 @@ async function processModuleAccess(clientId: string, moduleInfoArray: ModuleInfo
       console.error(`Error deleting existing modules for client ${clientId}:`, deleteError);
       // Continue anyway to try adding new modules
     } else {
-      //console.log(`Successfully deleted existing modules for client ${clientId}`);
+      console.log(`Successfully deleted existing modules for client ${clientId}`);
     }
 
     // For each module in the array, insert a new record
@@ -225,7 +225,7 @@ async function processModuleAccess(clientId: string, moduleInfoArray: ModuleInfo
         continue;
       }
       
-      //console.log(`Processing module: ${moduleInfo.name}, module_id: ${module_id}, is_admin: ${is_admin}`);
+      console.log(`Processing module: ${moduleInfo.name}, module_id: ${module_id}, is_admin: ${is_admin}`);
       
       const accessLevel = { 
         isAdmin: is_admin,
@@ -233,7 +233,7 @@ async function processModuleAccess(clientId: string, moduleInfoArray: ModuleInfo
       };
       
       // Insert new module
-      //console.log(`Inserting new module: ${module_id} with access_level:`, accessLevel);
+      console.log(`Inserting new module: ${module_id} with access_level:`, accessLevel);
       
       const { error: insertError } = await supabase
         .from('client_modules')
@@ -248,7 +248,7 @@ async function processModuleAccess(clientId: string, moduleInfoArray: ModuleInfo
         console.error(`Error inserting module ${module_id} for client ${clientId}:`, insertError);
         return false;
       } else {
-        //console.log(`Successfully inserted module ${module_id} for client ${clientId}`);
+        console.log(`Successfully inserted module ${module_id} for client ${clientId}`);
       }
     }
     
@@ -266,7 +266,7 @@ serve(async (req) => {
 
   try {
     const { operation, client } = await req.json()
-    //console.log('Client management operation:', operation, 'Client data:', client)
+    console.log('Client management operation:', operation, 'Client data:', client)
 
     switch (operation) {
       case 'create':
@@ -291,7 +291,7 @@ serve(async (req) => {
 })
 
 async function handleCreateClient(clientData: any) {
-  //console.log('Creating client with data:', clientData);
+  console.log('Creating client with data:', clientData);
   
   try {
     const { id: clientId, modules, superAdminEmail, clientTypeId } = clientData;
@@ -306,7 +306,7 @@ async function handleCreateClient(clientData: any) {
       if (updateError) {
         console.error('Error updating client type:', updateError);
       } else {
-        //console.log('Successfully updated client type');
+        console.log('Successfully updated client type');
       }
     }
     
@@ -337,7 +337,7 @@ async function handleCreateClient(clientData: any) {
 }
 
 async function handleUpdateClient(clientData: any) {
-  //console.log('Updating client with data:', clientData);
+  console.log('Updating client with data:', clientData);
   
   try {
     const { id: clientId, modules, superAdminEmail, clientTypeId } = clientData;
@@ -352,7 +352,7 @@ async function handleUpdateClient(clientData: any) {
       if (updateError) {
         console.error('Error updating client type:', updateError);
       } else {
-        //console.log('Successfully updated client type');
+        console.log('Successfully updated client type');
       }
     }
     
@@ -383,7 +383,7 @@ async function handleUpdateClient(clientData: any) {
 }
 
 async function handleDeleteClient(clientData: any) {
-  //console.log('Deleting client with data:', clientData);
+  console.log('Deleting client with data:', clientData);
   
   try {
     const { id: clientId } = clientData;

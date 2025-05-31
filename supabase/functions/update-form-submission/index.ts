@@ -40,7 +40,7 @@ serve(async (req) => {
       );
     }
 
-    //console.log(`Updating submission: ${submission_id}`);
+    console.log(`Updating submission: ${submission_id}`);
 
     const updateData: any = {
       updated_at: new Date().toISOString()
@@ -66,7 +66,7 @@ serve(async (req) => {
       throw new Error(`Failed to update submission: ${error.message}`);
     }
 
-    //console.log('Form submission updated successfully:', submission_id);
+    console.log('Form submission updated successfully:', submission_id);
 
     return new Response(
       JSON.stringify({ 

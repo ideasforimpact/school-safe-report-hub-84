@@ -162,7 +162,7 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
   
   // Function to open file preview dialog for uploaded documents
   const openUploadedFilePreview = (document: UploadedDocument, fileIndex: number = 0) => {
-    //console.log("Opening preview for uploaded document:", document, "fileIndex:", fileIndex);
+    console.log("Opening preview for uploaded document:", document, "fileIndex:", fileIndex);
     setSelectedUploadedDocument(document);
     setSelectedFileIndex(fileIndex);
     setShowFilePreview(true);
@@ -194,7 +194,7 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
 
   // Handle successful upload
   const handleUploadSuccess = (result: any) => {
-    //console.log('Upload success:', result);
+    console.log('Upload success:', result);
     
     // Refresh the documents list
     if (result.result && result.result[0] && result.result[0].documents) {
@@ -679,7 +679,7 @@ const VehicleTabs: React.FC<VehicleTabsProps> = ({ vehicleId }) => {
                 if (selectedUploadedDocument) {
                   handleDeleteFile(selectedUploadedDocument, selectedFileIndex);
                 } else {
-                  //console.log(`Delete legacy file at index ${selectedFileIndex}`);
+                  console.log(`Delete legacy file at index ${selectedFileIndex}`);
                   toast({
                     title: 'Delete not implemented',
                     description: 'Legacy file deletion feature will be implemented soon',

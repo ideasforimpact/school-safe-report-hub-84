@@ -12,9 +12,9 @@ const VehicleDetailContent: React.FC = () => {
   const { vehicleId } = useParams<{ vehicleId: string }>();
   const { getVehicle } = useTransportSafety();
   
-  //console.log("Vehicle ID from params:", vehicleId);
+  console.log("Vehicle ID from params:", vehicleId);
   const vehicle = getVehicle(vehicleId!);
-  //console.log("Found vehicle:", vehicle);
+  console.log("Found vehicle:", vehicle);
 
   if (!vehicle) {
     return <VehicleNotFound />;

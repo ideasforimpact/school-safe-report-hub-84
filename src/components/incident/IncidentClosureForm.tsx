@@ -74,7 +74,7 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
     setIsSubmitting(true);
 
     try {
-      //console.log('Closing incident with data:', {
+      console.log('Closing incident with data:', {
         client_id: state.employeeData.clientId,
         incident_id: incident.id,
         root_cause_analysis: rootCause.trim(),

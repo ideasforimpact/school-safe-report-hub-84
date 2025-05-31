@@ -22,7 +22,7 @@ serve(async (req) => {
     // Parse request body
     const { client_id, incident_id, comment, documents } = await req.json()
     
-    //console.log('Add comment request:', { client_id, incident_id, comment, documents })
+    console.log('Add comment request:', { client_id, incident_id, comment, documents })
 
     // Validate required fields
     if (!client_id) {
@@ -122,7 +122,7 @@ serve(async (req) => {
       )
     }
 
-    //console.log('Comment added successfully:', newComment.id)
+    console.log('Comment added successfully:', newComment.id)
 
     return new Response(
       JSON.stringify({ 

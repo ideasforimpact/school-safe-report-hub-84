@@ -22,7 +22,7 @@ export const useDocumentRealtime = (
           filter: `employee_id=eq.${employeeId}`
         },
         (payload) => {
-          //console.log('Real-time update received:', payload);
+          console.log('Real-time update received:', payload);
           
           if (payload.new) {
             // Transform the database record to our frontend format
@@ -49,7 +49,7 @@ export const useDocumentRealtime = (
 
     // Clean up subscription when component unmounts
     return () => {
-      //console.log('Unsubscribing from real-time updates');
+      console.log('Unsubscribing from real-time updates');
       supabase.removeChannel(channel);
     };
   }, [employeeId, onDocumentUpdate]);

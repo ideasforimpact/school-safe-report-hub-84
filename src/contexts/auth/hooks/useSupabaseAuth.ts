@@ -36,22 +36,22 @@ export function useSupabaseAuth({
       return;
     }
     
-    //console.log("Setting up Supabase auth listener");
+    console.log("Setting up Supabase auth listener");
     
     // Clean up any existing subscription to prevent duplicates
     if (authListenerRef.current.subscription) {
-      //console.log("Cleaning up existing auth listener before setting up a new one");
+      console.log("Cleaning up existing auth listener before setting up a new one");
       authListenerRef.current.subscription.unsubscribe();
     }
     
     // Set up auth state change listener first
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      //console.log("Auth state changed:", event, session?.user?.email);
+      console.log("Auth state changed:", event, session?.user?.email);
       
       if (event === 'SIGNED_IN' && session?.user) {
         // Handle potential deadlock by using setTimeout - this is important!
         setTimeout(() => {
-          //console.log("Processing authenticated user:", session.user.email);
+          console.log("Processing authenticated user:", session.user.email);
           handleUserAuthentication(session.user);
         }, 10);
       } else if (event === 'SIGNED_OUT') {
@@ -65,7 +65,7 @@ export function useSupabaseAuth({
     
     // Check for existing session only once during component mount
     supabase.auth.getSession().then(({ data: { session }, error }) => {
-      //console.log("Initial session check:", session?.user?.email);
+      console.log("Initial session check:", session?.user?.email);
       if (error) {
         console.error("Session check error:", error);
       }
@@ -73,7 +73,7 @@ export function useSupabaseAuth({
       if (session?.user) {
         // Use setTimeout to avoid potential deadlocks
         setTimeout(() => {
-          //console.log("Processing existing session user:", session.user.email);
+          console.log("Processing existing session user:", session.user.email);
           handleUserAuthentication(session.user);
         }, 10);
       } else {
@@ -88,7 +88,7 @@ export function useSupabaseAuth({
     
     // Return cleanup function that will run when component unmounts
     return () => {
-      //console.log("Cleaning up Supabase auth listener");
+      console.log("Cleaning up Supabase auth listener");
       if (authListenerRef.current.subscription) {
         authListenerRef.current.subscription.unsubscribe();
       }

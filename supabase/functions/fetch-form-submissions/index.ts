@@ -40,7 +40,7 @@ serve(async (req) => {
       );
     }
 
-    //console.log(`Fetching submissions for form: ${form_id}`);
+    console.log(`Fetching submissions for form: ${form_id}`);
 
     const { data, error } = await supabaseClient
       .from('form_submissions')
@@ -53,7 +53,7 @@ serve(async (req) => {
       throw new Error(`Failed to fetch submissions: ${error.message}`);
     }
 
-    //console.log(`Successfully fetched ${data?.length || 0} submissions for form ${form_id}`);
+    console.log(`Successfully fetched ${data?.length || 0} submissions for form ${form_id}`);
 
     return new Response(
       JSON.stringify({ 

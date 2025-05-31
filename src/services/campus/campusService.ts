@@ -4,7 +4,7 @@ import { ConfigItem } from '@/contexts/types';
 
 export const getAllCampuses = async (): Promise<ConfigItem[]> => {
   try {
-    //console.log("Fetching campuses from database...");
+    console.log("Fetching campuses from database...");
     
     const { data, error } = await supabase
       .from('campuses')
@@ -15,7 +15,7 @@ export const getAllCampuses = async (): Promise<ConfigItem[]> => {
       throw error;
     }
     
-    //console.log(`Successfully fetched ${data.length} campuses:`, data);
+    console.log(`Successfully fetched ${data.length} campuses:`, data);
     
     // Map campuses to ConfigItem format
     return data.map(campus => ({

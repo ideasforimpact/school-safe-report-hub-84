@@ -44,7 +44,7 @@ export const CampusTab = ({
       return;
     }
     
-    //console.log("Adding campus:", newCampus.trim()); // Debug log
+    console.log("Adding campus:", newCampus.trim()); // Debug log
     addCampus(newCampus.trim());
     setNewCampus('');
   };
@@ -66,7 +66,7 @@ export const CampusTab = ({
       return;
     }
     
-    //console.log("Updating campus:", editingCampus.id, editingCampus.name.trim());
+    console.log("Updating campus:", editingCampus.id, editingCampus.name.trim());
     updateCampus(editingCampus.id, editingCampus.name.trim());
   };
 

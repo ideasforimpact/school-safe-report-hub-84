@@ -289,7 +289,7 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
   }
   
   try {
-    //console.log("Handling document upload for employee:", employeeId);
+    console.log("Handling document upload for employee:", employeeId);
     
     // Upload the document image to storage first
     const { documentImage, documentNumber, documentStatusId, params, ...restDocumentData } = documentData;
@@ -298,7 +298,7 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
     const timestamp = new Date().getTime();
     const filePath = `${employeeId}/${restDocumentData.documentTypeId}_${timestamp}`;
     
-    //console.log("Generated file path:", filePath);
+    console.log("Generated file path:", filePath);
     
     // Extract the base64 content and content type
     const base64Regex = /^data:([^;]+);base64,(.+)$/;
@@ -313,7 +313,7 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
     const binaryData = Uint8Array.from(atob(base64Content), c => c.charCodeAt(0));
     
     // Upload to storage
-    //console.log("Uploading file to storage...");
+    console.log("Uploading file to storage...");
     const { data: uploadData, error: uploadError } = await supabase
       .storage
       .from('employee-documents')
@@ -327,7 +327,7 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
       throw uploadError;
     }
     
-    //console.log("File uploaded successfully:", uploadData);
+    console.log("File uploaded successfully:", uploadData);
     
     // Get pending document status ID if none is provided
     let pendingStatusId = documentStatusId;
@@ -345,7 +345,7 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
       }
     }
     
-    //console.log("Using document status ID:", pendingStatusId);
+    console.log("Using document status ID:", pendingStatusId);
     
     // Store document number directly in plaintext without encryption
     const plainTextDocNumber = documentNumber;
@@ -374,7 +374,7 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
       updated_at: new Date().toISOString()
     };
     
-    //console.log("Creating document record:", {
+    console.log("Creating document record:", {
       employeeId: newDocumentRecord.employee_id,
       documentTypeId: newDocumentRecord.document_type_id,
       filePath: newDocumentRecord.document_url,
@@ -396,7 +396,7 @@ async function handleDocumentUpload(employeeId, documentData, supabase, corsHead
       throw insertError;
     }
     
-    //console.log("Document uploaded and saved successfully");
+    console.log("Document uploaded and saved successfully");
     
     // For UI display, prepare the document object with related data
     const documentResponse = {
@@ -473,7 +473,7 @@ async function handleListDocuments(employeeId, supabase, corsHeaders, timeframe 
       
       if (startDate) {
         const isoStartDate = startDate.toISOString();
-        //console.log(`Filtering documents since: ${isoStartDate}`);
+        console.log(`Filtering documents since: ${isoStartDate}`);
         query = query.gte('created_at', isoStartDate);
       }
     }

@@ -37,13 +37,13 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
   const [selectedModules, setSelectedModules] = useState<ModuleAccessItem[]>([]);
 
   // Log clientId for debugging
-  //console.log("AddUserDialog - ClientId from props:", clientId);
-  //console.log("AddUserDialog - ClientId in formData:", formData.clientId);
-  //console.log("AddUserDialog - Available configured modules:", state.configuredModules);
+  console.log("AddUserDialog - ClientId from props:", clientId);
+  console.log("AddUserDialog - ClientId in formData:", formData.clientId);
+  console.log("AddUserDialog - Available configured modules:", state.configuredModules);
 
   // Module change handler that directly updates moduleAccessPayload
   const handleModuleChange = (moduleAccessItems: ModuleAccessItem[]) => {
-    //console.log("Module access items changed:", moduleAccessItems);
+    console.log("Module access items changed:", moduleAccessItems);
     
     // Update local state for UI rendering
     setSelectedModules(moduleAccessItems);
@@ -78,7 +78,7 @@ const AddUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, res
       employeeId: formData.employeeId || undefined
     }));
     
-    //console.log("Module access payload for backend:", moduleAccessPayload);
+    console.log("Module access payload for backend:", moduleAccessPayload);
     
     // Update the formData with the moduleAccessPayload before submission
     setFormData(prevData => ({

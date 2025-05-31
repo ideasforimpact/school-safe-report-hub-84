@@ -27,13 +27,13 @@ const Header = () => {
   const isSuperAdmin = user?.isSuperAdmin || employeeData?.isSuperAdmin;
 
   // Log user and Redux state for debugging
-  //console.log("User from Auth Context:", user);
-  //console.log("Employee Data from Redux Store:", employeeData);
-  //console.log("Is Admin from Redux:", isAdmin);
-  //console.log("Is Super Admin from Redux:", isSuperAdmin);
-  //console.log("Department:", employeeData?.department);
-  //console.log("Employee Type:", employeeData?.employeeType);
-  //console.log("User isSuperAdmin property:", user?.isSuperAdmin);
+  console.log("User from Auth Context:", user);
+  console.log("Employee Data from Redux Store:", employeeData);
+  console.log("Is Admin from Redux:", isAdmin);
+  console.log("Is Super Admin from Redux:", isSuperAdmin);
+  console.log("Department:", employeeData?.department);
+  console.log("Employee Type:", employeeData?.employeeType);
+  console.log("User isSuperAdmin property:", user?.isSuperAdmin);
   
   // Check if we're on the home page
   const isHomePage = location.pathname === "/" || location.pathname === "/home";

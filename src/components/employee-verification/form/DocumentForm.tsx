@@ -171,7 +171,7 @@ const DocumentForm: React.FC<DocumentFormProps> = ({
       }),
     };
 
-    //console.log('Submitting document with data:', {
+    console.log('Submitting document with data:', {
       employeeId: uploadData.employeeId,
       documentTypeId: uploadData.documentTypeId,
       documentNumber: uploadData.documentNumber ? 'Provided' : 'Not provided',

@@ -31,8 +31,8 @@ serve(async (req) => {
     // Get data from request
     const { vehicleId, files, documentInfo } = await req.json();
     
-    //console.log(`Processing upload for vehicle: ${vehicleId}`);
-    //console.log(`Number of files: ${files.length}`);
+    console.log(`Processing upload for vehicle: ${vehicleId}`);
+    console.log(`Number of files: ${files.length}`);
     
     // Ensure we have a valid vehicle ID
     if (!vehicleId) {
@@ -60,7 +60,7 @@ serve(async (req) => {
       const randomStr = Math.random().toString(36).substring(2, 10);
       const filePath = `${vehicleId}/${timestamp}_${randomStr}_${cleanFileName}`;
       
-      //console.log(`Uploading ${filePath}`);
+      console.log(`Uploading ${filePath}`);
       
       // Upload to storage
       const { data: uploadData, error: uploadError } = await supabase.storage

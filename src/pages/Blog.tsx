@@ -51,7 +51,7 @@ const Blog = () => {
 
   const handleReadMore = (id: number) => {
     // In a real app, this would navigate to the full blog post
-    //console.log(`Navigate to blog post ${id}`);
+    console.log(`Navigate to blog post ${id}`);
   };
 
   return (

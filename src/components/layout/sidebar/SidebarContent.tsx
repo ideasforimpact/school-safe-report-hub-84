@@ -46,7 +46,7 @@ const SidebarContent = () => {
       try {
         if (isSaasOwner && isBackofficeRoute) {
           // For backoffice, fetch modules from database
-          //console.log('Loading backoffice modules from database');
+          console.log('Loading backoffice modules from database');
           const modules = await fetchModules(true, user);
           const items = convertModulesToSidebarItems(modules, {}, '/backoffice');
           setDynamicMenuItems(items);

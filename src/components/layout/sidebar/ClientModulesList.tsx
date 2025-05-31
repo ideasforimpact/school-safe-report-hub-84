@@ -46,11 +46,11 @@ const ClientModulesList = () => {
   const isLoading = getEmployeeLoadingState(state); // Use selector
   const [sidebarModules, setSidebarModules] = useState<ModuleItem[]>([]);
 
-//console.log(configuredModules,"configuredModules")
+console.log(configuredModules,"configuredModules")
   // Transform Redux store modules into sidebar menu items
   useEffect(() => {
     if (configuredModules && configuredModules.length > 0) {
-      //console.log("Using modules from Redux store:", configuredModules);
+      console.log("Using modules from Redux store:", configuredModules);
       
       // Map store modules to sidebar items
       const modules = configuredModules.map(module => {
@@ -72,7 +72,7 @@ const ClientModulesList = () => {
       setSidebarModules(modules);
     } else {
       // Fallback to dashboard if no modules are in the store
-      //console.log("No modules in Redux store, using default dashboard");
+      console.log("No modules in Redux store, using default dashboard");
       setSidebarModules([{
         icon: LayoutDashboard,
         label: 'Dashboard',

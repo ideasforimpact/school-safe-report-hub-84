@@ -64,7 +64,7 @@ const DocumentActions: React.FC<DocumentActionsProps> = ({ document, showVerifyB
             }
           });
           
-          //console.log("Bank Statement API verification response:", data, error);
+          console.log("Bank Statement API verification response:", data, error);
           
           if (error) {
             throw new Error(error.message || 'Bank statement verification failed');

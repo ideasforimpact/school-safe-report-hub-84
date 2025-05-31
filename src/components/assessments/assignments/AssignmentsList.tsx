@@ -104,7 +104,7 @@ const AssignmentsList = () => {
   };
   
   const handleRespondClick = (assignmentId: string) => {
-    //console.log(`Navigating to assignment response for ID: ${assignmentId}`);
+    console.log(`Navigating to assignment response for ID: ${assignmentId}`);
     navigate(`/assessments/respond/${assignmentId}`);
   };
   

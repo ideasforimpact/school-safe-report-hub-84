@@ -24,7 +24,7 @@ export const validateExcelData = async (data: RawStudentData[]): Promise<string[
     return errors;
   }
 
-  //console.log('Raw Excel/CSV data:', data);
+  console.log('Raw Excel/CSV data:', data);
 
   // Extract all unique campuses, grades, and sections from the data for bulk validation
   const uniqueCampuses = new Set();

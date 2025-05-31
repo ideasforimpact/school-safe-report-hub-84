@@ -24,27 +24,27 @@ const BankStatementDetailsDialog: React.FC<BankStatementDetailsDialogProps> = ({
   const isSuccessful = statementDetails?.success && statementDetails?.status_code === 200;
   
   // Comprehensive debugging logs
-  //console.log('BankStatementDetailsDialog - Dialog open state:', open);
-  //console.log('BankStatementDetailsDialog - Document ID:', documentId);
-  //console.log('BankStatementDetailsDialog - Full statement details:', statementDetails);
-  //console.log('BankStatementDetailsDialog - Extracted data:', data);
-  //console.log('BankStatementDetailsDialog - Is successful:', isSuccessful);
+  console.log('BankStatementDetailsDialog - Dialog open state:', open);
+  console.log('BankStatementDetailsDialog - Document ID:', documentId);
+  console.log('BankStatementDetailsDialog - Full statement details:', statementDetails);
+  console.log('BankStatementDetailsDialog - Extracted data:', data);
+  console.log('BankStatementDetailsDialog - Is successful:', isSuccessful);
   
   useEffect(() => {
-    //console.log('BankStatementDetailsDialog - Dialog mounted/updated with open:', open);
+    console.log('BankStatementDetailsDialog - Dialog mounted/updated with open:', open);
     
     if (open) {
-      //console.log('BankStatementDetailsDialog - Dialog is now open');
+      console.log('BankStatementDetailsDialog - Dialog is now open');
     }
     
     return () => {
-      //console.log('BankStatementDetailsDialog - Dialog unmounting');
+      console.log('BankStatementDetailsDialog - Dialog unmounting');
     };
   }, [open]);
   
   return (
     <Dialog open={open} onOpenChange={(newOpenState) => {
-      //console.log('BankStatementDetailsDialog - Dialog open state changing to:', newOpenState);
+      console.log('BankStatementDetailsDialog - Dialog open state changing to:', newOpenState);
       onOpenChange(newOpenState);
     }}>
       <DialogContent className="sm:max-w-2xl">

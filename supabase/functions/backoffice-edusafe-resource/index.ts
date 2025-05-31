@@ -20,7 +20,7 @@ serve(async (req) => {
 
     const { action, ...body } = await req.json()
 
-    //console.log('Backoffice EduSafe Resource operation:', action, body)
+    console.log('Backoffice EduSafe Resource operation:', action, body)
 
     switch (action) {
       case 'list':
@@ -49,7 +49,7 @@ serve(async (req) => {
 })
 
 async function listResources(supabase: any, { client_type_id }: { client_type_id: string }) {
-  //console.log('Listing resources for client type:', client_type_id)
+  console.log('Listing resources for client type:', client_type_id)
   
   const { data: resources, error } = await supabase
     .from('backoffice_edusafe_resource')
@@ -62,7 +62,7 @@ async function listResources(supabase: any, { client_type_id }: { client_type_id
     throw error
   }
 
-  //console.log('Found resources:', resources?.length || 0)
+  console.log('Found resources:', resources?.length || 0)
 
   return new Response(
     JSON.stringify({ resources: resources || [] }),
@@ -71,7 +71,7 @@ async function listResources(supabase: any, { client_type_id }: { client_type_id
 }
 
 async function listAllResources(supabase: any) {
-  //console.log('Listing all resources')
+  console.log('Listing all resources')
   
   const { data: resources, error } = await supabase
     .from('backoffice_edusafe_resource')
@@ -83,7 +83,7 @@ async function listAllResources(supabase: any) {
     throw error
   }
 
-  //console.log('Found resources:', resources?.length || 0)
+  console.log('Found resources:', resources?.length || 0)
 
   return new Response(
     JSON.stringify({ resources: resources || [] }),
@@ -92,7 +92,7 @@ async function listAllResources(supabase: any) {
 }
 
 async function createResource(supabase: any, data: any) {
-  //console.log('Creating resource for client type:', data.client_type_id)
+  console.log('Creating resource for client type:', data.client_type_id)
   
   let document_url = data.document_url;
   
@@ -131,12 +131,12 @@ async function createResource(supabase: any, data: any) {
         .getPublicUrl(filename);
       
       document_url = urlData.publicUrl;
-      //console.log('File uploaded successfully:', document_url);
+      console.log('File uploaded successfully:', document_url);
       
     } catch (storageError) {
       console.error('Error uploading to storage:', storageError);
       // Fallback to base64 if storage fails
-      //console.log('Falling back to base64 storage');
+      console.log('Falling back to base64 storage');
     }
   }
   
@@ -164,7 +164,7 @@ async function createResource(supabase: any, data: any) {
     throw error
   }
 
-  //console.log('Created resource:', resource.id)
+  console.log('Created resource:', resource.id)
 
   return new Response(
     JSON.stringify({ resource }),
@@ -173,7 +173,7 @@ async function createResource(supabase: any, data: any) {
 }
 
 async function updateResource(supabase: any, data: any) {
-  //console.log('Updating resource:', data.id)
+  console.log('Updating resource:', data.id)
   
   const updateData: any = {
     title: data.title,
@@ -218,7 +218,7 @@ async function updateResource(supabase: any, data: any) {
         .getPublicUrl(filename);
       
       updateData.document_url = urlData.publicUrl;
-      //console.log('File uploaded successfully:', updateData.document_url);
+      console.log('File uploaded successfully:', updateData.document_url);
       
     } catch (storageError) {
       console.error('Error uploading to storage:', storageError);
@@ -238,7 +238,7 @@ async function updateResource(supabase: any, data: any) {
     throw error
   }
 
-  //console.log('Updated resource:', resource.id)
+  console.log('Updated resource:', resource.id)
 
   return new Response(
     JSON.stringify({ resource }),
@@ -247,7 +247,7 @@ async function updateResource(supabase: any, data: any) {
 }
 
 async function deleteResource(supabase: any, { id }: { id: string }) {
-  //console.log('Deleting resource:', id)
+  console.log('Deleting resource:', id)
   
   // Get the resource to find the file URL
   const { data: resource, error: fetchError } = await supabase
@@ -278,14 +278,14 @@ async function deleteResource(supabase: any, { id }: { id: string }) {
       await supabase.storage
         .from('edusafe-resources')
         .remove([filename]);
-      //console.log('File deleted from storage:', filename);
+      console.log('File deleted from storage:', filename);
     } catch (storageError) {
       console.error('Error deleting file from storage:', storageError);
       // Continue even if storage deletion fails
     }
   }
 
-  //console.log('Deleted resource:', id)
+  console.log('Deleted resource:', id)
 
   return new Response(
     JSON.stringify({ success: true }),

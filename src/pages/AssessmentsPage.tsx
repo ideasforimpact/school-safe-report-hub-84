@@ -21,18 +21,18 @@ const AssessmentsPage = () => {
   const [showCreateTemplate, setShowCreateTemplate] = useState(false);
   const [showCreateAssessment, setShowCreateAssessment] = useState(false);
   
-  //console.log("Current location:", location.pathname);
+  console.log("Current location:", location.pathname);
   
   // Handle assessment creation button click
   const handleCreateAssessment = () => {
-    //console.log("Create assessment button clicked");
+    console.log("Create assessment button clicked");
     setShowCreateAssessment(true);
     setShowCreateTemplate(false);
   };
 
   // Handle template creation button click (keeping existing functionality)
   const handleCreateTemplate = () => {
-    //console.log("Create template button clicked");
+    console.log("Create template button clicked");
     setShowCreateTemplate(true);
     setShowCreateAssessment(false);
   };

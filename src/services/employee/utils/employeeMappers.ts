@@ -60,7 +60,7 @@ export const mapEmployeeToDbRecord = (employee: Partial<Employee>): Partial<DbEm
   
   // Important: Map clientId to client_id for database schema compatibility
   if (employee.clientId !== undefined) {
-    //console.log("Mapping clientId to client_id:", employee.clientId);
+    console.log("Mapping clientId to client_id:", employee.clientId);
     dbRecord.client_id = employee.clientId;
   }
   

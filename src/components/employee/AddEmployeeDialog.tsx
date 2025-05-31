@@ -64,7 +64,7 @@ const AddEmployeeDialog = ({ isOpen, setIsOpen, onAddEmployee, clientId }: AddEm
   const { state } = useEmployeeStore();
 
   // Log the clientId prop to verify what's being received
-  //console.log("AddEmployeeDialog received clientId:", clientId);
+  console.log("AddEmployeeDialog received clientId:", clientId);
   
   const form = useForm<FormValues>({
     resolver: zodResolver(employeeSchema),
@@ -83,7 +83,7 @@ const AddEmployeeDialog = ({ isOpen, setIsOpen, onAddEmployee, clientId }: AddEm
   // Update form values when clientId prop changes
   useEffect(() => {
     if (clientId) {
-      //console.log("Setting clientId in form:", clientId);
+      console.log("Setting clientId in form:", clientId);
       form.setValue('clientId', clientId);
     }
   }, [clientId, form]);
@@ -97,7 +97,7 @@ const AddEmployeeDialog = ({ isOpen, setIsOpen, onAddEmployee, clientId }: AddEm
 
   // Handle module selection changes
   const handleModuleChange = (modules: ModuleAccessItem[]) => {
-    //console.log("Selected modules changed:", modules);
+    console.log("Selected modules changed:", modules);
     setSelectedModules(modules);
   };
 
@@ -129,8 +129,8 @@ const AddEmployeeDialog = ({ isOpen, setIsOpen, onAddEmployee, clientId }: AddEm
         moduleAccessPayload // Add the moduleAccessPayload directly
       };
       
-      //console.log("Adding employee with data:", employeeData);
-      //console.log("Module access payload:", moduleAccessPayload);
+      console.log("Adding employee with data:", employeeData);
+      console.log("Module access payload:", moduleAccessPayload);
       
       await onAddEmployee(employeeData);
       // Success message is now handled in the service or context

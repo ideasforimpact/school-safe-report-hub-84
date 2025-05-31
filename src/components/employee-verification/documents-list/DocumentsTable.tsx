@@ -48,10 +48,10 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
   const [selectedDocumentId, setSelectedDocumentId] = React.useState<string | undefined>(undefined);
   
   // Log documents for debugging
-  //console.log('DocumentsTable - All documents:', documents);
+  console.log('DocumentsTable - All documents:', documents);
   
   useEffect(() => {
-    //console.log('DocumentsTable - Documents with driving license:', 
+    console.log('DocumentsTable - Documents with driving license:', 
       documents.filter(doc => doc.documentTypeName?.toLowerCase().includes('driving')));
   }, [documents]);
   
@@ -65,24 +65,24 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
   };
 
   const handleBadgeClick = (doc: VerificationDocument) => {
-    //console.log('DocumentsTable - Badge clicked for document:', doc);
-    //console.log('DocumentsTable - Document type:', doc.documentTypeName);
-    //console.log('DocumentsTable - Verification status:', doc.verificationStatus);
+    console.log('DocumentsTable - Badge clicked for document:', doc);
+    console.log('DocumentsTable - Document type:', doc.documentTypeName);
+    console.log('DocumentsTable - Verification status:', doc.verificationStatus);
     
     const statusName = getDocumentStatusName(doc);
-    //console.log('DocumentsTable - Document status name:', statusName);
+    console.log('DocumentsTable - Document status name:', statusName);
     
     const hasLogs = !!doc.employee_docs_log && doc.employee_docs_log.length > 0;
-    //console.log('DocumentsTable - Has logs:', hasLogs);
-    //console.log('DocumentsTable - Number of logs:', doc.employee_docs_log?.length || 0);
+    console.log('DocumentsTable - Has logs:', hasLogs);
+    console.log('DocumentsTable - Number of logs:', doc.employee_docs_log?.length || 0);
     
     if (!hasLogs || !statusName || doc.verificationStatus !== 'verified') {
-      //console.log('DocumentsTable - Not showing dialog - Missing logs, status name, or not verified');
+      console.log('DocumentsTable - Not showing dialog - Missing logs, status name, or not verified');
       return;
     }
     
     const docType = doc.documentTypeName?.toLowerCase();
-    //console.log('DocumentsTable - Document type (lowercase):', docType);
+    console.log('DocumentsTable - Document type (lowercase):', docType);
     setSelectedDocumentId(doc.id);
     
     if (docType?.includes('aadhar') && statusName === 'governance') {
@@ -133,8 +133,8 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
       }
     }
     else if (docType?.includes('driving') || docType?.includes('license')) {
-      //console.log('DocumentsTable - This is a driving license document');
-      //console.log('DocumentsTable - Document logs:', doc.employee_docs_log);
+      console.log('DocumentsTable - This is a driving license document');
+      console.log('DocumentsTable - Document logs:', doc.employee_docs_log);
       
       // Attempt to find any log with driving license verification data
       const drivingLicenseLog = doc.employee_docs_log?.find(log => 
@@ -142,7 +142,7 @@ const DocumentsTable: React.FC<DocumentsTableProps> = ({
         log.response
       );
       
-      //console.log('DocumentsTable - Found driving license log:', drivingLicenseLog);
+      console.log('DocumentsTable - Found driving license log:', drivingLicenseLog);
       
       if (drivingLicenseLog && statusName === 'governance') {
         // Set the driving license details and open the dialog

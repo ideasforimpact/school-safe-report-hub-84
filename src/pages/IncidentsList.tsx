@@ -11,14 +11,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { RefreshCw } from 'lucide-react';
 
 const IncidentsList = () => {
-  //console.log('IncidentsList component rendering');
+  console.log('IncidentsList component rendering');
   
   const { incidents } = useIncidents();
   const { loading, error, refetchIncidents } = useIncidentData();
   const [isRefreshing, setIsRefreshing] = useState(false);
   
-  //console.log('Incidents from context:', incidents);
-  //console.log('Loading state:', loading);
+  console.log('Incidents from context:', incidents);
+  console.log('Loading state:', loading);
 
   const {
     filters,
@@ -36,8 +36,8 @@ const IncidentsList = () => {
     clearFilters
   } = useIncidentFilters(incidents);
 
-  //console.log('Filtered incidents:', filteredIncidents);
-  //console.log('Filter options:', {
+  console.log('Filtered incidents:', filteredIncidents);
+  console.log('Filter options:', {
     categories: availableCategories.length,
     subcategories: availableSubcategories.length,
     locations: locationOptions.length,
@@ -62,7 +62,7 @@ const IncidentsList = () => {
     setIsRefreshing(true);
     try {
       await refetchIncidents();
-      //console.log('Incidents refreshed successfully');
+      console.log('Incidents refreshed successfully');
     } catch (error) {
       console.error('Error refreshing incidents:', error);
     } finally {

@@ -115,7 +115,7 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
         formData.append('uploaded_by', user.id);
       }
 
-      //console.log('Uploading resource with client_id:', user.clientId);
+      console.log('Uploading resource with client_id:', user.clientId);
 
       // Call the edge function
       const { data, error } = await supabase.functions.invoke('edusafe-resource-upload', {
@@ -131,7 +131,7 @@ const ResourceUploadForm: React.FC<ResourceUploadFormProps> = ({ onComplete }) =
         throw new Error(data.error || 'Failed to upload resource');
       }
 
-      //console.log('Resource uploaded successfully:', data.resource);
+      console.log('Resource uploaded successfully:', data.resource);
       toast.success('Resource uploaded successfully');
       
       // Refresh the resources list

@@ -7,7 +7,7 @@ import { Student } from '@/types/student';
  */
 export const fetchStudentsByClientId = async (clientId: string): Promise<Student[]> => {
   try {
-    //console.log('Fetching students for client_id:', clientId);
+    console.log('Fetching students for client_id:', clientId);
     
     const { data, error } = await supabase
       .from('students')
@@ -32,7 +32,7 @@ export const fetchStudentsByClientId = async (clientId: string): Promise<Student
       updatedAt: new Date(dbStudent.updated_at)
     }));
 
-    //console.log(`Successfully fetched ${transformedStudents.length} students`);
+    console.log(`Successfully fetched ${transformedStudents.length} students`);
     return transformedStudents;
   } catch (error) {
     console.error('Error in fetchStudentsByClientId:', error);

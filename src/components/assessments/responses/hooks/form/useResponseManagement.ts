@@ -72,7 +72,7 @@ export const useResponseManagement = (
         status: 'Draft'
       };
 
-      //console.log('Saving assessment response:', responseData);
+      console.log('Saving assessment response:', responseData);
       toast.success("Progress saved successfully");
     } catch (error) {
       console.error('Error saving response:', error);

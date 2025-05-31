@@ -41,9 +41,9 @@ const InlineCommentForm: React.FC<InlineCommentFormProps> = ({
     setIsSubmitting(true);
     
     try {
-      //console.log('Submitting comment for incident:', incidentId);
-      //console.log('Comment text:', commentText);
-      //console.log('Files:', commentFiles);
+      console.log('Submitting comment for incident:', incidentId);
+      console.log('Comment text:', commentText);
+      console.log('Files:', commentFiles);
 
       // Prepare documents array with file names
       const documents = commentFiles.map(file => file.name);

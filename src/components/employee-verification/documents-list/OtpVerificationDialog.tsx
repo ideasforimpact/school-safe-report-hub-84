@@ -39,7 +39,7 @@ const OtpVerificationDialog: React.FC<OtpVerificationDialogProps> = ({
   const handleRequestOtp = async () => {
     setIsRequestingOtp(true);
     try {
-      //console.log('Sending OTP request for document ID:', document.id);
+      console.log('Sending OTP request for document ID:', document.id);
       
       const { data, error } = await supabase.functions.invoke('employee-verification/request-aadhar-otp', {
         method: 'POST',

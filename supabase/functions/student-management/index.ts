@@ -542,7 +542,7 @@ async function handleBulkUpdate(body: any, corsHeaders: Record<string, string>) 
     );
   }
 
-  //console.log(`Processing bulk update for ${students.length} students`);
+  console.log(`Processing bulk update for ${students.length} students`);
   
   try {
     const updatedStudents = [];
