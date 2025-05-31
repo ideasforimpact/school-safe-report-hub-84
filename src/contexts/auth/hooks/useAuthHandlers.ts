@@ -181,7 +181,7 @@ export const useAuthHandlers = ({
           .from('employee_modules')
           .select(`
             module_id,
-            access_level
+            level
           `)
           .eq('employee_id', employeeId);
 
@@ -194,7 +194,7 @@ export const useAuthHandlers = ({
         // Create a map of employee module permissions for quick lookup
         const employeeModuleMap = new Map();
         employeeModules?.forEach(em => {
-          employeeModuleMap.set(em.module_id, em.access_level);
+          employeeModuleMap.set(em.module_id, em.level);
         });
 
         // Combine client modules with employee-specific permissions
