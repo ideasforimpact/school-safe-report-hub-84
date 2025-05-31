@@ -1,4 +1,3 @@
-
 import { v4 as uuidv4 } from 'uuid';
 import { EduSafeResource } from '@/types/eduSafeTypes';
 
@@ -101,6 +100,6 @@ export const initialResources: EduSafeResource[] = [
     uploaderName: 'North Valley School Admin',
     ownerType: 'school',
     clientId: 'client-1',
-    resourceType: 'School Resource'
+    resourceType: 'Organisational Resource'
   }
 ];
