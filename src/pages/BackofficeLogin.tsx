@@ -10,43 +10,41 @@ import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { supabase } from "@/integrations/supabase/client";
-
-// Define form validation schema
-const formSchema = z.object({
-  email: z.string().email("Please enter a valid email"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-});
-
-type FormData = z.infer<typeof formSchema>;
 
 const BackofficeLogin = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  });
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  // Initialize form
-  const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
-  });
+  // Handle form input changes
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
 
   // Handle form submission
-  const onSubmit = async (data: FormData) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.email || !formData.password) {
+      setError("Please enter both email and password");
+      return;
+    }
+
     try {
       setIsLoading(true);
       setError(null);
 
       // Use the existing login function to authenticate with backoffice credentials
-      const success = await login(data.email, data.password);
+      const success = await login(formData.email, formData.password);
 
       if (success) {
         toast.success("Login successful! Redirecting to dashboard...");
@@ -90,58 +88,47 @@ const BackofficeLogin = () => {
               </Alert>
             )}
 
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Mail className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
-                          <Input 
-                            placeholder="admin@example.com" 
-                            className="pl-10" 
-                            {...field} 
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Password</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Lock className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
-                          <Input 
-                            type="password" 
-                            placeholder="••••••••" 
-                            className="pl-10" 
-                            {...field} 
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button 
-                  type="submit" 
-                  className="w-full" 
-                  disabled={isLoading}
-                >
-                  {isLoading ? "Signing in..." : "Sign In"}
-                </Button>
-              </form>
-            </Form>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
+                  <Input 
+                    id="email"
+                    name="email"
+                    type="email"
+                    placeholder="admin@example.com" 
+                    className="pl-10" 
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-2.5 h-5 w-5 text-muted-foreground" />
+                  <Input 
+                    id="password"
+                    name="password"
+                    type="password" 
+                    placeholder="••••••••" 
+                    className="pl-10" 
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+              </div>
+              <Button 
+                type="submit" 
+                className="w-full" 
+                disabled={isLoading}
+              >
+                {isLoading ? "Signing in..." : "Sign In"}
+              </Button>
+            </form>
           </CardContent>
           <CardFooter className="flex-col gap-3">
             <div className="w-full flex items-center gap-2 my-2">
