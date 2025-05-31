@@ -14,15 +14,15 @@ const UserManagementContent = () => {
   };
 
   const handleDeleteUser = (id: string) => {
-    deleteUser(id, clientId);
+    deleteUser(id);
   };
 
   const handleDeactivateUser = (id: string) => {
-    deactivateUser(id, clientId);
+    deactivateUser(id);
   };
 
   const handleReactivateUser = (id: string) => {
-    reactivateUser(id, clientId);
+    reactivateUser(id);
   };
 
   // Convert User[] to EmployeeUser[] by ensuring required properties exist
