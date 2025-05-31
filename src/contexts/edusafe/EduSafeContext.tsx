@@ -88,7 +88,7 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
           uploaderName: 'User',
           ownerType: 'school',
           clientId: record.client_id,
-          resourceType: 'School Resource',
+          resourceType: 'Organisational Resource',
           file: {
             id: `file-${record.id}`,
             name: record.title,

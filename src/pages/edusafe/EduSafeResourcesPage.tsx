@@ -18,7 +18,7 @@ const EduSafeResourcesContent = () => {
   const { resources, getMyResources, getSaasResources } = useEduSafe();
   const { user, employeeData } = useAuth();
   
-  const [selectedTab, setSelectedTab] = useState<'all' | 'saas' | 'school'>('all');
+  const [selectedTab, setSelectedTab] = useState<'all' | 'saas' | 'organisational'>('all');
   const [selectedCategory, setSelectedCategory] = useState<ResourceCategory | 'all'>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedResource, setSelectedResource] = useState<EduSafeResource | null>(null);
@@ -44,7 +44,28 @@ const EduSafeResourcesContent = () => {
     return null;
   };
   
+  // Get organization name dynamically
+  const getOrganizationName = () => {
+    // First check employeeData
+    if (employeeData?.clientType?.name) {
+      return employeeData.clientType.name;
+    }
+    
+    // Then check user.clientType
+    if (user?.clientType?.name) {
+      return user.clientType.name;
+    }
+    
+    // Then check user.client.client_type.name
+    if (user?.client?.client_type?.name) {
+      return user.client.client_type.name;
+    }
+    
+    return 'Organisation';
+  };
+  
   const clientTypeKey = getClientTypeKey();
+  const organizationName = getOrganizationName();
   const isSchoolClient = clientTypeKey === 'school';
   
   // Filter resources based on selected tab, category and search term
@@ -54,8 +75,8 @@ const EduSafeResourcesContent = () => {
       return false;
     }
     
-    if (selectedTab === 'school') {
-      // For school admin, show only their school resources
+    if (selectedTab === 'organisational') {
+      // For admin, show only their organisation resources
       if (user?.role !== 'saas_owner' && resource.ownerType === 'school') {
         if (user?.clientId !== resource.clientId) {
           return false;
@@ -122,13 +143,13 @@ const EduSafeResourcesContent = () => {
           {isSchoolClient && (
             <Tabs 
               value={selectedTab} 
-              onValueChange={(value) => setSelectedTab(value as 'all' | 'saas' | 'school')}
+              onValueChange={(value) => setSelectedTab(value as 'all' | 'saas' | 'organisational')}
               className="w-full md:w-1/2"
             >
               <TabsList className="grid grid-cols-3 w-full">
                 <TabsTrigger value="all">All Resources</TabsTrigger>
                 <TabsTrigger value="saas">Global Resources</TabsTrigger>
-                <TabsTrigger value="school">School Resources</TabsTrigger>
+                <TabsTrigger value="organisational">{organizationName} Resources</TabsTrigger>
               </TabsList>
             </Tabs>
           )}

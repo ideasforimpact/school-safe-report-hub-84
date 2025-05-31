@@ -14,6 +14,6 @@ export interface EduSafeResource {
   uploaderName: string;
   ownerType: 'school' | 'saas';
   clientId?: string;
-  resourceType: 'School Resource' | 'Global Resource';
+  resourceType: 'Organisational Resource' | 'Global Resource';
   file: FileItem;
 }
