@@ -44,6 +44,7 @@ export const prepareClientForDb = (client: any): Omit<ClientRecord, 'id' | 'crea
     phone: client.phone,
     active: client.active,
     logo: client.logo || null,
+    client_logo: client.client_logo || null,
     institution_type: client.institutionType || null,
     client_type_id: client.clientTypeId || null,
     allowed_domains: client.allowedDomains && client.allowedDomains.length > 0 
