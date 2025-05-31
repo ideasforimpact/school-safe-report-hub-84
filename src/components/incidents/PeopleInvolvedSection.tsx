@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Person } from '@/types/incident';
 import { Student } from '@/types/student';
@@ -30,7 +29,7 @@ interface PeopleInvolvedSectionProps {
   onRemovePerson: (index: number) => void;
   students: Student[];
   employees: UserBasicInfo[];
-  errors?: FormErrors; // Add optional errors prop
+  errors?: FormErrors;
 }
 
 const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
@@ -40,9 +39,32 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   onRemovePerson,
   students,
   employees,
-  errors = {} // Default to empty object
+  errors = {}
 }) => {
-  const { employeeData } = useAuth();
+  const { employeeData, user } = useAuth();
+  
+  // Get organization name dynamically
+  const getOrganizationName = () => {
+    // First check employeeData
+    if (employeeData?.clientType?.name) {
+      return employeeData.clientType.name;
+    }
+    
+    // Then check user.clientType
+    if (user?.clientType?.name) {
+      return user.clientType.name;
+    }
+    
+    // Then check user.client.client_type.name
+    if (user?.client?.client_type?.name) {
+      return user.client.client_type.name;
+    }
+    
+    return 'Student'; // Fallback to Student if no organization type found
+  };
+
+  const organizationName = getOrganizationName();
+  
   const [staffMembers, setStaffMembers] = useState<Employee[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
   const [isLoadingStaff, setIsLoadingStaff] = useState(false);
@@ -209,8 +231,8 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
               }}
               placeholder={
                 isLoading 
-                  ? `Loading ${person.role.toLowerCase()}s...` 
-                  : `Search by ${person.role.toLowerCase()} name...`
+                  ? `Loading ${person.role === 'Student' ? organizationName.toLowerCase() : person.role.toLowerCase()}s...` 
+                  : `Search by ${person.role === 'Student' ? organizationName.toLowerCase() : person.role.toLowerCase()} name...`
               }
               className={`w-full pr-8 ${hasError ? 'border-red-500' : ''}`}
               disabled={isLoading}
@@ -261,7 +283,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
 
           {isCurrentlySearching && searchQueries[index] && filteredOptions.length === 0 && (
             <div className="absolute z-50 w-full mt-1 bg-white border rounded-md shadow-lg">
-              <p className="p-3 text-sm text-gray-500">No {person.role.toLowerCase()}s found</p>
+              <p className="p-3 text-sm text-gray-500">No {person.role === 'Student' ? organizationName.toLowerCase() : person.role.toLowerCase()}s found</p>
             </div>
           )}
         </div>
@@ -318,7 +340,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                     className={`w-full p-2 border rounded-md text-sm bg-white ${roleError ? 'border-red-500' : ''}`}
                   >
                     <option value="">Select role</option>
-                    <option value="Student">Student</option>
+                    <option value="Student">{organizationName}</option>
                     <option value="Staff">Staff</option>
                     <option value="Other">Other</option>
                   </select>
