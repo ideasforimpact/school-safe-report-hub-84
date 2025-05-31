@@ -3,24 +3,26 @@ import React from 'react';
 import { useAuth } from '@/contexts/auth';
 import UserList from '@/components/users/UserList';
 import { EmployeeUser } from '@/pages/UserManagement';
+import { useEmployeeData } from '@/hooks/useEmployeeData';
 
 const UserManagementContent = () => {
   const { users, updateUser, deleteUser, deactivateUser, reactivateUser } = useAuth();
+  const { clientId } = useEmployeeData();
 
   const handleEditClick = (user: EmployeeUser) => {
     console.log('Edit user:', user);
   };
 
   const handleDeleteUser = (id: string) => {
-    deleteUser(id);
+    deleteUser(id, clientId);
   };
 
   const handleDeactivateUser = (id: string) => {
-    deactivateUser(id);
+    deactivateUser(id, clientId);
   };
 
   const handleReactivateUser = (id: string) => {
-    reactivateUser(id);
+    reactivateUser(id, clientId);
   };
 
   // Convert User[] to EmployeeUser[] by ensuring required properties exist

@@ -9,6 +9,9 @@ import { EmployeeType, DepartmentType } from '@/contexts/auth/types';
 import { Loader2 } from 'lucide-react';
 import { ModuleAccessItem } from '@/types/moduleAccess';
 import ModuleAccess from './form/ModuleAccess';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import { useEmployeeData } from '@/hooks/useEmployeeData';
 
 interface EditUserDialogProps {
   isOpen: boolean;
@@ -27,11 +30,21 @@ interface EditUserDialogProps {
   onSubmit: () => void;
   resetForm: () => void;
   isLoading: boolean;
-  clientId?: string;
+  currentUser?: any;
 }
 
-const EditUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, resetForm, isLoading, clientId }: EditUserDialogProps) => {
+const EditUserDialog = ({ 
+  isOpen, 
+  setIsOpen, 
+  formData, 
+  setFormData, 
+  onSubmit, 
+  resetForm, 
+  isLoading,
+  currentUser 
+}: EditUserDialogProps) => {
   const [selectedModules, setSelectedModules] = useState<ModuleAccessItem[]>([]);
+  const { clientId } = useEmployeeData();
   
   // Initialize selected modules from formData when dialog opens
   useEffect(() => {
@@ -59,25 +72,59 @@ const EditUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, re
     resetForm();
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Update the formData with the moduleAccessPayload before submission
-    const moduleAccessPayload = selectedModules.map(module => ({
-      ...module,
-      employeeId: formData.employeeId || undefined
-    }));
+    if (!currentUser || !clientId) {
+      toast.error("Missing user or client information");
+      return;
+    }
     
-    setFormData(prevData => ({
-      ...prevData,
-      moduleAccessPayload,
-      clientId: clientId // Ensure clientId is included
-    }));
+    const updateData = {
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      email: formData.email,
+      employeeType: formData.employeeType,
+      department: formData.department,
+      moduleAccessPayload: selectedModules,
+      clientId: clientId // Include clientId
+    };
     
-    // Submit the form after a short delay to ensure state is updated
-    setTimeout(() => {
+    console.log("Updating user with data:", updateData);
+    
+    // Try to update via edge function first
+    try {
+      const { data, error } = await supabase.functions.invoke('employee-management', {
+        body: JSON.stringify({
+          operation: 'update',
+          employee: {
+            id: currentUser.id,
+            ...updateData
+          }
+        })
+      });
+      
+      if (error) {
+        console.error("Edge function error:", error);
+        toast.error("Failed to update user");
+        return;
+      }
+      
+      if (data && data.error) {
+        console.error("Error response from edge function:", data.error);
+        toast.error(data.error || "Failed to update user");
+        return;
+      }
+      
+      toast.success("User updated successfully");
+      handleClose();
+      
+      // Call the original onSubmit if needed for additional logic
       onSubmit();
-    }, 0);
+    } catch (error) {
+      console.error("Error updating user:", error);
+      toast.error("Failed to update user");
+    }
   };
 
   return (
@@ -180,14 +227,6 @@ const EditUserDialog = ({ isOpen, setIsOpen, formData, setFormData, onSubmit, re
                 </Select>
               </div>
             </div>
-
-            {/* Hidden input for clientId */}
-            <input 
-              type="hidden" 
-              id="clientId" 
-              name="clientId" 
-              value={clientId || ''} 
-            />
 
             {/* Module Access Section */}
             <div className="space-y-2">
