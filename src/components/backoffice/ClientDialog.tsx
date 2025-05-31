@@ -37,13 +37,31 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
   isEdit = false,
   isLoading = false
 }) => {
-  const handleSubmit = (e?: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async (e?: React.FormEvent) => {
     if (e) {
       e.preventDefault();
+      e.stopPropagation();
     }
-    if (!isLoading) {
-      onSubmit();
+    
+    // Prevent multiple submissions
+    if (isSubmitting || isLoading) {
+      return;
     }
+    
+    setIsSubmitting(true);
+    try {
+      await onSubmit();
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleButtonClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    handleSubmit();
   };
 
   const handleModuleInfoChange = (moduleInfoArray: ModuleInfo[]) => {
@@ -100,6 +118,8 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
     superAdminAllowedDomains: formData.superAdminAllowedDomains || []
   };
 
+  const isProcessing = isSubmitting || isLoading;
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -151,15 +171,16 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
               type="button" 
               variant="outline" 
               onClick={onCancel} 
-              disabled={isLoading}
+              disabled={isProcessing}
             >
               Cancel
             </Button>
             <Button 
-              type="submit"
-              disabled={isLoading}
+              type="button"
+              onClick={handleButtonClick}
+              disabled={isProcessing}
             >
-              {isLoading ? (
+              {isProcessing ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   {isEdit ? 'Updating...' : 'Adding...'}

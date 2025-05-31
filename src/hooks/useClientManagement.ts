@@ -52,6 +52,9 @@ export const useClientManagement = () => {
   const [currentClient, setCurrentClient] = useState<Client | null>(null);
   const [formData, setFormData] = useState<ClientFormData>({...initialFormData});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Add a ref to track if submission is in progress
+  const submissionInProgress = useState(false)[0];
 
   const resetForm = () => {
     setFormData({...initialFormData});
@@ -67,6 +70,8 @@ export const useClientManagement = () => {
     
     return allowedDomains.some(domain => domain.toLowerCase() === emailDomain);
   };
+
+  // ... keep existing code (createEmployeeFromSuperAdminEmail and updateEmployeeFromSuperAdminEmail functions)
 
   const createEmployeeFromSuperAdminEmail = async (clientId: string, superAdminEmail: string) => {
     try {
@@ -179,7 +184,11 @@ export const useClientManagement = () => {
   };
 
   const handleAddClient = async () => {
-    if (isSubmitting) return; // Prevent duplicate calls
+    // Prevent duplicate calls with a more robust check
+    if (isSubmitting || submissionInProgress) {
+      console.log('Add client submission already in progress, skipping...');
+      return; 
+    }
     
     if (!formData.superAdminEmail) {
       toast.error('Super Admin Email is required');
@@ -332,7 +341,11 @@ export const useClientManagement = () => {
   };
 
   const handleUpdateClient = async () => {
-    if (isSubmitting) return; // Prevent duplicate calls
+    // Prevent duplicate calls with a more robust check
+    if (isSubmitting || submissionInProgress) {
+      console.log('Update client submission already in progress, skipping...');
+      return; 
+    }
     
     if (!currentClient) {
       return;
@@ -382,7 +395,7 @@ export const useClientManagement = () => {
         }
       });
       
-      // Call the edge function with logo data
+      // Call the edge function with logo data - SINGLE CALL ONLY
       const { data, error } = await supabase.functions.invoke('client-management', {
         body: requestPayload
       });
