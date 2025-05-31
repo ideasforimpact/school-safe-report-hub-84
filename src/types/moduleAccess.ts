@@ -4,7 +4,7 @@ export interface ModuleAccessItem {
   employeeId?: string;
   key: string;
   module_id: string;
-  access_level?: {
+  level?: {
     is_admin?: boolean;
     [key: string]: any;
   };

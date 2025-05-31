@@ -6,7 +6,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { Plus, Trash2 } from 'lucide-react';
 import { Person } from '@/types/incident';
-import { useAuth } from '@/contexts/auth/useAuth';
 
 interface PeopleInvolvedSectionProps {
   peopleInvolved: Person[];
@@ -17,30 +16,6 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   peopleInvolved,
   setPeopleInvolved
 }) => {
-  const { user, employeeData } = useAuth();
-  
-  // Get organization name dynamically
-  const getOrganizationName = () => {
-    // First check employeeData
-    if (employeeData?.clientType?.name) {
-      return employeeData.clientType.name;
-    }
-    
-    // Then check user.clientType
-    if (user?.clientType?.name) {
-      return user.clientType.name;
-    }
-    
-    // Then check user.client.client_type.name
-    if (user?.client?.client_type?.name) {
-      return user.client.client_type.name;
-    }
-    
-    return 'Student'; // Fallback to Student if no organization type found
-  };
-
-  const organizationName = getOrganizationName();
-
   const handlePersonChange = (index: number, field: keyof Person, value: string) => {
     const updatedPeople = [...peopleInvolved];
     updatedPeople[index] = { ...updatedPeople[index], [field]: value };
@@ -85,7 +60,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                   <SelectValue placeholder="Select role" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Student">{organizationName}</SelectItem>
+                  <SelectItem value="Student">Organisation</SelectItem>
                   <SelectItem value="Staff">Staff</SelectItem>
                   <SelectItem value="Other">Other</SelectItem>
                 </SelectContent>
