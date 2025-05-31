@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -38,7 +37,15 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
   isEdit = false,
   isLoading = false
 }) => {
-  // Remove the old handleLogoUpload since we'll handle it in BasicInfoTab
+  const handleSubmit = (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
+    if (!isLoading) {
+      onSubmit();
+    }
+  };
+
   const handleModuleInfoChange = (moduleInfoArray: ModuleInfo[]) => {
     setFormData({
       ...formData,
@@ -103,56 +110,66 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="basic" className="w-full">
-          <TabsList className="grid grid-cols-3 mb-4">
-            <TabsTrigger value="basic">Basic Info</TabsTrigger>
-            <TabsTrigger value="access">Module Access</TabsTrigger>
-            <TabsTrigger value="auth">Authentication</TabsTrigger>
-          </TabsList>
+        <form onSubmit={handleSubmit}>
+          <Tabs defaultValue="basic" className="w-full">
+            <TabsList className="grid grid-cols-3 mb-4">
+              <TabsTrigger value="basic">Basic Info</TabsTrigger>
+              <TabsTrigger value="access">Module Access</TabsTrigger>
+              <TabsTrigger value="auth">Authentication</TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="basic">
-            <BasicInfoTab 
-              formData={safeFormData} 
-              setFormData={setFormData} 
-              handleLogoUpload={() => {}} // This is now handled within BasicInfoTab
-            />
-          </TabsContent>
+            <TabsContent value="basic">
+              <BasicInfoTab 
+                formData={safeFormData} 
+                setFormData={setFormData} 
+                handleLogoUpload={() => {}} // This is now handled within BasicInfoTab
+              />
+            </TabsContent>
 
-          <TabsContent value="access">
-            <ModuleAccessTab 
-              formData={safeFormData}
-              onModuleInfoChange={handleModuleInfoChange}
-              isEdit={isEdit}
-            />
-          </TabsContent>
+            <TabsContent value="access">
+              <ModuleAccessTab 
+                formData={safeFormData}
+                onModuleInfoChange={handleModuleInfoChange}
+                isEdit={isEdit}
+              />
+            </TabsContent>
 
-          <TabsContent value="auth">
-            <AuthTab 
-              formData={safeFormData}
-              onAddDomain={addDomain}
-              onRemoveDomain={removeDomain}
-              onAddSuperAdminDomain={addSuperAdminDomain}
-              onRemoveSuperAdminDomain={removeSuperAdminDomain}
-              onProviderChange={handleAuthProviderChange}
-            />
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="auth">
+              <AuthTab 
+                formData={safeFormData}
+                onAddDomain={addDomain}
+                onRemoveDomain={removeDomain}
+                onAddSuperAdminDomain={addSuperAdminDomain}
+                onRemoveSuperAdminDomain={removeSuperAdminDomain}
+                onProviderChange={handleAuthProviderChange}
+              />
+            </TabsContent>
+          </Tabs>
 
-        <DialogFooter className="mt-6">
-          <Button variant="outline" onClick={onCancel} disabled={isLoading}>
-            Cancel
-          </Button>
-          <Button onClick={onSubmit} disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                {isEdit ? 'Updating...' : 'Adding...'}
-              </>
-            ) : (
-              isEdit ? 'Update Client' : 'Add Client'
-            )}
-          </Button>
-        </DialogFooter>
+          <DialogFooter className="mt-6">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={onCancel} 
+              disabled={isLoading}
+            >
+              Cancel
+            </Button>
+            <Button 
+              type="submit"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  {isEdit ? 'Updating...' : 'Adding...'}
+                </>
+              ) : (
+                isEdit ? 'Update Client' : 'Add Client'
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

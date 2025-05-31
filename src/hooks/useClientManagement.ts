@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Client, useClient, InstitutionType, ModuleInfo } from '@/contexts/ClientContext';
 import { OAuthProviderName } from '@/utils/authProviders';
@@ -52,6 +51,7 @@ export const useClientManagement = () => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [currentClient, setCurrentClient] = useState<Client | null>(null);
   const [formData, setFormData] = useState<ClientFormData>({...initialFormData});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const resetForm = () => {
     setFormData({...initialFormData});
@@ -179,6 +179,8 @@ export const useClientManagement = () => {
   };
 
   const handleAddClient = async () => {
+    if (isSubmitting) return; // Prevent duplicate calls
+    
     if (!formData.superAdminEmail) {
       toast.error('Super Admin Email is required');
       return;
@@ -189,6 +191,8 @@ export const useClientManagement = () => {
       toast.error('Super Admin email domain is not allowed. Please check the Super Admin Allowed Domains list.');
       return;
     }
+    
+    setIsSubmitting(true);
     
     try {
       const moduleInfoArray = formData.moduleInfoArray || [];
@@ -246,6 +250,8 @@ export const useClientManagement = () => {
     } catch (error) {
       console.error('Error in handleAddClient:', error);
       toast.error('Failed to add client');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -326,6 +332,8 @@ export const useClientManagement = () => {
   };
 
   const handleUpdateClient = async () => {
+    if (isSubmitting) return; // Prevent duplicate calls
+    
     if (!currentClient) {
       return;
     }
@@ -340,6 +348,8 @@ export const useClientManagement = () => {
       toast.error('Super Admin email domain is not allowed. Please check the Super Admin Allowed Domains list.');
       return;
     }
+    
+    setIsSubmitting(true);
     
     try {
       const moduleInfoArray = formData.moduleInfoArray || [];
@@ -398,6 +408,8 @@ export const useClientManagement = () => {
     } catch (error) {
       console.error('Error in handleUpdateClient:', error);
       toast.error('Failed to update client');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -409,7 +421,7 @@ export const useClientManagement = () => {
 
   return {
     clients,
-    loading,
+    loading: loading || isSubmitting,
     formData,
     setFormData,
     isAddDialogOpen,
