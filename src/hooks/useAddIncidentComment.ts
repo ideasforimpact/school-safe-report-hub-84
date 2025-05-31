@@ -29,7 +29,7 @@ export function useAddIncidentComment() {
     setIsLoading(true);
     
     try {
-      console.log('Adding comment to incident:', incidentId, payload);
+      //console.log('Adding comment to incident:', incidentId, payload);
 
       const { data, error } = await supabase.functions.invoke('add-incident-comment', {
         body: {
@@ -52,7 +52,7 @@ export function useAddIncidentComment() {
         return { success: false, error: data.error };
       }
 
-      console.log('Comment added successfully:', data);
+      //console.log('Comment added successfully:', data);
       toast.success('Comment added successfully');
       return { success: true, comment: data.comment, message: data.message };
 

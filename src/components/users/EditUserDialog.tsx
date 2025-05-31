@@ -56,7 +56,7 @@ const EditUserDialog = ({
 
   // Module change handler that updates selectedModules state and formData
   const handleModuleChange = (moduleAccessItems: ModuleAccessItem[]) => {
-    console.log("Module access items changed:", moduleAccessItems);
+    //console.log("Module access items changed:", moduleAccessItems);
     
     // Update local state for UI rendering
     setSelectedModules(moduleAccessItems);
@@ -95,7 +95,7 @@ const EditUserDialog = ({
         clientId: clientId // Ensure clientId is always included
       };
       
-      console.log("Updating user with data:", updateData);
+      //console.log("Updating user with data:", updateData);
       
       // Single API call to update employee with all data including modules
       const { data, error } = await supabase.functions.invoke('employee-management', {

@@ -46,7 +46,7 @@ export const useAuthHandlers = ({
   const [isProcessingAuth, setIsProcessingAuth] = useState(false);
   
   // Debug log to check if dispatch is available in useAuthHandlers
-  console.log("useAuthHandlers - dispatch available:", !!dispatch);
+  //console.log("useAuthHandlers - dispatch available:", !!dispatch);
 
   // Helper function to fetch client and client type information
   const fetchClientInfo = useCallback(async (clientId: string): Promise<{ client: Client | null, clientType: ClientType | null }> => {
@@ -107,7 +107,7 @@ export const useAuthHandlers = ({
   // New function to fetch configured modules for an employee
   const fetchConfiguredModules = useCallback(async (employeeId: string, clientId: string | null, isSuperAdmin: boolean) => {
     try {
-      console.log("Fetching configured modules during authentication for", { employeeId, clientId, isSuperAdmin });
+      //console.log("Fetching configured modules during authentication for", { employeeId, clientId, isSuperAdmin });
       
       if (!clientId) {
         console.error("Client ID is missing, cannot fetch modules");
@@ -118,7 +118,7 @@ export const useAuthHandlers = ({
       let configuredModules: Module[] = [];
       
       if (isSuperAdmin) {
-        console.log("Fetching modules for super admin");
+        //console.log("Fetching modules for super admin");
         // For super admins, fetch all modules enabled for the client
         const { data: clientModules, error: clientModulesError } = await supabase
           .from('client_modules')
@@ -156,7 +156,7 @@ export const useAuthHandlers = ({
         }).filter(Boolean) as Module[] || [];
         
       } else {
-        console.log("Fetching modules for regular employee");
+        //console.log("Fetching modules for regular employee");
         // First fetch all client modules to understand what's available
         const { data: clientModules, error: clientModulesError } = await supabase
           .from('client_modules')
@@ -247,7 +247,7 @@ export const useAuthHandlers = ({
       }
       
       // Only log the modules length since employeeModules might be undefined or out of scope here
-      console.log("Modules fetched during auth:", configuredModules.length);
+      //console.log("Modules fetched during auth:", configuredModules.length);
       return configuredModules;
       
     } catch (error) {
@@ -306,7 +306,7 @@ export const useAuthHandlers = ({
         
         // Clear Redux state if dispatch is available
         if (dispatch) {
-          console.log("useAuthHandlers - Dispatching resetEmployee for null user");
+          //console.log("useAuthHandlers - Dispatching resetEmployee for null user");
           dispatch(resetEmployee());
         }
       }
@@ -316,7 +316,7 @@ export const useAuthHandlers = ({
     try {
       setIsProcessingAuth(true);
 
-      console.log("useAuthHandlers - Processing authentication for user:", supabaseUser.email);
+      //console.log("useAuthHandlers - Processing authentication for user:", supabaseUser.email);
       
       // Extract auth provider from user metadata or email
       let provider = (supabaseUser.app_metadata?.provider || 'email') as string;
@@ -402,7 +402,7 @@ export const useAuthHandlers = ({
           
           // Check if employee is inactive
           if (data.status !== true) {
-            console.log("User account is inactive");
+            //console.log("User account is inactive");
             setAuthError("Your account has been deactivated. Please contact support.");
             toast.error("Your account has been deactivated. Please contact support.");
             await supabase.auth.signOut();
@@ -410,9 +410,9 @@ export const useAuthHandlers = ({
             return;
           }
           
-          console.log("useAuthHandlers - Found employee record by user_id:", employeeData);
+          //console.log("useAuthHandlers - Found employee record by user_id:", employeeData);
         } else if (error) {
-          console.log("useAuthHandlers - Error finding employee by user_id:", error);
+          //console.log("useAuthHandlers - Error finding employee by user_id:", error);
         }
       }
       
@@ -470,7 +470,7 @@ export const useAuthHandlers = ({
           
           // Check if employee is inactive
           if (data.status !== true) {
-            console.log("User account is inactive");
+            //console.log("User account is inactive");
             setAuthError("Your account has been deactivated. Please contact support.");
             toast.error("Your account has been deactivated. Please contact support.");
             await supabase.auth.signOut();
@@ -478,15 +478,15 @@ export const useAuthHandlers = ({
             return;
           }
           
-          console.log("useAuthHandlers - Found employee record by email:", employeeData);
+          //console.log("useAuthHandlers - Found employee record by email:", employeeData);
         } else if (error) {
-          console.log("useAuthHandlers - Error finding employee by email:", error);
+          //console.log("useAuthHandlers - Error finding employee by email:", error);
         }
       }
 
       // If no employee record was found, alert the user and sign out
       if (!employeeData) {
-        console.log("useAuthHandlers - No employee record found for authenticated user");
+        //console.log("useAuthHandlers - No employee record found for authenticated user");
         setAuthError("No employee record found for your account. Please contact an administrator.");
         toast.error("No employee record found for your account. Please contact an administrator.");
         
@@ -518,7 +518,7 @@ export const useAuthHandlers = ({
         const isDomainValid = await validateDomain(supabaseUser.email, clientId);
         
         if (!isDomainValid && !employeeData.isSuperAdmin) {
-          console.log("User email domain not authorized for this client");
+          //console.log("User email domain not authorized for this client");
           setAuthError("Your email domain is not authorized for this application. Please contact an administrator.");
           toast.error("Your email domain is not authorized for this application.");
           
@@ -570,11 +570,11 @@ export const useAuthHandlers = ({
       
       // Save employee data to localStorage, context, and Redux
       if (employeeData) {
-        console.log("useAuthHandlers - Employee data being saved during auth:", employeeData);
+        //console.log("useAuthHandlers - Employee data being saved during auth:", employeeData);
         
         // Store employee data in Redux - MANUAL DISPATCH FORMAT
         if (dispatch) {
-          console.log("useAuthHandlers - Manually dispatching SET_EMPLOYEE_DATA to Redux during auth:", employeeData);
+          //console.log("useAuthHandlers - Manually dispatching SET_EMPLOYEE_DATA to Redux during auth:", employeeData);
           dispatch({
             type: EmployeeActionTypes.SET_EMPLOYEE_DATA,
             payload: employeeData
@@ -582,7 +582,7 @@ export const useAuthHandlers = ({
           
           // Also set clientId in Redux
           if (employeeData.clientId) {
-            console.log("useAuthHandlers - Dispatching setClientId to Redux during auth:", employeeData.clientId);
+            //console.log("useAuthHandlers - Dispatching setClientId to Redux during auth:", employeeData.clientId);
             dispatch(setClientId(employeeData.clientId));
           }
         } else {
@@ -591,7 +591,7 @@ export const useAuthHandlers = ({
         
         // FETCH MODULES HERE if employee is a super admin or has a client ID
         if (dispatch && employeeData.id && employeeData.clientId) {
-          console.log("useAuthHandlers - Fetching modules during authentication process");
+          //console.log("useAuthHandlers - Fetching modules during authentication process");
           dispatch(setLoading(true));
           
           // Get configured modules based on super admin status
@@ -602,7 +602,7 @@ export const useAuthHandlers = ({
           );
           
           // Store modules in Redux
-          console.log("useAuthHandlers - Storing modules in Redux during auth:", modules.length);
+          //console.log("useAuthHandlers - Storing modules in Redux during auth:", modules.length);
           dispatch(setConfiguredModules(modules));
           dispatch(setLoading(false));
         }

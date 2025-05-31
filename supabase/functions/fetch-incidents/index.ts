@@ -40,7 +40,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    console.log('Fetching incidents for client:', client_id);
+    //console.log('Fetching incidents for client:', client_id);
 
     // Validate employee access if employee_id is provided
     if (employee_id) {
@@ -84,7 +84,7 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    console.log(`Successfully fetched ${incidents?.length || 0} incidents for client ${client_id}`);
+    //console.log(`Successfully fetched ${incidents?.length || 0} incidents for client ${client_id}`);
 
     return new Response(
       JSON.stringify({ 

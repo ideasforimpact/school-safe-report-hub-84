@@ -306,5 +306,5 @@ export const initializeMockData = () => {
   const responses = createMockResponses(assignments);
   localStorage.setItem('assessmentResponses', JSON.stringify(responses));
   
-  console.log('Mock assessment data initialized with predictable IDs for demo');
+  //console.log('Mock assessment data initialized with predictable IDs for demo');
 };

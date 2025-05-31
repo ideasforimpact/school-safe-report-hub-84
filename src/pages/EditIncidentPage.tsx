@@ -17,7 +17,7 @@ const EditIncidentPage = () => {
   const { user } = useAuth();
   const { refetchIncidents } = useIncidentData();
 
-  console.log('EditIncidentPage - ID:', id);
+  //console.log('EditIncidentPage - ID:', id);
 
   if (!id) {
     return (
@@ -46,7 +46,7 @@ const EditIncidentPage = () => {
   }
 
   const incident = getIncident(id);
-  console.log('EditIncidentPage - Incident:', incident);
+  //console.log('EditIncidentPage - Incident:', incident);
 
   if (!incident) {
     return (

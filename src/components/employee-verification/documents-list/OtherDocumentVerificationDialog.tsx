@@ -38,7 +38,7 @@ const OtherDocumentVerificationDialog: React.FC<OtherDocumentVerificationDialogP
     setIsManualVerifying(true);
     
     try {
-      console.log("Initiating manual verification for document ID:", documentId);
+      //console.log("Initiating manual verification for document ID:", documentId);
       
       const { data, error } = await supabase.functions.invoke('other-document-verification', {
         body: {
@@ -48,7 +48,7 @@ const OtherDocumentVerificationDialog: React.FC<OtherDocumentVerificationDialogP
         }
       });
       
-      console.log("Manual verification response:", data, error);
+      //console.log("Manual verification response:", data, error);
       
       if (error) {
         console.error('Error manually verifying document:', error);
@@ -77,7 +77,7 @@ const OtherDocumentVerificationDialog: React.FC<OtherDocumentVerificationDialogP
     setIsRejecting(true);
     
     try {
-      console.log("Rejecting verification for document ID:", documentId);
+      //console.log("Rejecting verification for document ID:", documentId);
       
       const { data, error } = await supabase.functions.invoke('other-document-verification', {
         body: {
@@ -87,7 +87,7 @@ const OtherDocumentVerificationDialog: React.FC<OtherDocumentVerificationDialogP
         }
       });
       
-      console.log("Document rejection response:", data, error);
+      //console.log("Document rejection response:", data, error);
       
       if (error) {
         console.error('Error rejecting document:', error);

@@ -40,7 +40,7 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Fetching forms for client: ${client_id}`);
+    //console.log(`Fetching forms for client: ${client_id}`);
 
     const { data, error } = await supabaseClient
       .from('custom_forms')

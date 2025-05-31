@@ -26,7 +26,7 @@ serve(async (req) => {
       verification_notes
     } = requestBody;
     
-    console.log(`Other Document Verification: Received ${action} request`, { 
+    //console.log(`Other Document Verification: Received ${action} request`, { 
       documentId, 
       hasVerificationNotes: !!verification_notes
     });
@@ -71,7 +71,7 @@ serve(async (req) => {
     const manualStatusId = manualStatus?.id;
     const rejectedStatusId = rejectedStatus?.id;
     
-    console.log("Status IDs found:", {
+    //console.log("Status IDs found:", {
       manual: manualStatusId,
       rejected: rejectedStatusId
     });
@@ -101,7 +101,7 @@ serve(async (req) => {
     // Handle manual verification
     if (action === 'manualVerify') {
       try {
-        console.log("Processing manual verification for document ID:", documentId);
+        //console.log("Processing manual verification for document ID:", documentId);
         
         // Create a log entry with timestamp
         const logEntry = {
@@ -150,7 +150,7 @@ serve(async (req) => {
     // Handle rejection
     else if (action === 'reject') {
       try {
-        console.log("Processing rejection for document ID:", documentId);
+        //console.log("Processing rejection for document ID:", documentId);
         
         // Create log entry for rejection
         const logEntry = {

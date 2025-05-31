@@ -38,7 +38,7 @@ serve(async (req) => {
       );
     }
     
-    console.log(`Validating employee ${employeeId} for client ${clientId}`);
+    //console.log(`Validating employee ${employeeId} for client ${clientId}`);
     
     // First check if client exists and is active
     const { data: client, error: clientError } = await supabaseAdmin
@@ -48,7 +48,7 @@ serve(async (req) => {
       .single();
     
     if (clientError || !client) {
-      console.log(`Client validation failed: ${clientError?.message || 'Client not found'}`);
+      //console.log(`Client validation failed: ${clientError?.message || 'Client not found'}`);
       return new Response(
         JSON.stringify({ 
           valid: false, 
@@ -62,7 +62,7 @@ serve(async (req) => {
     }
     
     if (!client.active) {
-      console.log('Client is not active');
+      //console.log('Client is not active');
       return new Response(
         JSON.stringify({ 
           valid: false, 
@@ -84,7 +84,7 @@ serve(async (req) => {
       .single();
     
     if (employeeError || !employee) {
-      console.log(`Employee validation failed: ${employeeError?.message || 'Employee not found'}`);
+      //console.log(`Employee validation failed: ${employeeError?.message || 'Employee not found'}`);
       return new Response(
         JSON.stringify({ 
           valid: false, 
@@ -98,7 +98,7 @@ serve(async (req) => {
     }
     
     if (!employee.status) {
-      console.log('Employee is not active');
+      //console.log('Employee is not active');
       return new Response(
         JSON.stringify({ 
           valid: false, 
@@ -112,7 +112,7 @@ serve(async (req) => {
     }
     
     // If both client and employee are active, return success
-    console.log('Employee validation successful');
+    //console.log('Employee validation successful');
     return new Response(
       JSON.stringify({ 
         valid: true, 

@@ -30,7 +30,7 @@ const IncidentHeader: React.FC<IncidentHeaderProps> = ({
   const navigate = useNavigate();
 
   const handleEditClick = () => {
-    console.log("Navigating to edit incident:", incident.id);
+    //console.log("Navigating to edit incident:", incident.id);
     navigate(`/incident/${incident.id}/edit`);
   };
 

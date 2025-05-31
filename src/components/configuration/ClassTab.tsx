@@ -88,7 +88,7 @@ export const ClassTab = ({
       return;
     }
     
-    console.log("Updating class:", editingClass.id, editingClass.campusId, editingClass.name.trim());
+    //console.log("Updating class:", editingClass.id, editingClass.campusId, editingClass.name.trim());
     updateClass(editingClass.id, editingClass.campusId, editingClass.name.trim());
   };
 

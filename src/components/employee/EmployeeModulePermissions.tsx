@@ -21,8 +21,8 @@ const EmployeeModulePermissions: React.FC<EmployeeModulePermissionsProps> = ({
   const [selectedModules, setSelectedModules] = useState<ModuleAccessItem[]>([]);
   
   // Debug log for configured modules
-  console.log("EmployeeModulePermissions - Available configured modules:", state.configuredModules);
-  console.log("EmployeeModulePermissions - Initial module permissions:", modulePermissions);
+  //console.log("EmployeeModulePermissions - Available configured modules:", state.configuredModules);
+  //console.log("EmployeeModulePermissions - Initial module permissions:", modulePermissions);
   
   // Use modules from Redux if available
   const modules = state.configuredModules && state.configuredModules.length > 0
@@ -37,7 +37,7 @@ const EmployeeModulePermissions: React.FC<EmployeeModulePermissionsProps> = ({
   useEffect(() => {
     // Check if modulePermissions is an array already
     if (Array.isArray(modulePermissions)) {
-      console.log("EmployeeModulePermissions - Setting modules from array:", modulePermissions);
+      //console.log("EmployeeModulePermissions - Setting modules from array:", modulePermissions);
       setSelectedModules(modulePermissions);
       return;
     }
@@ -56,7 +56,7 @@ const EmployeeModulePermissions: React.FC<EmployeeModulePermissionsProps> = ({
         };
       });
       
-    console.log("EmployeeModulePermissions - Setting converted modules:", initialSelectedModules);
+    //console.log("EmployeeModulePermissions - Setting converted modules:", initialSelectedModules);
     setSelectedModules(initialSelectedModules);
   }, [modulePermissions, employeeId, state.configuredModules]);
 
@@ -71,7 +71,7 @@ const EmployeeModulePermissions: React.FC<EmployeeModulePermissionsProps> = ({
   
   // Handler for checkbox change that only affects one module at a time
   const handleModuleChange = (moduleKey: string, moduleName: string, moduleId: string, checked: boolean) => {
-    console.log("Module change:", { moduleKey, moduleName, moduleId, checked });
+    //console.log("Module change:", { moduleKey, moduleName, moduleId, checked });
     
     // Create a new array based on current selected modules
     let updatedModules: ModuleAccessItem[];
@@ -80,7 +80,7 @@ const EmployeeModulePermissions: React.FC<EmployeeModulePermissionsProps> = ({
       // Add module to selection if it's not already there
       const moduleExists = isModuleSelected(moduleId);
       
-      console.log("Module exists:", moduleExists);
+      //console.log("Module exists:", moduleExists);
       
       if (!moduleExists) {
         const newModule: ModuleAccessItem = {
@@ -98,7 +98,7 @@ const EmployeeModulePermissions: React.FC<EmployeeModulePermissionsProps> = ({
       updatedModules = selectedModules.filter(m => m.module_id !== moduleId);
     }
     
-    console.log("Updated modules:", updatedModules);
+    //console.log("Updated modules:", updatedModules);
     
     // Update local state
     setSelectedModules(updatedModules);
@@ -121,7 +121,7 @@ const EmployeeModulePermissions: React.FC<EmployeeModulePermissionsProps> = ({
             // Check if this module is selected by its module_id
             const isSelected = isModuleSelected(module.module_id);
             
-            console.log(`Module ${module.name} selected:`, isSelected);
+            //console.log(`Module ${module.name} selected:`, isSelected);
             
             return (
               <TableRow key={module.key || module.module_id}>

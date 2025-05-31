@@ -20,7 +20,7 @@ export const updateProviderConfig = (
   };
   
   // In a real application, we would save this to a database or local storage
-  console.log(`Updated ${provider} configuration:`, providerConfigs[provider]);
+  //console.log(`Updated ${provider} configuration:`, providerConfigs[provider]);
 };
 
 // Extract domain from email

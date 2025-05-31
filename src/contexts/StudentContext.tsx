@@ -28,7 +28,7 @@ export const StudentProvider = ({ children }: { children: ReactNode }) => {
 
   const fetchStudents = async () => {
     if (!employeeData?.clientId) {
-      console.log('No client ID available, skipping student fetch');
+      //console.log('No client ID available, skipping student fetch');
       setIsLoading(false);
       return;
     }

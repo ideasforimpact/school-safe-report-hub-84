@@ -22,8 +22,8 @@ export function useIncidentDetailPage(id: string) {
   const [incidentActivities, setIncidentActivities] = useState([]);
 
   useEffect(() => {
-    console.log("useIncidentDetailPage - Incident ID:", id);
-    console.log("useIncidentDetailPage - Found incident:", !!incident);
+    //console.log("useIncidentDetailPage - Incident ID:", id);
+    //console.log("useIncidentDetailPage - Found incident:", !!incident);
     
     if (!incident) {
       return;

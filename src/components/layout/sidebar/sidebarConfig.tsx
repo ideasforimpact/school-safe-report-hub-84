@@ -59,7 +59,7 @@ export const fetchModules = async (isBackoffice: boolean, user?: any, employeeDa
     
     // For backoffice, fetch modules directly from modules table where level = 'backoffice'
     if (isBackoffice) {
-      console.log('Fetching backoffice modules from database');
+      //console.log('Fetching backoffice modules from database');
       
       const { data: modulesData, error } = await supabase
         .from('modules')
@@ -73,11 +73,11 @@ export const fetchModules = async (isBackoffice: boolean, user?: any, employeeDa
       }
       
       if (!modulesData || modulesData.length === 0) {
-        console.log('No backoffice modules found in database');
+        //console.log('No backoffice modules found in database');
         return [];
       }
       
-      console.log(`Found ${modulesData.length} backoffice modules:`, modulesData.map(m => m.name));
+      //console.log(`Found ${modulesData.length} backoffice modules:`, modulesData.map(m => m.name));
       
       // Map modules and add keys for permission mapping
       const modules = modulesData.map(module => ({
@@ -114,7 +114,7 @@ export const fetchModules = async (isBackoffice: boolean, user?: any, employeeDa
       status: employeeData.status !== undefined ? employeeData.status : true
     } : null;
 
-    console.log("Employee data being sent:", employeeInfo);
+    //console.log("Employee data being sent:", employeeInfo);
     
     // Call our edge function with user and employee info
     const { data, error } = await supabase.functions.invoke('fetch-modules', {
@@ -131,7 +131,7 @@ export const fetchModules = async (isBackoffice: boolean, user?: any, employeeDa
     }
     
     if (!data || !data.modules || data.modules.length === 0) {
-      console.log(`No modules found for user ${userInfo?.email || 'anonymous'}`);
+      //console.log(`No modules found for user ${userInfo?.email || 'anonymous'}`);
       return [];
     }
     

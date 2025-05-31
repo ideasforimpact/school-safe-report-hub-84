@@ -64,7 +64,7 @@ serve(async (req) => {
       if (!clientError && clientData) {
         clientInfo = { name: clientData.name, id: clientData.id };
       } else {
-        console.log('Client not found or error:', clientError);
+        //console.log('Client not found or error:', clientError);
       }
     }
     

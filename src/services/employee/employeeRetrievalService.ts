@@ -4,14 +4,14 @@ import { Employee, VerificationDocument } from '@/types/employeeVerification';
 
 export const getAllEmployeesFromApi = async (clientId?: string | null): Promise<Employee[]> => {
   try {
-    console.log("Calling getAllEmployeesFromApi with clientId:", clientId);
+    //console.log("Calling getAllEmployeesFromApi with clientId:", clientId);
     // Fetch all employees with optional client_id filter
     const query = supabase.from('employees').select('*');
     
     // Apply client_id filter if provided
     if (clientId) {
       query.eq('client_id', clientId);
-      console.log(`Filtering employees by client_id: ${clientId}`);
+      //console.log(`Filtering employees by client_id: ${clientId}`);
     }
     
     const { data, error } = await query;
@@ -22,7 +22,7 @@ export const getAllEmployeesFromApi = async (clientId?: string | null): Promise<
       throw error;
     }
 
-    console.log(`Successfully fetched ${data.length} employees from API ${clientId ? 'for client ' + clientId : 'across all clients'}`);
+    //console.log(`Successfully fetched ${data.length} employees from API ${clientId ? 'for client ' + clientId : 'across all clients'}`);
     
     // Map the database records to our Employee model
     const employees = data.map(record => {

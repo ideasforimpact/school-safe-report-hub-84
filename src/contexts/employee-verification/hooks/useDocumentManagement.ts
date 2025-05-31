@@ -22,7 +22,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
   const fetchEmployeeDocuments = useCallback(async (employeeId: string, timeframe?: string) => {
     // Skip if we're already loading
     if (isLoading) {
-      console.log('Skipping fetchEmployeeDocuments - already loading');
+      //console.log('Skipping fetchEmployeeDocuments - already loading');
       return [];
     }
     
@@ -32,15 +32,15 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
     const lastFetch = fetchTimestampsRef.current[cacheKey] || 0;
     
     if (now - lastFetch < 30000) {
-      console.log(`Skipping fetch for employee ${employeeId} - cached (last fetched ${now - lastFetch}ms ago)`);
+      //console.log(`Skipping fetch for employee ${employeeId} - cached (last fetched ${now - lastFetch}ms ago)`);
       return documents.filter(doc => doc.employeeId === employeeId);
     }
     
-    console.log('Fetching documents for employee:', employeeId, 'with timeframe:', timeframe || 'all');
+    //console.log('Fetching documents for employee:', employeeId, 'with timeframe:', timeframe || 'all');
     
     setIsLoading(true);
     try {
-      console.log('Making API call to employee-documents edge function');
+      //console.log('Making API call to employee-documents edge function');
       // For GET requests, we should pass parameters as query strings, not in the body
       const { data, error } = await supabase.functions.invoke('employee-documents', {
         method: 'POST',  // Using POST to send data in body
@@ -54,7 +54,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
       
       // Documents are now returned directly from the edge function
       const mappedDocuments = data?.documents || [];
-      console.log('Documents fetched successfully:', mappedDocuments.length);
+      //console.log('Documents fetched successfully:', mappedDocuments.length);
       
       // Update cache timestamp
       fetchTimestampsRef.current[cacheKey] = now;
@@ -62,20 +62,20 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
       setDocuments(currentDocuments => {
         // If timeframe is specified, we're doing a filtered fetch, don't replace all documents
         if (timeframe) {
-          console.log('Timeframe specified, replacing documents with filtered results');
+          //console.log('Timeframe specified, replacing documents with filtered results');
           return mappedDocuments;
         }
         
         // Otherwise merge with existing documents that are not for this employee
         const otherEmployeeDocs = currentDocuments.filter(doc => doc.employeeId !== employeeId);
-        console.log(`Merging ${otherEmployeeDocs.length} existing docs with ${mappedDocuments.length} new docs`);
+        //console.log(`Merging ${otherEmployeeDocs.length} existing docs with ${mappedDocuments.length} new docs`);
         return [...otherEmployeeDocs, ...mappedDocuments];
       });
       
       // Mark this employee ID as fetched
       if (!fetchedEmployeeIds.includes(employeeId)) {
         setFetchedEmployeeIds(prev => [...prev, employeeId]);
-        console.log('Marked employee as fetched:', employeeId);
+        //console.log('Marked employee as fetched:', employeeId);
       }
       
       return mappedDocuments;
@@ -89,7 +89,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
 
   const addDocument = useCallback(async (documentData: Omit<VerificationDocument, 'id' | 'createdAt' | 'updatedAt'>) => {
     try {
-      console.log('Starting document upload process:', {
+      //console.log('Starting document upload process:', {
         employeeId: documentData.employeeId,
         documentTypeId: documentData.documentTypeId,
         hasImage: !!documentData.documentImage,
@@ -120,7 +120,7 @@ export const useDocumentManagement = (updateEmployeeStatus: (employeeId: string,
         throw new Error('Failed to add document');
       }
       
-      console.log('Document upload successful, response:', data);
+      //console.log('Document upload successful, response:', data);
       
       // Add the returned document to local state
       const newDocument: VerificationDocument = {

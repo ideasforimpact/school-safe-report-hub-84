@@ -131,7 +131,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     setIsBankAccountVerifying(true);
     
     try {
-      console.log("Initiating Bank Statement verification for document ID:", documentId);
+      //console.log("Initiating Bank Statement verification for document ID:", documentId);
       
       const { data, error } = await supabase.functions.invoke('bank-statement', {
         body: {
@@ -140,7 +140,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         }
       });
       
-      console.log("Bank Statement verification response:", data, error);
+      //console.log("Bank Statement verification response:", data, error);
       
       if (error) {
         console.error('Error verifying Bank Statement:', error);
@@ -175,7 +175,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     setIsBankAccountVerifying(true);
     
     try {
-      console.log("Initiating manual Bank Statement verification for document ID:", documentId);
+      //console.log("Initiating manual Bank Statement verification for document ID:", documentId);
       
       const { data, error } = await supabase.functions.invoke('bank-statement', {
         body: {
@@ -185,7 +185,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         }
       });
       
-      console.log("Bank Statement manual verification response:", data, error);
+      //console.log("Bank Statement manual verification response:", data, error);
       
       if (error) {
         console.error('Error manually verifying Bank Statement:', error);
@@ -214,7 +214,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     setIsBankAccountVerifying(true);
     
     try {
-      console.log("Rejecting Bank Statement verification for document ID:", documentId);
+      //console.log("Rejecting Bank Statement verification for document ID:", documentId);
       
       const { data, error } = await supabase.functions.invoke('bank-statement', {
         body: {
@@ -224,7 +224,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         }
       });
       
-      console.log("Bank Statement rejection response:", data, error);
+      //console.log("Bank Statement rejection response:", data, error);
       
       if (error) {
         console.error('Error rejecting Bank Statement:', error);
@@ -253,7 +253,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     setIsPanVerifying(true);
     
     try {
-      console.log("Initiating PAN verification for document ID:", documentId);
+      //console.log("Initiating PAN verification for document ID:", documentId);
       
       const { data, error } = await supabase.functions.invoke('pan-verification', {
         body: {
@@ -263,7 +263,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         }
       });
       
-      console.log("PAN verification response:", data, error);
+      //console.log("PAN verification response:", data, error);
       
       if (error) {
         console.error('Error verifying PAN:', error);
@@ -298,7 +298,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     setIsDrivingLicenseVerifying(true);
     
     try {
-      console.log("Initiating Driving License verification for document ID:", documentId);
+      //console.log("Initiating Driving License verification for document ID:", documentId);
       
       const { data, error } = await supabase.functions.invoke('driving-license', {
         body: {
@@ -307,7 +307,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         }
       });
       
-      console.log("Driving License verification response:", data, error);
+      //console.log("Driving License verification response:", data, error);
       
       if (error) {
         console.error('Error verifying Driving License:', error);
@@ -342,7 +342,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     setIsDrivingLicenseVerifying(true);
     
     try {
-      console.log("Initiating manual Driving License verification for document ID:", documentId);
+      //console.log("Initiating manual Driving License verification for document ID:", documentId);
       
       const { data, error } = await supabase.functions.invoke('driving-license', {
         body: {
@@ -352,7 +352,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         }
       });
       
-      console.log("Driving License manual verification response:", data, error);
+      //console.log("Driving License manual verification response:", data, error);
       
       if (error) {
         console.error('Error manually verifying Driving License:', error);
@@ -381,7 +381,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     setIsDrivingLicenseVerifying(true);
     
     try {
-      console.log("Rejecting Driving License verification for document ID:", documentId);
+      //console.log("Rejecting Driving License verification for document ID:", documentId);
       
       const { data, error } = await supabase.functions.invoke('driving-license', {
         body: {
@@ -391,7 +391,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         }
       });
       
-      console.log("Driving License rejection response:", data, error);
+      //console.log("Driving License rejection response:", data, error);
       
       if (error) {
         console.error('Error rejecting Driving License:', error);
@@ -420,7 +420,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     setIsPanVerifying(true);
     
     try {
-      console.log("Initiating manual PAN verification for document ID:", documentId);
+      //console.log("Initiating manual PAN verification for document ID:", documentId);
       
       const { data, error } = await supabase.functions.invoke('pan-verification', {
         body: {
@@ -430,7 +430,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         }
       });
       
-      console.log("PAN manual verification response:", data, error);
+      //console.log("PAN manual verification response:", data, error);
       
       if (error) {
         console.error('Error manually verifying PAN:', error);
@@ -459,7 +459,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     setIsPanVerifying(true);
     
     try {
-      console.log("Rejecting PAN verification for document ID:", documentId);
+      //console.log("Rejecting PAN verification for document ID:", documentId);
       
       const { data, error } = await supabase.functions.invoke('pan-verification', {
         body: {
@@ -469,7 +469,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         }
       });
       
-      console.log("PAN rejection response:", data, error);
+      //console.log("PAN rejection response:", data, error);
       
       if (error) {
         console.error('Error rejecting PAN:', error);
@@ -498,7 +498,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     setIsVoterIdVerifying(true);
     
     try {
-      console.log("Initiating Voter ID verification for document ID:", documentId);
+      //console.log("Initiating Voter ID verification for document ID:", documentId);
       
       const { data, error } = await supabase.functions.invoke('voter-verification', {
         body: {
@@ -508,7 +508,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         }
       });
       
-      console.log("Voter ID verification response:", data, error);
+      //console.log("Voter ID verification response:", data, error);
       
       if (error) {
         console.error('Error verifying Voter ID:', error);
@@ -543,7 +543,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     setIsVoterIdVerifying(true);
     
     try {
-      console.log("Initiating manual Voter ID verification for document ID:", documentId);
+      //console.log("Initiating manual Voter ID verification for document ID:", documentId);
       
       const { data, error } = await supabase.functions.invoke('voter-verification', {
         body: {
@@ -553,7 +553,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         }
       });
       
-      console.log("Voter ID manual verification response:", data, error);
+      //console.log("Voter ID manual verification response:", data, error);
       
       if (error) {
         console.error('Error manually verifying Voter ID:', error);
@@ -582,7 +582,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     setIsVoterIdVerifying(true);
     
     try {
-      console.log("Rejecting Voter ID verification for document ID:", documentId);
+      //console.log("Rejecting Voter ID verification for document ID:", documentId);
       
       const { data, error } = await supabase.functions.invoke('voter-verification', {
         body: {
@@ -592,7 +592,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         }
       });
       
-      console.log("Voter ID rejection response:", data, error);
+      //console.log("Voter ID rejection response:", data, error);
       
       if (error) {
         console.error('Error rejecting Voter ID:', error);
@@ -621,7 +621,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     setIsOtherVerifying(true);
     
     try {
-      console.log("Initiating manual verification for Other document type, ID:", documentId);
+      //console.log("Initiating manual verification for Other document type, ID:", documentId);
       
       const { data, error } = await supabase.functions.invoke('other-document-verification', {
         body: {
@@ -631,7 +631,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         }
       });
       
-      console.log("Other document manual verification response:", data, error);
+      //console.log("Other document manual verification response:", data, error);
       
       if (error) {
         console.error('Error manually verifying Other document:', error);
@@ -660,7 +660,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     setIsOtherRejecting(true);
     
     try {
-      console.log("Rejecting verification for Other document type, ID:", documentId);
+      //console.log("Rejecting verification for Other document type, ID:", documentId);
       
       const { data, error } = await supabase.functions.invoke('other-document-verification', {
         body: {
@@ -670,7 +670,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         }
       });
       
-      console.log("Other document rejection response:", data, error);
+      //console.log("Other document rejection response:", data, error);
       
       if (error) {
         console.error('Error rejecting Other document:', error);
@@ -708,7 +708,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       
       // Call the edge function to request OTP
       try {
-        console.log("Sending OTP request for document ID:", documentId);
+        //console.log("Sending OTP request for document ID:", documentId);
         
         const { data, error } = await supabase.functions.invoke('employee-verification', {
           method: 'POST',
@@ -719,7 +719,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           }
         });
         
-        console.log("OTP request response:", data, error);
+        //console.log("OTP request response:", data, error);
         
         if (error) {
           console.error('Error requesting OTP:', error);
@@ -744,12 +744,12 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
         // Store transaction ID and client_id for OTP verification
         if (data?.txnId) {
           setTxnId(data.txnId);
-          console.log("Transaction ID stored:", data.txnId);
+          //console.log("Transaction ID stored:", data.txnId);
         }
         
         if (data?.client_id) {
           setClientId(data.client_id);
-          console.log("Client ID stored:", data.client_id);
+          //console.log("Client ID stored:", data.client_id);
         }
         
         setShowOtpInput(true);
@@ -802,7 +802,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       // For Aadhar or other document types
       setIsAadharManualVerifying(true);
       try {
-        console.log("Initiating manual verification for document ID:", documentId);
+        //console.log("Initiating manual verification for document ID:", documentId);
         
         const { data, error } = await supabase.functions.invoke('employee-verification', {
           method: 'POST',
@@ -813,7 +813,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
           }
         });
         
-        console.log("Manual verification response:", data, error);
+        //console.log("Manual verification response:", data, error);
         
         if (error) {
           console.error('Error manually verifying document:', error);
@@ -856,7 +856,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
   };
 
   const handleOtpSubmit = async () => {
-    console.log("handleOtpSubmit called - starting OTP verification process");
+    //console.log("handleOtpSubmit called - starting OTP verification process");
     
     if (otp.length !== 6) {
       toast.error("Verification Error", {
@@ -869,7 +869,7 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
     setIsVerifyingOtp(true);
     
     try {
-      console.log("Submitting OTP verification with:", {
+      //console.log("Submitting OTP verification with:", {
         otp,
         txnId,
         clientId,
@@ -893,13 +893,13 @@ const VerificationDialog: React.FC<VerificationDialogProps> = ({
       }
       
       // Make the API call to verify OTP
-      console.log("Invoking employee-verification edge function with requestBody:", requestBody);
+      //console.log("Invoking employee-verification edge function with requestBody:", requestBody);
       const { data, error } = await supabase.functions.invoke('employee-verification', {
         method: 'POST',
         body: requestBody
       });
       
-      console.log("OTP verification response:", data, error);
+      //console.log("OTP verification response:", data, error);
       
       if (error) {
         console.error('Error verifying OTP:', error);

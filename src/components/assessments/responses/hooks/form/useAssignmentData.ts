@@ -53,7 +53,7 @@ export const useAssignmentData = () => {
           }
 
           if (!assessmentData) {
-            console.log(`Assessment with ID ${assessmentId} not found`);
+            //console.log(`Assessment with ID ${assessmentId} not found`);
             setNotFound(true);
             setLoading(false);
             return;
@@ -77,11 +77,11 @@ export const useAssignmentData = () => {
               setTemplate(templateData);
               setNotFound(false);
             } else {
-              console.log(`Template for assessment ${assessmentId} not found`);
+              //console.log(`Template for assessment ${assessmentId} not found`);
               setNotFound(true);
             }
           } else {
-            console.log('Assessment has no template_id');
+            //console.log('Assessment has no template_id');
             setNotFound(true);
           }
           
@@ -92,7 +92,7 @@ export const useAssignmentData = () => {
           setLoading(false);
         }
       } else {
-        console.log("No assessmentId parameter found in URL");
+        //console.log("No assessmentId parameter found in URL");
         setNotFound(true);
         setLoading(false);
       }

@@ -26,9 +26,9 @@ const surepassChallanUrl = isDevelopment
   ? "https://sandbox.surepass.io/api/v1/rc/rc-related/challan-details"
   : "https://kyc-api.surepass.io/api/v1/rc/rc-related/challan-details";
 
-console.log(`Using Surepass API URL: ${surepassBaseUrl} (Development mode: ${isDevelopment})`);
-console.log(`Using Surepass Challan URL: ${surepassChallanUrl}`);
-console.log(`Using environment-specific API key: ${surepassApiKey ? 'Yes (key present)' : 'No (key missing)'}`);
+//console.log(`Using Surepass API URL: ${surepassBaseUrl} (Development mode: ${isDevelopment})`);
+//console.log(`Using Surepass Challan URL: ${surepassChallanUrl}`);
+//console.log(`Using environment-specific API key: ${surepassApiKey ? 'Yes (key present)' : 'No (key missing)'}`);
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -49,13 +49,13 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Verifying vehicle with registration number: ${registrationNumber}`);
+    //console.log(`Verifying vehicle with registration number: ${registrationNumber}`);
 
     // Current date and time for verification_date and last_response
     const verificationDate = new Date().toISOString();
 
     // Call the Surepass API to get RC details
-    console.log(`Making API request to: ${surepassBaseUrl}`);
+    //console.log(`Making API request to: ${surepassBaseUrl}`);
     const surepassResponse = await fetch(surepassBaseUrl, {
       method: "POST",
       headers: {
@@ -87,7 +87,7 @@ serve(async (req) => {
     let challanData = null;
     if (surepassData.data && surepassData.data.client_id) {
       const clientId = surepassData.data.client_id;
-      console.log(`Got client_id: ${clientId}, making challan details request`);
+      //console.log(`Got client_id: ${clientId}, making challan details request`);
       
       try {
         // Make the second API call to get challan details
@@ -103,7 +103,7 @@ serve(async (req) => {
         });
         
         challanData = await challanResponse.json();
-        console.log("Challan API response received:", challanData.success ? "Success" : "Failed");
+        //console.log("Challan API response received:", challanData.success ? "Success" : "Failed");
         
         // Add challan data to the registration data
         if (surepassData.data) {
@@ -114,7 +114,7 @@ serve(async (req) => {
         // Continue even if challan request fails
       }
     } else {
-      console.log("No client_id available from verification response for challan lookup");
+      //console.log("No client_id available from verification response for challan lookup");
     }
     
     // Generate verification status based on response
@@ -145,7 +145,7 @@ serve(async (req) => {
           existingVerificationLog = logEntry.value;
         }
         
-        console.log("Found existing verification data with log entry");
+        //console.log("Found existing verification data with log entry");
       }
     }
     
@@ -239,7 +239,7 @@ serve(async (req) => {
       if (updateError) {
         console.error("Error updating vehicle verification data:", updateError);
       } else {
-        console.log("Vehicle verification data updated successfully");
+        //console.log("Vehicle verification data updated successfully");
       }
     }
 

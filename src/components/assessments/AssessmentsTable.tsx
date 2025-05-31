@@ -92,12 +92,12 @@ const AssessmentsTable: React.FC = () => {
       setLoading(true);
       setError(null);
       
-      console.log('Fetching assessments with user:', user);
-      console.log('Employee data:', employeeData);
-      console.log('Using client_id:', clientId);
+      //console.log('Fetching assessments with user:', user);
+      //console.log('Employee data:', employeeData);
+      //console.log('Using client_id:', clientId);
       
       if (!clientId) {
-        console.log('No client ID available - cannot fetch assessments');
+        //console.log('No client ID available - cannot fetch assessments');
         setAssessments([]);
         setFilteredAssessments([]);
         setLoading(false);
@@ -143,7 +143,7 @@ const AssessmentsTable: React.FC = () => {
         } : undefined
       })) || [];
 
-      console.log('Fetched assessments:', formattedAssessments);
+      //console.log('Fetched assessments:', formattedAssessments);
       setAssessments(formattedAssessments);
       setFilteredAssessments(formattedAssessments);
     } catch (error) {
@@ -288,10 +288,10 @@ const AssessmentsTable: React.FC = () => {
     }
 
     try {
-      console.log('=== CALLING DELETE EDGE FUNCTION ===');
-      console.log('Assessment to delete:', assessmentToDelete);
-      console.log('Assessment UUID (id):', assessmentToDelete.id);
-      console.log('Client ID:', clientId);
+      //console.log('=== CALLING DELETE EDGE FUNCTION ===');
+      //console.log('Assessment to delete:', assessmentToDelete);
+      //console.log('Assessment UUID (id):', assessmentToDelete.id);
+      //console.log('Client ID:', clientId);
 
       // Call the delete-assessment edge function
       const { data, error } = await supabase.functions.invoke('delete-assessment', {
@@ -311,7 +311,7 @@ const AssessmentsTable: React.FC = () => {
         throw new Error(data.error || 'Failed to delete assessment');
       }
 
-      console.log('Assessment deleted successfully via edge function:', data);
+      //console.log('Assessment deleted successfully via edge function:', data);
       
       // Remove from local state
       const updatedAssessments = assessments.filter(a => a.id !== assessmentToDelete.id);

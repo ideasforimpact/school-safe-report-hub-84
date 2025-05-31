@@ -46,7 +46,7 @@ serve(async (req) => {
           );
         }
 
-        console.log(`Fetching campuses for client: ${clientId}`);
+        //console.log(`Fetching campuses for client: ${clientId}`);
 
         const { data: campuses, error } = await supabase
           .from('campuses')
@@ -58,7 +58,7 @@ serve(async (req) => {
           throw error;
         }
 
-        console.log(`Successfully fetched ${campuses.length} campuses`);
+        //console.log(`Successfully fetched ${campuses.length} campuses`);
 
         return new Response(
           JSON.stringify({ campuses }),
@@ -76,7 +76,7 @@ serve(async (req) => {
           );
         }
         
-        console.log(`Creating campus "${name}" for client: ${clientId}`);
+        //console.log(`Creating campus "${name}" for client: ${clientId}`);
         
         const { data: campus, error } = await supabase
           .from('campuses')
@@ -89,7 +89,7 @@ serve(async (req) => {
           throw error;
         }
         
-        console.log(`Successfully created campus: ${campus.id}`);
+        //console.log(`Successfully created campus: ${campus.id}`);
         
         return new Response(
           JSON.stringify({ campus }),
@@ -107,7 +107,7 @@ serve(async (req) => {
           );
         }
         
-        console.log(`Updating campus ${id} to "${name}" for client: ${clientId}`);
+        //console.log(`Updating campus ${id} to "${name}" for client: ${clientId}`);
         
         // Verify the campus belongs to the client before updating
         const { data: existingCampus, error: checkError } = await supabase
@@ -137,7 +137,7 @@ serve(async (req) => {
           throw error;
         }
         
-        console.log(`Successfully updated campus: ${campus.id}`);
+        //console.log(`Successfully updated campus: ${campus.id}`);
         
         return new Response(
           JSON.stringify({ campus }),
@@ -155,7 +155,7 @@ serve(async (req) => {
           );
         }
         
-        console.log(`Deleting campus ${id} for client: ${clientId}`);
+        //console.log(`Deleting campus ${id} for client: ${clientId}`);
         
         // Verify the campus belongs to the client before deleting
         const { data: existingCampus, error: checkError } = await supabase
@@ -183,7 +183,7 @@ serve(async (req) => {
           throw error;
         }
         
-        console.log(`Successfully deleted campus: ${id}`);
+        //console.log(`Successfully deleted campus: ${id}`);
         
         return new Response(
           JSON.stringify({ success: true }),

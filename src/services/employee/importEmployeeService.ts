@@ -23,9 +23,9 @@ export const processEmployeeExcel = async (
 ): Promise<Employee[]> => {
   try {
     // Parse the Excel file
-    console.log("Starting Excel processing for file:", file.name);
+    //console.log("Starting Excel processing for file:", file.name);
     const rawData = await parseExcelFile(file);
-    console.log("Excel data parsed successfully, records:", rawData.length);
+    //console.log("Excel data parsed successfully, records:", rawData.length);
 
     // Verify that we have email data in the parsed records
     const missingEmails = rawData.filter(emp => !emp.email || emp.email.trim() === '').length;
@@ -78,7 +78,7 @@ export const processEmployeeExcel = async (
         }));
       }
       
-      console.log("Using configured modules for import:", defaultModuleAccessPayload);
+      //console.log("Using configured modules for import:", defaultModuleAccessPayload);
     }
     
     // If no modules were found in configured modules, use the default Dashboard module
@@ -89,7 +89,7 @@ export const processEmployeeExcel = async (
         module_id: "f84132f7-48e0-45f1-ad3a-59e794ac9a8d",
         employeeId: '' // Will be filled in per employee
       }];
-      console.log("Using default Dashboard module for import");
+      //console.log("Using default Dashboard module for import");
     }
     
     // Add default module permissions to each employee record
@@ -123,7 +123,7 @@ export const processEmployeeExcel = async (
       };
     });
     
-    console.log("Processed data before sending to API:", processedData);
+    //console.log("Processed data before sending to API:", processedData);
     
     // Process the data and add/update employees using bulk operations
     console.time('Bulk import processing');

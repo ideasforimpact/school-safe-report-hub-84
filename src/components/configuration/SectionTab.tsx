@@ -108,7 +108,7 @@ export const SectionTab = ({
       return;
     }
     
-    console.log("Updating section:", editingSection);
+    //console.log("Updating section:", editingSection);
     updateSection(
       editingSection.id, 
       editingSection.classId, 

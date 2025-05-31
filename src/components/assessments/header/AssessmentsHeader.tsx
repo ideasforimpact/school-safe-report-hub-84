@@ -12,7 +12,7 @@ const AssessmentsHeader: React.FC<AssessmentsHeaderProps> = ({ onCreateTemplate 
   const location = useLocation();
 
   const handleCreateAssessment = () => {
-    console.log("Create assessment button clicked");
+    //console.log("Create assessment button clicked");
     if (onCreateTemplate) {
       onCreateTemplate();
     }

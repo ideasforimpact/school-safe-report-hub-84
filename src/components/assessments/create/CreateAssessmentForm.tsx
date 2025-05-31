@@ -93,7 +93,7 @@ const CreateAssessmentForm: React.FC<CreateAssessmentFormProps> = ({
 
       if (error) throw error;
 
-      console.log('Assessment created with client_id:', data);
+      //console.log('Assessment created with client_id:', data);
       toast.success('Assessment created successfully');
       if (onCancel) {
         onCancel();

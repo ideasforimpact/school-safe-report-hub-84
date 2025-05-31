@@ -14,9 +14,9 @@ export const addEmployeeToApi = async (
     const dbEmployee = mapEmployeeToDbRecord(employeeData);
 
     // Log the mapped DB employee data for debugging
-    console.log("Adding employee to API with data:", dbEmployee);
-    console.log("Original clientId:", employeeData.clientId);
-    console.log("Mapped client_id:", dbEmployee.client_id);
+    //console.log("Adding employee to API with data:", dbEmployee);
+    //console.log("Original clientId:", employeeData.clientId);
+    //console.log("Mapped client_id:", dbEmployee.client_id);
 
     // Try to use the edge function first
     try {
@@ -52,7 +52,7 @@ export const addEmployeeToApi = async (
       }
       
       // If we got here, it means the operation was successful
-      console.log("Employee created via edge function:", data);
+      //console.log("Employee created via edge function:", data);
       
       // Only show success message if we successfully added the employee
       if (data && data.data) {
@@ -113,7 +113,7 @@ export const addEmployeeToApi = async (
       throw error;
     }
 
-    console.log("Employee added to API successfully:", data);
+    //console.log("Employee added to API successfully:", data);
     
     // If the employee has modulePermissions, update them in the database
     if (employeeData.modulePermissions) {
@@ -189,7 +189,7 @@ export const updateEmployeeInApi = async (
       client_id: updates.clientId || currentEmployee.client_id
     };
 
-    console.log("Updating employee with data:", employeeDataWithClientId);
+    //console.log("Updating employee with data:", employeeDataWithClientId);
 
     // Try to use the edge function first
     try {
@@ -213,7 +213,7 @@ export const updateEmployeeInApi = async (
       }
       
       // If we got here, it means the operation was successful
-      console.log("Employee updated via edge function:", data);
+      //console.log("Employee updated via edge function:", data);
       
       if (data && data.data) {
         toast.success("Employee updated successfully");
@@ -254,7 +254,7 @@ export const updateEmployeeInApi = async (
 
 export const deactivateEmployeeInApi = async (id: string): Promise<Employee> => {
   try {
-    console.log("deactivateEmployeeInApi called with ID:", id);
+    //console.log("deactivateEmployeeInApi called with ID:", id);
     
     // Try to use the employee-management edge function first
     const response = await fetch(`https://ybvxkiubnnixntghojyy.supabase.co/functions/v1/employee-management`, {
@@ -270,7 +270,7 @@ export const deactivateEmployeeInApi = async (id: string): Promise<Employee> => 
     });
     
     const result = await response.json();
-    console.log("Edge function deactivation response:", result);
+    //console.log("Edge function deactivation response:", result);
     
     if (!response.ok || result.error) {
       console.error("Error from edge function:", result.error);
@@ -306,7 +306,7 @@ export const deactivateEmployeeInApi = async (id: string): Promise<Employee> => 
       console.error("Error removing module permissions:", moduleError);
       toast.warning("Employee deactivated but there was an issue updating permissions");
     } else {
-      console.log("Successfully removed all module permissions for deactivated employee");
+      //console.log("Successfully removed all module permissions for deactivated employee");
     }
 
     toast.success("Employee deactivated successfully");

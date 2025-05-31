@@ -31,7 +31,7 @@ const BankStatementUploader: React.FC<BankStatementUploaderProps> = ({
 
   const handlePreviewFile = (file: FileItem) => {
     // Preview logic would go here in a real app
-    console.log('Preview file:', file);
+    //console.log('Preview file:', file);
   };
 
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {

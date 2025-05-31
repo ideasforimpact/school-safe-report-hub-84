@@ -24,7 +24,7 @@ serve(async (req) => {
       }
     );
 
-    console.log("Starting module data migration...");
+    //console.log("Starting module data migration...");
 
     // 1. Fetch all modules
     const { data: modules, error: modulesError } = await supabase
@@ -35,7 +35,7 @@ serve(async (req) => {
       throw new Error(`Error fetching modules: ${modulesError.message}`);
     }
 
-    console.log(`Found ${modules.length} modules`);
+    //console.log(`Found ${modules.length} modules`);
 
     // 2. Fetch all client_modules with module_key
     const { data: clientModules, error: clientModulesError } = await supabase
@@ -46,7 +46,7 @@ serve(async (req) => {
       throw new Error(`Error fetching client_modules: ${clientModulesError.message}`);
     }
 
-    console.log(`Found ${clientModules.length} client module entries to migrate`);
+    //console.log(`Found ${clientModules.length} client module entries to migrate`);
 
     // 3. Create a mapping between module_key and module_id
     // We'll try to match by converting module name to camelCase (similar to what the frontend does)
@@ -63,7 +63,7 @@ serve(async (req) => {
       moduleMap.set(module.name, module.id);
     });
 
-    console.log("Module mapping created");
+    //console.log("Module mapping created");
 
     // 4. Update each client_module with the corresponding module_id
     let updatedCount = 0;
@@ -76,7 +76,7 @@ serve(async (req) => {
       const moduleId = moduleMap.get(clientModule.module_key);
       
       if (!moduleId) {
-        console.log(`No matching module found for key: ${clientModule.module_key}`);
+        //console.log(`No matching module found for key: ${clientModule.module_key}`);
         errorCount++;
         continue;
       }
@@ -101,7 +101,7 @@ serve(async (req) => {
       }
     }
 
-    console.log(`Migration completed: ${updatedCount} records updated, ${errorCount} errors`);
+    //console.log(`Migration completed: ${updatedCount} records updated, ${errorCount} errors`);
 
     return new Response(
       JSON.stringify({ 

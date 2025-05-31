@@ -28,27 +28,27 @@ export const useFilterOptions = () => {
   useEffect(() => {
     const fetchFilterData = async () => {
       if (!state.employeeData?.clientId) {
-        console.log('No client ID available for fetching filter data');
+        //console.log('No client ID available for fetching filter data');
         return;
       }
 
       try {
-        console.log('Fetching filter data for client:', state.employeeData.clientId);
+        //console.log('Fetching filter data for client:', state.employeeData.clientId);
 
         // Fetch categories
         const categories = await categoryService.getCategories(state.employeeData.clientId);
         setCategoryOptions(categories.map(cat => cat.name));
-        console.log('Categories loaded:', categories.length);
+        //console.log('Categories loaded:', categories.length);
 
         // Fetch subcategories
         const subcategories = await categoryService.getSubcategories(undefined, state.employeeData.clientId);
         setSubcategoryOptions(subcategories.map(sub => sub.name));
-        console.log('Subcategories loaded:', subcategories.length);
+        //console.log('Subcategories loaded:', subcategories.length);
 
         // Fetch priorities
         const priorities = await priorityService.getPriorities(state.employeeData.clientId, true);
         setPriorityOptions(priorities.map(priority => priority.name));
-        console.log('Priorities loaded:', priorities.length);
+        //console.log('Priorities loaded:', priorities.length);
 
         // Fetch status options from database
         const { data: statusData, error: statusError } = await supabase
@@ -60,7 +60,7 @@ export const useFilterOptions = () => {
           console.error('Error fetching status options:', statusError);
         } else {
           setStatusOptions(statusData?.map(status => status.name) || []);
-          console.log('Status options loaded:', statusData?.length || 0);
+          //console.log('Status options loaded:', statusData?.length || 0);
         }
 
         // Fetch locations from campuses table
@@ -74,7 +74,7 @@ export const useFilterOptions = () => {
           console.error('Error fetching campus locations:', campusError);
         } else {
           setLocationOptions(campusData?.map(campus => campus.name) || []);
-          console.log('Campus locations loaded:', campusData?.length || 0);
+          //console.log('Campus locations loaded:', campusData?.length || 0);
         }
 
         // Fetch facilities from facilities table
@@ -88,10 +88,10 @@ export const useFilterOptions = () => {
           console.error('Error fetching facilities:', facilityError);
         } else {
           setFacilityOptions(facilityData?.map(facility => facility.name) || []);
-          console.log('Facilities loaded:', facilityData?.length || 0);
+          //console.log('Facilities loaded:', facilityData?.length || 0);
         }
 
-        console.log('All filter data loaded successfully');
+        //console.log('All filter data loaded successfully');
       } catch (error) {
         console.error('Error fetching filter data:', error);
       }
@@ -116,7 +116,7 @@ export const useFilterOptions = () => {
         .filter((reporter, index, self) => index === self.findIndex(r => r.id === reporter.id));
       setReporterOptions(uniqueReporters);
 
-      console.log('Assignees and reporters extracted from incidents:', {
+      //console.log('Assignees and reporters extracted from incidents:', {
         assignees: uniqueAssignees.length,
         reporters: uniqueReporters.length
       });

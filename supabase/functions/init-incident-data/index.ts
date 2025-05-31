@@ -31,7 +31,7 @@ serve(async (req) => {
       }
     );
 
-    console.log("Initializing incident reference data...");
+    //console.log("Initializing incident reference data...");
 
     // First, initialize the status values if they don't exist
     const statusValues = ["New", "Open", "In Progress", "Closed", "On Hold"];
@@ -73,7 +73,7 @@ serve(async (req) => {
 });
 
 async function ensureStatuses(supabaseClient, statusValues) {
-  console.log("Ensuring incident statuses exist...");
+  //console.log("Ensuring incident statuses exist...");
   
   // Check if we have the "New" status
   const { data: newStatus, error: newStatusError } = await supabaseClient
@@ -87,7 +87,7 @@ async function ensureStatuses(supabaseClient, statusValues) {
   if (newStatusError) {
     console.error("Error checking for New status:", newStatusError);
   } else if (newStatus) {
-    console.log("New status exists:", newStatus);
+    //console.log("New status exists:", newStatus);
     newStatusId = newStatus.id;
   } else {
     // Create the New status with a specific UUID
@@ -104,7 +104,7 @@ async function ensureStatuses(supabaseClient, statusValues) {
     if (error) {
       console.error("Error creating New status:", error);
     } else {
-      console.log("Created New status:", data[0]);
+      //console.log("Created New status:", data[0]);
       newStatusId = newId;
     }
   }
@@ -133,7 +133,7 @@ async function ensureStatuses(supabaseClient, statusValues) {
       if (insertError) {
         console.error(`Error creating ${status} status:`, insertError);
       } else {
-        console.log(`Created ${status} status`);
+        //console.log(`Created ${status} status`);
       }
     }
   }
@@ -142,7 +142,7 @@ async function ensureStatuses(supabaseClient, statusValues) {
 }
 
 async function ensureReportTypes(supabaseClient) {
-  console.log("Ensuring report types exist...");
+  //console.log("Ensuring report types exist...");
   
   const reportTypes = [
     { name: "Incident", description: "A safety-related event that occurred" },
@@ -167,14 +167,14 @@ async function ensureReportTypes(supabaseClient) {
       if (insertError) {
         console.error(`Error creating ${type.name} type:`, insertError);
       } else {
-        console.log(`Created ${type.name} type`);
+        //console.log(`Created ${type.name} type`);
       }
     }
   }
 }
 
 async function ensureCategories(supabaseClient) {
-  console.log("Ensuring incident categories exist...");
+  //console.log("Ensuring incident categories exist...");
   
   const categories = [
     { name: "Physical Injury", description: "Incidents resulting in physical harm" },
@@ -203,14 +203,14 @@ async function ensureCategories(supabaseClient) {
       if (insertError) {
         console.error(`Error creating ${category.name} category:`, insertError);
       } else {
-        console.log(`Created ${category.name} category`);
+        //console.log(`Created ${category.name} category`);
       }
     }
   }
 }
 
 async function ensurePriorities(supabaseClient) {
-  console.log("Ensuring incident priorities exist...");
+  //console.log("Ensuring incident priorities exist...");
   
   const priorities = [
     { name: "Low", description: "Minor issue, address when convenient", weight: 1, color: "#22C55E" },
@@ -236,7 +236,7 @@ async function ensurePriorities(supabaseClient) {
       if (insertError) {
         console.error(`Error creating ${priority.name} priority:`, insertError);
       } else {
-        console.log(`Created ${priority.name} priority`);
+        //console.log(`Created ${priority.name} priority`);
       }
     }
   }

@@ -21,7 +21,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    console.log("Checking if we can safely drop module_key column...");
+    //console.log("Checking if we can safely drop module_key column...");
 
     // 1. Count how many client_modules have module_id not set but have module_key
     const { count: unmappedCount, error: countError } = await supabase
@@ -34,7 +34,7 @@ serve(async (req) => {
       throw new Error(`Error checking unmapped modules: ${countError.message}`);
     }
 
-    console.log(`Found ${unmappedCount} client modules without module_id mapped`);
+    //console.log(`Found ${unmappedCount} client modules without module_id mapped`);
 
     // 2. If there are any unmapped records, don't proceed
     if (unmappedCount > 0) {
@@ -58,7 +58,7 @@ serve(async (req) => {
       throw new Error(`Error dropping module_key column: ${dropError.message}`);
     }
 
-    console.log("Successfully dropped module_key column!");
+    //console.log("Successfully dropped module_key column!");
 
     return new Response(
       JSON.stringify({ 

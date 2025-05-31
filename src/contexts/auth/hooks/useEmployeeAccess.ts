@@ -24,7 +24,7 @@ export const useEmployeeAccess = () => {
     
     // First check Redux for employee data
     if (employeeData) {
-      console.log("Using employee data from Redux:", employeeData);
+      //console.log("Using employee data from Redux:", employeeData);
       // Find the full employee record from the employees list
       const fullEmployee = employees.find(emp => emp.id === employeeData.id);
       if (fullEmployee) {
@@ -73,7 +73,7 @@ export const useEmployeeAccess = () => {
   const getEmployeeId = useCallback(() => {
     // Only get from Redux, no fallback
     if (employeeData?.id) {
-      console.log("Getting employee ID from Redux:", employeeData.id);
+      //console.log("Getting employee ID from Redux:", employeeData.id);
       return employeeData.id;
     }
     return null;
@@ -83,7 +83,7 @@ export const useEmployeeAccess = () => {
   const getClientId = useCallback(() => {
     // Only get from Redux, no fallback
     if (employeeData?.clientId) {
-      console.log("Getting client ID from Redux:", employeeData.clientId);
+      //console.log("Getting client ID from Redux:", employeeData.clientId);
       return employeeData.clientId;
     }
     return null;

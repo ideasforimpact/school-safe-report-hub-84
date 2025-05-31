@@ -116,7 +116,7 @@ export const useEditIncident = () => {
         documents: formData.image ? [{ name: 'image', type: 'image', data: formData.image }] : []
       };
 
-      console.log('Submitting incident update:', { incidentId: id, updates });
+      //console.log('Submitting incident update:', { incidentId: id, updates });
 
       // Call the edge function
       const { data, error } = await supabase.functions.invoke('update-incident', {
@@ -134,7 +134,7 @@ export const useEditIncident = () => {
         throw new Error(error.message || 'Failed to update incident');
       }
 
-      console.log('Incident updated successfully:', data);
+      //console.log('Incident updated successfully:', data);
       toast.success("Incident updated successfully");
       navigate(`/incident/${id}`);
     } catch (error) {

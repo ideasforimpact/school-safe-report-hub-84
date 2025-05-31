@@ -30,7 +30,7 @@ const Insights = () => {
   // Function to handle export
   const handleExport = () => {
     // If there's a real export function in useInsightsData, use that instead
-    console.log('Exporting data...');
+    //console.log('Exporting data...');
   };
   
   // Function to clear filters

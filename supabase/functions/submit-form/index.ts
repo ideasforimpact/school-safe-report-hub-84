@@ -53,8 +53,8 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Submitting form: ${form_id}`);
-    console.log('Responses:', JSON.stringify(responses, null, 2));
+    //console.log(`Submitting form: ${form_id}`);
+    //console.log('Responses:', JSON.stringify(responses, null, 2));
 
     // Verify the form exists and is active
     const { data: form, error: formError } = await supabaseClient
@@ -118,7 +118,7 @@ serve(async (req) => {
       );
     }
 
-    console.log('Form submission created successfully:', submission.id);
+    //console.log('Form submission created successfully:', submission.id);
 
     return new Response(
       JSON.stringify({ 

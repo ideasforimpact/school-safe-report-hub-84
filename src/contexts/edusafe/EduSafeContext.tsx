@@ -38,7 +38,7 @@ export const EduSafeProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setLoading(true);
       
       if (!user?.clientId) {
-        console.log('No client ID available, skipping fetch');
+        //console.log('No client ID available, skipping fetch');
         setResources([]);
         return;
       }

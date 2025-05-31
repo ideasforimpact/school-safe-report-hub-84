@@ -61,7 +61,7 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Custom forms operation: ${operation} for client: ${payload.client_id}`);
+    //console.log(`Custom forms operation: ${operation} for client: ${payload.client_id}`);
 
     let result;
 
@@ -151,7 +151,7 @@ serve(async (req) => {
 });
 
 async function createForm(supabaseClient: any, payload: CustomFormPayload) {
-  console.log('Creating form for client:', payload.client_id);
+  //console.log('Creating form for client:', payload.client_id);
   
   const { data, error } = await supabaseClient
     .from('custom_forms')
@@ -175,7 +175,7 @@ async function createForm(supabaseClient: any, payload: CustomFormPayload) {
 }
 
 async function updateForm(supabaseClient: any, formId: string, payload: CustomFormPayload) {
-  console.log('Updating form:', formId, 'for client:', payload.client_id);
+  //console.log('Updating form:', formId, 'for client:', payload.client_id);
 
   // First verify the form belongs to the client
   const { data: existingForm, error: fetchError } = await supabaseClient
@@ -216,7 +216,7 @@ async function updateForm(supabaseClient: any, formId: string, payload: CustomFo
 }
 
 async function deleteForm(supabaseClient: any, formId: string, clientId: string) {
-  console.log('Deleting form:', formId, 'for client:', clientId);
+  //console.log('Deleting form:', formId, 'for client:', clientId);
 
   // First verify the form belongs to the client
   const { data: existingForm, error: fetchError } = await supabaseClient
@@ -249,7 +249,7 @@ async function deleteForm(supabaseClient: any, formId: string, clientId: string)
 }
 
 async function deactivateForm(supabaseClient: any, formId: string, clientId: string) {
-  console.log('Deactivating form:', formId, 'for client:', clientId);
+  //console.log('Deactivating form:', formId, 'for client:', clientId);
 
   // First verify the form belongs to the client
   const { data: existingForm, error: fetchError } = await supabaseClient
@@ -284,7 +284,7 @@ async function deactivateForm(supabaseClient: any, formId: string, clientId: str
 }
 
 async function activateForm(supabaseClient: any, formId: string, clientId: string) {
-  console.log('Activating form:', formId, 'for client:', clientId);
+  //console.log('Activating form:', formId, 'for client:', clientId);
 
   // First verify the form belongs to the client
   const { data: existingForm, error: fetchError } = await supabaseClient

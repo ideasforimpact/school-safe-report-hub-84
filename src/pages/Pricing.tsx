@@ -48,7 +48,7 @@ const Pricing = () => {
 
   const handlePlanSelect = (planName: string) => {
     if (user) {
-      console.log(`Selected plan: ${planName}`);
+      //console.log(`Selected plan: ${planName}`);
       // In a real app, this would navigate to checkout or show a subscription modal
     } else {
       navigate('/login');

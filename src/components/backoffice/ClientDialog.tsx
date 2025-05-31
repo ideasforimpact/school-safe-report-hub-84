@@ -55,7 +55,7 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
       moduleInfoArray
     });
     
-    console.log("Updated moduleInfoArray in formData:", moduleInfoArray);
+    //console.log("Updated moduleInfoArray in formData:", moduleInfoArray);
   };
 
   const handleAuthProviderChange = (provider: OAuthProviderName, value: boolean) => {

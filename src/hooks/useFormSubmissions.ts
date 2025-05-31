@@ -29,7 +29,7 @@ export const useFormSubmissions = (formId: string | null) => {
       setLoading(true);
       setError(null);
 
-      console.log('Fetching submissions for form:', formId);
+      //console.log('Fetching submissions for form:', formId);
 
       const { data, error } = await supabase.functions.invoke('fetch-form-submissions', {
         body: { form_id: formId }

@@ -10,7 +10,7 @@ const UserManagementContent = () => {
   const { clientId } = useEmployeeData();
 
   const handleEditClick = (user: EmployeeUser) => {
-    console.log('Edit user:', user);
+    //console.log('Edit user:', user);
   };
 
   const handleDeleteUser = (id: string) => {

@@ -24,7 +24,7 @@ export const IncidentTableRow: React.FC<IncidentTableRowProps> = ({
   onEditClick 
 }) => {
   // Add debug logging to check incident ID
-  console.log(`Rendering row for incident: ${incident.id}, ticketId: ${incident.ticketId}`);
+  //console.log(`Rendering row for incident: ${incident.id}, ticketId: ${incident.ticketId}`);
   
   return (
     <TableRow 

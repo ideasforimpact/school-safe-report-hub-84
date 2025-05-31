@@ -51,9 +51,9 @@ const CommentForm: React.FC<CommentFormProps> = ({
       return;
     }
 
-    console.log('Submitting comment for incident:', incidentId);
-    console.log('Comment text:', commentText);
-    console.log('Files:', files);
+    //console.log('Submitting comment for incident:', incidentId);
+    //console.log('Comment text:', commentText);
+    //console.log('Files:', files);
 
     // Prepare documents array with file names
     const documents = files.map(file => file.name);

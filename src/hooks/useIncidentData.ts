@@ -21,7 +21,7 @@ export function useIncidentData() {
         throw new Error("Access denied: No client association found");
       }
 
-      console.log('Fetching incidents for client:', state.employeeData.clientId);
+      //console.log('Fetching incidents for client:', state.employeeData.clientId);
 
       // Call the edge function to fetch incidents
       const { data, error: functionError } = await supabase.functions.invoke('fetch-incidents', {
@@ -39,12 +39,12 @@ export function useIncidentData() {
         throw new Error('No incidents data received');
       }
 
-      console.log('Raw API response - incidents count:', data.incidents.length);
-      console.log('Raw incidents data:', data.incidents);
+      //console.log('Raw API response - incidents count:', data.incidents.length);
+      //console.log('Raw incidents data:', data.incidents);
 
       // Transform the data to match our Incident type
       const transformedIncidents: Incident[] = data.incidents.map((incident: any, index: number) => {
-        console.log(`Processing incident ${index + 1}:`, incident.id, incident.ticket_id);
+        //console.log(`Processing incident ${index + 1}:`, incident.id, incident.ticket_id);
         
         // Convert people_involved from Json[] to Person[]
         const peopleInvolved: Person[] = Array.isArray(incident.people_involved) 
@@ -170,19 +170,19 @@ export function useIncidentData() {
           contributingFactor: contributingFactor.length > 0 ? contributingFactor : undefined
         };
 
-        console.log(`Transformed incident ${index + 1}:`, transformedIncident.id, transformedIncident.ticketId);
+        //console.log(`Transformed incident ${index + 1}:`, transformedIncident.id, transformedIncident.ticketId);
         return transformedIncident;
       });
 
-      console.log('Total transformed incidents:', transformedIncidents.length);
-      console.log('Transformed incidents summary:', transformedIncidents.map(inc => ({ id: inc.id, ticketId: inc.ticketId, date: inc.createdAt })));
+      //console.log('Total transformed incidents:', transformedIncidents.length);
+      //console.log('Transformed incidents summary:', transformedIncidents.map(inc => ({ id: inc.id, ticketId: inc.ticketId, date: inc.createdAt })));
       
       // Sort incidents by creation date (newest first) to ensure new incidents appear at the top
       const sortedIncidents = transformedIncidents.sort((a, b) => 
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
       
-      console.log('Final sorted incidents count:', sortedIncidents.length);
+      //console.log('Final sorted incidents count:', sortedIncidents.length);
       setIncidents(sortedIncidents);
 
     } catch (error: any) {
@@ -207,7 +207,7 @@ export function useIncidentData() {
 
   // Enhanced refetch function that ensures fresh data
   const refetchIncidents = async () => {
-    console.log('Refetching incidents...');
+    //console.log('Refetching incidents...');
     // Add a small delay to ensure database consistency
     await new Promise(resolve => setTimeout(resolve, 100));
     await fetchIncidents();

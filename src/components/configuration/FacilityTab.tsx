@@ -78,7 +78,7 @@ export const FacilityTab = ({
       return;
     }
     
-    console.log("Updating facility:", editingFacility.id, editingFacility.name.trim(), editingFacility.campusId);
+    //console.log("Updating facility:", editingFacility.id, editingFacility.name.trim(), editingFacility.campusId);
     updateFacility(editingFacility.id, editingFacility.name.trim(), editingFacility.campusId);
   };
 

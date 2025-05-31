@@ -41,7 +41,7 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
 
   const handleFileUploaded = (base64: string) => {
     // This function will be called when a file is uploaded
-    console.log('File uploaded, size:', base64.length);
+    //console.log('File uploaded, size:', base64.length);
   };
 
   const getDocumentTypeLabel = (typeId: string): string => {
@@ -127,7 +127,7 @@ const AddDocumentForm: React.FC<AddDocumentFormProps> = ({ employeeId, onSuccess
         params: params // Add params object with DOB for driving license or account details for bank
       };
 
-      console.log('Adding document with data:', {
+      //console.log('Adding document with data:', {
         employeeId: documentData.employeeId,
         documentTypeId: documentData.documentTypeId,
         documentNumber: documentData.documentNumber ? 'Provided' : 'Not provided',

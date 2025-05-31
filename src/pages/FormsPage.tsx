@@ -21,7 +21,7 @@ const FormsPage = () => {
   const { submissions, loading: submissionsLoading, refetch } = useFormSubmissions(selectedForm?.id || null);
 
   // Enhanced debug logging
-  console.log('FormsPage Enhanced Debug:', {
+  //console.log('FormsPage Enhanced Debug:', {
     selectedFormId: selectedForm?.id,
     selectedFormTitle: selectedForm?.title,
     submissionsCount: submissions.length,
@@ -106,7 +106,7 @@ const FormsPage = () => {
   };
 
   const handleViewSubmission = (submission: any) => {
-    console.log('Opening submission detail for:', submission);
+    //console.log('Opening submission detail for:', submission);
     setSelectedSubmission(submission);
   };
 
@@ -292,7 +292,7 @@ const FormsPage = () => {
                             ) : (
                               filteredSubmissions.map((submission, index) => {
                                 // Enhanced debug logging for each submission
-                                console.log(`Rendering submission ${index}:`, {
+                                //console.log(`Rendering submission ${index}:`, {
                                   id: submission.id,
                                   submitter_name: submission.submitter_name,
                                   submitter_email: submission.submitter_email,

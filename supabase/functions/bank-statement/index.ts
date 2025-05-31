@@ -34,7 +34,7 @@ serve(async (req) => {
     const requestBody = await req.json();
     const { action, documentId } = requestBody;
     
-    console.log(`Bank Statement Verification: Received ${action} request for document ID: ${documentId}`);
+    //console.log(`Bank Statement Verification: Received ${action} request for document ID: ${documentId}`);
     
     // Initialize Supabase client
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
@@ -53,7 +53,7 @@ serve(async (req) => {
       ? Deno.env.get("SUREPASS_SANDBOX_API_KEY") || ""
       : Deno.env.get("SUREPASS_PRODUCTION_API_KEY") || "";
     
-    console.log(`Bank Statement Verification: Using ${environment} environment with base URL: ${baseUrl}`);
+    //console.log(`Bank Statement Verification: Using ${environment} environment with base URL: ${baseUrl}`);
     
     // Fetch all document statuses once
     const { data: documentStatuses, error: statusError } = await supabase
@@ -75,7 +75,7 @@ serve(async (req) => {
       return acc;
     }, {});
     
-    console.log("Bank Statement Verification: Found status IDs:", statusMap);
+    //console.log("Bank Statement Verification: Found status IDs:", statusMap);
     
     // Handle API verification
     if (action === 'apiVerify') {
@@ -102,7 +102,7 @@ serve(async (req) => {
         
         // Step 0: First verify the bank account details if IFSC details are requested
         if (params["ifsc-details"] && accountNumber && ifscCode) {
-          console.log("Verifying bank account details with IFSC:", ifscCode, "Account:", accountNumber);
+          //console.log("Verifying bank account details with IFSC:", ifscCode, "Account:", accountNumber);
           
           // Call the bank verification API first
           const verificationResponse = await fetch(`${baseUrl}/api/v1/bank-verification/`, {
@@ -118,7 +118,7 @@ serve(async (req) => {
           });
           
           const verificationResult = await verificationResponse.json();
-          console.log("Bank Verification API Response:", verificationResult);
+          //console.log("Bank Verification API Response:", verificationResult);
           
           // Create log entry for the bank verification response
           const verificationLogEntry = {
@@ -167,11 +167,11 @@ serve(async (req) => {
           }
           
           // Bank verification was successful, now continue with statement verification
-          console.log("Bank verification successful, proceeding with statement verification");
+          //console.log("Bank verification successful, proceeding with statement verification");
         }
         
         // Step 1: Download the file from Supabase storage
-        console.log("Downloading file from 'employee-documents' storage bucket:", document.document_url);
+        //console.log("Downloading file from 'employee-documents' storage bucket:", document.document_url);
         
         const { data: fileData, error: downloadError } = await supabase.storage
           .from('employee-documents')
@@ -182,11 +182,11 @@ serve(async (req) => {
           throw new Error(`Failed to download file from storage: ${downloadError?.message || 'Unknown error'}`);
         }
         
-        console.log("File downloaded successfully, size:", fileData.size);
+        //console.log("File downloaded successfully, size:", fileData.size);
         
         // Step 2: Convert the blob to ArrayBuffer
         const arrayBuffer = await fileData.arrayBuffer();
-        console.log("Converted file to ArrayBuffer, size:", arrayBuffer.byteLength);
+        //console.log("Converted file to ArrayBuffer, size:", arrayBuffer.byteLength);
         
         // Step 3: Create FormData and append file with buffer data
         const formData = new FormData();
@@ -198,10 +198,10 @@ serve(async (req) => {
         const file = new File([arrayBuffer], fileName, { type: "application/pdf" });
         formData.append('file', file);
         
-        console.log("FormData created with file:", fileName);
+        //console.log("FormData created with file:", fileName);
         
         // Step 4: Call Surepass API with the FormData
-        console.log("Calling bank statement upload API...");
+        //console.log("Calling bank statement upload API...");
         const uploadResponse = await fetch(`${baseUrl}/api/v1/bank/statement/upload`, {
           method: 'POST',
           headers: {
@@ -211,7 +211,7 @@ serve(async (req) => {
         });
         
         const uploadResult = await uploadResponse.json();
-        console.log("Bank Statement Upload API Response:", uploadResult);
+        //console.log("Bank Statement Upload API Response:", uploadResult);
         
         // Create log entry for the upload response
         const uploadLogEntry = {
@@ -423,7 +423,7 @@ async function processDocumentVerification(
     attempts++;
     
     try {
-      console.log(`Processing attempt ${attempts} for client ID: ${clientId}`);
+      //console.log(`Processing attempt ${attempts} for client ID: ${clientId}`);
       
       // Call the download API
       const downloadResponse = await fetch(`${baseUrl}/api/v1/bank/statement/download`, {
@@ -438,7 +438,7 @@ async function processDocumentVerification(
       });
       
       const downloadResult = await downloadResponse.json();
-      console.log("Bank Statement Download API Response:", downloadResult);
+      //console.log("Bank Statement Download API Response:", downloadResult);
       
       // Create log entry for the download response
       const downloadLogEntry = {
@@ -467,7 +467,7 @@ async function processDocumentVerification(
           if (updateError) {
             console.error("Error updating document with verified status:", updateError);
           } else {
-            console.log(`Document ${documentId} verified successfully`);
+            //console.log(`Document ${documentId} verified successfully`);
           }
           
           isProcessingComplete = true;
@@ -476,7 +476,7 @@ async function processDocumentVerification(
         else if (downloadResult.status_code === 202 && 
                 downloadResult.message_code === "pending_document") {
           // Document still processing - keep the in-progress status
-          console.log(`Document ${documentId} still processing. Will retry in ${RETRY_DELAY_MS}ms`);
+          //console.log(`Document ${documentId} still processing. Will retry in ${RETRY_DELAY_MS}ms`);
           
           // Update logs but keep the pending status
           const { error: updateLogError } = await supabase
@@ -566,7 +566,7 @@ async function processDocumentVerification(
   
   // If we've exited the loop without completing, it means we've reached max attempts
   if (!isProcessingComplete) {
-    console.log(`Max retry attempts (${MAX_RETRY_ATTEMPTS}) reached for document ${documentId}`);
+    //console.log(`Max retry attempts (${MAX_RETRY_ATTEMPTS}) reached for document ${documentId}`);
     
     // Update document with failed status
     const { error: updateError } = await supabase

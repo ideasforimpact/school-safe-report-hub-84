@@ -34,14 +34,14 @@ const AssignmentSection: React.FC<AssignmentSectionProps> = ({
   useEffect(() => {
     const fetchEmployees = async () => {
       if (!employeeData?.clientId) {
-        console.log('No client ID available for fetching employees');
+        //console.log('No client ID available for fetching employees');
         setIsLoadingEmployees(false);
         return;
       }
 
       try {
         setIsLoadingEmployees(true);
-        console.log('Fetching employees for client:', employeeData.clientId);
+        //console.log('Fetching employees for client:', employeeData.clientId);
 
         const { data: employeesData, error } = await supabase
           .from('employees')
@@ -55,7 +55,7 @@ const AssignmentSection: React.FC<AssignmentSectionProps> = ({
           return;
         }
 
-        console.log('Fetched employees:', employeesData);
+        //console.log('Fetched employees:', employeesData);
         const mappedEmployees = employeesData.map(emp => ({
           id: emp.id,
           firstName: emp.first_name,

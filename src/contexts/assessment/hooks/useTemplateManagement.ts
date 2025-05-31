@@ -13,7 +13,7 @@ export const useTemplateManagement = (userId?: string) => {
     try {
       setLoading(true);
       const data = await templateService.getTemplates();
-      console.log('Loaded templates:', data);
+      //console.log('Loaded templates:', data);
       setTemplates(data);
     } catch (error) {
       console.error('Failed to load templates:', error);
@@ -29,9 +29,9 @@ export const useTemplateManagement = (userId?: string) => {
 
   const createTemplate = async (templateData: Omit<AssessmentTemplate, 'id' | 'createdAt' | 'createdBy' | 'isActive'>) => {
     try {
-      console.log('Creating template with data:', templateData);
+      //console.log('Creating template with data:', templateData);
       const id = await templateService.createTemplate(templateData);
-      console.log('Template created with ID:', id);
+      //console.log('Template created with ID:', id);
       toast.success('Template created successfully');
       await loadTemplates(); // Refresh the list
       return id;

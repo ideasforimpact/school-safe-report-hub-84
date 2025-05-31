@@ -56,7 +56,7 @@ async function handleUpload(req: Request) {
   const clientId = formData.get('client_id') as string
   const uploadedBy = formData.get('uploaded_by') as string
 
-  console.log('Received upload request for client:', clientId)
+  //console.log('Received upload request for client:', clientId)
 
   // Validate required fields
   if (!file || !title || !category || !clientId) {
@@ -88,7 +88,7 @@ async function handleUpload(req: Request) {
     )
   }
 
-  console.log('Client validated:', clientData.name)
+  //console.log('Client validated:', clientData.name)
 
   // Generate unique filename
   const fileExt = file.name.split('.').pop()
@@ -114,7 +114,7 @@ async function handleUpload(req: Request) {
     )
   }
 
-  console.log('File uploaded to storage:', uploadData.path)
+  //console.log('File uploaded to storage:', uploadData.path)
 
   // Get public URL for the uploaded file
   const { data: urlData } = supabase.storage
@@ -163,7 +163,7 @@ async function handleUpload(req: Request) {
     )
   }
 
-  console.log('Resource created successfully:', resourceData.id)
+  //console.log('Resource created successfully:', resourceData.id)
 
   return new Response(
     JSON.stringify({
@@ -195,7 +195,7 @@ async function handleUpdate(req: Request, url: URL) {
   const body = await req.json()
   const { title, description, category, tags } = body
 
-  console.log('Received update request for resource:', resourceId, 'client:', clientId)
+  //console.log('Received update request for resource:', resourceId, 'client:', clientId)
 
   // Validate that the resource belongs to the client
   const { data: existingResource, error: fetchError } = await supabase
@@ -242,7 +242,7 @@ async function handleUpdate(req: Request, url: URL) {
     )
   }
 
-  console.log('Resource updated successfully:', updatedResource.id)
+  //console.log('Resource updated successfully:', updatedResource.id)
 
   return new Response(
     JSON.stringify({
@@ -271,7 +271,7 @@ async function handleDelete(req: Request, url: URL) {
     )
   }
 
-  console.log('Received delete request for resource:', resourceId, 'client:', clientId)
+  //console.log('Received delete request for resource:', resourceId, 'client:', clientId)
 
   // First, get the resource to verify ownership and get file path for cleanup
   const { data: resourceToDelete, error: fetchError } = await supabase
@@ -320,12 +320,12 @@ async function handleDelete(req: Request, url: URL) {
       .from('edusafe-resources')
       .remove([filePath])
       
-    console.log('File deleted from storage:', filePath)
+    //console.log('File deleted from storage:', filePath)
   } catch (storageError) {
     console.warn('Failed to delete file from storage, but continuing:', storageError)
   }
 
-  console.log('Resource deleted successfully:', resourceId)
+  //console.log('Resource deleted successfully:', resourceId)
 
   return new Response(
     JSON.stringify({

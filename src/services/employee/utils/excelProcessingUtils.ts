@@ -28,10 +28,10 @@ export const parseExcelFile = async (file: File): Promise<RawEmployeeData[]> => 
           
           // Convert the worksheet to JSON with raw: true to get all data types preserved
           const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: true, defval: '' });
-          console.log("Raw Excel data:", JSON.stringify(jsonData));
+          //console.log("Raw Excel data:", JSON.stringify(jsonData));
           
           // Identify column headers for debugging
-          console.log("Available columns:", Object.keys(jsonData[0] || {}));
+          //console.log("Available columns:", Object.keys(jsonData[0] || {}));
           
           // Map Excel column names to our expected property names
           const employeeData: RawEmployeeData[] = jsonData.map((row: any, index: number) => {
@@ -67,7 +67,7 @@ export const parseExcelFile = async (file: File): Promise<RawEmployeeData[]> => 
               // Try case-insensitive match for any field containing "email" or "mail"
               for (const key of Object.keys(row)) {
                 if ((key.toLowerCase().includes('email') || key.toLowerCase().includes('mail')) && row[key] !== '') {
-                  console.log(`Found email in column: ${key} = ${row[key]}`);
+                  //console.log(`Found email in column: ${key} = ${row[key]}`);
                   return String(row[key]);
                 }
               }
@@ -76,7 +76,7 @@ export const parseExcelFile = async (file: File): Promise<RawEmployeeData[]> => 
               for (const key of Object.keys(row)) {
                 const value = row[key];
                 if (typeof value === 'string' && value.includes('@')) {
-                  console.log(`Found email by @ symbol in column: ${key} = ${value}`);
+                  //console.log(`Found email by @ symbol in column: ${key} = ${value}`);
                   return value;
                 }
               }
@@ -100,7 +100,7 @@ export const parseExcelFile = async (file: File): Promise<RawEmployeeData[]> => 
             };
             
             // Log each mapped row to debug
-            console.log(`Mapped row ${index + 1}:`, mappedData);
+            //console.log(`Mapped row ${index + 1}:`, mappedData);
             
             // Extra validation for required fields, especially email
             if (!mappedData.email) {
@@ -111,7 +111,7 @@ export const parseExcelFile = async (file: File): Promise<RawEmployeeData[]> => 
             return mappedData;
           });
           
-          console.log("Processed employee data:", employeeData);
+          //console.log("Processed employee data:", employeeData);
           
           resolve(employeeData);
         } catch (error) {

@@ -44,7 +44,7 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
       try {
         setLoading(true);
         
-        console.log('Fetching assessment with ID:', assessmentId, 'and clientId:', clientId);
+        //console.log('Fetching assessment with ID:', assessmentId, 'and clientId:', clientId);
         
         // Fetch assessment by assessment_id instead of id
         const { data: assessmentData, error: assessmentError } = await supabase
@@ -59,7 +59,7 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
           throw new Error('Assessment not found or access denied');
         }
 
-        console.log('Fetched assessment data:', assessmentData);
+        //console.log('Fetched assessment data:', assessmentData);
         setAssessment(assessmentData);
 
         // Fetch template
@@ -76,7 +76,7 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
             throw new Error('Assessment template not found');
           }
 
-          console.log('Fetched template data:', templateData);
+          //console.log('Fetched template data:', templateData);
           setTemplate(templateData);
           
           // Parse questions from JSONB and initialize answers array
@@ -84,7 +84,7 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
             ? (templateData.questions as unknown as Question[])
             : [];
             
-          console.log('Parsed questions:', questions);
+          //console.log('Parsed questions:', questions);
           
           // Load existing answers if they exist - handle different data types
           let existingAnswers: any[] = [];
@@ -98,7 +98,7 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
             }
           }
           
-          console.log('Existing answers from database:', existingAnswers);
+          //console.log('Existing answers from database:', existingAnswers);
           
           const initialAnswers = questions.map((question: Question) => {
             // Find existing answer for this question
@@ -106,7 +106,7 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
               ans && typeof ans === 'object' && ans.questionId === question.id
             );
             
-            console.log(`Question ${question.id} existing answer:`, existingAnswer);
+            //console.log(`Question ${question.id} existing answer:`, existingAnswer);
             
             return {
               questionId: question.id,
@@ -116,7 +116,7 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
             };
           });
           
-          console.log('Initialized answers with existing data:', initialAnswers);
+          //console.log('Initialized answers with existing data:', initialAnswers);
           setAnswers(initialAnswers);
         }
         
@@ -132,7 +132,7 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
   }, [assessmentId, clientId]);
 
   const handleAnswerChange = (questionId: string, field: string, value: any) => {
-    console.log(`Updating answer for question ${questionId}, field ${field}:`, value);
+    //console.log(`Updating answer for question ${questionId}, field ${field}:`, value);
     setAnswers(prev => 
       prev.map(answer => 
         answer.questionId === questionId 
@@ -173,8 +173,8 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
         attachments: answer.attachments || []
       }));
 
-      console.log('Saving draft with answers:', answersData);
-      console.log('Assessment ID:', assessmentId, 'Client ID:', clientId);
+      //console.log('Saving draft with answers:', answersData);
+      //console.log('Assessment ID:', assessmentId, 'Client ID:', clientId);
 
       // Update assessment with current answers but keep status as is (or set to 'Draft' if it's 'New')
       const currentStatus = assessment.status === 'New' ? 'Draft' : assessment.status;
@@ -199,7 +199,7 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
         throw new Error(`Failed to save draft: ${updateError.message}`);
       }
 
-      console.log('Draft saved successfully:', data);
+      //console.log('Draft saved successfully:', data);
 
       // Update local assessment state to reflect the saved status
       setAssessment(prev => prev ? { ...prev, status: currentStatus, answers: answersData } : null);
@@ -256,7 +256,7 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
         attachments: answer.attachments || []
       }));
 
-      console.log('Submitting assessment with answers:', answersData);
+      //console.log('Submitting assessment with answers:', answersData);
 
       // Update assessment status, score, and answers using assessment_id
       const { error: updateError } = await supabase

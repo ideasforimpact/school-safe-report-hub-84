@@ -100,7 +100,7 @@ const ReportIncident = () => {
   // Populate form data when incident is loaded - memoized to prevent infinite loops
   const populateFormData = useCallback(() => {
     if (existingIncident && !isLoadingIncident && !isFormPopulated && isEditMode) {
-      console.log('Populating form data with incident:', existingIncident);
+      //console.log('Populating form data with incident:', existingIncident);
       const mappedFormData = getFormData();
       if (mappedFormData) {
         setFormData(mappedFormData);
@@ -120,11 +120,11 @@ const ReportIncident = () => {
             };
           });
           handleFilesChange(convertedFiles);
-          console.log('Converted documents to FileItems with proper sizes:', convertedFiles);
+          //console.log('Converted documents to FileItems with proper sizes:', convertedFiles);
         }
         
         setIsFormPopulated(true);
-        console.log('Form data populated successfully');
+        //console.log('Form data populated successfully');
       }
     }
   }, [existingIncident, isLoadingIncident, isFormPopulated, isEditMode, getFormData, setFormData, setPeopleInvolved, handleFilesChange]);
@@ -137,7 +137,7 @@ const ReportIncident = () => {
   useEffect(() => {
     const isDataReady = !isLoadingEmployees && (!isEditMode || (!isLoadingIncident && isFormPopulated));
     setIsFormReady(isDataReady);
-    console.log('Form ready status:', isDataReady, {
+    //console.log('Form ready status:', isDataReady, {
       isLoadingEmployees,
       isEditMode,
       isLoadingIncident,
@@ -158,10 +158,10 @@ const ReportIncident = () => {
     const fetchEmployees = async () => {
       try {
         setIsLoadingEmployees(true);
-        console.log('Fetching employees...');
+        //console.log('Fetching employees...');
         const fetchedEmployees = await getAllEmployeesFromApi();
         setEmployees(fetchedEmployees);
-        console.log('Employees fetched successfully:', fetchedEmployees.length);
+        //console.log('Employees fetched successfully:', fetchedEmployees.length);
       } catch (error) {
         console.error("Failed to fetch employees:", error);
         toast.error("Could not load staff members");
@@ -179,20 +179,20 @@ const ReportIncident = () => {
     try {
       // If no date is provided, use current date
       if (!dateString) {
-        console.log('No date provided, using current date');
+        //console.log('No date provided, using current date');
         return new Date();
       }
 
       // If no time is provided, use current time
       if (!timeString) {
-        console.log('No time provided, using current time');
+        //console.log('No time provided, using current time');
         const currentTime = new Date().toTimeString().split(' ')[0].slice(0, 5);
         timeString = currentTime;
       }
 
       // Create date from date and time strings
       const dateTimeString = `${dateString}T${timeString}:00`;
-      console.log('Creating date from:', dateTimeString);
+      //console.log('Creating date from:', dateTimeString);
       
       const date = new Date(dateTimeString);
       
@@ -218,7 +218,7 @@ const ReportIncident = () => {
     // Validate form including people involved
     const isValid = validateForm(formData, peopleInvolved);
 
-    console.log(formData,"formData", errors)
+    //console.log(formData,"formData", errors)
 
     
     if (!isValid) {
@@ -287,9 +287,9 @@ const ReportIncident = () => {
         toast.success("Incident updated successfully");
         
         // Wait for refetch to complete before navigating
-        console.log('Refetching incidents after edit...');
+        //console.log('Refetching incidents after edit...');
         await refetchIncidents();
-        console.log('Incidents refetched successfully');
+        //console.log('Incidents refetched successfully');
         
         // Navigate to incidents list
         navigate('/incidents');
@@ -358,7 +358,7 @@ const ReportIncident = () => {
           clientId: clientId
         };
         
-        console.log('Creating new incident...');
+        //console.log('Creating new incident...');
         const { data, error } = await supabase.functions.invoke('create-incident', {
           body: incidentData
         });
@@ -373,13 +373,13 @@ const ReportIncident = () => {
           throw new Error(data?.error || 'Failed to create incident');
         }
         
-        console.log('Incident created successfully:', data);
+        //console.log('Incident created successfully:', data);
         toast.success(`Incident reported successfully! Ticket ID: ${data.ticketId}`);
         
         // Wait for refetch to complete before navigating
-        console.log('Refetching incidents after creation...');
+        //console.log('Refetching incidents after creation...');
         await refetchIncidents();
-        console.log('Incidents refetched successfully');
+        //console.log('Incidents refetched successfully');
         
         // Navigate to incidents list
         navigate('/incidents');

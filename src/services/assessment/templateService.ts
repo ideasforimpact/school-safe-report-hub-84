@@ -64,7 +64,7 @@ export const templateService = {
     type: string;
     questions: Omit<AssessmentQuestion, 'id'>[];
   }): Promise<string> {
-    console.log('Creating template with data:', template);
+    //console.log('Creating template with data:', template);
     
     // Get category ID by name
     const { data: category } = await supabase
@@ -81,7 +81,7 @@ export const templateService = {
 
     // Try to get the current user, but don't fail if not authenticated
     const { data: { user } } = await supabase.auth.getUser();
-    console.log('Current user:', user);
+    //console.log('Current user:', user);
     
     let employeeId = null;
     let clientId = null;
@@ -100,8 +100,8 @@ export const templateService = {
       }
     }
 
-    console.log('Employee ID:', employeeId);
-    console.log('Client ID:', clientId);
+    //console.log('Employee ID:', employeeId);
+    //console.log('Client ID:', clientId);
 
     const { data, error } = await supabase
       .from('assessment_templates')
@@ -122,7 +122,7 @@ export const templateService = {
       throw error;
     }
 
-    console.log('Template created successfully:', data);
+    //console.log('Template created successfully:', data);
     return data.id;
   },
 

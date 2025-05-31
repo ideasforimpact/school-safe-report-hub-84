@@ -47,7 +47,7 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false }: Modul
     const fetchClientModules = async () => {
       if (modules.length > 0) return; // Skip if modules are already loaded
       
-      console.log("Fetching client modules: Initial load");
+      //console.log("Fetching client modules: Initial load");
       setLoading(true);
       try {
         // Fetch modules that are not backoffice level
@@ -62,7 +62,7 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false }: Modul
         }
 
         if (data && data.modules) {
-          console.log("Modules fetched successfully:", data.modules.length);
+          //console.log("Modules fetched successfully:", data.modules.length);
           setModules(data.modules);
           
           // Initialize module access state based on formData
@@ -88,7 +88,7 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false }: Modul
   
   // Initialize module access state based on moduleInfoArray
   const initializeModuleAccessState = (availableModules: Module[]) => {
-    console.log("Initializing module access state with:", { 
+    //console.log("Initializing module access state with:", { 
       moduleInfoArray: formData.moduleInfoArray,
       isEdit: isEdit
     });
@@ -97,7 +97,7 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false }: Modul
     
     // If moduleInfoArray is available and not empty, use it first (it's more specific)
     if (formData.moduleInfoArray && formData.moduleInfoArray.length > 0) {
-      console.log("Using moduleInfoArray to initialize module states");
+      //console.log("Using moduleInfoArray to initialize module states");
       
       // Create a map of module info by module_id for quick lookup
       const moduleInfoMap = new Map<string, ModuleInfo>();
@@ -126,7 +126,7 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false }: Modul
     }
     // Otherwise, set default values based on isEdit flag
     else {
-      console.log("Using default settings to initialize module states");
+      //console.log("Using default settings to initialize module states");
       initialModuleAccess = availableModules.map((module: Module) => {
         // For new client (not edit mode) or edit mode with empty moduleInfoArray, 
         // enable all modules by default with admin access
@@ -144,7 +144,7 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false }: Modul
     }
     
     setModuleAccessState(initialModuleAccess);
-    console.log("Initial module access state:", initialModuleAccess);
+    //console.log("Initial module access state:", initialModuleAccess);
     
     // If onModuleInfoChange callback is provided, use it to update parent
     if (onModuleInfoChange) {
@@ -173,7 +173,7 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false }: Modul
           module_id: module.module_id,
           is_admin: module.is_admin
         }));
-      console.log("Updating parent with module info array:", moduleInfoArray);
+      //console.log("Updating parent with module info array:", moduleInfoArray);
       onModuleInfoChange(moduleInfoArray);
     }
   }, [moduleAccessState]);
@@ -183,7 +183,7 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false }: Modul
     const moduleToUpdate = moduleAccessState.find(m => m.module_id === moduleId);
     if (!moduleToUpdate) return;
     
-    console.log(`Module checkbox change - Name: ${moduleToUpdate.name}, ID: ${moduleId}, Checked: ${checked}`);
+    //console.log(`Module checkbox change - Name: ${moduleToUpdate.name}, ID: ${moduleId}, Checked: ${checked}`);
     
     // Update only the is_enabled state for this specific module
     setModuleAccessState(prev => 
@@ -201,7 +201,7 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false }: Modul
       )
     );
     
-    console.log(`Updated module ${moduleToUpdate.name} (${moduleId}) enabled state to ${checked}`);
+    //console.log(`Updated module ${moduleToUpdate.name} (${moduleId}) enabled state to ${checked}`);
   };
 
   // Handle clicking on the admin badge
@@ -209,7 +209,7 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false }: Modul
     const moduleToUpdate = moduleAccessState.find(m => m.module_id === moduleId);
     if (!moduleToUpdate) return;
     
-    console.log(`Admin badge click - Name: ${moduleToUpdate.name}, ID: ${moduleId}, Current admin: ${moduleToUpdate.is_admin}`);
+    //console.log(`Admin badge click - Name: ${moduleToUpdate.name}, ID: ${moduleId}, Current admin: ${moduleToUpdate.is_admin}`);
     
     // Toggle the admin access state for this module
     setModuleAccessState(prev => 
@@ -227,7 +227,7 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false }: Modul
       )
     );
     
-    console.log(`Toggled admin status for module ${moduleToUpdate.name} (${moduleId}) to ${!moduleToUpdate.is_admin}`);
+    //console.log(`Toggled admin status for module ${moduleToUpdate.name} (${moduleId}) to ${!moduleToUpdate.is_admin}`);
   };
 
   return (

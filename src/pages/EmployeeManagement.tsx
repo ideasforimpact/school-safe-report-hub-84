@@ -47,10 +47,10 @@ const EmployeeManagement = () => {
 
   useEffect(() => {
     // Log the initial state of employees
-    console.log("Employee management loaded with employees:", employees);
-    console.log("Current user clientId:", clientId);
-    console.log("Redux client ID:", state.clientId);
-    console.log("Redux configured modules:", state.configuredModules);
+    //console.log("Employee management loaded with employees:", employees);
+    //console.log("Current user clientId:", clientId);
+    //console.log("Redux client ID:", state.clientId);
+    //console.log("Redux configured modules:", state.configuredModules);
   }, [employees, clientId, state]);
 
   if (!isAdmin) {
@@ -68,7 +68,7 @@ const EmployeeManagement = () => {
   }
 
   const handleEditClick = (employee: Employee) => {
-    console.log("Editing employee:", employee);
+    //console.log("Editing employee:", employee);
     setCurrentEmployee(employee);
     setIsEditDialogOpen(true);
   };
@@ -76,7 +76,7 @@ const EmployeeManagement = () => {
   const handleDeactivateEmployee = async (id: string) => {
     try {
       setIsLoading(true);
-      console.log("Deactivating employee with ID:", id);
+      //console.log("Deactivating employee with ID:", id);
       
       // Make sure we have a valid ID
       if (!id) {
@@ -128,13 +128,13 @@ const EmployeeManagement = () => {
 
   const handleAddEmployee = async (employeeData: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>): Promise<Employee> => {
     try {
-      console.log("Adding employee with data before clientId check:", employeeData);
+      //console.log("Adding employee with data before clientId check:", employeeData);
       
       // Ensure clientId is set, using the current user's clientId if available, or from Redux
       if (!employeeData.clientId) {
         if (clientId) {
           employeeData.clientId = clientId;
-          console.log("Set clientId from context or Redux:", clientId);
+          //console.log("Set clientId from context or Redux:", clientId);
         } else {
           console.warn("No clientId available from context or Redux!");
         }
@@ -155,13 +155,13 @@ const EmployeeManagement = () => {
         
         if (defaultModules.length > 0) {
           employeeData.moduleAccessPayload = defaultModules;
-          console.log("Created default moduleAccessPayload:", defaultModules);
+          //console.log("Created default moduleAccessPayload:", defaultModules);
         }
       }
       
-      console.log("Final employee data with clientId and modules:", employeeData);
+      //console.log("Final employee data with clientId and modules:", employeeData);
       const newEmployee = await addEmployee(employeeData);
-      console.log("New employee added:", newEmployee);
+      //console.log("New employee added:", newEmployee);
       
       // We don't need to show success toast here - it's handled in the service
       // This prevents duplicate toast messages
@@ -181,7 +181,7 @@ const EmployeeManagement = () => {
 
   const handleUpdateEmployee = async (id: string, updates: Partial<Employee>) => {
     try {
-      console.log("Updating employee:", id, updates);
+      //console.log("Updating employee:", id, updates);
       await updateEmployee(id, updates);
       toast.success("Employee updated successfully");
     } catch (error) {
@@ -197,7 +197,7 @@ const EmployeeManagement = () => {
     try {
       // Use the provided clientId or fall back to the user's clientId
       const effectiveClientId = importClientId || clientId;
-      console.log("Importing employees with clientId:", effectiveClientId);
+      //console.log("Importing employees with clientId:", effectiveClientId);
       
       // If this is a demo user, we can skip the session check
       if (!isDemoUser) {
@@ -209,11 +209,11 @@ const EmployeeManagement = () => {
         }
       }
       
-      console.log("Starting employee import with configured modules:", state.configuredModules);
+      //console.log("Starting employee import with configured modules:", state.configuredModules);
       
       // Pass configured modules from Redux state
       const result = await processEmployeeExcel(file, effectiveClientId, state.configuredModules);
-      console.log("Import process completed, result:", result);
+      //console.log("Import process completed, result:", result);
       
       // After import, refresh the employee list
       await fetchEmployees();
