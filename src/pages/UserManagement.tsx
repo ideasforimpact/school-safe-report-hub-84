@@ -729,7 +729,7 @@ const UserManagement = () => {
         onSubmit={handleUpdateUser}
         resetForm={resetForm}
         isLoading={isLoading}
-        clientId={clientId}
+        currentUser={currentUser}
       />
 
       {/* Import Employees Dialog */}
