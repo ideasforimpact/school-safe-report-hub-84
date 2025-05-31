@@ -1,3 +1,4 @@
+
 import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
 import { Employee } from '@/contexts/employee/types';
@@ -168,26 +169,82 @@ export const updateEmployeeInApi = async (
   updates: Partial<Employee>
 ): Promise<Employee> => {
   try {
-    // Convert the updates to match the database schema
-    const dbUpdates = mapEmployeeToDbRecord(updates);
-
-    const { data, error } = await supabase
+    // Get the current employee data to extract client_id if not provided in updates
+    const { data: currentEmployee, error: fetchError } = await supabase
       .from('employees')
-      .update(dbUpdates)
+      .select('client_id')
       .eq('id', id)
-      .select('*')
       .single();
 
-    if (error) {
-      console.error("Error updating employee:", error);
-      toast.error("Failed to update employee");
-      throw error;
+    if (fetchError) {
+      console.error("Error fetching current employee:", fetchError);
+      throw fetchError;
     }
 
-    toast.success("Employee updated successfully");
-    
-    // Convert the response back to our Employee type
-    return mapDbRecordToEmployee(data);
+    // Ensure client_id is included in the updates
+    const employeeDataWithClientId = {
+      ...updates,
+      id,
+      clientId: updates.clientId || currentEmployee.client_id,
+      client_id: updates.clientId || currentEmployee.client_id
+    };
+
+    console.log("Updating employee with data:", employeeDataWithClientId);
+
+    // Try to use the edge function first
+    try {
+      const { data, error } = await supabase.functions.invoke('employee-management', {
+        body: JSON.stringify({
+          operation: 'update',
+          employee: employeeDataWithClientId
+        })
+      });
+      
+      if (error) {
+        console.error("Edge function error:", error);
+        throw error;
+      }
+      
+      // Check if the response contains an error 
+      if (data && data.error) {
+        console.error("Error response from edge function:", data.error);
+        toast.error(data.error || "Failed to update employee");
+        throw data;
+      }
+      
+      // If we got here, it means the operation was successful
+      console.log("Employee updated via edge function:", data);
+      
+      if (data && data.data) {
+        toast.success("Employee updated successfully");
+        return mapDbRecordToEmployee(data.data);
+      }
+      
+      throw new Error("Invalid response from edge function");
+    } catch (edgeFunctionError: any) {
+      console.error("Edge function error, falling back to direct API call:", edgeFunctionError);
+      
+      // Fallback: Convert the updates to match the database schema
+      const dbUpdates = mapEmployeeToDbRecord(updates);
+
+      const { data, error } = await supabase
+        .from('employees')
+        .update(dbUpdates)
+        .eq('id', id)
+        .select('*')
+        .single();
+
+      if (error) {
+        console.error("Error updating employee:", error);
+        toast.error("Failed to update employee");
+        throw error;
+      }
+
+      toast.success("Employee updated successfully");
+      
+      // Convert the response back to our Employee type
+      return mapDbRecordToEmployee(data);
+    }
   } catch (error) {
     console.error("Error in updateEmployeeInApi:", error);
     toast.error("Failed to update employee");

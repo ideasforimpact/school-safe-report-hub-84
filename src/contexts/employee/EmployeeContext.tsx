@@ -143,6 +143,15 @@ export const EmployeeProvider: React.FC<{ children: ReactNode }> = ({ children }
     try {
       setLoading(true);
       
+      // Get current employee to ensure client_id is available
+      const currentEmployee = employees.find(emp => emp.id === id);
+      if (currentEmployee && !updates.clientId) {
+        updates.clientId = currentEmployee.clientId;
+      }
+      
+      console.log("EmployeeContext: Updating employee with updates:", updates);
+      console.log("clientId in updates:", updates.clientId);
+      
       // Try to update employee in API first
       try {
         const updatedEmployee = await updateEmployeeInApi(id, updates);
