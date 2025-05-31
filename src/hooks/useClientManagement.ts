@@ -52,7 +52,7 @@ export const useClientManagement = () => {
   const [currentClient, setCurrentClient] = useState<Client | null>(null);
   const [formData, setFormData] = useState<ClientFormData>({...initialFormData});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // Add a ref to track if submission is in progress
   const submissionInProgress = useState(false)[0];
 
@@ -184,8 +184,8 @@ export const useClientManagement = () => {
   };
 
   const handleAddClient = async () => {
-    // Prevent duplicate calls with a more robust check
-    if (isSubmitting || submissionInProgress) {
+    // Prevent duplicate calls - check submission state first
+    if (isSubmitting) {
       console.log('Add client submission already in progress, skipping...');
       return; 
     }
@@ -341,8 +341,8 @@ export const useClientManagement = () => {
   };
 
   const handleUpdateClient = async () => {
-    // Prevent duplicate calls with a more robust check
-    if (isSubmitting || submissionInProgress) {
+    // Prevent duplicate calls - check submission state first
+    if (isSubmitting) {
       console.log('Update client submission already in progress, skipping...');
       return; 
     }
@@ -375,7 +375,7 @@ export const useClientManagement = () => {
         logoPreview: formData.logo ? formData.logo.substring(0, 50) + '...' : 'No logo'
       });
       
-      // Always include logo data in the request, even if empty
+      // Always include logo data in the request, whether it's new, existing, or empty
       const requestPayload = {
         operation: 'update',
         client: {
@@ -383,7 +383,7 @@ export const useClientManagement = () => {
           modules: moduleInfoArray,
           superAdminEmail: formData.superAdminEmail,
           clientTypeId: formData.clientTypeId,
-          logo: formData.logo // Always send logo data, whether it's new, existing, or empty
+          logo: formData.logo || '' // Always send logo data, even if empty string
         }
       };
       
@@ -395,7 +395,7 @@ export const useClientManagement = () => {
         }
       });
       
-      // Call the edge function with logo data - SINGLE CALL ONLY
+      // Call the edge function with logo data - ensure single call
       const { data, error } = await supabase.functions.invoke('client-management', {
         body: requestPayload
       });
