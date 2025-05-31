@@ -1,936 +1,91 @@
 
-import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
-import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.20.0';
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-// Define CORS headers for all responses
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
-interface ModuleAccessItem {
-  name: string;
-  key: string;
-  module_id?: string;
-  employeeId?: string;
-  access_level?: {
-    is_admin?: boolean;
-    [key: string]: any;
-  };
-}
-
-interface EmployeeData {
-  id?: string;
-  employeeId?: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  employeeType?: string;
-  department?: string;
-  joiningDate?: string;
-  status?: 'active' | 'inactive' | boolean;
-  clientId?: string;
-  modulePermissions?: Record<string, boolean>;
-  moduleAccessPayload?: ModuleAccessItem[];
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-// Create a Supabase client with the provided service role key
-const supabaseAdmin = createClient(
-  // Supabase API URL - env var exported by default when deployed
-  Deno.env.get('SUPABASE_URL') ?? '',
-  // Supabase service role key - env var exported by default when deployed
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-);
-
-// Function to validate client exists and is active
-async function validateClient(clientId: string | undefined): Promise<{ valid: boolean; message: string }> {
-  try {
-    if (!clientId) {
-      return { valid: false, message: 'Client ID is required' };
-    }
-    
-    console.log(`Validating client with ID: ${clientId}`);
-    
-    const { data: client, error } = await supabaseAdmin
-      .from('clients')
-      .select('id, active')
-      .eq('id', clientId)
-      .single();
-      
-    if (error) {
-      console.error("Error validating client:", error);
-      return { valid: false, message: 'Failed to validate client' };
-    }
-    
-    if (!client) {
-      return { valid: false, message: 'Client not found' };
-    }
-    
-    if (!client.active) {
-      return { valid: false, message: 'Client is not active' };
-    }
-    
-    return { valid: true, message: 'Client is valid' };
-  } catch (error) {
-    console.error("Exception in validateClient:", error);
-    return { valid: false, message: 'Error validating client' };
-  }
-}
-
-// Function to check if an email already exists for a client
-async function checkForExistingEmail(
-  email: string, 
-  clientId: string | undefined, 
-  currentEmployeeId?: string
-): Promise<boolean> {
-  try {
-    // Validate that client_id is provided
-    if (!clientId) {
-      console.error("Missing client ID in checkForExistingEmail function");
-      // Consider this an error case - we can't properly check without a client ID
-      return true; // Return true (as if duplicate exists) to prevent creation without proper client validation
-    }
-    
-    console.log(`Checking for existing email ${email} for client ${clientId}`);
-    
-    // Build query - always filter by both email AND client_id
-    let query = supabaseAdmin
-      .from('employees')
-      .select('id, email, client_id')
-      .eq('email', email)
-      .eq('client_id', clientId);
-    
-    // Exclude current employee if updating
-    if (currentEmployeeId) {
-      query = query.neq('id', currentEmployeeId);
-    }
-    
-    const { data, error } = await query;
-    
-    if (error) {
-      console.error("Error checking for existing email:", error);
-      return false; // Assume no duplicate if error (will be caught elsewhere)
-    }
-    
-    // If data exists and has length, then there's a duplicate within this client
-    const isDuplicate = data && data.length > 0;
-    console.log(`Email ${email} exists for client ${clientId}: ${isDuplicate}`);
-    
-    return isDuplicate;
-  } catch (error) {
-    console.error("Exception checking for existing email:", error);
-    return false;
-  }
-}
-
-// Function to add module access for an employee
-async function addEmployeeModuleAccess(
-  moduleAccessItems: ModuleAccessItem[], 
-  employeeId: string
-): Promise<void> {
-  try {
-    if (!moduleAccessItems || moduleAccessItems.length === 0) {
-      console.log("No module access items to add");
-      return;
-    }
-    
-    const moduleEntries = moduleAccessItems.map(item => {
-      // Ensure access_level includes is_admin property
-      const access_level = item.access_level || {};
-      
-      return {
-        employee_id: employeeId,
-        module_id: item.module_id || item.key, // Use module_id if provided, otherwise fallback to key
-        access_level: access_level // This now properly includes the is_admin property
-      };
-    });
-    
-    console.log("Adding module entries:", moduleEntries);
-    
-    const { error } = await supabaseAdmin
-      .from('employee_modules')
-      .insert(moduleEntries);
-    
-    if (error) {
-      console.error("Error inserting module entries:", error);
-      throw error;
-    }
-    
-    console.log(`Successfully added ${moduleEntries.length} module access entries for employee: ${employeeId}`);
-  } catch (error) {
-    console.error("Error adding employee module access:", error);
-    throw error;
-  }
-}
-
-// Function to delete all module access for an employee
-async function deleteEmployeeModuleAccess(employeeId: string): Promise<void> {
-  try {
-    console.log(`Deleting all module access for employee: ${employeeId}`);
-    
-    const { error } = await supabaseAdmin
-      .from('employee_modules')
-      .delete()
-      .eq('employee_id', employeeId);
-    
-    if (error) {
-      console.error("Error deleting employee module access:", error);
-      throw error;
-    }
-    
-    console.log(`Successfully deleted all module access for employee: ${employeeId}`);
-  } catch (error) {
-    console.error("Error in deleteEmployeeModuleAccess:", error);
-    throw error;
-  }
-}
-
-// Function to create a new employee
-async function createEmployee(employee: EmployeeData): Promise<any> {
-  try {
-    // Validate client_id
-    if (!employee.clientId) {
-      return { 
-        error: 'Client ID is required', 
-        code: 'MISSING_CLIENT_ID',
-        success: false 
-      };
-    }
-    
-    // Validate client exists and is active
-    const clientValidation = await validateClient(employee.clientId);
-    if (!clientValidation.valid) {
-      return {
-        error: clientValidation.message,
-        code: 'INVALID_CLIENT',
-        success: false
-      };
-    }
-    
-    // Check if an employee with the same email already exists for this client
-    const emailExists = await checkForExistingEmail(employee.email, employee.clientId);
-    
-    if (emailExists) {
-      return { 
-        error: `An employee with email ${employee.email} already exists for this client.`,
-        code: 'DUPLICATE_EMAIL',
-        success: false
-      };
-    }
-    
-    // Map employee data to match DB schema
-    const employeeData = {
-      employee_id: employee.employeeId || '',
-      first_name: employee.firstName,
-      last_name: employee.lastName,
-      email: employee.email,
-      employee_type: employee.employeeType || 'permanent',
-      department: employee.department || '',
-      joining_date: employee.joiningDate || new Date().toISOString(),
-      status: employee.status === 'inactive' ? false : true,
-      client_id: employee.clientId
-    };
-    
-    console.log("Inserting employee:", employeeData);
-    
-    // Insert the employee into the employees table
-    const { data: newEmployee, error } = await supabaseAdmin
-      .from('employees')
-      .insert(employeeData)
-      .select('*')
-      .single();
-      
-    if (error) {
-      console.error("Error creating employee:", error);
-      return { 
-        error: error.message, 
-        success: false,
-        code: error.code
-      };
-    }
-    
-    // If module access payload exists, add employee module access
-    if (employee.moduleAccessPayload && employee.moduleAccessPayload.length > 0) {
-      await addEmployeeModuleAccess(employee.moduleAccessPayload, newEmployee.id);
-    }
-    
-    return { 
-      data: newEmployee, 
-      success: true 
-    };
-  } catch (error) {
-    console.error("Error in createEmployee:", error);
-    return { 
-      error: error.message, 
-      success: false
-    };
-  }
-}
-
-// Employee management function
-async function handleEmployeeOperation(operation: string, employeeData: any) {
-  console.log(`Handling operation: ${operation}`);
-  console.log(`Employee data received:`, employeeData);
-  
-  // Special case for bulk imports
-  if (operation === 'bulk_import' && Array.isArray(employeeData)) {
-    return await handleBulkImport(employeeData);
-  }
-  
-  // For delete and deactivate operations, we need to validate the ID is present
-  if (['delete', 'deactivate'].includes(operation)) {
-    // Check if we have a direct ID string or an object with an ID property
-    let employeeId: string | null = null;
-    let clientId: string | null = null;
-    
-    if (typeof employeeData === 'string') {
-      // Direct ID string
-      employeeId = employeeData;
-      console.log(`Found ID directly in employeeData: ${employeeId}`);
-    } else if (employeeData && typeof employeeData === 'object') {
-      // ID within an object
-      employeeId = employeeData.id;
-      clientId = employeeData.clientId;
-      console.log(`Found ID in employeeData.id: ${employeeId}`);
-      console.log(`Found clientId in employeeData.clientId: ${clientId}`);
-    }
-    
-    if (!employeeId) {
-      console.error("Missing employee ID for operation:", operation);
-      return { error: 'Employee ID is required for this operation' };
-    }
-    
-    // If clientId is provided, validate it
-    if (clientId) {
-      const clientValidation = await validateClient(clientId);
-      if (!clientValidation.valid) {
-        return {
-          error: clientValidation.message,
-          code: 'INVALID_CLIENT',
-          success: false
-        };
-      }
-    }
-    
-    if (operation === 'deactivate') {
-      return await deactivateEmployee(employeeId, clientId);
-    } else if (operation === 'delete') {
-      return await deleteEmployee(employeeId, clientId);
-    }
-  }
-  
-  // For other operations that require full employeeData
-  if (!employeeData && ['create', 'update'].includes(operation)) {
-    return { error: 'Employee data is required for this operation' };
-  }
-  
-  // Continue with the appropriate operation
-  switch (operation) {
-    case 'create':
-      return await createEmployee(employeeData);
-    case 'update':
-      return await updateEmployee(employeeData);
-    case 'get':
-      return employeeData && employeeData.id 
-        ? await getEmployee(employeeData.id)
-        : { error: 'Employee ID is required for get operation' };
-    case 'list':
-      return employeeData && employeeData.clientId 
-        ? await listEmployees(employeeData.clientId)
-        : { error: 'Client ID is required for list operation' };
-    case 'add_module_access':
-      return (employeeData && employeeData.moduleAccessPayload && employeeData.id)
-        ? await addEmployeeModuleAccess(employeeData.moduleAccessPayload, employeeData.id)
-        : { error: 'Module access payload and employee ID are required' };
-    default:
-      return { error: 'Invalid operation' };
-  }
-}
-
-// Add a new function to handle bulk employee imports
-async function handleBulkImport(employees: any[]) {
-  console.log(`Processing bulk import of ${employees.length} employees`);
-  
-  const results = {
-    created: 0,
-    updated: 0,
-    errors: [],
-    employees: [],
-    success: true
-  };
-  
-  try {
-    // Process each employee in the array
-    for (const employee of employees) {
-      try {
-        // Validate client_id
-        if (!employee.clientId) {
-          results.errors.push(`Missing client ID for employee ${employee.email}`);
-          continue;
-        }
-        
-        // Validate client exists and is active
-        const clientValidation = await validateClient(employee.clientId);
-        if (!clientValidation.valid) {
-          results.errors.push(`${clientValidation.message} for employee ${employee.email}`);
-          continue;
-        }
-        
-        // Check if employee with same email already exists for this client
-        if (employee.email && employee.clientId) {
-          // Using the enhanced checkForExistingEmail function that checks within the same client
-          const emailExists = await checkForExistingEmail(employee.email, employee.clientId);
-          
-          if (emailExists) {
-            // Email exists for this client - update the employee
-            console.log(`Updating existing employee with email ${employee.email} for client ${employee.clientId}`);
-            
-            // Get the existing employee first
-            const { data: existingEmployee, error: fetchError } = await supabaseAdmin
-              .from('employees')
-              .select('id')
-              .eq('email', employee.email)
-              .eq('client_id', employee.clientId)
-              .single();
-              
-            if (fetchError || !existingEmployee) {
-              throw new Error(`Error fetching existing employee: ${fetchError?.message || 'Employee not found'}`);
-            }
-            
-            // Map to DB schema
-            const dbEmployee = {
-              first_name: employee.firstName,
-              last_name: employee.lastName,
-              employee_type: employee.employeeType,
-              department: employee.department,
-              joining_date: employee.joiningDate,
-              // Don't update email as it's being used to identify the employee
-              status: employee.status === 'active' ? true : false
-            };
-            
-            const { data: updatedEmp, error: updateError } = await supabaseAdmin
-              .from('employees')
-              .update(dbEmployee)
-              .eq('id', existingEmployee.id)
-              .select('*')
-              .single();
-              
-            if (updateError) {
-              throw updateError;
-            }
-            
-            // Update module access if provided
-            if (employee.moduleAccessPayload && Array.isArray(employee.moduleAccessPayload)) {
-              await addEmployeeModuleAccess(employee.moduleAccessPayload, existingEmployee.id);
-            }
-            
-            results.updated++;
-            results.employees.push(updatedEmp);
-            
-          } else {
-            // Employee doesn't exist for this client - create new one
-            console.log(`Creating new employee with email ${employee.email} for client ${employee.clientId}`);
-            
-            // Map to DB schema
-            const dbEmployee = {
-              employee_id: employee.employeeId,
-              first_name: employee.firstName,
-              last_name: employee.lastName,
-              email: employee.email,
-              employee_type: employee.employeeType,
-              department: employee.department,
-              joining_date: employee.joiningDate,
-              status: employee.status === 'active' ? true : false,
-              client_id: employee.clientId,
-              user_id: employee.userId
-            };
-            
-            const { data: newEmployee, error: insertError } = await supabaseAdmin
-              .from('employees')
-              .insert(dbEmployee)
-              .select('*')
-              .single();
-              
-            if (insertError) {
-              throw insertError;
-            }
-            
-            // Add module access if provided
-            if (employee.moduleAccessPayload && Array.isArray(employee.moduleAccessPayload) && newEmployee) {
-              await addEmployeeModuleAccess(employee.moduleAccessPayload, newEmployee.id);
-            }
-            
-            results.created++;
-            results.employees.push(newEmployee);
-          }
-        } else {
-          throw new Error('Email and clientId are required for each employee');
-        }
-      } catch (employeeError) {
-        console.error(`Error processing employee ${employee.email}:`, employeeError);
-        results.errors.push(`Error processing ${employee.firstName} ${employee.lastName}: ${employeeError.message}`);
-      }
-    }
-    
-    return results;
-  } catch (bulkError) {
-    console.error("Error in bulk import:", bulkError);
-    return { 
-      error: bulkError.message, 
-      success: false 
-    };
-  }
-}
-
-// Implement the updateEmployee function for updating an employee's information and module access
-async function updateEmployee(employee: any) {
-  try {
-    if (!employee || !employee.id) {
-      return { error: "Employee ID is required for update operation" };
-    }
-    
-    // Validate client_id if provided
-    if (employee.clientId) {
-      const clientValidation = await validateClient(employee.clientId);
-      if (!clientValidation.valid) {
-        return {
-          error: clientValidation.message,
-          code: 'INVALID_CLIENT',
-          success: false
-        };
-      }
-    } else {
-      // Get the employee's client_id from the database
-      const { data: existingEmployee, error: fetchError } = await supabaseAdmin
-        .from('employees')
-        .select('client_id')
-        .eq('id', employee.id)
-        .single();
-        
-      if (fetchError) {
-        console.error("Error fetching employee client_id:", fetchError);
-        return { error: "Error fetching employee data", success: false };
-      }
-      
-      if (!existingEmployee.client_id) {
-        return { error: "Employee has no associated client ID", success: false };
-      }
-      
-      // Validate the existing client
-      const clientValidation = await validateClient(existingEmployee.client_id);
-      if (!clientValidation.valid) {
-        return {
-          error: clientValidation.message,
-          code: 'INVALID_CLIENT',
-          success: false
-        };
-      }
-      
-      // Set the clientId for use in the function
-      employee.clientId = existingEmployee.client_id;
-    }
-    
-    console.log(`Updating employee with ID: ${employee.id}`);
-    
-    // Check if email already exists for another employee in the same client
-    if (employee.email && employee.clientId) {
-      const emailExists = await checkForExistingEmail(
-        employee.email, 
-        employee.clientId, 
-        employee.id // Exclude current employee from check
-      );
-      
-      if (emailExists) {
-        return { 
-          error: `Another employee with email ${employee.email} already exists for this client.`,
-          code: 'DUPLICATE_EMAIL',
-          success: false
-        };
-      }
-    }
-    
-    // Prepare the employee data for update
-    const updateData: Record<string, any> = {};
-    
-    // Only include fields that are provided in the update
-    if (employee.firstName !== undefined) updateData.first_name = employee.firstName;
-    if (employee.lastName !== undefined) updateData.last_name = employee.lastName;
-    if (employee.email !== undefined) updateData.email = employee.email;
-    if (employee.employeeType !== undefined) updateData.employee_type = employee.employeeType;
-    if (employee.department !== undefined) updateData.department = employee.department;
-    if (employee.joiningDate !== undefined) updateData.joining_date = employee.joiningDate;
-    if (employee.status !== undefined) {
-      // Convert status to boolean if it's not already
-      updateData.status = employee.status === 'active' || employee.status === true ? true : false;
-    }
-    
-    console.log("Update data:", updateData);
-    
-    // Update the employee in the database if there are fields to update
-    let updatedEmployee;
-    if (Object.keys(updateData).length > 0) {
-      const { data, error } = await supabaseAdmin
-        .from('employees')
-        .update(updateData)
-        .eq('id', employee.id)
-        .select('*')
-        .single();
-      
-      if (error) {
-        console.error("Error updating employee:", error);
-        return { 
-          error: error.message, 
-          success: false 
-        };
-      }
-      
-      updatedEmployee = data;
-    } else {
-      // If no fields to update, just fetch the current employee data
-      const { data, error } = await supabaseAdmin
-        .from('employees')
-        .select('*')
-        .eq('id', employee.id)
-        .single();
-        
-      if (error) {
-        console.error("Error fetching employee:", error);
-        return { 
-          error: error.message, 
-          success: false 
-        };
-      }
-      
-      updatedEmployee = data;
-    }
-    
-    // Handle module access updates if provided
-    if (employee.moduleAccessPayload) {
-      try {
-        // First delete all existing module access for this employee
-        await deleteEmployeeModuleAccess(employee.id);
-        
-        // Then add the new module access if any are provided
-        if (Array.isArray(employee.moduleAccessPayload) && employee.moduleAccessPayload.length > 0) {
-          await addEmployeeModuleAccess(employee.moduleAccessPayload, employee.id);
-        }
-      } catch (moduleError) {
-        console.error("Error updating module access:", moduleError);
-        return {
-          data: updatedEmployee,
-          warning: "Employee updated but there was an issue with module access",
-          success: true
-        };
-      }
-    }
-    
-    console.log("Employee updated successfully:", updatedEmployee);
-    
-    return { 
-      data: updatedEmployee,
-      message: "Employee updated successfully",
-      success: true 
-    };
-  } catch (error) {
-    console.error("Error in updateEmployee:", error);
-    return { 
-      error: error.message || "Failed to update employee", 
-      success: false 
-    };
-  }
-}
-
-async function deactivateEmployee(id: string, clientId?: string | null) {
-  try {
-    console.log(`Deactivating employee with ID: ${id}`);
-    
-    if (!id) {
-      return { error: "Employee ID is required for deactivation" };
-    }
-    
-    // If clientId is not provided, get it from the employee record
-    if (!clientId) {
-      const { data: employee, error: fetchError } = await supabaseAdmin
-        .from('employees')
-        .select('client_id')
-        .eq('id', id)
-        .single();
-        
-      if (fetchError) {
-        console.error("Error fetching employee client_id:", fetchError);
-        return { error: "Error fetching employee data", success: false };
-      }
-      
-      clientId = employee?.client_id;
-    }
-    
-    // Validate client exists and is active
-    if (clientId) {
-      const clientValidation = await validateClient(clientId);
-      if (!clientValidation.valid) {
-        return {
-          error: clientValidation.message,
-          code: 'INVALID_CLIENT',
-          success: false
-        };
-      }
-    } else {
-      return { error: "Client ID is required for deactivation", success: false };
-    }
-    
-    // First update the employee status to 'inactive' (false)
-    const { data, error } = await supabaseAdmin
-      .from('employees')
-      .update({ status: false })
-      .eq('id', id)
-      .eq('client_id', clientId)
-      .select('*')
-      .single();
-      
-    if (error) {
-      console.error("Error deactivating employee:", error);
-      return { error: error.message, success: false };
-    }
-    
-    // Then clear all module permissions for deactivated employee
-    const { error: moduleError } = await supabaseAdmin
-      .from('employee_modules')
-      .delete()
-      .eq('employee_id', id);
-      
-    if (moduleError) {
-      console.error("Error removing module permissions:", moduleError);
-      return { 
-        data, 
-        warning: "Employee deactivated but module permissions could not be removed",
-        success: true
-      };
-    }
-    
-    return { data, message: "Employee deactivated successfully", success: true };
-  } catch (error) {
-    console.error("Error in deactivateEmployee:", error);
-    return { error: error.message || "Failed to deactivate employee", success: false };
-  }
-}
-
-async function deleteEmployee(id: string, clientId?: string | null) {
-  try {
-    console.log(`Deleting employee with ID: ${id}`);
-    
-    if (!id) {
-      return { error: "Employee ID is required for deletion" };
-    }
-    
-    // If clientId is not provided, get it from the employee record
-    if (!clientId) {
-      const { data: employee, error: fetchError } = await supabaseAdmin
-        .from('employees')
-        .select('client_id')
-        .eq('id', id)
-        .single();
-        
-      if (fetchError) {
-        console.error("Error fetching employee client_id:", fetchError);
-        return { error: "Error fetching employee data", success: false };
-      }
-      
-      clientId = employee?.client_id;
-    }
-    
-    // Validate client exists and is active
-    if (clientId) {
-      const clientValidation = await validateClient(clientId);
-      if (!clientValidation.valid) {
-        return {
-          error: clientValidation.message,
-          code: 'INVALID_CLIENT',
-          success: false
-        };
-      }
-    } else {
-      return { error: "Client ID is required for deletion", success: false };
-    }
-
-    // First, delete all module permissions for this employee
-    const { error: moduleError } = await supabaseAdmin
-      .from('employee_modules')
-      .delete()
-      .eq('employee_id', id);
-
-    if (moduleError) {
-      console.error("Error deleting employee module permissions:", moduleError);
-      // Continue with employee deletion even if module deletion fails
-    }
-
-    // Then delete the employee
-    const { error } = await supabaseAdmin
-      .from('employees')
-      .delete()
-      .eq('id', id)
-      .eq('client_id', clientId);
-
-    if (error) {
-      console.error("Error deleting employee:", error);
-      return { error: error.message || "Failed to delete employee", success: false };
-    }
-
-    return { success: true, message: "Employee deleted successfully" };
-  } catch (error) {
-    console.error("Error in deleteEmployee:", error);
-    return { error: error.message || "Failed to delete employee", success: false };
-  }
-}
-
-async function getEmployee(id: string) {
-  try {
-    console.log(`Getting employee with ID: ${id}`);
-    
-    if (!id) {
-      return { error: "Employee ID is required" };
-    }
-    
-    const { data, error } = await supabaseAdmin
-      .from('employees')
-      .select('*')
-      .eq('id', id)
-      .single();
-      
-    if (error) {
-      console.error("Error fetching employee:", error);
-      return { error: error.message };
-    }
-    
-    // Validate client exists and is active
-    if (data.client_id) {
-      const clientValidation = await validateClient(data.client_id);
-      if (!clientValidation.valid) {
-        return {
-          error: clientValidation.message,
-          code: 'INVALID_CLIENT',
-          success: false
-        };
-      }
-    }
-    
-    return { data };
-  } catch (error) {
-    console.error("Error in getEmployee:", error);
-    return { error: error.message || "Failed to get employee" };
-  }
-}
-
-async function listEmployees(clientId: string) {
-  try {
-    console.log(`Listing employees for client ID: ${clientId}`);
-    
-    if (!clientId) {
-      return { error: "Client ID is required" };
-    }
-    
-    // Validate client exists and is active
-    const clientValidation = await validateClient(clientId);
-    if (!clientValidation.valid) {
-      return {
-        error: clientValidation.message,
-        code: 'INVALID_CLIENT',
-        success: false
-      };
-    }
-    
-    const { data, error } = await supabaseAdmin
-      .from('employees')
-      .select('*')
-      .eq('client_id', clientId);
-      
-    if (error) {
-      console.error("Error listing employees:", error);
-      return { error: error.message };
-    }
-    
-    return { data };
-  } catch (error) {
-    console.error("Error in listEmployees:", error);
-    return { error: error.message || "Failed to list employees" };
-  }
 }
 
 serve(async (req) => {
-  // Handle preflight CORS
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response('ok', { headers: corsHeaders })
   }
-  
+
   try {
-    // Get auth token from request header
-    const authHeader = req.headers.get('Authorization');
-    console.log("Auth header present:", authHeader ? "Yes" : "No");
-    
-    // Log the raw request body for debugging
-    const requestBody = await req.text();
-    console.log("Raw request body:", requestBody);
-    
-    // Parse the request body
-    const body = JSON.parse(requestBody);
-    console.log("Request body parsed successfully:", body);
-    
-    // Get the operation to perform
-    const { operation } = body;
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+
+    console.log("Auth header present:", req.headers.get('Authorization') ? 'Yes' : 'No');
+
+    const rawBody = await req.text();
+    console.log("Raw request body:", rawBody);
+
+    const { operation, employee, id } = JSON.parse(rawBody);
+    console.log("Request body parsed successfully:", { operation, employee, id });
+
     console.log("Handling operation:", operation);
-    
-    let result;
-    
-    // Handle different operations
+
+    // Validate client exists for operations that need it
+    if (operation === 'create' || operation === 'update') {
+      if (!employee?.clientId && !employee?.client_id) {
+        return new Response(
+          JSON.stringify({ error: "Client ID is required" }),
+          { 
+            status: 400, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+
+      const clientId = employee.clientId || employee.client_id;
+      console.log("Validating client with ID:", clientId);
+
+      const { data: client, error: clientError } = await supabaseClient
+        .from('clients')
+        .select('id')
+        .eq('id', clientId)
+        .single();
+
+      if (clientError || !client) {
+        console.error("Client validation error:", clientError);
+        return new Response(
+          JSON.stringify({ error: "Invalid client ID" }),
+          { 
+            status: 400, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
+      }
+    }
+
     switch (operation) {
       case 'create':
-        console.log("Employee data received:", body.employee);
-        console.log("Creating employee:", body.employee);
-        result = await createEmployee(body.employee);
-        break;
+        return await handleCreate(supabaseClient, employee);
       case 'update':
-        result = await updateEmployee(body.employee);
-        break;
-      case 'get':
-        result = await getEmployee(body.id);
-        break;
-      case 'list':
-        result = await listEmployees(body.clientId);
-        break;
-      case 'add_module_access':
-        result = (body.employee && body.employee.moduleAccessPayload && body.employee.id)
-          ? await addEmployeeModuleAccess(body.employee.moduleAccessPayload, body.employee.id)
-          : { error: 'Module access payload and employee ID are required' };
-        break;
-      case 'bulk_import':
-        result = await handleBulkImport(body.employees);
-        break;
-      case 'deactivate':
-        result = await deactivateEmployee(body.id, body.clientId);
-        break;
+        return await handleUpdate(supabaseClient, employee);
       case 'delete':
-        result = await deleteEmployee(body.id, body.clientId);
-        break;
+        return await handleDelete(supabaseClient, id);
+      case 'deactivate':
+        return await handleDeactivate(supabaseClient, id);
+      case 'reactivate':
+        return await handleReactivate(supabaseClient, id);
       default:
-        result = { error: `Unknown operation: ${operation}`, success: false };
+        return new Response(
+          JSON.stringify({ error: "Invalid operation" }),
+          { 
+            status: 400, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          }
+        );
     }
-    
-    // Return the result
-    return new Response(
-      JSON.stringify(result), 
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-      }
-    );
   } catch (error) {
-    console.error("Error processing request:", error);
-    
+    console.error("Error in employee-management function:", error);
     return new Response(
-      JSON.stringify({ 
-        error: error.message || 'An unexpected error occurred', 
-        success: false 
-      }),
+      JSON.stringify({ error: error.message }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -938,3 +93,354 @@ serve(async (req) => {
     );
   }
 });
+
+async function handleCreate(supabaseClient: any, employee: any) {
+  const clientId = employee.clientId || employee.client_id;
+  
+  // Check for duplicate email within the same client
+  console.log("Checking for existing email", employee.email, "for client", clientId);
+  const { data: existingEmployee, error: checkError } = await supabaseClient
+    .from('employees')
+    .select('id')
+    .eq('email', employee.email)
+    .eq('client_id', clientId)
+    .maybeSingle();
+
+  if (checkError) {
+    console.error("Error checking for existing employee:", checkError);
+    return new Response(
+      JSON.stringify({ error: "Error checking for existing employee" }),
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+
+  console.log("Email", employee.email, "exists for client", clientId + ":", !!existingEmployee);
+
+  if (existingEmployee) {
+    const errorMessage = `An employee with email ${employee.email} already exists for this client.`;
+    return new Response(
+      JSON.stringify({ 
+        error: errorMessage,
+        code: "DUPLICATE_EMAIL"
+      }),
+      { 
+        status: 409, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+
+  // Create employee record
+  const employeeData = {
+    employee_id: employee.employeeId,
+    first_name: employee.firstName,
+    last_name: employee.lastName,
+    email: employee.email,
+    employee_type: employee.employeeType,
+    department: employee.department,
+    joining_date: employee.joiningDate,
+    status: true,
+    client_id: clientId,
+    user_id: employee.user_id || null,
+    is_super_admin: employee.is_super_admin || false
+  };
+
+  console.log("Creating employee with data:", employeeData);
+
+  const { data: newEmployee, error: createError } = await supabaseClient
+    .from('employees')
+    .insert(employeeData)
+    .select('*')
+    .single();
+
+  if (createError) {
+    console.error("Error creating employee:", createError);
+    if (createError.message.includes('duplicate') && createError.message.includes('email')) {
+      const errorMessage = `An employee with email ${employee.email} already exists for this client.`;
+      return new Response(
+        JSON.stringify({ 
+          error: errorMessage,
+          code: "DUPLICATE_EMAIL"
+        }),
+        { 
+          status: 409, 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+    return new Response(
+      JSON.stringify({ error: "Failed to create employee" }),
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+
+  console.log("Employee created successfully:", newEmployee);
+
+  // Handle module access if provided
+  if (employee.moduleAccessPayload && Array.isArray(employee.moduleAccessPayload)) {
+    await handleEmployeeModuleAccess(supabaseClient, newEmployee.id, employee.moduleAccessPayload);
+  }
+
+  return new Response(
+    JSON.stringify({ data: newEmployee }),
+    { 
+      status: 200, 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    }
+  );
+}
+
+async function handleUpdate(supabaseClient: any, employee: any) {
+  const clientId = employee.clientId || employee.client_id;
+  
+  console.log("Updating employee with ID:", employee.id);
+
+  // Check for duplicate email within the same client (excluding current employee)
+  console.log("Checking for existing email", employee.email, "for client", clientId);
+  const { data: existingEmployee, error: checkError } = await supabaseClient
+    .from('employees')
+    .select('id')
+    .eq('email', employee.email)
+    .eq('client_id', clientId)
+    .neq('id', employee.id)
+    .maybeSingle();
+
+  if (checkError) {
+    console.error("Error checking for existing employee:", checkError);
+    return new Response(
+      JSON.stringify({ error: "Error checking for existing employee" }),
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+
+  console.log("Email", employee.email, "exists for client", clientId + ":", !!existingEmployee);
+
+  if (existingEmployee) {
+    const errorMessage = `An employee with email ${employee.email} already exists for this client.`;
+    return new Response(
+      JSON.stringify({ 
+        error: errorMessage,
+        code: "DUPLICATE_EMAIL"
+      }),
+      { 
+        status: 409, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+
+  // Update employee record
+  const updateData = {
+    first_name: employee.firstName,
+    last_name: employee.lastName,
+    email: employee.email,
+    employee_type: employee.employeeType,
+    department: employee.department
+  };
+
+  console.log("Update data:", updateData);
+
+  const { data: updatedEmployee, error: updateError } = await supabaseClient
+    .from('employees')
+    .update(updateData)
+    .eq('id', employee.id)
+    .select('*')
+    .single();
+
+  if (updateError) {
+    console.error("Error updating employee:", updateError);
+    return new Response(
+      JSON.stringify({ error: "Failed to update employee" }),
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+
+  console.log("Employee updated successfully:", updatedEmployee);
+
+  // Handle module access update if provided
+  if (employee.moduleAccessPayload && Array.isArray(employee.moduleAccessPayload)) {
+    await handleEmployeeModuleAccess(supabaseClient, employee.id, employee.moduleAccessPayload);
+  }
+
+  return new Response(
+    JSON.stringify({ data: updatedEmployee }),
+    { 
+      status: 200, 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    }
+  );
+}
+
+async function handleEmployeeModuleAccess(supabaseClient: any, employeeId: string, moduleAccessPayload: any[]) {
+  try {
+    // First, delete all existing module access for this employee
+    console.log("Deleting all module access for employee:", employeeId);
+    const { error: deleteError } = await supabaseClient
+      .from('employee_modules')
+      .delete()
+      .eq('employee_id', employeeId);
+
+    if (deleteError) {
+      console.error("Error deleting existing module access:", deleteError);
+      return;
+    }
+
+    console.log("Successfully deleted all module access for employee:", employeeId);
+
+    // Prepare module entries for insertion
+    const moduleEntries = moduleAccessPayload.map(moduleAccess => {
+      // Extract is_admin from the access_level or level property
+      let isAdmin = false;
+      
+      if (moduleAccess.access_level && typeof moduleAccess.access_level === 'object') {
+        isAdmin = moduleAccess.access_level.is_admin === true;
+      } else if (moduleAccess.level && typeof moduleAccess.level === 'object') {
+        isAdmin = moduleAccess.level.is_admin === true;
+      }
+
+      return {
+        employee_id: employeeId,
+        module_id: moduleAccess.module_id,
+        level: { is_admin: isAdmin }
+      };
+    });
+
+    console.log("Adding module entries:", moduleEntries);
+
+    // Insert new module access entries
+    const { error: insertError } = await supabaseClient
+      .from('employee_modules')
+      .insert(moduleEntries);
+
+    if (insertError) {
+      console.error("Error inserting module entries:", insertError);
+      console.error("Error adding employee module access:", insertError);
+      return;
+    }
+
+    console.log("Successfully added module access for employee:", employeeId);
+  } catch (error) {
+    console.error("Error updating module access:", error);
+  }
+}
+
+async function handleDelete(supabaseClient: any, employeeId: string) {
+  console.log("Deleting employee with ID:", employeeId);
+
+  // First, delete all module permissions for this employee
+  const { error: moduleError } = await supabaseClient
+    .from('employee_modules')
+    .delete()
+    .eq('employee_id', employeeId);
+
+  if (moduleError) {
+    console.error("Error deleting employee module permissions:", moduleError);
+  }
+
+  // Then delete the employee
+  const { error: deleteError } = await supabaseClient
+    .from('employees')
+    .delete()
+    .eq('id', employeeId);
+
+  if (deleteError) {
+    console.error("Error deleting employee:", deleteError);
+    return new Response(
+      JSON.stringify({ error: "Failed to delete employee" }),
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+
+  return new Response(
+    JSON.stringify({ success: true }),
+    { 
+      status: 200, 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    }
+  );
+}
+
+async function handleDeactivate(supabaseClient: any, employeeId: string) {
+  console.log("Deactivating employee with ID:", employeeId);
+
+  const { data: deactivatedEmployee, error: deactivateError } = await supabaseClient
+    .from('employees')
+    .update({ status: false })
+    .eq('id', employeeId)
+    .select('*')
+    .single();
+
+  if (deactivateError) {
+    console.error("Error deactivating employee:", deactivateError);
+    return new Response(
+      JSON.stringify({ error: "Failed to deactivate employee" }),
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+
+  // Clear all module permissions for deactivated employee
+  const { error: moduleError } = await supabaseClient
+    .from('employee_modules')
+    .delete()
+    .eq('employee_id', employeeId);
+
+  if (moduleError) {
+    console.error("Error removing module permissions:", moduleError);
+  }
+
+  return new Response(
+    JSON.stringify({ data: deactivatedEmployee }),
+    { 
+      status: 200, 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    }
+  );
+}
+
+async function handleReactivate(supabaseClient: any, employeeId: string) {
+  console.log("Reactivating employee with ID:", employeeId);
+
+  const { data: reactivatedEmployee, error: reactivateError } = await supabaseClient
+    .from('employees')
+    .update({ status: true })
+    .eq('id', employeeId)
+    .select('*')
+    .single();
+
+  if (reactivateError) {
+    console.error("Error reactivating employee:", reactivateError);
+    return new Response(
+      JSON.stringify({ error: "Failed to reactivate employee" }),
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+
+  return new Response(
+    JSON.stringify({ data: reactivatedEmployee }),
+    { 
+      status: 200, 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+    }
+  );
+}

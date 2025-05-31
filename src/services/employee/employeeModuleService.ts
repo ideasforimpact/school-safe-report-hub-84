@@ -39,11 +39,20 @@ export const updateEmployeeModulePermissions = async (
     }
 
     // Create records to insert
-    const modulesToInsert = permissionsArray.map(module => ({
-      employee_id: employeeId,
-      module_id: module.module_id,
-      level: {}
-    }));
+    const modulesToInsert = permissionsArray.map(module => {
+      // Extract is_admin from the level property, default to false
+      let isAdmin = false;
+      
+      if (module.level && typeof module.level === 'object') {
+        isAdmin = module.level.is_admin === true;
+      }
+
+      return {
+        employee_id: employeeId,
+        module_id: module.module_id,
+        level: { is_admin: isAdmin }
+      };
+    });
 
     // Insert new permissions
     const { error: insertError } = await supabase
