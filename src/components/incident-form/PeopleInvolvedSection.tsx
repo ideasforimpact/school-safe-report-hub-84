@@ -60,7 +60,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                   <SelectValue placeholder="Select role" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Student">Student</SelectItem>
+                  <SelectItem value="Student">Organisation</SelectItem>
                   <SelectItem value="Staff">Staff</SelectItem>
                   <SelectItem value="Other">Other</SelectItem>
                 </SelectContent>

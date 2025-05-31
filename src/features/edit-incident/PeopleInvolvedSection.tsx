@@ -61,7 +61,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
 
   const getPlaceholderText = (role: string) => {
     switch(role) {
-      case 'Student': return 'Search by student name';
+      case 'Student': return 'Search by organisation name';
       case 'Staff': return 'Search by staff name';
       default: return 'Search by name';
     }
@@ -104,7 +104,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Student">Student</SelectItem>
+                <SelectItem value="Student">Organisation</SelectItem>
                 <SelectItem value="Staff">Staff</SelectItem>
                 <SelectItem value="Other">Other</SelectItem>
               </SelectContent>

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Person } from '@/types/incident';
 import { Student } from '@/types/student';
@@ -209,8 +208,8 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
               }}
               placeholder={
                 isLoading 
-                  ? `Loading ${person.role.toLowerCase()}s...` 
-                  : `Search by ${person.role.toLowerCase()} name...`
+                  ? `Loading ${person.role === 'Student' ? 'organisation' : person.role.toLowerCase()}s...` 
+                  : `Search by ${person.role === 'Student' ? 'organisation' : person.role.toLowerCase()} name...`
               }
               className={`w-full pr-8 ${hasError ? 'border-red-500' : ''}`}
               disabled={isLoading}
@@ -318,7 +317,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                     className={`w-full p-2 border rounded-md text-sm bg-white ${roleError ? 'border-red-500' : ''}`}
                   >
                     <option value="">Select role</option>
-                    <option value="Student">Student</option>
+                    <option value="Student">Organisation</option>
                     <option value="Staff">Staff</option>
                     <option value="Other">Other</option>
                   </select>
