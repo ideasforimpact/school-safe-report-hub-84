@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Client, useClient, InstitutionType, ModuleInfo } from '@/contexts/ClientContext';
 import { OAuthProviderName } from '@/utils/authProviders';
@@ -191,6 +192,7 @@ export const useClientManagement = () => {
     
     try {
       const moduleInfoArray = formData.moduleInfoArray || [];
+      const clientId = uuidv4(); // Generate a unique ID for the client
       
       console.log('Module info for client creation:', moduleInfoArray);
       console.log('Logo data being sent:', formData.logo ? 'Logo present' : 'No logo');
@@ -200,7 +202,7 @@ export const useClientManagement = () => {
         body: { 
           operation: 'create',
           client: {
-            id: uuidv4(), // Generate a unique ID for the client
+            id: clientId,
             modules: moduleInfoArray,
             superAdminEmail: formData.superAdminEmail,
             clientTypeId: formData.clientTypeId,

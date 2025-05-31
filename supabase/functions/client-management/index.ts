@@ -63,12 +63,12 @@ async function uploadLogoToStorage(logoBase64: string, clientId: string): Promis
     // Convert base64 to Uint8Array
     const binaryData = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
     
-    // Generate unique filename
+    // Create folder structure with client ID and generate unique filename
     const fileName = `${clientId}/logo.${fileExtension}`;
     
     console.log(`Uploading logo to storage: ${fileName}, size: ${binaryData.length} bytes`);
     
-    // Upload to storage
+    // Upload to storage with upsert to replace existing logo
     const { data, error } = await supabase.storage
       .from('client-logos')
       .upload(fileName, binaryData, {
@@ -94,6 +94,7 @@ async function uploadLogoToStorage(logoBase64: string, clientId: string): Promis
   }
 }
 
+// Helper function to create employee from super admin email
 async function createEmployeeFromSuperAdminEmail(clientId: string, superAdminEmail: string) {
   try {
     // Extract employee_id from the email (part before @ symbol)
@@ -354,36 +355,28 @@ async function handleCreateClient(clientData: any) {
       }
     }
     
-    // If client type is provided, update the client record
+    // Update client record with client type and logo URL
+    const updateData: any = {};
+    
     if (clientTypeId) {
-      const updateData: any = { client_type_id: clientTypeId };
-      
-      // Add client_logo URL if upload was successful
-      if (clientLogoUrl) {
-        updateData.client_logo = clientLogoUrl;
-      }
-      
+      updateData.client_type_id = clientTypeId;
+    }
+    
+    if (clientLogoUrl) {
+      updateData.client_logo = clientLogoUrl;
+    }
+    
+    // Only update if there's data to update
+    if (Object.keys(updateData).length > 0) {
       const { error: updateError } = await supabase
         .from('clients')
         .update(updateData)
         .eq('id', clientId);
         
       if (updateError) {
-        console.error('Error updating client type and logo:', updateError);
+        console.error('Error updating client with logo and type:', updateError);
       } else {
-        console.log('Successfully updated client type and logo');
-      }
-    } else if (clientLogoUrl) {
-      // Update only the client_logo if no clientTypeId but logo was uploaded
-      const { error: updateError } = await supabase
-        .from('clients')
-        .update({ client_logo: clientLogoUrl })
-        .eq('id', clientId);
-        
-      if (updateError) {
-        console.error('Error updating client logo:', updateError);
-      } else {
-        console.log('Successfully updated client logo');
+        console.log('Successfully updated client with logo and type');
       }
     }
     
@@ -429,36 +422,28 @@ async function handleUpdateClient(clientData: any) {
       }
     }
     
-    // If client type is provided, update the client record
+    // Update client record with client type and logo URL
+    const updateData: any = {};
+    
     if (clientTypeId) {
-      const updateData: any = { client_type_id: clientTypeId };
-      
-      // Add client_logo URL if upload was successful
-      if (clientLogoUrl) {
-        updateData.client_logo = clientLogoUrl;
-      }
-      
+      updateData.client_type_id = clientTypeId;
+    }
+    
+    if (clientLogoUrl) {
+      updateData.client_logo = clientLogoUrl;
+    }
+    
+    // Only update if there's data to update
+    if (Object.keys(updateData).length > 0) {
       const { error: updateError } = await supabase
         .from('clients')
         .update(updateData)
         .eq('id', clientId);
         
       if (updateError) {
-        console.error('Error updating client type and logo:', updateError);
+        console.error('Error updating client with logo and type:', updateError);
       } else {
-        console.log('Successfully updated client type and logo');
-      }
-    } else if (clientLogoUrl) {
-      // Update only the client_logo if no clientTypeId but logo was uploaded
-      const { error: updateError } = await supabase
-        .from('clients')
-        .update({ client_logo: clientLogoUrl })
-        .eq('id', clientId);
-        
-      if (updateError) {
-        console.error('Error updating client logo:', updateError);
-      } else {
-        console.log('Successfully updated client logo');
+        console.log('Successfully updated client with logo and type');
       }
     }
     
@@ -498,6 +483,19 @@ async function handleDeleteClient(clientData: any) {
     const employeesDeleted = await deleteClientEmployees(clientId);
     if (!employeesDeleted) {
       console.error('Failed to delete client employees');
+    }
+    
+    // Delete client logo from storage if it exists
+    try {
+      const { error: deleteLogoError } = await supabase.storage
+        .from('client-logos')
+        .remove([`${clientId}/logo.png`, `${clientId}/logo.jpg`, `${clientId}/logo.jpeg`]);
+      
+      if (deleteLogoError) {
+        console.log('Note: Could not delete logo files:', deleteLogoError.message);
+      }
+    } catch (err) {
+      console.log('Note: Error during logo cleanup:', err);
     }
     
     return new Response(
