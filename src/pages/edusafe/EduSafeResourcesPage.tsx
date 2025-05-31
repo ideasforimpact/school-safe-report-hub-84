@@ -149,7 +149,7 @@ const EduSafeResourcesContent = () => {
               <TabsList className="grid grid-cols-3 w-full">
                 <TabsTrigger value="all">All Resources</TabsTrigger>
                 <TabsTrigger value="saas">Global Resources</TabsTrigger>
-                <TabsTrigger value="organisational">{organizationName} Resources</TabsTrigger>
+                <TabsTrigger value="organisational">Organisational Resources</TabsTrigger>
               </TabsList>
             </Tabs>
           )}
