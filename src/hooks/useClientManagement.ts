@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Client, useClient, InstitutionType, ModuleInfo } from '@/contexts/ClientContext';
 import { OAuthProviderName } from '@/utils/authProviders';
@@ -195,20 +194,34 @@ export const useClientManagement = () => {
       const clientId = uuidv4(); // Generate a unique ID for the client
       
       console.log('Module info for client creation:', moduleInfoArray);
-      console.log('Logo data being sent:', formData.logo ? 'Logo present' : 'No logo');
+      console.log('Logo data being sent:', {
+        hasLogo: !!formData.logo,
+        logoType: typeof formData.logo,
+        logoLength: formData.logo ? formData.logo.length : 0
+      });
+      
+      const requestPayload = {
+        operation: 'create',
+        client: {
+          id: clientId,
+          modules: moduleInfoArray,
+          superAdminEmail: formData.superAdminEmail,
+          clientTypeId: formData.clientTypeId,
+          logo: formData.logo // Send the base64 logo data
+        }
+      };
+      
+      console.log('Sending request payload:', {
+        ...requestPayload,
+        client: {
+          ...requestPayload.client,
+          logo: requestPayload.client.logo ? 'Logo data present' : 'No logo data'
+        }
+      });
       
       // Call the edge function with logo data
       const { data, error } = await supabase.functions.invoke('client-management', {
-        body: { 
-          operation: 'create',
-          client: {
-            id: clientId,
-            modules: moduleInfoArray,
-            superAdminEmail: formData.superAdminEmail,
-            clientTypeId: formData.clientTypeId,
-            logo: formData.logo // Send the base64 logo data
-          }
-        }
+        body: requestPayload
       });
       
       if (error) {
@@ -330,20 +343,34 @@ export const useClientManagement = () => {
       const moduleInfoArray = formData.moduleInfoArray || [];
       
       console.log('Module info for client update:', moduleInfoArray);
-      console.log('Logo data being sent:', formData.logo ? 'Logo present' : 'No logo');
+      console.log('Logo data being sent:', {
+        hasLogo: !!formData.logo,
+        logoType: typeof formData.logo,
+        logoLength: formData.logo ? formData.logo.length : 0
+      });
+      
+      const requestPayload = {
+        operation: 'update',
+        client: {
+          id: currentClient.id,
+          modules: moduleInfoArray,
+          superAdminEmail: formData.superAdminEmail,
+          clientTypeId: formData.clientTypeId,
+          logo: formData.logo // Send the base64 logo data
+        }
+      };
+      
+      console.log('Sending request payload:', {
+        ...requestPayload,
+        client: {
+          ...requestPayload.client,
+          logo: requestPayload.client.logo ? 'Logo data present' : 'No logo data'
+        }
+      });
       
       // Call the edge function with logo data
       const { data, error } = await supabase.functions.invoke('client-management', {
-        body: { 
-          operation: 'update',
-          client: {
-            id: currentClient.id,
-            modules: moduleInfoArray,
-            superAdminEmail: formData.superAdminEmail,
-            clientTypeId: formData.clientTypeId,
-            logo: formData.logo // Send the base64 logo data
-          }
-        }
+        body: requestPayload
       });
       
       if (error) {

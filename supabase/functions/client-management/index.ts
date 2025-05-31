@@ -314,8 +314,15 @@ serve(async (req) => {
   }
 
   try {
-    const { operation, client } = await req.json()
-    console.log('Client management operation:', operation, 'Client data:', client)
+    const requestBody = await req.json()
+    console.log('Full request body:', JSON.stringify(requestBody, null, 2))
+    
+    const { operation, client } = requestBody
+    console.log('Client management operation:', operation)
+    console.log('Client data received:', {
+      ...client,
+      logo: client.logo ? 'Logo data present' : 'No logo data'
+    })
 
     switch (operation) {
       case 'create':
@@ -340,10 +347,19 @@ serve(async (req) => {
 })
 
 async function handleCreateClient(clientData: any) {
-  console.log('Creating client with data:', clientData);
+  console.log('Creating client with data:', {
+    ...clientData,
+    logo: clientData.logo ? 'Logo data present' : 'No logo data'
+  });
   
   try {
     const { id: clientId, modules, superAdminEmail, clientTypeId, logo } = clientData;
+    
+    console.log('Logo data check:', {
+      logoExists: !!logo,
+      logoType: typeof logo,
+      logoLength: logo ? logo.length : 0
+    });
     
     // Handle logo upload if provided
     let clientLogoUrl = null;
@@ -353,6 +369,8 @@ async function handleCreateClient(clientData: any) {
       if (clientLogoUrl) {
         console.log('Client logo uploaded successfully:', clientLogoUrl);
       }
+    } else {
+      console.log('No logo provided for client creation');
     }
     
     // Update client record with client type and logo URL
@@ -407,10 +425,19 @@ async function handleCreateClient(clientData: any) {
 }
 
 async function handleUpdateClient(clientData: any) {
-  console.log('Updating client with data:', clientData);
+  console.log('Updating client with data:', {
+    ...clientData,
+    logo: clientData.logo ? 'Logo data present' : 'No logo data'
+  });
   
   try {
     const { id: clientId, modules, superAdminEmail, clientTypeId, logo } = clientData;
+    
+    console.log('Logo data check:', {
+      logoExists: !!logo,
+      logoType: typeof logo,
+      logoLength: logo ? logo.length : 0
+    });
     
     // Handle logo upload if provided
     let clientLogoUrl = null;
@@ -420,6 +447,8 @@ async function handleUpdateClient(clientData: any) {
       if (clientLogoUrl) {
         console.log('Client logo uploaded successfully:', clientLogoUrl);
       }
+    } else {
+      console.log('No logo provided for client update');
     }
     
     // Update client record with client type and logo URL
