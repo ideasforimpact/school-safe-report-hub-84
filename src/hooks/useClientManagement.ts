@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Client, useClient, InstitutionType, ModuleInfo } from '@/contexts/ClientContext';
 import { OAuthProviderName } from '@/utils/authProviders';
@@ -197,7 +198,8 @@ export const useClientManagement = () => {
       console.log('Logo data being sent:', {
         hasLogo: !!formData.logo,
         logoType: typeof formData.logo,
-        logoLength: formData.logo ? formData.logo.length : 0
+        logoLength: formData.logo ? formData.logo.length : 0,
+        logoPreview: formData.logo ? formData.logo.substring(0, 50) + '...' : 'No logo'
       });
       
       const requestPayload = {
@@ -207,15 +209,15 @@ export const useClientManagement = () => {
           modules: moduleInfoArray,
           superAdminEmail: formData.superAdminEmail,
           clientTypeId: formData.clientTypeId,
-          logo: formData.logo // Send the base64 logo data
+          logo: formData.logo || null // Ensure logo is explicitly included
         }
       };
       
-      console.log('Sending request payload:', {
-        ...requestPayload,
+      console.log('Full request payload being sent:', {
+        operation: requestPayload.operation,
         client: {
           ...requestPayload.client,
-          logo: requestPayload.client.logo ? 'Logo data present' : 'No logo data'
+          logo: requestPayload.client.logo ? 'Logo data present (length: ' + requestPayload.client.logo.length + ')' : 'No logo data'
         }
       });
       
@@ -343,10 +345,11 @@ export const useClientManagement = () => {
       const moduleInfoArray = formData.moduleInfoArray || [];
       
       console.log('Module info for client update:', moduleInfoArray);
-      console.log('Logo data being sent:', {
+      console.log('Logo data being sent for update:', {
         hasLogo: !!formData.logo,
         logoType: typeof formData.logo,
-        logoLength: formData.logo ? formData.logo.length : 0
+        logoLength: formData.logo ? formData.logo.length : 0,
+        logoPreview: formData.logo ? formData.logo.substring(0, 50) + '...' : 'No logo'
       });
       
       const requestPayload = {
@@ -356,15 +359,15 @@ export const useClientManagement = () => {
           modules: moduleInfoArray,
           superAdminEmail: formData.superAdminEmail,
           clientTypeId: formData.clientTypeId,
-          logo: formData.logo // Send the base64 logo data
+          logo: formData.logo || null // Ensure logo is explicitly included
         }
       };
       
-      console.log('Sending request payload:', {
-        ...requestPayload,
+      console.log('Full update request payload being sent:', {
+        operation: requestPayload.operation,
         client: {
           ...requestPayload.client,
-          logo: requestPayload.client.logo ? 'Logo data present' : 'No logo data'
+          logo: requestPayload.client.logo ? 'Logo data present (length: ' + requestPayload.client.logo.length + ')' : 'No logo data'
         }
       });
       
