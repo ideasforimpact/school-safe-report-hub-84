@@ -357,96 +357,11 @@ const UserManagement = () => {
     }
   };
 
-  // Handler for updating an existing user - Uses only moduleAccessPayload
+  // Handler for updating an existing user - Simplified to just refresh the list
   const handleUpdateUser = async () => {
-    if (!currentUser) return;
-    
-    try {
-      setIsLoading(true);
-      
-      console.log("Updating user with data:", formData);
-      console.log("Module access payload:", formData.moduleAccessPayload);
-      
-      // Need to provide modulePermissions for API compatibility
-      const updatedUsers = await updateExistingUser(
-        [] as any,
-        currentUser.id,
-        {
-          ...formData,
-          // Add required modulePermissions property to satisfy interface
-          modulePermissions: {} as any,
-          // Keep existing role
-          role: currentUser.role || 'user' as const
-        }
-      );
-      
-      if (updatedUsers) {
-        // Also update the employee record if it exists
-        if (formData.employeeId) {
-          try {
-            // Prepare update data
-            const updateData = {
-              firstName: formData.firstName,
-              lastName: formData.lastName,
-              email: formData.email,
-              employeeType: formData.employeeType,
-              department: formData.department,
-              moduleAccessPayload: formData.moduleAccessPayload || []
-            };
-            
-            // Try to update via edge function first
-            try {
-              const { data, error } = await supabase.functions.invoke('employee-management', {
-                body: JSON.stringify({
-                  operation: 'update',
-                  employee: {
-                    id: currentUser.id,
-                    ...updateData
-                  }
-                })
-              });
-              
-              if (error) throw error;
-              
-              // Check if the response contains an error
-              if (data && data.error) {
-                console.error("Error from edge function:", data.error);
-                toast.error(data.error);
-                return;
-              }
-              
-              // If moduleAccessPayload exists, update it directly
-              if (formData.moduleAccessPayload && formData.moduleAccessPayload.length > 0) {
-                await updateEmployeeModulePermissions(currentUser.id, formData.moduleAccessPayload);
-              }
-              
-              console.log("Employee updated via edge function:", data);
-              
-              // Only show success message if no error
-              if (!data.error) {
-                toast.success("User updated successfully");
-              }
-            } catch (edgeFuncError) {
-              console.error("Edge function update error:", edgeFuncError);
-              // Fall back to context if needed
-              toast.error("Error updating employee via edge function");
-            }
-          } catch (empError) {
-            console.error("Error updating employee record:", empError);
-            toast.error("User updated but employee record update failed");
-          }
-        }
-        
-        resetForm();
-        setIsEditDialogOpen(false);
-        await refreshEmployeesList();
-      }
-    } catch (error) {
-      console.error("Error updating user:", error);
-      toast.error("Failed to update user");
-    } finally {
-      setIsLoading(false);
-    }
+    // This will be called after the EditUserDialog handles the update
+    // Just refresh the employee list to show updated data
+    await refreshEmployeesList();
   };
 
   // Handler for deleting a user
@@ -720,7 +635,7 @@ const UserManagement = () => {
         clientId={clientId}
       />
 
-      {/* Edit User Dialog */}
+      {/* Edit User Dialog - Remove clientId prop */}
       <EditUserDialog 
         isOpen={isEditDialogOpen}
         setIsOpen={setIsEditDialogOpen}

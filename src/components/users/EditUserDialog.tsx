@@ -44,6 +44,7 @@ const EditUserDialog = ({
   currentUser 
 }: EditUserDialogProps) => {
   const [selectedModules, setSelectedModules] = useState<ModuleAccessItem[]>([]);
+  const [isUpdating, setIsUpdating] = useState(false);
   const { clientId } = useEmployeeData();
   
   // Initialize selected modules from formData when dialog opens
@@ -80,27 +81,27 @@ const EditUserDialog = ({
       return;
     }
     
-    const updateData = {
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      email: formData.email,
-      employeeType: formData.employeeType,
-      department: formData.department,
-      moduleAccessPayload: selectedModules,
-      clientId: clientId // Include clientId
-    };
+    setIsUpdating(true);
     
-    console.log("Updating user with data:", updateData);
-    
-    // Try to update via edge function first
     try {
+      const updateData = {
+        id: currentUser.id,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        employeeType: formData.employeeType,
+        department: formData.department,
+        moduleAccessPayload: selectedModules,
+        clientId: clientId // Ensure clientId is always included
+      };
+      
+      console.log("Updating user with data:", updateData);
+      
+      // Single API call to update employee with all data including modules
       const { data, error } = await supabase.functions.invoke('employee-management', {
         body: JSON.stringify({
           operation: 'update',
-          employee: {
-            id: currentUser.id,
-            ...updateData
-          }
+          employee: updateData
         })
       });
       
@@ -119,11 +120,13 @@ const EditUserDialog = ({
       toast.success("User updated successfully");
       handleClose();
       
-      // Call the original onSubmit if needed for additional logic
+      // Call the parent's onSubmit for any additional cleanup/refresh
       onSubmit();
     } catch (error) {
       console.error("Error updating user:", error);
       toast.error("Failed to update user");
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -239,11 +242,11 @@ const EditUserDialog = ({
             </div>
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={handleClose} disabled={isLoading}>
+            <Button type="button" variant="outline" onClick={handleClose} disabled={isUpdating || isLoading}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            <Button type="submit" disabled={isUpdating || isLoading}>
+              {(isUpdating || isLoading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Update User
             </Button>
           </DialogFooter>
