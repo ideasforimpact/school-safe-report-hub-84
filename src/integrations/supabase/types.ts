@@ -343,6 +343,7 @@ export type Database = {
           active: boolean
           allowed_domains: string | null
           auth_providers: string | null
+          client_logo: string | null
           client_type_id: string | null
           contact_person: string | null
           creation_date: string
@@ -358,6 +359,7 @@ export type Database = {
           active?: boolean
           allowed_domains?: string | null
           auth_providers?: string | null
+          client_logo?: string | null
           client_type_id?: string | null
           contact_person?: string | null
           creation_date?: string
@@ -373,6 +375,7 @@ export type Database = {
           active?: boolean
           allowed_domains?: string | null
           auth_providers?: string | null
+          client_logo?: string | null
           client_type_id?: string | null
           contact_person?: string | null
           creation_date?: string
