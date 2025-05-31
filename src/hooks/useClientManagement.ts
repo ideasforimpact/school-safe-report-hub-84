@@ -294,14 +294,14 @@ export const useClientManagement = () => {
           toast.error('Failed to load super admin data');
         }
         
-        // Set the form data with all information
+        // Set the form data with all information - preserve existing logo
         setFormData({
           name: client.name,
           email: client.email,
           contactPerson: client.contactPerson,
           phone: client.phone,
           active: client.active,
-          logo: client.logo || '',
+          logo: client.logo || '', // Keep existing logo data
           institutionType: (client.institutionType as InstitutionType) || 'Other',
           allowedDomains: client.allowedDomains || [],
           superAdminEmail: employeeData?.email || '',
@@ -352,6 +352,7 @@ export const useClientManagement = () => {
         logoPreview: formData.logo ? formData.logo.substring(0, 50) + '...' : 'No logo'
       });
       
+      // Always include logo data in the request, even if empty
       const requestPayload = {
         operation: 'update',
         client: {
@@ -359,7 +360,7 @@ export const useClientManagement = () => {
           modules: moduleInfoArray,
           superAdminEmail: formData.superAdminEmail,
           clientTypeId: formData.clientTypeId,
-          logo: formData.logo || null // Ensure logo is explicitly included
+          logo: formData.logo // Always send logo data, whether it's new, existing, or empty
         }
       };
       
