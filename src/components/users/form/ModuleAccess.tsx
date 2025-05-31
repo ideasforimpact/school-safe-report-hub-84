@@ -38,7 +38,7 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
   // Helper function to check if a module has admin access
   const isModuleAdmin = (moduleId: string): boolean => {
     const module = selectedModules.find(m => m.module_id === moduleId);
-    return module?.level?.is_admin === true;
+    return module?.access_level?.is_admin === true;
   };
 
   // Handler for checkbox change
@@ -53,7 +53,7 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
           employeeId: employeeId,
           key: moduleKey,
           module_id: moduleId,
-          level: { is_admin: false }  // Default to not admin
+          access_level: { is_admin: false }  // Default to not admin
         };
         updatedModules = [...selectedModules, newModule];
       } else {
@@ -78,9 +78,9 @@ const ModuleAccess: React.FC<ModuleAccessProps> = ({
       if (m.module_id === moduleId) {
         return { 
           ...m, 
-          level: { 
-            ...m.level,
-            is_admin: !m.level?.is_admin 
+          access_level: { 
+            ...m.access_level,
+            is_admin: !m.access_level?.is_admin 
           }
         };
       }

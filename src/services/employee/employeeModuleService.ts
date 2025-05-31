@@ -42,7 +42,7 @@ export const updateEmployeeModulePermissions = async (
     const modulesToInsert = permissionsArray.map(module => ({
       employee_id: employeeId,
       module_id: module.module_id,
-      level: {}
+      access_level: {}
     }));
 
     // Insert new permissions
@@ -80,18 +80,11 @@ export const getEmployeeModuleAccessItems = async (employeeId: string): Promise<
       const moduleName = item.modules?.name || 'Unknown Module';
       const moduleKey = item.module_id;
       
-      // Safely handle the level property which can be Json type from database
-      let levelObject: { is_admin?: boolean; [key: string]: any } = {};
-      if (item.level && typeof item.level === 'object' && !Array.isArray(item.level)) {
-        levelObject = item.level as { is_admin?: boolean; [key: string]: any };
-      }
-      
       return {
         name: moduleName,
         key: moduleKey,
         employeeId: employeeId,
-        module_id: item.module_id,
-        level: levelObject
+        module_id: item.module_id
       };
     });
   } catch (error) {

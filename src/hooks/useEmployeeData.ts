@@ -104,7 +104,7 @@ export const useEmployeeData = () => {
           .from('employee_modules')
           .select(`
             module_id,
-            level
+            access_level
           `)
           .eq('employee_id', employeeId);
 
@@ -116,7 +116,7 @@ export const useEmployeeData = () => {
         // Create a map of employee module permissions for quick lookup
         const employeeModuleMap = new Map();
         employeeModules?.forEach(em => {
-          employeeModuleMap.set(em.module_id, em.level);
+          employeeModuleMap.set(em.module_id, em.access_level);
         });
 
         // Combine client modules with employee-specific permissions
