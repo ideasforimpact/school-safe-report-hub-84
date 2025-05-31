@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -9,8 +8,8 @@ const corsHeaders = {
 
 // Initialize Supabase client with environment variables
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 interface ClientData {
   id?: string;
@@ -20,7 +19,7 @@ interface ClientData {
   phone?: string;
   active: boolean;
   logo?: string;
-  client_logo?: string; // Add client_logo field
+  client_logo?: string;
   institution_type?: string;
   client_type_id?: string;
   allowed_domains?: string;
@@ -48,7 +47,7 @@ function isSuperAdminEmailDomainAllowed(email: string, allowedDomains: string | 
   return domainsArray.some(domain => domain.toLowerCase() === emailDomain);
 }
 
-// Helper function to upload logo to storage
+// Helper function to upload logo to storage and return public URL
 async function uploadLogoToStorage(logoBase64: string, clientId: string): Promise<string | null> {
   try {
     if (!logoBase64 || !logoBase64.includes(',')) {
