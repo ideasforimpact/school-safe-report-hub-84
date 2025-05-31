@@ -42,7 +42,7 @@ export const updateEmployeeModulePermissions = async (
     const modulesToInsert = permissionsArray.map(module => ({
       employee_id: employeeId,
       module_id: module.module_id,
-      access_level: {}
+      level: {}
     }));
 
     // Insert new permissions
@@ -84,7 +84,8 @@ export const getEmployeeModuleAccessItems = async (employeeId: string): Promise<
         name: moduleName,
         key: moduleKey,
         employeeId: employeeId,
-        module_id: item.module_id
+        module_id: item.module_id,
+        level: item.level || {}
       };
     });
   } catch (error) {

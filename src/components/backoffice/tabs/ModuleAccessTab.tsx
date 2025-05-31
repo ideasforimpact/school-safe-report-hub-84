@@ -20,7 +20,7 @@ interface ModuleAccess {
   module_id: string;
   is_admin: boolean;
   is_enabled: boolean;
-  access_level?: Record<string, any>;
+  level?: Record<string, any>;
 }
 
 export interface ModuleInfo {
@@ -117,7 +117,7 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false }: Modul
           module_id: module.id,
           is_admin: isAdmin,
           is_enabled: isEnabled,
-          access_level: {
+          level: {
             isAdmin: isAdmin,
             isEnabled: isEnabled
           }
@@ -135,7 +135,7 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false }: Modul
           module_id: module.id,
           is_admin: true, // Set all as admin by default
           is_enabled: true, // Enable all modules by default
-          access_level: {
+          level: {
             isAdmin: true, // Set all as admin by default
             isEnabled: true
           }
@@ -192,8 +192,8 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false }: Modul
           ? { 
               ...m, 
               is_enabled: checked,
-              access_level: {
-                ...m.access_level,
+              level: {
+                ...m.level,
                 isEnabled: checked
               }
             } 
@@ -218,8 +218,8 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false }: Modul
           ? { 
               ...m, 
               is_admin: !m.is_admin,
-              access_level: {
-                ...m.access_level,
+              level: {
+                ...m.level,
                 isAdmin: !m.is_admin
               }
             } 
