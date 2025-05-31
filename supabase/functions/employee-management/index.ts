@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -26,14 +25,30 @@ serve(async (req) => {
 
     const { operation, employee, id } = JSON.parse(rawBody);
     console.log("Request body parsed successfully:", { operation, employee, id });
+    console.log("Employee object:", JSON.stringify(employee, null, 2));
 
     console.log("Handling operation:", operation);
 
     // Validate client exists for operations that need it
     if (operation === 'create' || operation === 'update') {
-      if (!employee?.clientId && !employee?.client_id) {
+      // Extract clientId from different possible locations
+      let clientId = null;
+      
+      if (employee?.clientId) {
+        clientId = employee.clientId;
+      } else if (employee?.client_id) {
+        clientId = employee.client_id;
+      }
+      
+      console.log("Extracted clientId:", clientId);
+      
+      if (!clientId) {
+        console.error("No client ID found in employee object:", employee);
         return new Response(
-          JSON.stringify({ error: "Client ID is required" }),
+          JSON.stringify({ 
+            error: "Client ID is required",
+            details: "No clientId or client_id found in employee data"
+          }),
           { 
             status: 400, 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -41,7 +56,6 @@ serve(async (req) => {
         );
       }
 
-      const clientId = employee.clientId || employee.client_id;
       console.log("Validating client with ID:", clientId);
 
       const { data: client, error: clientError } = await supabaseClient
@@ -53,13 +67,18 @@ serve(async (req) => {
       if (clientError || !client) {
         console.error("Client validation error:", clientError);
         return new Response(
-          JSON.stringify({ error: "Invalid client ID" }),
+          JSON.stringify({ 
+            error: "Invalid client ID",
+            details: `Client with ID ${clientId} not found`
+          }),
           { 
             status: 400, 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
           }
         );
       }
+      
+      console.log("Client validation successful for:", clientId);
     }
 
     switch (operation) {
@@ -96,6 +115,8 @@ serve(async (req) => {
 
 async function handleCreate(supabaseClient: any, employee: any) {
   const clientId = employee.clientId || employee.client_id;
+  
+  console.log("Creating employee with clientId:", clientId);
   
   // Check for duplicate email within the same client
   console.log("Checking for existing email", employee.email, "for client", clientId);
@@ -199,7 +220,7 @@ async function handleCreate(supabaseClient: any, employee: any) {
 async function handleUpdate(supabaseClient: any, employee: any) {
   const clientId = employee.clientId || employee.client_id;
   
-  console.log("Updating employee with ID:", employee.id);
+  console.log("Updating employee with ID:", employee.id, "clientId:", clientId);
 
   // Check for duplicate email within the same client (excluding current employee)
   console.log("Checking for existing email", employee.email, "for client", clientId);
@@ -304,10 +325,10 @@ async function handleEmployeeModuleAccess(supabaseClient: any, employeeId: strin
       // Extract is_admin from the access_level or level property
       let isAdmin = false;
       
-      if (moduleAccess.access_level && typeof moduleAccess.access_level === 'object') {
-        isAdmin = moduleAccess.access_level.is_admin === true;
-      } else if (moduleAccess.level && typeof moduleAccess.level === 'object') {
+      if (moduleAccess.level && typeof moduleAccess.level === 'object') {
         isAdmin = moduleAccess.level.is_admin === true;
+      } else if (moduleAccess.access_level && typeof moduleAccess.access_level === 'object') {
+        isAdmin = moduleAccess.access_level.is_admin === true;
       }
 
       return {
