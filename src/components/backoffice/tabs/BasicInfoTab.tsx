@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -76,6 +75,34 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload }: BasicInfoTabP
     </div>
   );
 
+  // Enhanced logo upload handler
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        alert('Please select an image file');
+        return;
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('File size must be less than 5MB');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64String = reader.result as string;
+        setFormData({
+          ...formData, 
+          logo: base64String
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Logo Upload */}
@@ -97,11 +124,11 @@ const BasicInfoTab = ({ formData, setFormData, handleLogoUpload }: BasicInfoTabP
             <Input
               type="file"
               accept="image/*"
-              onChange={handleLogoUpload}
+              onChange={handleLogoChange}
               className="cursor-pointer"
             />
             <p className="text-xs text-gray-500 mt-1">
-              Upload a logo image (PNG or JPG)
+              Upload a logo image (PNG, JPG, GIF up to 5MB)
             </p>
           </div>
         </div>

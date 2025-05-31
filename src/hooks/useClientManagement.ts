@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Client, useClient, InstitutionType, ModuleInfo } from '@/contexts/ClientContext';
 import { OAuthProviderName } from '@/utils/authProviders';
@@ -17,12 +16,12 @@ export interface ClientFormData {
   allowedDomains: string[];
   superAdminEmail: string;
   website?: string;
-  clientTypeId?: string; // Added this missing property
+  clientTypeId?: string;
   authProviders: {
     [key in OAuthProviderName]?: boolean;
   };
   superAdminAllowedDomains: string[];
-  moduleInfoArray?: ModuleInfo[]; // Only keeping the moduleInfoArray property
+  moduleInfoArray?: ModuleInfo[];
 }
 
 const initialFormData: ClientFormData = {
@@ -36,14 +35,14 @@ const initialFormData: ClientFormData = {
   allowedDomains: [],
   superAdminEmail: '',
   website: '',
-  clientTypeId: '', // Added this to initial form data
+  clientTypeId: '',
   authProviders: {
     google: false,
     microsoft: false,
     zoho: false
   },
   superAdminAllowedDomains: [],
-  moduleInfoArray: [] // Initialize moduleInfoArray as empty array
+  moduleInfoArray: []
 };
 
 export const useClientManagement = () => {
@@ -60,7 +59,7 @@ export const useClientManagement = () => {
 
   // Check if super admin email domain is allowed
   const isSuperAdminEmailDomainAllowed = (email: string, allowedDomains: string[]): boolean => {
-    if (!email || allowedDomains.length === 0) return true; // If no restrictions, allow all
+    if (!email || allowedDomains.length === 0) return true;
     
     const emailDomain = email.split('@')[1]?.toLowerCase();
     if (!emailDomain) return false;
@@ -178,13 +177,6 @@ export const useClientManagement = () => {
     }
   };
 
-  // Update prepareModuleInfoArray to not depend on moduleAccess
-  const prepareModuleInfoArray = (): ModuleInfo[] => {
-    // When using moduleInfoArray directly, we don't need this function to convert from moduleAccess
-    // It will now just return an empty array as the ModuleAccessTab component handles this
-    return [];
-  };
-
   const handleAddClient = async () => {
     if (!formData.superAdminEmail) {
       toast.error('Super Admin Email is required');
@@ -198,29 +190,42 @@ export const useClientManagement = () => {
     }
     
     try {
-      // Use moduleInfoArray directly from formData
       const moduleInfoArray = formData.moduleInfoArray || [];
       
       console.log('Module info for client creation:', moduleInfoArray);
+      console.log('Logo data being sent:', formData.logo ? 'Logo present' : 'No logo');
       
-      // First, add the client and get the client object back with proper typing
-      const result = await addClient({
-        ...formData,
-        modules: moduleInfoArray  // Pass the moduleInfoArray directly
+      // Call the edge function with logo data
+      const { data, error } = await supabase.functions.invoke('client-management', {
+        body: { 
+          operation: 'create',
+          client: {
+            id: uuidv4(), // Generate a unique ID for the client
+            modules: moduleInfoArray,
+            superAdminEmail: formData.superAdminEmail,
+            clientTypeId: formData.clientTypeId,
+            logo: formData.logo // Send the base64 logo data
+          }
+        }
       });
       
-      const newClient = result as Client; // Cast to Client type
-      
-      if (newClient && newClient.id) {
-        // Now create the employee from super admin email
-        await createEmployeeFromSuperAdminEmail(newClient.id, formData.superAdminEmail);
-        toast.success('Client and super admin employee created successfully');
-      } else {
-        toast.error('Failed to create client - no client ID returned');
+      if (error) {
+        console.error('Error creating client:', error);
+        toast.error('Failed to create client');
+        return;
       }
       
-      setIsAddDialogOpen(false);
-      resetForm();
+      // Add the client to the database with basic info
+      const result = await addClient({
+        ...formData,
+        modules: moduleInfoArray
+      });
+      
+      if (result) {
+        toast.success('Client and super admin employee created successfully');
+        setIsAddDialogOpen(false);
+        resetForm();
+      }
     } catch (error) {
       console.error('Error in handleAddClient:', error);
       toast.error('Failed to add client');
@@ -247,11 +252,7 @@ export const useClientManagement = () => {
         
         // Transform client modules data to moduleInfoArray
         const moduleInfoArray = clientModulesData ? clientModulesData.map(module => {
-          // Since the name isn't directly in client_modules, fetch it from modules table
-          // For now, use a default empty string as a placeholder
           const moduleName = '';
-          
-          // Safely access access_level properties
           const accessLevel = module.access_level as Record<string, any> || {};
           const isAdmin = typeof accessLevel === 'object' && accessLevel !== null ? 
             !!accessLevel.isAdmin : false;
@@ -324,30 +325,38 @@ export const useClientManagement = () => {
     }
     
     try {
-      // Use moduleInfoArray directly from formData
       const moduleInfoArray = formData.moduleInfoArray || [];
       
       console.log('Module info for client update:', moduleInfoArray);
+      console.log('Logo data being sent:', formData.logo ? 'Logo present' : 'No logo');
       
-      // Step 1: Delete all existing client modules (keep this part)
-      const { error: deleteError } = await supabase
-        .from('client_modules')
-        .delete()
-        .eq('client_id', currentClient.id);
-        
-      if (deleteError) {
-        console.error('Error deleting existing client modules:', deleteError);
-        toast.error('Failed to update client modules');
+      // Call the edge function with logo data
+      const { data, error } = await supabase.functions.invoke('client-management', {
+        body: { 
+          operation: 'update',
+          client: {
+            id: currentClient.id,
+            modules: moduleInfoArray,
+            superAdminEmail: formData.superAdminEmail,
+            clientTypeId: formData.clientTypeId,
+            logo: formData.logo // Send the base64 logo data
+          }
+        }
+      });
+      
+      if (error) {
+        console.error('Error updating client:', error);
+        toast.error('Failed to update client via edge function');
         return;
       }
       
-      // Step 2: Update the client in database
+      // Update the client in database
       await updateClient(currentClient.id, {
         ...formData,
-        modules: moduleInfoArray  // Pass the moduleInfoArray directly
+        modules: moduleInfoArray
       });
       
-      // Step 3: Update or create the super admin employee
+      // Update or create the super admin employee
       await updateEmployeeFromSuperAdminEmail(currentClient.id, formData.superAdminEmail);
       
       toast.success('Client and super admin employee updated successfully');

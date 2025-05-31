@@ -15,7 +15,7 @@ import ModuleAccessTab, { ModuleInfo } from './tabs/ModuleAccessTab';
 import AuthTab from './tabs/AuthTab';
 import { OAuthProviderName } from '@/utils/authProviders';
 import { ClientFormData } from '@/hooks/useClientManagement';
-import { Loader2, Asterisk } from 'lucide-react'; // Import both loading spinner and asterisk
+import { Loader2 } from 'lucide-react';
 
 interface ClientDialogProps {
   isOpen: boolean;
@@ -38,17 +38,7 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
   isEdit = false,
   isLoading = false
 }) => {
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = () => {
-        setFormData({...formData, logo: reader.result as string});
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
+  // Remove the old handleLogoUpload since we'll handle it in BasicInfoTab
   const handleModuleInfoChange = (moduleInfoArray: ModuleInfo[]) => {
     setFormData({
       ...formData,
@@ -124,7 +114,7 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
             <BasicInfoTab 
               formData={safeFormData} 
               setFormData={setFormData} 
-              handleLogoUpload={handleLogoUpload} 
+              handleLogoUpload={() => {}} // This is now handled within BasicInfoTab
             />
           </TabsContent>
 
