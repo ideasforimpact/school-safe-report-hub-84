@@ -59,33 +59,22 @@ const Header = () => {
 
   return (
     <div className="w-full h-16 bg-white shadow-sm">
-      <div className="w-full h-full px-4">
-        <div className="container mx-auto h-full flex items-center">
-          {/* Logo Section - Always at the start */}
+      <div className="w-full h-full px-0">
+        <div className="container mx-auto h-full flex items-center justify-between">
+          {/* Logo Section */}
           <HeaderLogo 
             userClient={userClient} 
             isSaasOwner={isSuperAdmin || isSaasOwner} 
             dashboardPath={dashboardPath} 
           />
           
-          {/* Center content - Search or Nav Links */}
-          <div className="flex-1 flex justify-center">
-            {/* Search Bar - Only for logged-in users */}
-            {user && !isHomePage && (
-              <div className="max-w-md w-full">
-                <HeaderSearch />
-              </div>
-            )}
-            
-            {/* Navigation links for home page */}
-            {isHomePage && (
-              <div className="hidden md:flex">
-                <HeaderNavLinks />
-              </div>
-            )}
-          </div>
+          {/* Search Bar - Only for logged-in users */}
+          {user && !isHomePage && <HeaderSearch />}
           
-          {/* Right side content - User Menu */}
+          {/* Navigation links for home page */}
+          {isHomePage && <HeaderNavLinks />}
+          
+          {/* User Menu */}
           {user ? (
             <div className="flex items-center gap-3">
               <HeaderIcons />
