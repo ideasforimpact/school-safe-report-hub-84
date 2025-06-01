@@ -157,65 +157,6 @@ export const fetchModules = async (isBackoffice: boolean, user?: any, employeeDa
   }
 };
 
-// Helper function to map module names to correct URLs
-const mapModuleToUrl = (moduleName: string, moduleUrl?: string): string => {
-  // If module has a URL in database, use it, but validate against known routes
-  if (moduleUrl) {
-    // Map common database URLs to actual route paths
-    const urlMappings: Record<string, string> = {
-      '/edusafe-resources': '/edusafe-resources',
-      '/edusafe': '/edusafe',
-      '/employee-verification': '/employee-verification',
-      '/transport-safety': '/transport-safety',
-      '/grievances': '/grievances',
-      '/incidents': '/incidents',
-      '/assessments': '/assessments',
-      '/users': '/users',
-      '/settings': '/settings',
-      '/configuration': '/configuration',
-      '/dashboard': '/dashboard'
-    };
-    
-    // Return mapped URL if it exists, otherwise use the database URL as-is
-    return urlMappings[moduleUrl] || moduleUrl;
-  }
-  
-  // Fallback: generate URL from module name
-  const name = moduleName.toLowerCase();
-  
-  // Handle special cases for URL generation
-  if (name.includes('edusafe') || name.includes('edu safe')) {
-    return '/edusafe-resources';
-  }
-  if (name.includes('employee verification')) {
-    return '/employee-verification';
-  }
-  if (name.includes('transport safety')) {
-    return '/transport-safety';
-  }
-  if (name.includes('grievance')) {
-    return '/grievances';
-  }
-  if (name.includes('incident')) {
-    return '/incidents';
-  }
-  if (name.includes('assessment')) {
-    return '/assessments';
-  }
-  if (name.includes('user')) {
-    return '/users';
-  }
-  if (name.includes('setting') || name.includes('configuration')) {
-    return '/configuration';
-  }
-  if (name.includes('dashboard')) {
-    return '/dashboard';
-  }
-  
-  // Default: convert to kebab-case
-  return `/${name.replace(/\s+/g, '-')}`;
-};
-
 // Convert database modules to sidebar items
 export const convertModulesToSidebarItems = (modules: Module[], permissions: any, basePath: string = '') => {
   const items = [];
@@ -232,8 +173,8 @@ export const convertModulesToSidebarItems = (modules: Module[], permissions: any
     // Get the icon component from our mapping, or default to LayoutDashboard
     const IconComponent = iconMap[module.icon || 'LayoutDashboard'] || LayoutDashboard;
     
-    // Use the helper function to determine the correct path
-    const path = basePath + mapModuleToUrl(module.name, module.url);
+    // Determine path based on name and base path
+    const path = `${basePath}/${module.name.toLowerCase().replace(/\s+/g, '-')}`;
     
     // All modules are allowed now - we filter at the database/API level
     let allowed = true;
