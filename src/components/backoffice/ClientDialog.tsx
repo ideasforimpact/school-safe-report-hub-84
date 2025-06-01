@@ -177,7 +177,6 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
             </Button>
             <Button 
               type="button"
-              onClick={handleButtonClick}
               disabled={isProcessing}
             >
               {isProcessing ? (
