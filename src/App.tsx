@@ -116,6 +116,7 @@ function App() {
                     
                     {/* New Settings route */}
                     <Route path="/settings" element={<SettingsPage />} />
+                    <Route path="/configuration" element={<ConfigurationManagement />} />
                     
                     {/* Profile route */}
                     <Route path="/profile" element={<ProfilePage />} />
@@ -153,8 +154,9 @@ function App() {
                     <Route path="/assessments/response/:assessmentId" element={<AssessmentResponsePage />} />
                     <Route path="/assessments/respond/:assignmentId" element={<AssessmentResponsePage />} />
 
-                    {/* EduSafe routes */}
+                    {/* EduSafe routes - support both /edusafe and /edusafe-resources */}
                     <Route path="/edusafe" element={<EduSafeResourcesPage />} />
+                    <Route path="/edusafe-resources" element={<EduSafeResourcesPage />} />
                     <Route path="/edusafe/upload" element={<UploadResourcePage />} />
                     <Route path="/edusafe/edit/:resourceId" element={<EditResourcePage />} />
 
