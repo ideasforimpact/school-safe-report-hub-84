@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -252,7 +253,21 @@ async function processModuleAccess(clientId: string, moduleInfoArray: ModuleInfo
       return true;
     }
 
-    // First, remove all existing modules for this client
+    // First, verify that the client exists
+    const { data: clientExists, error: clientCheckError } = await supabase
+      .from('clients')
+      .select('id')
+      .eq('id', clientId)
+      .single();
+      
+    if (clientCheckError) {
+      console.error(`Client ${clientId} does not exist:`, clientCheckError);
+      throw new Error(`Client ${clientId} not found in database`);
+    }
+    
+    console.log(`Client ${clientId} verified to exist`);
+
+    // Remove all existing modules for this client
     const { error: deleteError } = await supabase
       .from('client_modules')
       .delete()
@@ -360,6 +375,36 @@ async function handleCreateClient(clientData: any) {
       logoType: typeof logo,
       logoLength: logo ? logo.length : 0
     });
+    
+    // Wait for the client to be created in the database first (this happens in the frontend)
+    // We need to wait a bit to ensure the client record exists before processing modules
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    // Verify client exists before proceeding
+    let clientExists = false;
+    let attempts = 0;
+    const maxAttempts = 10;
+    
+    while (!clientExists && attempts < maxAttempts) {
+      const { data: client, error } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('id', clientId)
+        .single();
+        
+      if (!error && client) {
+        clientExists = true;
+        console.log(`Client ${clientId} found in database`);
+      } else {
+        console.log(`Waiting for client ${clientId} to be created... (attempt ${attempts + 1})`);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        attempts++;
+      }
+    }
+    
+    if (!clientExists) {
+      throw new Error(`Client ${clientId} was not found in database after ${maxAttempts} attempts`);
+    }
     
     // Handle logo upload if provided
     let clientLogoUrl = null;
