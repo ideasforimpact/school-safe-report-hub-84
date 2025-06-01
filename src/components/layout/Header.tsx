@@ -59,24 +59,34 @@ const Header = () => {
 
   return (
     <div className="w-full h-16 bg-white shadow-sm">
-      <div className="w-full h-full px-0">
+      <div className="w-full h-full px-4">
         <div className="container mx-auto h-full flex items-center justify-between">
-          {/* Logo Section */}
-          <HeaderLogo 
-            userClient={userClient} 
-            isSaasOwner={isSuperAdmin || isSaasOwner} 
-            dashboardPath={dashboardPath} 
-          />
+          {/* Logo Section - Positioned at the start */}
+          <div className="flex-shrink-0">
+            <HeaderLogo 
+              userClient={userClient} 
+              isSaasOwner={isSuperAdmin || isSaasOwner} 
+              dashboardPath={dashboardPath} 
+            />
+          </div>
           
           {/* Search Bar - Only for logged-in users */}
-          {user && !isHomePage && <HeaderSearch />}
+          {user && !isHomePage && (
+            <div className="flex-1 max-w-md mx-4">
+              <HeaderSearch />
+            </div>
+          )}
           
           {/* Navigation links for home page */}
-          {isHomePage && <HeaderNavLinks />}
+          {isHomePage && (
+            <div className="hidden md:flex flex-1 justify-center">
+              <HeaderNavLinks />
+            </div>
+          )}
           
-          {/* User Menu */}
+          {/* User Menu - Positioned at the end */}
           {user ? (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-shrink-0">
               <HeaderIcons />
 
               {user && (
@@ -94,12 +104,14 @@ const Header = () => {
               <UserProfileMenu />
             </div>
           ) : (
-            <Button 
-              onClick={() => navigate('/login')}
-              className="bg-primary-600 hover:bg-primary-700"
-            >
-              Sign In
-            </Button>
+            <div className="flex-shrink-0">
+              <Button 
+                onClick={() => navigate('/login')}
+                className="bg-primary-600 hover:bg-primary-700"
+              >
+                Sign In
+              </Button>
+            </div>
           )}
         </div>
       </div>
