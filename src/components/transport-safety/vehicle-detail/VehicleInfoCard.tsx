@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShieldCheck, Calendar, Trash2, Clock } from 'lucide-react';
@@ -11,6 +10,8 @@ import { Vehicle } from '@/types/transportSafety';
 import { formatDate } from '@/utils/dateUtils';
 import { useTransportSafety } from '@/contexts/transport-safety/TransportSafetyContext';
 import { supabase } from '@/integrations/supabase/client';
+import { useEmployeeStore } from '@/store/EmployeeContext';
+import { hasModulePermission, isEmployeeSuperAdmin } from '@/store/employeeSelectors';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -38,6 +39,7 @@ interface VehicleInfoCardProps {
 
 const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
   const { verifyDocument, deleteVehicle, updateVehicle } = useTransportSafety();
+  const { state } = useEmployeeStore();
   const [isChecking, setIsChecking] = useState(false);
   const [lastCheckTime, setLastCheckTime] = useState<Date | null>(
     vehicle.verificationDate ? new Date(vehicle.verificationDate) : null
@@ -48,6 +50,28 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
   const navigate = useNavigate();
   
   const { id: vehicleId, registrationNumber, make, model, type, status, year, documents } = vehicle;
+
+  // Check if user has admin access to transport safety module
+  const isSuperAdmin = isEmployeeSuperAdmin(state);
+  const hasTransportSafetyAccess = hasModulePermission(state, 'transportSafetyAdmin');
+  
+  // Check if user has admin access level for transport safety
+  const hasAdminAccess = React.useMemo(() => {
+    if (isSuperAdmin) return true;
+    
+    // Check configured modules for transport safety admin access
+    const transportSafetyModule = state.configuredModules?.find(
+      module => module.key === 'transportSafetyAdmin' || module.name.toLowerCase().includes('transport safety')
+    );
+    
+    if (transportSafetyModule?.accessLevel) {
+      // Check for different possible admin flag formats
+      return transportSafetyModule.accessLevel.isAdmin === true || 
+             transportSafetyModule.accessLevel.is_admin === true;
+    }
+    
+    return false;
+  }, [isSuperAdmin, state.configuredModules]);
 
   const getLatestVerificationData = () => {
     if (!vehicle.verificationData) return null;
@@ -167,15 +191,18 @@ const VehicleInfoCard: React.FC<VehicleInfoCardProps> = ({ vehicle }) => {
             Delete Vehicle
           </Button>
           
-          <Button 
-            onClick={runSafetyCheck} 
-            disabled={isChecking} 
-            variant="outline"
-            className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
-          >
-            <ShieldCheck className="h-4 w-4 mr-2" />
-            {isChecking ? 'Running Safety Check...' : 'Run Safety Check'}
-          </Button>
+          {/* Only show Run Safety Check button if user has admin access */}
+          {hasAdminAccess && (
+            <Button 
+              onClick={runSafetyCheck} 
+              disabled={isChecking} 
+              variant="outline"
+              className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
+            >
+              <ShieldCheck className="h-4 w-4 mr-2" />
+              {isChecking ? 'Running Safety Check...' : 'Run Safety Check'}
+            </Button>
+          )}
         </div>
         
         <div className="mt-3 flex items-center text-sm text-gray-500 text-left">
