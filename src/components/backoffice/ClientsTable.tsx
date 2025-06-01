@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Client } from '@/contexts/ClientContext';
+import { Client } from '@/hooks/useClientManagement';
 import { Search, ArrowUpRight, Plus } from 'lucide-react';
 import { 
   Card, 
