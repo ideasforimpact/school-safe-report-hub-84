@@ -1,16 +1,16 @@
 
 import { useState, useEffect } from 'react';
 import BackofficeLayout from '@/components/layout/BackofficeLayout';
+import { useClient } from '@/contexts/ClientContext';
 import MetricsCards from '@/components/backoffice/MetricsCards';
 import ClientsTable from '@/components/backoffice/ClientsTable';
 import ClientDialog from '@/components/backoffice/ClientDialog';
 import useClientManagement from '@/hooks/useClientManagement';
 
 const BackofficeDashboard = () => {
+  const { clients } = useClient();
   const [searchTerm, setSearchTerm] = useState('');
   const {
-    clients,
-    loading,
     formData,
     setFormData,
     isAddDialogOpen,
@@ -82,7 +82,6 @@ const BackofficeDashboard = () => {
         onSubmit={handleAddClient}
         onCancel={handleCancelAdd}
         isEdit={false}
-        isLoading={loading}
       />
     </BackofficeLayout>
   );

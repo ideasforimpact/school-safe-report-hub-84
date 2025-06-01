@@ -2,7 +2,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Edit, Trash2 } from 'lucide-react';
-import { Client } from '@/hooks/useClientManagement';
+import { Client } from '@/contexts/ClientContext';
 
 interface ClientActionButtonsProps {
   client: Client;
