@@ -8,10 +8,22 @@ interface SidebarMenuItemProps {
   label: string;
   path: string;
   isActive: boolean;
+  accessLevel?: any; // Add accessLevel prop
 }
 
-const SidebarMenuItem = ({ icon: IconComponent, label, path, isActive }: SidebarMenuItemProps) => {
+const SidebarMenuItem = ({ icon: IconComponent, label, path, isActive, accessLevel }: SidebarMenuItemProps) => {
   const navigate = useNavigate();
+  
+  const handleClick = () => {
+    // Log the access_level when module is clicked
+    if (accessLevel) {
+      console.log(`Module "${label}" clicked - Access Level:`, accessLevel);
+    } else {
+      console.log(`Module "${label}" clicked - No access level data`);
+    }
+    
+    navigate(path);
+  };
   
   // Split the label by newline character to handle multiline labels
   const labelParts = label.split('\n');
@@ -19,7 +31,7 @@ const SidebarMenuItem = ({ icon: IconComponent, label, path, isActive }: Sidebar
   return (
     <li>
       <button
-        onClick={() => navigate(path)}
+        onClick={handleClick}
         className={cn(
           "w-full flex flex-col items-center justify-center py-3 px-2 rounded-md transition-colors text-center",
           isActive

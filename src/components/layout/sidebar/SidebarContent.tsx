@@ -127,6 +127,7 @@ const SidebarContent = () => {
                 label={item.label}
                 path={getProcessedPath(item.path)}
                 isActive={isActive(getProcessedPath(item.path))}
+                accessLevel={item.accessLevel}
               />
             ))}
         </ul>

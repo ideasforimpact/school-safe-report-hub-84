@@ -77,7 +77,8 @@ console.log(configuredModules,"configuredModules")
         icon: LayoutDashboard,
         label: 'Dashboard',
         path: '/dashboard',
-        allowed: true
+        allowed: true,
+        accessLevel: {}
       }]);
     }
   }, [configuredModules]);
@@ -108,6 +109,7 @@ console.log(configuredModules,"configuredModules")
               label={item.label}
               path={item.path}
               isActive={isActive(item.path)}
+              accessLevel={item.accessLevel}
             />
           ))}
         </ul>
