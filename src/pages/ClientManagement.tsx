@@ -13,7 +13,7 @@ import useClientManagement from '@/hooks/useClientManagement';
 import ClientHeader from '@/components/clients/ClientHeader';
 import ClientList from '@/components/clients/ClientList';
 import ClientDialog from '@/components/backoffice/ClientDialog';
-import { Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react'; // Import loading spinner
 
 const ClientManagement = () => {
   const { isAdmin } = useAuth();
