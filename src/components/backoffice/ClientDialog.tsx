@@ -176,7 +176,7 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
               Cancel
             </Button>
             <Button 
-              type="button"
+              type="submit"
               disabled={isProcessing}
             >
               {isProcessing ? (
