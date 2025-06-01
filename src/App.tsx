@@ -20,6 +20,7 @@ import EmployeeManagement from '@/pages/EmployeeManagement';
 import StudentManagement from '@/pages/StudentManagement';
 import EducationalConfiguration from '@/pages/EducationalConfiguration';
 import OtherConfiguration from '@/pages/OtherConfiguration';
+import ConfigurationManagement from '@/pages/ConfigurationManagement';
 import NotFound from '@/pages/NotFound';
 import Home from '@/pages/Home';
 import Pricing from '@/pages/Pricing';

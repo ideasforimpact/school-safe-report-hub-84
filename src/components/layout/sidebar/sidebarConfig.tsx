@@ -27,6 +27,7 @@ export interface Module {
   active?: boolean;
   description?: string;
   access_level?: any; // Added to support access levels from client_modules
+  url?: string; // Added url property for module routing
 }
 
 // Map string icon names to Lucide components
