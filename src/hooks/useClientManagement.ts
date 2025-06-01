@@ -1,9 +1,36 @@
-import { useState } from 'react';
-import { Client, useClient, InstitutionType, ModuleInfo } from '@/contexts/ClientContext';
+
+import { useState, useEffect } from 'react';
+import { InstitutionType } from '@/contexts/ClientContext';
 import { OAuthProviderName } from '@/utils/authProviders';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
+
+export interface Client {
+  id: string;
+  name: string;
+  email: string;
+  contactPerson: string;
+  phone: string;
+  creationDate: string;
+  active: boolean;
+  logo?: string;
+  institutionType?: string;
+  clientTypeId?: string;
+  moduleAccess?: any;
+  allowedDomains?: string[];
+  superAdminAllowedDomains?: string[];
+  superAdminEmail?: string;
+  authProviders?: {
+    [key in OAuthProviderName]?: boolean;
+  };
+}
+
+export interface ModuleInfo {
+  name: string;
+  module_id: string;
+  is_admin: boolean;
+}
 
 export interface ClientFormData {
   name: string;
@@ -45,16 +72,82 @@ const initialFormData: ClientFormData = {
   moduleInfoArray: []
 };
 
+// Helper function to map database client to Client interface
+const mapDbClientToClient = (dbClient: any): Client => {
+  return {
+    id: dbClient.id,
+    name: dbClient.name || '',
+    email: dbClient.email || '',
+    contactPerson: dbClient.contact_person || '',
+    phone: dbClient.phone || '',
+    creationDate: dbClient.creation_date || new Date().toISOString(),
+    active: dbClient.active !== undefined ? dbClient.active : true,
+    logo: dbClient.logo || dbClient.client_logo || '',
+    institutionType: dbClient.institution_type || 'Other',
+    clientTypeId: dbClient.client_type_id || '',
+    allowedDomains: dbClient.allowed_domains ? dbClient.allowed_domains.split(',').filter(Boolean) : [],
+    superAdminAllowedDomains: dbClient.super_admin_allowed_domain ? dbClient.super_admin_allowed_domain.split(',').filter(Boolean) : [],
+    authProviders: dbClient.auth_providers ? JSON.parse(dbClient.auth_providers) : {
+      google: false,
+      microsoft: false,
+      zoho: false
+    }
+  };
+};
+
+// Helper function to prepare client data for database
+const prepareClientForDb = (client: Partial<Client>) => {
+  return {
+    name: client.name,
+    email: client.email,
+    contact_person: client.contactPerson,
+    phone: client.phone,
+    active: client.active,
+    logo: client.logo || null,
+    client_logo: client.logo || null,
+    institution_type: client.institutionType,
+    client_type_id: client.clientTypeId || null,
+    allowed_domains: client.allowedDomains?.length ? client.allowedDomains.join(',') : null,
+    super_admin_allowed_domain: client.superAdminAllowedDomains?.length ? client.superAdminAllowedDomains.join(',') : null,
+    auth_providers: client.authProviders ? JSON.stringify(client.authProviders) : null,
+    creation_date: client.creationDate || new Date().toISOString()
+  };
+};
+
 export const useClientManagement = () => {
-  const { clients, loading, addClient, updateClient, deleteClient } = useClient();
+  const [clients, setClients] = useState<Client[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [currentClient, setCurrentClient] = useState<Client | null>(null);
   const [formData, setFormData] = useState<ClientFormData>({...initialFormData});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Add a ref to track if submission is in progress
-  const submissionInProgress = useState(false)[0];
+  // Load clients from Supabase
+  useEffect(() => {
+    const fetchClients = async () => {
+      setLoading(true);
+      try {
+        const { data: clientsData, error: clientsError } = await supabase
+          .from('clients')
+          .select('*');
+
+        if (clientsError) {
+          throw clientsError;
+        }
+
+        const mappedClients = clientsData.map(mapDbClientToClient);
+        setClients(mappedClients);
+      } catch (error) {
+        console.error('Error fetching clients:', error);
+        toast.error('Failed to load clients');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchClients();
+  }, []);
 
   const resetForm = () => {
     setFormData({...initialFormData});
@@ -71,18 +164,14 @@ export const useClientManagement = () => {
     return allowedDomains.some(domain => domain.toLowerCase() === emailDomain);
   };
 
-  // ... keep existing code (createEmployeeFromSuperAdminEmail and updateEmployeeFromSuperAdminEmail functions)
-
   const createEmployeeFromSuperAdminEmail = async (clientId: string, superAdminEmail: string) => {
     try {
-      // Extract employee_id from the email (part before @ symbol)
       const employeeId = superAdminEmail.split('@')[0];
       
-      // Create the employee record
       const employeeData = {
         employee_id: employeeId,
-        first_name: employeeId, // Using the part before @ as first name
-        last_name: '', // Empty last name
+        first_name: employeeId,
+        last_name: '',
         email: superAdminEmail,
         department: 'Admin',
         employee_type: 'permanent',
@@ -92,7 +181,6 @@ export const useClientManagement = () => {
         joining_date: new Date().toISOString()
       };
 
-      // Check if employee already exists with this email and client_id
       const { data: existingEmployee, error: checkError } = await supabase
         .from('employees')
         .select('*')
@@ -102,17 +190,13 @@ export const useClientManagement = () => {
 
       if (checkError && checkError.code !== 'PGRST116') {
         console.error('Error checking for existing employee:', checkError);
-        toast.error('Failed to check for existing employee');
         return null;
       }
 
-      // If employee exists, return the existing record
       if (existingEmployee) {
-        console.log('Employee already exists for this client:', existingEmployee);
         return existingEmployee;
       }
 
-      // Insert new employee
       const { data, error } = await supabase
         .from('employees')
         .insert([employeeData])
@@ -120,11 +204,9 @@ export const useClientManagement = () => {
 
       if (error) {
         console.error('Error creating employee from super admin email:', error);
-        toast.error('Failed to create super admin employee');
         return null;
       }
 
-      console.log('Created new super admin employee:', data[0]);
       return data[0];
     } catch (err) {
       console.error('Error in createEmployeeFromSuperAdminEmail:', err);
@@ -134,7 +216,6 @@ export const useClientManagement = () => {
 
   const updateEmployeeFromSuperAdminEmail = async (clientId: string, superAdminEmail: string) => {
     try {
-      // Check if a super admin employee already exists for this client
       const { data: existingEmployee, error } = await supabase
         .from('employees')
         .select('*')
@@ -144,19 +225,16 @@ export const useClientManagement = () => {
       
       if (error) {
         if (error.code === 'PGRST116') {
-          // No super admin exists, create one
           return await createEmployeeFromSuperAdminEmail(clientId, superAdminEmail);
         }
         console.error('Error checking for existing employee:', error);
         return null;
       }
 
-      // If email hasn't changed, just return the existing employee
       if (existingEmployee.email === superAdminEmail) {
         return existingEmployee;
       }
       
-      // Update the existing employee with the new email
       const employeeId = superAdminEmail.split('@')[0];
       
       const { data, error: updateError } = await supabase
@@ -172,7 +250,6 @@ export const useClientManagement = () => {
 
       if (updateError) {
         console.error('Error updating employee email:', updateError);
-        toast.error('Failed to update super admin email');
         return null;
       }
 
@@ -183,10 +260,151 @@ export const useClientManagement = () => {
     }
   };
 
+  const addClient = async (clientData: Omit<Client, 'id' | 'creationDate'> & { modules?: ModuleInfo[] }) => {
+    try {
+      const { modules, ...rest } = clientData;
+      const dbClient = prepareClientForDb(rest as Client);
+      
+      const { data, error } = await supabase
+        .from('clients')
+        .insert([dbClient])
+        .select('*')
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
+      if (data) {
+        if (modules && modules.length > 0) {
+          const { error: modulesError } = await supabase.functions.invoke('client-management', {
+            body: { 
+              operation: 'create',
+              client: {
+                id: data.id, 
+                moduleAccess: clientData.moduleAccess,
+                modules: modules,
+                superAdminEmail: clientData.superAdminEmail,
+                clientTypeId: clientData.clientTypeId
+              }
+            }
+          });
+          
+          if (modulesError) {
+            console.error('Error saving client modules:', modulesError);
+            toast.error('Client created but module access could not be saved');
+          }
+        }
+
+        const newClient = {
+          ...mapDbClientToClient(data),
+          moduleAccess: clientData.moduleAccess,
+          superAdminAllowedDomains: clientData.superAdminAllowedDomains,
+          superAdminEmail: clientData.superAdminEmail,
+          clientTypeId: clientData.clientTypeId
+        };
+        
+        setClients(prev => [...prev, newClient]);
+        toast.success('Client added successfully');
+        return newClient;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error adding client:', error);
+      toast.error('Failed to add client');
+      return null;
+    }
+  };
+
+  const updateClient = async (id: string, updates: Partial<Client> & { modules?: ModuleInfo[] }) => {
+    try {
+      const { modules, ...clientUpdates } = updates;
+      
+      const existingClient = clients.find(c => c.id === id);
+      if (!existingClient) {
+        throw new Error('Client not found');
+      }
+
+      const updatedClient = { ...existingClient, ...clientUpdates };
+      const dbUpdates = prepareClientForDb(updatedClient);
+      
+      const { error } = await supabase
+        .from('clients')
+        .update(dbUpdates)
+        .eq('id', id);
+
+      if (error) {
+        throw error;
+      }
+
+      if (modules && modules.length > 0) {
+        const { error: modulesError } = await supabase.functions.invoke('client-management', {
+          body: { 
+            operation: 'update',
+            client: {
+              id: id,
+              moduleAccess: updates.moduleAccess,
+              modules: modules,
+              superAdminEmail: updates.superAdminEmail,
+              clientTypeId: updates.clientTypeId
+            }
+          }
+        });
+        
+        if (modulesError) {
+          console.error('Error updating client modules:', modulesError);
+          toast.error('Client updated but module access could not be updated');
+        }
+      }
+
+      setClients(prev => prev.map(c => c.id === id ? { ...c, ...clientUpdates } : c));
+      toast.success('Client updated successfully');
+    } catch (error) {
+      console.error('Error updating client:', error);
+      toast.error('Failed to update client');
+    }
+  };
+
+  const deleteClient = async (id: string) => {
+    try {
+      const { error: employeeError } = await supabase
+        .from('employees')
+        .delete()
+        .eq('client_id', id)
+        .eq('is_super_admin', true);
+      
+      if (employeeError) {
+        console.error('Error deleting super admin employees:', employeeError);
+      }
+
+      const { error: moduleError } = await supabase
+        .from('client_modules')
+        .delete()
+        .eq('client_id', id);
+      
+      if (moduleError) {
+        console.error('Error deleting client modules:', moduleError);
+      }
+
+      const { error } = await supabase
+        .from('clients')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        throw error;
+      }
+
+      setClients(prev => prev.filter(client => client.id !== id));
+      toast.success('Client deleted successfully');
+    } catch (error) {
+      console.error('Error deleting client:', error);
+      toast.error('Failed to delete client');
+    }
+  };
+
   const handleAddClient = async () => {
-    // Prevent duplicate calls - check submission state first
     if (isSubmitting) {
-      console.log('Add client submission already in progress, skipping...');
       return; 
     }
     
@@ -195,7 +413,6 @@ export const useClientManagement = () => {
       return;
     }
     
-    // Check if super admin email domain is allowed
     if (!isSuperAdminEmailDomainAllowed(formData.superAdminEmail, formData.superAdminAllowedDomains)) {
       toast.error('Super Admin email domain is not allowed. Please check the Super Admin Allowed Domains list.');
       return;
@@ -205,38 +422,19 @@ export const useClientManagement = () => {
     
     try {
       const moduleInfoArray = formData.moduleInfoArray || [];
-      const clientId = uuidv4(); // Generate a unique ID for the client
+      const clientId = uuidv4();
       
-      console.log('Module info for client creation:', moduleInfoArray);
-      console.log('Logo data being sent:', {
-        hasLogo: !!formData.logo,
-        logoType: typeof formData.logo,
-        logoLength: formData.logo ? formData.logo.length : 0,
-        logoPreview: formData.logo ? formData.logo.substring(0, 50) + '...' : 'No logo'
-      });
-      
-      const requestPayload = {
-        operation: 'create',
-        client: {
-          id: clientId,
-          modules: moduleInfoArray,
-          superAdminEmail: formData.superAdminEmail,
-          clientTypeId: formData.clientTypeId,
-          logo: formData.logo || null // Ensure logo is explicitly included
-        }
-      };
-      
-      console.log('Full request payload being sent:', {
-        operation: requestPayload.operation,
-        client: {
-          ...requestPayload.client,
-          logo: requestPayload.client.logo ? 'Logo data present (length: ' + requestPayload.client.logo.length + ')' : 'No logo data'
-        }
-      });
-      
-      // Call the edge function with logo data
       const { data, error } = await supabase.functions.invoke('client-management', {
-        body: requestPayload
+        body: {
+          operation: 'create',
+          client: {
+            id: clientId,
+            modules: moduleInfoArray,
+            superAdminEmail: formData.superAdminEmail,
+            clientTypeId: formData.clientTypeId,
+            logo: formData.logo || null
+          }
+        }
       });
       
       if (error) {
@@ -245,7 +443,6 @@ export const useClientManagement = () => {
         return;
       }
       
-      // Add the client to the database with basic info
       const result = await addClient({
         ...formData,
         modules: moduleInfoArray
@@ -267,11 +464,8 @@ export const useClientManagement = () => {
   const handleEditClick = (client: Client) => {
     setCurrentClient(client);
     
-    // Get the client modules and super admin employee for this client
     const fetchClientData = async (clientId: string) => {
       try {
-        // Fetch client modules
-        console.log("Fetching client modules for edit", clientId);
         const { data: clientModulesData, error: modulesError } = await supabase
           .from('client_modules')
           .select('*')
@@ -282,21 +476,18 @@ export const useClientManagement = () => {
           toast.error('Failed to load client modules data');
         }
         
-        // Transform client modules data to moduleInfoArray
         const moduleInfoArray = clientModulesData ? clientModulesData.map(module => {
-          const moduleName = '';
           const accessLevel = module.access_level as Record<string, any> || {};
           const isAdmin = typeof accessLevel === 'object' && accessLevel !== null ? 
             !!accessLevel.isAdmin : false;
           
           return {
-            name: moduleName,
+            name: '',
             module_id: module.module_id || '',
             is_admin: isAdmin
           };
         }) : [];
         
-        // Fetch super admin email
         const { data: employeeData, error: employeeError } = await supabase
           .from('employees')
           .select('email')
@@ -309,14 +500,13 @@ export const useClientManagement = () => {
           toast.error('Failed to load super admin data');
         }
         
-        // Set the form data with all information - preserve existing logo
         setFormData({
           name: client.name,
           email: client.email,
           contactPerson: client.contactPerson,
           phone: client.phone,
           active: client.active,
-          logo: client.logo || '', // Keep existing logo data
+          logo: client.logo || '',
           institutionType: (client.institutionType as InstitutionType) || 'Other',
           allowedDomains: client.allowedDomains || [],
           superAdminEmail: employeeData?.email || '',
@@ -341,9 +531,7 @@ export const useClientManagement = () => {
   };
 
   const handleUpdateClient = async () => {
-    // Prevent duplicate calls - check submission state first
     if (isSubmitting) {
-      console.log('Update client submission already in progress, skipping...');
       return; 
     }
     
@@ -356,7 +544,6 @@ export const useClientManagement = () => {
       return;
     }
     
-    // Check if super admin email domain is allowed
     if (!isSuperAdminEmailDomainAllowed(formData.superAdminEmail, formData.superAdminAllowedDomains)) {
       toast.error('Super Admin email domain is not allowed. Please check the Super Admin Allowed Domains list.');
       return;
@@ -367,37 +554,17 @@ export const useClientManagement = () => {
     try {
       const moduleInfoArray = formData.moduleInfoArray || [];
       
-      console.log('Module info for client update:', moduleInfoArray);
-      console.log('Logo data being sent for update:', {
-        hasLogo: !!formData.logo,
-        logoType: typeof formData.logo,
-        logoLength: formData.logo ? formData.logo.length : 0,
-        logoPreview: formData.logo ? formData.logo.substring(0, 50) + '...' : 'No logo'
-      });
-      
-      // Always include logo data in the request, whether it's new, existing, or empty
-      const requestPayload = {
-        operation: 'update',
-        client: {
-          id: currentClient.id,
-          modules: moduleInfoArray,
-          superAdminEmail: formData.superAdminEmail,
-          clientTypeId: formData.clientTypeId,
-          logo: formData.logo || '' // Always send logo data, even if empty string
-        }
-      };
-      
-      console.log('Full update request payload being sent:', {
-        operation: requestPayload.operation,
-        client: {
-          ...requestPayload.client,
-          logo: requestPayload.client.logo ? 'Logo data present (length: ' + requestPayload.client.logo.length + ')' : 'No logo data'
-        }
-      });
-      
-      // Call the edge function with logo data - ensure single call
       const { data, error } = await supabase.functions.invoke('client-management', {
-        body: requestPayload
+        body: {
+          operation: 'update',
+          client: {
+            id: currentClient.id,
+            modules: moduleInfoArray,
+            superAdminEmail: formData.superAdminEmail,
+            clientTypeId: formData.clientTypeId,
+            logo: formData.logo || ''
+          }
+        }
       });
       
       if (error) {
@@ -406,13 +573,11 @@ export const useClientManagement = () => {
         return;
       }
       
-      // Update the client in database
       await updateClient(currentClient.id, {
         ...formData,
         modules: moduleInfoArray
       });
       
-      // Update or create the super admin employee
       await updateEmployeeFromSuperAdminEmail(currentClient.id, formData.superAdminEmail);
       
       toast.success('Client and super admin employee updated successfully');
