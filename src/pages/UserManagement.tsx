@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -93,9 +94,28 @@ const UserManagement = () => {
   const isAdmin = isEmployeeAdmin(state);
   const isSuperAdmin = isEmployeeSuperAdmin(state);
   
+  // Check if user has admin access level for user management
+  const hasUserManagementAdminAccess = React.useMemo(() => {
+    if (isSuperAdmin) return true;
+    
+    // Check configured modules for user management admin access
+    const userManagementModule = state.configuredModules?.find(
+      module => module.key === 'userManagement' || module.name.toLowerCase().includes('user')
+    );
+    
+    if (userManagementModule?.accessLevel) {
+      // Check for different possible admin flag formats
+      return userManagementModule.accessLevel.isAdmin === true || 
+             userManagementModule.accessLevel.is_admin === true;
+    }
+    
+    return false;
+  }, [isSuperAdmin, state.configuredModules]);
+  
   console.log("UserManagement - Redux employeeData:", employeeData);
   console.log("UserManagement - Redux isAdmin:", isAdmin);
   console.log("UserManagement - Redux isSuperAdmin:", isSuperAdmin);
+  console.log("UserManagement - hasUserManagementAdminAccess:", hasUserManagementAdminAccess);
   console.log("UserManagement - User from auth context:", user);
   
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -524,7 +544,7 @@ const UserManagement = () => {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">User Management</h1>
-          {isSuperAdmin && (
+          {hasUserManagementAdminAccess && (
             <div className="flex gap-2">
               <Button 
                 onClick={() => setIsImportDialogOpen(true)}
@@ -617,23 +637,26 @@ const UserManagement = () => {
                     toast.error("Failed to reactivate user");
                   }
                 }}
+                hasAdminAccess={hasUserManagementAdminAccess}
               />
             )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Add User Dialog */}
-      <AddUserDialog 
-        isOpen={isAddDialogOpen}
-        setIsOpen={setIsAddDialogOpen}
-        formData={formData}
-        setFormData={setFormData}
-        onSubmit={handleAddUser}
-        resetForm={resetForm}
-        isLoading={isLoading}
-        clientId={clientId}
-      />
+      {/* Add User Dialog - Only render if user has admin access */}
+      {hasUserManagementAdminAccess && (
+        <AddUserDialog 
+          isOpen={isAddDialogOpen}
+          setIsOpen={setIsAddDialogOpen}
+          formData={formData}
+          setFormData={setFormData}
+          onSubmit={handleAddUser}
+          resetForm={resetForm}
+          isLoading={isLoading}
+          clientId={clientId}
+        />
+      )}
 
       {/* Edit User Dialog - Remove clientId prop */}
       <EditUserDialog 
@@ -647,13 +670,15 @@ const UserManagement = () => {
         currentUser={currentUser}
       />
 
-      {/* Import Employees Dialog */}
-      <ImportEmployeeDialog
-        isOpen={isImportDialogOpen}
-        setIsOpen={setIsImportDialogOpen}
-        onImportEmployees={handleImportEmployees}
-        clientId={clientId}
-      />
+      {/* Import Employees Dialog - Only render if user has admin access */}
+      {hasUserManagementAdminAccess && (
+        <ImportEmployeeDialog
+          isOpen={isImportDialogOpen}
+          setIsOpen={setIsImportDialogOpen}
+          onImportEmployees={handleImportEmployees}
+          clientId={clientId}
+        />
+      )}
     </Layout>
   );
 };

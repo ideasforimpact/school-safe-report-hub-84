@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { UserRole, ModulePermissions } from '@/contexts/auth/types';
 import {
@@ -22,10 +23,20 @@ interface UserListProps {
   onDeleteUser: (id: string) => void;
   onDeactivateUser: (id: string) => void;
   onReactivateUser: (id: string) => void;
+  hasAdminAccess?: boolean; // Add hasAdminAccess prop
 }
 
-const UserList = ({ users, onEditClick, onDeleteUser, onDeactivateUser, onReactivateUser }: UserListProps) => {
+const UserList = ({ 
+  users, 
+  onEditClick, 
+  onDeleteUser, 
+  onDeactivateUser, 
+  onReactivateUser, 
+  hasAdminAccess = false 
+}: UserListProps) => {
   console.log("UserList component - Users:", users);
+  console.log("UserList component - hasAdminAccess:", hasAdminAccess);
+  
   return (
     <Table>
       <TableHeader>
@@ -69,77 +80,90 @@ const UserList = ({ users, onEditClick, onDeleteUser, onDeactivateUser, onReacti
               )}
             </TableCell>
             <TableCell>
-              { !user.isSuperAdmin ?  
-              <div className="flex space-x-1">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={() => onEditClick(user)}
-                  disabled={!user.isActive}
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
-                
-                {user.isActive ? (
+              {!user.isSuperAdmin && hasAdminAccess ? (
+                <div className="flex space-x-1">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => onEditClick(user)}
+                    disabled={!user.isActive}
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  
+                  {user.isActive ? (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <UserX className="h-4 w-4 text-amber-600" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Deactivate User</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to deactivate this user? They will no longer be able to log in to the system.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction 
+                            className="bg-amber-600 hover:bg-amber-700"
+                            onClick={() => onDeactivateUser(user.id)}
+                          >
+                            Deactivate
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  ) : (
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      onClick={() => onReactivateUser(user.id)}
+                    >
+                      <UserCheck className="h-4 w-4 text-green-600" />
+                    </Button>
+                  )}
+                  
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button variant="ghost" size="icon">
-                        <UserX className="h-4 w-4 text-amber-600" />
+                        <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>Deactivate User</AlertDialogTitle>
+                        <AlertDialogTitle>Delete User</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Are you sure you want to deactivate this user? They will no longer be able to log in to the system.
+                          Are you sure you want to permanently delete this user? This action cannot be undone.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction 
-                          className="bg-amber-600 hover:bg-amber-700"
-                          onClick={() => onDeactivateUser(user.id)}
+                          className="bg-destructive hover:bg-destructive/90"
+                          onClick={() => onDeleteUser(user.id)}
                         >
-                          Deactivate
+                          Delete
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
-                ) : (
+                </div>
+              ) : (
+                <div className="flex space-x-1">
+                  {/* Show only view button if user doesn't have admin access */}
                   <Button 
                     variant="ghost" 
-                    size="icon"
-                    onClick={() => onReactivateUser(user.id)}
+                    size="icon" 
+                    onClick={() => onEditClick(user)}
+                    disabled={!user.isActive || !hasAdminAccess}
                   >
-                    <UserCheck className="h-4 w-4 text-green-600" />
+                    <Edit className="h-4 w-4" />
                   </Button>
-                )}
-                
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete User</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Are you sure you want to permanently delete this user? This action cannot be undone.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction 
-                        className="bg-destructive hover:bg-destructive/90"
-                        onClick={() => onDeleteUser(user.id)}
-                      >
-                        Delete
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div> : <div></div> }
+                </div>
+              )}
             </TableCell>
           </TableRow>
         ))}
