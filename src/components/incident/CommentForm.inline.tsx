@@ -5,7 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import MultipleFilesUpload from '@/components/MultipleFilesUpload';
 import { useAddIncidentComment } from '@/hooks/useAddIncidentComment';
-import { Paperclip, Send } from 'lucide-react';
+import { Paperclip, Send, Loader } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface InlineCommentFormProps {
@@ -58,8 +58,9 @@ const InlineCommentForm: React.FC<InlineCommentFormProps> = ({
         // Reset form after successful submission
         setCommentText('');
         setCommentFiles([]);
+        setShowFileUpload(false);
         
-        // Notify parent component
+        // Notify parent component to refresh comments
         onCommentAdded();
         
         toast.success('Comment added successfully');
@@ -83,6 +84,7 @@ const InlineCommentForm: React.FC<InlineCommentFormProps> = ({
             value={commentText}
             onChange={(e) => setCommentText(e.target.value)}
             className="min-h-[80px] w-full resize-none"
+            disabled={isSubmitting}
           />
           
           {showFileUpload && (
@@ -102,6 +104,7 @@ const InlineCommentForm: React.FC<InlineCommentFormProps> = ({
             size="sm"
             onClick={() => setShowFileUpload(!showFileUpload)}
             className="flex items-center gap-1"
+            disabled={isSubmitting}
           >
             <Paperclip className="h-4 w-4" />
             {commentFiles.length > 0 ? `${commentFiles.length} file(s)` : "Add files"}
@@ -112,7 +115,11 @@ const InlineCommentForm: React.FC<InlineCommentFormProps> = ({
             disabled={!commentText.trim() || isSubmitting}
             className="flex items-center gap-1"
           >
-            <Send className="h-4 w-4" />
+            {isSubmitting ? (
+              <Loader className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
             {isSubmitting ? 'Submitting...' : 'Submit Comment'}
           </Button>
         </div>

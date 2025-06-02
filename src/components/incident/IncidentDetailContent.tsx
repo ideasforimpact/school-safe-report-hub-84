@@ -1,21 +1,60 @@
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import IncidentHeader from './IncidentHeader';
-import IncidentDetailsCard from './IncidentDetailsCard';
-import PeopleInvolved from './PeopleInvolved';
+import IncidentDetails from './IncidentDetails';
 import CommentsList from './CommentsList';
 import InlineCommentForm from './CommentForm.inline';
-import AuditTrail from '@/components/AuditTrail';
-import IncidentDetails from './IncidentDetails';
-import ActionsList from './ActionsList';
-import { FileItem } from '@/types/incident';
-import { useIncidentData } from '@/hooks/useIncidentData';
-import SupportingDocuments from './SupportingDocuments';
+import { Incident, Comment as IncidentComment, FileItem } from '@/types/incident';
+import { useIncidents } from '@/contexts/incident';
+import { useAuth } from '@/contexts/auth/AuthContext';
+import { formatUserFullName } from '@/utils/userUtils';
+import { Calendar, MapPin, User, Clock, AlertTriangle } from 'lucide-react';
 
-const IncidentDetailContent = ({ 
-  incident, 
+interface IncidentDetailContentProps {
+  incident: Incident;
+  statusUpdate: string;
+  setStatusUpdate: (status: string) => void;
+  incidentActivities: any[];
+  commentText: string;
+  setCommentText: (text: string) => void;
+  commentFiles: FileItem[];
+  setCommentFiles: (files: FileItem[]) => void;
+  isSubmitting: boolean;
+  handleCommentSubmit: () => void;
+  handleActionSubmit: () => Promise<void>;
+  handleStatusChange: (status: string) => Promise<void>;
+  formatDate: (date: Date) => string;
+  formatDateTime: (date: Date) => string;
+  getStatusColor: (status: string) => string;
+  getCommentStatusColor: (status: string) => string;
+  addComment: () => Promise<void>;
+  updateComment: () => Promise<void>;
+  deleteComment: () => Promise<void>;
+  canEditComment: () => boolean;
+  user: { id: string; name: string };
+  isAdmin: boolean;
+  updateIncident: () => Promise<void>;
+  navigate: ReturnType<typeof useNavigate>;
+}
+
+const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
+  incident,
+  statusUpdate,
+  setStatusUpdate,
   incidentActivities,
+  commentText,
+  setCommentText,
+  commentFiles,
+  setCommentFiles,
+  isSubmitting,
+  handleCommentSubmit,
+  handleActionSubmit,
+  handleStatusChange,
   formatDate,
   formatDateTime,
   getStatusColor,
@@ -27,111 +66,148 @@ const IncidentDetailContent = ({
   user,
   isAdmin,
   updateIncident,
-  handleStatusChange,
-  statusUpdate,
-  setStatusUpdate,
-  handleCommentSubmit
+  navigate
 }) => {
-  const { refetchIncidents } = useIncidentData();
-  
-  // State for controlling the incident closure form
-  const [isClosureFormOpen, setIsClosureFormOpen] = useState(false);
-  
-  // State for inline comment form
-  const [commentText, setCommentText] = useState('');
-  const [commentFiles, setCommentFiles] = useState<FileItem[]>([]);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { users } = useIncidents();
+  const { user: authUser } = useAuth();
+  const [localCommentText, setLocalCommentText] = useState('');
+  const [localCommentFiles, setLocalCommentFiles] = useState<FileItem[]>([]);
+  const [localIsSubmitting, setLocalIsSubmitting] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
-  // Handler to open the closure form
-  const handleOpenClosureForm = () => {
-    setIsClosureFormOpen(true);
-  };
+  // Function to refresh comments without page reload
+  const handleCommentAdded = useCallback(() => {
+    console.log('Comment added, refreshing comments...');
+    // Increment refresh key to trigger re-render
+    setRefreshKey(prev => prev + 1);
+    // Trigger any additional refresh logic
+    handleCommentSubmit();
+  }, [handleCommentSubmit]);
 
-  // Handler for closure form submission
-  const handleClosureFormSubmit = async (data) => {
-    await updateIncident(incident.id, {
-      status: 'Closed',
-      rootCause: data.rootCause,
-      contributingFactors: data.contributingFactors,
-      actions: data.actions
-    });
-    setIsClosureFormOpen(false);
-    // Refetch incidents to ensure latest data
-    await refetchIncidents();
-  };
-
-  // Handler for when comment is successfully added
-  const handleCommentAdded = async () => {
-    // Refresh the incident data
-    if (handleCommentSubmit) {
-      handleCommentSubmit();
-    }
-    // Also refetch incidents to ensure consistency
-    await refetchIncidents();
-  };
+  const userName = authUser ? formatUserFullName(authUser) : 'Unknown User';
+  const userId = authUser?.id || 'unknown';
 
   return (
-    <div className="container max-w-6xl py-6 space-y-6">
-      <IncidentHeader 
-        incident={incident} 
-        statusUpdate={statusUpdate} 
-        setStatusUpdate={setStatusUpdate} 
-        onStatusChange={handleStatusChange}
-        formatDate={formatDateTime}
-        getStatusColor={getStatusColor}
-        onCloseButtonClick={handleOpenClosureForm}
-      />
-      
-      <Tabs defaultValue="details" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4 mb-4">
+    <div className="container max-w-6xl py-6">
+      {/* Incident Header */}
+      <div className="mb-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              {incident.ticketId}
+            </h1>
+            <div className="flex flex-wrap items-center gap-3">
+              <Badge variant="outline" className={getStatusColor(incident.status)}>
+                {incident.status}
+              </Badge>
+              <Badge variant="secondary">{incident.type}</Badge>
+              <Badge variant="secondary">{incident.category}</Badge>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Info Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+          <Card>
+            <CardContent className="flex items-center p-4">
+              <Calendar className="h-5 w-5 text-gray-500 mr-3" />
+              <div>
+                <p className="text-sm text-gray-500">Date</p>
+                <p className="font-semibold">{formatDate(incident.date)}</p>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="flex items-center p-4">
+              <MapPin className="h-5 w-5 text-gray-500 mr-3" />
+              <div>
+                <p className="text-sm text-gray-500">Location</p>
+                <p className="font-semibold">{incident.location}</p>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="flex items-center p-4">
+              <User className="h-5 w-5 text-gray-500 mr-3" />
+              <div>
+                <p className="text-sm text-gray-500">Reported By</p>
+                <p className="font-semibold">{incident.reportedBy.name}</p>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="flex items-center p-4">
+              <Clock className="h-5 w-5 text-gray-500 mr-3" />
+              <div>
+                <p className="text-sm text-gray-500">Created</p>
+                <p className="font-semibold">{formatDate(incident.createdAt)}</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* Main Content Tabs */}
+      <Tabs defaultValue="details" className="w-full">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="details">Details</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
           <TabsTrigger value="comments">Comments</TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
-        
-        <TabsContent value="details" className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-              <IncidentDetails 
-                incident={incident} 
-                formatDate={formatDate} 
-                formatDateTime={formatDateTime}
-                getStatusColor={getStatusColor}
-                handleStatusChange={handleStatusChange}
-                statusUpdate={statusUpdate}
-                setStatusUpdate={setStatusUpdate}
-                updateIncident={updateIncident}
-                isClosureFormOpen={isClosureFormOpen}
-                setIsClosureFormOpen={setIsClosureFormOpen}
-                onClosureFormSubmit={handleClosureFormSubmit}
-              />
-            </div>
-            <div className="lg:col-span-1">
-              <PeopleInvolved 
-                people={incident.peopleInvolved} 
-              />
-            </div>
-          </div>
+
+        <TabsContent value="details" className="mt-6">
+          <IncidentDetails 
+            incident={incident}
+            statusUpdate={statusUpdate}
+            setStatusUpdate={setStatusUpdate}
+            handleStatusChange={handleStatusChange}
+            formatDate={formatDate}
+            getStatusColor={getStatusColor}
+          />
         </TabsContent>
 
-        <TabsContent value="documents" className="space-y-6">
-          <SupportingDocuments documents={incident.documents || []} />
+        <TabsContent value="documents" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Supporting Documents</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {incident.documents && incident.documents.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {incident.documents.map((doc, index) => (
+                    <div key={index} className="border rounded-lg p-4">
+                      <p className="font-medium">{doc.name}</p>
+                      <p className="text-sm text-gray-500">{doc.type}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500 text-center py-6">No documents attached</p>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
-        
-        <TabsContent value="comments" className="space-y-6">
-          <InlineCommentForm 
+
+        <TabsContent value="comments" className="mt-6 space-y-6">
+          {/* Add Comment Form */}
+          <InlineCommentForm
             incidentId={incident.id}
-            commentText={commentText}
-            setCommentText={setCommentText}
-            commentFiles={commentFiles}
-            setCommentFiles={setCommentFiles}
-            isSubmitting={isSubmitting}
-            setIsSubmitting={setIsSubmitting}
+            commentText={localCommentText}
+            setCommentText={setLocalCommentText}
+            commentFiles={localCommentFiles}
+            setCommentFiles={setLocalCommentFiles}
+            isSubmitting={localIsSubmitting}
+            setIsSubmitting={setLocalIsSubmitting}
             onCommentAdded={handleCommentAdded}
           />
-          
-          <CommentsList 
+
+          {/* Comments List */}
+          <CommentsList
+            key={refreshKey}
             comments={incident.comments || []}
             incident={incident}
             addComment={addComment}
@@ -141,15 +217,38 @@ const IncidentDetailContent = ({
             formatDateTime={formatDateTime}
             getCommentStatusColor={getCommentStatusColor}
             canEditComment={canEditComment}
-            userId={user?.id || ''}
-            userName={user?.name || ''}
+            userId={userId}
+            userName={userName}
           />
         </TabsContent>
-        
-        <TabsContent value="history" className="space-y-4">
-          <AuditTrail 
-            activities={incidentActivities}
-          />
+
+        <TabsContent value="history" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Activity History</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {incidentActivities && incidentActivities.length > 0 ? (
+                <div className="space-y-4">
+                  {incidentActivities.map((activity, index) => (
+                    <div key={index} className="flex items-start space-x-3 pb-4 border-b border-gray-200 last:border-b-0">
+                      <div className="flex-shrink-0">
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                          <AlertTriangle className="w-4 h-4 text-blue-600" />
+                        </div>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm text-gray-900">{activity.description}</p>
+                        <p className="text-xs text-gray-500 mt-1">{formatDateTime(activity.date)}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500 text-center py-6">No activity history available</p>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

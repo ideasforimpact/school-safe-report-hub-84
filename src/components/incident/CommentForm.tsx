@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import MultipleFilesUpload from '@/components/MultipleFilesUpload';
 import { useAddIncidentComment } from '@/hooks/useAddIncidentComment';
 import { toast } from 'sonner';
+import { Loader } from 'lucide-react';
 import {
   DialogContent,
   DialogHeader,
@@ -17,8 +18,8 @@ import {
 
 interface CommentFormProps {
   users: { id: string; name: string }[];
-  incidentId: string; // Add incident ID prop
-  onCommentAdded?: () => void; // Callback for when comment is successfully added
+  incidentId: string;
+  onCommentAdded?: () => void;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   title: string;
@@ -72,7 +73,7 @@ const CommentForm: React.FC<CommentFormProps> = ({
       // Close dialog
       onOpenChange(false);
       
-      // Notify parent component
+      // Notify parent component to refresh comments
       if (onCommentAdded) {
         onCommentAdded();
       }
@@ -105,6 +106,7 @@ const CommentForm: React.FC<CommentFormProps> = ({
               placeholder="Your comment"
               required
               className="min-h-[120px]"
+              disabled={isLoading}
             />
           </div>
 
@@ -129,6 +131,7 @@ const CommentForm: React.FC<CommentFormProps> = ({
             </Button>
           </DialogClose>
           <Button type="submit" disabled={isLoading || !commentText.trim()}>
+            {isLoading && <Loader className="h-4 w-4 animate-spin mr-2" />}
             {isLoading ? 'Adding...' : submitLabel}
           </Button>
         </DialogFooter>
