@@ -97,7 +97,7 @@ const EditIncidentPage = () => {
         </div>
 
         <div className="w-full py-6">
-          <EditIncidentForm />
+          <EditIncidentForm incident={incident} />
         </div>
       </div>
     </Layout>

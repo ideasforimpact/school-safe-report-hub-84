@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
@@ -10,15 +11,18 @@ import { Plus, Trash2, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth/AuthContext';
-import { Person } from '@/types/incident';
+import { Person, Incident } from '@/types/incident';
 import { useIncidentForm } from '@/hooks/useIncidentForm';
 
-const EditIncidentForm: React.FC = () => {
+interface EditIncidentFormProps {
+  incident: Incident;
+}
+
+const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incident }) => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   
   // Get form configuration data
   const {
@@ -31,98 +35,63 @@ const EditIncidentForm: React.FC = () => {
     users: incidentUsers
   } = useIncidentForm();
 
-  // Form state
-  const [formData, setFormData] = useState({
-    type: '',
-    typeId: '',
-    categoryId: '',
-    subcategoryId: '',
-    description: '',
-    date: new Date().toISOString().split('T')[0],
-    time: new Date().toTimeString().split(' ')[0].slice(0, 5),
-    locationId: '',
-    status: 'Open',
-    owner: '',
-    facilityId: '',
-    priority: 'Medium' as 'Low' | 'Medium' | 'High' | 'Critical',
-    priorityId: ''
+  // Form state - initialize with incident data
+  const [formData, setFormData] = useState(() => {
+    // Parse the date to get date and time
+    const incidentDate = new Date(incident.date);
+    const dateString = incidentDate.toISOString().split('T')[0];
+    const timeString = incidentDate.toTimeString().split(' ')[0].slice(0, 5);
+
+    // Find IDs for the form
+    const typeId = reportTypes.find(t => t.name === incident.type)?.id || '';
+    const categoryId = categories.find(c => c.name === incident.category)?.id || '';
+    const subcategoryId = subcategories.find(s => s.name === incident.subcategory)?.id || '';
+    const locationId = locations.find(l => l.name === incident.location)?.id || '';
+    const facilityId = facilities.find(f => f.name === incident.facility)?.id || '';
+    const priorityId = priorities.find(p => p.name === incident.priority)?.id || '';
+
+    return {
+      type: incident.type,
+      typeId,
+      categoryId,
+      subcategoryId,
+      description: incident.description || '',
+      date: dateString,
+      time: timeString,
+      locationId,
+      status: incident.status,
+      owner: incident.owner?.id || '',
+      facilityId,
+      priority: incident.priority || 'Medium',
+      priorityId
+    };
   });
 
-  const [peopleInvolved, setPeopleInvolved] = useState<Person[]>([]);
+  const [peopleInvolved, setPeopleInvolved] = useState<Person[]>(
+    incident.peopleInvolved || []
+  );
 
-  // Fetch incident data
+  // Update form data when configuration data loads
   useEffect(() => {
-    const fetchIncident = async () => {
-      if (!id) return;
-      
-      setIsLoading(true);
-      try {
-        const { data: incident, error } = await supabase
-          .from('incidents')
-          .select(`
-            *,
-            incident_report_types:type_id(id, name),
-            incident_categories:category_id(id, name),
-            incident_subcategories:subcategory_id(id, name),
-            campuses:location_id(id, name),
-            facilities:facility_id(id, name),
-            incident_priorities:priority_id(id, name),
-            incident_status:status_id(id, name)
-          `)
-          .eq('id', id)
-          .single();
+    if (reportTypes.length > 0 && categories.length > 0 && locations.length > 0) {
+      const typeId = reportTypes.find(t => t.name === incident.type)?.id || '';
+      const categoryId = categories.find(c => c.name === incident.category)?.id || '';
+      const subcategoryId = subcategories.find(s => s.name === incident.subcategory)?.id || '';
+      const locationId = locations.find(l => l.name === incident.location)?.id || '';
+      const facilityId = facilities.find(f => f.name === incident.facility)?.id || '';
+      const priorityId = priorities.find(p => p.name === incident.priority)?.id || '';
 
-        if (error) {
-          console.error('Error fetching incident:', error);
-          toast.error('Failed to load incident data');
-          return;
-        }
-
-        if (incident) {
-          // Parse the date to get date and time
-          const incidentDate = new Date(incident.date);
-          const dateString = incidentDate.toISOString().split('T')[0];
-          const timeString = incidentDate.toTimeString().split(' ')[0].slice(0, 5);
-
-          setFormData({
-            type: incident.incident_report_types?.name || '',
-            typeId: incident.type_id || '',
-            categoryId: incident.category_id || '',
-            subcategoryId: incident.subcategory_id || '',
-            description: incident.description || '',
-            date: dateString,
-            time: timeString,
-            locationId: incident.location_id || '',
-            status: incident.incident_status?.name || 'Open',
-            owner: incident.assigned_to || '',
-            facilityId: incident.facility_id || '',
-            priority: incident.incident_priorities?.name as 'Low' | 'Medium' | 'High' | 'Critical' || 'Medium',
-            priorityId: incident.priority_id || ''
-          });
-
-          // Safely cast people_involved from Json to Person[]
-          const peopleData = incident.people_involved;
-          if (Array.isArray(peopleData)) {
-            const typedPeople = peopleData.map((person: any) => ({
-              name: person.name || '',
-              role: person.role || 'Student',
-              notes: person.notes || ''
-            })) as Person[];
-            setPeopleInvolved(typedPeople);
-          } else {
-            setPeopleInvolved([]);
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching incident:', error);
-        toast.error('Failed to load incident data');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchIncident();
-  }, [id]);
+      setFormData(prev => ({
+        ...prev,
+        typeId,
+        categoryId,
+        subcategoryId,
+        locationId,
+        facilityId,
+        priorityId
+      }));
+    }
+  }, [reportTypes, categories, subcategories, locations, facilities, priorities, incident]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -228,16 +197,6 @@ const EditIncidentForm: React.FC = () => {
   const handleCancel = () => {
     navigate(`/incident/${id}`);
   };
-
-  if (isLoading) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-center py-12">
-          <div className="text-lg">Loading incident data...</div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
