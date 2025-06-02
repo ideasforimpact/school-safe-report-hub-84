@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Person } from '@/types/incident';
 import { Student } from '@/types/student';
@@ -29,7 +30,7 @@ interface PeopleInvolvedSectionProps {
   onRemovePerson: (index: number) => void;
   students: Student[];
   employees: UserBasicInfo[];
-  errors?: FormErrors; // Add optional errors prop
+  errors?: FormErrors;
 }
 
 const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
@@ -39,17 +40,44 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   onRemovePerson,
   students,
   employees,
-  errors = {} // Default to empty object
+  errors = {}
 }) => {
   const { employeeData } = useAuth();
   const [staffMembers, setStaffMembers] = useState<Employee[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([]);
   const [isLoadingStaff, setIsLoadingStaff] = useState(false);
   const [isLoadingStudents, setIsLoadingStudents] = useState(false);
+  const [clientType, setClientType] = useState<string>('');
   
   // State for search functionality
   const [searchQueries, setSearchQueries] = useState<Record<number, string>>({});
   const [isSearching, setIsSearching] = useState<Record<number, boolean>>({});
+
+  // Fetch client type information
+  useEffect(() => {
+    const fetchClientType = async () => {
+      if (!employeeData?.clientId) return;
+
+      try {
+        const { data: clientData, error } = await supabase
+          .from('clients')
+          .select('institution_type')
+          .eq('id', employeeData.clientId)
+          .single();
+
+        if (error) {
+          console.error('Error fetching client type:', error);
+          return;
+        }
+
+        setClientType(clientData?.institution_type || '');
+      } catch (error) {
+        console.error('Error fetching client type:', error);
+      }
+    };
+
+    fetchClientType();
+  }, [employeeData?.clientId]);
 
   // Fetch staff members when component mounts
   useEffect(() => {
@@ -208,8 +236,8 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
               }}
               placeholder={
                 isLoading 
-                  ? `Loading ${person.role === 'Student' ? 'organisation' : person.role.toLowerCase()}s...` 
-                  : `Search by ${person.role === 'Student' ? 'organisation' : person.role.toLowerCase()} name...`
+                  ? `Loading ${person.role === 'Student' ? 'students' : person.role.toLowerCase()}s...` 
+                  : `Search by ${person.role === 'Student' ? 'student' : person.role.toLowerCase()} name...`
               }
               className={`w-full pr-8 ${hasError ? 'border-red-500' : ''}`}
               disabled={isLoading}
@@ -283,6 +311,24 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
     }
   };
 
+  // Helper function to get role options based on client type
+  const getRoleOptions = () => {
+    const options = [];
+    
+    // Only show Student option if client type is "school"
+    if (clientType.toLowerCase() === 'school') {
+      options.push({ value: 'Student', label: 'Student' });
+    }
+    
+    // Always show Staff and Other options
+    options.push(
+      { value: 'Staff', label: 'Staff' },
+      { value: 'Other', label: 'Other' }
+    );
+    
+    return options;
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -304,6 +350,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
         <div className="space-y-4">
           {peopleInvolved.map((person, index) => {
             const roleError = errors[`peopleInvolved.${index}.role`];
+            const roleOptions = getRoleOptions();
             
             return (
               <div key={index} className="flex flex-col md:flex-row gap-3 p-3 border rounded-md bg-gray-50">
@@ -317,9 +364,11 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
                     className={`w-full p-2 border rounded-md text-sm bg-white ${roleError ? 'border-red-500' : ''}`}
                   >
                     <option value="">Select role</option>
-                    <option value="Student">Organisation</option>
-                    <option value="Staff">Staff</option>
-                    <option value="Other">Other</option>
+                    {roleOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
                   </select>
                   {roleError && (
                     <p className="text-red-500 text-xs mt-1">{roleError}</p>
