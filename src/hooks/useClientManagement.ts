@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Client, useClient, InstitutionType, ModuleInfo } from '@/contexts/ClientContext';
 import { OAuthProviderName } from '@/utils/authProviders';
@@ -72,7 +73,92 @@ export const useClientManagement = () => {
     return allowedDomains.some(domain => domain.toLowerCase() === emailDomain);
   };
 
-  // ... keep existing code (createEmployeeFromSuperAdminEmail and updateEmployeeFromSuperAdminEmail functions)
+  // Helper function to create employee from super admin email
+  const createEmployeeFromSuperAdminEmail = async (clientId: string, superAdminEmail: string) => {
+    try {
+      // Extract employee_id from the email (part before @ symbol)
+      const employeeId = superAdminEmail.split('@')[0];
+      
+      // Create the employee record
+      const employeeData = {
+        employee_id: employeeId,
+        first_name: employeeId, // Using the part before @ as first name
+        last_name: '', // Empty last name
+        email: superAdminEmail,
+        department: 'Admin',
+        employee_type: 'permanent',
+        status: true,
+        is_super_admin: true,
+        client_id: clientId,
+        joining_date: new Date().toISOString()
+      };
+
+      const { data, error } = await supabase
+        .from('employees')
+        .insert([employeeData])
+        .select('*')
+        .single();
+
+      if (error) {
+        console.error("Error creating employee from super admin email:", error);
+        throw new Error(`Failed to create super admin employee: ${error.message}`);
+      }
+
+      console.log('Created new super admin employee:', data);
+      return data;
+    } catch (err) {
+      console.error('Error in createEmployeeFromSuperAdminEmail:', err);
+      throw err;
+    }
+  };
+
+  // Helper function to update super admin employee
+  const updateEmployeeFromSuperAdminEmail = async (clientId: string, superAdminEmail: string) => {
+    try {
+      // Check if a super admin employee already exists for this client
+      const { data: existingEmployee, error: empError } = await supabase
+        .from('employees')
+        .select('*')
+        .eq('client_id', clientId)
+        .eq('is_super_admin', true)
+        .single();
+
+      if (empError) {
+        if (empError.code === 'PGRST116') {
+          // No super admin exists, create one
+          return await createEmployeeFromSuperAdminEmail(clientId, superAdminEmail);
+        }
+        console.error('Error checking for existing employee:', empError);
+        return null;
+      }
+      
+      // Update existing employee if email changed
+      if (existingEmployee.email !== superAdminEmail) {
+        const employeeId = superAdminEmail.split('@')[0];
+        const { data, error } = await supabase
+          .from('employees')
+          .update({
+            email: superAdminEmail,
+            employee_id: employeeId,
+            first_name: employeeId
+          })
+          .eq('id', existingEmployee.id)
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Error updating employee email:', error);
+          return null;
+        }
+        return data;
+      }
+      
+      return existingEmployee;
+    } catch (err) {
+      console.error('Error in updateEmployeeFromSuperAdminEmail:', err);
+      return null;
+    }
+  };
 
   const handleAddClient = async () => {
     // Prevent duplicate calls - check submission state first
@@ -128,7 +214,8 @@ export const useClientManagement = () => {
           institutionType: formData.institutionType,
           allowedDomains: formData.allowedDomains,
           superAdminAllowedDomains: formData.superAdminAllowedDomains,
-          authProviders: formData.authProviders
+          authProviders: formData.authProviders,
+          website: formData.website
         }
       };
       

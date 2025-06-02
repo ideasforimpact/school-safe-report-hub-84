@@ -16,19 +16,21 @@ interface ClientData {
   id?: string;
   name: string;
   email?: string;
-  contact_person?: string;
+  contactPerson?: string;
   phone?: string;
   active: boolean;
   logo?: string;
   client_logo?: string;
-  institution_type?: string;
+  institutionType?: string;
   client_type_id?: string;
-  allowed_domains?: string;
-  super_admin_allowed_domain?: string;
+  allowedDomains?: string[];
+  superAdminAllowedDomains?: string[];
   auth_providers?: string;
   moduleAccess?: Record<string, boolean>;
   superAdminEmail?: string;
   clientTypeId?: string;
+  authProviders?: Record<string, boolean>;
+  website?: string;
 }
 
 interface ModuleInfo {
@@ -756,7 +758,7 @@ async function handleCreateClient(clientData: any) {
   try {
     const { modules, superAdminEmail, clientTypeId, logo, ...clientInfo } = clientData;
     
-    // Generate a new UUID for the client (don't use the provided ID)
+    // Generate a new UUID for the client
     clientId = crypto.randomUUID();
     
     console.log('Logo data check:', {
@@ -779,7 +781,7 @@ async function handleCreateClient(clientData: any) {
       console.log('No logo provided for client creation');
     }
     
-    // Prepare client data for insertion - include all the data properly
+    // Prepare client data for insertion - include ALL the data properly
     const clientRecord = {
       id: clientId,
       name: clientInfo.name || '',
@@ -810,7 +812,7 @@ async function handleCreateClient(clientData: any) {
     
     console.log('Client record inserted successfully:', insertedClient.id);
     
-    // Validate and create super admin employee if email provided (before processing modules)
+    // Validate and create super admin employee if email provided
     if (superAdminEmail) {
       console.log('Creating super admin employee...');
       try {
