@@ -1,18 +1,22 @@
 
-/**
- * Extract a simple numeric ID from a ticket ID string
- * @param ticketId The full ticket ID (e.g., "SR-2025-001")
- * @returns A simpler ID between 1-100
- */
 export const getSimpleId = (ticketId: string): string => {
-  // Extract all numbers from the ticket ID
-  const numbers = ticketId.match(/\d+/g);
-  if (!numbers || numbers.length === 0) return "1";
+  if (!ticketId) return 'N/A';
   
-  // Get the last number from the extracted numbers (the sequential ID)
-  const lastNumber = numbers[numbers.length - 1];
+  // If it's already in simple format (like INC-1234), return as is
+  if (ticketId.includes('-')) {
+    return ticketId;
+  }
   
-  // Parse the number and return it as a string
-  const idNumber = parseInt(lastNumber, 10);
-  return idNumber.toString();
+  // If it's a UUID, take the first 8 characters and format
+  if (ticketId.length > 10) {
+    return `INC-${ticketId.substring(0, 8).toUpperCase()}`;
+  }
+  
+  return ticketId;
+};
+
+export const generateTicketId = (): string => {
+  const timestamp = Date.now().toString(36);
+  const randomPart = Math.random().toString(36).substring(2, 8);
+  return `INC-${timestamp}-${randomPart}`.toUpperCase();
 };
