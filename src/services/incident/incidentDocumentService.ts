@@ -41,7 +41,6 @@ class IncidentDocumentService {
       // Create unique file path
       const timestamp = Date.now();
       const randomId = Math.random().toString(36).substring(2);
-      const fileExtension = file.name.split('.').pop() || '';
       const fileName = `${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}_${timestamp}_${randomId}`;
       const filePath = `${incidentId}/${fileName}`;
 
@@ -63,15 +62,19 @@ class IncidentDocumentService {
         .from('incident-documents')
         .getPublicUrl(filePath);
 
-      // Save metadata to database using raw SQL query to avoid TypeScript issues
-      const { data: docData, error: docError } = await supabase.rpc('create_incident_document', {
-        p_incident_id: incidentId,
-        p_file_name: file.name,
-        p_file_path: filePath,
-        p_file_size: file.size,
-        p_mime_type: file.type,
-        p_storage_url: urlData.publicUrl
-      });
+      // Save metadata to database using direct table insert
+      const { data: docData, error: docError } = await supabase
+        .from('incident_documents')
+        .insert({
+          incident_id: incidentId,
+          file_name: file.name,
+          file_path: filePath,
+          file_size: file.size,
+          mime_type: file.type,
+          storage_url: urlData.publicUrl
+        })
+        .select()
+        .single();
 
       if (docError) {
         // Clean up uploaded file if database insert fails
@@ -103,12 +106,14 @@ class IncidentDocumentService {
     return Promise.all(uploadPromises);
   }
 
-  // Get documents for an incident using raw SQL to avoid TypeScript issues
+  // Get documents for an incident using direct table query
   async getIncidentDocuments(incidentId: string): Promise<IncidentDocumentRecord[]> {
     try {
-      const { data, error } = await supabase.rpc('get_incident_documents', {
-        p_incident_id: incidentId
-      });
+      const { data, error } = await supabase
+        .from('incident_documents')
+        .select('*')
+        .eq('incident_id', incidentId)
+        .order('created_at', { ascending: false });
 
       if (error) {
         throw new Error(`Failed to fetch incident documents: ${error.message}`);
@@ -132,15 +137,35 @@ class IncidentDocumentService {
     }
   }
 
-  // Delete a document using raw SQL
+  // Delete a document using direct table delete
   async deleteDocument(documentId: string): Promise<void> {
     try {
-      const { data, error } = await supabase.rpc('delete_incident_document', {
-        p_document_id: documentId
-      });
+      // First get the document to find the file path
+      const { data: docData, error: fetchError } = await supabase
+        .from('incident_documents')
+        .select('file_path')
+        .eq('id', documentId)
+        .single();
 
-      if (error) {
-        throw new Error(`Failed to delete document: ${error.message}`);
+      if (fetchError) {
+        throw new Error(`Failed to fetch document: ${fetchError.message}`);
+      }
+
+      // Delete from storage
+      if (docData?.file_path) {
+        await supabase.storage
+          .from('incident-documents')
+          .remove([docData.file_path]);
+      }
+
+      // Delete from database
+      const { error: deleteError } = await supabase
+        .from('incident_documents')
+        .delete()
+        .eq('id', documentId);
+
+      if (deleteError) {
+        throw new Error(`Failed to delete document: ${deleteError.message}`);
       }
     } catch (error) {
       console.error('Error deleting document:', error);

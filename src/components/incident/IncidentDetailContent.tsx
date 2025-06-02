@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -256,20 +255,10 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
             onCommentAdded={handleCommentAdded}
           />
 
-          {/* Comments List */}
+          {/* Comments List - Fixed props to match the component interface */}
           <CommentsList
             key={refreshKey}
-            comments={displayIncident.comments || []}
             incident={displayIncident}
-            addComment={addComment}
-            updateComment={updateComment}
-            deleteComment={deleteComment}
-            formatDate={formatDate}
-            formatDateTime={formatDateTime}
-            getCommentStatusColor={getCommentStatusColor}
-            canEditComment={canEditComment}
-            userId={userId}
-            userName={userName}
           />
         </TabsContent>
 
