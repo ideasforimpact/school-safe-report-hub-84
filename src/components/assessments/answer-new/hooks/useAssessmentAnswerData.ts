@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth/AuthContext';
@@ -75,63 +74,79 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
 
         // Fetch template using the template_id from the assessment
         if (assessmentData.template_id) {
+          console.log('Fetching template with ID:', assessmentData.template_id);
+          
           const { data: templateData, error: templateError } = await supabase
             .from('assessment_templates')
             .select('*')
             .eq('id', assessmentData.template_id)
-            .eq('client_id', clientId)
             .maybeSingle();
 
           if (templateError) {
             console.error('Template fetch error:', templateError);
-            throw new Error('Failed to fetch assessment template');
+            throw new Error(`Failed to fetch assessment template: ${templateError.message}`);
           }
 
           if (!templateData) {
             console.log(`Template with ID ${assessmentData.template_id} not found`);
-            throw new Error('Assessment template not found');
+            // Try to fetch without client_id filter as a fallback
+            const { data: fallbackTemplateData, error: fallbackError } = await supabase
+              .from('assessment_templates')
+              .select('*')
+              .eq('id', assessmentData.template_id)
+              .maybeSingle();
+              
+            if (fallbackError || !fallbackTemplateData) {
+              throw new Error('Assessment template not found');
+            }
+            
+            console.log('Found template using fallback method:', fallbackTemplateData);
+            setTemplate(fallbackTemplateData);
+          } else {
+            console.log('Fetched template data:', templateData);
+            setTemplate(templateData);
           }
-
-          console.log('Fetched template data:', templateData);
-          setTemplate(templateData);
           
           // Parse questions from JSONB and initialize answers array
-          const questions = Array.isArray(templateData.questions) 
-            ? (templateData.questions as unknown as Question[])
-            : [];
+          const currentTemplate = templateData || null;
+          if (currentTemplate) {
+            const questions = Array.isArray(currentTemplate.questions) 
+              ? (currentTemplate.questions as unknown as Question[])
+              : [];
+              
+            console.log('Parsed questions:', questions);
             
-          console.log('Parsed questions:', questions);
-          
-          // Load existing answers if they exist
-          let existingAnswers: any[] = [];
-          
-          if (assessmentData.answers) {
-            if (Array.isArray(assessmentData.answers)) {
-              existingAnswers = assessmentData.answers;
-            } else if (typeof assessmentData.answers === 'object') {
-              existingAnswers = Object.values(assessmentData.answers);
+            // Load existing answers if they exist
+            let existingAnswers: any[] = [];
+            
+            if (assessmentData.answers) {
+              if (Array.isArray(assessmentData.answers)) {
+                existingAnswers = assessmentData.answers;
+              } else if (typeof assessmentData.answers === 'object') {
+                existingAnswers = Object.values(assessmentData.answers);
+              }
             }
+            
+            console.log('Existing answers from database:', existingAnswers);
+            
+            const initialAnswers = questions.map((question: Question) => {
+              const existingAnswer = existingAnswers.find((ans: any) => 
+                ans && typeof ans === 'object' && ans.questionId === question.id
+              );
+              
+              console.log(`Question ${question.id} existing answer:`, existingAnswer);
+              
+              return {
+                questionId: question.id,
+                answer: existingAnswer?.answer !== undefined ? existingAnswer.answer : undefined,
+                comment: existingAnswer?.comment || '',
+                attachments: existingAnswer?.attachments || []
+              };
+            });
+            
+            console.log('Initialized answers with existing data:', initialAnswers);
+            setAnswers(initialAnswers);
           }
-          
-          console.log('Existing answers from database:', existingAnswers);
-          
-          const initialAnswers = questions.map((question: Question) => {
-            const existingAnswer = existingAnswers.find((ans: any) => 
-              ans && typeof ans === 'object' && ans.questionId === question.id
-            );
-            
-            console.log(`Question ${question.id} existing answer:`, existingAnswer);
-            
-            return {
-              questionId: question.id,
-              answer: existingAnswer?.answer !== undefined ? existingAnswer.answer : undefined,
-              comment: existingAnswer?.comment || '',
-              attachments: existingAnswer?.attachments || []
-            };
-          });
-          
-          console.log('Initialized answers with existing data:', initialAnswers);
-          setAnswers(initialAnswers);
         } else {
           throw new Error('Assessment has no associated template');
         }
