@@ -1,6 +1,5 @@
 
 import { supabase } from '@/integrations/supabase/client';
-import { IncidentRecord } from '@/services/incidentService';
 
 export interface EditIncidentData {
   id: string;
@@ -32,7 +31,8 @@ export interface EditIncidentData {
 
 export const fetchIncidentForEdit = async (incidentId: string, clientId: string): Promise<EditIncidentData | null> => {
   try {
-    console.log('Fetching incident for edit:', { incidentId, clientId });
+    console.log('=== EDIT INCIDENT SERVICE ===');
+    console.log('fetchIncidentForEdit - Starting with params:', { incidentId, clientId });
 
     const { data: incident, error } = await supabase
       .from('incidents')
@@ -89,21 +89,23 @@ export const fetchIncidentForEdit = async (incidentId: string, clientId: string)
       .single();
 
     if (error) {
-      console.error('Error fetching incident for edit:', error);
+      console.error('fetchIncidentForEdit - Supabase error:', error);
       throw new Error(`Failed to fetch incident: ${error.message}`);
     }
 
     if (!incident) {
-      console.log('No incident found with ID:', incidentId);
+      console.log('fetchIncidentForEdit - No incident found with ID:', incidentId);
       return null;
     }
 
-    console.log('Raw incident data:', incident);
+    console.log('fetchIncidentForEdit - Raw incident data from DB:', incident);
 
     // Parse the date to get date and time
     const incidentDate = new Date(incident.date);
     const dateString = incidentDate.toISOString().split('T')[0];
     const timeString = incidentDate.toTimeString().split(' ')[0].slice(0, 5);
+
+    console.log('fetchIncidentForEdit - Parsed date and time:', { dateString, timeString });
 
     // Transform the data for the edit form
     const editData: EditIncidentData = {
@@ -136,11 +138,12 @@ export const fetchIncidentForEdit = async (incidentId: string, clientId: string)
       updatedAt: new Date(incident.updated_at)
     };
 
-    console.log('Transformed edit data:', editData);
+    console.log('fetchIncidentForEdit - Transformed edit data:', editData);
+    console.log('=== END EDIT INCIDENT SERVICE ===');
     return editData;
 
   } catch (error) {
-    console.error('Error in fetchIncidentForEdit:', error);
+    console.error('fetchIncidentForEdit - Service error:', error);
     throw error;
   }
 };

@@ -13,12 +13,16 @@ const EditIncidentPage = () => {
   const navigate = useNavigate();
   const { incidentData, isLoading, error } = useEditIncidentData(id);
 
-  console.log('EditIncidentPage - ID:', id);
-  console.log('EditIncidentPage - Loading:', isLoading);
+  // Add comprehensive logging for debugging
+  console.log('=== EDIT INCIDENT PAGE DEBUG ===');
+  console.log('EditIncidentPage - ID from params:', id);
+  console.log('EditIncidentPage - Is Loading:', isLoading);
   console.log('EditIncidentPage - Error:', error);
-  console.log('EditIncidentPage - Incident data:', incidentData);
+  console.log('EditIncidentPage - Incident data received:', incidentData);
+  console.log('=== END EDIT INCIDENT PAGE DEBUG ===');
 
   if (!id) {
+    console.log('EditIncidentPage - No ID provided, showing error');
     return (
       <Layout>
         <div className="space-y-4 md:space-y-6 w-full overflow-x-hidden">
@@ -45,6 +49,7 @@ const EditIncidentPage = () => {
   }
 
   if (isLoading) {
+    console.log('EditIncidentPage - Still loading incident data');
     return (
       <Layout>
         <div className="space-y-4 md:space-y-6 w-full overflow-x-hidden">
@@ -60,6 +65,7 @@ const EditIncidentPage = () => {
   }
 
   if (error || !incidentData) {
+    console.log('EditIncidentPage - Error or no data:', { error, hasIncidentData: !!incidentData });
     return (
       <Layout>
         <div className="space-y-4 md:space-y-6 w-full overflow-x-hidden">
@@ -84,6 +90,8 @@ const EditIncidentPage = () => {
       </Layout>
     );
   }
+
+  console.log('EditIncidentPage - Rendering form with incident data:', incidentData);
 
   return (
     <Layout>
