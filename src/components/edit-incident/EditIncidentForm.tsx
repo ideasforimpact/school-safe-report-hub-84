@@ -186,25 +186,9 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      <div className="mb-6">
-        <Button 
-          variant="ghost" 
-          className="flex items-center -ml-4 mb-4"
-          onClick={handleCancel}
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Incident Details
-        </Button>
-        
-        <h1 className="text-2xl font-semibold text-gray-900">Edit Incident</h1>
-        <p className="text-gray-600 text-sm mt-1">
-          Update incident information and details
-        </p>
-      </div>
-
       <form onSubmit={handleSubmit} className="w-full">
-        <Card className="border-none shadow-none bg-gray-50">
-          <CardContent className="space-y-6 px-8 py-8">
+        <Card className="bg-white shadow-sm border border-gray-200">
+          <CardContent className="space-y-6 p-6">
             {/* First Row - Report Type, Category, Location */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-2">
@@ -365,6 +349,25 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
               />
             </div>
 
+            {/* Assign To - Moved above People Involved */}
+            <div className="space-y-2">
+              <Label htmlFor="owner" className="text-sm font-medium text-gray-700">
+                Assign To
+              </Label>
+              <Select value={formData.owner} onValueChange={(value) => handleSelectChange('owner', value)}>
+                <SelectTrigger className="h-11 bg-white border-gray-300">
+                  <SelectValue placeholder="Select assignee" />
+                </SelectTrigger>
+                <SelectContent className="bg-white z-50">
+                  {incidentUsers.map((user) => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {user.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* People Involved */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -382,7 +385,7 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
               </div>
 
               {peopleInvolved.map((person, index) => (
-                <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-white rounded-lg border">
+                <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-white rounded-lg border border-gray-200">
                   <div className="space-y-2">
                     <Label className="text-xs text-gray-600">Name</Label>
                     <Input
@@ -402,7 +405,7 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
                       <SelectTrigger className="h-9">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-white z-50">
                         <SelectItem value="Student">Student</SelectItem>
                         <SelectItem value="Staff">Staff</SelectItem>
                         <SelectItem value="Other">Other</SelectItem>
@@ -434,28 +437,9 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
                 </div>
               ))}
             </div>
-
-            {/* Owner Assignment */}
-            <div className="space-y-2">
-              <Label htmlFor="owner" className="text-sm font-medium text-gray-700">
-                Assign To
-              </Label>
-              <Select value={formData.owner} onValueChange={(value) => handleSelectChange('owner', value)}>
-                <SelectTrigger className="h-11 bg-white border-gray-300">
-                  <SelectValue placeholder="Select assignee" />
-                </SelectTrigger>
-                <SelectContent className="bg-white z-50">
-                  {incidentUsers.map((user) => (
-                    <SelectItem key={user.id} value={user.id}>
-                      {user.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
           </CardContent>
 
-          <CardFooter className="flex justify-between border-t bg-white px-8 py-4">
+          <CardFooter className="flex justify-between border-t bg-white px-6 py-4">
             <Button 
               type="button" 
               variant="outline"
