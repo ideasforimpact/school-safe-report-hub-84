@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -529,6 +530,20 @@ async function processModuleAccess(clientId: string, moduleInfoArray: ModuleInfo
       return true;
     }
 
+    // Verify client exists before processing modules
+    const { data: clientData, error: clientError } = await supabase
+      .from('clients')
+      .select('id')
+      .eq('id', clientId)
+      .single();
+
+    if (clientError || !clientData) {
+      console.error(`Client ${clientId} does not exist in database:`, clientError);
+      return false;
+    }
+
+    console.log(`Client ${clientId} exists, proceeding with module processing`);
+
     // First, remove all existing modules for this client
     const { error: deleteError } = await supabase
       .from('client_modules')
@@ -637,6 +652,25 @@ async function handleCreateClient(clientData: any) {
       logoType: typeof logo,
       logoLength: logo ? logo.length : 0
     });
+
+    // First, verify the client exists in the database
+    const { data: existingClient, error: checkError } = await supabase
+      .from('clients')
+      .select('id')
+      .eq('id', clientId)
+      .single();
+
+    if (checkError && checkError.code !== 'PGRST116') {
+      console.error('Error checking for existing client:', checkError);
+      throw new Error('Failed to verify client existence');
+    }
+
+    if (!existingClient) {
+      console.error(`Client ${clientId} does not exist in database. Cannot proceed with module processing.`);
+      throw new Error('Client record not found in database. Please ensure the client is created first.');
+    }
+
+    console.log(`Client ${clientId} exists in database, proceeding with processing`);
     
     // Handle logo upload if provided
     let clientLogoUrl = null;
