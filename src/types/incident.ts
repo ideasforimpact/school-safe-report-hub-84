@@ -1,4 +1,3 @@
-
 // Types for Incident Management System
 export type IncidentType = 'Incident' | 'Near Miss' | 'Unsafe Condition';
 export type IncidentCategory = 
@@ -50,6 +49,8 @@ export interface FileItem {
   type: string;
   size: number;
   base64: string;
+  url?: string; // Added for storage URLs
+  path?: string; // Added for storage paths
 }
 
 export interface Comment {

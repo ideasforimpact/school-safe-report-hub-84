@@ -63,7 +63,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
         link.click();
         document.body.removeChild(link);
         toast.success(`Downloaded ${file.name}`);
-      } else {
+      } else if (file.base64) {
         // Fallback to base64 download (for backward compatibility)
         const documentItem = {
           id: file.id,
@@ -76,6 +76,8 @@ const CommentItem: React.FC<CommentItemProps> = ({
         
         await documentManager.downloadDocument(documentItem);
         toast.success(`Downloaded ${file.name}`);
+      } else {
+        toast.error('File not available for download');
       }
     } catch (error) {
       console.error('Error downloading file:', error);
@@ -91,9 +93,21 @@ const CommentItem: React.FC<CommentItemProps> = ({
 
   // Handle file preview
   const handlePreview = (file: any) => {
-    // For now, just open in new tab for storage URLs
+    // For storage URLs, open in new tab
     if (file.url) {
       window.open(file.url, '_blank');
+    } else if (file.base64) {
+      // For base64 files, create blob URL and open
+      try {
+        const blob = new Blob([atob(file.base64.split(',')[1] || file.base64)], { type: file.type });
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+        // Clean up the URL after a delay
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } catch (error) {
+        console.error('Error previewing file:', error);
+        toast.error('Failed to preview file');
+      }
     }
   };
 
@@ -197,11 +211,11 @@ const CommentItem: React.FC<CommentItemProps> = ({
                 
                 return (
                   <div key={file.id} className="border rounded-lg p-3 bg-white hover:shadow-sm transition-shadow">
-                    {/* File thumbnail for images from storage */}
-                    {isImage && file.url && (
+                    {/* File thumbnail for images from storage or base64 */}
+                    {isImage && (file.url || file.base64) && (
                       <div className="mb-3">
                         <img 
-                          src={file.url} 
+                          src={file.url || file.base64} 
                           alt={file.name} 
                           className="w-full h-20 object-cover rounded cursor-pointer"
                           onClick={() => handlePreview(file)}
@@ -220,7 +234,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
                       
                       {/* Action buttons */}
                       <div className="flex gap-2 mt-2">
-                        {canPreview && file.url && (
+                        {canPreview && (file.url || file.base64) && (
                           <Button
                             variant="outline"
                             size="sm"
