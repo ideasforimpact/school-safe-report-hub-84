@@ -1,30 +1,30 @@
 
 import { useState, useMemo } from 'react';
 import { Incident } from '@/types/incident';
-
-export interface IncidentFilters {
-  search: string;
-  status: string;
-  priority: string;
-  category: string;
-  subcategory: string;
-  location: string;
-  dateFrom: string;
-  dateTo: string;
-  showAdvanced: boolean;
-}
+import { FilterState } from '@/types/filterTypes';
 
 export const useIncidentFilters = (incidents: Incident[]) => {
-  const [filters, setFilters] = useState<IncidentFilters>({
+  const [filters, setFilters] = useState<FilterState>({
     search: '',
-    status: '', // Empty string means show all statuses including closed
-    priority: '',
+    type: '',
     category: '',
     subcategory: '',
+    status: '', // Empty string means show all statuses including closed
+    priority: '',
     location: '',
+    facility: '',
+    owner: '',
+    reportedBy: '',
+    startDate: null,
+    endDate: null,
+    showAdvancedFilters: false,
+    showClosedIncidents: true,
+    isVoided: false,
+    wasReopened: false,
+    hasAttachments: false,
+    involvedRole: '',
     dateFrom: '',
-    dateTo: '',
-    showAdvanced: false
+    dateTo: ''
   });
 
   // Extract unique values for filter options
@@ -91,7 +91,7 @@ export const useIncidentFilters = (incidents: Incident[]) => {
       // Location filter
       if (filters.location && incident.location !== filters.location) return false;
 
-      // Date range filter
+      // Date range filter using dateFrom and dateTo
       if (filters.dateFrom) {
         const fromDate = new Date(filters.dateFrom);
         const incidentDate = new Date(incident.date);
@@ -105,11 +105,24 @@ export const useIncidentFilters = (incidents: Incident[]) => {
         if (incidentDate > toDate) return false;
       }
 
+      // Date range filter using startDate and endDate (alternative date filtering)
+      if (filters.startDate) {
+        const incidentDate = new Date(incident.date);
+        if (incidentDate < filters.startDate) return false;
+      }
+
+      if (filters.endDate) {
+        const endDate = new Date(filters.endDate);
+        endDate.setHours(23, 59, 59, 999); // End of day
+        const incidentDate = new Date(incident.date);
+        if (incidentDate > endDate) return false;
+      }
+
       return true;
     });
   }, [incidents, filters]);
 
-  const handleFilterChange = (field: keyof IncidentFilters, value: any) => {
+  const handleFilterChange = (field: keyof FilterState, value: any) => {
     setFilters(prev => ({
       ...prev,
       [field]: value
@@ -119,21 +132,32 @@ export const useIncidentFilters = (incidents: Incident[]) => {
   const toggleAdvancedFilters = () => {
     setFilters(prev => ({
       ...prev,
-      showAdvanced: !prev.showAdvanced
+      showAdvancedFilters: !prev.showAdvancedFilters
     }));
   };
 
   const clearFilters = () => {
     setFilters({
       search: '',
-      status: '', // Reset to show all statuses
-      priority: '',
+      type: '',
       category: '',
       subcategory: '',
+      status: '', // Reset to show all statuses
+      priority: '',
       location: '',
+      facility: '',
+      owner: '',
+      reportedBy: '',
+      startDate: null,
+      endDate: null,
+      showAdvancedFilters: false,
+      showClosedIncidents: true,
+      isVoided: false,
+      wasReopened: false,
+      hasAttachments: false,
+      involvedRole: '',
       dateFrom: '',
-      dateTo: '',
-      showAdvanced: false
+      dateTo: ''
     });
   };
 
