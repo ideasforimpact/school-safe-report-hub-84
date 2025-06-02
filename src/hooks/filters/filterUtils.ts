@@ -33,7 +33,8 @@ export const applyFilters = (incidents: Incident[], filters: FilterState): Incid
       const searchMatch = 
         incident.ticketId.toLowerCase().includes(searchTerm) ||
         incident.description.toLowerCase().includes(searchTerm) ||
-        (incident.category && incident.category.toLowerCase().includes(searchTerm));
+        incident.category.toLowerCase().includes(searchTerm) ||
+        incident.subcategory.toLowerCase().includes(searchTerm);
       
       if (!searchMatch) return false;
     }
@@ -74,46 +75,38 @@ export const applyFilters = (incidents: Incident[], filters: FilterState): Incid
     }
 
     // Owner filter
-    if (filters.owner && (!incident.owner || incident.owner.id !== filters.owner)) {
+    if (filters.owner && (!incident.owner || incident.owner.name !== filters.owner)) {
+      return false;
+    }
+
+    // Reported by filter
+    if (filters.reportedBy && incident.reportedBy.name !== filters.reportedBy) {
       return false;
     }
 
     // Date range filters
     if (filters.dateFrom) {
       const fromDate = new Date(filters.dateFrom);
-      if (new Date(incident.date) < fromDate) {
-        return false;
-      }
+      if (incident.date < fromDate) return false;
     }
 
     if (filters.dateTo) {
       const toDate = new Date(filters.dateTo);
-      toDate.setHours(23, 59, 59, 999);
-      if (new Date(incident.date) > toDate) {
-        return false;
-      }
+      toDate.setHours(23, 59, 59, 999); // End of day
+      if (incident.date > toDate) return false;
     }
 
     // Advanced filters
+    if (!filters.showClosedIncidents && incident.status === 'Closed') {
+      return false;
+    }
+
     if (filters.isVoided && !incident.isVoided) {
       return false;
     }
 
     if (filters.wasReopened && !incident.wasReopened) {
       return false;
-    }
-
-    if (filters.hasAttachments) {
-      const hasFiles = incident.image || incident.video || incident.document || 
-                      (incident.documents && incident.documents.length > 0);
-      if (!hasFiles) return false;
-    }
-
-    if (filters.involvedRole) {
-      const hasRole = incident.peopleInvolved?.some(person => 
-        person.role === filters.involvedRole
-      );
-      if (!hasRole) return false;
     }
 
     return true;
