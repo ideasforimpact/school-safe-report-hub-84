@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
@@ -34,13 +35,14 @@ interface ModuleAccessTabProps {
     moduleInfoArray?: ModuleInfo[];
   };
   onModuleInfoChange?: (moduleInfoArray: ModuleInfo[]) => void;
-  isEdit?: boolean; // Add isEdit prop to determine if we're in edit or add mode
+  isEdit?: boolean;
 }
 
 const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false }: ModuleAccessTabProps) => {
   const [modules, setModules] = useState<Module[]>([]);
   const [loading, setLoading] = useState(false);
   const [moduleAccessState, setModuleAccessState] = useState<ModuleAccess[]>([]);
+  const [initialized, setInitialized] = useState(false);
 
   // Fetch modules only once during initial load
   useEffect(() => {
@@ -64,9 +66,6 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false }: Modul
         if (data && data.modules) {
           console.log("Modules fetched successfully:", data.modules.length);
           setModules(data.modules);
-          
-          // Initialize module access state based on formData
-          initializeModuleAccessState(data.modules);
         }
       } catch (error) {
         console.error("Error in fetchClientModules:", error);
@@ -79,18 +78,20 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false }: Modul
     fetchClientModules();
   }, []); // Only run on initial mount
   
-  // Initialize or update module access state when formData or modules change
+  // Initialize module access state when modules are loaded
   useEffect(() => {
-    if (modules.length > 0) {
+    if (modules.length > 0 && !initialized) {
       initializeModuleAccessState(modules);
+      setInitialized(true);
     }
-  }, [formData.moduleInfoArray, isEdit]);
+  }, [modules, initialized]);
   
-  // Initialize module access state based on moduleInfoArray
+  // Initialize module access state based on moduleInfoArray or set defaults
   const initializeModuleAccessState = (availableModules: Module[]) => {
     console.log("Initializing module access state with:", { 
       moduleInfoArray: formData.moduleInfoArray,
-      isEdit: isEdit
+      isEdit: isEdit,
+      availableModulesCount: availableModules.length
     });
     
     let initialModuleAccess: ModuleAccess[] = [];
@@ -126,17 +127,15 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false }: Modul
     }
     // Otherwise, set default values based on isEdit flag
     else {
-      console.log("Using default settings to initialize module states");
+      console.log("No moduleInfoArray provided, enabling all modules with admin access by default");
       initialModuleAccess = availableModules.map((module: Module) => {
-        // For new client (not edit mode) or edit mode with empty moduleInfoArray, 
-        // enable all modules by default with admin access
         return {
           name: module.name,
           module_id: module.id,
           is_admin: true, // Set all as admin by default
           is_enabled: true, // Enable all modules by default
           level: {
-            isAdmin: true, // Set all as admin by default
+            isAdmin: true,
             isEnabled: true
           }
         };
@@ -146,8 +145,8 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false }: Modul
     setModuleAccessState(initialModuleAccess);
     console.log("Initial module access state:", initialModuleAccess);
     
-    // If onModuleInfoChange callback is provided, use it to update parent
-    if (onModuleInfoChange) {
+    // Immediately notify parent component with the initial state
+    if (onModuleInfoChange && initialModuleAccess.length > 0) {
       const moduleInfoArray: ModuleInfo[] = initialModuleAccess
         .filter(module => module.is_enabled)
         .map(module => ({
@@ -155,14 +154,16 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false }: Modul
           module_id: module.module_id,
           is_admin: module.is_admin
         }));
+      
+      console.log("Notifying parent with initial module info array:", moduleInfoArray);
       onModuleInfoChange(moduleInfoArray);
     }
   };
 
   // Sync local state to parent component when moduleAccessState changes
   useEffect(() => {
-    // Skip on initial render
-    if (moduleAccessState.length === 0) return;
+    // Skip on initial render or when not initialized
+    if (moduleAccessState.length === 0 || !initialized) return;
     
     // If onModuleInfoChange callback is provided, use it to update parent
     if (onModuleInfoChange) {
@@ -176,7 +177,7 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false }: Modul
       console.log("Updating parent with module info array:", moduleInfoArray);
       onModuleInfoChange(moduleInfoArray);
     }
-  }, [moduleAccessState]);
+  }, [moduleAccessState, initialized, onModuleInfoChange]);
 
   // Handle clicking on the module checkbox
   const handleModuleCheckboxChange = (moduleId: string, checked: boolean) => {
