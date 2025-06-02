@@ -1,4 +1,3 @@
-
 import React from 'react';
 import Layout from '@/components/layout/Layout';
 import { useIncidents } from '@/contexts/incident'; // Fixed import path
@@ -104,10 +103,7 @@ const Dashboard = () => {
         {totalIncidents === 0 && (
           <Alert>
             <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Welcome to the Safety Management System</AlertTitle>
-            <AlertDescription>
-              Get started by reporting your first incident or exploring the system's features.
-            </AlertDescription>
+            <AlertTitle>Welcome to {schoolName}'s Safety Command Center</AlertTitle>
           </Alert>
         )}
         
