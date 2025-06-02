@@ -41,7 +41,7 @@ export const useIncidentData = () => {
 
       console.log('Fetching incidents for client:', clientId);
 
-      // Direct Supabase query without edge function
+      // Simple direct query to incidents table
       const { data: incidents, error } = await supabase
         .from('incidents')
         .select(`
@@ -65,8 +65,7 @@ export const useIncidentData = () => {
           assigned_employee:employees!assigned_to(first_name, last_name)
         `)
         .eq('client_id', clientId)
-        .order('created_at', { ascending: false })
-        .limit(100);
+        .order('created_at', { ascending: false });
 
       if (error) {
         console.error('Error fetching incidents:', error);
