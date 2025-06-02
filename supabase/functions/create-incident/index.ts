@@ -35,17 +35,16 @@ serve(async (req) => {
       clientId
     } = await req.json();
 
-    console.log('Creating incident with optimized query');
+    console.log('Creating incident with optimized approach');
 
     // Generate a ticket ID
-    const ticketId = `INC-${Math.floor(10000 + Math.random() * 90000)}`;
+    const ticketId = `INC-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
-    // Get the "Open" status ID with a simple, fast query
+    // Use a single efficient query to get the "Open" status ID
     const { data: statusData, error: statusError } = await supabaseClient
       .from('incident_status')
       .select('id')
       .eq('name', 'Open')
-      .limit(1)
       .single();
 
     if (statusError || !statusData) {
@@ -53,7 +52,7 @@ serve(async (req) => {
       throw new Error('Could not fetch incident status');
     }
 
-    // Prepare the incident record with minimal required fields first
+    // Prepare the incident record with all data
     const incidentRecord = {
       ticket_id: ticketId,
       description: description || '',
@@ -62,21 +61,19 @@ serve(async (req) => {
       status_id: statusData.id,
       client_id: clientId,
       people_involved: peopleInvolved || [],
-      documents: documents || []
+      documents: documents || [],
+      type_id: typeId || null,
+      category_id: categoryId || null,
+      subcategory_id: subcategoryId || null,
+      location_id: locationId || null,
+      facility_id: facilityId || null,
+      priority_id: priorityId || null,
+      assigned_to: assignedTo || null
     };
 
-    // Add optional fields only if they exist to reduce payload size
-    if (typeId) incidentRecord.type_id = typeId;
-    if (categoryId) incidentRecord.category_id = categoryId;
-    if (subcategoryId) incidentRecord.subcategory_id = subcategoryId;
-    if (locationId) incidentRecord.location_id = locationId;
-    if (facilityId) incidentRecord.facility_id = facilityId;
-    if (priorityId) incidentRecord.priority_id = priorityId;
-    if (assignedTo) incidentRecord.assigned_to = assignedTo;
+    console.log('Inserting incident with single query');
 
-    console.log('Inserting incident with minimal payload');
-
-    // Use a more efficient insert with select to get the created record
+    // Single optimized insert
     const { data: incident, error: incidentError } = await supabaseClient
       .from('incidents')
       .insert(incidentRecord)
@@ -107,8 +104,7 @@ serve(async (req) => {
     
     return new Response(
       JSON.stringify({ 
-        error: error.message || 'An unexpected error occurred',
-        details: 'Database operation timed out. Please try again.'
+        error: error.message || 'An unexpected error occurred'
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

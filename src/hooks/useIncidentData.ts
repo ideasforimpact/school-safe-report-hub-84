@@ -1,22 +1,49 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Incident } from '@/types/incident';
 import { toast } from 'sonner';
 
+// Cache to prevent duplicate requests
+let cachedIncidents: Incident[] = [];
+let lastFetchTime = 0;
+let isCurrentlyFetching = false;
+const CACHE_DURATION = 5000; // 5 seconds cache
+
 export const useIncidentData = () => {
-  const [incidents, setIncidents] = useState<Incident[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [incidents, setIncidents] = useState<Incident[]>(cachedIncidents);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { state: employeeState } = useEmployeeStore();
   const { user, employeeData: authEmployeeData } = useAuth();
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  const fetchIncidents = async () => {
+  const fetchIncidents = useCallback(async (forceRefresh = false) => {
+    // Prevent duplicate requests
+    if (isCurrentlyFetching && !forceRefresh) {
+      return;
+    }
+
+    // Use cache if recent and not forcing refresh
+    const now = Date.now();
+    if (!forceRefresh && cachedIncidents.length > 0 && (now - lastFetchTime) < CACHE_DURATION) {
+      setIncidents(cachedIncidents);
+      setLoading(false);
+      return;
+    }
+
+    // Cancel previous request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+
     try {
       setLoading(true);
       setError(null);
+      isCurrentlyFetching = true;
 
       // Get client and employee IDs
       let clientId = employeeState.employeeData?.clientId || authEmployeeData?.clientId;
@@ -44,12 +71,9 @@ export const useIncidentData = () => {
 
       console.log('Fetching incidents with client ID:', clientId);
 
-      // Call the fetch-incidents edge function
+      // Call the optimized fetch-incidents edge function
       const { data, error: fetchError } = await supabase.functions.invoke('fetch-incidents', {
-        body: {
-          clientId,
-          employeeId
-        }
+        body: { clientId, employeeId }
       });
 
       if (fetchError) {
@@ -95,25 +119,42 @@ export const useIncidentData = () => {
       }));
 
       console.log('Transformed incidents:', transformedIncidents);
+      
+      // Update cache
+      cachedIncidents = transformedIncidents;
+      lastFetchTime = now;
       setIncidents(transformedIncidents);
 
     } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.log('Request was aborted');
+        return;
+      }
+      
       console.error('Error fetching incidents:', error);
       setError(error.message);
       toast.error('Failed to load incidents: ' + error.message);
     } finally {
       setLoading(false);
+      isCurrentlyFetching = false;
     }
-  };
+  }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email]);
 
-  const refetchIncidents = async () => {
-    console.log('Refetching incidents...');
-    await fetchIncidents();
-  };
+  const refetchIncidents = useCallback(async () => {
+    console.log('Force refetching incidents...');
+    await fetchIncidents(true);
+  }, [fetchIncidents]);
 
   useEffect(() => {
     fetchIncidents();
-  }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email]);
+    
+    // Cleanup on unmount
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, [fetchIncidents]);
 
   return {
     incidents,

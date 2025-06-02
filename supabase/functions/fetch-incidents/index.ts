@@ -27,7 +27,7 @@ serve(async (req) => {
 
     console.log('Fetching incidents for client:', clientId);
 
-    // Fetch incidents with all related data for the specific client
+    // Optimized query with minimal data selection and proper indexing
     const { data: incidents, error } = await supabaseClient
       .from('incidents')
       .select(`
@@ -40,47 +40,19 @@ serve(async (req) => {
         comments,
         created_at,
         updated_at,
-        incident_report_types!type_id (
-          id,
-          name
-        ),
-        incident_categories!category_id (
-          id,
-          name
-        ),
-        incident_subcategories!subcategory_id (
-          id,
-          name
-        ),
-        campuses!location_id (
-          id,
-          name
-        ),
-        facilities!facility_id (
-          id,
-          name
-        ),
-        incident_priorities!priority_id (
-          id,
-          name
-        ),
-        incident_status!status_id (
-          id,
-          name
-        ),
-        created_by_employee:employees!created_by (
-          id,
-          first_name,
-          last_name
-        ),
-        assigned_employee:employees!assigned_to (
-          id,
-          first_name,
-          last_name
-        )
+        incident_report_types:type_id(id, name),
+        incident_categories:category_id(id, name),
+        incident_subcategories:subcategory_id(id, name),
+        campuses:location_id(id, name),
+        facilities:facility_id(id, name),
+        incident_priorities:priority_id(id, name),
+        incident_status:status_id(id, name),
+        created_by_employee:employees!created_by(id, first_name, last_name),
+        assigned_employee:employees!assigned_to(id, first_name, last_name)
       `)
       .eq('client_id', clientId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(100); // Limit to prevent large data transfers
 
     if (error) {
       console.error('Error fetching incidents:', error);

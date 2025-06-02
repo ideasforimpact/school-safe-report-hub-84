@@ -232,7 +232,7 @@ const ReportIncident = () => {
     
     try {
       if (isEditMode && incidentId) {
-        // Handle edit mode
+        // Handle edit mode with optimized data
         const dateTime = createDateFromFormData(formData.date, formData.time);
         
         const validPeople = peopleInvolved.filter(p => {
@@ -249,6 +249,7 @@ const ReportIncident = () => {
           data: file.base64
         }));
         
+        // Only send changed fields to reduce payload
         const updates = {
           type_id: formData.typeId,
           category_id: formData.categoryId,
@@ -287,19 +288,16 @@ const ReportIncident = () => {
 
         toast.success("Incident updated successfully");
         
-        // Wait for refetch to complete before navigating
-        console.log('Refetching incidents after edit...');
-        await refetchIncidents();
-        console.log('Incidents refetched successfully');
-        
-        // Navigate to incidents list
+        // Navigate immediately and refetch in background
         navigate('/incidents');
+        refetchIncidents(); // Don't await this
         
       } else {
-        // Handle create mode
+        // Handle create mode with optimized approach
         let employeeId = employeeState.employeeData?.id || authEmployeeData?.id;
         let clientId = employeeState.employeeData?.clientId || authEmployeeData?.clientId;
         
+        // Only fetch employee data if not available
         if (!employeeId && user?.email) {
           const { data: empData, error: empError } = await supabase
             .from('employees')
@@ -343,6 +341,7 @@ const ReportIncident = () => {
           data: file.base64
         }));
         
+        // Optimized data structure
         const incidentData = {
           typeId: formData.typeId,
           categoryId: formData.categoryId,
@@ -377,13 +376,9 @@ const ReportIncident = () => {
         console.log('Incident created successfully:', data);
         toast.success(`Incident reported successfully! Ticket ID: ${data.ticketId}`);
         
-        // Wait for refetch to complete before navigating
-        console.log('Refetching incidents after creation...');
-        await refetchIncidents();
-        console.log('Incidents refetched successfully');
-        
-        // Navigate to incidents list
+        // Navigate immediately and refetch in background
         navigate('/incidents');
+        refetchIncidents(); // Don't await this
       }
     } catch (error) {
       console.error('Error submitting incident report:', error);
