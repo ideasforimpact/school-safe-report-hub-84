@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,7 +12,7 @@ import { Incident, Comment as IncidentComment, FileItem } from '@/types/incident
 import { useIncidents } from '@/contexts/incident';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { formatUserFullName } from '@/utils/userUtils';
-import { Calendar, MapPin, User, Clock, AlertTriangle } from 'lucide-react';
+import { Calendar, MapPin, User, Clock, AlertTriangle, Loader } from 'lucide-react';
 
 interface IncidentDetailContentProps {
   incident: Incident;
