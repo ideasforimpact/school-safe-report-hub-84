@@ -289,8 +289,8 @@ export const IncidentProvider: React.FC<{ children: ReactNode }> = ({ children }
     { id: 'cat2', name: 'Bullying' }
   ]);
   const [subcategoryMappings] = useState<Record<string, SubcategoryItem[]>>({
-    cat1: [{ id: 'sub1', name: 'Cuts and Bruises' }],
-    cat2: [{ id: 'sub2', name: 'Verbal' }]
+    cat1: [{ id: 'sub1', name: 'Cuts and Bruises', categoryId: 'cat1' }],
+    cat2: [{ id: 'sub2', name: 'Verbal', categoryId: 'cat2' }]
   });
   const [locations] = useState<ConfigItem[]>([
     { id: 'loc1', name: 'On Campus' },
