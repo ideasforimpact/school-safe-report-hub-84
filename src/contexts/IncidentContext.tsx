@@ -151,6 +151,7 @@ export interface ConfigItem {
 export interface SubcategoryItem {
   id: string;
   name: string;
+  categoryId: string; // Make this consistent with the main types
 }
 
 // Export subcategory data

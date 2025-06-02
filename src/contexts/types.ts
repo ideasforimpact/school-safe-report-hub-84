@@ -7,8 +7,11 @@ export interface ConfigItem {
   name: string;
 }
 
-export interface SubcategoryItem extends ConfigItem {
-  categoryId: string; // Made required to match types/incident
+// Use the SubcategoryItem from the main types file
+export interface SubcategoryItem {
+  id: string;
+  name: string;
+  categoryId: string; // Required to match types/incident
 }
 
 export interface CampusItem extends ConfigItem {

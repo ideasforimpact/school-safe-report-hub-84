@@ -148,8 +148,9 @@ export interface ConfigItem {
   name: string;
 }
 
+// Main SubcategoryItem interface - this is the authoritative one
 export interface SubcategoryItem {
   id: string;
   name: string;
-  categoryId: string; // Made required to match contexts/types
+  categoryId: string; // Make this required for consistency
 }

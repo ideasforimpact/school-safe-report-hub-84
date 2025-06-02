@@ -1,3 +1,4 @@
+
 import { ConfigItem, SubcategoryItem, SectionItem, ClassItem, CampusItem } from './types';
 
 // Initial configuration data
@@ -13,61 +14,61 @@ export const initialCategories: ConfigItem[] = [
 
 export const initialSubcategories: Record<string, SubcategoryItem[]> = {
   '1': [ // Physical Injury
-    { id: '1-1', name: 'Slipped on wet floor' },
-    { id: '1-2', name: 'Playground or sports injury' },
-    { id: '1-3', name: 'Injury from furniture or equipment' },
-    { id: '1-4', name: 'Science/lab-related accidents' },
-    { id: '1-5', name: 'Falls from stairs/benches' },
-    { id: '1-6', name: 'Animal/insect bites on campus' },
-    { id: '1-7', name: 'Other' }
+    { id: '1-1', name: 'Slipped on wet floor', categoryId: '1' },
+    { id: '1-2', name: 'Playground or sports injury', categoryId: '1' },
+    { id: '1-3', name: 'Injury from furniture or equipment', categoryId: '1' },
+    { id: '1-4', name: 'Science/lab-related accidents', categoryId: '1' },
+    { id: '1-5', name: 'Falls from stairs/benches', categoryId: '1' },
+    { id: '1-6', name: 'Animal/insect bites on campus', categoryId: '1' },
+    { id: '1-7', name: 'Other', categoryId: '1' }
   ],
   '2': [ // Bullying
-    { id: '2-1', name: 'Name-calling, teasing, mocking' },
-    { id: '2-2', name: 'Physical fighting or intimidation' },
-    { id: '2-3', name: 'Cyberbullying via messages/social media' },
-    { id: '2-4', name: 'Spreading rumors or private info' },
-    { id: '2-5', name: 'Targeted bullying (caste, appearance, disability)' },
-    { id: '2-6', name: 'Other' }
+    { id: '2-1', name: 'Name-calling, teasing, mocking', categoryId: '2' },
+    { id: '2-2', name: 'Physical fighting or intimidation', categoryId: '2' },
+    { id: '2-3', name: 'Cyberbullying via messages/social media', categoryId: '2' },
+    { id: '2-4', name: 'Spreading rumors or private info', categoryId: '2' },
+    { id: '2-5', name: 'Targeted bullying (caste, appearance, disability)', categoryId: '2' },
+    { id: '2-6', name: 'Other', categoryId: '2' }
   ],
   '3': [
-    { id: '3-1', name: 'Using phone or laptop without permission' },
-    { id: '3-2', name: 'Watching inappropriate videos' },
-    { id: '3-3', name: 'Taking photos or videos without permission' },
-    { id: '3-4', name: 'Cheating using AI tools or online answers' },
-    { id: '3-5', name: 'Using VPN to access blocked websites' },
-    { id: '3-6', name: 'Sharing or saving obscene or harmful content' },
-    { id: '3-7', name: 'Being part of inappropriate online groups' },
-    { id: '3-8', name: 'Using school Wi-Fi for wrong purposes' },
-    { id: '3-9', name: 'Creating fake accounts of students or staff' },
-    { id: '3-10', name: 'Cyberbullying or online harassment' },
-    { id: '3-11', name: 'Other' }
+    { id: '3-1', name: 'Using phone or laptop without permission', categoryId: '3' },
+    { id: '3-2', name: 'Watching inappropriate videos', categoryId: '3' },
+    { id: '3-3', name: 'Taking photos or videos without permission', categoryId: '3' },
+    { id: '3-4', name: 'Cheating using AI tools or online answers', categoryId: '3' },
+    { id: '3-5', name: 'Using VPN to access blocked websites', categoryId: '3' },
+    { id: '3-6', name: 'Sharing or saving obscene or harmful content', categoryId: '3' },
+    { id: '3-7', name: 'Being part of inappropriate online groups', categoryId: '3' },
+    { id: '3-8', name: 'Using school Wi-Fi for wrong purposes', categoryId: '3' },
+    { id: '3-9', name: 'Creating fake accounts of students or staff', categoryId: '3' },
+    { id: '3-10', name: 'Cyberbullying or online harassment', categoryId: '3' },
+    { id: '3-11', name: 'Other', categoryId: '3' }
   ],
   '4': [
-    { id: '4-1', name: 'Vandalism (desks, walls, restrooms)' },
-    { id: '4-2', name: 'Damage to lab/sports/classroom equipment' },
-    { id: '4-3', name: 'Destruction of library or digital assets' },
-    { id: '4-4', name: 'Electrical/plumbing fixture damage' },
-    { id: '4-5', name: 'Tampering with CCTV or smart boards' },
-    { id: '4-6', name: 'Other' }
+    { id: '4-1', name: 'Vandalism (desks, walls, restrooms)', categoryId: '4' },
+    { id: '4-2', name: 'Damage to lab/sports/classroom equipment', categoryId: '4' },
+    { id: '4-3', name: 'Destruction of library or digital assets', categoryId: '4' },
+    { id: '4-4', name: 'Electrical/plumbing fixture damage', categoryId: '4' },
+    { id: '4-5', name: 'Tampering with CCTV or smart boards', categoryId: '4' },
+    { id: '4-6', name: 'Other', categoryId: '4' }
   ],
   '5': [
-    { id: '5-1', name: 'Fainting, seizures, or sudden illness' },
-    { id: '5-2', name: 'Asthma/allergy attacks' },
-    { id: '5-3', name: 'Menstrual health emergencies' },
-    { id: '5-4', name: 'Accidents causing bleeding/fractures' },
-    { id: '5-5', name: 'Food poisoning or dehydration' },
-    { id: '5-6', name: 'Suspected communicable disease' },
-    { id: '5-7', name: 'Other' }
+    { id: '5-1', name: 'Fainting, seizures, or sudden illness', categoryId: '5' },
+    { id: '5-2', name: 'Asthma/allergy attacks', categoryId: '5' },
+    { id: '5-3', name: 'Menstrual health emergencies', categoryId: '5' },
+    { id: '5-4', name: 'Accidents causing bleeding/fractures', categoryId: '5' },
+    { id: '5-5', name: 'Food poisoning or dehydration', categoryId: '5' },
+    { id: '5-6', name: 'Suspected communicable disease', categoryId: '5' },
+    { id: '5-7', name: 'Other', categoryId: '5' }
   ],
   '6': [
-    { id: '6-1', name: 'Unauthorized entry of outsiders' },
-    { id: '6-2', name: 'Suspicious person or object found' },
-    { id: '6-3', name: 'Safety violation' },
-    { id: '6-4', name: 'Emergency exits blocked or locked' },
-    { id: '6-5', name: 'Other' }
+    { id: '6-1', name: 'Unauthorized entry of outsiders', categoryId: '6' },
+    { id: '6-2', name: 'Suspicious person or object found', categoryId: '6' },
+    { id: '6-3', name: 'Safety violation', categoryId: '6' },
+    { id: '6-4', name: 'Emergency exits blocked or locked', categoryId: '6' },
+    { id: '6-5', name: 'Other', categoryId: '6' }
   ],
   '7': [
-    { id: '7-1', name: 'Other' }
+    { id: '7-1', name: 'Other', categoryId: '7' }
   ]
 };
 
