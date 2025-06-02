@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Comment as IncidentComment } from '@/types/incident';
 import {
@@ -54,17 +53,30 @@ const CommentItem: React.FC<CommentItemProps> = ({
     setDownloadingFiles(prev => new Set(prev).add(file.id));
     
     try {
-      const documentItem = {
-        id: file.id,
-        name: file.name,
-        type: file.type,
-        size: file.size,
-        url: '',
-        base64: file.base64
-      };
-      
-      await documentManager.downloadDocument(documentItem);
-      toast.success(`Downloaded ${file.name}`);
+      // If file has a URL (from storage), download directly
+      if (file.url) {
+        const link = document.createElement('a');
+        link.href = file.url;
+        link.download = file.name;
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success(`Downloaded ${file.name}`);
+      } else {
+        // Fallback to base64 download (for backward compatibility)
+        const documentItem = {
+          id: file.id,
+          name: file.name,
+          type: file.type,
+          size: file.size,
+          url: '',
+          base64: file.base64
+        };
+        
+        await documentManager.downloadDocument(documentItem);
+        toast.success(`Downloaded ${file.name}`);
+      }
     } catch (error) {
       console.error('Error downloading file:', error);
       toast.error('Failed to download file');
@@ -75,6 +87,21 @@ const CommentItem: React.FC<CommentItemProps> = ({
         return newSet;
       });
     }
+  };
+
+  // Handle file preview
+  const handlePreview = (file: any) => {
+    // For now, just open in new tab for storage URLs
+    if (file.url) {
+      window.open(file.url, '_blank');
+    }
+  };
+
+  // Format file size
+  const formatFileSize = (size: number) => {
+    if (size < 1024) return `${size} B`;
+    if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+    return `${(size / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   return (
@@ -164,55 +191,65 @@ const CommentItem: React.FC<CommentItemProps> = ({
           {/* Multiple files support */}
           {comment.files && comment.files.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {comment.files.map((file) => (
-                <div key={file.id} className="border rounded-lg p-3 bg-white hover:shadow-sm transition-shadow">
-                  <FilePreview file={file} />
-                  
-                  {/* File info and actions */}
-                  <div className="mt-2">
-                    <p className="text-sm font-medium truncate" title={file.name}>
-                      {file.name}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {file.size ? documentManager.formatFileSize(file.size) : 'Unknown size'}
-                    </p>
+              {comment.files.map((file) => {
+                const isImage = file.type?.startsWith('image/');
+                const canPreview = isImage || file.type === 'application/pdf';
+                
+                return (
+                  <div key={file.id} className="border rounded-lg p-3 bg-white hover:shadow-sm transition-shadow">
+                    {/* File thumbnail for images from storage */}
+                    {isImage && file.url && (
+                      <div className="mb-3">
+                        <img 
+                          src={file.url} 
+                          alt={file.name} 
+                          className="w-full h-20 object-cover rounded cursor-pointer"
+                          onClick={() => handlePreview(file)}
+                        />
+                      </div>
+                    )}
                     
-                    {/* Action buttons */}
-                    <div className="flex gap-2 mt-2">
-                      {documentManager.canPreview({
-                        id: file.id,
-                        name: file.name,
-                        type: file.type,
-                        size: file.size,
-                        base64: file.base64
-                      }) && (
+                    {/* File info and actions */}
+                    <div className="mt-2">
+                      <p className="text-sm font-medium truncate" title={file.name}>
+                        {file.name}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {file.size ? formatFileSize(file.size) : 'Unknown size'}
+                      </p>
+                      
+                      {/* Action buttons */}
+                      <div className="flex gap-2 mt-2">
+                        {canPreview && file.url && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handlePreview(file)}
+                            className="flex items-center gap-1 text-xs"
+                          >
+                            <Eye className="h-3 w-3" />
+                            View
+                          </Button>
+                        )}
                         <Button
                           variant="outline"
                           size="sm"
+                          onClick={() => handleDownload(file)}
+                          disabled={downloadingFiles.has(file.id)}
                           className="flex items-center gap-1 text-xs"
                         >
-                          <Eye className="h-3 w-3" />
-                          View
+                          {downloadingFiles.has(file.id) ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Download className="h-3 w-3" />
+                          )}
+                          {downloadingFiles.has(file.id) ? 'Downloading...' : 'Download'}
                         </Button>
-                      )}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDownload(file)}
-                        disabled={downloadingFiles.has(file.id)}
-                        className="flex items-center gap-1 text-xs"
-                      >
-                        {downloadingFiles.has(file.id) ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <Download className="h-3 w-3" />
-                        )}
-                        {downloadingFiles.has(file.id) ? 'Downloading...' : 'Download'}
-                      </Button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 

@@ -83,7 +83,7 @@ serve(async (req) => {
       currentUser = user
     }
 
-    // Create new comment object
+    // Create new comment object with file storage URLs instead of base64
     const newComment = {
       id: crypto.randomUUID(),
       description: comment.trim(),
@@ -91,7 +91,14 @@ serve(async (req) => {
       assignedTo: { id: currentUser?.id || 'system', name: 'System User' },
       status: 'Pending',
       createdBy: { id: currentUser?.id || 'system', name: 'System User' },
-      files: documents || [],
+      files: (documents || []).map((doc: any) => ({
+        id: crypto.randomUUID(),
+        name: doc.name || doc,
+        type: doc.type || 'application/octet-stream',
+        size: doc.size || 0,
+        url: doc.url || '',
+        path: doc.path || ''
+      })),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     }

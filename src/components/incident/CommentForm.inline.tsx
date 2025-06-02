@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { FileItem } from '@/types/incident';
 import { Textarea } from '@/components/ui/textarea';
@@ -47,13 +46,10 @@ const InlineCommentForm: React.FC<InlineCommentFormProps> = ({
       console.log('Comment text:', commentText);
       console.log('Files:', commentFiles);
 
-      // Prepare documents array with file names
-      const documents = commentFiles.map(file => file.name);
-
-      // Call the edge function
+      // Call the edge function with FileItem objects (they will be uploaded to storage)
       const result = await addComment(incidentId, {
         comment: commentText,
-        documents: documents
+        documents: commentFiles // Pass FileItem objects directly
       });
 
       if (result.success) {
