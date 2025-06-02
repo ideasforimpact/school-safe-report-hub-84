@@ -40,7 +40,9 @@ const AuthLoadingOverlay = ({ isVisible }: AuthLoadingOverlayProps) => {
         
         {/* Welcome Text */}
         <div className="text-center">
-          <p className="text-gray-600">Welcome to {clientName}'s Safety Command Center</p>
+          <h2 className="text-xl font-semibold text-gray-800 mb-1">
+            Welcome to {clientName}'s Safety Command Center
+          </h2>
         </div>
         
         {/* Animated Spinner */}

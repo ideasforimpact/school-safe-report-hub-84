@@ -9,7 +9,6 @@ import HeaderSearch from './HeaderSearch';
 import HeaderNavLinks from './HeaderNavLinks';
 import UserProfileMenu from './UserProfileMenu';
 import HeaderIcons from './HeaderIcons';
-import AdminSettingsMenu from './AdminSettingsMenu';
 import UserRoleBadge from './UserRoleBadge';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { getEmployeeData, isEmployeeAdmin, isEmployeeSuperAdmin } from '@/store/employeeSelectors';
@@ -51,9 +50,6 @@ const Header = () => {
   // Set dashboard path to /dashboard for all users
   const dashboardPath = "/dashboard";
   
-  // Show admin settings menu based on Redux state or user.isSuperAdmin
-  const showAdminSettings = isSuperAdmin || isAdmin;
-
   // Determine if the user is a SaaS Owner (backoffice user)
   const isSaasOwner = user?.role === 'saas_owner';
 
@@ -87,9 +83,6 @@ const Header = () => {
                   department={employeeData?.department} 
                 />
               )}
-              
-              {/* Settings Menu - Show on all routes if admin/superadmin */}
-              {showAdminSettings && !isBackoffice && <AdminSettingsMenu />}
 
               <UserProfileMenu />
             </div>
