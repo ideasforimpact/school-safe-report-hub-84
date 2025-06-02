@@ -1,4 +1,3 @@
-
 // Types for Incident Management System
 export type IncidentType = 'Incident' | 'Near Miss' | 'Unsafe Condition';
 export type IncidentCategory = 
@@ -148,9 +147,8 @@ export interface ConfigItem {
   name: string;
 }
 
-// Main SubcategoryItem interface - this is the authoritative one
 export interface SubcategoryItem {
   id: string;
   name: string;
-  categoryId: string; // Make this required for consistency
+  categoryId: string;
 }

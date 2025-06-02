@@ -1,183 +1,284 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import Layout from '@/components/layout/Layout';
-import IncidentConfigurationContent from '@/components/incident-configuration/IncidentConfigurationContent';
-import { useCategoryManagement } from '@/hooks/config/useCategoryManagement';
-import { initialCategories, initialSubcategories, initialLocations, initialFacilities, initialDesignations, initialCampuses, initialClasses, initialSections } from '@/contexts/initialData';
-import { ConfigItem, SubcategoryItem } from '@/contexts/types';
-import { CampusItem, ClassItem, SectionItem } from '@/contexts/types';
 
-// Add type conversion helper
-const convertSubcategoryMappings = (mappings: any): Record<string, SubcategoryItem[]> => {
-  const converted: Record<string, SubcategoryItem[]> = {};
-  Object.keys(mappings).forEach(key => {
-    converted[key] = mappings[key].map((item: any) => ({
-      id: item.id,
-      name: item.name,
-      categoryId: item.categoryId || key // Ensure categoryId is present
-    }));
-  });
-  return converted;
-};
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import Layout from '@/components/layout/Layout';
+import { IncidentRelatedConfig } from './configuration/IncidentRelatedConfig';
+import { toast } from 'sonner';
+import { useIncidentCategories } from '@/hooks/useIncidentCategories';
+import { useAuth } from '@/contexts/auth/useAuth';
+import { reportTypeService } from '@/services/incident/reportTypeService';
+import { priorityService } from '@/services/incident/priorityService';
 
 const IncidentConfiguration = () => {
-  // Local state for categories, subcategories, locations, facilities, and designations
-  const [categories, setCategories] = useState<ConfigItem[]>(initialCategories);
-  const [subcategoryMappings, setSubcategoryMappings] = useState<Record<string, SubcategoryItem[]>>(initialSubcategories);
-  const [locations, setLocations] = useState<ConfigItem[]>(initialLocations);
-  const [facilities, setFacilities] = useState<ConfigItem[]>(initialFacilities);
-  const [designations, setDesignations] = useState<ConfigItem[]>(initialDesignations);
-  const [campuses, setCampuses] = useState<CampusItem[]>(initialCampuses);
-  const [classes, setClasses] = useState<ClassItem[]>(initialClasses);
-  const [sections, setSections] = useState<SectionItem[]>(initialSections);
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState('categories');
+  const [reportTypes, setReportTypes] = useState<any[]>([]);
+  const [priorities, setPriorities] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { employeeData } = useAuth();
 
-  // Use custom hook for category and subcategory management
+  // Use the custom hook for categories and subcategories
   const {
+    categories,
+    subcategoryMappings,
+    loading: categoriesLoading,
     addCategory,
     updateCategory,
     deleteCategory,
     addSubcategory,
     updateSubcategory,
     deleteSubcategory
-  } = useCategoryManagement(categories, subcategoryMappings);
+  } = useIncidentCategories();
 
-  // State and handlers for locations
-  const addLocation = useCallback((name: string) => {
-    const newLocation = { id: Date.now().toString(), name };
-    setLocations(prev => [...prev, newLocation]);
-  }, []);
+  // Set initial tab based on URL parameter when component mounts
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
-  const updateLocation = useCallback((id: string, name: string) => {
-    setLocations(prev => prev.map(loc => loc.id === id ? { ...loc, name } : loc));
-  }, []);
+  // Fetch report types using the new service
+  useEffect(() => {
+    async function fetchReportTypes() {
+      if (!employeeData?.clientId) {
+        return;
+      }
 
-  const deleteLocation = useCallback((id: string) => {
-    setLocations(prev => prev.filter(loc => loc.id !== id));
-  }, []);
+      try {
+        const types = await reportTypeService.getReportTypes(employeeData.clientId);
+        setReportTypes(types);
+      } catch (error) {
+        console.error('Exception fetching report types:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
 
-  // State and handlers for facilities
-  const addFacility = useCallback((name: string) => {
-    const newFacility = { id: Date.now().toString(), name };
-    setFacilities(prev => [...prev, newFacility]);
-  }, []);
+    fetchReportTypes();
+  }, [employeeData?.clientId]);
 
-  const updateFacility = useCallback((id: string, name: string) => {
-    setFacilities(prev => prev.map(fac => fac.id === id ? { ...fac, name } : fac));
-  }, []);
+  // Fetch priorities using the new service
+  useEffect(() => {
+    async function fetchPriorities() {
+      if (!employeeData?.clientId) {
+        return;
+      }
 
-  const deleteFacility = useCallback((id: string) => {
-    setFacilities(prev => prev.filter(fac => fac.id !== id));
-  }, []);
+      try {
+        const items = await priorityService.getPriorities(employeeData.clientId);
+        setPriorities(items);
+      } catch (error) {
+        console.error('Exception fetching priorities:', error);
+      }
+    }
 
-  // State and handlers for designations
-  const addDesignation = useCallback((name: string) => {
-    const newDesignation = { id: Date.now().toString(), name };
-    setDesignations(prev => [...prev, newDesignation]);
-  }, []);
+    fetchPriorities();
+  }, [employeeData?.clientId]);
 
-  const updateDesignation = useCallback((id: string, name: string) => {
-    setDesignations(prev => prev.map(des => des.id === id ? { ...des, name } : des));
-  }, []);
+  // Handle report types operations using the new service
+  const handleAddReportType = async (name: string, description: string) => {
+    if (!employeeData?.clientId) {
+      toast.error('Client information not available');
+      return;
+    }
 
-  const deleteDesignation = useCallback((id: string) => {
-    setDesignations(prev => prev.filter(des => des.id !== id));
-  }, []);
-
-  // State and handlers for campuses
-  const addCampus = useCallback((name: string) => {
-    const newCampus = { id: Date.now().toString(), name };
-    setCampuses(prev => [...prev, newCampus]);
-  }, []);
-
-  const updateCampus = useCallback((id: string, name: string) => {
-    setCampuses(prev => prev.map(campus => campus.id === id ? { ...campus, name } : campus));
-  }, []);
-
-  const deleteCampus = useCallback((id: string) => {
-    setCampuses(prev => prev.filter(campus => campus.id !== id));
-  }, []);
-
-  // State and handlers for classes
-  const addClass = useCallback((campusId: string, name: string) => {
-    const newClass = { id: Date.now().toString(), name, campusId };
-    setClasses(prev => [...prev, newClass]);
-  }, []);
-
-  const updateClass = useCallback((id: string, campusId: string, name: string) => {
-    setClasses(prev => prev.map(cls => cls.id === id ? { ...cls, name, campusId } : cls));
-  }, []);
-
-  const deleteClass = useCallback((id: string) => {
-    setClasses(prev => prev.filter(cls => cls.id !== id));
-  }, []);
-
-  // State and handlers for sections
-  const addSection = useCallback((classId: string, name: string) => {
-    const newSection = { id: Date.now().toString(), name, classId };
-    setSections(prev => [...prev, newSection]);
-  }, []);
-
-  const updateSection = useCallback((id: string, classId: string, name: string) => {
-    setSections(prev => prev.map(sec => sec.id === id ? { ...sec, name, classId } : sec));
-  }, []);
-
-  const deleteSection = useCallback((id: string) => {
-    setSections(prev => prev.filter(sec => sec.id !== id));
-  }, []);
-
-  // Handler to update subcategory mappings
-  const handleSubcategoryUpdate = (updatedMappings: any) => {
-    const convertedMappings = convertSubcategoryMappings(updatedMappings);
-    setSubcategoryMappings(convertedMappings);
+    try {
+      const newType = await reportTypeService.addReportType(name, description, employeeData.clientId);
+      setReportTypes([...reportTypes, newType]);
+      toast.success('Report type added successfully');
+    } catch (error) {
+      console.error('Exception adding report type:', error);
+    }
   };
 
-  useEffect(() => {
-    setCategories(initialCategories);
-    setSubcategoryMappings(initialSubcategories);
-    setLocations(initialLocations);
-    setFacilities(initialFacilities);
-    setDesignations(initialDesignations);
-    setCampuses(initialCampuses);
-    setClasses(initialClasses);
-    setSections(initialSections);
-  }, []);
+  const handleUpdateReportType = async (id: string, name: string, description: string) => {
+    if (!employeeData?.clientId) {
+      toast.error('Client information not available');
+      return;
+    }
+
+    try {
+      const updatedType = await reportTypeService.updateReportType(id, name, description, employeeData.clientId);
+      setReportTypes(
+        reportTypes.map(type =>
+          type.id === id ? updatedType : type
+        )
+      );
+      toast.success('Report type updated successfully');
+    } catch (error) {
+      console.error('Exception updating report type:', error);
+    }
+  };
+
+  const handleDeleteReportType = async (id: string) => {
+    if (!employeeData?.clientId) {
+      toast.error('Client information not available');
+      return;
+    }
+
+    try {
+      await reportTypeService.deleteReportType(id, employeeData.clientId);
+      setReportTypes(reportTypes.filter(type => type.id !== id));
+      toast.success('Report type deleted successfully');
+    } catch (error) {
+      console.error('Exception deleting report type:', error);
+    }
+  };
+
+  const handleToggleReportTypeStatus = async (id: string, isActive: boolean) => {
+    if (!employeeData?.clientId) {
+      toast.error('Client information not available');
+      return;
+    }
+
+    try {
+      const updatedType = await reportTypeService.toggleReportTypeStatus(id, isActive, employeeData.clientId);
+      setReportTypes(
+        reportTypes.map(type =>
+          type.id === id ? updatedType : type
+        )
+      );
+      toast.success(`Report type ${isActive ? 'activated' : 'deactivated'} successfully`);
+    } catch (error) {
+      console.error('Exception toggling report type status:', error);
+    }
+  };
+
+  // Handle priorities operations using the new service
+  const handleAddPriority = async (name: string, description: string, color: string, weight: number) => {
+    if (!employeeData?.clientId) {
+      toast.error('Client information not available');
+      return;
+    }
+
+    try {
+      const newPriority = await priorityService.addPriority(name, description, color, weight, employeeData.clientId);
+      setPriorities([...priorities, newPriority]);
+      toast.success('Priority added successfully');
+    } catch (error) {
+      console.error('Exception adding priority:', error);
+    }
+  };
+
+  const handleUpdatePriority = async (id: string, name: string, description: string, color: string, weight: number) => {
+    if (!employeeData?.clientId) {
+      toast.error('Client information not available');
+      return;
+    }
+
+    try {
+      const updatedPriority = await priorityService.updatePriority(id, name, description, color, weight, employeeData.clientId);
+      setPriorities(
+        priorities.map(priority =>
+          priority.id === id ? updatedPriority : priority
+        )
+      );
+      toast.success('Priority updated successfully');
+    } catch (error) {
+      console.error('Exception updating priority:', error);
+    }
+  };
+
+  const handleDeletePriority = async (id: string) => {
+    if (!employeeData?.clientId) {
+      toast.error('Client information not available');
+      return;
+    }
+
+    try {
+      await priorityService.deletePriority(id, employeeData.clientId);
+      setPriorities(priorities.filter(priority => priority.id !== id));
+      toast.success('Priority deleted successfully');
+    } catch (error) {
+      console.error('Exception deleting priority:', error);
+    }
+  };
+
+  const handleTogglePriorityStatus = async (id: string, isActive: boolean) => {
+    if (!employeeData?.clientId) {
+      toast.error('Client information not available');
+      return;
+    }
+
+    try {
+      const updatedPriority = await priorityService.togglePriorityStatus(id, isActive, employeeData.clientId);
+      setPriorities(
+        priorities.map(priority =>
+          priority.id === id ? updatedPriority : priority
+        )
+      );
+      toast.success(`Priority ${isActive ? 'activated' : 'deactivated'} successfully`);
+    } catch (error) {
+      console.error('Exception toggling priority status:', error);
+    }
+  };
+
+  // Dummy handlers for contributing factors (these will be handled by the ContributingFactorTab component)
+  const handleAddContributingFactor = () => {};
+  const handleUpdateContributingFactor = () => {};
+  const handleDeleteContributingFactor = () => {};
+
+  // Show loading or no client access message
+  if (!employeeData?.clientId) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-screen">
+          <div className="text-center">
+            <p className="text-gray-500">Client information not available. Please contact your administrator.</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Wait for data to load
+  if (loading || categoriesLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-screen">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-gray-500">Loading configuration...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
-      <div className="container max-w-7xl py-6">
-        <IncidentConfigurationContent
+      <div className="container mx-auto p-6">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900">Incident Configuration</h1>
+          <p className="text-gray-600 mt-2">Configure incident-related settings and data</p>
+        </div>
+        
+        <IncidentRelatedConfig
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
           categories={categories}
           addCategory={addCategory}
           updateCategory={updateCategory}
           deleteCategory={deleteCategory}
-          subcategoryMappings={convertSubcategoryMappings(subcategoryMappings)}
+          subcategoryMappings={subcategoryMappings}
           addSubcategory={addSubcategory}
           updateSubcategory={updateSubcategory}
           deleteSubcategory={deleteSubcategory}
-          onSubcategoryUpdate={handleSubcategoryUpdate}
-          locations={locations}
-          addLocation={addLocation}
-          updateLocation={updateLocation}
-          deleteLocation={deleteLocation}
-          facilities={facilities}
-          addFacility={addFacility}
-          updateFacility={updateFacility}
-          deleteFacility={deleteFacility}
-          designations={designations}
-          addDesignation={addDesignation}
-          updateDesignation={updateDesignation}
-          deleteDesignation={deleteDesignation}
-          campuses={campuses}
-          addCampus={addCampus}
-          updateCampus={updateCampus}
-          deleteCampus={deleteCampus}
-          classes={classes}
-          addClass={addClass}
-          updateClass={updateClass}
-          deleteClass={deleteClass}
-          sections={sections}
-          addSection={addSection}
-          updateSection={updateSection}
-          deleteSection={deleteSection}
+          contributingFactors={[]}
+          addContributingFactor={handleAddContributingFactor}
+          updateContributingFactor={handleUpdateContributingFactor}
+          deleteContributingFactor={handleDeleteContributingFactor}
+          reportTypes={reportTypes}
+          addReportType={handleAddReportType}
+          updateReportType={handleUpdateReportType}
+          deleteReportType={handleDeleteReportType}
+          toggleReportTypeStatus={handleToggleReportTypeStatus}
+          priorities={priorities}
+          addPriority={handleAddPriority}
+          updatePriority={handleUpdatePriority}
+          deletePriority={handleDeletePriority}
+          togglePriorityStatus={handleTogglePriorityStatus}
         />
       </div>
     </Layout>

@@ -18,69 +18,30 @@ const Dashboard = () => {
     fetchIncidents();
   }, [fetchIncidents]);
 
-  // Calculate dashboard metrics
-  const openIncidentsCount = incidents.filter(i => i.status !== 'Closed').length;
-  const totalIncidents = incidents.length;
-  const currentMonth = new Date().getMonth();
-  const currentYear = new Date().getFullYear();
-  const incidentsThisMonth = incidents.filter(i => {
-    const incidentDate = new Date(i.createdAt);
-    return incidentDate.getMonth() === currentMonth && incidentDate.getFullYear() === currentYear;
-  }).length;
-
-  // Find most common category
-  const categoryCounts: Record<string, number> = {};
-  incidents.forEach(incident => {
-    categoryCounts[incident.category] = (categoryCounts[incident.category] || 0) + 1;
-  });
-  const mostCommonCategory = Object.keys(categoryCounts).reduce((a, b) => 
-    categoryCounts[a] > categoryCounts[b] ? a : b, 'None'
-  );
-
-  // Calculate total people involved
-  const totalPeopleInvolved = incidents.reduce((sum, incident) => 
-    sum + (incident.peopleInvolved?.length || 0), 0
-  );
-
-  // Mock data for SafetyModuleSummaryCards with correct structure
-  const safetyData = {
-    openIncidents: {
-      count: openIncidentsCount,
-      change: 5 // Mock change percentage
-    },
-    verificationStatus: {
-      verified: 45,
-      pending: 12,
-      total: 57
-    },
-    assessmentPerformance: {
-      score: 87,
-      completed: 23,
-      total: 25
-    },
-    safetyResources: {
-      count: 36,
-      recent: 4
-    }
+  // Mock data for components that need specific props
+  const mockSafetyData = {
+    openIncidents: incidents.filter(i => i.status !== 'Closed').length,
+    verificationStatus: 85,
+    assessmentPerformance: 78,
+    safetyResources: 12
   };
 
-  // Transform incidents to activities with correct Activity structure
   const mockActivities = incidents.slice(0, 5).map(incident => ({
-    type: 'incident' as const,
-    activity: 'create' as const,
-    entityId: incident.id,
-    entityTitle: incident.description,
-    user: incident.reportedBy.name,
-    userId: incident.reportedBy.id,
-    date: incident.createdAt,
-    details: `New incident: ${incident.description}`
+    id: incident.id,
+    type: 'incident_created',
+    description: `New incident: ${incident.description}`,
+    timestamp: incident.createdAt,
+    user: incident.reportedBy
   }));
 
-  // Data for IntegratedDashboardSection with correct structure
-  const openIncidentsData = {
-    count: openIncidentsCount,
-    change: 5 // Mock change percentage
-  };
+  const mockOpenIncidentsData = incidents.filter(i => i.status !== 'Closed').map(incident => ({
+    id: incident.id,
+    title: incident.description,
+    status: incident.status,
+    priority: incident.priority,
+    assignee: incident.owner?.name || 'Unassigned',
+    createdAt: incident.createdAt
+  }));
 
   return (
     <Layout>
@@ -92,16 +53,9 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <SafetyModuleSummaryCards {...safetyData} />
-        <SummaryCards 
-          openIncidents={openIncidentsCount}
-          totalIncidents={totalIncidents}
-          incidentsThisMonth={incidentsThisMonth}
-          mostCommonCategory={mostCommonCategory}
-          categoryCounts={categoryCounts}
-          totalPeopleInvolved={totalPeopleInvolved}
-        />
-        <IntegratedDashboardSection openIncidentsData={openIncidentsData} />
+        <SafetyModuleSummaryCards {...mockSafetyData} />
+        <SummaryCards />
+        <IntegratedDashboardSection openIncidentsData={mockOpenIncidentsData} />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">

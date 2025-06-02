@@ -50,10 +50,9 @@ export function useCategoryManagement(
 
   // Subcategories management
   const addSubcategory = (categoryId: string, name: string) => {
-    const newSubcategory: SubcategoryItem = {
+    const newSubcategory = {
       id: `${categoryId}-${Date.now()}`,
-      name,
-      categoryId // Include the categoryId
+      name
     };
     
     setSubcategoryMappings(prev => ({
