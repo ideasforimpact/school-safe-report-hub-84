@@ -6,6 +6,7 @@ import { IncidentRecord } from '@/services/incidentService';
 import { formatDate } from '@/utils/dateUtils';
 import { getSimpleId } from '@/utils/ticketUtils';
 import { useIncidentTableNavigation } from '@/hooks/useIncidentTableNavigation';
+import { getStatusBadgeClass } from '@/utils/statusUtils';
 import { Edit, Eye } from 'lucide-react';
 
 interface IncidentsDataTableProps {
@@ -66,7 +67,7 @@ const IncidentsDataTable: React.FC<IncidentsDataTableProps> = ({ incidents, load
                 <TableCell>{incident.subcategory || '-'}</TableCell>
                 <TableCell>{formatDate(incident.createdAt)}</TableCell>
                 <TableCell>
-                  <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                  <span className={`px-2 py-1 rounded-full text-xs ${getStatusBadgeClass(incident.status as any)}`}>
                     {incident.status}
                   </span>
                 </TableCell>
