@@ -12,7 +12,7 @@ import { Incident, Comment as IncidentComment, FileItem } from '@/types/incident
 import { useIncidents } from '@/contexts/incident';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { formatUserFullName } from '@/utils/userUtils';
-import { Calendar, MapPin, User, Clock, AlertTriangle, Loader } from 'lucide-react';
+import { Calendar, MapPin, User, Clock, AlertTriangle, Loader2 } from 'lucide-react';
 
 interface IncidentDetailContentProps {
   incident: Incident;
@@ -186,7 +186,7 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
           <TabsTrigger value="documents">Documents</TabsTrigger>
           <TabsTrigger value="comments">
             Comments
-            {isLoadingComments && <Loader className="h-3 w-3 animate-spin ml-1" />}
+            {isLoadingComments && <Loader2 className="h-3 w-3 animate-spin ml-1" />}
           </TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>

@@ -1,10 +1,11 @@
+
 import React, { useState } from 'react';
 import { FileItem } from '@/types/incident';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import MultipleFilesUpload from '@/components/MultipleFilesUpload';
 import { useAddIncidentComment } from '@/hooks/useAddIncidentComment';
-import { Paperclip, Send, Loader, CheckCircle } from 'lucide-react';
+import { Paperclip, Send, Loader2, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface InlineCommentFormProps {
@@ -129,7 +130,7 @@ const InlineCommentForm: React.FC<InlineCommentFormProps> = ({
           >
             {isSubmitting ? (
               <>
-                <Loader className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
                 Submitting...
               </>
             ) : isSuccess ? (

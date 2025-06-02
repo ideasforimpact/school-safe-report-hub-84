@@ -9,7 +9,7 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
-import { Loader, RefreshCw } from 'lucide-react';
+import { Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import CommentForm from './CommentForm';
 import CommentItem from './CommentItem';
@@ -115,7 +115,7 @@ const CommentsList: React.FC<CommentsListProps> = ({
             <div>
               <CardTitle className="flex items-center gap-2">
                 Comments ({localComments.length})
-                {isRefreshing && <Loader className="h-4 w-4 animate-spin" />}
+                {isRefreshing && <Loader2 className="h-4 w-4 animate-spin" />}
               </CardTitle>
               <CardDescription>
                 Discussion about this incident
@@ -137,7 +137,7 @@ const CommentsList: React.FC<CommentsListProps> = ({
           {isRefreshing && localComments.length === 0 ? (
             <div className="flex items-center justify-center py-8">
               <div className="text-center">
-                <Loader className="h-8 w-8 animate-spin mx-auto mb-3 text-blue-500" />
+                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3 text-blue-500" />
                 <span className="text-gray-600">Loading comments...</span>
               </div>
             </div>
@@ -147,7 +147,7 @@ const CommentsList: React.FC<CommentsListProps> = ({
                 <div key={comment.id} className="relative">
                   {isRefreshing && (
                     <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10 rounded-md">
-                      <Loader className="h-5 w-5 animate-spin text-blue-500" />
+                      <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
                     </div>
                   )}
                   <CommentItem 

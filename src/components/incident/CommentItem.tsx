@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { Trash2, Edit, FileText, Paperclip, Download, Eye, Loader } from 'lucide-react';
+import { Trash2, Edit, FileText, Paperclip, Download, Eye, Loader2 } from 'lucide-react';
 import FilePreview from './FilePreview';
 import { documentManager } from '@/utils/documentManager';
 import { toast } from 'sonner';
@@ -203,7 +203,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
                         className="flex items-center gap-1 text-xs"
                       >
                         {downloadingFiles.has(file.id) ? (
-                          <Loader className="h-3 w-3 animate-spin" />
+                          <Loader2 className="h-3 w-3 animate-spin" />
                         ) : (
                           <Download className="h-3 w-3" />
                         )}
