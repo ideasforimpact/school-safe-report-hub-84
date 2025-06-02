@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,44 +12,34 @@ export const useIncidentData = () => {
   const [error, setError] = useState<string | null>(null);
   const { state: employeeState } = useEmployeeStore();
   const { user, employeeData: authEmployeeData } = useAuth();
-  const abortControllerRef = useRef<AbortController | null>(null);
 
-  const fetchIncidents = useCallback(async (forceRefresh = false) => {
-    // Cancel previous request
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    abortControllerRef.current = new AbortController();
-
+  const fetchIncidents = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // Get client ID from multiple sources
+      // Get client ID from available sources
       let clientId = employeeState.employeeData?.clientId || authEmployeeData?.clientId;
 
-      // If no client ID from context, try to get from user email (use maybeSingle to avoid error)
+      // If no client ID from context, get from user email
       if (!clientId && user?.email) {
-        const { data: empData, error: empError } = await supabase
+        const { data: empData } = await supabase
           .from('employees')
           .select('client_id')
           .eq('email', user.email.toLowerCase())
-          .maybeSingle(); // Use maybeSingle instead of single
+          .maybeSingle();
           
-        if (empData && !empError) {
+        if (empData) {
           clientId = empData.client_id;
         }
       }
 
       if (!clientId) {
-        console.log('No client ID found, showing empty incidents list');
         setIncidents([]);
         return;
       }
 
-      console.log('Fetching incidents for client:', clientId);
-
-      // Simple direct query to incidents table
+      // Simple optimized query to incidents table
       const { data: incidents, error } = await supabase
         .from('incidents')
         .select(`
@@ -73,16 +63,14 @@ export const useIncidentData = () => {
           assigned_employee:employees!assigned_to(first_name, last_name)
         `)
         .eq('client_id', clientId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(50); // Limit initial load to 50 records
 
       if (error) {
-        console.error('Error fetching incidents:', error);
         throw new Error(`Failed to fetch incidents: ${error.message}`);
       }
 
-      console.log(`Successfully fetched ${incidents?.length || 0} incidents`);
-
-      // Transform the data to match our Incident interface
+      // Transform the data
       const transformedIncidents: Incident[] = (incidents || []).map((inc: any) => ({
         id: inc.id,
         ticketId: inc.ticket_id,
@@ -115,33 +103,19 @@ export const useIncidentData = () => {
       setIncidents(transformedIncidents);
 
     } catch (error: any) {
-      if (error.name === 'AbortError') {
-        console.log('Request was aborted');
-        return;
-      }
-      
-      console.error('Error fetching incidents:', error);
       setError(error.message);
-      toast.error('Failed to load incidents: ' + error.message);
+      toast.error('Failed to load incidents');
     } finally {
       setLoading(false);
     }
   }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email]);
 
   const refetchIncidents = useCallback(async () => {
-    console.log('Force refetching incidents...');
-    await fetchIncidents(true);
+    await fetchIncidents();
   }, [fetchIncidents]);
 
   useEffect(() => {
     fetchIncidents();
-    
-    // Cleanup on unmount
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-      }
-    };
   }, [fetchIncidents]);
 
   return {
