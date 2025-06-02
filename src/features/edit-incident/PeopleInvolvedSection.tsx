@@ -239,7 +239,7 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
   };
 
   const getStudentRoleLabel = () => {
-    return clientType === 'school' ? 'Student' : 'Organisation';
+    return clientType === 'school' ? 'Student' : 'Student';
   };
 
   const renderNameField = (person: Person, index: number) => {
@@ -351,41 +351,43 @@ const PeopleInvolvedSection: React.FC<PeopleInvolvedSectionProps> = ({
             </Button>
           </div>
 
-          {/* Role selection first */}
-          <div className="space-y-2 mb-4">
-            <label className="text-sm font-medium">Role</label>
-            <Select
-              value={person.role}
-              onValueChange={(value) => {
-                const typedRole = value as 'Student' | 'Staff' | 'Other';
-                handlePersonChange(index, 'role', typedRole);
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Student">{getStudentRoleLabel()}</SelectItem>
-                <SelectItem value="Staff">Staff</SelectItem>
-                <SelectItem value="Other">Other</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Role selection first */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Role</label>
+              <Select
+                value={person.role}
+                onValueChange={(value) => {
+                  const typedRole = value as 'Student' | 'Staff' | 'Other';
+                  handlePersonChange(index, 'role', typedRole);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-white z-50">
+                  <SelectItem value="Student">{getStudentRoleLabel()}</SelectItem>
+                  <SelectItem value="Staff">Staff</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-          {/* Name field based on role */}
-          <div className="space-y-2 mb-4">
-            <label className="text-sm font-medium">Name</label>
-            {renderNameField(person, index)}
-          </div>
+            {/* Name field based on role */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Name</label>
+              {renderNameField(person, index)}
+            </div>
 
-          {/* Notes field */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Notes (Optional)</label>
-            <Input
-              value={person.notes || ''}
-              onChange={(e) => handlePersonChange(index, 'notes', e.target.value)}
-              placeholder="Additional details"
-            />
+            {/* Notes field */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Notes (Optional)</label>
+              <Input
+                value={person.notes || ''}
+                onChange={(e) => handlePersonChange(index, 'notes', e.target.value)}
+                placeholder="Additional details"
+              />
+            </div>
           </div>
         </div>
       ))}
