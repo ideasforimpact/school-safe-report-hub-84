@@ -79,16 +79,40 @@ Deno.serve(async (req) => {
 
     console.log('Found incident:', incident)
 
-    // Get employee data to check permissions
-    const { data: employee, error: employeeError } = await supabase
+    // Try to get employee data - first by user_id, then by email
+    let employee = null;
+    
+    // First try to find by user_id
+    const { data: employeeByUserId, error: employeeByUserIdError } = await supabase
       .from('employees')
       .select('id, is_super_admin, employee_type, client_id')
       .eq('user_id', user.id)
-      .single()
+      .maybeSingle()
 
-    if (employeeError || !employee) {
-      console.error('Error fetching employee data:', employeeError)
-      throw new Error('Employee not found')
+    if (employeeByUserId) {
+      employee = employeeByUserId;
+      console.log('Found employee by user_id:', employee);
+    } else {
+      console.log('Employee not found by user_id, trying by email:', user.email);
+      
+      // If not found by user_id, try by email
+      const { data: employeeByEmail, error: employeeByEmailError } = await supabase
+        .from('employees')
+        .select('id, is_super_admin, employee_type, client_id')
+        .eq('email', user.email?.toLowerCase())
+        .maybeSingle()
+
+      if (employeeByEmail) {
+        employee = employeeByEmail;
+        console.log('Found employee by email:', employee);
+      } else {
+        console.error('Employee not found by email either:', employeeByEmailError);
+      }
+    }
+
+    if (!employee) {
+      console.error('No employee record found for user:', user.id, 'email:', user.email);
+      throw new Error('Employee record not found. Please contact your administrator.');
     }
 
     console.log('Employee data:', employee)
@@ -99,7 +123,7 @@ Deno.serve(async (req) => {
                     employee.client_id === requestBody.client_id
 
     if (!canClose) {
-      console.log('Permission denied for user:', user.id)
+      console.log('Permission denied for user:', user.id, 'employee:', employee.id);
       throw new Error('You do not have permission to close this incident')
     }
 
