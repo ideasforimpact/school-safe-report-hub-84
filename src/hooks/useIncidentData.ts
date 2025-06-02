@@ -6,14 +6,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Incident } from '@/types/incident';
 import { toast } from 'sonner';
 
-// Cache to prevent duplicate requests
-let cachedIncidents: Incident[] = [];
-let lastFetchTime = 0;
-let isCurrentlyFetching = false;
-const CACHE_DURATION = 5000; // 5 seconds cache
-
 export const useIncidentData = () => {
-  const [incidents, setIncidents] = useState<Incident[]>(cachedIncidents);
+  const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { state: employeeState } = useEmployeeStore();
@@ -21,19 +15,6 @@ export const useIncidentData = () => {
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const fetchIncidents = useCallback(async (forceRefresh = false) => {
-    // Prevent duplicate requests
-    if (isCurrentlyFetching && !forceRefresh) {
-      return;
-    }
-
-    // Use cache if recent and not forcing refresh
-    const now = Date.now();
-    if (!forceRefresh && cachedIncidents.length > 0 && (now - lastFetchTime) < CACHE_DURATION) {
-      setIncidents(cachedIncidents);
-      setLoading(false);
-      return;
-    }
-
     // Cancel previous request
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -43,53 +24,66 @@ export const useIncidentData = () => {
     try {
       setLoading(true);
       setError(null);
-      isCurrentlyFetching = true;
 
-      // Get client and employee IDs
+      // Get client ID from multiple sources
       let clientId = employeeState.employeeData?.clientId || authEmployeeData?.clientId;
-      let employeeId = employeeState.employeeData?.id || authEmployeeData?.id;
 
-      // If no employee data from state, try to fetch from database using user email
-      if (!employeeId && user?.email) {
+      // If no client ID from context, try to get from user email (use maybeSingle to avoid error)
+      if (!clientId && user?.email) {
         const { data: empData, error: empError } = await supabase
           .from('employees')
-          .select('id, client_id')
+          .select('client_id')
           .eq('email', user.email.toLowerCase())
-          .single();
+          .maybeSingle(); // Use maybeSingle instead of single
           
         if (empData && !empError) {
-          employeeId = empData.id;
           clientId = empData.client_id;
         }
       }
 
       if (!clientId) {
-        console.warn('No client ID found, cannot fetch incidents');
+        console.log('No client ID found, showing empty incidents list');
         setIncidents([]);
         return;
       }
 
-      console.log('Fetching incidents with client ID:', clientId);
+      console.log('Fetching incidents for client:', clientId);
 
-      // Call the optimized fetch-incidents edge function
-      const { data, error: fetchError } = await supabase.functions.invoke('fetch-incidents', {
-        body: { clientId, employeeId }
-      });
+      // Simple direct query to incidents table
+      const { data: incidents, error } = await supabase
+        .from('incidents')
+        .select(`
+          id,
+          ticket_id,
+          description,
+          date,
+          people_involved,
+          documents,
+          comments,
+          created_at,
+          updated_at,
+          incident_report_types:type_id(name),
+          incident_categories:category_id(name),
+          incident_subcategories:subcategory_id(name),
+          campuses:location_id(name),
+          facilities:facility_id(name),
+          incident_priorities:priority_id(name),
+          incident_status:status_id(name),
+          created_by_employee:employees!created_by(first_name, last_name),
+          assigned_employee:employees!assigned_to(first_name, last_name)
+        `)
+        .eq('client_id', clientId)
+        .order('created_at', { ascending: false });
 
-      if (fetchError) {
-        console.error('Error from fetch-incidents function:', fetchError);
-        throw new Error(fetchError.message || 'Failed to fetch incidents');
+      if (error) {
+        console.error('Error fetching incidents:', error);
+        throw new Error(`Failed to fetch incidents: ${error.message}`);
       }
 
-      if (!data || !data.success) {
-        console.error('Fetch incidents function returned error:', data);
-        throw new Error(data?.error || 'Failed to fetch incidents');
-      }
-
-      console.log('Raw incidents data from function:', data.incidents);
+      console.log(`Successfully fetched ${incidents?.length || 0} incidents`);
 
       // Transform the data to match our Incident interface
-      const transformedIncidents: Incident[] = (data.incidents || []).map((inc: any) => ({
+      const transformedIncidents: Incident[] = (incidents || []).map((inc: any) => ({
         id: inc.id,
         ticketId: inc.ticket_id,
         type: inc.incident_report_types?.name || 'Unknown',
@@ -101,13 +95,13 @@ export const useIncidentData = () => {
         peopleInvolved: Array.isArray(inc.people_involved) ? inc.people_involved : [],
         status: inc.incident_status?.name || 'Unknown',
         reportedBy: {
-          id: inc.created_by_employee?.id || '',
+          id: inc.created_by || '',
           name: inc.created_by_employee ? 
             `${inc.created_by_employee.first_name} ${inc.created_by_employee.last_name}` : 
             'Unknown'
         },
         owner: inc.assigned_employee ? {
-          id: inc.assigned_employee.id,
+          id: inc.assigned_to,
           name: `${inc.assigned_employee.first_name} ${inc.assigned_employee.last_name}`
         } : undefined,
         facility: inc.facilities?.name || '',
@@ -118,11 +112,6 @@ export const useIncidentData = () => {
         comments: Array.isArray(inc.comments) ? inc.comments : []
       }));
 
-      console.log('Transformed incidents:', transformedIncidents);
-      
-      // Update cache
-      cachedIncidents = transformedIncidents;
-      lastFetchTime = now;
       setIncidents(transformedIncidents);
 
     } catch (error: any) {
@@ -136,7 +125,6 @@ export const useIncidentData = () => {
       toast.error('Failed to load incidents: ' + error.message);
     } finally {
       setLoading(false);
-      isCurrentlyFetching = false;
     }
   }, [employeeState.employeeData?.clientId, authEmployeeData?.clientId, user?.email]);
 

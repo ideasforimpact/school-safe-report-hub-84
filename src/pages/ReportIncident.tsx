@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth/AuthContext';
@@ -29,23 +30,6 @@ interface UserBasicInfo {
   name: string;
 }
 
-// Helper function to calculate file size from base64 string
-const calculateBase64FileSize = (base64String: string): number => {
-  if (!base64String) return 0;
-  
-  // Remove data URL prefix if present (e.g., "data:image/png;base64,")
-  const base64Data = base64String.includes(',') 
-    ? base64String.split(',')[1] 
-    : base64String;
-  
-  // Calculate approximate file size from base64
-  // Base64 encoding increases size by ~33%, so we reverse that calculation
-  const padding = (base64Data.match(/=/g) || []).length;
-  const approximateSize = (base64Data.length * 3) / 4 - padding;
-  
-  return Math.round(approximateSize);
-};
-
 const ReportIncident = () => {
   const { user, employeeData: authEmployeeData } = useAuth();
   const { id: incidentId } = useParams<{ id?: string }>();
@@ -57,10 +41,8 @@ const ReportIncident = () => {
   const [isLoadingEmployees, setIsLoadingEmployees] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [isFormPopulated, setIsFormPopulated] = useState(false);
-  const [isFormReady, setIsFormReady] = useState(false);
   
-  // Use the incident detail hook
+  // Use the incident detail hook for edit mode
   const { incident: existingIncident, isLoading: isLoadingIncident, error: incidentError, getFormData } = useIncidentDetail(incidentId);
   
   // Add validation hook
@@ -94,57 +76,7 @@ const ReportIncident = () => {
   // Set edit mode based on incidentId
   useEffect(() => {
     setIsEditMode(!!incidentId);
-    setIsFormPopulated(false);
-    setIsFormReady(false);
   }, [incidentId]);
-
-  // Populate form data when incident is loaded - memoized to prevent infinite loops
-  const populateFormData = useCallback(() => {
-    if (existingIncident && !isLoadingIncident && !isFormPopulated && isEditMode) {
-      console.log('Populating form data with incident:', existingIncident);
-      const mappedFormData = getFormData();
-      if (mappedFormData) {
-        setFormData(mappedFormData);
-        setPeopleInvolved(existingIncident.people_involved || []);
-        
-        // Convert documents to FileItem format for the supporting files
-        if (existingIncident.documents && Array.isArray(existingIncident.documents)) {
-          const convertedFiles: FileItem[] = existingIncident.documents.map((doc: any, index: number) => {
-            const fileSize = calculateBase64FileSize(doc.data || '');
-            
-            return {
-              id: `existing-${index}`,
-              name: doc.name || `Document ${index + 1}`,
-              type: doc.type || 'application/octet-stream',
-              size: fileSize,
-              base64: doc.data || ''
-            };
-          });
-          handleFilesChange(convertedFiles);
-          console.log('Converted documents to FileItems with proper sizes:', convertedFiles);
-        }
-        
-        setIsFormPopulated(true);
-        console.log('Form data populated successfully');
-      }
-    }
-  }, [existingIncident, isLoadingIncident, isFormPopulated, isEditMode, getFormData, setFormData, setPeopleInvolved, handleFilesChange]);
-
-  useEffect(() => {
-    populateFormData();
-  }, [populateFormData]);
-
-  // Check if form is ready (all data loaded and populated)
-  useEffect(() => {
-    const isDataReady = !isLoadingEmployees && (!isEditMode || (!isLoadingIncident && isFormPopulated));
-    setIsFormReady(isDataReady);
-    console.log('Form ready status:', isDataReady, {
-      isLoadingEmployees,
-      isEditMode,
-      isLoadingIncident,
-      isFormPopulated
-    });
-  }, [isLoadingEmployees, isEditMode, isLoadingIncident, isFormPopulated]);
 
   // Handle incident loading error
   useEffect(() => {
@@ -154,15 +86,13 @@ const ReportIncident = () => {
     }
   }, [incidentError, isEditMode, navigate]);
 
-  // Fetch employees from the database
+  // Fetch employees from the database - simplified
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
         setIsLoadingEmployees(true);
-        console.log('Fetching employees...');
         const fetchedEmployees = await getAllEmployeesFromApi();
         setEmployees(fetchedEmployees);
-        console.log('Employees fetched successfully:', fetchedEmployees.length);
       } catch (error) {
         console.error("Failed to fetch employees:", error);
         toast.error("Could not load staff members");
@@ -175,42 +105,6 @@ const ReportIncident = () => {
     fetchEmployees();
   }, []);
 
-  // Helper function to create a valid date from form data
-  const createDateFromFormData = (dateString: string, timeString: string) => {
-    try {
-      // If no date is provided, use current date
-      if (!dateString) {
-        console.log('No date provided, using current date');
-        return new Date();
-      }
-
-      // If no time is provided, use current time
-      if (!timeString) {
-        console.log('No time provided, using current time');
-        const currentTime = new Date().toTimeString().split(' ')[0].slice(0, 5);
-        timeString = currentTime;
-      }
-
-      // Create date from date and time strings
-      const dateTimeString = `${dateString}T${timeString}:00`;
-      console.log('Creating date from:', dateTimeString);
-      
-      const date = new Date(dateTimeString);
-      
-      // Check if the date is valid
-      if (isNaN(date.getTime())) {
-        console.error('Invalid date created:', dateTimeString);
-        throw new Error('Invalid date');
-      }
-
-      return date;
-    } catch (error) {
-      console.error('Error creating date:', error);
-      // Return current date as fallback
-      return new Date();
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -218,9 +112,6 @@ const ReportIncident = () => {
 
     // Validate form including people involved
     const isValid = validateForm(formData, peopleInvolved);
-
-    console.log(formData,"formData", errors)
-
     
     if (!isValid) {
       const firstError = Object.values(errors)[0];
@@ -231,155 +122,108 @@ const ReportIncident = () => {
     setIsSubmitting(true);
     
     try {
-      if (isEditMode && incidentId) {
-        // Handle edit mode with optimized data
-        const dateTime = createDateFromFormData(formData.date, formData.time);
-        
-        const validPeople = peopleInvolved.filter(p => {
-          const hasName = p.name && p.name.trim() !== '';
-          const hasRole = p.role && p.role.trim() !== '';
-          const hasNotes = p.notes && p.notes.trim() !== '';
-          const hasAnyValue = hasName || hasRole || hasNotes;
-          return hasAnyValue;
-        });
-        
-        const documents = supportingFiles.map(file => ({
-          name: file.name,
-          type: file.type,
-          data: file.base64
-        }));
-        
-        // Only send changed fields to reduce payload
-        const updates = {
-          type_id: formData.typeId,
-          category_id: formData.categoryId,
-          subcategory_id: formData.subcategoryId,
-          description: formData.description,
-          date: dateTime.toISOString(),
-          location_id: formData.locationId,
-          facility_id: formData.facilityId,
-          priority_id: formData.priorityId,
-          status_id: formData.status,
-          assigned_to: formData.owner || null,
-          people_involved: validPeople,
-          documents: documents
-        };
-
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
-          toast.error("You must be logged in to edit incidents");
-          return;
+      // Get employee and client data
+      let employeeId = employeeState.employeeData?.id || authEmployeeData?.id;
+      let clientId = employeeState.employeeData?.clientId || authEmployeeData?.clientId;
+      
+      // Only fetch employee data if not available - use maybeSingle
+      if (!employeeId && user?.email) {
+        const { data: empData, error: empError } = await supabase
+          .from('employees')
+          .select('id, client_id')
+          .eq('email', user.email.toLowerCase())
+          .maybeSingle(); // Use maybeSingle instead of single
+          
+        if (empData && !empError) {
+          employeeId = empData.id;
+          clientId = empData.client_id;
         }
-
-        const { data, error } = await supabase.functions.invoke('update-incident', {
-          body: {
-            incidentId: incidentId,
-            updates
-          },
-          headers: {
-            Authorization: `Bearer ${session.access_token}`
-          }
-        });
-
-        if (error) {
-          console.error('Edge function error:', error);
-          throw new Error(error.message || 'Failed to update incident');
-        }
-
-        toast.success("Incident updated successfully");
-        
-        // Navigate immediately and refetch in background
-        navigate('/incidents');
-        refetchIncidents(); // Don't await this
-        
-      } else {
-        // Handle create mode with optimized approach
-        let employeeId = employeeState.employeeData?.id || authEmployeeData?.id;
-        let clientId = employeeState.employeeData?.clientId || authEmployeeData?.clientId;
-        
-        // Only fetch employee data if not available
-        if (!employeeId && user?.email) {
-          const { data: empData, error: empError } = await supabase
-            .from('employees')
-            .select('id, client_id')
-            .eq('email', user.email.toLowerCase())
-            .single();
-            
-          if (empData && !empError) {
-            employeeId = empData.id;
-            clientId = empData.client_id;
-          } else {
-            console.error("Failed to fetch employee data:", empError);
-          }
-        }
-        
-        if (!employeeId) {
-          toast.error("Unable to identify the reporting employee. Please refresh and try again.");
-          setIsSubmitting(false);
-          return;
-        }
-
-        if (!clientId) {
-          toast.error("Unable to identify client. Please refresh and try again.");
-          setIsSubmitting(false);
-          return;
-        }
-        
-        const dateTime = createDateFromFormData(formData.date, formData.time);
-        
-        const validPeople = peopleInvolved.filter(p => {
-          const hasName = p.name && p.name.trim() !== '';
-          const hasRole = p.role && p.role.trim() !== '';
-          const hasNotes = p.notes && p.notes.trim() !== '';
-          const hasAnyValue = hasName || hasRole || hasNotes;
-          return hasAnyValue;
-        });
-        
-        const documents = supportingFiles.map(file => ({
-          name: file.name,
-          type: file.type,
-          data: file.base64
-        }));
-        
-        // Optimized data structure
-        const incidentData = {
-          typeId: formData.typeId,
-          categoryId: formData.categoryId,
-          subcategoryId: formData.subcategoryId || null,
-          description: formData.description,
-          date: dateTime.toISOString(),
-          locationId: formData.locationId,
-          facilityId: formData.facilityId,
-          priorityId: formData.priorityId,
-          peopleInvolved: validPeople,
-          documents: documents,
-          createdBy: employeeId,
-          assignedTo: formData.owner || null,
-          clientId: clientId
-        };
-        
-        console.log('Creating new incident...');
-        const { data, error } = await supabase.functions.invoke('create-incident', {
-          body: incidentData
-        });
-        
-        if (error) {
-          console.error('Error from create-incident function:', error);
-          throw new Error(error.message || 'Failed to create incident');
-        }
-        
-        if (!data || !data.success) {
-          console.error('Create incident function returned error:', data);
-          throw new Error(data?.error || 'Failed to create incident');
-        }
-        
-        console.log('Incident created successfully:', data);
-        toast.success(`Incident reported successfully! Ticket ID: ${data.ticketId}`);
-        
-        // Navigate immediately and refetch in background
-        navigate('/incidents');
-        refetchIncidents(); // Don't await this
       }
+      
+      if (!employeeId || !clientId) {
+        toast.error("Unable to identify user. Please refresh and try again.");
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Create a simple date from form data
+      const createDate = () => {
+        try {
+          if (!formData.date) return new Date();
+          const timeString = formData.time || '12:00';
+          const dateTimeString = `${formData.date}T${timeString}:00`;
+          return new Date(dateTimeString);
+        } catch (error) {
+          return new Date();
+        }
+      };
+
+      const dateTime = createDate();
+      
+      const validPeople = peopleInvolved.filter(p => 
+        p.name?.trim() || p.role?.trim() || p.notes?.trim()
+      );
+      
+      const documents = supportingFiles.map(file => ({
+        name: file.name,
+        type: file.type,
+        data: file.base64
+      }));
+      
+      // Simple incident data structure for direct database insert
+      const incidentRecord = {
+        ticket_id: `INC-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        type_id: formData.typeId || null,
+        category_id: formData.categoryId || null,
+        subcategory_id: formData.subcategoryId || null,
+        description: formData.description || '',
+        date: dateTime.toISOString(),
+        location_id: formData.locationId || null,
+        facility_id: formData.facilityId || null,
+        priority_id: formData.priorityId || null,
+        people_involved: validPeople,
+        documents: documents,
+        created_by: employeeId,
+        assigned_to: formData.owner || null,
+        client_id: clientId,
+        status_id: null // Will be set to 'Open' by default in the database
+      };
+
+      // Get the 'Open' status ID
+      const { data: statusData } = await supabase
+        .from('incident_status')
+        .select('id')
+        .eq('name', 'Open')
+        .maybeSingle();
+
+      if (statusData) {
+        incidentRecord.status_id = statusData.id;
+      }
+      
+      console.log('Creating incident directly in database...');
+      
+      // Direct database insert - much faster than edge function
+      const { data, error } = await supabase
+        .from('incidents')
+        .insert(incidentRecord)
+        .select('id, ticket_id')
+        .single();
+      
+      if (error) {
+        console.error('Error creating incident:', error);
+        throw new Error(error.message);
+      }
+      
+      console.log('Incident created successfully:', data);
+      toast.success(`Incident reported successfully! Ticket ID: ${data.ticket_id}`);
+      
+      // Small delay to show success message, then navigate
+      setTimeout(() => {
+        navigate('/incidents');
+        // Refetch incidents in background
+        refetchIncidents();
+      }, 1500);
+      
     } catch (error) {
       console.error('Error submitting incident report:', error);
       toast.error("An error occurred while submitting the report: " + (error.message || "Please try again"));
@@ -422,7 +266,7 @@ const ReportIncident = () => {
     return (priority?.name as 'Low' | 'Medium' | 'High' | 'Critical') || 'Medium';
   };
 
-  // Create a safe formData object for the component that ensures all fields are properly mapped
+  // Create a safe formData object for the component
   const safeFormData = {
     typeId: formData.typeId,
     categoryId: formData.categoryId,
@@ -434,28 +278,23 @@ const ReportIncident = () => {
     facilityId: formData.facilityId,
     priorityId: formData.priorityId,
     owner: formData.owner,
-    // Legacy fields for backward compatibility - these should be derived from ID fields
     type: formData.typeId,
     subcategory: formData.subcategoryId,
     priority: getPriorityName(formData.priorityId)
   };
 
-  // Show loading state until form is completely ready
-  if (!isFormReady) {
-    const loadingMessage = isEditMode 
-      ? (isLoadingIncident ? 'Loading incident details...' : 'Populating form data...') 
-      : 'Loading form data...';
-
+  // Show loading state for employees only
+  if (isLoadingEmployees) {
     return (
       <Layout>
         <div className="space-y-4 md:space-y-6 w-full overflow-x-hidden bg-gray-50 min-h-screen">
           <div className="bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-6">
             <div className="max-w-7xl mx-auto">
               <h1 className="text-2xl font-semibold text-gray-900">
-                {isEditMode ? 'Edit Incident' : 'Report New Incident'}
+                Report New Incident
               </h1>
               <p className="text-gray-600 text-sm mt-1">
-                {loadingMessage}
+                Loading form data...
               </p>
             </div>
           </div>
@@ -463,9 +302,7 @@ const ReportIncident = () => {
             <div className="flex justify-center items-center min-h-[400px]">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                <p className="mt-4 text-gray-600">
-                  {loadingMessage}
-                </p>
+                <p className="mt-4 text-gray-600">Loading...</p>
               </div>
             </div>
           </div>
@@ -480,11 +317,11 @@ const ReportIncident = () => {
       <IncidentCreationOverlay isVisible={isSubmitting} />
       
       <Layout>
-        {/* Header section matching the design */}
+        {/* Header section */}
         <div className="bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-6">
           <div className="max-w-7xl mx-auto">
             <h1 className="text-2xl font-semibold text-gray-900">
-              {isEditMode ? 'Edit Incident' : 'Report New Incident'}
+              Report New Incident
             </h1>
             <p className="text-gray-600 text-sm mt-1">
               Document safety incidents, near misses, or unsafe conditions
@@ -519,7 +356,7 @@ const ReportIncident = () => {
                 <Button 
                   type="button" 
                   variant="outline"
-                  onClick={() => navigate(isEditMode ? `/incident/${incidentId}` : '/dashboard')}
+                  onClick={() => navigate('/dashboard')}
                   className="px-6 border-gray-300"
                   disabled={isSubmitting}
                 >
@@ -530,7 +367,7 @@ const ReportIncident = () => {
                   disabled={isSubmitting}
                   className="px-6 bg-blue-600 hover:bg-blue-700"
                 >
-                  {isSubmitting ? (isEditMode ? "Saving..." : "Creating...") : (isEditMode ? "Save Changes" : "Submit Report")}
+                  {isSubmitting ? "Creating..." : "Submit Report"}
                 </Button>
               </CardFooter>
             </Card>
