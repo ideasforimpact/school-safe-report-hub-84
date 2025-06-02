@@ -100,13 +100,6 @@ const Dashboard = () => {
   return (
     <Layout>
       <div className="container py-6 space-y-8">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Safety Dashboard</h1>
-          <p className="text-lg text-gray-600">
-            Welcome to {schoolName}'s Safety Command Center
-          </p>
-        </div>
-        
         {/* If no incidents yet, show a welcome message */}
         {totalIncidents === 0 && (
           <Alert>
