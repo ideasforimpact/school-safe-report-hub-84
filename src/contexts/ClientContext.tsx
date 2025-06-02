@@ -42,6 +42,7 @@ interface ClientContextType {
   addClient: (clientData: Omit<Client, 'id' | 'creationDate'> & { modules?: ModuleInfo[] }) => Promise<Client | null>;
   updateClient: (id: string, updates: Partial<Client> & { modules?: ModuleInfo[] }) => Promise<void>;
   deleteClient: (id: string) => Promise<void>;
+  fetchClients: () => Promise<void>;
   isEmailDomainAllowed?: (email: string, clientId: string) => boolean;
 }
 
@@ -52,64 +53,65 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
+  // Extracted fetchClients function to be reusable
+  const fetchClients = async () => {
+    setLoading(true);
+    try {
+      // Get all clients
+      const { data: clientsData, error: clientsError } = await supabase
+        .from('clients')
+        .select('*');
+
+      if (clientsError) {
+        throw clientsError;
+      }
+
+      // Fetch module access for all clients
+      const { data: modulesData, error: modulesError } = await supabase
+        .from('client_modules')
+        .select('*');
+
+      if (modulesError) {
+        throw modulesError;
+      }
+
+      // Group module access by client id
+      const modulesByClient: Record<string, any[]> = {};
+      modulesData?.forEach(module => {
+        if (!modulesByClient[module.client_id]) {
+          modulesByClient[module.client_id] = [];
+        }
+        modulesByClient[module.client_id].push(module);
+      });
+
+      // Map clients and include their module access
+      const mappedClients = clientsData.map(dbClient => {
+        const clientModules = modulesByClient[dbClient.id] || [];
+        const moduleAccess = mapModulesToPermissions(clientModules);
+        
+        return {
+          ...mapDbClientToClient(dbClient),
+          moduleAccess,
+          clientTypeId: dbClient.client_type_id
+        };
+      });
+
+      setClients(mappedClients);
+      
+      // Set default client if there is at least one
+      if (mappedClients.length > 0 && !client) {
+        setClient(mappedClients[0]);
+      }
+    } catch (error) {
+      console.error('Error fetching clients:', error);
+      toast.error('Failed to load clients');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Load clients from Supabase on initial render
   useEffect(() => {
-    const fetchClients = async () => {
-      setLoading(true);
-      try {
-        // Get all clients
-        const { data: clientsData, error: clientsError } = await supabase
-          .from('clients')
-          .select('*');
-
-        if (clientsError) {
-          throw clientsError;
-        }
-
-        // Fetch module access for all clients
-        const { data: modulesData, error: modulesError } = await supabase
-          .from('client_modules')
-          .select('*');
-
-        if (modulesError) {
-          throw modulesError;
-        }
-
-        // Group module access by client id
-        const modulesByClient: Record<string, any[]> = {};
-        modulesData?.forEach(module => {
-          if (!modulesByClient[module.client_id]) {
-            modulesByClient[module.client_id] = [];
-          }
-          modulesByClient[module.client_id].push(module);
-        });
-
-        // Map clients and include their module access
-        const mappedClients = clientsData.map(dbClient => {
-          const clientModules = modulesByClient[dbClient.id] || [];
-          const moduleAccess = mapModulesToPermissions(clientModules);
-          
-          return {
-            ...mapDbClientToClient(dbClient),
-            moduleAccess,
-            clientTypeId: dbClient.client_type_id
-          };
-        });
-
-        setClients(mappedClients);
-        
-        // Set default client if there is at least one
-        if (mappedClients.length > 0 && !client) {
-          setClient(mappedClients[0]);
-        }
-      } catch (error) {
-        console.error('Error fetching clients:', error);
-        toast.error('Failed to load clients');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchClients();
   }, []);
 
@@ -357,6 +359,7 @@ export const ClientProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       addClient, 
       updateClient, 
       deleteClient,
+      fetchClients,
       isEmailDomainAllowed
     }}>
       {children}
