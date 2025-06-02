@@ -1,7 +1,6 @@
 
 import React from 'react';
 import { Loader2 } from 'lucide-react';
-import { useClient } from '@/contexts/ClientContext';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface AuthLoadingOverlayProps {
@@ -9,13 +8,11 @@ interface AuthLoadingOverlayProps {
 }
 
 const AuthLoadingOverlay = ({ isVisible }: AuthLoadingOverlayProps) => {
-  const { user } = useAuth();
-  const { clients } = useClient();
+  const { user, employeeData } = useAuth();
   
-  // Find the client associated with the current user
-  const userClient = user?.clientId 
-    ? clients.find(c => c.id === user.clientId) 
-    : null;
+  // Get client info from user or employeeData
+  const clientLogo = user?.client?.logo || employeeData?.client?.logo;
+  const clientName = user?.client?.name || employeeData?.client?.name || 'Your School';
 
   if (!isVisible) return null;
 
@@ -28,10 +25,10 @@ const AuthLoadingOverlay = ({ isVisible }: AuthLoadingOverlayProps) => {
       <div className="relative z-10 flex flex-col items-center justify-center space-y-6">
         {/* Client Logo */}
         <div className="w-20 h-20 flex items-center justify-center animate-pulse">
-          {userClient?.logo ? (
+          {clientLogo ? (
             <img 
-              src={userClient.logo} 
-              alt={`${userClient.name} logo`}
+              src={clientLogo} 
+              alt={`${clientName} logo`}
               className="w-full h-full object-contain"
             />
           ) : (
