@@ -12,10 +12,19 @@ import QuickActions from '@/components/dashboard/QuickActions';
 import RecentActivities from '@/components/dashboard/RecentActivities';
 import SafetyResources from '@/components/dashboard/SafetyResources';
 import IntegratedDashboardSection from '@/components/dashboard/IntegratedDashboardSection';
+import { useAuth } from '@/contexts/AuthContext';
+import { useClient } from '@/contexts/ClientContext';
 
 const Dashboard = () => {
   const { incidents, getRecentActivities } = useIncidents();
+  const { user } = useAuth();
+  const { clients } = useClient();
   const recentActivities = getRecentActivities().slice(0, 5);
+
+  // Find the client associated with the current user
+  const userClient = user?.clientId 
+    ? clients.find(c => c.id === user.clientId) 
+    : null;
 
   // Format date to be more readable
   const formatDate = (date: Date) => {
@@ -85,10 +94,18 @@ const Dashboard = () => {
     // Navigate or show details as needed
   };
 
+  // Get the school name for the welcome message
+  const schoolName = userClient?.name || 'Your School';
+
   return (
     <Layout>
       <div className="container py-6 space-y-8">
-        <h1 className="text-2xl font-bold">Safety Dashboard</h1>
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Safety Dashboard</h1>
+          <p className="text-lg text-gray-600">
+            Welcome to {schoolName}'s Safety Command Center
+          </p>
+        </div>
         
         {/* If no incidents yet, show a welcome message */}
         {totalIncidents === 0 && (

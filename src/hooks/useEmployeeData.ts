@@ -29,6 +29,10 @@ export const useEmployeeData = () => {
         return;
       }
 
+      // Add a minimum loading time to show the spinner
+      const minimumLoadingTime = 1500; // 1.5 seconds
+      const startTime = Date.now();
+
       // Check if employee is a super admin
       const { data: employeeData, error: employeeError } = await supabase
         .from('employees')
@@ -159,10 +163,17 @@ export const useEmployeeData = () => {
         }];
       }
 
-      dispatch(setConfiguredModules(configuredModules));
+      // Ensure minimum loading time has passed
+      const elapsedTime = Date.now() - startTime;
+      const remainingTime = Math.max(0, minimumLoadingTime - elapsedTime);
+      
+      setTimeout(() => {
+        dispatch(setConfiguredModules(configuredModules));
+        dispatch(setLoading(false));
+      }, remainingTime);
+
     } catch (error) {
       dispatch(setError("Failed to fetch configured modules"));
-    } finally {
       dispatch(setLoading(false));
     }
   };

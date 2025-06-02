@@ -18,6 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuthHandlers } from './hooks/useAuthHandlers';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { setEmployeeData, setClientId, setConfiguredModules, resetEmployee, setLoading } from '@/store/employeeActions';
+import AuthLoadingOverlay from '@/components/auth/AuthLoadingOverlay';
 
 // Create the context
 export const AuthContext = createContext<AuthContextType>({
@@ -53,6 +54,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isInitializing, setIsInitializing] = useState<boolean>(true);
   const [authError, setAuthError] = useState<string | null>(null);
   const [isBackofficeUser, setIsBackofficeUser] = useState<boolean>(false);
+  const [showAuthLoading, setShowAuthLoading] = useState<boolean>(false);
   const authInitCompleteRef = useRef<boolean>(false);
   const authListenerSetupRef = useRef<boolean>(false);
   
@@ -139,23 +141,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // Helper function to update user with client information
-  const updateUserWithClientInfo = async (user: User): Promise<User> => {
-    if (!user.clientId) return user;
-    
-    try {
-      const { client, clientType } = await fetchClientInfo(user.clientId);
-      return {
-        ...user,
-        client,
-        clientType
-      };
-    } catch (error) {
-      console.error("Error updating user with client info:", error);
-      return user;
-    }
-  };
-
   // Enhanced setCurrentUser function that ensures client info is included
   const setCurrentUserWithClientInfo = async (user: User | null) => {
     if (!user) {
@@ -163,9 +148,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return;
     }
 
+    // Show loading overlay when setting user
+    setShowAuthLoading(true);
+
     // If user already has client info, use it directly
     if (user.client !== undefined && user.clientType !== undefined) {
       setCurrentUser(user);
+      // Hide loading after a brief delay to show the logo
+      setTimeout(() => setShowAuthLoading(false), 2000);
       return;
     }
 
@@ -180,12 +170,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         };
         setCurrentUser(userWithClientInfo);
         saveUserToStorage(userWithClientInfo);
+        // Hide loading after a brief delay to show the logo
+        setTimeout(() => setShowAuthLoading(false), 2000);
       } catch (error) {
         console.error("Error fetching client info for user:", error);
         setCurrentUser(user);
+        setTimeout(() => setShowAuthLoading(false), 2000);
       }
     } else {
       setCurrentUser(user);
+      setTimeout(() => setShowAuthLoading(false), 2000);
     }
   };
 
@@ -206,13 +200,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (event === 'SIGNED_IN' && session?.user) {
         try {
           console.log("Auth state change - SIGNED_IN detected, calling handleUserAuthentication");
+          setShowAuthLoading(true);
           // Use setTimeout to avoid potential deadlock issues with Supabase auth
           setTimeout(async () => {
             await handleUserAuthentication(session.user);
+            // Hide loading after modules are loaded
+            setTimeout(() => setShowAuthLoading(false), 2000);
           }, 0);
         } catch (error) {
           console.error("Error in handleUserAuthentication:", error);
           toast.error("Authentication failed. Please try again.");
+          setShowAuthLoading(false);
         }
       } else if (event === 'SIGNED_OUT') {
         console.log("Auth state change - SIGNED_OUT detected, clearing state");
@@ -220,6 +218,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setEmployeeDataState(null); // Clear employee data on logout
         saveEmployeeDataToStorage(null); // Clear from storage
         setAuthError(null);
+        setShowAuthLoading(false);
         
         // Clear Redux state on logout - FIXED: Properly dispatch action
         console.log("Dispatching resetEmployee on logout");
@@ -250,9 +249,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (data.session) {
           // Check if we already have a user loaded from storage
           if (!currentUser) {
+            setShowAuthLoading(true);
             // Use setTimeout to avoid potential deadlock issues
             setTimeout(async () => {
               await handleUserAuthentication(data.session?.user);
+              setTimeout(() => setShowAuthLoading(false), 2000);
             }, 0);
           }
         } else {
@@ -282,6 +283,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Handle login
   const handleLogin = async (email: string, password: string): Promise<boolean> => {
     setAuthError(null);
+    setShowAuthLoading(true);
     
     try {
       // First try to login as a regular user
@@ -346,6 +348,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
         
         toast.success(`Welcome back, ${userWithClientInfo.firstName}!`);
+        // Hide loading after a delay
+        setTimeout(() => setShowAuthLoading(false), 2000);
         return true;
       }
 
@@ -357,6 +361,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (error) {
         setAuthError("Invalid credentials");
+        setShowAuthLoading(false);
         return false;
       }
 
@@ -370,6 +375,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           
         if (backofficeError || !backofficeUser) {
           setAuthError("Error retrieving user data");
+          setShowAuthLoading(false);
           return false;
         }
         
@@ -458,15 +464,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         dispatch(setConfiguredModules(backofficeModules));
         
         toast.success(`Welcome back, Backoffice Admin!`);
+        setTimeout(() => setShowAuthLoading(false), 2000);
         return true;
       }
 
       setAuthError("Invalid credentials");
+      setShowAuthLoading(false);
       return false;
     } catch (error) {
       console.error("Login error:", error);
       setAuthError("Login failed");
       toast.error("Login failed");
+      setShowAuthLoading(false);
       return false;
     }
   };
@@ -478,6 +487,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setEmployeeDataState(null);
     saveEmployeeDataToStorage(null);
     setIsBackofficeUser(false);
+    setShowAuthLoading(false);
     
     // Clear Redux state - FIXED: Properly dispatch action
     dispatch(resetEmployee());
@@ -657,6 +667,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   return (
     <AuthContext.Provider value={value}>
+      <AuthLoadingOverlay isVisible={showAuthLoading} />
       {children}
     </AuthContext.Provider>
   );
