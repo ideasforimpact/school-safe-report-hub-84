@@ -53,7 +53,7 @@ const IncidentsHeader = () => {
         
         <Button onClick={() => navigate('/report-incident')}>
           <AlertTriangle className="h-4 w-4 mr-2" />
-          Report New
+          Report Incident
         </Button>
       </div>
     </div>

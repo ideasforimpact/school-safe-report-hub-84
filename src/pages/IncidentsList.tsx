@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { incidentService, IncidentRecord } from '@/services/incidentService';
 import IncidentsDataTable from '@/components/incidents/IncidentsDataTable';
+import IncidentsHeader from '@/components/incidents/IncidentsHeader';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -61,10 +62,7 @@ const IncidentsList = () => {
       <div className="space-y-6 p-6 w-full">
         <div className="bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-6">
           <div className="w-full">
-            <h1 className="text-2xl font-semibold text-gray-900">Incidents</h1>
-            <p className="text-gray-600 text-sm mt-1">
-              View all incidents reported in your organization
-            </p>
+            <IncidentsHeader />
           </div>
         </div>
 
