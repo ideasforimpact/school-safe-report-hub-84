@@ -94,9 +94,69 @@ async function uploadLogoToStorage(logoBase64: string, clientId: string): Promis
   }
 }
 
+// Helper function to validate super admin email before creation
+async function validateSuperAdminEmail(superAdminEmail: string, clientId: string): Promise<{ isValid: boolean, existingEmployee?: any, error?: string }> {
+  try {
+    // Check if employee with this email already exists
+    const { data: existingEmployees, error: checkError } = await supabase
+      .from('employees')
+      .select('*, clients!inner(id, name, active)')
+      .eq('email', superAdminEmail);
+
+    if (checkError) {
+      console.error('Error checking existing employees:', checkError);
+      return { isValid: false, error: 'Failed to validate super admin email' };
+    }
+
+    if (existingEmployees && existingEmployees.length > 0) {
+      // Check if any existing employee belongs to an active client
+      const activeClientEmployee = existingEmployees.find(emp => 
+        emp.clients && emp.clients.active && emp.clients.id !== clientId
+      );
+
+      if (activeClientEmployee) {
+        console.error(`Employee with email ${superAdminEmail} already exists for active client: ${activeClientEmployee.clients.name}`);
+        return { 
+          isValid: false, 
+          existingEmployee: activeClientEmployee,
+          error: `Employee with email ${superAdminEmail} already exists for active client: ${activeClientEmployee.clients.name}` 
+        };
+      }
+
+      // Check if employee exists for the same client (this might be an update scenario)
+      const sameClientEmployee = existingEmployees.find(emp => 
+        emp.clients && emp.clients.id === clientId
+      );
+
+      if (sameClientEmployee) {
+        console.log(`Employee with email ${superAdminEmail} already exists for this client, will update existing record`);
+        return { isValid: true, existingEmployee: sameClientEmployee };
+      }
+    }
+
+    return { isValid: true };
+  } catch (err) {
+    console.error('Error in validateSuperAdminEmail:', err);
+    return { isValid: false, error: 'Validation failed due to unexpected error' };
+  }
+}
+
 // Helper function to create employee from super admin email
 async function createEmployeeFromSuperAdminEmail(clientId: string, superAdminEmail: string) {
   try {
+    // First validate the email
+    const validation = await validateSuperAdminEmail(superAdminEmail, clientId);
+    
+    if (!validation.isValid) {
+      throw new Error(validation.error || 'Super admin email validation failed');
+    }
+
+    // If employee already exists for this client, return it
+    if (validation.existingEmployee && validation.existingEmployee.clients?.id === clientId) {
+      console.log('Employee already exists for this client:', validation.existingEmployee);
+      return validation.existingEmployee;
+    }
+
     // Extract employee_id from the email (part before @ symbol)
     const employeeId = superAdminEmail.split('@')[0];
     
@@ -114,25 +174,6 @@ async function createEmployeeFromSuperAdminEmail(clientId: string, superAdminEma
       joining_date: new Date().toISOString()
     };
 
-    // Check if employee already exists with this email and client_id
-    const { data: existingEmployee, error: checkError } = await supabase
-      .from('employees')
-      .select('*')
-      .eq('email', superAdminEmail)
-      .eq('client_id', clientId)
-      .single();
-
-    if (checkError && checkError.code !== 'PGRST116') {
-      console.error('Error checking for existing employee:', checkError);
-      return null;
-    }
-
-    // If employee exists, return the existing record
-    if (existingEmployee) {
-      console.log('Employee already exists for this client:', existingEmployee);
-      return existingEmployee;
-    }
-
     // Insert new employee
     const { data, error } = await supabase
       .from('employees')
@@ -142,14 +183,14 @@ async function createEmployeeFromSuperAdminEmail(clientId: string, superAdminEma
 
     if (error) {
       console.error("Error creating employee from super admin email:", error);
-      return null;
+      throw new Error(`Failed to create super admin employee: ${error.message}`);
     }
 
     console.log('Created new super admin employee:', data);
     return data;
   } catch (err) {
     console.error('Error in createEmployeeFromSuperAdminEmail:', err);
-    return null;
+    throw err;
   }
 }
 
@@ -198,6 +239,68 @@ async function updateSuperAdminEmployee(clientId: string, superAdminEmail: strin
   } catch (err) {
     console.error('Error in updateSuperAdminEmployee:', err);
     return null;
+  }
+}
+
+// Helper function to rollback client creation
+async function rollbackClientCreation(clientId: string): Promise<void> {
+  try {
+    console.log(`Starting rollback process for client ${clientId}`);
+    
+    // Delete any employees created for this client
+    const { error: employeeError } = await supabase
+      .from('employees')
+      .delete()
+      .eq('client_id', clientId);
+      
+    if (employeeError) {
+      console.error('Error during employee rollback:', employeeError);
+    } else {
+      console.log('Successfully rolled back employees');
+    }
+
+    // Delete any client modules
+    const { error: moduleError } = await supabase
+      .from('client_modules')
+      .delete()
+      .eq('client_id', clientId);
+      
+    if (moduleError) {
+      console.error('Error during client modules rollback:', moduleError);
+    } else {
+      console.log('Successfully rolled back client modules');
+    }
+
+    // Finally delete the client record itself
+    const { error: clientError } = await supabase
+      .from('clients')
+      .delete()
+      .eq('id', clientId);
+      
+    if (clientError) {
+      console.error('Error during client rollback:', clientError);
+      throw new Error(`Failed to rollback client: ${clientError.message}`);
+    } else {
+      console.log('Successfully rolled back client record');
+    }
+
+    // Try to delete client logo from storage if it exists
+    try {
+      const { error: deleteLogoError } = await supabase.storage
+        .from('client-logos')
+        .remove([`${clientId}/logo.png`, `${clientId}/logo.jpg`, `${clientId}/logo.jpeg`]);
+      
+      if (deleteLogoError) {
+        console.log('Note: Could not delete logo files during rollback:', deleteLogoError.message);
+      }
+    } catch (err) {
+      console.log('Note: Error during logo cleanup in rollback:', err);
+    }
+
+    console.log(`Rollback completed for client ${clientId}`);
+  } catch (err) {
+    console.error('Error during rollback process:', err);
+    throw err;
   }
 }
 
@@ -647,8 +750,11 @@ async function handleCreateClient(clientData: any) {
     logo: clientData.logo ? 'Logo data present' : 'No logo data'
   });
   
+  let clientId: string | null = null;
+  
   try {
-    const { id: clientId, modules, superAdminEmail, clientTypeId, logo, ...clientInfo } = clientData;
+    const { id: providedClientId, modules, superAdminEmail, clientTypeId, logo, ...clientInfo } = clientData;
+    clientId = providedClientId;
     
     console.log('Logo data check:', {
       logoExists: !!logo,
@@ -701,20 +807,37 @@ async function handleCreateClient(clientData: any) {
     
     console.log('Client record inserted successfully:', insertedClient.id);
     
-    // Process module access - client now exists in database
-    if (modules && modules.length > 0) {
-      console.log('Processing module access for newly created client...');
-      const moduleSuccess = await processModuleAccess(clientId, modules, false);
-      if (!moduleSuccess) {
-        throw new Error('Failed to process module access');
+    // Validate and create super admin employee if email provided (before processing modules)
+    if (superAdminEmail) {
+      console.log('Creating super admin employee...');
+      try {
+        const employee = await createEmployeeFromSuperAdminEmail(clientId, superAdminEmail);
+        if (!employee) {
+          throw new Error('Failed to create super admin employee');
+        }
+        console.log('Super admin employee created successfully');
+      } catch (employeeError) {
+        console.error('Error creating super admin employee:', employeeError);
+        // Rollback client creation
+        await rollbackClientCreation(clientId);
+        throw new Error(`Failed to create super admin employee: ${employeeError.message}`);
       }
     }
     
-    // Create super admin employee if email provided
-    if (superAdminEmail) {
-      const employee = await createEmployeeFromSuperAdminEmail(clientId, superAdminEmail);
-      if (!employee) {
-        console.error('Failed to create super admin employee');
+    // Process module access - client now exists in database
+    if (modules && modules.length > 0) {
+      console.log('Processing module access for newly created client...');
+      try {
+        const moduleSuccess = await processModuleAccess(clientId, modules, true);
+        if (!moduleSuccess) {
+          throw new Error('Failed to process module access');
+        }
+        console.log('Module access processed successfully');
+      } catch (moduleError) {
+        console.error('Error processing module access:', moduleError);
+        // Rollback client creation
+        await rollbackClientCreation(clientId);
+        throw new Error(`Failed to process module access: ${moduleError.message}`);
       }
     }
     
@@ -724,6 +847,17 @@ async function handleCreateClient(clientData: any) {
     );
   } catch (error) {
     console.error('Error in handleCreateClient:', error);
+    
+    // If we have a clientId and the error occurred after client creation, try to rollback
+    if (clientId) {
+      try {
+        await rollbackClientCreation(clientId);
+        console.log('Rollback completed successfully');
+      } catch (rollbackError) {
+        console.error('Error during rollback:', rollbackError);
+      }
+    }
+    
     throw error;
   }
 }
