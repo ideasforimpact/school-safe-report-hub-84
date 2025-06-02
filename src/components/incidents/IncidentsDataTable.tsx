@@ -43,7 +43,7 @@ const IncidentsDataTable: React.FC<IncidentsDataTableProps> = ({ incidents, load
         <Table className="w-full min-w-full">
           <TableHeader>
             <TableRow>
-              <TableHead className="min-w-[250px]">Ticket ID</TableHead>
+              <TableHead className="min-w-[120px]">Ticket #</TableHead>
               <TableHead className="min-w-[140px]">Type</TableHead>
               <TableHead className="min-w-[180px]">Category</TableHead>
               <TableHead className="min-w-[180px]">Subcategory</TableHead>
@@ -58,7 +58,7 @@ const IncidentsDataTable: React.FC<IncidentsDataTableProps> = ({ incidents, load
           <TableBody>
             {incidents.map((incident) => (
               <TableRow key={incident.id}>
-                <TableCell className="font-medium">
+                <TableCell className="font-medium text-lg">
                   {getSimpleId(incident.ticket_id)}
                 </TableCell>
                 <TableCell>{incident.type}</TableCell>
