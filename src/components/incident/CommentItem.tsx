@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { Trash2, Edit } from 'lucide-react';
+import { Trash2, Edit, FileText, Paperclip } from 'lucide-react';
 import FilePreview from './FilePreview';
 
 interface CommentItemProps {
@@ -42,6 +42,9 @@ const CommentItem: React.FC<CommentItemProps> = ({
     if (text.length <= maxLength) return text;
     return text.slice(0, maxLength) + '...';
   };
+
+  // Check if comment has any attachments
+  const hasAttachments = (comment.files && comment.files.length > 0) || comment.image;
 
   return (
     <div className="p-4 border rounded-md mb-4 bg-gray-50 relative">
@@ -119,32 +122,43 @@ const CommentItem: React.FC<CommentItemProps> = ({
         )}
       </div>
 
-      {/* Attachments */}
-      {(comment.files && comment.files.length > 0) && (
-        <div className="mt-3">
-          <h4 className="text-sm font-medium mb-2">Attachments</h4>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {comment.files.map((file) => (
-              <FilePreview key={file.id} file={file} />
-            ))}
+      {/* Attachments Section */}
+      {hasAttachments && (
+        <div className="mt-4 pt-3 border-t border-gray-200">
+          <div className="flex items-center gap-2 mb-3">
+            <Paperclip className="h-4 w-4 text-gray-500" />
+            <h4 className="text-sm font-medium text-gray-700">Attachments</h4>
           </div>
-        </div>
-      )}
+          
+          {/* Multiple files support */}
+          {comment.files && comment.files.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {comment.files.map((file) => (
+                <FilePreview key={file.id} file={file} />
+              ))}
+            </div>
+          )}
 
-      {/* Legacy support for single image */}
-      {comment.image && !comment.files && (
-        <div className="mt-3">
-          <img 
-            src={comment.image} 
-            alt="Comment attachment" 
-            className="max-w-full h-auto rounded-md border" 
-          />
+          {/* Legacy single image support */}
+          {comment.image && !comment.files && (
+            <div className="border rounded-lg p-3 bg-white">
+              <img 
+                src={comment.image} 
+                alt="Comment attachment" 
+                className="max-w-full h-auto rounded-md border max-h-48 object-contain" 
+              />
+              <div className="flex items-center mt-2 text-sm text-gray-500">
+                <FileText className="h-4 w-4 mr-1" />
+                <span>Image attachment</span>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       {/* Assignment information */}
       {comment.assignedTo && comment.assignedTo.name && (
-        <div className="mt-3 text-sm">
+        <div className="mt-3 pt-2 border-t border-gray-200 text-sm">
           <span className="text-gray-600">Assigned to: </span>
           <span className="font-medium">{comment.assignedTo.name}</span>
         </div>
