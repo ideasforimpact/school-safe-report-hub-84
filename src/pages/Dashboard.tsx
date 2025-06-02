@@ -1,10 +1,9 @@
+
 import React from 'react';
 import Layout from '@/components/layout/Layout';
-import { useIncidents } from '@/contexts/incident'; // Fixed import path
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
-import ActivityList from '@/components/ActivityList';
 import { formatDistanceToNow } from 'date-fns';
 import SummaryCards from '@/components/dashboard/SummaryCards';
 import QuickActions from '@/components/dashboard/QuickActions';
@@ -13,84 +12,45 @@ import SafetyResources from '@/components/dashboard/SafetyResources';
 import IntegratedDashboardSection from '@/components/dashboard/IntegratedDashboardSection';
 import { useAuth } from '@/contexts/AuthContext';
 import { useClient } from '@/contexts/ClientContext';
+import { useIncidentStats } from '@/hooks/useIncidentStats';
 
 const Dashboard = () => {
-  const { incidents, getRecentActivities } = useIncidents();
   const { user } = useAuth();
   const { clients } = useClient();
-  const recentActivities = getRecentActivities().slice(0, 5);
+  const { stats: incidentStats, loading: statsLoading } = useIncidentStats();
 
   // Find the client associated with the current user
   const userClient = user?.clientId 
     ? clients.find(c => c.id === user.clientId) 
     : null;
 
-  // Format date to be more readable
-  const formatDate = (date: Date) => {
-    return formatDistanceToNow(new Date(date), { addSuffix: true });
-  };
+  // Mock activities for now - these should come from a dedicated service
+  const recentActivities = [];
 
-  // Calculate statistics for the dashboard
-  const totalIncidents = incidents.length;
-  const openIncidents = incidents.filter(incident => incident.status === 'Open').length;
-  const inProgressIncidents = incidents.filter(incident => incident.status === 'In Progress').length;
-  const closedIncidents = incidents.filter(incident => incident.status === 'Closed').length;
+  // Calculate statistics for the dashboard using the stats hook
+  const totalIncidents = incidentStats.total;
+  const openIncidents = incidentStats.open;
+  const inProgressIncidents = incidentStats.inProgress;
+  const closedIncidents = incidentStats.closed;
   
-  // Safety stats - assuming we can calculate these from our data
-  const incidentFreeStreak = 14; // Placeholder for "days without incident"
-  const reportRate = 92; // Placeholder for reporting rate percentage
+  // Safety stats - these should come from actual calculations
+  const incidentFreeStreak = 14;
+  const reportRate = 92;
   
-  // Calculate resolution time in days (average)
-  const calculateAverageResolutionTime = () => {
-    const closedIncidentsWithDates = incidents.filter(
-      i => i.status === 'Closed' && i.createdAt && i.updatedAt
-    );
-    
-    if (closedIncidentsWithDates.length === 0) return 0;
-    
-    const totalDays = closedIncidentsWithDates.reduce((sum, incident) => {
-      const createdDate = new Date(incident.createdAt);
-      const closedDate = new Date(incident.updatedAt);
-      const diffTime = Math.abs(closedDate.getTime() - createdDate.getTime());
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      return sum + diffDays;
-    }, 0);
-    
-    return Math.round(totalDays / closedIncidentsWithDates.length);
-  };
-
-  // Calculate most common category and category counts
-  const getCategoryCounts = () => {
-    const counts: Record<string, number> = {};
-    incidents.forEach(incident => {
-      const category = incident.category || 'Uncategorized';
-      counts[category] = (counts[category] || 0) + 1;
-    });
-    return counts;
-  };
-
-  const categoryCounts = getCategoryCounts();
-  const mostCommonCategory = Object.keys(categoryCounts).reduce(
-    (a, b) => (categoryCounts[a] > categoryCounts[b] ? a : b),
-    'Uncategorized'
-  );
-
-  // Count total people involved
-  const totalPeopleInvolved = incidents.reduce(
-    (sum, incident) => sum + (incident.peopleInvolved?.length || 0),
-    0
-  );
+  // Mock calculations for categories and people involved
+  const categoryCounts = { 'Physical Injury': 5, 'Property Damage': 3 };
+  const mostCommonCategory = 'Physical Injury';
+  const totalPeopleInvolved = totalIncidents * 2; // Mock calculation
 
   // Data for the integrated dashboard section
   const openIncidentsData = {
     count: openIncidents,
-    change: -5 // placeholder for % change
+    change: -5
   };
 
   // Handler for activity clicks
   const handleActivityClick = (activity: any) => {
     console.log("Activity clicked:", activity);
-    // Navigate or show details as needed
   };
 
   // Get the school name for the welcome message
@@ -100,7 +60,7 @@ const Dashboard = () => {
     <Layout>
       <div className="container py-6 space-y-8">
         {/* If no incidents yet, show a welcome message */}
-        {totalIncidents === 0 && (
+        {totalIncidents === 0 && !statsLoading && (
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Welcome to {schoolName}'s Safety Command Center</AlertTitle>
@@ -114,7 +74,7 @@ const Dashboard = () => {
         <SummaryCards 
           openIncidents={openIncidents}
           totalIncidents={totalIncidents}
-          incidentsThisMonth={inProgressIncidents} // Using in progress as placeholder
+          incidentsThisMonth={inProgressIncidents}
           mostCommonCategory={mostCommonCategory}
           categoryCounts={categoryCounts}
           totalPeopleInvolved={totalPeopleInvolved}

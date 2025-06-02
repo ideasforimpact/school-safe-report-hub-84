@@ -18,15 +18,11 @@ import { useComments } from '@/hooks/useComments';
 import { useActionItems } from '@/hooks/useActionItems';
 import { generateTicketId } from '@/utils/incidentUtils';
 import { Activity, Incident } from '@/types/incident';
-import { useIncidentData } from '@/hooks/useIncidentData';
 
 const IncidentContext = createContext<IncidentContextType | undefined>(undefined);
 
 export const IncidentProvider = ({ children }: { children: ReactNode }) => {
-  // Use the data fetching hook
-  const { incidents: fetchedIncidents, loading, error, refetchIncidents } = useIncidentData();
-  
-  // Local state that syncs with fetched incidents
+  // Remove automatic incident fetching - only fetch when specifically needed
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [users] = useState<IncidentContextType['users']>([
@@ -46,11 +42,6 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
       role: 'Teacher'
     }
   ]);
-
-  // Sync incidents
-  useEffect(() => {
-    setIncidents([...fetchedIncidents]);
-  }, [fetchedIncidents]);
 
   const {
     categories,
@@ -96,25 +87,23 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
     initialSections
   );
 
-  // Incident actions
+  // Incident actions - removed automatic refetching
   const {
     addIncident: originalAddIncident,
     updateIncident: originalUpdateIncident,
     getIncident,
     addActivity,
     isSubmitting
-  } = useIncidentActions(incidents, refetchIncidents, activities, setActivities, users);
+  } = useIncidentActions(incidents, () => {}, activities, setActivities, users);
 
   // Wrapper functions
   const addIncident = async (incidentData: any) => {
     const result = await originalAddIncident(incidentData);
-    await new Promise(resolve => setTimeout(resolve, 300));
     return result;
   };
 
   const updateIncident = async (id: string, updates: Partial<Incident>) => {
     const result = await originalUpdateIncident(id, updates);
-    await new Promise(resolve => setTimeout(resolve, 200));
     return result;
   };
 
