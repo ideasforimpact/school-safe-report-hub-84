@@ -34,6 +34,7 @@ export const fetchIncidentForEdit = async (incidentId: string, clientId: string)
     console.log('=== EDIT INCIDENT SERVICE ===');
     console.log('fetchIncidentForEdit - Starting with params:', { incidentId, clientId });
 
+    // Fetch incident with optimized query
     const { data: incident, error } = await supabase
       .from('incidents')
       .select(`
@@ -52,37 +53,7 @@ export const fetchIncidentForEdit = async (incidentId: string, clientId: string)
         priority_id,
         status_id,
         assigned_to,
-        created_by,
-        incident_report_types:type_id (
-          id,
-          name
-        ),
-        incident_categories:category_id (
-          id,
-          name
-        ),
-        incident_subcategories:subcategory_id (
-          id,
-          name
-        ),
-        campuses:location_id (
-          id,
-          name
-        ),
-        facilities:facility_id (
-          id,
-          name
-        ),
-        incident_priorities:priority_id (
-          id,
-          name
-        ),
-        incident_status:status_id (
-          id,
-          name
-        ),
-        created_by_employee:employees!created_by(first_name, last_name),
-        assigned_employee:employees!assigned_to(first_name, last_name)
+        created_by
       `)
       .eq('id', incidentId)
       .eq('client_id', clientId)
@@ -98,47 +69,66 @@ export const fetchIncidentForEdit = async (incidentId: string, clientId: string)
       return null;
     }
 
-    console.log('fetchIncidentForEdit - Raw incident data from DB:', incident);
+    // Fetch all related data in parallel for better performance
+    const [
+      reportType,
+      category,
+      subcategory,
+      location,
+      facility,
+      priority,
+      status,
+      createdEmployee,
+      assignedEmployee
+    ] = await Promise.all([
+      incident.type_id ? supabase.from('incident_report_types').select('id, name').eq('id', incident.type_id).maybeSingle() : Promise.resolve({ data: null }),
+      incident.category_id ? supabase.from('incident_categories').select('id, name').eq('id', incident.category_id).maybeSingle() : Promise.resolve({ data: null }),
+      incident.subcategory_id ? supabase.from('incident_subcategories').select('id, name').eq('id', incident.subcategory_id).maybeSingle() : Promise.resolve({ data: null }),
+      incident.location_id ? supabase.from('campuses').select('id, name').eq('id', incident.location_id).maybeSingle() : Promise.resolve({ data: null }),
+      incident.facility_id ? supabase.from('facilities').select('id, name').eq('id', incident.facility_id).maybeSingle() : Promise.resolve({ data: null }),
+      incident.priority_id ? supabase.from('incident_priorities').select('id, name').eq('id', incident.priority_id).maybeSingle() : Promise.resolve({ data: null }),
+      incident.status_id ? supabase.from('incident_status').select('id, name').eq('id', incident.status_id).maybeSingle() : Promise.resolve({ data: null }),
+      supabase.from('employees').select('first_name, last_name').eq('id', incident.created_by).maybeSingle(),
+      incident.assigned_to ? supabase.from('employees').select('first_name, last_name').eq('id', incident.assigned_to).maybeSingle() : Promise.resolve({ data: null })
+    ]);
 
     // Parse the date to get date and time
     const incidentDate = new Date(incident.date);
     const dateString = incidentDate.toISOString().split('T')[0];
     const timeString = incidentDate.toTimeString().split(' ')[0].slice(0, 5);
 
-    console.log('fetchIncidentForEdit - Parsed date and time:', { dateString, timeString });
-
     // Transform the data for the edit form
     const editData: EditIncidentData = {
       id: incident.id,
       ticket_id: incident.ticket_id,
-      type: incident.incident_report_types?.name || '',
+      type: reportType.data?.name || '',
       typeId: incident.type_id || '',
-      category: incident.incident_categories?.name || '',
+      category: category.data?.name || '',
       categoryId: incident.category_id || '',
-      subcategory: incident.incident_subcategories?.name || '',
+      subcategory: subcategory.data?.name || '',
       subcategoryId: incident.subcategory_id || '',
       description: incident.description || '',
       date: dateString,
       time: timeString,
-      location: incident.campuses?.name || '',
+      location: location.data?.name || '',
       locationId: incident.location_id || '',
-      facility: incident.facilities?.name || '',
+      facility: facility.data?.name || '',
       facilityId: incident.facility_id || '',
-      priority: incident.incident_priorities?.name || '',
+      priority: priority.data?.name || '',
       priorityId: incident.priority_id || '',
-      status: incident.incident_status?.name || '',
+      status: status.data?.name || '',
       statusId: incident.status_id || '',
-      owner: incident.assigned_employee ? 
-        `${incident.assigned_employee.first_name} ${incident.assigned_employee.last_name}` : '',
+      owner: assignedEmployee.data ? 
+        `${assignedEmployee.data.first_name} ${assignedEmployee.data.last_name}` : '',
       ownerId: incident.assigned_to || '',
-      reportedBy: incident.created_by_employee ? 
-        `${incident.created_by_employee.first_name} ${incident.created_by_employee.last_name}` : '',
+      reportedBy: createdEmployee.data ? 
+        `${createdEmployee.data.first_name} ${createdEmployee.data.last_name}` : '',
       peopleInvolved: Array.isArray(incident.people_involved) ? incident.people_involved : [],
       createdAt: new Date(incident.created_at),
       updatedAt: new Date(incident.updated_at)
     };
 
-    console.log('fetchIncidentForEdit - Transformed edit data:', editData);
+    console.log('fetchIncidentForEdit - Successfully transformed edit data');
     console.log('=== END EDIT INCIDENT SERVICE ===');
     return editData;
 

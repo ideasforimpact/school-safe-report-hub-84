@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
-import { incidentService, IncidentRecord } from '@/services/incidentService';
+import { IncidentRecord } from '@/services/incidentService';
+import { optimizedIncidentService } from '@/services/incident/optimizedIncidentService';
 import IncidentsDataTable from '@/components/incidents/IncidentsDataTable';
 import IncidentsHeader from '@/components/incidents/IncidentsHeader';
 import { useEmployeeStore } from '@/store/EmployeeContext';
@@ -43,12 +44,16 @@ const IncidentsList = () => {
         }
 
         console.log('Fetching incidents for client:', clientId);
-        const fetchedIncidents = await incidentService.fetchIncidents(clientId);
+        const fetchedIncidents = await optimizedIncidentService.fetchIncidents(clientId);
         setIncidents(fetchedIncidents);
 
       } catch (error: any) {
         console.error('Error fetching incidents:', error);
-        toast.error('Failed to load incidents. Please try again.');
+        if (error.message?.includes('timeout')) {
+          toast.error('Request timed out. Please try again or contact support if the issue persists.');
+        } else {
+          toast.error('Failed to load incidents. Please try again.');
+        }
       } finally {
         setLoading(false);
       }
