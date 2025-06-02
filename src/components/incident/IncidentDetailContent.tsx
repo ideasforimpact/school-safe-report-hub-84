@@ -99,10 +99,14 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
   // Use currentIncident instead of incident for display
   const displayIncident = currentIncident;
 
-  // Create a wrapper function for status change that passes the status
-  const handleStatusUpdate = () => {
-    handleStatusChange(statusUpdate);
-  };
+  // Create a wrapper function for status change that properly handles the status parameter
+  const handleStatusUpdate = useCallback(async (newStatus: string) => {
+    try {
+      await handleStatusChange(newStatus);
+    } catch (error) {
+      console.error('Error updating status:', error);
+    }
+  }, [handleStatusChange]);
 
   return (
     <div className="container max-w-6xl py-6">
