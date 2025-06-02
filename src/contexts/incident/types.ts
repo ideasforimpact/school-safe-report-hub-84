@@ -1,78 +1,95 @@
 
-import { Incident, User, Activity, ActionItem, Comment } from '@/types/incident';
-import { ConfigItem, SubcategoryItem, SectionItem, ClassItem, CampusItem } from '@/contexts/types';
+import { 
+  Incident, 
+  User, 
+  Activity,
+  ConfigItem,
+  SubcategoryItem
+} from '@/types/incident';
 
-// Re-export IncidentStatus from types/incident.ts to ensure consistency
-export type { IncidentStatus, IncidentType, IncidentLocation } from '@/types/incident';
+export interface Campus {
+  id: string;
+  name: string;
+}
+
+export interface Class {
+  id: string;
+  name: string;
+  campusId: string;
+}
+
+export interface Section {
+  id: string;
+  name: string;
+  classId: string;
+}
 
 export interface IncidentContextType {
+  // Data
+  campuses: Campus[];
+  classes: Class[];
+  sections: Section[];
   incidents: Incident[];
   users: User[];
-  // Category management
   categories: ConfigItem[];
+  subcategoryMappings: Record<string, SubcategoryItem[]>;
+  locations: ConfigItem[];
+  facilities: ConfigItem[];
+  designations: ConfigItem[];
+  loading?: boolean;
+  error?: string | null;
+  
+  // Methods
   addCategory: (name: string) => void;
   updateCategory: (id: string, name: string) => void;
   deleteCategory: (id: string) => void;
-  // Subcategory management
-  subcategoryMappings: Record<string, SubcategoryItem[]>;
+  
   addSubcategory: (categoryId: string, name: string) => void;
   updateSubcategory: (categoryId: string, id: string, name: string) => void;
   deleteSubcategory: (categoryId: string, id: string) => void;
-  // Location management
-  locations: ConfigItem[];
+  
   addLocation: (name: string) => void;
   updateLocation: (id: string, name: string) => void;
   deleteLocation: (id: string) => void;
-  // Facility management
-  facilities: ConfigItem[];
+  
   addFacility: (name: string) => void;
   updateFacility: (id: string, name: string) => void;
   deleteFacility: (id: string) => void;
-  // Campus management
-  campuses: CampusItem[];
+  
   addCampus: (name: string) => void;
   updateCampus: (id: string, name: string) => void;
   deleteCampus: (id: string) => void;
-  // Class management
-  classes: ClassItem[];
+  
   addClass: (campusId: string, name: string) => void;
   updateClass: (id: string, campusId: string, name: string) => void;
   deleteClass: (id: string) => void;
-  // Section management
-  sections: SectionItem[];
+  
   addSection: (classId: string, name: string) => void;
   updateSection: (id: string, classId: string, name: string) => void;
   deleteSection: (id: string) => void;
-  // Existing incident operations
-  addIncident: (incident: Omit<Incident, 'id' | 'status' | 'createdAt' | 'updatedAt' | 'ticketId'> & {
-    typeId?: string;
-    categoryId: string;
-    subcategoryId?: string | null;
-    locationId: string;
-    facilityId?: string;
-    priorityId?: string;
-    statusId?: string | null;  // Added statusId field
-  }) => Promise<Incident>;
-  updateIncident: (id: string, updates: Partial<Incident>) => void;
-  getIncident: (id: string) => Incident | undefined;
-  // ActionItems operations (renamed to comments in the UI)
-  addActionItem: (incidentId: string, actionItem: Omit<ActionItem, 'id' | 'createdAt' | 'updatedAt'>) => void;
-  updateActionItem: (incidentId: string, actionItemId: string, updates: Partial<ActionItem>) => void;
-  deleteActionItem: (incidentId: string, actionItemId: string) => void;
-  // Comments operations
-  addComment: (incidentId: string, comment: Omit<Comment, 'id' | 'createdAt' | 'updatedAt'>) => void;
-  updateComment: (incidentId: string, commentId: string, updates: Partial<Comment>) => void;
-  deleteComment: (incidentId: string, commentId: string) => void;
-  getRecentActivities: () => Activity[];
-  getIncidentActivities: (incidentId: string) => Activity[];
-  generateTicketId: () => string;
   
-  // Designations properties
-  designations: ConfigItem[];
   addDesignation: (name: string) => void;
   updateDesignation: (id: string, name: string) => void;
   deleteDesignation: (id: string) => void;
   
-  // Submission state
+  addIncident: (incident: Omit<Incident, 'id' | 'status' | 'createdAt' | 'updatedAt' | 'ticketId'>) => void;
+  updateIncident: (id: string, updates: Partial<Incident>) => void;
+  getIncident: (id: string) => Incident | undefined;
+  
+  addActionItem: (incidentId: string, actionItem: any) => void;
+  updateActionItem: (incidentId: string, actionItemId: string, updates: any) => void;
+  deleteActionItem: (incidentId: string, actionItemId: string) => void;
+  
+  addComment: (incidentId: string, comment: any) => void;
+  updateComment: (incidentId: string, commentId: string, updates: any) => void;
+  deleteComment: (incidentId: string, commentId: string) => void;
+  
+  getRecentActivities: () => Activity[];
+  getIncidentActivities: (incidentId: string) => Activity[];
+  generateTicketId: () => string;
   isSubmitting?: boolean;
+  
+  // New methods for manual loading
+  fetchIncidents?: () => Promise<void>;
+  setIncidents?: (incidents: Incident[]) => void;
 }

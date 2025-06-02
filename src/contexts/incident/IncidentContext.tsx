@@ -18,17 +18,16 @@ import { useComments } from '@/hooks/useComments';
 import { useActionItems } from '@/hooks/useActionItems';
 import { generateTicketId } from '@/utils/incidentUtils';
 import { Activity, Incident } from '@/types/incident';
-import { useIncidentData } from '@/hooks/useIncidentData';
 
 const IncidentContext = createContext<IncidentContextType | undefined>(undefined);
 
 export const IncidentProvider = ({ children }: { children: ReactNode }) => {
-  // Use the data fetching hook
-  const { incidents: fetchedIncidents, loading, error, refetchIncidents } = useIncidentData();
-  
-  // Local state that syncs with fetched incidents
+  // Local state for incidents - no automatic fetching
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
   const [users] = useState<IncidentContextType['users']>([
     { 
       id: '1', 
@@ -47,10 +46,16 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
     }
   ]);
 
-  // Sync incidents
-  useEffect(() => {
-    setIncidents([...fetchedIncidents]);
-  }, [fetchedIncidents]);
+  // Manual fetch function that can be called when needed
+  const fetchIncidents = async () => {
+    // This will be implemented by components that need it
+    return Promise.resolve();
+  };
+
+  // Wrapper function for refetching
+  const refetchIncidents = async () => {
+    await fetchIncidents();
+  };
 
   const {
     categories,
@@ -183,7 +188,12 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
     getRecentActivities,
     getIncidentActivities,
     generateTicketId,
-    isSubmitting
+    isSubmitting,
+    // Add new methods for manual incident loading
+    fetchIncidents,
+    loading,
+    error,
+    setIncidents
   };
 
   return (
