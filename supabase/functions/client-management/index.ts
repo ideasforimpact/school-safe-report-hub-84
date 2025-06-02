@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -201,10 +202,39 @@ async function updateSuperAdminEmployee(clientId: string, superAdminEmail: strin
   }
 }
 
-// Helper function to delete all super admin employees for a client
-async function deleteClientEmployees(clientId: string) {
+// Helper function to delete all client-related data in proper order
+async function deleteClientData(clientId: string) {
   try {
-    // First delete all module permissions for these employees
+    console.log(`Starting deletion process for client ${clientId}`);
+    
+    // Step 1: Delete incidents first (they reference employees)
+    console.log('Deleting incidents...');
+    const { error: incidentsError } = await supabase
+      .from('incidents')
+      .delete()
+      .eq('client_id', clientId);
+      
+    if (incidentsError) {
+      console.error('Error deleting incidents:', incidentsError);
+    } else {
+      console.log('Successfully deleted incidents');
+    }
+
+    // Step 2: Delete assessments
+    console.log('Deleting assessments...');
+    const { error: assessmentsError } = await supabase
+      .from('assessments')
+      .delete()
+      .eq('client_id', clientId);
+      
+    if (assessmentsError) {
+      console.error('Error deleting assessments:', assessmentsError);
+    } else {
+      console.log('Successfully deleted assessments');
+    }
+
+    // Step 3: Delete employee modules
+    console.log('Deleting employee modules...');
     const { data: employees } = await supabase
       .from('employees')
       .select('id')
@@ -213,31 +243,245 @@ async function deleteClientEmployees(clientId: string) {
     if (employees && employees.length > 0) {
       const employeeIds = employees.map(emp => emp.id);
       
-      // Delete employee module permissions
-      const { error: moduleError } = await supabase
+      const { error: empModulesError } = await supabase
         .from('employee_modules')
         .delete()
         .in('employee_id', employeeIds);
         
-      if (moduleError) {
-        console.error('Error deleting employee module permissions:', moduleError);
+      if (empModulesError) {
+        console.error('Error deleting employee modules:', empModulesError);
+      } else {
+        console.log('Successfully deleted employee modules');
       }
     }
-    
-    // Then delete the employees
-    const { error: deleteError } = await supabase
+
+    // Step 4: Delete employees
+    console.log('Deleting employees...');
+    const { error: employeesError } = await supabase
       .from('employees')
       .delete()
       .eq('client_id', clientId);
       
-    if (deleteError) {
-      console.error('Error deleting client employees:', deleteError);
-      return false;
+    if (employeesError) {
+      console.error('Error deleting employees:', employeesError);
+    } else {
+      console.log('Successfully deleted employees');
     }
+
+    // Step 5: Delete grades
+    console.log('Deleting grades...');
+    const { error: gradesError } = await supabase
+      .from('grades')
+      .delete()
+      .eq('client_id', clientId);
+      
+    if (gradesError) {
+      console.error('Error deleting grades:', gradesError);
+    } else {
+      console.log('Successfully deleted grades');
+    }
+
+    // Step 6: Delete sections
+    console.log('Deleting sections...');
+    const { error: sectionsError } = await supabase
+      .from('sections')
+      .delete()
+      .eq('client_id', clientId);
+      
+    if (sectionsError) {
+      console.error('Error deleting sections:', sectionsError);
+    } else {
+      console.log('Successfully deleted sections');
+    }
+
+    // Step 7: Delete facilities
+    console.log('Deleting facilities...');
+    const { error: facilitiesError } = await supabase
+      .from('facilities')
+      .delete()
+      .eq('client_id', clientId);
+      
+    if (facilitiesError) {
+      console.error('Error deleting facilities:', facilitiesError);
+    } else {
+      console.log('Successfully deleted facilities');
+    }
+
+    // Step 8: Delete campuses
+    console.log('Deleting campuses...');
+    const { error: campusesError } = await supabase
+      .from('campuses')
+      .delete()
+      .eq('client_id', clientId);
+      
+    if (campusesError) {
+      console.error('Error deleting campuses:', campusesError);
+    } else {
+      console.log('Successfully deleted campuses');
+    }
+
+    // Step 9: Delete students
+    console.log('Deleting students...');
+    const { error: studentsError } = await supabase
+      .from('students')
+      .delete()
+      .eq('client_id', clientId);
+      
+    if (studentsError) {
+      console.error('Error deleting students:', studentsError);
+    } else {
+      console.log('Successfully deleted students');
+    }
+
+    // Step 10: Delete vehicles and vehicle documents
+    console.log('Deleting vehicles...');
+    const { data: vehicles } = await supabase
+      .from('vehicles')
+      .select('id')
+      .eq('client_id', clientId);
+      
+    if (vehicles && vehicles.length > 0) {
+      const vehicleIds = vehicles.map(v => v.id);
+      
+      // Delete vehicle documents first
+      const { error: vehicleDocsError } = await supabase
+        .from('vehicle_documents')
+        .delete()
+        .in('vehicle_id', vehicleIds);
+        
+      if (vehicleDocsError) {
+        console.error('Error deleting vehicle documents:', vehicleDocsError);
+      } else {
+        console.log('Successfully deleted vehicle documents');
+      }
+    }
+
+    const { error: vehiclesError } = await supabase
+      .from('vehicles')
+      .delete()
+      .eq('client_id', clientId);
+      
+    if (vehiclesError) {
+      console.error('Error deleting vehicles:', vehiclesError);
+    } else {
+      console.log('Successfully deleted vehicles');
+    }
+
+    // Step 11: Delete custom forms and form submissions
+    console.log('Deleting custom forms...');
+    const { data: forms } = await supabase
+      .from('custom_forms')
+      .select('id')
+      .eq('client_id', clientId);
+      
+    if (forms && forms.length > 0) {
+      const formIds = forms.map(f => f.id);
+      
+      // Delete form submissions first
+      const { error: submissionsError } = await supabase
+        .from('form_submissions')
+        .delete()
+        .in('form_id', formIds);
+        
+      if (submissionsError) {
+        console.error('Error deleting form submissions:', submissionsError);
+      } else {
+        console.log('Successfully deleted form submissions');
+      }
+    }
+
+    const { error: formsError } = await supabase
+      .from('custom_forms')
+      .delete()
+      .eq('client_id', clientId);
+      
+    if (formsError) {
+      console.error('Error deleting custom forms:', formsError);
+    } else {
+      console.log('Successfully deleted custom forms');
+    }
+
+    // Step 12: Delete edusafe resources
+    console.log('Deleting edusafe resources...');
+    const { error: eduSafeError } = await supabase
+      .from('edusafe_resources')
+      .delete()
+      .eq('client_id', clientId);
+      
+    if (eduSafeError) {
+      console.error('Error deleting edusafe resources:', eduSafeError);
+    } else {
+      console.log('Successfully deleted edusafe resources');
+    }
+
+    // Step 13: Delete client modules
+    console.log('Deleting client modules...');
+    const { error: clientModulesError } = await supabase
+      .from('client_modules')
+      .delete()
+      .eq('client_id', clientId);
+      
+    if (clientModulesError) {
+      console.error('Error deleting client modules:', clientModulesError);
+    } else {
+      console.log('Successfully deleted client modules');
+    }
+
+    // Step 14: Delete configuration data
+    console.log('Deleting configuration data...');
     
+    // Delete contributing factors
+    const { error: contributingFactorsError } = await supabase
+      .from('contributing_factors')
+      .delete()
+      .eq('client_id', clientId);
+      
+    if (contributingFactorsError) {
+      console.error('Error deleting contributing factors:', contributingFactorsError);
+    }
+
+    // Delete incident categories and subcategories
+    const { error: incidentCategoriesError } = await supabase
+      .from('incident_categories')
+      .delete()
+      .eq('client_id', clientId);
+      
+    if (incidentCategoriesError) {
+      console.error('Error deleting incident categories:', incidentCategoriesError);
+    }
+
+    const { error: incidentSubcategoriesError } = await supabase
+      .from('incident_subcategories')
+      .delete()
+      .eq('client_id', clientId);
+      
+    if (incidentSubcategoriesError) {
+      console.error('Error deleting incident subcategories:', incidentSubcategoriesError);
+    }
+
+    // Delete incident priorities and report types
+    const { error: incidentPrioritiesError } = await supabase
+      .from('incident_priorities')
+      .delete()
+      .eq('client_id', clientId);
+      
+    if (incidentPrioritiesError) {
+      console.error('Error deleting incident priorities:', incidentPrioritiesError);
+    }
+
+    const { error: incidentReportTypesError } = await supabase
+      .from('incident_report_types')
+      .delete()
+      .eq('client_id', clientId);
+      
+    if (incidentReportTypesError) {
+      console.error('Error deleting incident report types:', incidentReportTypesError);
+    }
+
+    console.log('Completed deletion of all client-related data');
     return true;
   } catch (err) {
-    console.error('Error in deleteClientEmployees:', err);
+    console.error('Error in deleteClientData:', err);
     return false;
   }
 }
@@ -508,10 +752,10 @@ async function handleDeleteClient(clientData: any) {
   try {
     const { id: clientId } = clientData;
     
-    // Delete client employees first
-    const employeesDeleted = await deleteClientEmployees(clientId);
-    if (!employeesDeleted) {
-      console.error('Failed to delete client employees');
+    // Delete all client-related data in proper order
+    const deletionSuccess = await deleteClientData(clientId);
+    if (!deletionSuccess) {
+      console.error('Failed to delete all client data');
     }
     
     // Delete client logo from storage if it exists
