@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import { IncidentRecord } from '@/services/incidentService';
-import { incidentFetchService } from '@/services/incident/incidentFetchService';
+import { optimizedIncidentService } from '@/services/incident/optimizedIncidentService';
 import IncidentsDataTable from '@/components/incidents/IncidentsDataTable';
 import IncidentsHeader from '@/components/incidents/IncidentsHeader';
 import IncidentFilters from '@/components/incidents/IncidentFilters';
@@ -99,7 +99,7 @@ const IncidentsList = () => {
           return;
         }
 
-        const fetchedIncidents = await incidentFetchService.fetchIncidentsByClientId(clientId);
+        const fetchedIncidents = await optimizedIncidentService.fetchIncidents(clientId);
         setIncidents(fetchedIncidents);
 
       } catch (error: any) {
