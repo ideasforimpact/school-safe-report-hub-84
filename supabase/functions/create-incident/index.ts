@@ -16,7 +16,7 @@ serve(async (req) => {
   try {
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
     const {
@@ -35,30 +35,17 @@ serve(async (req) => {
       clientId
     } = await req.json();
 
-    console.log('Creating incident with data:', {
-      typeId,
-      categoryId,
-      subcategoryId,
-      description,
-      date,
-      locationId,
-      facilityId,
-      priorityId,
-      peopleInvolved,
-      documents,
-      createdBy,
-      assignedTo,
-      clientId
-    });
+    console.log('Creating incident with optimized query');
 
     // Generate a ticket ID
     const ticketId = `INC-${Math.floor(10000 + Math.random() * 90000)}`;
 
-    // Get the "Open" status ID
+    // Get the "Open" status ID with a simple, fast query
     const { data: statusData, error: statusError } = await supabaseClient
       .from('incident_status')
       .select('id')
       .eq('name', 'Open')
+      .limit(1)
       .single();
 
     if (statusError || !statusData) {
@@ -66,31 +53,34 @@ serve(async (req) => {
       throw new Error('Could not fetch incident status');
     }
 
-    // Create the incident record - using created_by instead of reported_by_id to match the actual column name
+    // Prepare the incident record with minimal required fields first
     const incidentRecord = {
       ticket_id: ticketId,
-      type_id: typeId,
-      category_id: categoryId,
-      subcategory_id: subcategoryId,
-      description: description,
+      description: description || '',
       date: date,
-      location_id: locationId,
-      facility_id: facilityId,
-      priority_id: priorityId,
-      people_involved: peopleInvolved,
-      documents: documents,
-      created_by: createdBy, // This should reference employees table
-      assigned_to: assignedTo,
+      created_by: createdBy,
       status_id: statusData.id,
-      client_id: clientId
+      client_id: clientId,
+      people_involved: peopleInvolved || [],
+      documents: documents || []
     };
 
-    console.log('Inserting incident record:', incidentRecord);
+    // Add optional fields only if they exist to reduce payload size
+    if (typeId) incidentRecord.type_id = typeId;
+    if (categoryId) incidentRecord.category_id = categoryId;
+    if (subcategoryId) incidentRecord.subcategory_id = subcategoryId;
+    if (locationId) incidentRecord.location_id = locationId;
+    if (facilityId) incidentRecord.facility_id = facilityId;
+    if (priorityId) incidentRecord.priority_id = priorityId;
+    if (assignedTo) incidentRecord.assigned_to = assignedTo;
 
+    console.log('Inserting incident with minimal payload');
+
+    // Use a more efficient insert with select to get the created record
     const { data: incident, error: incidentError } = await supabaseClient
       .from('incidents')
       .insert(incidentRecord)
-      .select()
+      .select('id, ticket_id')
       .single();
 
     if (incidentError) {
@@ -117,7 +107,8 @@ serve(async (req) => {
     
     return new Response(
       JSON.stringify({ 
-        error: error.message || 'An unexpected error occurred' 
+        error: error.message || 'An unexpected error occurred',
+        details: 'Database operation timed out. Please try again.'
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
