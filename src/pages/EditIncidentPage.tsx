@@ -74,18 +74,6 @@ const EditIncidentPage = () => {
     );
   }
 
-  const handleSuccess = async () => {
-    // Refetch incidents before navigating
-    await refetchIncidents();
-    navigate(`/incident/${id}`);
-  };
-
-  const handleCancel = async () => {
-    // Refetch incidents before navigating
-    await refetchIncidents();
-    navigate('/incidents');
-  };
-
   return (
     <Layout>
       <div className="space-y-4 md:space-y-6 w-full overflow-x-hidden bg-gray-50 min-h-screen">
@@ -109,11 +97,7 @@ const EditIncidentPage = () => {
         </div>
 
         <div className="w-full py-6">
-          <EditIncidentForm 
-            incident={incident}
-            onSuccess={handleSuccess}
-            onCancel={handleCancel}
-          />
+          <EditIncidentForm />
         </div>
       </div>
     </Layout>

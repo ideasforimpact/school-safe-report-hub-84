@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
@@ -101,7 +100,18 @@ const EditIncidentForm: React.FC = () => {
             priorityId: incident.priority_id || ''
           });
 
-          setPeopleInvolved(Array.isArray(incident.people_involved) ? incident.people_involved : []);
+          // Safely cast people_involved from Json to Person[]
+          const peopleData = incident.people_involved;
+          if (Array.isArray(peopleData)) {
+            const typedPeople = peopleData.map((person: any) => ({
+              name: person.name || '',
+              role: person.role || 'Student',
+              notes: person.notes || ''
+            })) as Person[];
+            setPeopleInvolved(typedPeople);
+          } else {
+            setPeopleInvolved([]);
+          }
         }
       } catch (error) {
         console.error('Error fetching incident:', error);
@@ -175,7 +185,9 @@ const EditIncidentForm: React.FC = () => {
       // Combine date and time
       const dateTime = new Date(`${formData.date}T${formData.time}`);
       
-      // Prepare updates
+      // Prepare updates - convert Person[] to Json for Supabase
+      const filteredPeople = peopleInvolved.filter(p => p.name.trim() !== '');
+      
       const updates = {
         type_id: formData.typeId,
         category_id: formData.categoryId,
@@ -186,7 +198,7 @@ const EditIncidentForm: React.FC = () => {
         facility_id: formData.facilityId,
         priority_id: formData.priorityId,
         assigned_to: formData.owner || null,
-        people_involved: peopleInvolved.filter(p => p.name.trim() !== ''),
+        people_involved: filteredPeople as any, // Cast to any to satisfy Json type
         updated_at: new Date().toISOString()
       };
 
