@@ -32,10 +32,10 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
           rows={4}
           className="w-full"
           required
-          maxLength={250}
+          maxLength={1000}
         />
         <p className="text-xs text-gray-500 text-right">
-          {description.length}/250 characters
+          {description.length}/1000 characters
         </p>
       </div>
 

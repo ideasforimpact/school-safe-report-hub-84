@@ -23,8 +23,8 @@ export function useIncidentFormValidation() {
       newErrors.description = 'Description is required';
     } else if (formData.description.trim().length < 10) {
       newErrors.description = 'Description must be at least 10 characters';
-    } else if (formData.description.trim().length > 250) {
-      newErrors.description = 'Description must be maximum 250 characters';
+    } else if (formData.description.trim().length > 1000) {
+      newErrors.description = 'Description must be maximum 1000 characters';
     }
     
     // Validate date
