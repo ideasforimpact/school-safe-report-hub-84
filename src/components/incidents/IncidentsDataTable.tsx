@@ -40,19 +40,19 @@ const IncidentsDataTable: React.FC<IncidentsDataTableProps> = ({ incidents, load
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden w-full">
       <div className="overflow-x-auto">
-        <Table className="w-full min-w-[1200px]">
+        <Table className="w-full min-w-[1400px]">
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[200px]">Ticket ID</TableHead>
-              <TableHead className="w-[120px]">Type</TableHead>
-              <TableHead className="w-[150px]">Category</TableHead>
-              <TableHead className="w-[150px]">Subcategory</TableHead>
-              <TableHead className="w-[150px]">Submitted Date</TableHead>
-              <TableHead className="w-[120px]">Status</TableHead>
-              <TableHead className="w-[120px]">Priority</TableHead>
-              <TableHead className="w-[150px]">Reported By</TableHead>
-              <TableHead className="w-[150px]">Owner</TableHead>
-              <TableHead className="w-[120px] text-center">Actions</TableHead>
+              <TableHead className="w-[250px]">Ticket ID</TableHead>
+              <TableHead className="w-[140px]">Type</TableHead>
+              <TableHead className="w-[180px]">Category</TableHead>
+              <TableHead className="w-[180px]">Subcategory</TableHead>
+              <TableHead className="w-[160px]">Submitted Date</TableHead>
+              <TableHead className="w-[140px]">Status</TableHead>
+              <TableHead className="w-[140px]">Priority</TableHead>
+              <TableHead className="w-[180px]">Reported By</TableHead>
+              <TableHead className="w-[180px]">Owner</TableHead>
+              <TableHead className="w-[140px] text-center">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

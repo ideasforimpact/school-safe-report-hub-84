@@ -5,17 +5,17 @@ export function useIncidentTableNavigation() {
   const navigate = useNavigate();
   
   const handleRowClick = (incidentId: string) => {
-    navigate(`/incidents/${incidentId}`);
+    navigate(`/incident/${incidentId}`);
   };
 
   const handleViewClick = (e: React.MouseEvent, incidentId: string) => {
     e.stopPropagation();
-    navigate(`/incidents/${incidentId}`);
+    navigate(`/incident/${incidentId}`);
   };
 
   const handleEditClick = (e: React.MouseEvent, incidentId: string) => {
     e.stopPropagation();
-    navigate(`/incidents/${incidentId}/edit`);
+    navigate(`/incident/${incidentId}/edit`);
   };
 
   return {
