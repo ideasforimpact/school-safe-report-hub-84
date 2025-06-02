@@ -99,6 +99,11 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
   // Use currentIncident instead of incident for display
   const displayIncident = currentIncident;
 
+  // Create a wrapper function for status change that passes the status
+  const handleStatusUpdate = () => {
+    handleStatusChange(statusUpdate);
+  };
+
   return (
     <div className="container max-w-6xl py-6">
       {/* Incident Header */}
@@ -176,7 +181,7 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
             incident={displayIncident}
             statusUpdate={statusUpdate}
             setStatusUpdate={setStatusUpdate}
-            handleStatusChange={handleStatusChange}
+            handleStatusChange={handleStatusUpdate}
             formatDate={formatDate}
             getStatusColor={getStatusColor}
           />
