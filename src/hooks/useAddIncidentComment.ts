@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { FileItem } from '@/types/incident';
 import { commentFileStorage, StoredFileItem } from '@/utils/commentFileStorage';
+import { useEmployeeAccess } from '@/contexts/auth/hooks/useEmployeeAccess';
 
 export interface AddCommentData {
   comment: string;
@@ -12,28 +13,22 @@ export interface AddCommentData {
 
 export const useAddIncidentComment = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const { getClientId } = useEmployeeAccess();
 
   const addComment = async (incidentId: string, data: AddCommentData) => {
     setIsLoading(true);
     try {
       console.log('Adding comment with data:', data);
 
-      // Get client ID from session or current user context
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('No authenticated session found');
+      // Get client ID from employee access hook
+      const clientId = getClientId();
+      
+      if (!clientId) {
+        console.error('Could not determine client ID from employee data');
+        throw new Error('Could not determine client ID. Please ensure you are logged in properly.');
       }
 
-      // Get employee data to find client_id
-      const { data: employeeData } = await supabase
-        .from('employees')
-        .select('client_id')
-        .eq('user_id', session.user.id)
-        .single();
-
-      if (!employeeData?.client_id) {
-        throw new Error('Could not determine client ID');
-      }
+      console.log('Using client ID:', clientId);
 
       let storedFiles: StoredFileItem[] = [];
       
@@ -54,7 +49,7 @@ export const useAddIncidentComment = () => {
       // Call the edge function with file URLs
       const { data: result, error } = await supabase.functions.invoke('add-incident-comment', {
         body: {
-          client_id: employeeData.client_id,
+          client_id: clientId,
           incident_id: incidentId,
           comment: data.comment,
           documents: storedFiles.map(file => ({
