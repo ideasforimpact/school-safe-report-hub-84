@@ -656,8 +656,27 @@ async function handleCreateClient(clientData: any) {
       logoLength: logo ? logo.length : 0
     });
 
-    // NO CLIENT EXISTENCE CHECK HERE - we're creating it!
     console.log(`Starting client creation process for ${clientId}`);
+    
+    // First, ensure the client record exists in the database
+    console.log('Checking if client record exists in database...');
+    const { data: existingClient, error: checkError } = await supabase
+      .from('clients')
+      .select('id, name')
+      .eq('id', clientId)
+      .single();
+
+    if (checkError && checkError.code !== 'PGRST116') {
+      console.error('Error checking for existing client:', checkError);
+      throw new Error('Failed to verify client existence');
+    }
+
+    if (!existingClient) {
+      console.error(`Client ${clientId} does not exist in database yet. This should not happen during creation.`);
+      throw new Error('Client record must be created in the database before processing modules. Please ensure the client is inserted first.');
+    }
+
+    console.log(`Client ${clientId} found in database: ${existingClient.name}`);
     
     // Handle logo upload if provided
     let clientLogoUrl = null;
@@ -671,7 +690,7 @@ async function handleCreateClient(clientData: any) {
       console.log('No logo provided for client creation');
     }
     
-    // Update client record with client type and logo URL (assuming client exists in DB already)
+    // Update client record with client type and logo URL
     const updateData: any = {};
     
     if (clientTypeId) {
@@ -696,9 +715,10 @@ async function handleCreateClient(clientData: any) {
       }
     }
     
-    // Process module access with isCreation flag set to true
+    // Process module access - client now exists in database
     if (modules && modules.length > 0) {
-      const moduleSuccess = await processModuleAccess(clientId, modules, true);
+      console.log('Processing module access for existing client...');
+      const moduleSuccess = await processModuleAccess(clientId, modules, false);
       if (!moduleSuccess) {
         throw new Error('Failed to process module access');
       }
