@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import IncidentDetails from './IncidentDetails';
 import CommentsList from './CommentsList';
 import InlineCommentForm from './CommentForm.inline';
+import SupportingDocuments from './SupportingDocuments';
 import { Incident, Comment as IncidentComment, FileItem } from '@/types/incident';
 import { useIncidents } from '@/contexts/incident';
 import { useAuth } from '@/contexts/auth/AuthContext';
@@ -222,25 +222,12 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
         </TabsContent>
 
         <TabsContent value="documents" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Supporting Documents</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {displayIncident.documents && displayIncident.documents.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {displayIncident.documents.map((doc, index) => (
-                    <div key={index} className="border rounded-lg p-4">
-                      <p className="font-medium">{doc.name}</p>
-                      <p className="text-sm text-gray-500">{doc.type}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-500 text-center py-6">No documents attached</p>
-              )}
-            </CardContent>
-          </Card>
+          <SupportingDocuments
+            incidentId={displayIncident.id}
+            documents={displayIncident.documents}
+            canDelete={isAdmin}
+            onDocumentDeleted={onRefreshIncident}
+          />
         </TabsContent>
 
         <TabsContent value="comments" className="mt-6 space-y-6">
@@ -259,7 +246,6 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
           {/* Comments List */}
           <CommentsList
             key={refreshKey}
-            comments={displayIncident.comments || []}
             incident={displayIncident}
             addComment={addComment}
             updateComment={updateComment}

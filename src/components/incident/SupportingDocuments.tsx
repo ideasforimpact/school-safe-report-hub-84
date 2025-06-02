@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileText, Download, Eye, ImageIcon, Video, File } from 'lucide-react';
+import { FileText, Download, Eye, ImageIcon, Video, File, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -8,20 +9,34 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-
-interface Document {
-  name: string;
-  type: string;
-  data: string; // Base64 encoded data
-}
+import { useIncidentDocuments } from '@/hooks/useIncidentDocuments';
+import { IncidentDocument } from '@/services/incident/incidentDocumentService';
 
 interface SupportingDocumentsProps {
-  documents: Document[];
+  incidentId: string;
+  documents?: IncidentDocument[];
+  canDelete?: boolean;
+  onDocumentDeleted?: () => void;
 }
 
-const SupportingDocuments: React.FC<SupportingDocumentsProps> = ({ documents }) => {
+const SupportingDocuments: React.FC<SupportingDocumentsProps> = ({ 
+  incidentId, 
+  documents: propDocuments,
+  canDelete = false,
+  onDocumentDeleted
+}) => {
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
+  const [selectedDocument, setSelectedDocument] = useState<IncidentDocument | null>(null);
+  const { documents: hookDocuments, loadDocuments, deleteDocument } = useIncidentDocuments();
+  
+  // Use prop documents if provided, otherwise use hook documents
+  const documents = propDocuments || hookDocuments;
+
+  useEffect(() => {
+    if (incidentId && !propDocuments) {
+      loadDocuments(incidentId);
+    }
+  }, [incidentId, propDocuments, loadDocuments]);
 
   const getFileIcon = (fileType: string) => {
     const safeFileType = fileType || '';
@@ -37,7 +52,7 @@ const SupportingDocuments: React.FC<SupportingDocumentsProps> = ({ documents }) 
     }
   };
 
-  const handlePreview = (document: Document) => {
+  const handlePreview = (document: IncidentDocument) => {
     const safeFileType = document.type || '';
     if (safeFileType.startsWith('image/')) {
       setSelectedDocument(document);
@@ -45,16 +60,30 @@ const SupportingDocuments: React.FC<SupportingDocumentsProps> = ({ documents }) 
     }
   };
 
-  const handleDownload = (doc: Document) => {
+  const handleDownload = (doc: IncidentDocument) => {
     try {
       const link = window.document.createElement('a');
-      link.href = doc.data;
+      link.href = doc.url;
       link.download = doc.name || 'document';
+      link.target = '_blank';
       window.document.body.appendChild(link);
       link.click();
       window.document.body.removeChild(link);
     } catch (error) {
       console.error('Error downloading document:', error);
+    }
+  };
+
+  const handleDelete = async (doc: IncidentDocument) => {
+    if (!canDelete) return;
+    
+    if (confirm(`Are you sure you want to delete "${doc.name}"?`)) {
+      try {
+        await deleteDocument(incidentId, doc.path);
+        onDocumentDeleted?.();
+      } catch (error) {
+        console.error('Error deleting document:', error);
+      }
     }
   };
 
@@ -93,7 +122,7 @@ const SupportingDocuments: React.FC<SupportingDocumentsProps> = ({ documents }) 
               
               return (
                 <div
-                  key={index}
+                  key={document.id || index}
                   className="border rounded-lg p-4 hover:shadow-md transition-shadow"
                 >
                   <div className="flex items-start gap-3">
@@ -105,11 +134,14 @@ const SupportingDocuments: React.FC<SupportingDocumentsProps> = ({ documents }) 
                       <p className="text-xs text-gray-500 mt-1">
                         {document.type || 'Unknown type'}
                       </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {document.size ? `${(document.size / 1024).toFixed(1)} KB` : ''}
+                      </p>
                       
-                      {isImage && document.data && (
+                      {isImage && document.url && (
                         <div className="mt-3">
                           <img
-                            src={document.data}
+                            src={document.url}
                             alt={document.name}
                             className="w-full h-24 object-cover rounded cursor-pointer"
                             onClick={() => handlePreview(document)}
@@ -138,6 +170,17 @@ const SupportingDocuments: React.FC<SupportingDocumentsProps> = ({ documents }) 
                           <Download className="h-3 w-3" />
                           Download
                         </Button>
+                        {canDelete && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleDelete(document)}
+                            className="flex items-center gap-1 text-red-600 hover:text-red-700"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                            Delete
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -157,7 +200,7 @@ const SupportingDocuments: React.FC<SupportingDocumentsProps> = ({ documents }) 
           <div className="flex justify-center items-center py-4">
             {selectedDocument && (
               <img
-                src={selectedDocument.data}
+                src={selectedDocument.url}
                 alt={selectedDocument.name}
                 className="max-h-[70vh] max-w-full object-contain rounded-md"
               />
