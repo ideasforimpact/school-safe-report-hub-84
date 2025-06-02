@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -5,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
-import { Calendar, Search, FileText, Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth/AuthContext';
@@ -16,20 +17,6 @@ interface EditIncidentFormProps {
   incident: Incident;
   onSuccess: () => void;
   onCancel: () => void;
-}
-
-// Extended facility type with campus_id
-interface FacilityWithCampus {
-  id: string;
-  name: string;
-  campus_id: string;
-}
-
-// Subcategory type with category_id
-interface SubcategoryItem {
-  id: string;
-  name: string;
-  category_id: string;
 }
 
 const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
@@ -43,37 +30,27 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
   // Get form configuration data
   const {
     locations,
-    facilities: basicFacilities,
+    facilities,
     reportTypes,
     categories,
-    subcategories: rawSubcategories,
+    subcategories,
     priorities,
     users: incidentUsers
   } = useIncidentForm();
 
-  // Cast facilities to the extended type for campus_id access
-  const facilities = basicFacilities as FacilityWithCampus[];
-  
-  // Cast subcategories to include category_id
-  const subcategories = rawSubcategories as SubcategoryItem[];
-  
   // Form state initialized with incident data
   const [formData, setFormData] = useState({
     type: incident.type,
     typeId: '',
     categoryId: '',
     subcategoryId: '',
-    subcategory: incident.subcategory || '',
     description: incident.description,
-    rootCause: incident.rootCause || '',
     date: new Date(incident.date).toISOString().split('T')[0],
     time: new Date(incident.date).toTimeString().split(' ')[0].slice(0, 5),
     locationId: '',
-    location: incident.location,
     status: incident.status,
     owner: incident.owner?.id || '',
     facilityId: '',
-    facility: incident.facility || '',
     priority: incident.priority || 'Medium',
     priorityId: ''
   });
@@ -84,70 +61,62 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
 
   // Initialize form data with proper IDs when reference data loads
   useEffect(() => {
-    console.log('=== EDIT INCIDENT FORM DEBUG ===');
-    console.log('Incident data:', incident);
-    console.log('Report Types:', reportTypes);
-    console.log('Categories:', categories);
-    console.log('Subcategories:', subcategories);
-    console.log('Locations:', locations);
-    console.log('Facilities:', facilities);
-    console.log('Priorities:', priorities);
+    console.log('Populating edit form with incident data:', incident);
     
+    // Match and set type ID
     if (reportTypes.length > 0) {
       const typeMatch = reportTypes.find(t => t.name === incident.type);
-      console.log('Type match for', incident.type, ':', typeMatch);
       if (typeMatch) {
         setFormData(prev => ({ ...prev, typeId: typeMatch.id }));
+        console.log('Set type ID:', typeMatch.id, 'for type:', incident.type);
       }
     }
 
+    // Match and set category ID
     if (categories.length > 0) {
       const categoryMatch = categories.find(c => c.name === incident.category);
-      console.log('Category match for', incident.category, ':', categoryMatch);
       if (categoryMatch) {
         setFormData(prev => ({ ...prev, categoryId: categoryMatch.id }));
+        console.log('Set category ID:', categoryMatch.id, 'for category:', incident.category);
       }
     }
 
+    // Match and set subcategory ID
     if (subcategories.length > 0 && incident.subcategory) {
       const subcategoryMatch = subcategories.find(s => s.name === incident.subcategory);
-      console.log('Subcategory match for', incident.subcategory, ':', subcategoryMatch);
       if (subcategoryMatch) {
         setFormData(prev => ({ ...prev, subcategoryId: subcategoryMatch.id }));
+        console.log('Set subcategory ID:', subcategoryMatch.id, 'for subcategory:', incident.subcategory);
       }
     }
 
+    // Match and set location ID
     if (locations.length > 0) {
       const locationMatch = locations.find(l => l.name === incident.location);
-      console.log('Location match for', incident.location, ':', locationMatch);
       if (locationMatch) {
         setFormData(prev => ({ ...prev, locationId: locationMatch.id }));
+        console.log('Set location ID:', locationMatch.id, 'for location:', incident.location);
       }
     }
 
+    // Match and set facility ID
     if (facilities.length > 0 && incident.facility) {
       const facilityMatch = facilities.find(f => f.name === incident.facility);
-      console.log('Facility match for', incident.facility, ':', facilityMatch);
       if (facilityMatch) {
         setFormData(prev => ({ ...prev, facilityId: facilityMatch.id }));
+        console.log('Set facility ID:', facilityMatch.id, 'for facility:', incident.facility);
       }
     }
 
+    // Match and set priority ID
     if (priorities.length > 0) {
       const priorityMatch = priorities.find(p => p.name === incident.priority);
-      console.log('Priority match for', incident.priority, ':', priorityMatch);
       if (priorityMatch) {
         setFormData(prev => ({ ...prev, priorityId: priorityMatch.id }));
+        console.log('Set priority ID:', priorityMatch.id, 'for priority:', incident.priority);
       }
     }
-    
-    console.log('Final form data after matching:', formData);
   }, [reportTypes, categories, subcategories, locations, facilities, priorities, incident]);
-
-  // Log form data changes
-  useEffect(() => {
-    console.log('Form data updated:', formData);
-  }, [formData]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -155,27 +124,22 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
   };
 
   const handleSelectChange = (name: string, value: string) => {
-    console.log('Select change:', name, value);
     setFormData(prev => ({ ...prev, [name]: value }));
     
-    // Handle related field updates
+    // Clear subcategory when category changes
     if (name === 'categoryId') {
-      setFormData(prev => ({ ...prev, subcategoryId: '', subcategory: '' }));
+      setFormData(prev => ({ ...prev, subcategoryId: '' }));
     }
   };
 
   const getFilteredSubcategories = () => {
     if (!formData.categoryId) return [];
-    const filtered = subcategories.filter(sub => sub.category_id === formData.categoryId);
-    console.log('Filtered subcategories for category', formData.categoryId, ':', filtered);
-    return filtered;
+    return subcategories.filter(sub => sub.category_id === formData.categoryId);
   };
 
   const getFilteredFacilities = () => {
     if (!formData.locationId) return [];
-    const filtered = facilities.filter(facility => facility.campus_id === formData.locationId);
-    console.log('Filtered facilities for location', formData.locationId, ':', filtered);
-    return filtered;
+    return facilities.filter(facility => facility.campus_id === formData.locationId);
   };
 
   const handlePersonChange = (index: number, field: keyof Person, value: string) => {
@@ -224,7 +188,6 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
         location_id: formData.locationId,
         facility_id: formData.facilityId,
         priority_id: formData.priorityId,
-        status_id: formData.status,
         assigned_to: formData.owner || null,
         people_involved: peopleInvolved.filter(p => p.name.trim() !== ''),
         documents: incident.documents || []
@@ -264,24 +227,19 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
       <form onSubmit={handleSubmit} className="w-full">
         <Card className="border-none shadow-none bg-gray-50">
           <CardContent className="space-y-6 px-8 py-8">
-            {/* First Row - Report Type, Category, Where it Happened */}
+            {/* Debug Info */}
+            <div className="bg-blue-50 p-4 rounded-lg mb-6">
+              <h3 className="font-medium text-blue-900">Editing Incident: {incident.ticketId}</h3>
+              <p className="text-sm text-blue-700">Type: {incident.type} | Category: {incident.category} | Location: {incident.location}</p>
+            </div>
+
+            {/* First Row - Report Type, Category, Location */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="type" className="text-sm font-medium text-gray-700">
                   Report Type <span className="text-red-500">*</span>
                 </Label>
-                <Select value={formData.typeId} onValueChange={(value) => {
-                  console.log('Report Type selected:', value);
-                  handleSelectChange('typeId', value);
-                  const selectedType = reportTypes.find(t => t.id === value);
-                  if (selectedType) {
-                    setFormData(prev => ({ 
-                      ...prev, 
-                      type: selectedType.name as IncidentType,
-                      typeId: selectedType.id
-                    }));
-                  }
-                }}>
+                <Select value={formData.typeId} onValueChange={(value) => handleSelectChange('typeId', value)}>
                   <SelectTrigger className="h-11 bg-white border-gray-300">
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
@@ -299,10 +257,7 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
                 <Label htmlFor="category" className="text-sm font-medium text-gray-700">
                   Category <span className="text-red-500">*</span>
                 </Label>
-                <Select value={formData.categoryId} onValueChange={(value) => {
-                  console.log('Category selected:', value);
-                  handleSelectChange('categoryId', value);
-                }}>
+                <Select value={formData.categoryId} onValueChange={(value) => handleSelectChange('categoryId', value)}>
                   <SelectTrigger className="h-11 bg-white border-gray-300">
                     <SelectValue placeholder="Select category" />
                   </SelectTrigger>
@@ -318,12 +273,9 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
 
               <div className="space-y-2">
                 <Label htmlFor="location" className="text-sm font-medium text-gray-700">
-                  Where it Happened <span className="text-red-500">*</span>
+                  Location <span className="text-red-500">*</span>
                 </Label>
-                <Select value={formData.locationId} onValueChange={(value) => {
-                  console.log('Location selected:', value);
-                  handleSelectChange('locationId', value);
-                }}>
+                <Select value={formData.locationId} onValueChange={(value) => handleSelectChange('locationId', value)}>
                   <SelectTrigger className="h-11 bg-white border-gray-300">
                     <SelectValue placeholder="Select location" />
                   </SelectTrigger>
@@ -338,16 +290,13 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
               </div>
             </div>
 
-            {/* Second Row - Subcategory, Facility */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Second Row - Subcategory, Facility, Priority */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="subcategory" className="text-sm font-medium text-gray-700">
                   Subcategory <span className="text-red-500">*</span>
                 </Label>
-                <Select value={formData.subcategoryId} onValueChange={(value) => {
-                  console.log('Subcategory selected:', value);
-                  handleSelectChange('subcategoryId', value);
-                }}>
+                <Select value={formData.subcategoryId} onValueChange={(value) => handleSelectChange('subcategoryId', value)}>
                   <SelectTrigger className="h-11 bg-white border-gray-300">
                     <SelectValue placeholder="Select subcategory" />
                   </SelectTrigger>
@@ -363,12 +312,9 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
 
               <div className="space-y-2">
                 <Label htmlFor="facility" className="text-sm font-medium text-gray-700">
-                  Facility <span className="text-red-500">*</span>
+                  Facility
                 </Label>
-                <Select value={formData.facilityId} onValueChange={(value) => {
-                  console.log('Facility selected:', value);
-                  handleSelectChange('facilityId', value);
-                }}>
+                <Select value={formData.facilityId} onValueChange={(value) => handleSelectChange('facilityId', value)}>
                   <SelectTrigger className="h-11 bg-white border-gray-300">
                     <SelectValue placeholder="Select facility" />
                   </SelectTrigger>
@@ -381,10 +327,7 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
                   </SelectContent>
                 </Select>
               </div>
-            </div>
 
-            {/* Third Row - Priority */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="priority" className="text-sm font-medium text-gray-700">
                   Priority <span className="text-red-500">*</span>
@@ -404,47 +347,34 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
               </div>
             </div>
 
-            {/* Fourth Row - Date and Time, Assigned to */}
+            {/* Date and Time */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="datetime" className="text-sm font-medium text-gray-700">
-                  Date and Time of Occurrence <span className="text-red-500">*</span>
+                <Label htmlFor="date" className="text-sm font-medium text-gray-700">
+                  Date <span className="text-red-500">*</span>
                 </Label>
-                <div className="relative">
-                  <Input
-                    id="datetime"
-                    type="datetime-local"
-                    value={`${formData.date}T${formData.time}`}
-                    onChange={(e) => {
-                      const [date, time] = e.target.value.split('T');
-                      setFormData(prev => ({ ...prev, date, time }));
-                    }}
-                    className="h-11 pl-10 bg-white border-gray-300"
-                    required
-                  />
-                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                </div>
+                <Input
+                  type="date"
+                  name="date"
+                  value={formData.date}
+                  onChange={handleChange}
+                  className="h-11 bg-white border-gray-300"
+                  required
+                />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="owner" className="text-sm font-medium text-gray-700">
-                  Assigned to <span className="text-red-500">*</span>
+                <Label htmlFor="time" className="text-sm font-medium text-gray-700">
+                  Time <span className="text-red-500">*</span>
                 </Label>
-                <div className="relative">
-                  <Select value={formData.owner} onValueChange={(value) => handleSelectChange('owner', value)}>
-                    <SelectTrigger className="h-11 pl-10 bg-white border-gray-300">
-                      <SelectValue placeholder="Search by name or email..." />
-                    </SelectTrigger>
-                    <SelectContent className="bg-white z-50">
-                      {incidentUsers.map((user) => (
-                        <SelectItem key={user.id} value={user.id}>
-                          {user.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                </div>
+                <Input
+                  type="time"
+                  name="time"
+                  value={formData.time}
+                  onChange={handleChange}
+                  className="h-11 bg-white border-gray-300"
+                  required
+                />
               </div>
             </div>
 
@@ -454,119 +384,102 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
                 Description <span className="text-red-500">*</span>
               </Label>
               <Textarea
-                id="description"
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
-                placeholder="Describe what happened in detail"
-                rows={4}
-                className="resize-none bg-white border-gray-300"
+                placeholder="Describe what happened..."
+                className="min-h-[120px] bg-white border-gray-300"
                 required
               />
-              <div className="text-right text-sm text-gray-500">
-                {formData.description.length}/250 characters
-              </div>
             </div>
 
-            {/* Supporting Documents - Matching design */}
+            {/* People Involved */}
             <div className="space-y-4">
-              <Label className="text-sm font-medium text-gray-700">Supporting Documents</Label>
-              <div className="border-2 border-dashed border-gray-200 rounded-lg bg-white">
-                <div className="text-center py-12">
-                  <FileText className="mx-auto h-8 w-8 text-gray-400 mb-4" />
-                  <button
-                    type="button"
-                    className="text-blue-600 hover:text-blue-700 font-medium"
-                  >
-                    Add a file
-                  </button>
-                  <p className="text-sm text-gray-500 mt-2">
-                    Images, videos, documents up to 25MB
-                  </p>
-                </div>
-              </div>
-              <div className="flex justify-between text-sm text-gray-500">
-                <p>Upload up to 5 files (images, videos, documents) to support this incident report</p>
-                <p>0 of 5 files added</p>
-              </div>
-            </div>
-
-            {/* People Involved - Matching design */}
-            <div className="space-y-4">
-              <div className="flex justify-between items-center">
+              <div className="flex items-center justify-between">
                 <Label className="text-sm font-medium text-gray-700">People Involved</Label>
                 <Button
                   type="button"
-                  variant="ghost"
-                  className="text-blue-600 hover:text-blue-700 p-0 h-auto font-medium"
+                  variant="outline"
+                  size="sm"
                   onClick={addPerson}
+                  className="h-8 px-3"
                 >
-                  + Add Person
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Person
                 </Button>
               </div>
 
               {peopleInvolved.map((person, index) => (
-                <div key={index} className="bg-white border border-gray-200 rounded-lg p-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium text-gray-700">
-                        Role <span className="text-red-500">*</span>
-                      </Label>
-                      <Select 
-                        value={person.role} 
-                        onValueChange={(value) => handlePersonChange(index, 'role', value as 'Student' | 'Staff' | 'Other')}
-                      >
-                        <SelectTrigger className="h-11 bg-white border-gray-300">
-                          <SelectValue placeholder="Select role" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white z-50">
-                          <SelectItem value="Student">Student</SelectItem>
-                          <SelectItem value="Staff">Staff</SelectItem>
-                          <SelectItem value="Other">Other</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                <div key={index} className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-white rounded-lg border">
+                  <div className="space-y-2">
+                    <Label className="text-xs text-gray-600">Name</Label>
+                    <Input
+                      placeholder="Full name"
+                      value={person.name}
+                      onChange={(e) => handlePersonChange(index, 'name', e.target.value)}
+                      className="h-9"
+                    />
+                  </div>
 
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium text-gray-700">
-                        Name <span className="text-red-500">*</span>
-                      </Label>
-                      <div className="relative">
-                        <Input
-                          value={person.name}
-                          onChange={(e) => handlePersonChange(index, 'name', e.target.value)}
-                          placeholder={`Search by ${person.role.toLowerCase()} name...`}
-                          className="h-11 pl-10 bg-white border-gray-300"
-                        />
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                      </div>
-                    </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs text-gray-600">Role</Label>
+                    <Select 
+                      value={person.role} 
+                      onValueChange={(value) => handlePersonChange(index, 'role', value as 'Student' | 'Staff' | 'Other')}
+                    >
+                      <SelectTrigger className="h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Student">Student</SelectItem>
+                        <SelectItem value="Staff">Staff</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                    <div className="space-y-2">
-                      <Label className="text-sm font-medium text-gray-700">Notes</Label>
-                      <div className="flex gap-2">
-                        <Input
-                          value={person.notes || ''}
-                          onChange={(e) => handlePersonChange(index, 'notes', e.target.value)}
-                          placeholder="Additional notes"
-                          className="h-11 bg-white border-gray-300"
-                        />
-                        {peopleInvolved.length > 1 && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => removePerson(index)}
-                            className="shrink-0 h-11 w-11 p-0 border-gray-300"
-                          >
-                            <Trash2 className="h-4 w-4 text-red-500" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs text-gray-600">Notes</Label>
+                    <Input
+                      placeholder="Additional notes"
+                      value={person.notes || ''}
+                      onChange={(e) => handlePersonChange(index, 'notes', e.target.value)}
+                      className="h-9"
+                    />
+                  </div>
+
+                  <div className="flex items-end">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => removePerson(index)}
+                      className="h-9 w-9 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               ))}
+            </div>
+
+            {/* Owner Assignment */}
+            <div className="space-y-2">
+              <Label htmlFor="owner" className="text-sm font-medium text-gray-700">
+                Assign To
+              </Label>
+              <Select value={formData.owner} onValueChange={(value) => handleSelectChange('owner', value)}>
+                <SelectTrigger className="h-11 bg-white border-gray-300">
+                  <SelectValue placeholder="Select assignee" />
+                </SelectTrigger>
+                <SelectContent className="bg-white z-50">
+                  {incidentUsers.map((user) => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {user.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </CardContent>
 
@@ -576,6 +489,7 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
               variant="outline"
               onClick={onCancel}
               className="px-6 border-gray-300"
+              disabled={isSubmitting}
             >
               Cancel
             </Button>
