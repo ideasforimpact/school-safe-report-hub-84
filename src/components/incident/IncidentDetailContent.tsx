@@ -75,15 +75,19 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
   const [localIsSubmitting, setLocalIsSubmitting] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [currentIncident, setCurrentIncident] = useState(incident);
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
 
   // Function to refresh comments without page reload
   const handleCommentAdded = useCallback(() => {
     console.log('Comment added, refreshing comments...');
+    
+    // Show loading state briefly
+    setIsLoadingComments(true);
+    
     // Increment refresh key to trigger re-render
     setRefreshKey(prev => prev + 1);
     
     // Update the local incident state with new comments
-    // This will be updated when the parent component re-fetches data
     setCurrentIncident(prev => ({
       ...prev,
       comments: prev.comments || []
@@ -91,6 +95,11 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
     
     // Call the parent's refresh handler
     handleCommentSubmit();
+    
+    // Remove loading state after a short delay
+    setTimeout(() => {
+      setIsLoadingComments(false);
+    }, 1000);
   }, [handleCommentSubmit]);
 
   const userName = authUser ? formatUserFullName(authUser) : 'Unknown User';
@@ -176,7 +185,10 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="details">Details</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
-          <TabsTrigger value="comments">Comments</TabsTrigger>
+          <TabsTrigger value="comments">
+            Comments
+            {isLoadingComments && <Loader className="h-3 w-3 animate-spin ml-1" />}
+          </TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
 

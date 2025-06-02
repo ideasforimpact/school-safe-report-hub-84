@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Trash2, Edit, FileText, Paperclip, Download, Eye, Loader } from 'lucide-react';
 import FilePreview from './FilePreview';
-import { documentStorage } from '@/utils/documentStorage';
+import { documentManager } from '@/utils/documentManager';
 import { toast } from 'sonner';
 
 interface CommentItemProps {
@@ -63,7 +63,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
         base64: file.base64
       };
       
-      documentStorage.downloadDocument(documentItem);
+      await documentManager.downloadDocument(documentItem);
       toast.success(`Downloaded ${file.name}`);
     } catch (error) {
       console.error('Error downloading file:', error);
@@ -174,26 +174,22 @@ const CommentItem: React.FC<CommentItemProps> = ({
                       {file.name}
                     </p>
                     <p className="text-xs text-gray-500">
-                      {file.size ? `${(file.size / 1024).toFixed(1)} KB` : 'Unknown size'}
+                      {file.size ? documentManager.formatFileSize(file.size) : 'Unknown size'}
                     </p>
                     
                     {/* Action buttons */}
                     <div className="flex gap-2 mt-2">
-                      {documentStorage.canPreview({
+                      {documentManager.canPreview({
                         id: file.id,
                         name: file.name,
                         type: file.type,
                         size: file.size,
-                        url: '',
                         base64: file.base64
                       }) && (
                         <Button
                           variant="outline"
                           size="sm"
                           className="flex items-center gap-1 text-xs"
-                          onClick={() => {
-                            // FilePreview component handles the preview
-                          }}
                         >
                           <Eye className="h-3 w-3" />
                           View

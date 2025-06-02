@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { FileItem } from '@/types/incident';
 import { Textarea } from '@/components/ui/textarea';
@@ -72,16 +71,17 @@ const InlineCommentForm: React.FC<InlineCommentFormProps> = ({
         setTimeout(() => {
           setIsSuccess(false);
           onCommentAdded();
-        }, 1000);
+        }, 1500);
       }
     } catch (error) {
       console.error('Error submitting comment:', error);
       toast.error('Failed to add comment');
       setIsSuccess(false);
     } finally {
+      // Keep submitting state for a bit to show the success animation
       setTimeout(() => {
         setIsSubmitting(false);
-      }, 1000);
+      }, 1500);
     }
   };
 
@@ -125,16 +125,24 @@ const InlineCommentForm: React.FC<InlineCommentFormProps> = ({
           <Button 
             onClick={handleSubmit}
             disabled={!commentText.trim() || isSubmitting}
-            className="flex items-center gap-1"
+            className="flex items-center gap-1 min-w-[140px]"
           >
             {isSubmitting ? (
-              <Loader className="h-4 w-4 animate-spin" />
+              <>
+                <Loader className="h-4 w-4 animate-spin" />
+                Submitting...
+              </>
             ) : isSuccess ? (
-              <CheckCircle className="h-4 w-4" />
+              <>
+                <CheckCircle className="h-4 w-4" />
+                Added!
+              </>
             ) : (
-              <Send className="h-4 w-4" />
+              <>
+                <Send className="h-4 w-4" />
+                Submit Comment
+              </>
             )}
-            {isSubmitting ? 'Submitting...' : isSuccess ? 'Added!' : 'Submit Comment'}
           </Button>
         </div>
       </div>
