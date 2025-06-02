@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
@@ -14,6 +13,7 @@ import { useAuth } from '@/contexts/auth/AuthContext';
 import { Person } from '@/types/incident';
 import { useIncidentForm } from '@/hooks/useIncidentForm';
 import { EditIncidentData } from '@/services/incident/editIncidentService';
+import AssignmentSection from './AssignmentSection';
 
 interface EditIncidentFormProps {
   incidentData: EditIncidentData;
@@ -349,24 +349,12 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
               />
             </div>
 
-            {/* Assign To - Moved above People Involved */}
-            <div className="space-y-2">
-              <Label htmlFor="owner" className="text-sm font-medium text-gray-700">
-                Assign To
-              </Label>
-              <Select value={formData.owner} onValueChange={(value) => handleSelectChange('owner', value)}>
-                <SelectTrigger className="h-11 bg-white border-gray-300">
-                  <SelectValue placeholder="Select assignee" />
-                </SelectTrigger>
-                <SelectContent className="bg-white z-50">
-                  {incidentUsers.map((user) => (
-                    <SelectItem key={user.id} value={user.id}>
-                      {user.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Assign To - Using the new AssignmentSection component */}
+            <AssignmentSection
+              owner={formData.owner}
+              users={incidentUsers}
+              onSelectChange={handleSelectChange}
+            />
 
             {/* People Involved */}
             <div className="space-y-4">
