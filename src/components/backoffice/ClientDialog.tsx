@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -25,6 +26,7 @@ interface ClientDialogProps {
   onCancel: () => void;
   isEdit?: boolean;
   isLoading?: boolean;
+  modulesLoading?: boolean;
 }
 
 const ClientDialog: React.FC<ClientDialogProps> = ({
@@ -35,7 +37,8 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
   onSubmit,
   onCancel,
   isEdit = false,
-  isLoading = false
+  isLoading = false,
+  modulesLoading = false
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -118,7 +121,7 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
     superAdminAllowedDomains: formData.superAdminAllowedDomains || []
   };
 
-  const isProcessing = isSubmitting || isLoading;
+  const isProcessing = isSubmitting || isLoading || modulesLoading;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -130,11 +133,21 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
           </DialogDescription>
         </DialogHeader>
 
+        {/* Show loading message when modules are loading for new client */}
+        {!isEdit && modulesLoading && (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-6 h-6 animate-spin text-primary mr-2" />
+            <span>Loading modules for client setup...</span>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit}>
           <Tabs defaultValue="basic" className="w-full">
             <TabsList className="grid grid-cols-3 mb-4">
               <TabsTrigger value="basic">Basic Info</TabsTrigger>
-              <TabsTrigger value="access">Module Access</TabsTrigger>
+              <TabsTrigger value="access" disabled={!isEdit && modulesLoading}>
+                Module Access
+              </TabsTrigger>
               <TabsTrigger value="auth">Authentication</TabsTrigger>
             </TabsList>
 
@@ -151,6 +164,7 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
                 formData={safeFormData}
                 onModuleInfoChange={handleModuleInfoChange}
                 isEdit={isEdit}
+                preloadedModules={!isEdit && formData.moduleInfoArray ? formData.moduleInfoArray : undefined}
               />
             </TabsContent>
 
@@ -182,7 +196,7 @@ const ClientDialog: React.FC<ClientDialogProps> = ({
               {isProcessing ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {isEdit ? 'Updating...' : 'Adding...'}
+                  {modulesLoading ? 'Loading modules...' : (isEdit ? 'Updating...' : 'Adding...')}
                 </>
               ) : (
                 isEdit ? 'Update Client' : 'Add Client'

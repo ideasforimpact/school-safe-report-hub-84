@@ -52,15 +52,60 @@ export const useClientManagement = () => {
   const [currentClient, setCurrentClient] = useState<Client | null>(null);
   const [formData, setFormData] = useState<ClientFormData>({...initialFormData});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [modulesLoading, setModulesLoading] = useState(false);
 
   const resetForm = () => {
     setFormData({...initialFormData});
     setCurrentClient(null);
   };
 
-  // Simple function to open add dialog (no pre-generated ID)
-  const handleAddDialogOpen = () => {
+  // Function to load modules for new client
+  const loadModulesForNewClient = async () => {
+    setModulesLoading(true);
+    try {
+      console.log("Loading modules for new client creation");
+      const { data, error } = await supabase.functions.invoke('fetch-modules', {
+        body: { fetchLevel: 'client' }
+      });
+
+      if (error) {
+        console.error("Error fetching modules:", error);
+        toast.error("Failed to load modules");
+        return false;
+      }
+
+      if (data && data.modules) {
+        console.log("Modules loaded successfully:", data.modules.length);
+        // Enable all modules with admin access by default for new client
+        const moduleInfoArray: ModuleInfo[] = data.modules.map((module: any) => ({
+          name: module.name,
+          module_id: module.id,
+          is_admin: true
+        }));
+
+        setFormData(prev => ({
+          ...prev,
+          moduleInfoArray
+        }));
+        
+        console.log("Set default modules for new client:", moduleInfoArray);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Error in loadModulesForNewClient:", error);
+      toast.error("Error loading modules");
+      return false;
+    } finally {
+      setModulesLoading(false);
+    }
+  };
+
+  // Open add dialog and load modules
+  const handleAddDialogOpen = async () => {
     setIsAddDialogOpen(true);
+    // Load modules immediately when dialog opens
+    await loadModulesForNewClient();
   };
 
   // Check if super admin email domain is allowed
@@ -180,7 +225,7 @@ export const useClientManagement = () => {
 
     // Ensure we have modules data before submitting
     if (!formData.moduleInfoArray || formData.moduleInfoArray.length === 0) {
-      toast.error('Please wait for modules to load before submitting');
+      toast.error('Modules are required for client creation. Please wait for modules to load or refresh the page.');
       return;
     }
     
@@ -197,7 +242,7 @@ export const useClientManagement = () => {
         logoPreview: formData.logo ? formData.logo.substring(0, 50) + '...' : 'No logo'
       });
       
-      // Don't send ID - let the edge function generate it
+      // Create the request payload with ALL client data
       const requestPayload = {
         operation: 'create',
         client: {
@@ -441,7 +486,8 @@ export const useClientManagement = () => {
     handleDeleteClient,
     resetForm,
     isSuperAdminEmailDomainAllowed,
-    handleAddDialogOpen
+    handleAddDialogOpen,
+    modulesLoading
   };
 };
 

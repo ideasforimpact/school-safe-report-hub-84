@@ -36,60 +36,99 @@ interface ModuleAccessTabProps {
   };
   onModuleInfoChange?: (moduleInfoArray: ModuleInfo[]) => void;
   isEdit?: boolean;
+  preloadedModules?: ModuleInfo[];
 }
 
-const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false }: ModuleAccessTabProps) => {
+const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false, preloadedModules }: ModuleAccessTabProps) => {
   const [modules, setModules] = useState<Module[]>([]);
   const [loading, setLoading] = useState(false);
   const [moduleAccessState, setModuleAccessState] = useState<ModuleAccess[]>([]);
   const [initialized, setInitialized] = useState(false);
 
-  // Fetch modules only once during initial load
+  // For new clients, use preloaded modules if available, otherwise fetch
+  // For edit clients, always fetch modules from the database
   useEffect(() => {
-    const fetchClientModules = async () => {
-      if (modules.length > 0) return; // Skip if modules are already loaded
-      
-      console.log("Fetching client modules: Initial load");
-      setLoading(true);
-      try {
-        // Fetch modules that are not backoffice level
-        const { data, error } = await supabase.functions.invoke('fetch-modules', {
-          body: { fetchLevel: 'client' }
-        });
-
-        if (error) {
-          console.error("Error fetching modules:", error);
-          toast.error("Failed to load modules");
-          return;
-        }
-
-        if (data && data.modules) {
-          console.log("Modules fetched successfully:", data.modules.length);
-          setModules(data.modules);
-        }
-      } catch (error) {
-        console.error("Error in fetchClientModules:", error);
-        toast.error("Error loading modules");
-      } finally {
-        setLoading(false);
+    const initializeModules = async () => {
+      if (isEdit || (!preloadedModules || preloadedModules.length === 0)) {
+        // Fetch modules for edit mode or when no preloaded modules
+        await fetchClientModules();
+      } else {
+        // Use preloaded modules for new client creation
+        console.log("Using preloaded modules:", preloadedModules);
+        // We need to fetch module details to get the full module info
+        await fetchModuleDetails(preloadedModules);
       }
     };
 
-    fetchClientModules();
-  }, []); // Only run on initial mount
-  
-  // Initialize module access state when modules are loaded
-  useEffect(() => {
-    if (modules.length > 0 && !initialized) {
-      initializeModuleAccessState(modules);
-      setInitialized(true);
+    initializeModules();
+  }, [isEdit, preloadedModules]);
+
+  const fetchModuleDetails = async (moduleInfoArray: ModuleInfo[]) => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('fetch-modules', {
+        body: { fetchLevel: 'client' }
+      });
+
+      if (error) {
+        console.error("Error fetching module details:", error);
+        toast.error("Failed to load module details");
+        return;
+      }
+
+      if (data && data.modules) {
+        console.log("Module details fetched successfully:", data.modules.length);
+        setModules(data.modules);
+        
+        // Initialize state with preloaded module info
+        initializeModuleAccessState(data.modules, moduleInfoArray);
+        setInitialized(true);
+      }
+    } catch (error) {
+      console.error("Error in fetchModuleDetails:", error);
+      toast.error("Error loading module details");
+    } finally {
+      setLoading(false);
     }
-  }, [modules, initialized]);
+  };
+
+  // Fetch modules only for edit mode or when no preloaded modules available
+  const fetchClientModules = async () => {
+    if (modules.length > 0 && !isEdit) return; // Skip if modules are already loaded for new client
+    
+    console.log("Fetching client modules:", isEdit ? "Edit mode" : "New client fallback");
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('fetch-modules', {
+        body: { fetchLevel: 'client' }
+      });
+
+      if (error) {
+        console.error("Error fetching modules:", error);
+        toast.error("Failed to load modules");
+        return;
+      }
+
+      if (data && data.modules) {
+        console.log("Modules fetched successfully:", data.modules.length);
+        setModules(data.modules);
+        
+        // Initialize with existing formData or defaults
+        initializeModuleAccessState(data.modules, formData.moduleInfoArray);
+        setInitialized(true);
+      }
+    } catch (error) {
+      console.error("Error in fetchClientModules:", error);
+      toast.error("Error loading modules");
+    } finally {
+      setLoading(false);
+    }
+  };
   
   // Initialize module access state based on moduleInfoArray or set defaults
-  const initializeModuleAccessState = (availableModules: Module[]) => {
+  const initializeModuleAccessState = (availableModules: Module[], existingModuleInfo?: ModuleInfo[]) => {
     console.log("Initializing module access state with:", { 
-      moduleInfoArray: formData.moduleInfoArray,
+      existingModuleInfo,
       isEdit: isEdit,
       availableModulesCount: availableModules.length
     });
@@ -97,12 +136,12 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false }: Modul
     let initialModuleAccess: ModuleAccess[] = [];
     
     // If moduleInfoArray is available and not empty, use it first (it's more specific)
-    if (formData.moduleInfoArray && formData.moduleInfoArray.length > 0) {
-      console.log("Using moduleInfoArray to initialize module states");
+    if (existingModuleInfo && existingModuleInfo.length > 0) {
+      console.log("Using existing moduleInfo to initialize module states");
       
       // Create a map of module info by module_id for quick lookup
       const moduleInfoMap = new Map<string, ModuleInfo>();
-      formData.moduleInfoArray.forEach(info => {
+      existingModuleInfo.forEach(info => {
         moduleInfoMap.set(info.module_id, info);
       });
       
@@ -125,9 +164,9 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false }: Modul
         };
       });
     }
-    // For new client creation, enable all modules with admin access by default
-    else {
-      console.log("No moduleInfoArray provided, enabling all modules with admin access by default");
+    // For new client creation without preloaded data, enable all modules with admin access by default
+    else if (!isEdit) {
+      console.log("No existing moduleInfo provided, enabling all modules with admin access by default");
       initialModuleAccess = availableModules.map((module: Module) => {
         return {
           name: module.name,
@@ -137,6 +176,22 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false }: Modul
           level: {
             isAdmin: true,
             isEnabled: true
+          }
+        };
+      });
+    }
+    // For edit mode without existing data, start with all disabled
+    else {
+      console.log("Edit mode with no existing module data, starting with all disabled");
+      initialModuleAccess = availableModules.map((module: Module) => {
+        return {
+          name: module.name,
+          module_id: module.id,
+          is_admin: false,
+          is_enabled: false,
+          level: {
+            isAdmin: false,
+            isEnabled: false
           }
         };
       });

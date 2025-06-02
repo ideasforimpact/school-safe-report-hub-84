@@ -31,7 +31,8 @@ const ClientManagement = () => {
     handleUpdateClient,
     handleDeleteClient,
     resetForm,
-    handleAddDialogOpen // Use the new function
+    handleAddDialogOpen,
+    modulesLoading
   } = useClientManagement();
 
   if (!isAdmin) {
@@ -90,6 +91,7 @@ const ClientManagement = () => {
         }}
         isEdit={false}
         isLoading={loading}
+        modulesLoading={modulesLoading}
       />
 
       {/* Edit Client Dialog */}
