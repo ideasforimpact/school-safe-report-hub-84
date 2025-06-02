@@ -3,7 +3,7 @@ import { useState, useCallback } from 'react';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Incident } from '@/types/incident';
+import { Incident, IncidentType, IncidentCategory, IncidentLocation, IncidentStatus } from '@/types/incident';
 import { toast } from 'sonner';
 import { incidentDataService } from '@/services/incident/incidentDataService';
 
@@ -45,18 +45,18 @@ export const useIncidentData = () => {
       // Use the centralized service
       const incidentRecords = await incidentDataService.fetchIncidentsForClient(clientId);
 
-      // Transform the data
+      // Transform the data with proper type casting
       const transformedIncidents: Incident[] = incidentRecords.map((record) => ({
         id: record.id,
         ticketId: record.ticket_id,
-        type: record.type,
-        category: record.category,
+        type: record.type as IncidentType,
+        category: record.category as IncidentCategory,
         subcategory: record.subcategory,
         description: record.description,
         date: record.date,
-        location: record.location,
+        location: record.location as IncidentLocation,
         peopleInvolved: [],
-        status: record.status,
+        status: record.status as IncidentStatus,
         reportedBy: {
           id: '',
           name: record.reportedBy

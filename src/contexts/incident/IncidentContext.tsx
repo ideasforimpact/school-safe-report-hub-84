@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { IncidentContextType } from './types';
 import { useConfigManagement } from '@/hooks/useConfigManagement'; 
@@ -87,14 +86,16 @@ export const IncidentProvider = ({ children }: { children: ReactNode }) => {
     initialSections
   );
 
-  // Incident actions - removed automatic refetching
+  // Incident actions - provide async no-op function instead of sync
+  const asyncNoOp = async () => {};
+
   const {
     addIncident: originalAddIncident,
     updateIncident: originalUpdateIncident,
     getIncident,
     addActivity,
     isSubmitting
-  } = useIncidentActions(incidents, () => {}, activities, setActivities, users);
+  } = useIncidentActions(incidents, asyncNoOp, activities, setActivities, users);
 
   // Wrapper functions
   const addIncident = async (incidentData: any) => {
