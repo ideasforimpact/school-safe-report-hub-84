@@ -3,9 +3,11 @@ import React, { useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import IncidentsHeader from '@/components/incidents/IncidentsHeader';
 import IncidentsDataTable from '@/components/incidents/IncidentsDataTable';
+import { useIncidents } from '@/contexts/incident';
 import { useIncidentPageData } from '@/hooks/useIncidentPageData';
 
 const Incidents = () => {
+  const { incidents } = useIncidents();
   const { fetchIncidents, loading, error } = useIncidentPageData();
 
   // Fetch incidents when the page loads
@@ -17,7 +19,7 @@ const Incidents = () => {
     <Layout>
       <div className="container max-w-7xl py-6">
         <IncidentsHeader />
-        <IncidentsDataTable />
+        <IncidentsDataTable incidents={incidents} />
         
         {loading && (
           <div className="flex justify-center items-center py-8">

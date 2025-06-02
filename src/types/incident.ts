@@ -141,3 +141,14 @@ export interface Activity {
   date: Date;
   details?: string;
 }
+
+export interface ConfigItem {
+  id: string;
+  name: string;
+}
+
+export interface SubcategoryItem {
+  id: string;
+  name: string;
+  categoryId: string;
+}
