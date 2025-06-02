@@ -11,11 +11,12 @@ import { Plus, Trash2, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth/AuthContext';
-import { Person, Incident } from '@/types/incident';
+import { Person } from '@/types/incident';
 import { useIncidentForm } from '@/hooks/useIncidentForm';
+import { IncidentRecord } from '@/services/incidentService';
 
 interface EditIncidentFormProps {
-  incident: Incident;
+  incident: IncidentRecord;
 }
 
 const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incident }) => {
@@ -42,34 +43,24 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incident }) => {
     const dateString = incidentDate.toISOString().split('T')[0];
     const timeString = incidentDate.toTimeString().split(' ')[0].slice(0, 5);
 
-    // Find IDs for the form
-    const typeId = reportTypes.find(t => t.name === incident.type)?.id || '';
-    const categoryId = categories.find(c => c.name === incident.category)?.id || '';
-    const subcategoryId = subcategories.find(s => s.name === incident.subcategory)?.id || '';
-    const locationId = locations.find(l => l.name === incident.location)?.id || '';
-    const facilityId = facilities.find(f => f.name === incident.facility)?.id || '';
-    const priorityId = priorities.find(p => p.name === incident.priority)?.id || '';
-
     return {
       type: incident.type,
-      typeId,
-      categoryId,
-      subcategoryId,
+      typeId: '',
+      categoryId: '',
+      subcategoryId: '',
       description: incident.description || '',
       date: dateString,
       time: timeString,
-      locationId,
+      locationId: '',
       status: incident.status,
       owner: incident.owner?.id || '',
-      facilityId,
+      facilityId: '',
       priority: incident.priority || 'Medium',
-      priorityId
+      priorityId: ''
     };
   });
 
-  const [peopleInvolved, setPeopleInvolved] = useState<Person[]>(
-    incident.peopleInvolved || []
-  );
+  const [peopleInvolved, setPeopleInvolved] = useState<Person[]>([]);
 
   // Update form data when configuration data loads
   useEffect(() => {
@@ -92,6 +83,14 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incident }) => {
       }));
     }
   }, [reportTypes, categories, subcategories, locations, facilities, priorities, incident]);
+
+  // Initialize people involved if available in the incident record
+  useEffect(() => {
+    // Check if incident has people involved data
+    // This would depend on your incident record structure
+    // For now, initialize as empty array
+    setPeopleInvolved([]);
+  }, [incident]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;

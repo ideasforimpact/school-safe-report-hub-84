@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import Layout from '@/components/layout/Layout';
 import { useIncidents } from '@/contexts/incident';
 import { useAuth } from '@/contexts/auth/AuthContext';
@@ -9,15 +9,26 @@ import { Button } from '@/components/ui/button';
 import { AlertTriangle, ArrowLeft } from 'lucide-react';
 import EditIncidentForm from '@/components/edit-incident/EditIncidentForm';
 import { useIncidentData } from '@/hooks/useIncidentData';
+import { IncidentRecord } from '@/services/incidentService';
 
 const EditIncidentPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { getIncident } = useIncidents();
   const { user } = useAuth();
   const { refetchIncidents } = useIncidentData();
 
   console.log('EditIncidentPage - ID:', id);
+
+  // Get incident from navigation state or context
+  const passedIncident = location.state?.incident as IncidentRecord;
+  const contextIncident = id ? getIncident(id) : null;
+  const incident = passedIncident || contextIncident;
+
+  console.log('EditIncidentPage - Passed incident:', passedIncident);
+  console.log('EditIncidentPage - Context incident:', contextIncident);
+  console.log('EditIncidentPage - Final incident:', incident);
 
   if (!id) {
     return (
@@ -44,9 +55,6 @@ const EditIncidentPage = () => {
       </Layout>
     );
   }
-
-  const incident = getIncident(id);
-  console.log('EditIncidentPage - Incident:', incident);
 
   if (!incident) {
     return (

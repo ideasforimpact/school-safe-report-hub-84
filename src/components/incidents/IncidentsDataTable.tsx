@@ -40,19 +40,19 @@ const IncidentsDataTable: React.FC<IncidentsDataTableProps> = ({ incidents, load
   return (
     <div className="bg-white rounded-lg shadow overflow-hidden w-full">
       <div className="overflow-x-auto">
-        <Table className="w-full min-w-[1400px]">
+        <Table className="w-full min-w-full">
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[250px]">Ticket ID</TableHead>
-              <TableHead className="w-[140px]">Type</TableHead>
-              <TableHead className="w-[180px]">Category</TableHead>
-              <TableHead className="w-[180px]">Subcategory</TableHead>
-              <TableHead className="w-[160px]">Submitted Date</TableHead>
-              <TableHead className="w-[140px]">Status</TableHead>
-              <TableHead className="w-[140px]">Priority</TableHead>
-              <TableHead className="w-[180px]">Reported By</TableHead>
-              <TableHead className="w-[180px]">Owner</TableHead>
-              <TableHead className="w-[140px] text-center">Actions</TableHead>
+              <TableHead className="min-w-[250px]">Ticket ID</TableHead>
+              <TableHead className="min-w-[140px]">Type</TableHead>
+              <TableHead className="min-w-[180px]">Category</TableHead>
+              <TableHead className="min-w-[180px]">Subcategory</TableHead>
+              <TableHead className="min-w-[160px]">Submitted Date</TableHead>
+              <TableHead className="min-w-[140px]">Status</TableHead>
+              <TableHead className="min-w-[140px]">Priority</TableHead>
+              <TableHead className="min-w-[180px]">Reported By</TableHead>
+              <TableHead className="min-w-[180px]">Owner</TableHead>
+              <TableHead className="min-w-[140px] text-center">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -87,7 +87,7 @@ const IncidentsDataTable: React.FC<IncidentsDataTableProps> = ({ incidents, load
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={(e) => handleEditClick(e, incident.id)}
+                      onClick={(e) => handleEditClick(e, incident.id, incident)}
                       className="h-8 w-8 p-0"
                     >
                       <Edit className="h-4 w-4" />

@@ -58,9 +58,9 @@ const IncidentsList = () => {
 
   return (
     <Layout>
-      <div className="space-y-6 p-6">
+      <div className="space-y-6 p-6 w-full">
         <div className="bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-6">
-          <div className="max-w-7xl mx-auto">
+          <div className="w-full">
             <h1 className="text-2xl font-semibold text-gray-900">Incidents</h1>
             <p className="text-gray-600 text-sm mt-1">
               View all incidents reported in your organization
@@ -68,7 +68,7 @@ const IncidentsList = () => {
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full px-4 sm:px-6 lg:px-8">
           <IncidentsDataTable incidents={incidents} loading={loading} />
         </div>
       </div>

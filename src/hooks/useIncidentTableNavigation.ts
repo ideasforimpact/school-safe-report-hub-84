@@ -1,5 +1,6 @@
 
 import { useNavigate } from 'react-router-dom';
+import { IncidentRecord } from '@/services/incidentService';
 
 export function useIncidentTableNavigation() {
   const navigate = useNavigate();
@@ -13,9 +14,11 @@ export function useIncidentTableNavigation() {
     navigate(`/incident/${incidentId}`);
   };
 
-  const handleEditClick = (e: React.MouseEvent, incidentId: string) => {
+  const handleEditClick = (e: React.MouseEvent, incidentId: string, incident?: IncidentRecord) => {
     e.stopPropagation();
-    navigate(`/incident/${incidentId}/edit`);
+    navigate(`/incident/${incidentId}/edit`, { 
+      state: { incident } 
+    });
   };
 
   return {
