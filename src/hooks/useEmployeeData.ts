@@ -33,12 +33,12 @@ export const useEmployeeData = () => {
       const minimumLoadingTime = 1500; // 1.5 seconds
       const startTime = Date.now();
 
-      // Check if employee is a super admin - use maybeSingle
+      // Check if employee is a super admin
       const { data: employeeData, error: employeeError } = await supabase
         .from('employees')
         .select('is_super_admin')
         .eq('id', employeeId)
-        .maybeSingle();
+        .single();
 
       if (employeeError) {
         dispatch(setError(employeeError.message));
@@ -199,15 +199,14 @@ export const useEmployeeData = () => {
       if (user && user.id) {
         const fetchEmployeeDataFromDB = async () => {
           try {
-            // Try to get employee data by user ID - use maybeSingle
+            // Try to get employee data by user ID
             const { data, error } = await supabase
               .from('employees')
               .select('id, client_id, first_name, last_name, email, is_super_admin')
               .eq('user_id', user.id)
-              .maybeSingle();
+              .single();
               
             if (error) {
-              console.log("No employee data found for user:", user.id);
               return;
             }
             
@@ -235,7 +234,7 @@ export const useEmployeeData = () => {
               }
             }
           } catch (fetchError) {
-            console.log("Error fetching employee data:", fetchError);
+            // Silent error handling
           }
         };
         
