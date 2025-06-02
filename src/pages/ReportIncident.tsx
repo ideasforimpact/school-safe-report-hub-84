@@ -146,19 +146,49 @@ const ReportIncident = () => {
         return;
       }
       
-      // Create a simple date from form data
-      const createDate = () => {
+      // Create a safe date with better validation
+      const createSafeDate = () => {
         try {
-          if (!formData.date) return new Date();
-          const timeString = formData.time || '12:00';
-          const dateTimeString = `${formData.date}T${timeString}:00`;
-          return new Date(dateTimeString);
+          // Use current date/time as fallback if form data is invalid
+          if (!formData.date) {
+            console.log('No date provided, using current date');
+            return new Date();
+          }
+          
+          // Parse the date string safely
+          const dateStr = formData.date;
+          const timeStr = formData.time || '12:00';
+          
+          // Validate date format (YYYY-MM-DD)
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+            console.log('Invalid date format, using current date');
+            return new Date();
+          }
+          
+          // Validate time format (HH:MM)
+          if (!/^\d{2}:\d{2}$/.test(timeStr)) {
+            console.log('Invalid time format, using current time');
+            return new Date();
+          }
+          
+          // Create the date-time string
+          const dateTimeString = `${dateStr}T${timeStr}:00`;
+          const date = new Date(dateTimeString);
+          
+          // Check if the date is valid
+          if (isNaN(date.getTime())) {
+            console.log('Invalid date created, using current date');
+            return new Date();
+          }
+          
+          return date;
         } catch (error) {
+          console.error('Error creating date:', error);
           return new Date();
         }
       };
 
-      const dateTime = createDate();
+      const dateTime = createSafeDate();
       
       const validPeople = peopleInvolved.filter(p => 
         p.name?.trim() || p.role?.trim() || p.notes?.trim()
