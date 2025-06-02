@@ -8,7 +8,7 @@ export interface ConfigItem {
 }
 
 export interface SubcategoryItem extends ConfigItem {
-  categoryId?: string;
+  categoryId: string; // Made required to match types/incident
 }
 
 export interface CampusItem extends ConfigItem {
