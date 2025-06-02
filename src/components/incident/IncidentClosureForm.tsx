@@ -16,6 +16,7 @@ import ContributingFactorsSection from './closure/ContributingFactorsSection';
 import { supabase } from '@/integrations/supabase/client';
 import { useEmployeeStore } from '@/store/EmployeeContext';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
 
 interface IncidentClosureFormProps {
   incident: Incident;
@@ -40,6 +41,7 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { state } = useEmployeeStore();
+  const navigate = useNavigate();
   
   // Modified action state - now we'll just have a single action entry
   const [currentAction, setCurrentAction] = useState<Action>({
@@ -118,6 +120,9 @@ const IncidentClosureForm: React.FC<IncidentClosureFormProps> = ({
       });
 
       onClose();
+      
+      // Navigate to incidents list
+      navigate('/incidents');
 
     } catch (error: any) {
       console.error('Error closing incident:', error);

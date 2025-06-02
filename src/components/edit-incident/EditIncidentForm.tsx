@@ -155,7 +155,9 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incidentData }) => 
 
       console.log('Incident updated successfully');
       toast.success("Incident updated successfully");
-      navigate(`/incident/${id}`);
+      
+      // Navigate to incidents list instead of incident detail
+      navigate('/incidents');
     } catch (error: any) {
       console.error('Error updating incident:', error);
       toast.error(error.message || "An error occurred while updating the incident");
