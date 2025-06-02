@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -10,6 +11,7 @@ import CommentsList from './CommentsList';
 import InlineCommentForm from './CommentForm.inline';
 import SupportingDocuments from './SupportingDocuments';
 import { Incident, Comment as IncidentComment, FileItem } from '@/types/incident';
+import { IncidentDocument } from '@/services/incident/incidentDocumentService';
 import { useIncidents } from '@/contexts/incident';
 import { useAuth } from '@/contexts/auth/AuthContext';
 import { formatUserFullName } from '@/utils/userUtils';
@@ -123,6 +125,17 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
     }
   }, [handleStatusChange, statusUpdate]);
 
+  // Convert incident documents to the expected format
+  const convertedDocuments: IncidentDocument[] = (displayIncident.documents || []).map((doc: any) => ({
+    id: doc.id || crypto.randomUUID(),
+    name: doc.name || 'Unknown Document',
+    type: doc.type || 'application/octet-stream',
+    size: doc.size || 0,
+    url: doc.url || doc.data || '',
+    path: doc.path || '',
+    uploadedAt: doc.uploadedAt || new Date().toISOString()
+  }));
+
   return (
     <div className="container max-w-6xl py-6">
       {/* Loading overlay for incident refresh */}
@@ -224,7 +237,7 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
         <TabsContent value="documents" className="mt-6">
           <SupportingDocuments
             incidentId={displayIncident.id}
-            documents={displayIncident.documents}
+            documents={convertedDocuments}
             canDelete={isAdmin}
             onDocumentDeleted={onRefreshIncident}
           />
@@ -246,6 +259,7 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
           {/* Comments List */}
           <CommentsList
             key={refreshKey}
+            comments={displayIncident.comments || []}
             incident={displayIncident}
             addComment={addComment}
             updateComment={updateComment}

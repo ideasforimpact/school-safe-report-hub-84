@@ -12,6 +12,17 @@ export interface IncidentDocument {
   uploadedAt: string;
 }
 
+// Type for storing in database (JSON compatible)
+interface IncidentDocumentRecord {
+  id: string;
+  name: string;
+  type: string;
+  size: number;
+  url: string;
+  path: string;
+  uploadedAt: string;
+}
+
 export const incidentDocumentService = {
   // Upload files to storage and return document info
   async uploadFiles(incidentId: string, files: FileItem[]): Promise<IncidentDocument[]> {
@@ -73,9 +84,20 @@ export const incidentDocumentService = {
 
   // Update incident with documents
   async updateIncidentDocuments(incidentId: string, documents: IncidentDocument[]): Promise<void> {
+    // Convert to plain objects for JSON storage
+    const documentsForStorage: IncidentDocumentRecord[] = documents.map(doc => ({
+      id: doc.id,
+      name: doc.name,
+      type: doc.type,
+      size: doc.size,
+      url: doc.url,
+      path: doc.path,
+      uploadedAt: doc.uploadedAt
+    }));
+
     const { error } = await supabase
       .from('incidents')
-      .update({ documents: documents })
+      .update({ documents: documentsForStorage as any })
       .eq('id', incidentId);
 
     if (error) {
@@ -97,7 +119,17 @@ export const incidentDocumentService = {
       throw error;
     }
 
-    return (data?.documents as IncidentDocument[]) || [];
+    // Convert from stored format back to IncidentDocument[]
+    const storedDocuments = data?.documents as any[];
+    return (storedDocuments || []).map((doc: any): IncidentDocument => ({
+      id: doc.id || '',
+      name: doc.name || '',
+      type: doc.type || '',
+      size: doc.size || 0,
+      url: doc.url || '',
+      path: doc.path || '',
+      uploadedAt: doc.uploadedAt || new Date().toISOString()
+    }));
   },
 
   // Delete document from storage and update incident
