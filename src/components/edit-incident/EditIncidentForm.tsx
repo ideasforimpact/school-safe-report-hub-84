@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
@@ -53,7 +52,7 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({ incident }) => {
       time: timeString,
       locationId: '',
       status: incident.status,
-      owner: incident.owner?.id || '',
+      owner: incident.owner || '',
       facilityId: '',
       priority: incident.priority || 'Medium',
       priorityId: ''

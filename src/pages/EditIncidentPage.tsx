@@ -24,7 +24,32 @@ const EditIncidentPage = () => {
   // Get incident from navigation state or context
   const passedIncident = location.state?.incident as IncidentRecord;
   const contextIncident = id ? getIncident(id) : null;
-  const incident = passedIncident || contextIncident;
+  
+  // Prioritize passed incident and ensure it's of type IncidentRecord
+  let incident: IncidentRecord | null = null;
+  
+  if (passedIncident && 'ticket_id' in passedIncident) {
+    incident = passedIncident;
+  } else if (contextIncident && 'ticketId' in contextIncident) {
+    // Convert Incident to IncidentRecord format
+    incident = {
+      id: contextIncident.id,
+      ticket_id: contextIncident.ticketId,
+      type: contextIncident.type,
+      category: contextIncident.category,
+      subcategory: contextIncident.subcategory || '',
+      description: contextIncident.description,
+      date: contextIncident.date,
+      location: contextIncident.location,
+      facility: contextIncident.facility || '',
+      status: contextIncident.status,
+      priority: contextIncident.priority || 'Medium',
+      reportedBy: contextIncident.reportedBy?.name || 'Unknown',
+      owner: contextIncident.owner?.name || '',
+      createdAt: contextIncident.createdAt,
+      updatedAt: contextIncident.updatedAt
+    };
+  }
 
   console.log('EditIncidentPage - Passed incident:', passedIncident);
   console.log('EditIncidentPage - Context incident:', contextIncident);
