@@ -1,31 +1,25 @@
 
 import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/auth/AuthContext';
-import { Incident, Person, IncidentType } from '@/types/incident';
+import { Person } from '@/types/incident';
 import { useIncidentForm } from '@/hooks/useIncidentForm';
 
-interface EditIncidentFormProps {
-  incident: Incident;
-  onSuccess: () => void;
-  onCancel: () => void;
-}
-
-const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
-  incident,
-  onSuccess,
-  onCancel
-}) => {
+const EditIncidentForm: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   
   // Get form configuration data
   const {
@@ -38,85 +32,87 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
     users: incidentUsers
   } = useIncidentForm();
 
-  // Form state initialized with incident data
+  // Form state
   const [formData, setFormData] = useState({
-    type: incident.type,
+    type: '',
     typeId: '',
     categoryId: '',
     subcategoryId: '',
-    description: incident.description,
-    date: new Date(incident.date).toISOString().split('T')[0],
-    time: new Date(incident.date).toTimeString().split(' ')[0].slice(0, 5),
+    description: '',
+    date: new Date().toISOString().split('T')[0],
+    time: new Date().toTimeString().split(' ')[0].slice(0, 5),
     locationId: '',
-    status: incident.status,
-    owner: incident.owner?.id || '',
+    status: 'Open',
+    owner: '',
     facilityId: '',
-    priority: incident.priority || 'Medium',
+    priority: 'Medium' as 'Low' | 'Medium' | 'High' | 'Critical',
     priorityId: ''
   });
 
-  const [peopleInvolved, setPeopleInvolved] = useState<Person[]>(
-    incident.peopleInvolved || []
-  );
+  const [peopleInvolved, setPeopleInvolved] = useState<Person[]>([]);
 
-  // Initialize form data with proper IDs when reference data loads
+  // Fetch incident data
   useEffect(() => {
-    console.log('Populating edit form with incident data:', incident);
-    
-    // Match and set type ID
-    if (reportTypes.length > 0) {
-      const typeMatch = reportTypes.find(t => t.name === incident.type);
-      if (typeMatch) {
-        setFormData(prev => ({ ...prev, typeId: typeMatch.id }));
-        console.log('Set type ID:', typeMatch.id, 'for type:', incident.type);
-      }
-    }
+    const fetchIncident = async () => {
+      if (!id) return;
+      
+      setIsLoading(true);
+      try {
+        const { data: incident, error } = await supabase
+          .from('incidents')
+          .select(`
+            *,
+            incident_report_types:type_id(id, name),
+            incident_categories:category_id(id, name),
+            incident_subcategories:subcategory_id(id, name),
+            campuses:location_id(id, name),
+            facilities:facility_id(id, name),
+            incident_priorities:priority_id(id, name),
+            incident_status:status_id(id, name)
+          `)
+          .eq('id', id)
+          .single();
 
-    // Match and set category ID
-    if (categories.length > 0) {
-      const categoryMatch = categories.find(c => c.name === incident.category);
-      if (categoryMatch) {
-        setFormData(prev => ({ ...prev, categoryId: categoryMatch.id }));
-        console.log('Set category ID:', categoryMatch.id, 'for category:', incident.category);
-      }
-    }
+        if (error) {
+          console.error('Error fetching incident:', error);
+          toast.error('Failed to load incident data');
+          return;
+        }
 
-    // Match and set subcategory ID
-    if (subcategories.length > 0 && incident.subcategory) {
-      const subcategoryMatch = subcategories.find(s => s.name === incident.subcategory);
-      if (subcategoryMatch) {
-        setFormData(prev => ({ ...prev, subcategoryId: subcategoryMatch.id }));
-        console.log('Set subcategory ID:', subcategoryMatch.id, 'for subcategory:', incident.subcategory);
-      }
-    }
+        if (incident) {
+          // Parse the date to get date and time
+          const incidentDate = new Date(incident.date);
+          const dateString = incidentDate.toISOString().split('T')[0];
+          const timeString = incidentDate.toTimeString().split(' ')[0].slice(0, 5);
 
-    // Match and set location ID
-    if (locations.length > 0) {
-      const locationMatch = locations.find(l => l.name === incident.location);
-      if (locationMatch) {
-        setFormData(prev => ({ ...prev, locationId: locationMatch.id }));
-        console.log('Set location ID:', locationMatch.id, 'for location:', incident.location);
-      }
-    }
+          setFormData({
+            type: incident.incident_report_types?.name || '',
+            typeId: incident.type_id || '',
+            categoryId: incident.category_id || '',
+            subcategoryId: incident.subcategory_id || '',
+            description: incident.description || '',
+            date: dateString,
+            time: timeString,
+            locationId: incident.location_id || '',
+            status: incident.incident_status?.name || 'Open',
+            owner: incident.assigned_to || '',
+            facilityId: incident.facility_id || '',
+            priority: incident.incident_priorities?.name as 'Low' | 'Medium' | 'High' | 'Critical' || 'Medium',
+            priorityId: incident.priority_id || ''
+          });
 
-    // Match and set facility ID
-    if (facilities.length > 0 && incident.facility) {
-      const facilityMatch = facilities.find(f => f.name === incident.facility);
-      if (facilityMatch) {
-        setFormData(prev => ({ ...prev, facilityId: facilityMatch.id }));
-        console.log('Set facility ID:', facilityMatch.id, 'for facility:', incident.facility);
+          setPeopleInvolved(Array.isArray(incident.people_involved) ? incident.people_involved : []);
+        }
+      } catch (error) {
+        console.error('Error fetching incident:', error);
+        toast.error('Failed to load incident data');
+      } finally {
+        setIsLoading(false);
       }
-    }
+    };
 
-    // Match and set priority ID
-    if (priorities.length > 0) {
-      const priorityMatch = priorities.find(p => p.name === incident.priority);
-      if (priorityMatch) {
-        setFormData(prev => ({ ...prev, priorityId: priorityMatch.id }));
-        console.log('Set priority ID:', priorityMatch.id, 'for priority:', incident.priority);
-      }
-    }
-  }, [reportTypes, categories, subcategories, locations, facilities, priorities, incident]);
+    fetchIncident();
+  }, [id]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -134,24 +130,18 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
 
   const getFilteredSubcategories = () => {
     if (!formData.categoryId) return [];
-    // Find subcategories that belong to the selected category
-    // Since subcategories is an array of ConfigItems, we need to filter based on the category relationship
-    // This assumes subcategories have been properly filtered by the useIncidentForm hook
     return subcategories.filter(sub => {
-      // If subcategories don't have category_id property, return all for now
-      // The actual filtering should happen in the useIncidentForm hook
+      // For now, return all subcategories
+      // In a real implementation, you'd filter by category_id
       return true;
     });
   };
 
   const getFilteredFacilities = () => {
     if (!formData.locationId) return [];
-    // Filter facilities based on selected location
-    // Since facilities is an array of ConfigItems, we need to filter based on the location relationship
-    // This assumes facilities have been properly filtered by the useIncidentForm hook
     return facilities.filter(facility => {
-      // If facilities don't have campus_id property, return all for now
-      // The actual filtering should happen in the useIncidentForm hook
+      // For now, return all facilities
+      // In a real implementation, you'd filter by location_id
       return true;
     });
   };
@@ -174,7 +164,7 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!user) {
+    if (!user || !id) {
       toast.error("You must be logged in to edit incidents");
       return;
     }
@@ -185,14 +175,7 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
       // Combine date and time
       const dateTime = new Date(`${formData.date}T${formData.time}`);
       
-      // Get auth session
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error("You must be logged in to edit incidents");
-        return;
-      }
-
-      // Prepare updates for edge function
+      // Prepare updates
       const updates = {
         type_id: formData.typeId,
         category_id: formData.categoryId,
@@ -204,30 +187,24 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
         priority_id: formData.priorityId,
         assigned_to: formData.owner || null,
         people_involved: peopleInvolved.filter(p => p.name.trim() !== ''),
-        documents: incident.documents || []
+        updated_at: new Date().toISOString()
       };
 
-      console.log('Submitting incident update:', { incidentId: incident.id, updates });
+      console.log('Updating incident:', { incidentId: id, updates });
 
-      // Call the edge function
-      const { data, error } = await supabase.functions.invoke('update-incident', {
-        body: {
-          incidentId: incident.id,
-          updates
-        },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`
-        }
-      });
+      const { error } = await supabase
+        .from('incidents')
+        .update(updates)
+        .eq('id', id);
 
       if (error) {
-        console.error('Edge function error:', error);
+        console.error('Error updating incident:', error);
         throw new Error(error.message || 'Failed to update incident');
       }
 
-      console.log('Incident updated successfully:', data);
+      console.log('Incident updated successfully');
       toast.success("Incident updated successfully");
-      onSuccess();
+      navigate(`/incident/${id}`);
     } catch (error) {
       console.error('Error updating incident:', error);
       toast.error(error.message || "An error occurred while updating the incident");
@@ -236,17 +213,41 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
     }
   };
 
+  const handleCancel = () => {
+    navigate(`/incident/${id}`);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-lg">Loading incident data...</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="mb-6">
+        <Button 
+          variant="ghost" 
+          className="flex items-center -ml-4 mb-4"
+          onClick={handleCancel}
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Incident Details
+        </Button>
+        
+        <h1 className="text-2xl font-semibold text-gray-900">Edit Incident</h1>
+        <p className="text-gray-600 text-sm mt-1">
+          Update incident information and details
+        </p>
+      </div>
+
       <form onSubmit={handleSubmit} className="w-full">
         <Card className="border-none shadow-none bg-gray-50">
           <CardContent className="space-y-6 px-8 py-8">
-            {/* Debug Info */}
-            <div className="bg-blue-50 p-4 rounded-lg mb-6">
-              <h3 className="font-medium text-blue-900">Editing Incident: {incident.ticketId}</h3>
-              <p className="text-sm text-blue-700">Type: {incident.type} | Category: {incident.category} | Location: {incident.location}</p>
-            </div>
-
             {/* First Row - Report Type, Category, Location */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-2">
@@ -308,7 +309,7 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-2">
                 <Label htmlFor="subcategory" className="text-sm font-medium text-gray-700">
-                  Subcategory <span className="text-red-500">*</span>
+                  Subcategory
                 </Label>
                 <Select value={formData.subcategoryId} onValueChange={(value) => handleSelectChange('subcategoryId', value)}>
                   <SelectTrigger className="h-11 bg-white border-gray-300">
@@ -501,7 +502,7 @@ const EditIncidentForm: React.FC<EditIncidentFormProps> = ({
             <Button 
               type="button" 
               variant="outline"
-              onClick={onCancel}
+              onClick={handleCancel}
               className="px-6 border-gray-300"
               disabled={isSubmitting}
             >
