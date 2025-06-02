@@ -648,7 +648,7 @@ async function handleCreateClient(clientData: any) {
   });
   
   try {
-    const { id: clientId, modules, superAdminEmail, clientTypeId, logo } = clientData;
+    const { id: clientId, modules, superAdminEmail, clientTypeId, logo, ...clientInfo } = clientData;
     
     console.log('Logo data check:', {
       logoExists: !!logo,
@@ -658,27 +658,7 @@ async function handleCreateClient(clientData: any) {
 
     console.log(`Starting client creation process for ${clientId}`);
     
-    // First, ensure the client record exists in the database
-    console.log('Checking if client record exists in database...');
-    const { data: existingClient, error: checkError } = await supabase
-      .from('clients')
-      .select('id, name')
-      .eq('id', clientId)
-      .single();
-
-    if (checkError && checkError.code !== 'PGRST116') {
-      console.error('Error checking for existing client:', checkError);
-      throw new Error('Failed to verify client existence');
-    }
-
-    if (!existingClient) {
-      console.error(`Client ${clientId} does not exist in database yet. This should not happen during creation.`);
-      throw new Error('Client record must be created in the database before processing modules. Please ensure the client is inserted first.');
-    }
-
-    console.log(`Client ${clientId} found in database: ${existingClient.name}`);
-    
-    // Handle logo upload if provided
+    // Handle logo upload first if provided
     let clientLogoUrl = null;
     if (logo) {
       console.log('Uploading client logo to storage...');
@@ -690,34 +670,40 @@ async function handleCreateClient(clientData: any) {
       console.log('No logo provided for client creation');
     }
     
-    // Update client record with client type and logo URL
-    const updateData: any = {};
+    // Prepare client data for insertion
+    const clientRecord = {
+      id: clientId,
+      name: clientInfo.name || '',
+      email: clientInfo.email || null,
+      contact_person: clientInfo.contactPerson || null,
+      phone: clientInfo.phone || null,
+      active: clientInfo.active !== undefined ? clientInfo.active : true,
+      institution_type: clientInfo.institutionType || null,
+      allowed_domains: clientInfo.allowedDomains || null,
+      super_admin_allowed_domain: clientInfo.superAdminAllowedDomains || null,
+      auth_providers: clientInfo.authProviders || null,
+      client_type_id: clientTypeId || null,
+      client_logo: clientLogoUrl || null,
+      creation_date: new Date().toISOString()
+    };
     
-    if (clientTypeId) {
-      updateData.client_type_id = clientTypeId;
+    console.log('Inserting client record into database...');
+    const { data: insertedClient, error: insertError } = await supabase
+      .from('clients')
+      .insert([clientRecord])
+      .select('*')
+      .single();
+      
+    if (insertError) {
+      console.error('Error inserting client record:', insertError);
+      throw new Error(`Failed to create client record: ${insertError.message}`);
     }
     
-    if (clientLogoUrl) {
-      updateData.client_logo = clientLogoUrl;
-    }
-    
-    // Only update if there's data to update
-    if (Object.keys(updateData).length > 0) {
-      const { error: updateError } = await supabase
-        .from('clients')
-        .update(updateData)
-        .eq('id', clientId);
-        
-      if (updateError) {
-        console.error('Error updating client with logo and type:', updateError);
-      } else {
-        console.log('Successfully updated client with logo and type');
-      }
-    }
+    console.log('Client record inserted successfully:', insertedClient.id);
     
     // Process module access - client now exists in database
     if (modules && modules.length > 0) {
-      console.log('Processing module access for existing client...');
+      console.log('Processing module access for newly created client...');
       const moduleSuccess = await processModuleAccess(clientId, modules, false);
       if (!moduleSuccess) {
         throw new Error('Failed to process module access');
