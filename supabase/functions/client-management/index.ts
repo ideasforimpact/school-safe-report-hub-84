@@ -874,7 +874,7 @@ async function handleUpdateClient(clientData: any) {
   });
   
   try {
-    const { id: clientId, modules, superAdminEmail, clientTypeId, logo } = clientData;
+    const { id: clientId, modules, superAdminEmail, clientTypeId, logo, ...clientInfo } = clientData;
     
     console.log('Logo data check:', {
       logoExists: !!logo,
@@ -894,8 +894,26 @@ async function handleUpdateClient(clientData: any) {
       console.log('No logo provided for client update');
     }
     
-    // Update client record with client type and logo URL
+    // Prepare complete client data for update
     const updateData: any = {};
+    
+    // Update all client fields if provided
+    if (clientInfo.name !== undefined) updateData.name = clientInfo.name;
+    if (clientInfo.email !== undefined) updateData.email = clientInfo.email;
+    if (clientInfo.contactPerson !== undefined) updateData.contact_person = clientInfo.contactPerson;
+    if (clientInfo.phone !== undefined) updateData.phone = clientInfo.phone;
+    if (clientInfo.active !== undefined) updateData.active = clientInfo.active;
+    if (clientInfo.institutionType !== undefined) updateData.institution_type = clientInfo.institutionType;
+    if (clientInfo.allowedDomains !== undefined) {
+      updateData.allowed_domains = Array.isArray(clientInfo.allowedDomains) ? clientInfo.allowedDomains.join(',') : null;
+    }
+    if (clientInfo.superAdminAllowedDomains !== undefined) {
+      updateData.super_admin_allowed_domain = Array.isArray(clientInfo.superAdminAllowedDomains) ? clientInfo.superAdminAllowedDomains.join(',') : null;
+    }
+    if (clientInfo.authProviders !== undefined) {
+      updateData.auth_providers = JSON.stringify(clientInfo.authProviders);
+    }
+    if (clientInfo.website !== undefined) updateData.website = clientInfo.website;
     
     if (clientTypeId) {
       updateData.client_type_id = clientTypeId;
@@ -905,18 +923,18 @@ async function handleUpdateClient(clientData: any) {
       updateData.client_logo = clientLogoUrl;
     }
     
-    // Only update if there's data to update
-    if (Object.keys(updateData).length > 0) {
-      const { error: updateError } = await supabase
-        .from('clients')
-        .update(updateData)
-        .eq('id', clientId);
-        
-      if (updateError) {
-        console.error('Error updating client with logo and type:', updateError);
-      } else {
-        console.log('Successfully updated client with logo and type');
-      }
+    // Update client record with all the new data
+    console.log('Updating client record with data:', updateData);
+    const { error: updateError } = await supabase
+      .from('clients')
+      .update(updateData)
+      .eq('id', clientId);
+      
+    if (updateError) {
+      console.error('Error updating client record:', updateError);
+      throw new Error(`Failed to update client record: ${updateError.message}`);
+    } else {
+      console.log('Successfully updated client record');
     }
     
     // Process module access with isCreation flag set to false (default)

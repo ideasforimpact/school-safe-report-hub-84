@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Client, useClient, InstitutionType, ModuleInfo } from '@/contexts/ClientContext';
 import { OAuthProviderName } from '@/utils/authProviders';
@@ -323,7 +324,7 @@ export const useClientManagement = () => {
         logoPreview: formData.logo ? formData.logo.substring(0, 50) + '...' : 'No logo'
       });
       
-      // Always include logo data in the request, whether it's new, existing, or empty
+      // Create the request payload with ALL client data
       const requestPayload = {
         operation: 'update',
         client: {
@@ -331,7 +332,18 @@ export const useClientManagement = () => {
           modules: moduleInfoArray,
           superAdminEmail: formData.superAdminEmail,
           clientTypeId: formData.clientTypeId,
-          logo: formData.logo || '' // Always send logo data, even if empty string
+          logo: formData.logo || '', // Always send logo data, even if empty string
+          // Include all the form data for complete client update
+          name: formData.name,
+          email: formData.email,
+          contactPerson: formData.contactPerson,
+          phone: formData.phone,
+          active: formData.active,
+          institutionType: formData.institutionType,
+          allowedDomains: formData.allowedDomains,
+          superAdminAllowedDomains: formData.superAdminAllowedDomains,
+          authProviders: formData.authProviders,
+          website: formData.website
         }
       };
       
@@ -343,7 +355,7 @@ export const useClientManagement = () => {
         }
       });
       
-      // Call the edge function with logo data - ensure single call
+      // Call the edge function with all client data - ensure single call
       const { data, error } = await supabase.functions.invoke('client-management', {
         body: requestPayload
       });
@@ -354,15 +366,15 @@ export const useClientManagement = () => {
         return;
       }
       
-      // Update the client in database
-      await updateClient(currentClient.id, {
-        ...formData,
-        modules: moduleInfoArray
-      });
-      
-      toast.success('Client and super admin employee updated successfully');
-      setIsEditDialogOpen(false);
-      resetForm();
+      if (data && data.success) {
+        toast.success('Client and super admin employee updated successfully');
+        setIsEditDialogOpen(false);
+        resetForm();
+        // Refresh the clients list to show the updated client
+        await fetchClients();
+      } else {
+        throw new Error('Client update failed');
+      }
     } catch (error) {
       console.error('Error in handleUpdateClient:', error);
       toast.error('Failed to update client');
