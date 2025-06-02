@@ -132,7 +132,7 @@ const ReportIncident = () => {
           .from('employees')
           .select('id, client_id')
           .eq('email', user.email.toLowerCase())
-          .maybeSingle(); // Use maybeSingle instead of single
+          .maybeSingle();
           
         if (empData && !empError) {
           employeeId = empData.id;
@@ -170,7 +170,14 @@ const ReportIncident = () => {
         data: file.base64
       }));
       
-      // Simple incident data structure for direct database insert
+      // Get the 'Open' status ID
+      const { data: statusData } = await supabase
+        .from('incident_status')
+        .select('id')
+        .eq('name', 'Open')
+        .maybeSingle();
+
+      // Convert data to proper types for database insert
       const incidentRecord = {
         ticket_id: `INC-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
         type_id: formData.typeId || null,
@@ -181,28 +188,17 @@ const ReportIncident = () => {
         location_id: formData.locationId || null,
         facility_id: formData.facilityId || null,
         priority_id: formData.priorityId || null,
-        people_involved: validPeople,
-        documents: documents,
+        people_involved: JSON.parse(JSON.stringify(validPeople)), // Convert to Json type
+        documents: JSON.parse(JSON.stringify(documents)), // Convert to Json type
         created_by: employeeId,
         assigned_to: formData.owner || null,
         client_id: clientId,
-        status_id: null // Will be set to 'Open' by default in the database
+        status_id: statusData?.id || null
       };
-
-      // Get the 'Open' status ID
-      const { data: statusData } = await supabase
-        .from('incident_status')
-        .select('id')
-        .eq('name', 'Open')
-        .maybeSingle();
-
-      if (statusData) {
-        incidentRecord.status_id = statusData.id;
-      }
       
       console.log('Creating incident directly in database...');
       
-      // Direct database insert - much faster than edge function
+      // Direct database insert
       const { data, error } = await supabase
         .from('incidents')
         .insert(incidentRecord)
