@@ -4,6 +4,7 @@ import { Client } from '@/contexts/ClientContext';
 import { TableRow, TableCell } from '@/components/ui/table';
 import ClientLogoCell from './ClientLogoCell';
 import ClientStatusBadge from './ClientStatusBadge';
+import ModuleAccessBadges from './ModuleAccessBadges';
 import ClientActionButtons from './ClientActionButtons';
 
 interface ClientRowProps {
@@ -32,9 +33,7 @@ const ClientRow = ({ client, onEditClick, onDeleteClient }: ClientRowProps) => {
         <ClientStatusBadge active={client.active} />
       </TableCell>
       <TableCell>
-        <span className="text-sm text-gray-600">
-          {client.superAdminEmail || 'Not set'}
-        </span>
+        <ModuleAccessBadges moduleAccess={client.moduleAccess} />
       </TableCell>
       <TableCell>
         <ClientActionButtons 

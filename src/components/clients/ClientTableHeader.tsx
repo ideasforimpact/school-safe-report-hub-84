@@ -14,7 +14,7 @@ const ClientTableHeader = () => {
         <TableHead>Phone</TableHead>
         <TableHead>Created</TableHead>
         <TableHead>Status</TableHead>
-        <TableHead>Super Admin Email</TableHead>
+        <TableHead>Access</TableHead>
         <TableHead>Actions</TableHead>
       </TableRow>
     </TableHeader>
