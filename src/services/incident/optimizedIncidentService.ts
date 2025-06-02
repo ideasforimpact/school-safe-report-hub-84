@@ -5,8 +5,6 @@ import { IncidentRecord } from '@/services/incidentService';
 export const optimizedIncidentService = {
   async fetchIncidents(clientId: string): Promise<IncidentRecord[]> {
     try {
-      console.log('Fetching incidents for client:', clientId);
-
       // Use a more optimized query with proper indexing
       const { data: incidents, error } = await supabase
         .from('incidents')
@@ -32,12 +30,10 @@ export const optimizedIncidentService = {
         .limit(50); // Limit initial load to 50 records
 
       if (error) {
-        console.error('Error fetching incidents:', error);
         throw new Error(`Failed to fetch incidents: ${error.message}`);
       }
 
       if (!incidents || incidents.length === 0) {
-        console.log('No incidents found for client:', clientId);
         return [];
       }
 
@@ -91,7 +87,6 @@ export const optimizedIncidentService = {
         updatedAt: new Date(inc.updated_at)
       }));
 
-      console.log(`Successfully fetched ${transformedIncidents.length} incidents`);
       return transformedIncidents;
 
     } catch (error) {

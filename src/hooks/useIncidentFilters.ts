@@ -1,96 +1,74 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Incident } from '@/types/incident';
-import { FilterState, FilterHookReturn } from '@/types/filterTypes';
-import { useFilterOptions } from './filters/useFilterOptions';
-import { applyFilters, getInitialFilterState } from './filters/filterUtils';
+import { FilterState } from '@/types/filterTypes';
+import { getInitialFilterState, applyFilters } from '@/hooks/filters/filterUtils';
 
-export function useIncidentFilters(incidents: Incident[]): FilterHookReturn {
-  // Filter states
+export const useIncidentFilters = (incidents: Incident[]) => {
   const [filters, setFilters] = useState<FilterState>(getInitialFilterState());
-  const [filteredIncidents, setFilteredIncidents] = useState<Incident[]>(incidents);
 
-  // Get available options for filters - now includes database-fetched data
+  // Memoize filter options to prevent recalculation on every render
   const {
-    categoryOptions,
-    subcategoryOptions,
+    availableCategories,
+    availableSubcategories,
+    availableLocations,
+    availableFacilities,
+    availableOwners,
     priorityOptions,
     statusOptions,
-    locationOptions,
-    facilityOptions,
-    assigneeOptions,
-    reporterOptions,
-    isInsightsPage,
-    campuses,
-    classes,
-    sections,
-    designations
-  } = useFilterOptions();
-  
-  // Create available owners array from incidents data
-  const availableOwners = incidents
-    .filter(incident => incident.owner)
-    .map(incident => ({ id: incident.owner!.id, name: incident.owner!.name }))
-    .filter((owner, index, self) => 
-      index === self.findIndex(o => o.id === owner.id)
-    );
+    locationOptions
+  } = useMemo(() => {
+    const categories = [...new Set(incidents.map(i => i.category).filter(Boolean))];
+    const subcategories = [...new Set(incidents.map(i => i.subcategory).filter(Boolean))];
+    const locations = [...new Set(incidents.map(i => i.location).filter(Boolean))];
+    const facilities = [...new Set(incidents.map(i => i.facility).filter(Boolean))];
+    const owners = [...new Set(incidents.map(i => i.owner?.name).filter(Boolean))]
+      .map(name => ({ id: name, name }));
+    const priorities = [...new Set(incidents.map(i => i.priority).filter(Boolean))];
+    const statuses = [...new Set(incidents.map(i => i.status).filter(Boolean))];
 
-  // Reset category and subcategory when type changes
-  useEffect(() => {
-    setFilters(prev => ({
-      ...prev,
-      category: '',
-      subcategory: ''
-    }));
-  }, [filters.type]);
+    return {
+      availableCategories: categories,
+      availableSubcategories: subcategories,
+      availableLocations: locations,
+      availableFacilities: facilities,
+      availableOwners: owners,
+      priorityOptions: priorities,
+      statusOptions: statuses,
+      locationOptions: locations
+    };
+  }, [incidents]);
 
-  // Reset subcategory when category changes
-  useEffect(() => {
-    setFilters(prev => ({
-      ...prev,
-      subcategory: ''
-    }));
-  }, [filters.category]);
-
-  // Reset facility when location changes
-  useEffect(() => {
-    setFilters(prev => ({
-      ...prev,
-      facility: ''
-    }));
-  }, [filters.location]);
-
-  const handleFilterChange = (field: string, value: any) => {
-    setFilters(prev => ({ ...prev, [field]: value }));
-  };
-
-  const toggleAdvancedFilters = () => {
-    setFilters(prev => ({ 
-      ...prev, 
-      showAdvancedFilters: !prev.showAdvancedFilters 
-    }));
-  };
-
-  const clearFilters = () => {
-    setFilters({
-      ...getInitialFilterState(),
-      showAdvancedFilters: filters.showAdvancedFilters
-    });
-  };
-
-  // Apply filters to incidents
-  useEffect(() => {
-    const result = applyFilters(incidents, filters);
-    setFilteredIncidents(result);
+  // Memoize filtered incidents to prevent recalculation
+  const filteredIncidents = useMemo(() => {
+    return applyFilters(incidents, filters);
   }, [incidents, filters]);
+
+  const handleFilterChange = useCallback((field: string, value: any) => {
+    setFilters(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  }, []);
+
+  const toggleAdvancedFilters = useCallback(() => {
+    setFilters(prev => ({
+      ...prev,
+      showAdvancedFilters: !prev.showAdvancedFilters
+    }));
+  }, []);
+
+  const clearFilters = useCallback(() => {
+    setFilters(getInitialFilterState());
+  }, []);
 
   return {
     filters,
     filteredIncidents,
-    availableCategories: categoryOptions,
-    availableSubcategories: subcategoryOptions,
-    availableLocations: locationOptions,
-    availableFacilities: facilityOptions,
+    availableCategories,
+    availableSubcategories,
+    availableLocations,
+    availableFacilities,
     availableOwners,
     priorityOptions,
     statusOptions,
@@ -99,4 +77,4 @@ export function useIncidentFilters(incidents: Incident[]): FilterHookReturn {
     toggleAdvancedFilters,
     clearFilters
   };
-}
+};

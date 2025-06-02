@@ -23,7 +23,6 @@ export const useIncidentDetail = (incidentId?: string) => {
         toast.error('Incident not found');
       }
     } catch (err) {
-      console.error('Error loading incident:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to load incident';
       setError(errorMessage);
       

@@ -4,8 +4,6 @@ import { IncidentDetail } from '@/services/incident/incidentDetailService';
 
 export const fetchIncidentWithRelationsOptimized = async (incidentId: string): Promise<IncidentDetail | null> => {
   try {
-    console.log('Fetching incident details for:', incidentId);
-
     // First fetch the basic incident data
     const { data: incident, error } = await supabase
       .from('incidents')
@@ -32,7 +30,6 @@ export const fetchIncidentWithRelationsOptimized = async (incidentId: string): P
       .single();
 
     if (error) {
-      console.error('Error fetching incident:', error);
       throw error;
     }
 
@@ -112,7 +109,6 @@ export const fetchIncidentWithRelationsOptimized = async (incidentId: string): P
       comments: Array.isArray(incident.comments) ? incident.comments : []
     };
 
-    console.log('Successfully fetched incident details');
     return transformedIncident;
 
   } catch (error) {

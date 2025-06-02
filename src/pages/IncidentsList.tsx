@@ -95,12 +95,10 @@ const IncidentsList = () => {
         }
 
         if (!clientId) {
-          console.log('No client ID found');
           setIncidents([]);
           return;
         }
 
-        console.log('Fetching incidents for client:', clientId);
         const fetchedIncidents = await optimizedIncidentService.fetchIncidents(clientId);
         setIncidents(fetchedIncidents);
 
