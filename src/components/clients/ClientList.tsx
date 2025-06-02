@@ -23,7 +23,7 @@ const ClientList = ({ clients, onEditClick, onDeleteClient }: ClientListProps) =
       <TableBody>
         {clients.length === 0 ? (
           <TableRow>
-            <TableCell colSpan={9} className="text-center py-4">
+            <TableCell colSpan={10} className="text-center py-4">
               No clients found. Add a client to get started.
             </TableCell>
           </TableRow>
