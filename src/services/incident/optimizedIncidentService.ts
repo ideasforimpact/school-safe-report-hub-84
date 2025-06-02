@@ -27,7 +27,7 @@ export const optimizedIncidentService = {
         `)
         .eq('client_id', clientId)
         .order('created_at', { ascending: false })
-        .limit(100); // Increase limit to include more records including closed ones
+        .limit(10); // Increase limit to include more records including closed ones
 
       if (error) {
         throw new Error(`Failed to fetch incidents: ${error.message}`);
