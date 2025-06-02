@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -95,7 +96,7 @@ async function uploadLogoToStorage(logoBase64: string, clientId: string): Promis
 }
 
 // Helper function to validate super admin email before creation
-async function validateSuperAdminEmail(superAdminEmail: string, clientId: string): Promise<{ isValid: boolean, existingEmployee?: any, error?: string }> {
+async function validateSuperAdminEmail(superAdminEmail: string, clientId?: string): Promise<{ isValid: boolean, existingEmployee?: any, error?: string }> {
   try {
     // Check if employee with this email already exists
     const { data: existingEmployees, error: checkError } = await supabase
@@ -753,8 +754,10 @@ async function handleCreateClient(clientData: any) {
   let clientId: string | null = null;
   
   try {
-    const { id: providedClientId, modules, superAdminEmail, clientTypeId, logo, ...clientInfo } = clientData;
-    clientId = providedClientId;
+    const { modules, superAdminEmail, clientTypeId, logo, ...clientInfo } = clientData;
+    
+    // Generate a new UUID for the client (don't use the provided ID)
+    clientId = crypto.randomUUID();
     
     console.log('Logo data check:', {
       logoExists: !!logo,
@@ -776,7 +779,7 @@ async function handleCreateClient(clientData: any) {
       console.log('No logo provided for client creation');
     }
     
-    // Prepare client data for insertion
+    // Prepare client data for insertion - include all the data properly
     const clientRecord = {
       id: clientId,
       name: clientInfo.name || '',
@@ -785,15 +788,15 @@ async function handleCreateClient(clientData: any) {
       phone: clientInfo.phone || null,
       active: clientInfo.active !== undefined ? clientInfo.active : true,
       institution_type: clientInfo.institutionType || null,
-      allowed_domains: clientInfo.allowedDomains || null,
-      super_admin_allowed_domain: clientInfo.superAdminAllowedDomains || null,
-      auth_providers: clientInfo.authProviders || null,
+      allowed_domains: Array.isArray(clientInfo.allowedDomains) ? clientInfo.allowedDomains.join(',') : null,
+      super_admin_allowed_domain: Array.isArray(clientInfo.superAdminAllowedDomains) ? clientInfo.superAdminAllowedDomains.join(',') : null,
+      auth_providers: clientInfo.authProviders ? JSON.stringify(clientInfo.authProviders) : null,
       client_type_id: clientTypeId || null,
       client_logo: clientLogoUrl || null,
       creation_date: new Date().toISOString()
     };
     
-    console.log('Inserting client record into database...');
+    console.log('Inserting client record into database with data:', clientRecord);
     const { data: insertedClient, error: insertError } = await supabase
       .from('clients')
       .insert([clientRecord])

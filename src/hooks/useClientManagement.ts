@@ -1,10 +1,8 @@
-
 import { useState } from 'react';
 import { Client, useClient, InstitutionType, ModuleInfo } from '@/contexts/ClientContext';
 import { OAuthProviderName } from '@/utils/authProviders';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { v4 as uuidv4 } from 'uuid';
 
 export interface ClientFormData {
   name: string;
@@ -53,18 +51,14 @@ export const useClientManagement = () => {
   const [currentClient, setCurrentClient] = useState<Client | null>(null);
   const [formData, setFormData] = useState<ClientFormData>({...initialFormData});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [clientId, setClientId] = useState<string>(''); // Add clientId state
 
   const resetForm = () => {
     setFormData({...initialFormData});
     setCurrentClient(null);
-    setClientId(''); // Reset clientId
   };
 
-  // Generate client ID when add dialog opens
+  // Simple function to open add dialog (no pre-generated ID)
   const handleAddDialogOpen = () => {
-    const newClientId = uuidv4();
-    setClientId(newClientId);
     setIsAddDialogOpen(true);
   };
 
@@ -79,116 +73,6 @@ export const useClientManagement = () => {
   };
 
   // ... keep existing code (createEmployeeFromSuperAdminEmail and updateEmployeeFromSuperAdminEmail functions)
-
-  const createEmployeeFromSuperAdminEmail = async (clientId: string, superAdminEmail: string) => {
-    try {
-      // Extract employee_id from the email (part before @ symbol)
-      const employeeId = superAdminEmail.split('@')[0];
-      
-      // Create the employee record
-      const employeeData = {
-        employee_id: employeeId,
-        first_name: employeeId, // Using the part before @ as first name
-        last_name: '', // Empty last name
-        email: superAdminEmail,
-        department: 'Admin',
-        employee_type: 'permanent',
-        status: true,
-        is_super_admin: true,
-        client_id: clientId,
-        joining_date: new Date().toISOString()
-      };
-
-      // Check if employee already exists with this email and client_id
-      const { data: existingEmployee, error: checkError } = await supabase
-        .from('employees')
-        .select('*')
-        .eq('email', superAdminEmail)
-        .eq('client_id', clientId)
-        .single();
-
-      if (checkError && checkError.code !== 'PGRST116') {
-        console.error('Error checking for existing employee:', checkError);
-        toast.error('Failed to check for existing employee');
-        return null;
-      }
-
-      // If employee exists, return the existing record
-      if (existingEmployee) {
-        console.log('Employee already exists for this client:', existingEmployee);
-        return existingEmployee;
-      }
-
-      // Insert new employee
-      const { data, error } = await supabase
-        .from('employees')
-        .insert([employeeData])
-        .select();
-
-      if (error) {
-        console.error('Error creating employee from super admin email:', error);
-        toast.error('Failed to create super admin employee');
-        return null;
-      }
-
-      console.log('Created new super admin employee:', data[0]);
-      return data[0];
-    } catch (err) {
-      console.error('Error in createEmployeeFromSuperAdminEmail:', err);
-      return null;
-    }
-  };
-
-  const updateEmployeeFromSuperAdminEmail = async (clientId: string, superAdminEmail: string) => {
-    try {
-      // Check if a super admin employee already exists for this client
-      const { data: existingEmployee, error } = await supabase
-        .from('employees')
-        .select('*')
-        .eq('client_id', clientId)
-        .eq('is_super_admin', true)
-        .single();
-      
-      if (error) {
-        if (error.code === 'PGRST116') {
-          // No super admin exists, create one
-          return await createEmployeeFromSuperAdminEmail(clientId, superAdminEmail);
-        }
-        console.error('Error checking for existing employee:', error);
-        return null;
-      }
-
-      // If email hasn't changed, just return the existing employee
-      if (existingEmployee.email === superAdminEmail) {
-        return existingEmployee;
-      }
-      
-      // Update the existing employee with the new email
-      const employeeId = superAdminEmail.split('@')[0];
-      
-      const { data, error: updateError } = await supabase
-        .from('employees')
-        .update({
-          email: superAdminEmail,
-          employee_id: employeeId,
-          first_name: employeeId
-        })
-        .eq('id', existingEmployee.id)
-        .select()
-        .single();
-
-      if (updateError) {
-        console.error('Error updating employee email:', updateError);
-        toast.error('Failed to update super admin email');
-        return null;
-      }
-
-      return data;
-    } catch (err) {
-      console.error('Error in updateEmployeeFromSuperAdminEmail:', err);
-      return null;
-    }
-  };
 
   const handleAddClient = async () => {
     // Prevent duplicate calls - check submission state first
@@ -220,7 +104,6 @@ export const useClientManagement = () => {
       const moduleInfoArray = formData.moduleInfoArray || [];
       
       console.log('Module info for client creation:', moduleInfoArray);
-      console.log('Using client ID:', clientId);
       console.log('Logo data being sent:', {
         hasLogo: !!formData.logo,
         logoType: typeof formData.logo,
@@ -228,14 +111,24 @@ export const useClientManagement = () => {
         logoPreview: formData.logo ? formData.logo.substring(0, 50) + '...' : 'No logo'
       });
       
+      // Don't send ID - let the edge function generate it
       const requestPayload = {
         operation: 'create',
         client: {
-          id: clientId, // Use the pre-generated clientId
           modules: moduleInfoArray,
           superAdminEmail: formData.superAdminEmail,
           clientTypeId: formData.clientTypeId,
-          logo: formData.logo || null // Ensure logo is explicitly included
+          logo: formData.logo || null,
+          // Include all the form data
+          name: formData.name,
+          email: formData.email,
+          contactPerson: formData.contactPerson,
+          phone: formData.phone,
+          active: formData.active,
+          institutionType: formData.institutionType,
+          allowedDomains: formData.allowedDomains,
+          superAdminAllowedDomains: formData.superAdminAllowedDomains,
+          authProviders: formData.authProviders
         }
       };
       
@@ -247,7 +140,7 @@ export const useClientManagement = () => {
         }
       });
       
-      // Call the edge function with logo data
+      // Call the edge function with all client data
       const { data, error } = await supabase.functions.invoke('client-management', {
         body: requestPayload
       });
@@ -455,14 +348,13 @@ export const useClientManagement = () => {
     isEditDialogOpen,
     setIsEditDialogOpen,
     currentClient,
-    clientId, // Expose clientId
     handleAddClient,
     handleEditClick,
     handleUpdateClient,
     handleDeleteClient,
     resetForm,
     isSuperAdminEmailDomainAllowed,
-    handleAddDialogOpen // Expose the new function
+    handleAddDialogOpen
   };
 };
 

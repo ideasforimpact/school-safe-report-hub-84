@@ -125,7 +125,7 @@ const ModuleAccessTab = ({ formData, onModuleInfoChange, isEdit = false }: Modul
         };
       });
     }
-    // Otherwise, set default values based on isEdit flag
+    // For new client creation, enable all modules with admin access by default
     else {
       console.log("No moduleInfoArray provided, enabling all modules with admin access by default");
       initialModuleAccess = availableModules.map((module: Module) => {
