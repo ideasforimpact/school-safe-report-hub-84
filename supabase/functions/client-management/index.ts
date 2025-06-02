@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -521,7 +520,7 @@ async function deleteClientData(clientId: string) {
 }
 
 // Function to process module access based on the provided module information
-async function processModuleAccess(clientId: string, moduleInfoArray: ModuleInfo[]): Promise<boolean> {
+async function processModuleAccess(clientId: string, moduleInfoArray: ModuleInfo[], isCreation: boolean = false): Promise<boolean> {
   try {
     console.log(`Processing modules for client ${clientId}:`, JSON.stringify(moduleInfoArray, null, 2));
     
@@ -530,19 +529,23 @@ async function processModuleAccess(clientId: string, moduleInfoArray: ModuleInfo
       return true;
     }
 
-    // Verify client exists before processing modules
-    const { data: clientData, error: clientError } = await supabase
-      .from('clients')
-      .select('id')
-      .eq('id', clientId)
-      .single();
+    // Only verify client exists if this is not during creation
+    if (!isCreation) {
+      const { data: clientData, error: clientError } = await supabase
+        .from('clients')
+        .select('id')
+        .eq('id', clientId)
+        .single();
 
-    if (clientError || !clientData) {
-      console.error(`Client ${clientId} does not exist in database:`, clientError);
-      return false;
+      if (clientError || !clientData) {
+        console.error(`Client ${clientId} does not exist in database:`, clientError);
+        return false;
+      }
+
+      console.log(`Client ${clientId} exists, proceeding with module processing`);
+    } else {
+      console.log(`Processing modules during client creation for ${clientId}`);
     }
-
-    console.log(`Client ${clientId} exists, proceeding with module processing`);
 
     // First, remove all existing modules for this client
     const { error: deleteError } = await supabase
@@ -653,24 +656,8 @@ async function handleCreateClient(clientData: any) {
       logoLength: logo ? logo.length : 0
     });
 
-    // First, verify the client exists in the database
-    const { data: existingClient, error: checkError } = await supabase
-      .from('clients')
-      .select('id')
-      .eq('id', clientId)
-      .single();
-
-    if (checkError && checkError.code !== 'PGRST116') {
-      console.error('Error checking for existing client:', checkError);
-      throw new Error('Failed to verify client existence');
-    }
-
-    if (!existingClient) {
-      console.error(`Client ${clientId} does not exist in database. Cannot proceed with module processing.`);
-      throw new Error('Client record not found in database. Please ensure the client is created first.');
-    }
-
-    console.log(`Client ${clientId} exists in database, proceeding with processing`);
+    // NO CLIENT EXISTENCE CHECK HERE - we're creating it!
+    console.log(`Starting client creation process for ${clientId}`);
     
     // Handle logo upload if provided
     let clientLogoUrl = null;
@@ -684,7 +671,7 @@ async function handleCreateClient(clientData: any) {
       console.log('No logo provided for client creation');
     }
     
-    // Update client record with client type and logo URL
+    // Update client record with client type and logo URL (assuming client exists in DB already)
     const updateData: any = {};
     
     if (clientTypeId) {
@@ -709,9 +696,9 @@ async function handleCreateClient(clientData: any) {
       }
     }
     
-    // Process module access
+    // Process module access with isCreation flag set to true
     if (modules && modules.length > 0) {
-      const moduleSuccess = await processModuleAccess(clientId, modules);
+      const moduleSuccess = await processModuleAccess(clientId, modules, true);
       if (!moduleSuccess) {
         throw new Error('Failed to process module access');
       }
@@ -787,9 +774,9 @@ async function handleUpdateClient(clientData: any) {
       }
     }
     
-    // Process module access
+    // Process module access with isCreation flag set to false (default)
     if (modules && modules.length > 0) {
-      const moduleSuccess = await processModuleAccess(clientId, modules);
+      const moduleSuccess = await processModuleAccess(clientId, modules, false);
       if (!moduleSuccess) {
         throw new Error('Failed to process module access');
       }
