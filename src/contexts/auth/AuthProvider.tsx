@@ -293,8 +293,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.log("Regular user login successful, setting current user");
         
         // Update user with client information before setting it
-        const userWithClientInfo = await updateUserWithClientInfo(user);
-        await setCurrentUserWithClientInfo(userWithClientInfo);
+        await setCurrentUserWithClientInfo(user);
         
         // Fetch employee data after successful login
         try {
@@ -347,7 +346,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           dispatch(setLoading(false));
         }
         
-        toast.success(`Welcome back, ${userWithClientInfo.firstName}!`);
+        toast.success(`Welcome back, ${user.firstName}!`);
         // Hide loading after a delay
         setTimeout(() => setShowAuthLoading(false), 2000);
         return true;
