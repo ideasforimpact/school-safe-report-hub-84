@@ -41,7 +41,7 @@ export const useIncidentData = () => {
 
       console.log('Fetching incidents for client:', clientId);
 
-      // Simple direct query to incidents table
+      // Simple direct query to incidents table - fetch ALL incidents including closed ones
       const { data: incidents, error } = await supabase
         .from('incidents')
         .select(`

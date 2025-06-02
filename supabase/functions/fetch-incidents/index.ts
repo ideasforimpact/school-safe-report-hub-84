@@ -27,7 +27,7 @@ serve(async (req) => {
 
     console.log('Fetching incidents for client:', clientId);
 
-    // Optimized query with minimal data selection and proper indexing
+    // Fetch ALL incidents including closed ones - removed any status filtering
     const { data: incidents, error } = await supabaseClient
       .from('incidents')
       .select(`
@@ -52,7 +52,7 @@ serve(async (req) => {
       `)
       .eq('client_id', clientId)
       .order('created_at', { ascending: false })
-      .limit(100); // Limit to prevent large data transfers
+      .limit(200); // Increase limit to accommodate more incidents including closed ones
 
     if (error) {
       console.error('Error fetching incidents:', error);
