@@ -5,7 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import MultipleFilesUpload from '@/components/MultipleFilesUpload';
 import { useAddIncidentComment } from '@/hooks/useAddIncidentComment';
-import { Paperclip, Send, Loader } from 'lucide-react';
+import { Paperclip, Send, Loader, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface InlineCommentFormProps {
@@ -30,6 +30,7 @@ const InlineCommentForm: React.FC<InlineCommentFormProps> = ({
   onCommentAdded
 }) => {
   const [showFileUpload, setShowFileUpload] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   const { addComment } = useAddIncidentComment();
 
   const handleSubmit = async () => {
@@ -39,6 +40,7 @@ const InlineCommentForm: React.FC<InlineCommentFormProps> = ({
     }
 
     setIsSubmitting(true);
+    setIsSuccess(false);
     
     try {
       console.log('Submitting comment for incident:', incidentId);
@@ -55,21 +57,31 @@ const InlineCommentForm: React.FC<InlineCommentFormProps> = ({
       });
 
       if (result.success) {
+        // Show success state briefly
+        setIsSuccess(true);
+        
         // Reset form after successful submission
         setCommentText('');
         setCommentFiles([]);
         setShowFileUpload(false);
         
-        // Notify parent component to refresh comments
-        onCommentAdded();
-        
+        // Show success message
         toast.success('Comment added successfully');
+        
+        // Small delay to show success state, then refresh
+        setTimeout(() => {
+          setIsSuccess(false);
+          onCommentAdded();
+        }, 1000);
       }
     } catch (error) {
       console.error('Error submitting comment:', error);
       toast.error('Failed to add comment');
+      setIsSuccess(false);
     } finally {
-      setIsSubmitting(false);
+      setTimeout(() => {
+        setIsSubmitting(false);
+      }, 1000);
     }
   };
 
@@ -117,10 +129,12 @@ const InlineCommentForm: React.FC<InlineCommentFormProps> = ({
           >
             {isSubmitting ? (
               <Loader className="h-4 w-4 animate-spin" />
+            ) : isSuccess ? (
+              <CheckCircle className="h-4 w-4" />
             ) : (
               <Send className="h-4 w-4" />
             )}
-            {isSubmitting ? 'Submitting...' : 'Submit Comment'}
+            {isSubmitting ? 'Submitting...' : isSuccess ? 'Added!' : 'Submit Comment'}
           </Button>
         </div>
       </div>

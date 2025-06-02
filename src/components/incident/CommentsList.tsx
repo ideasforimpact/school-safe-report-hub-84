@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Comment as IncidentComment } from '@/types/incident';
 import {
   Card,
@@ -9,6 +9,8 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { Dialog } from '@/components/ui/dialog';
+import { Loader, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import CommentForm from './CommentForm';
 import CommentItem from './CommentItem';
 import { useIncidents } from '@/contexts/incident';
@@ -42,11 +44,28 @@ const CommentsList: React.FC<CommentsListProps> = ({
 }) => {
   const [showEditComment, setShowEditComment] = useState(false);
   const [currentComment, setCurrentComment] = useState<IncidentComment | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [localComments, setLocalComments] = useState<IncidentComment[]>(comments);
   const { users } = useIncidents();
 
-  const handleDelete = (commentId: string) => {
+  // Update local comments when props change
+  useEffect(() => {
+    setLocalComments(comments);
+  }, [comments]);
+
+  const handleDelete = async (commentId: string) => {
     if (confirm('Are you sure you want to delete this comment?')) {
-      deleteComment(incident.id, commentId);
+      try {
+        setIsRefreshing(true);
+        await deleteComment(incident.id, commentId);
+        
+        // Optimistically update local state
+        setLocalComments(prev => prev.filter(comment => comment.id !== commentId));
+      } catch (error) {
+        console.error('Error deleting comment:', error);
+      } finally {
+        setIsRefreshing(false);
+      }
     }
   };
 
@@ -55,26 +74,57 @@ const CommentsList: React.FC<CommentsListProps> = ({
     setShowEditComment(true);
   };
 
-  const handleCommentAdded = () => {
-    // Refresh comments or trigger parent callback
-    addComment(incident.id, {} as any); // This should be properly implemented
+  const handleCommentAdded = async () => {
+    try {
+      setIsRefreshing(true);
+      // Trigger parent component to refresh comments
+      await addComment(incident.id, {} as any);
+    } catch (error) {
+      console.error('Error refreshing comments:', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const handleManualRefresh = () => {
+    handleCommentAdded();
   };
 
   return (
     <>
       <Card>
         <CardHeader>
-          <div>
-            <CardTitle>Comments</CardTitle>
-            <CardDescription>
-              Discussion about this incident
-            </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                Comments
+                {isRefreshing && <Loader className="h-4 w-4 animate-spin" />}
+              </CardTitle>
+              <CardDescription>
+                Discussion about this incident
+              </CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleManualRefresh}
+              disabled={isRefreshing}
+              className="flex items-center gap-1"
+            >
+              <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
-          {comments && comments.length > 0 ? (
+          {isRefreshing && localComments.length === 0 ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader className="h-6 w-6 animate-spin mr-2" />
+              <span className="text-gray-600">Loading comments...</span>
+            </div>
+          ) : localComments && localComments.length > 0 ? (
             <div className="space-y-4">
-              {comments.map((comment) => (
+              {localComments.map((comment) => (
                 <CommentItem 
                   key={comment.id}
                   comment={comment}

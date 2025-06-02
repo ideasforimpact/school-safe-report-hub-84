@@ -9,8 +9,10 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { Trash2, Edit, FileText, Paperclip } from 'lucide-react';
+import { Trash2, Edit, FileText, Paperclip, Download, Eye, Loader } from 'lucide-react';
 import FilePreview from './FilePreview';
+import { documentStorage } from '@/utils/documentStorage';
+import { toast } from 'sonner';
 
 interface CommentItemProps {
   comment: IncidentComment;
@@ -32,6 +34,7 @@ const CommentItem: React.FC<CommentItemProps> = ({
   onDelete,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [downloadingFiles, setDownloadingFiles] = useState<Set<string>>(new Set());
 
   const toggleExpand = () => {
     setIsExpanded(!isExpanded);
@@ -45,6 +48,34 @@ const CommentItem: React.FC<CommentItemProps> = ({
 
   // Check if comment has any attachments
   const hasAttachments = (comment.files && comment.files.length > 0) || comment.image;
+
+  // Handle document download with loading state
+  const handleDownload = async (file: any) => {
+    setDownloadingFiles(prev => new Set(prev).add(file.id));
+    
+    try {
+      const documentItem = {
+        id: file.id,
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        url: '',
+        base64: file.base64
+      };
+      
+      documentStorage.downloadDocument(documentItem);
+      toast.success(`Downloaded ${file.name}`);
+    } catch (error) {
+      console.error('Error downloading file:', error);
+      toast.error('Failed to download file');
+    } finally {
+      setDownloadingFiles(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(file.id);
+        return newSet;
+      });
+    }
+  };
 
   return (
     <div className="p-4 border rounded-md mb-4 bg-gray-50 relative">
@@ -134,7 +165,57 @@ const CommentItem: React.FC<CommentItemProps> = ({
           {comment.files && comment.files.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {comment.files.map((file) => (
-                <FilePreview key={file.id} file={file} />
+                <div key={file.id} className="border rounded-lg p-3 bg-white hover:shadow-sm transition-shadow">
+                  <FilePreview file={file} />
+                  
+                  {/* File info and actions */}
+                  <div className="mt-2">
+                    <p className="text-sm font-medium truncate" title={file.name}>
+                      {file.name}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {file.size ? `${(file.size / 1024).toFixed(1)} KB` : 'Unknown size'}
+                    </p>
+                    
+                    {/* Action buttons */}
+                    <div className="flex gap-2 mt-2">
+                      {documentStorage.canPreview({
+                        id: file.id,
+                        name: file.name,
+                        type: file.type,
+                        size: file.size,
+                        url: '',
+                        base64: file.base64
+                      }) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex items-center gap-1 text-xs"
+                          onClick={() => {
+                            // FilePreview component handles the preview
+                          }}
+                        >
+                          <Eye className="h-3 w-3" />
+                          View
+                        </Button>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDownload(file)}
+                        disabled={downloadingFiles.has(file.id)}
+                        className="flex items-center gap-1 text-xs"
+                      >
+                        {downloadingFiles.has(file.id) ? (
+                          <Loader className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Download className="h-3 w-3" />
+                        )}
+                        {downloadingFiles.has(file.id) ? 'Downloading...' : 'Download'}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
               ))}
             </div>
           )}
