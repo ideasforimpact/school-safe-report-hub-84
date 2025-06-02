@@ -46,12 +46,13 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
         <MultipleFilesUpload
           onFilesChange={onFilesChange}
           initialFiles={supportingFiles}
-          maxFiles={5}
+          maxFiles={10}
           className="w-full"
           required={false}
         />
         <p className="text-xs text-gray-500 mt-1 text-left">
-          Upload up to 5 files (images, videos, documents) to support this incident report
+          Upload up to 10 files (images, videos, documents) to support this incident report. 
+          Files will be securely stored and can be viewed/downloaded later.
         </p>
       </div>
     </>
