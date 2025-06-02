@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Client, useClient, InstitutionType, ModuleInfo } from '@/contexts/ClientContext';
 import { OAuthProviderName } from '@/utils/authProviders';
@@ -52,13 +53,19 @@ export const useClientManagement = () => {
   const [currentClient, setCurrentClient] = useState<Client | null>(null);
   const [formData, setFormData] = useState<ClientFormData>({...initialFormData});
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Add a ref to track if submission is in progress
-  const submissionInProgress = useState(false)[0];
+  const [clientId, setClientId] = useState<string>(''); // Add clientId state
 
   const resetForm = () => {
     setFormData({...initialFormData});
     setCurrentClient(null);
+    setClientId(''); // Reset clientId
+  };
+
+  // Generate client ID when add dialog opens
+  const handleAddDialogOpen = () => {
+    const newClientId = uuidv4();
+    setClientId(newClientId);
+    setIsAddDialogOpen(true);
   };
 
   // Check if super admin email domain is allowed
@@ -200,14 +207,20 @@ export const useClientManagement = () => {
       toast.error('Super Admin email domain is not allowed. Please check the Super Admin Allowed Domains list.');
       return;
     }
+
+    // Ensure we have modules data before submitting
+    if (!formData.moduleInfoArray || formData.moduleInfoArray.length === 0) {
+      toast.error('Please wait for modules to load before submitting');
+      return;
+    }
     
     setIsSubmitting(true);
     
     try {
       const moduleInfoArray = formData.moduleInfoArray || [];
-      const clientId = uuidv4(); // Generate a unique ID for the client
       
       console.log('Module info for client creation:', moduleInfoArray);
+      console.log('Using client ID:', clientId);
       console.log('Logo data being sent:', {
         hasLogo: !!formData.logo,
         logoType: typeof formData.logo,
@@ -218,7 +231,7 @@ export const useClientManagement = () => {
       const requestPayload = {
         operation: 'create',
         client: {
-          id: clientId,
+          id: clientId, // Use the pre-generated clientId
           modules: moduleInfoArray,
           superAdminEmail: formData.superAdminEmail,
           clientTypeId: formData.clientTypeId,
@@ -442,12 +455,14 @@ export const useClientManagement = () => {
     isEditDialogOpen,
     setIsEditDialogOpen,
     currentClient,
+    clientId, // Expose clientId
     handleAddClient,
     handleEditClick,
     handleUpdateClient,
     handleDeleteClient,
     resetForm,
-    isSuperAdminEmailDomainAllowed
+    isSuperAdminEmailDomainAllowed,
+    handleAddDialogOpen // Expose the new function
   };
 };
 

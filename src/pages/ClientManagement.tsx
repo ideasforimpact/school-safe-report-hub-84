@@ -30,7 +30,8 @@ const ClientManagement = () => {
     handleEditClick,
     handleUpdateClient,
     handleDeleteClient,
-    resetForm
+    resetForm,
+    handleAddDialogOpen // Use the new function
   } = useClientManagement();
 
   if (!isAdmin) {
@@ -50,7 +51,7 @@ const ClientManagement = () => {
   return (
     <Layout>
       <div className="space-y-6">
-        <ClientHeader onAddClick={() => setIsAddDialogOpen(true)} />
+        <ClientHeader onAddClick={handleAddDialogOpen} />
 
         <Card>
           <CardHeader>
