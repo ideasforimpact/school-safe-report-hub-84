@@ -19,6 +19,7 @@ import { useEmployeeStore } from '@/store/EmployeeContext';
 import { useIncidentDetail } from '@/hooks/incident/useIncidentDetail';
 import { useIncidentData } from '@/hooks/useIncidentData';
 import { FileItem } from '@/types/fileTypes';
+import IncidentCreationOverlay from '@/components/incident/IncidentCreationOverlay';
 
 // Define a user type that has only the properties needed by the components
 interface UserBasicInfo {
@@ -479,8 +480,11 @@ const ReportIncident = () => {
   }
 
   return (
-    <Layout>
-      <div className="space-y-4 md:space-y-6 w-full overflow-x-hidden bg-gray-50 min-h-screen">
+    <>
+      {/* Incident Creation Overlay */}
+      <IncidentCreationOverlay isVisible={isSubmitting} />
+      
+      <Layout>
         {/* Header section matching the design */}
         <div className="bg-white border-b border-gray-200 px-4 sm:px-6 lg:px-8 py-6">
           <div className="max-w-7xl mx-auto">
@@ -522,6 +526,7 @@ const ReportIncident = () => {
                   variant="outline"
                   onClick={() => navigate(isEditMode ? `/incident/${incidentId}` : '/dashboard')}
                   className="px-6 border-gray-300"
+                  disabled={isSubmitting}
                 >
                   Cancel
                 </Button>
@@ -530,14 +535,14 @@ const ReportIncident = () => {
                   disabled={isSubmitting}
                   className="px-6 bg-blue-600 hover:bg-blue-700"
                 >
-                  {isSubmitting ? (isEditMode ? "Saving..." : "Submitting...") : (isEditMode ? "Save Changes" : "Submit Report")}
+                  {isSubmitting ? (isEditMode ? "Saving..." : "Creating...") : (isEditMode ? "Save Changes" : "Submit Report")}
                 </Button>
               </CardFooter>
             </Card>
           </form>
         </div>
-      </div>
-    </Layout>
+      </Layout>
+    </>
   );
 };
 
