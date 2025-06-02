@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Toaster } from '@/components/ui/sonner';
@@ -126,14 +125,14 @@ function App() {
                     <Route path="/public-form/:formId" element={<PublicFormSubmissionPage />} />
                     <Route path="/public-form-submission-success" element={<PublicFormSubmissionSuccessPage />} />
 
-                    {/* Incident routes - Make sure both patterns work */}
+                    {/* Incident routes - Fixed routing for edit incident */}
                     <Route path="/incidents" element={<IncidentsList />} />
                     <Route path="/incidents/:id" element={<IncidentDetail />} />
                     <Route path="/incident/:id" element={<IncidentDetail />} />
                     <Route path="/report-incident" element={<ReportIncident />} />
-                    {/* Use ReportIncident component for editing - it will detect edit mode from URL params */}
-                    <Route path="/incident/:id/edit" element={<ReportIncident />} />
-                    <Route path="/edit-incident/:id" element={<ReportIncident />} />
+                    {/* Use dedicated EditIncidentPage for editing incidents */}
+                    <Route path="/incident/:id/edit" element={<EditIncidentPage />} />
+                    <Route path="/edit-incident/:id" element={<EditIncidentPage />} />
                     <Route path="/insights" element={<Insights />} />
 
                     {/* Assessment routes */}
