@@ -8,7 +8,7 @@ import { AlertTriangle, ArrowLeft } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useIncidentDetail } from '@/hooks/useIncidentDetail';
 import { useIncidents } from '@/contexts/incident';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useIncidentDetail as useIncidentDetailHook } from '@/hooks/incident/useIncidentDetail';
 import { FileItem } from '@/types/incident';
 
@@ -18,7 +18,7 @@ const IncidentDetail = () => {
   const { incidents, getIncident } = useIncidents();
   
   // Use the incident detail hook to fetch fresh data
-  const { incident: fetchedIncident, isLoading: isFetchingIncident, error: fetchError } = useIncidentDetailHook(id);
+  const { incident: fetchedIncident, isLoading: isFetchingIncident, error: fetchError, reload } = useIncidentDetailHook(id);
   
   const [incident, setIncident] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -87,38 +87,17 @@ const IncidentDetail = () => {
   );
   
   // Refresh function to reload incident data without full page refresh
-  const handleRefreshIncident = () => {
-    // Just trigger a re-fetch of the incident data
-    if (fetchedIncident && setIncident) {
-      const convertedIncident = {
-        id: fetchedIncident.id,
-        ticketId: fetchedIncident.ticket_id,
-        type: fetchedIncident.type.name,
-        category: fetchedIncident.category.name,
-        subcategory: fetchedIncident.subcategory.name,
-        description: fetchedIncident.description,
-        date: new Date(fetchedIncident.date),
-        location: fetchedIncident.location.name,
-        peopleInvolved: fetchedIncident.people_involved || [],
-        status: fetchedIncident.status.name,
-        reportedBy: {
-          id: fetchedIncident.created_by.id,
-          name: `${fetchedIncident.created_by.first_name} ${fetchedIncident.created_by.last_name}`
-        },
-        owner: fetchedIncident.assigned_to ? {
-          id: fetchedIncident.assigned_to.id,
-          name: `${fetchedIncident.assigned_to.first_name} ${fetchedIncident.assigned_to.last_name}`
-        } : undefined,
-        facility: fetchedIncident.facility.name,
-        documents: fetchedIncident.documents || [],
-        createdAt: new Date(fetchedIncident.date),
-        updatedAt: new Date(fetchedIncident.date),
-        priority: fetchedIncident.priority.name,
-        comments: fetchedIncident.comments || []
-      };
-      setIncident(convertedIncident);
+  const handleRefreshIncident = useCallback(async () => {
+    console.log('Refreshing incident details...');
+    try {
+      // Use the reload function from the hook to fetch fresh data
+      if (reload) {
+        await reload();
+      }
+    } catch (error) {
+      console.error('Error refreshing incident:', error);
     }
-  };
+  }, [reload]);
   
   if (isLoading || isFetchingIncident) {
     return (
@@ -192,7 +171,8 @@ const IncidentDetail = () => {
     user: { id: '', name: '' },
     isAdmin: false,
     updateIncident: () => Promise.resolve(),
-    navigate
+    navigate,
+    onRefreshIncident: handleRefreshIncident
   };
 
   return (

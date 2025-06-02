@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -39,6 +40,7 @@ interface IncidentDetailContentProps {
   isAdmin: boolean;
   updateIncident: () => Promise<void>;
   navigate: ReturnType<typeof useNavigate>;
+  onRefreshIncident?: () => Promise<void>;
 }
 
 const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
@@ -65,7 +67,8 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
   user,
   isAdmin,
   updateIncident,
-  navigate
+  navigate,
+  onRefreshIncident
 }) => {
   const { users } = useIncidents();
   const { user: authUser } = useAuth();
@@ -74,32 +77,36 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
   const [localIsSubmitting, setLocalIsSubmitting] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [currentIncident, setCurrentIncident] = useState(incident);
-  const [isLoadingComments, setIsLoadingComments] = useState(false);
+  const [isRefreshingIncident, setIsRefreshingIncident] = useState(false);
 
-  // Function to refresh comments without page reload
-  const handleCommentAdded = useCallback(() => {
-    console.log('Comment added, refreshing comments...');
+  // Function to refresh incident details after comment submission
+  const handleCommentAdded = useCallback(async () => {
+    console.log('Comment added, refreshing incident details...');
     
-    // Show loading state briefly
-    setIsLoadingComments(true);
+    setIsRefreshingIncident(true);
     
-    // Increment refresh key to trigger re-render
-    setRefreshKey(prev => prev + 1);
-    
-    // Update the local incident state with new comments
-    setCurrentIncident(prev => ({
-      ...prev,
-      comments: prev.comments || []
-    }));
-    
-    // Call the parent's refresh handler
-    handleCommentSubmit();
-    
-    // Remove loading state after a short delay
-    setTimeout(() => {
-      setIsLoadingComments(false);
-    }, 1000);
-  }, [handleCommentSubmit]);
+    try {
+      // Call the parent's refresh handler if provided
+      if (onRefreshIncident) {
+        await onRefreshIncident();
+      } else {
+        // Fallback to the existing comment submit handler
+        handleCommentSubmit();
+      }
+      
+      // Increment refresh key to trigger re-render
+      setRefreshKey(prev => prev + 1);
+      
+      console.log('Incident details refreshed successfully');
+    } catch (error) {
+      console.error('Error refreshing incident details:', error);
+    } finally {
+      // Remove loading state after a delay
+      setTimeout(() => {
+        setIsRefreshingIncident(false);
+      }, 1000);
+    }
+  }, [onRefreshIncident, handleCommentSubmit]);
 
   const userName = authUser ? formatUserFullName(authUser) : 'Unknown User';
   const userId = authUser?.id || 'unknown';
@@ -118,6 +125,16 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
 
   return (
     <div className="container max-w-6xl py-6">
+      {/* Loading overlay for incident refresh */}
+      {isRefreshingIncident && (
+        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 flex items-center gap-3 shadow-lg">
+            <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+            <span className="text-lg font-medium">Refreshing incident details...</span>
+          </div>
+        </div>
+      )}
+
       {/* Incident Header */}
       <div className="mb-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
@@ -186,7 +203,7 @@ const IncidentDetailContent: React.FC<IncidentDetailContentProps> = ({
           <TabsTrigger value="documents">Documents</TabsTrigger>
           <TabsTrigger value="comments">
             Comments
-            {isLoadingComments && <Loader2 className="h-3 w-3 animate-spin ml-1" />}
+            {isRefreshingIncident && <Loader2 className="h-3 w-3 animate-spin ml-1" />}
           </TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>

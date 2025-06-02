@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { FileItem } from '@/types/incident';
 import { Textarea } from '@/components/ui/textarea';
@@ -64,21 +65,23 @@ const InlineCommentForm: React.FC<InlineCommentFormProps> = ({
         // Show success message
         toast.success('Comment added successfully');
         
-        // Small delay to show success state, then refresh
+        // Trigger refetch of incident details
+        onCommentAdded();
+        
+        // Small delay to show success state
         setTimeout(() => {
           setIsSuccess(false);
-          onCommentAdded();
+          setIsSubmitting(false);
         }, 1500);
+      } else {
+        setIsSubmitting(false);
+        setIsSuccess(false);
       }
     } catch (error) {
       console.error('Error submitting comment:', error);
       toast.error('Failed to add comment');
       setIsSuccess(false);
-    } finally {
-      // Keep submitting state for a bit to show the success animation
-      setTimeout(() => {
-        setIsSubmitting(false);
-      }, 1500);
+      setIsSubmitting(false);
     }
   };
 
