@@ -8,7 +8,8 @@ import IncidentFilters from '@/components/incidents/IncidentFilters';
 import IncidentsTable from '@/components/incidents/IncidentsTable';
 import { useIncidentData } from '@/hooks/useIncidentData';
 import { Skeleton } from '@/components/ui/skeleton';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, AlertCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const IncidentsList = () => {
   const { incidents } = useIncidents();
@@ -67,8 +68,6 @@ const IncidentsList = () => {
                 <Skeleton className="h-12 w-full" />
                 <Skeleton className="h-12 w-full" />
                 <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
               </div>
             </div>
           </div>
@@ -77,7 +76,7 @@ const IncidentsList = () => {
     );
   }
 
-  // Show error state
+  // Show error state with retry option
   if (error) {
     return (
       <Layout>
@@ -86,13 +85,34 @@ const IncidentsList = () => {
           
           <div className="bg-white rounded-lg shadow p-6">
             <div className="text-center py-8">
-              <p className="text-red-600 mb-4">Error loading incidents: {error}</p>
-              <button 
-                onClick={() => refetchIncidents()} 
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-              >
-                Retry
-              </button>
+              <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Failed to Load Incidents</h3>
+              <p className="text-red-600 mb-4">{error}</p>
+              <div className="space-x-2">
+                <Button 
+                  onClick={handleRefresh} 
+                  disabled={isRefreshing}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  {isRefreshing ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Retrying...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Retry
+                    </>
+                  )}
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => window.location.reload()}
+                >
+                  Refresh Page
+                </Button>
+              </div>
             </div>
           </div>
         </div>
