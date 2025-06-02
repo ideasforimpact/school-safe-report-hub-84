@@ -17,7 +17,7 @@ const AuthLoadingOverlay = ({ isVisible }: AuthLoadingOverlayProps) => {
   if (!isVisible) return null;
 
   return (
-    <div className="fixed inset-0 bg-white z-50 flex flex-col items-center justify-center">
+    <div className="fixed inset-0 bg-white z-[9999] flex flex-col items-center justify-center">
       {/* Background pattern */}
       <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-indigo-100 opacity-50"></div>
       
@@ -38,10 +38,9 @@ const AuthLoadingOverlay = ({ isVisible }: AuthLoadingOverlayProps) => {
           )}
         </div>
         
-        {/* Safe School Text */}
+        {/* Welcome Text */}
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">Safe School</h1>
-          <p className="text-gray-600">Loading your safety platform...</p>
+          <p className="text-gray-600">Welcome to {clientName}'s Safety Command Center</p>
         </div>
         
         {/* Animated Spinner */}
