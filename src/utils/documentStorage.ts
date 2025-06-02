@@ -23,28 +23,28 @@ export const documentStorage = {
   },
 
   // Download document
-  downloadDocument: (document: DocumentStorageItem) => {
+  downloadDocument: (documentItem: DocumentStorageItem) => {
     try {
-      if (document.base64) {
+      if (documentItem.base64) {
         // Handle base64 documents
-        const blob = documentStorage.base64ToBlob(document.base64, document.type);
+        const blob = documentStorage.base64ToBlob(documentItem.base64, documentItem.type);
         const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
+        const link = window.document.createElement('a');
         link.href = url;
-        link.download = document.name;
-        document.body.appendChild(link);
+        link.download = documentItem.name;
+        window.document.body.appendChild(link);
         link.click();
-        document.body.removeChild(link);
+        window.document.body.removeChild(link);
         URL.revokeObjectURL(url);
-      } else if (document.url) {
+      } else if (documentItem.url) {
         // Handle URL-based documents
-        const link = document.createElement('a');
-        link.href = document.url;
-        link.download = document.name;
+        const link = window.document.createElement('a');
+        link.href = documentItem.url;
+        link.download = documentItem.name;
         link.target = '_blank';
-        document.body.appendChild(link);
+        window.document.body.appendChild(link);
         link.click();
-        document.body.removeChild(link);
+        window.document.body.removeChild(link);
       }
     } catch (error) {
       console.error('Error downloading document:', error);
