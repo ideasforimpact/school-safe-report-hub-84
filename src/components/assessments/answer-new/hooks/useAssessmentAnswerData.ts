@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/auth/AuthContext';
@@ -46,33 +47,48 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
         
         console.log('Fetching assessment with ID:', assessmentId, 'and clientId:', clientId);
         
-        // Fetch assessment by assessment_id instead of id
+        // First, try to fetch assessment by assessment_id (integer)
+        const assessmentIdNum = parseInt(assessmentId);
+        if (isNaN(assessmentIdNum)) {
+          throw new Error('Invalid assessment ID format');
+        }
+
         const { data: assessmentData, error: assessmentError } = await supabase
           .from('assessments')
           .select('*')
-          .eq('assessment_id', parseInt(assessmentId))
+          .eq('assessment_id', assessmentIdNum)
           .eq('client_id', clientId)
-          .single();
+          .maybeSingle();
 
         if (assessmentError) {
           console.error('Assessment fetch error:', assessmentError);
+          throw new Error('Failed to fetch assessment data');
+        }
+
+        if (!assessmentData) {
+          console.log(`Assessment with ID ${assessmentId} not found for client ${clientId}`);
           throw new Error('Assessment not found or access denied');
         }
 
         console.log('Fetched assessment data:', assessmentData);
         setAssessment(assessmentData);
 
-        // Fetch template
+        // Fetch template using the template_id from the assessment
         if (assessmentData.template_id) {
           const { data: templateData, error: templateError } = await supabase
             .from('assessment_templates')
             .select('*')
             .eq('id', assessmentData.template_id)
             .eq('client_id', clientId)
-            .single();
+            .maybeSingle();
 
           if (templateError) {
             console.error('Template fetch error:', templateError);
+            throw new Error('Failed to fetch assessment template');
+          }
+
+          if (!templateData) {
+            console.log(`Template with ID ${assessmentData.template_id} not found`);
             throw new Error('Assessment template not found');
           }
 
@@ -86,14 +102,13 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
             
           console.log('Parsed questions:', questions);
           
-          // Load existing answers if they exist - handle different data types
+          // Load existing answers if they exist
           let existingAnswers: any[] = [];
           
           if (assessmentData.answers) {
             if (Array.isArray(assessmentData.answers)) {
               existingAnswers = assessmentData.answers;
             } else if (typeof assessmentData.answers === 'object') {
-              // If it's an object, try to extract an array
               existingAnswers = Object.values(assessmentData.answers);
             }
           }
@@ -101,7 +116,6 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
           console.log('Existing answers from database:', existingAnswers);
           
           const initialAnswers = questions.map((question: Question) => {
-            // Find existing answer for this question
             const existingAnswer = existingAnswers.find((ans: any) => 
               ans && typeof ans === 'object' && ans.questionId === question.id
             );
@@ -118,6 +132,8 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
           
           console.log('Initialized answers with existing data:', initialAnswers);
           setAnswers(initialAnswers);
+        } else {
+          throw new Error('Assessment has no associated template');
         }
         
       } catch (err) {
@@ -165,7 +181,6 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
     setSaving(true);
     
     try {
-      // Convert answers to a format compatible with JSONB
       const answersData = answers.map(answer => ({
         questionId: answer.questionId,
         answer: answer.answer,
@@ -174,9 +189,7 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
       }));
 
       console.log('Saving draft with answers:', answersData);
-      console.log('Assessment ID:', assessmentId, 'Client ID:', clientId);
 
-      // Update assessment with current answers but keep status as is (or set to 'Draft' if it's 'New')
       const currentStatus = assessment.status === 'New' ? 'Draft' : assessment.status;
       
       const { data, error: updateError } = await supabase
@@ -190,23 +203,13 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
         .select();
 
       if (updateError) {
-        console.error('Draft save error details:', {
-          message: updateError.message,
-          details: updateError.details,
-          hint: updateError.hint,
-          code: updateError.code
-        });
+        console.error('Draft save error:', updateError);
         throw new Error(`Failed to save draft: ${updateError.message}`);
       }
 
       console.log('Draft saved successfully:', data);
-
-      // Update local assessment state to reflect the saved status
       setAssessment(prev => prev ? { ...prev, status: currentStatus, answers: answersData } : null);
-
       toast.success('Assessment saved as draft successfully!');
-      
-      // Navigate back to assessments list page
       navigate('/assessments');
       
     } catch (error) {
@@ -221,7 +224,6 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
   const handleSubmit = async () => {
     if (!assessment || !template) return;
     
-    // Parse questions from JSONB
     const questions = Array.isArray(template.questions) 
       ? (template.questions as unknown as Question[])
       : [];
@@ -248,7 +250,6 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
       const yesAnswers = answers.filter(a => a.answer === true).length;
       const score = totalQuestions > 0 ? Math.round((yesAnswers / totalQuestions) * 100) : 0;
 
-      // Convert answers to a format compatible with JSONB
       const answersData = answers.map(answer => ({
         questionId: answer.questionId,
         answer: answer.answer,
@@ -258,7 +259,6 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
 
       console.log('Submitting assessment with answers:', answersData);
 
-      // Update assessment status, score, and answers using assessment_id
       const { error: updateError } = await supabase
         .from('assessments')
         .update({ 
@@ -278,7 +278,6 @@ export const useAssessmentAnswerData = (assessmentId?: string) => {
         description: `Your score: ${score}%`
       });
       
-      // Navigate back to assessments list page
       navigate('/assessments');
     } catch (error) {
       console.error('Error submitting assessment:', error);
